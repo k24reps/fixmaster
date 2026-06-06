@@ -14,10 +14,12 @@
 //                          Mayar sends it so we can verify authenticity.
 // Auto-injected: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
-// NOTE: Mayar's docs do not pin down the exact header carrying the
-// token, so we check the common candidates (Authorization bearer +
-// x-callback-token / x-webhook-token). If MAYAR_WEBHOOK_TOKEN is set,
-// a matching token is REQUIRED; unset = token check skipped (test only).
+// NOTE: Mayar's docs do not pin down the header name carrying the token,
+// so we match MAYAR_WEBHOOK_TOKEN by VALUE across all incoming headers.
+// We always reply 200 (so Mayar's "Test URL" ping and retries succeed) but
+// only call apply_payment when the token matches AND the event is
+// `payment.received` — the privileged action stays gated. If
+// MAYAR_WEBHOOK_TOKEN is unset, the token check is skipped (test only).
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -27,19 +29,6 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const expectedToken = Deno.env.get('MAYAR_WEBHOOK_TOKEN');
-  if (expectedToken) {
-    const bearer = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-    const candidates = [
-      bearer,
-      req.headers.get('x-callback-token') ?? '',
-      req.headers.get('x-webhook-token') ?? '',
-    ];
-    if (!candidates.includes(expectedToken)) {
-      return new Response('Forbidden', { status: 403 });
-    }
-  }
-
   let body: {
     event?: string;
     data?: { status?: boolean; extraData?: { invoiceId?: string }; id?: string };
@@ -47,12 +36,33 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch {
-    return new Response('Bad request', { status: 400 });
+    body = {};
   }
 
-  // Only a completed payment should extend the plan.
-  if (body.event !== 'payment.received') {
-    return new Response('ignored', { status: 200 });
+  // Verify authenticity by matching the configured token against ALL header
+  // values (Mayar's header name is undocumented). Log header names — never
+  // values — so we can confirm what Mayar actually sends.
+  const expectedToken = Deno.env.get('MAYAR_WEBHOOK_TOKEN');
+  let tokenOk = !expectedToken;
+  if (expectedToken) {
+    for (const value of req.headers.values()) {
+      if (value.replace(/^Bearer\s+/i, '') === expectedToken) {
+        tokenOk = true;
+        break;
+      }
+    }
+  }
+
+  // Acknowledge everything with 200 (keeps Mayar's Test URL + retries happy),
+  // but only a VERIFIED, completed payment triggers the plan extension.
+  if (!tokenOk || body.event !== 'payment.received') {
+    if (expectedToken && !tokenOk) {
+      console.warn(
+        'mayar-webhook: no header matched token; headers =',
+        [...req.headers.keys()].join(', '),
+      );
+    }
+    return new Response('ok', { status: 200 });
   }
 
   const invoiceId = body.data?.extraData?.invoiceId;
