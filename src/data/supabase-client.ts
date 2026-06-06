@@ -222,3 +222,75 @@ export async function deactivateMember(memberId: string): Promise<void> {
   const { error } = await c.rpc('deactivate_member', { p_member_id: memberId });
   if (error) throw new Error(error.message);
 }
+
+// ============================================================
+// Billing (Fase 1B). QRIS is one-shot, so subscriptions generate an
+// invoice per cycle. start_subscription creates a pending invoice;
+// the Mayar Edge Function fills qris_url; the webhook (or a mock
+// confirm) calls apply_payment to extend the plan. All via RPC.
+// ============================================================
+
+export interface Invoice {
+  id: string;
+  orgId: string;
+  plan: string;
+  amount: number;
+  status: 'pending' | 'paid' | 'expired' | 'canceled';
+  provider: string;
+  providerRef: string | null;
+  qrisUrl: string | null;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+function toInvoice(d: Record<string, unknown>): Invoice {
+  return {
+    id: d.id as string,
+    orgId: d.org_id as string,
+    plan: d.plan as string,
+    amount: Number(d.amount),
+    status: d.status as Invoice['status'],
+    provider: d.provider as string,
+    providerRef: (d.provider_ref as string | null) ?? null,
+    qrisUrl: (d.qris_url as string | null) ?? null,
+    periodStart: d.period_start as string,
+    periodEnd: d.period_end as string,
+    createdAt: d.created_at as string,
+    paidAt: (d.paid_at as string | null) ?? null,
+  };
+}
+
+/** Start/renew a subscription: creates a pending invoice, returns its id. */
+export async function startSubscription(plan: string, amount: number): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('start_subscription', { p_plan: plan, p_amount: amount });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/**
+ * Mark an invoice paid (mock-payment confirm; in production the Mayar webhook
+ * calls the same RPC server-side). Extends the org's plan atomically.
+ */
+export async function applyPayment(invoiceId: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('apply_payment', { p_invoice_id: invoiceId });
+  if (error) throw new Error(error.message);
+}
+
+/** List an org's invoices, newest first. */
+export async function listInvoices(orgId: string): Promise<Invoice[]> {
+  const c = getSupabase();
+  if (!c) return [];
+  const { data, error } = await c
+    .from('invoices')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toInvoice);
+}

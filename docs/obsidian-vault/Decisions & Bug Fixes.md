@@ -63,6 +63,17 @@ Menambah karyawan di cloud butuh tiap orang punya akun Supabase Auth sendiri (Op
 
 Semua mutasi tim lewat RPC **security definer** (`claim_invite`, `set_member_role`, `deactivate_member`) yang mengecek `is_org_manager` dan **menolak menghapus/menurunkan owner aktif terakhir** (cegah org tanpa owner). Logika guard yang sama dicerminkan murni di `src/lib/business/team.ts` (testable) untuk validasi UI dini — tapi RPC tetap batas keamanan sebenarnya. Migration `0008`. Trade-off jujur: karyawan harus tahu harus daftar **pakai email yang diundang** (belum ada email pemberitahuan otomatis); ini dinaikkan ke alur Edge Function + email saat Fase 3. Lihat [[Data Layer]].
 
+### Billing & langganan: invoice-based QRIS, enum plan tetap stabil (Fase 1B)
+QRIS itu **bayar sekali** (bukan auto-debit recurring seperti kartu). Maka model langganan = **tiap siklus generate invoice → user scan QRIS → bayar → webhook tandai lunas → perpanjang `plan_expired_at`**. Diimplementasi: tabel `invoices` + RPC `start_subscription` (bikin invoice pending) & `apply_payment` (idempotent: tandai lunas + perpanjang plan dari `max(now, expiry)` agar bayar lebih awal tak hangus). Migration `0009`.
+
+Keputusan penting yang dijaga:
+- **Enum `plan_type` Postgres TIDAK di-rename.** Nilainya tetap `('free','standard','enterprise','trial','suspended')` karena `PLANS` di `plans.ts` adalah `Record<PlanType, PlanDef>` dan ada org existing di staging. Mengganti enum = migrasi data berisiko demi kosmetik. Jadi hanya **label tampilan** yang berubah (standard→"Solo", enterprise→"Bisnis"), plus kuota & harga. Harga = **placeholder** (`// placeholder`), gampang diganti sebelum launch.
+- **Harga per-organisasi, tier by jumlah outlet, user UNLIMITED** (`maxUsers:-1` di semua tier pakai). Helper `withinOutletQuota`, `outletTierFor`, `PAID_TIERS`.
+- **Reminder H-3, grace 3 hari, lalu expired** — logika murni di `src/lib/business/billing.ts` (`subscriptionPhase`: active/reminder/grace/expired; `canWrite`; `isOrgActive`) + 13 test. Dicerminkan server-side oleh fungsi `is_org_active` (RPC `0009`).
+- **Provider di-abstraksi (mock dulu).** Kolom `provider`/`provider_ref`/`qris_url` di `invoices`. Integrasi Mayar nyata = Edge Function `create-invoice` (isi `qris_url`) + `mayar-webhook` (panggil `apply_payment`), **ditunda sampai user kasih sandbox key**. UI `BillingTab` jalan penuh dengan tombol "Saya sudah bayar" (mock confirm) untuk menguji alur perpanjangan tanpa Mayar.
+
+Catatan jujur (belum selesai): **hard write-blocking server-side** saat langganan expired belum diwajibkan — `is_org_active` ada & UI sadar-status (banner), tapi pemblokiran tulis sesungguhnya menunggu wiring RPC atomik (`process_sale` dst) yang masih sisa dari Fase 0. Lihat [[Data Layer]].
+
 ### Outlet dibuat di wizard + bug `outlets.outlet_id`
 Dua masalah berkaitan, diperbaiki bareng:
 1. **Bug: tambah outlet di Pengaturan gagal (cloud).** `Outlet extends BaseEntity` → bawa field `outletId`, dan supabase-adapter memetakan **semua** field entity ke kolom. Tapi tabel `outlets` (migration `0001`) **tak punya kolom `outlet_id`** (migration `0006` menambahkannya ke tabel lain, tapi melewati `outlets` sendiri). Jadi upsert outlet di cloud menabrak kolom tak-ada → gagal. Fix: migration **`0007_outlets_outlet_id.sql`** (idempotent) menambah kolom itu; nilainya selalu NULL untuk outlet, ada murni demi kontrak BaseEntity↔adapter yang seragam.

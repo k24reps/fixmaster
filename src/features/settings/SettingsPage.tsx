@@ -6,8 +6,8 @@ import { repository } from '@/data';
 import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { PLANS } from '@/config/plans';
-import { roleAllows } from '@/config/plans';
+import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor } from '@/config/plans';
+import { subscriptionPhase, daysUntil, phaseLabel, GRACE_DAYS } from '@/lib/business/billing';
 import {
   getComplaintTemplates,
   setComplaintTemplates,
@@ -38,9 +38,13 @@ import {
   revokeInvite,
   setMemberRole,
   deactivateMember,
+  startSubscription,
+  applyPayment,
+  listInvoices,
   type PendingInvite,
+  type Invoice,
 } from '@/data/supabase-client';
-import type { Wallet, Outlet, Role } from '@/data/types';
+import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -73,7 +77,7 @@ async function fileToLogoDataUrl(file: File): Promise<string> {
   return canvas.toDataURL('image/png');
 }
 
-type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'sistem';
+type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'sistem';
 
 export function SettingsPage() {
   const org = useSessionStore((s) => s.org);
@@ -88,15 +92,18 @@ export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('usaha');
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const TABS: { id: Tab; label: string; icon: string; ownerOnly?: boolean }[] = [
+  const TABS: { id: Tab; label: string; icon: string; ownerOnly?: boolean; cloudOnly?: boolean }[] = [
     { id: 'usaha', label: 'Usaha', icon: 'fa-store' },
     { id: 'operasional', label: 'Operasional', icon: 'fa-sliders' },
     { id: 'tim', label: 'Tim', icon: 'fa-users', ownerOnly: true },
     { id: 'keuangan', label: 'Wallet', icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: 'Outlet', icon: 'fa-shop', ownerOnly: true },
+    { id: 'langganan', label: 'Langganan', icon: 'fa-crown', ownerOnly: true, cloudOnly: true },
     { id: 'sistem', label: 'Sistem', icon: 'fa-gear' },
   ];
-  const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner);
+  const visibleTabs = TABS.filter(
+    (t) => (!t.ownerOnly || isOwner) && (!t.cloudOnly || isSupabaseConfigured),
+  );
 
   return (
     <div className={styles.wrap}>
@@ -123,6 +130,7 @@ export function SettingsPage() {
       {tab === 'tim' && isOwner && <TeamTab employees={employees} />}
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
+      {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
         <SystemTab
           plan={org?.planType ?? 'trial'}
@@ -701,6 +709,217 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
       />
     </>
   );
+}
+
+function BillingTab({ outlets }: { outlets: Outlet[] }) {
+  const org = useSessionStore((s) => s.org);
+  const orgId = org?.id ?? '';
+  const plan = (org?.planType ?? 'trial') as PlanType;
+  const expiry = org?.planExpiredAt ?? null;
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const phase = subscriptionPhase(expiry);
+  const days = expiry ? daysUntil(expiry) : null;
+  const outletCount = outlets.length || 1;
+  const suggested = outletTierFor(outletCount);
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    listInvoices(orgId)
+      .then((data) => {
+        if (!cancelled) setInvoices(data);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice'));
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const reload = async () => {
+    try {
+      setInvoices(await listInvoices(orgId));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice');
+    }
+  };
+
+  const subscribe = async (tier: PlanType) => {
+    if (!withinOutletQuota(tier, outletCount)) {
+      return toast.error(`Tier ${PLANS[tier].name} maksimal ${PLANS[tier].maxOutlets} outlet`);
+    }
+    setBusy(true);
+    try {
+      await startSubscription(tier, parseAmount(PLANS[tier].priceLabel));
+      toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran`);
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membuat invoice');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmPay = async (invoiceId: string) => {
+    setBusy(true);
+    try {
+      await applyPayment(invoiceId);
+      toast.success('Pembayaran diterima — langganan diperpanjang');
+      await reload();
+      // Refresh org plan in session (expiry/plan changed).
+      const fresh = await repository.getSingleton('organization');
+      if (fresh) useSessionStore.getState().setOrg(fresh);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memproses pembayaran');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const phaseTone: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+    active: 'success',
+    reminder: 'warning',
+    grace: 'warning',
+    expired: 'danger',
+  };
+
+  const pendingInvoice = invoices.find((i) => i.status === 'pending');
+
+  return (
+    <>
+      <Card glass>
+        <CardHeader icon={<Icon name="crown" aria-hidden />} title="Status Langganan" />
+        <CardBody>
+          <div className={styles.planStatus}>
+            <div>
+              <span className={styles.planName}>{PLANS[plan].name}</span>
+              <Badge tone={phaseTone[phase]}>{phaseLabel(phase)}</Badge>
+            </div>
+            {expiry && (
+              <small className={styles.hint}>
+                {phase === 'expired'
+                  ? `Kedaluwarsa ${new Date(expiry).toLocaleDateString('id-ID')}`
+                  : days != null && days >= 0
+                    ? `Berlaku ${days} hari lagi (s/d ${new Date(expiry).toLocaleDateString('id-ID')})`
+                    : `Masa tenggang hingga ${GRACE_DAYS} hari setelah ${new Date(expiry).toLocaleDateString('id-ID')}`}
+              </small>
+            )}
+          </div>
+
+          {(phase === 'reminder' || phase === 'grace' || phase === 'expired') && (
+            <p className={styles.billingBanner}>
+              <Icon name="warning" aria-hidden />{' '}
+              {phase === 'expired'
+                ? 'Langganan kedaluwarsa. Perpanjang untuk membuka kembali operasi tulis.'
+                : phase === 'grace'
+                  ? 'Masa tenggang aktif. Segera bayar agar layanan tidak terhenti.'
+                  : 'Langganan akan jatuh tempo. Perpanjang sekarang.'}
+            </p>
+          )}
+        </CardBody>
+      </Card>
+
+      {pendingInvoice && (
+        <Card glass>
+          <CardHeader icon={<Icon name="qr-code" aria-hidden />} title="Selesaikan Pembayaran" />
+          <CardBody>
+            <p className={styles.hint}>
+              Invoice {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan} ·{' '}
+              {fmtRp(pendingInvoice.amount)}
+            </p>
+            {pendingInvoice.qrisUrl ? (
+              <img className={styles.qris} src={pendingInvoice.qrisUrl} alt="QRIS pembayaran" />
+            ) : (
+              <p className={styles.hint}>
+                Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur
+                perpanjangan langganan.
+              </p>
+            )}
+            <Button
+              onClick={() => void confirmPay(pendingInvoice.id)}
+              loading={busy}
+              iconLeft={<Icon name="check" aria-hidden />}
+            >
+              Saya sudah bayar
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
+      <Card glass>
+        <CardHeader icon={<Icon name="tag" aria-hidden />} title="Pilih Paket" />
+        <CardBody>
+          <p className={styles.hint}>
+            Harga per organisasi, user tak terbatas. Tier menyesuaikan jumlah outlet (kamu punya{' '}
+            {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
+          </p>
+          <div className={styles.planGrid}>
+            {PAID_TIERS.map((tier) => {
+              const def = PLANS[tier];
+              const fits = withinOutletQuota(tier, outletCount);
+              return (
+                <div
+                  key={tier}
+                  className={[styles.planCard, suggested === tier ? styles.planCardRec : ''].join(' ')}
+                >
+                  <strong>{def.name}</strong>
+                  <span className={styles.planPrice}>{def.priceLabel}</span>
+                  <small className={styles.hint}>s/d {def.maxOutlets} outlet · user unlimited</small>
+                  <Button
+                    variant={suggested === tier ? 'primary' : 'secondary'}
+                    size="sm"
+                    disabled={!fits || busy}
+                    onClick={() => void subscribe(tier)}
+                  >
+                    {fits ? 'Pilih' : 'Outlet melebihi'}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardBody>
+      </Card>
+
+      {invoices.length > 0 && (
+        <Card glass>
+          <CardHeader icon={<Icon name="receipt" aria-hidden />} title="Riwayat Invoice" />
+          <CardBody className={styles.noPad}>
+            <ul className={styles.list}>
+              {invoices.map((inv) => (
+                <li key={inv.id} className={styles.listItem}>
+                  <div className={styles.itemInfo}>
+                    <strong>{PLANS[inv.plan as PlanType]?.name ?? inv.plan}</strong>
+                    <small>
+                      {new Date(inv.createdAt).toLocaleDateString('id-ID')} · {fmtRp(inv.amount)}
+                    </small>
+                  </div>
+                  <Badge
+                    tone={
+                      inv.status === 'paid'
+                        ? 'success'
+                        : inv.status === 'pending'
+                          ? 'warning'
+                          : 'neutral'
+                    }
+                  >
+                    {inv.status}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </CardBody>
+        </Card>
+      )}
+    </>
+  );
+}
+
+/** Parse "Rp 49.000/bln" → 49000 for the invoice amount. */
+function parseAmount(priceLabel: string): number {
+  const digits = priceLabel.replace(/[^0-9]/g, '');
+  return digits ? Number(digits) : 0;
 }
 
 function WalletTab({ wallets }: { wallets: Wallet[] }) {
