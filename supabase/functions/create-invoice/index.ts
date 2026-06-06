@@ -1,18 +1,21 @@
 // ============================================================
 // FixMaster — Edge Function: create-invoice
-// Server-side bridge to Mayar. The Mayar API key MUST stay here
-// (never in the browser). Flow:
-//   1. Verify the caller (JWT) and reuse start_subscription RPC to
-//      create a PENDING invoice row (RPC already checks manager).
-//   2. Create a Mayar invoice carrying extraData.invoiceId so the
-//      webhook can correlate the payment back to our row.
-//   3. Store provider_ref + payment link on our invoice row.
-//   4. Return the hosted payment link for the client to open.
+// Server-side bridge to Fersaku. The Fersaku secret key MUST stay
+// here (never in the browser). Flow:
+//   1. Verify the caller (JWT via getUser) and reuse start_subscription
+//      RPC to create a PENDING invoice row (RPC checks manager).
+//   2. Create a Fersaku payment (POST /payments) carrying external_id =
+//      our invoice id. Fersaku returns a checkout_url + provider id.
+//   3. Store provider_ref (= Fersaku payment id) + checkout link on our
+//      invoice row. The webhook correlates back via provider_ref because
+//      Fersaku webhooks carry payment_id (not external_id).
+//   4. Return the hosted checkout link for the client to open.
 //
 // Env (set via `supabase secrets set`):
-//   MAYAR_API_KEY        — Mayar API key (Read & Write)
-//   MAYAR_API_BASE       — optional, default https://api.mayar.id/hl/v1
-//                          (use https://api.mayar.club/hl/v1 for sandbox)
+//   FERSAKU_API_KEY   — Fersaku secret key. sk_test_* = sandbox,
+//                       sk_live_* = production (the key's prefix selects
+//                       the environment; the base URL is the same).
+//   FERSAKU_API_BASE  — optional, default https://fersaku.com/api/v1
 // Auto-injected by Supabase: SUPABASE_URL, SUPABASE_ANON_KEY,
 //   SUPABASE_SERVICE_ROLE_KEY
 // ============================================================
@@ -40,14 +43,14 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    const apiKey = Deno.env.get('MAYAR_API_KEY');
-    const apiBase = Deno.env.get('MAYAR_API_BASE') ?? 'https://api.mayar.id/hl/v1';
+    const apiKey = Deno.env.get('FERSAKU_API_KEY');
+    const apiBase = Deno.env.get('FERSAKU_API_BASE') ?? 'https://fersaku.com/api/v1';
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     console.log('create-invoice: start', { apiBase, hasApiKey: !!apiKey });
 
-    if (!apiKey) return json({ error: 'MAYAR_API_KEY belum diset' }, 500);
+    if (!apiKey) return json({ error: 'FERSAKU_API_KEY belum diset' }, 500);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
@@ -102,54 +105,64 @@ Deno.serve(async (req) => {
       .eq('id', invoice?.org_id)
       .single();
 
-    // 2. Create the Mayar invoice. extraData.invoiceId is our correlation key.
-    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    const mayarBody = {
-      name: org?.name ?? 'FixMaster',
-      email: user.email,
-      mobile: '08000000000', // Mayar requires a value; real number not needed for QRIS
-      redirectUrl: redirectUrl ?? supabaseUrl,
-      description: `Langganan FixMaster ${plan}`,
-      expiredAt,
-      items: [{ quantity: 1, rate: amount, description: `Langganan ${plan} (1 bulan)` }],
-      extraData: { invoiceId, orgId: invoice?.org_id },
+    // 2. Create the Fersaku payment. external_id ties it to our invoice; the
+    //    webhook only sends payment_id back, so we also persist provider_ref
+    //    (= Fersaku id) below for correlation.
+    const fersakuBody = {
+      amount,
+      customer_name: org?.name ?? 'FixMaster',
+      customer_email: user.email,
+      description: `Langganan FixMaster ${plan} (1 bulan)`,
+      external_id: invoiceId,
+      expired_minutes: 60 * 24, // 24h window to pay
+      finish_url: redirectUrl ?? supabaseUrl,
     };
 
-    console.log('create-invoice: calling Mayar', `${apiBase}/invoice/create`);
-    const mayarRes = await fetch(`${apiBase}/invoice/create`, {
+    console.log('create-invoice: calling Fersaku', `${apiBase}/payments`);
+    const fersakuRes = await fetch(`${apiBase}/payments`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(mayarBody),
+      body: JSON.stringify(fersakuBody),
     });
-    const mayarText = await mayarRes.text();
-    console.log('create-invoice: Mayar response', { status: mayarRes.status, body: mayarText });
-    let mayarJson: { data?: { link?: string; id?: string; transactionId?: string }; messages?: string } | null = null;
+    const fersakuText = await fersakuRes.text();
+    console.log('create-invoice: Fersaku response', {
+      status: fersakuRes.status,
+      body: fersakuText.slice(0, 500),
+    });
+    let fersakuJson:
+      | { id?: string; checkout_url?: string; qr_image_url?: string; error?: string }
+      | null = null;
     try {
-      mayarJson = JSON.parse(mayarText);
+      fersakuJson = JSON.parse(fersakuText);
     } catch {
-      mayarJson = null;
+      fersakuJson = null;
     }
-    if (!mayarRes.ok || !mayarJson?.data?.link) {
+    if (!fersakuRes.ok || !fersakuJson?.checkout_url) {
       // Roll the invoice back to canceled so it doesn't linger as pending.
       await admin.from('invoices').update({ status: 'canceled' }).eq('id', invoiceId);
       return json(
-        { error: mayarJson?.messages ?? `Mayar error (${mayarRes.status}): ${mayarText.slice(0, 300)}` },
+        {
+          error:
+            fersakuJson?.error ??
+            `Fersaku error (${fersakuRes.status}): ${fersakuText.slice(0, 300)}`,
+        },
         502,
       );
     }
 
-    // 3. Persist provider details.
+    // 3. Persist provider details. provider_ref = Fersaku payment id (the
+    //    correlation key the webhook will send back).
     await admin
       .from('invoices')
       .update({
-        provider: 'mayar',
-        provider_ref: mayarJson.data.id ?? mayarJson.data.transactionId ?? null,
-        qris_url: mayarJson.data.link,
+        provider: 'fersaku',
+        provider_ref: fersakuJson.id ?? null,
+        qris_url: fersakuJson.checkout_url,
       })
       .eq('id', invoiceId);
 
-    // 4. Return the payment link.
-    return json({ invoiceId, link: mayarJson.data.link });
+    // 4. Return the hosted checkout link.
+    return json({ invoiceId, link: fersakuJson.checkout_url });
   } catch (err) {
     console.error('create-invoice: unhandled error', err instanceof Error ? err.stack : err);
     return json({ error: err instanceof Error ? err.message : 'Internal error' }, 500);

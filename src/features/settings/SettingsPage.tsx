@@ -41,7 +41,7 @@ import {
   startSubscription,
   applyPayment,
   listInvoices,
-  createMayarInvoice,
+  createPaymentInvoice,
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
@@ -755,9 +755,9 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     try {
       const amount = parseAmount(PLANS[tier].priceLabel);
       try {
-        // Real provider: create a Mayar invoice and open the hosted payment
-        // page (QRIS/checkout). Confirmation arrives via the webhook.
-        const { link } = await createMayarInvoice(tier, amount, window.location.href);
+        // Real provider: create a Fersaku payment and open the hosted checkout
+        // page (QRIS). Confirmation arrives via the webhook.
+        const { link } = await createPaymentInvoice(tier, amount, window.location.href);
         window.open(link, '_blank', 'noopener');
         toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran di tab baru`);
       } catch {
@@ -848,7 +848,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran Mayar
+                <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran QRIS
               </a>
             ) : (
               <p className={styles.hint}>

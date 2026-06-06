@@ -11,7 +11,8 @@ project_id = "fixmaster"
 # getUser() (it rejects missing/invalid tokens), keeping auth intact.
 verify_jwt = false
 
-[functions.mayar-webhook]
-# Called by Mayar's servers (no Supabase session) → must be public.
-# Authenticity is enforced inside the function via MAYAR_WEBHOOK_TOKEN.
+[functions.fersaku-webhook]
+# Called by Fersaku's servers (no Supabase session) → must be public.
+# Authenticity is enforced inside the function via an SHA-256 signature
+# check against FERSAKU_WEBHOOK_SECRET.
 verify_jwt = false

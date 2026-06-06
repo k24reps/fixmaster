@@ -296,12 +296,13 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
 }
 
 /**
- * Create a real Mayar payment invoice via the `create-invoice` Edge Function.
- * Returns the hosted payment link (QRIS/checkout). The Mayar API key lives
- * only in the Edge Function — never in the browser. Throws if the function
- * is not deployed/configured, so callers can fall back to the mock flow.
+ * Create a real QRIS payment invoice via the `create-invoice` Edge Function
+ * (Fersaku). Returns the hosted checkout link. The payment provider's secret
+ * key lives only in the Edge Function — never in the browser. Throws if the
+ * function is not deployed/configured, so callers can fall back to the mock
+ * flow.
  */
-export async function createMayarInvoice(
+export async function createPaymentInvoice(
   plan: string,
   amount: number,
   redirectUrl?: string,
@@ -312,6 +313,6 @@ export async function createMayarInvoice(
     body: { plan, amount, redirectUrl },
   });
   if (error) throw new Error(error.message);
-  if (!data?.link) throw new Error(data?.error ?? 'Gagal membuat invoice Mayar');
+  if (!data?.link) throw new Error(data?.error ?? 'Gagal membuat invoice pembayaran');
   return { invoiceId: data.invoiceId as string, link: data.link as string };
 }
