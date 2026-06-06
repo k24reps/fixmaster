@@ -85,3 +85,29 @@ export async function getMyMembership(): Promise<{ orgId: string; membershipId: 
   if (error || !data || data.length === 0) return null;
   return { orgId: data[0].org_id as string, membershipId: data[0].id as string };
 }
+
+/**
+ * Cloud clock-in via the `clock_in` RPC. The server re-validates the geofence
+ * (the real security boundary) and inserts the attendance row atomically.
+ * Returns the new attendance id. Throws with the server's Indonesian message
+ * (e.g. outside-radius) so the UI can surface it directly.
+ */
+export async function clockIn(args: {
+  orgId: string;
+  outletId: string;
+  employeeId: string;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('clock_in', {
+    p_org_id: args.orgId,
+    p_outlet_id: args.outletId,
+    p_employee_id: args.employeeId,
+    p_lat: args.lat ?? null,
+    p_lng: args.lng ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}

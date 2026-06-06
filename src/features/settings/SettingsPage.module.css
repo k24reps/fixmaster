@@ -319,3 +319,50 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Outlet geofence editor ---------- */
+.outletItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.geofenceBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-left: 52px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.geofenceHint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.geofenceRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 120px;
+  gap: var(--space-3);
+}
+.geofenceActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.geofenceSpacer {
+  flex: 1;
+}
+@media (max-width: 768px) {
+  .geofenceRow {
+    grid-template-columns: 1fr;
+  }
+  .geofenceBox {
+    margin-left: 0;
+  }
+}
+

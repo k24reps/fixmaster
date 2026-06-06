@@ -3,6 +3,7 @@ import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon } fr
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { PLANS } from '@/config/plans';
@@ -583,14 +584,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         ) : (
           <ul className={styles.list}>
             {outlets.map((o) => (
-              <li key={o.id} className={styles.listItem}>
-                <span className={styles.avatar}><Icon name="shop" aria-hidden /></span>
-                <div className={styles.itemInfo}>
-                  <strong>{o.name}</strong>
-                  <small>{o.address || '—'}</small>
-                </div>
-                {o.isPrimary && <Badge tone="brand">Utama</Badge>}
-              </li>
+              <OutletRow key={o.id} outlet={o} />
             ))}
           </ul>
         )}
@@ -601,6 +595,148 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         </div>
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * One outlet row with an expandable geofence editor. Setting coordinates +
+ * radius turns on GPS-validated attendance for that outlet; leaving them empty
+ * keeps clock-in unrestricted. "Gunakan lokasi saya" fills lat/lng from the
+ * device GPS (owner is expected to set it while physically at the outlet).
+ */
+function OutletRow({ outlet }: { outlet: Outlet }) {
+  const [open, setOpen] = useState(false);
+  const [lat, setLat] = useState(outlet.lat != null ? String(outlet.lat) : '');
+  const [lng, setLng] = useState(outlet.lng != null ? String(outlet.lng) : '');
+  const [radius, setRadius] = useState(
+    outlet.geofenceRadiusM != null ? String(outlet.geofenceRadiusM) : '100',
+  );
+  const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  const geofenceOn = outlet.lat != null && outlet.lng != null && (outlet.geofenceRadiusM ?? 0) > 0;
+
+  const useMyLocation = async () => {
+    setLocating(true);
+    try {
+      const pos = await getCurrentPosition();
+      setLat(pos.lat.toFixed(6));
+      setLng(pos.lng.toFixed(6));
+      toast.success(`Lokasi terdeteksi (akurasi ±${Math.round(pos.accuracyM)}m)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengambil lokasi');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const save = async () => {
+    const latN = lat.trim() === '' ? null : Number(lat);
+    const lngN = lng.trim() === '' ? null : Number(lng);
+    const radN = radius.trim() === '' ? null : Math.round(Number(radius));
+    if (latN != null && (Number.isNaN(latN) || latN < -90 || latN > 90)) {
+      return toast.error('Latitude tidak valid (-90..90)');
+    }
+    if (lngN != null && (Number.isNaN(lngN) || lngN < -180 || lngN > 180)) {
+      return toast.error('Longitude tidak valid (-180..180)');
+    }
+    if (radN != null && (Number.isNaN(radN) || radN <= 0)) {
+      return toast.error('Radius harus lebih dari 0 meter');
+    }
+    setBusy(true);
+    try {
+      await repository.put('outlets', {
+        ...outlet,
+        lat: latN,
+        lng: lngN,
+        geofenceRadiusM: radN,
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success('Geofence outlet disimpan');
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clear = async () => {
+    setBusy(true);
+    try {
+      await repository.put('outlets', {
+        ...outlet,
+        lat: null,
+        lng: null,
+        geofenceRadiusM: null,
+        updatedAt: new Date().toISOString(),
+      });
+      setLat('');
+      setLng('');
+      setRadius('100');
+      toast.success('Geofence dimatikan (absensi bebas lokasi)');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li className={styles.outletItem}>
+      <div className={styles.listItem}>
+        <span className={styles.avatar}><Icon name="shop" aria-hidden /></span>
+        <div className={styles.itemInfo}>
+          <strong>{outlet.name}</strong>
+          <small>{outlet.address || '—'}</small>
+        </div>
+        {geofenceOn && (
+          <Badge tone="success">
+            <Icon name="map-pin" aria-hidden /> {outlet.geofenceRadiusM}m
+          </Badge>
+        )}
+        {outlet.isPrimary && <Badge tone="brand">Utama</Badge>}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setOpen((v) => !v)}
+          iconLeft={<Icon name="map-pin" aria-hidden />}
+        >
+          {open ? 'Tutup' : 'Geofence'}
+        </Button>
+      </div>
+
+      {open && (
+        <div className={styles.geofenceBox}>
+          <p className={styles.geofenceHint}>
+            <Icon name="info-circle" aria-hidden /> Isi koordinat + radius untuk mewajibkan
+            absensi dari lokasi outlet. Kosongkan untuk absensi bebas lokasi. Set saat Anda
+            sedang berada di outlet.
+          </p>
+          <div className={styles.geofenceRow}>
+            <Input label="Latitude" placeholder="-6.200000" value={lat} onChange={(e) => setLat(e.target.value)} />
+            <Input label="Longitude" placeholder="106.816666" value={lng} onChange={(e) => setLng(e.target.value)} />
+            <Input label="Radius (m)" type="number" placeholder="100" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </div>
+          <div className={styles.geofenceActions}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={useMyLocation}
+              loading={locating}
+              iconLeft={<Icon name="map-pin" aria-hidden />}
+            >
+              Gunakan lokasi saya
+            </Button>
+            <span className={styles.geofenceSpacer} />
+            {geofenceOn && (
+              <Button variant="ghost" size="sm" onClick={clear} disabled={busy}>
+                Matikan
+              </Button>
+            )}
+            <Button size="sm" onClick={save} loading={busy} iconLeft={<Icon name="check" aria-hidden />}>
+              Simpan
+            </Button>
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 
