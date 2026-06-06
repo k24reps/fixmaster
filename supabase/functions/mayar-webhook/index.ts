@@ -25,8 +25,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
+  // Health/connectivity checks (incl. Mayar's "Test URL") may use GET/HEAD.
+  // Acknowledge any non-POST with 200 so the test passes; only POST carries
+  // real event payloads.
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('ok', { status: 200 });
   }
 
   let body: {
