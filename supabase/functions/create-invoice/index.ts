@@ -35,98 +35,119 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const apiKey = Deno.env.get('MAYAR_API_KEY');
-  const apiBase = Deno.env.get('MAYAR_API_BASE') ?? 'https://api.mayar.id/hl/v1';
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-  if (!apiKey) return json({ error: 'MAYAR_API_KEY belum diset' }, 500);
-
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return json({ error: 'Unauthorized' }, 401);
-
-  let payload: { plan?: string; amount?: number; redirectUrl?: string };
   try {
-    payload = await req.json();
-  } catch {
-    return json({ error: 'Body JSON tidak valid' }, 400);
+    const apiKey = Deno.env.get('MAYAR_API_KEY');
+    const apiBase = Deno.env.get('MAYAR_API_BASE') ?? 'https://api.mayar.id/hl/v1';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    console.log('create-invoice: start', { apiBase, hasApiKey: !!apiKey });
+
+    if (!apiKey) return json({ error: 'MAYAR_API_KEY belum diset' }, 500);
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) return json({ error: 'Unauthorized' }, 401);
+
+    let payload: { plan?: string; amount?: number; redirectUrl?: string };
+    try {
+      payload = await req.json();
+    } catch {
+      return json({ error: 'Body JSON tidak valid' }, 400);
+    }
+    const { plan, amount, redirectUrl } = payload;
+    console.log('create-invoice: payload', { plan, amount });
+    if (!plan || typeof amount !== 'number') {
+      return json({ error: 'plan dan amount wajib diisi' }, 400);
+    }
+
+    // Act as the caller so start_subscription's manager check applies.
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      console.error('create-invoice: getUser failed', userErr?.message);
+      return json({ error: 'Unauthorized' }, 401);
+    }
+    console.log('create-invoice: user ok', { userId: user.id });
+
+    // 1. Create the pending invoice via the existing RPC (returns invoice id).
+    const { data: invoiceId, error: rpcErr } = await userClient.rpc('start_subscription', {
+      p_plan: plan,
+      p_amount: amount,
+    });
+    if (rpcErr || !invoiceId) {
+      console.error('create-invoice: start_subscription failed', rpcErr?.message);
+      return json({ error: rpcErr?.message ?? 'Gagal membuat invoice' }, 400);
+    }
+    console.log('create-invoice: invoice created', { invoiceId });
+
+    // Service-role client for trusted reads/writes after the auth gate.
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: invoice } = await admin
+      .from('invoices')
+      .select('id, org_id, plan')
+      .eq('id', invoiceId)
+      .single();
+    const { data: org } = await admin
+      .from('organizations')
+      .select('name')
+      .eq('id', invoice?.org_id)
+      .single();
+
+    // 2. Create the Mayar invoice. extraData.invoiceId is our correlation key.
+    const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const mayarBody = {
+      name: org?.name ?? 'FixMaster',
+      email: user.email,
+      mobile: '08000000000', // Mayar requires a value; real number not needed for QRIS
+      redirectUrl: redirectUrl ?? supabaseUrl,
+      description: `Langganan FixMaster ${plan}`,
+      expiredAt,
+      items: [{ quantity: 1, rate: amount, description: `Langganan ${plan} (1 bulan)` }],
+      extraData: { invoiceId, orgId: invoice?.org_id },
+    };
+
+    console.log('create-invoice: calling Mayar', `${apiBase}/invoice/create`);
+    const mayarRes = await fetch(`${apiBase}/invoice/create`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(mayarBody),
+    });
+    const mayarText = await mayarRes.text();
+    console.log('create-invoice: Mayar response', { status: mayarRes.status, body: mayarText });
+    let mayarJson: { data?: { link?: string; id?: string; transactionId?: string }; messages?: string } | null = null;
+    try {
+      mayarJson = JSON.parse(mayarText);
+    } catch {
+      mayarJson = null;
+    }
+    if (!mayarRes.ok || !mayarJson?.data?.link) {
+      // Roll the invoice back to canceled so it doesn't linger as pending.
+      await admin.from('invoices').update({ status: 'canceled' }).eq('id', invoiceId);
+      return json(
+        { error: mayarJson?.messages ?? `Mayar error (${mayarRes.status}): ${mayarText.slice(0, 300)}` },
+        502,
+      );
+    }
+
+    // 3. Persist provider details.
+    await admin
+      .from('invoices')
+      .update({
+        provider: 'mayar',
+        provider_ref: mayarJson.data.id ?? mayarJson.data.transactionId ?? null,
+        qris_url: mayarJson.data.link,
+      })
+      .eq('id', invoiceId);
+
+    // 4. Return the payment link.
+    return json({ invoiceId, link: mayarJson.data.link });
+  } catch (err) {
+    console.error('create-invoice: unhandled error', err instanceof Error ? err.stack : err);
+    return json({ error: err instanceof Error ? err.message : 'Internal error' }, 500);
   }
-  const { plan, amount, redirectUrl } = payload;
-  if (!plan || typeof amount !== 'number') {
-    return json({ error: 'plan dan amount wajib diisi' }, 400);
-  }
-
-  // Act as the caller so start_subscription's manager check applies.
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const {
-    data: { user },
-    error: userErr,
-  } = await userClient.auth.getUser();
-  if (userErr || !user) return json({ error: 'Unauthorized' }, 401);
-
-  // 1. Create the pending invoice via the existing RPC (returns invoice id).
-  const { data: invoiceId, error: rpcErr } = await userClient.rpc('start_subscription', {
-    p_plan: plan,
-    p_amount: amount,
-  });
-  if (rpcErr || !invoiceId) {
-    return json({ error: rpcErr?.message ?? 'Gagal membuat invoice' }, 400);
-  }
-
-  // Service-role client for trusted reads/writes after the auth gate.
-  const admin = createClient(supabaseUrl, serviceKey);
-  const { data: invoice } = await admin
-    .from('invoices')
-    .select('id, org_id, plan')
-    .eq('id', invoiceId)
-    .single();
-  const { data: org } = await admin
-    .from('organizations')
-    .select('name')
-    .eq('id', invoice?.org_id)
-    .single();
-
-  // 2. Create the Mayar invoice. extraData.invoiceId is our correlation key.
-  const expiredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const mayarBody = {
-    name: org?.name ?? 'FixMaster',
-    email: user.email,
-    mobile: '08000000000', // Mayar requires a value; real number not needed for QRIS
-    redirectUrl: redirectUrl ?? supabaseUrl,
-    description: `Langganan FixMaster ${plan}`,
-    expiredAt,
-    items: [{ quantity: 1, rate: amount, description: `Langganan ${plan} (1 bulan)` }],
-    extraData: { invoiceId, orgId: invoice?.org_id },
-  };
-
-  const mayarRes = await fetch(`${apiBase}/invoice/create`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(mayarBody),
-  });
-  const mayarJson = await mayarRes.json().catch(() => null);
-  if (!mayarRes.ok || !mayarJson?.data?.link) {
-    // Roll the invoice back to canceled so it doesn't linger as pending.
-    await admin.from('invoices').update({ status: 'canceled' }).eq('id', invoiceId);
-    return json(
-      { error: mayarJson?.messages ?? `Mayar error (${mayarRes.status})` },
-      502,
-    );
-  }
-
-  // 3. Persist provider details.
-  await admin
-    .from('invoices')
-    .update({
-      provider: 'mayar',
-      provider_ref: mayarJson.data.id ?? mayarJson.data.transactionId ?? null,
-      qris_url: mayarJson.data.link,
-    })
-    .eq('id', invoiceId);
-
-  // 4. Return the payment link.
-  return json({ invoiceId, link: mayarJson.data.link });
 });
