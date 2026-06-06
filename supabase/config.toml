@@ -1,0 +1,14 @@
+project_id = "fixmaster"
+
+# Edge Functions config. Declaring verify_jwt here (instead of relying on the
+# --no-verify-jwt CLI flag) keeps the setting version-controlled and prevents
+# accidental redeploys from re-enabling JWT on the public webhook.
+
+[functions.create-invoice]
+# Called by the logged-in app via functions.invoke → requires a valid Supabase JWT.
+verify_jwt = true
+
+[functions.mayar-webhook]
+# Called by Mayar's servers (no Supabase session) → must be public.
+# Authenticity is enforced inside the function via MAYAR_WEBHOOK_TOKEN.
+verify_jwt = false

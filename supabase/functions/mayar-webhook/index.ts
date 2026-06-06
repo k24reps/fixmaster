@@ -5,8 +5,9 @@
 // (Mayar calls it, not a logged-in user), so it is gated by a shared
 // webhook token and only acts on the `payment.received` event.
 //
-// Deploy with --no-verify-jwt so Mayar can reach it without a Supabase
-// JWT:  supabase functions deploy mayar-webhook --no-verify-jwt
+// This endpoint is PUBLIC (Mayar calls it, not a logged-in user). Its
+// public access is declared in supabase/config.toml (verify_jwt = false),
+// so a plain `supabase functions deploy mayar-webhook` is enough.
 //
 // Env (set via `supabase secrets set`):
 //   MAYAR_WEBHOOK_TOKEN  — the Webhook Token from the Mayar dashboard.
