@@ -3,12 +3,21 @@
 -- Adds optional location + radius to outlets so clock-in can be
 -- validated server-side. Backward-compatible: NULL = no geofence
 -- (clock-in allowed anywhere, legacy behavior).
+--
+-- Anti "absen nakal" relies on GPS geofencing ONLY. Selfie was
+-- considered and rejected: it uploads an image to Supabase Storage on
+-- every clock-in (recurring storage + bandwidth cost per employee/day)
+-- for marginal extra assurance. This migration is idempotent and also
+-- removes any selfie remnants from an earlier version of this file.
 -- ============================================================
 
 alter table outlets add column if not exists lat               double precision;
 alter table outlets add column if not exists lng               double precision;
 alter table outlets add column if not exists geofence_radius_m  int;
-alter table outlets add column if not exists require_selfie     boolean not null default false;
+
+-- Remove selfie remnants if an earlier 0004 was already applied.
+alter table outlets drop column if exists require_selfie;
+drop function if exists clock_in(uuid, uuid, uuid, double precision, double precision, text);
 
 -- ------------------------------------------------------------
 -- clock_in: record attendance with server-side geofence validation.
@@ -21,8 +30,7 @@ create or replace function clock_in(
   p_outlet_id uuid,
   p_employee_id uuid,
   p_lat double precision default null,
-  p_lng double precision default null,
-  p_selfie_url text default null
+  p_lng double precision default null
 ) returns uuid
 language plpgsql security definer as $$
 declare
@@ -56,15 +64,9 @@ begin
     end if;
   end if;
 
-  -- Selfie requirement.
-  if v_outlet.require_selfie and (p_selfie_url is null or p_selfie_url = '') then
-    raise exception 'Selfie wajib untuk absensi di outlet ini';
-  end if;
-
   insert into attendance (org_id, outlet_id, employee_id, employee_name, date, status, check_in, note)
   values (p_org_id, p_outlet_id, p_employee_id, v_emp.name, current_date, 'hadir',
-          to_char(now(), 'HH24:MI'),
-          case when p_selfie_url is not null then 'selfie:' || p_selfie_url else '' end)
+          to_char(now(), 'HH24:MI'), '')
   returning id into v_att_id;
 
   return v_att_id;

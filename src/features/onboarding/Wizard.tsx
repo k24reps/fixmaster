@@ -3,8 +3,8 @@ import type { ComponentProps } from 'react';
 import { Button, Input as BaseInput, Icon } from '@/components/ui';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { derivePrefix } from '@/lib/id';
-import { toast } from '@/stores/toast';
 import { isSupabaseConfigured } from '@/data/supabase-client';
+import { toast } from '@/stores/toast';
 import {
   emptyWizardData,
   validateStep,
@@ -22,6 +22,21 @@ function Input(props: ComponentProps<typeof BaseInput>) {
   return <BaseInput noAutoCap {...props} />;
 }
 
+/**
+ * Logical step numbers are STABLE (validateStep depends on them and is unit
+ * tested by number). The "Tim" step (4) is local-only: in cloud mode the owner
+ * IS the signed-in account and staff join later via invite, so there are no
+ * PINs to collect during onboarding. We therefore drive navigation by a list
+ * of *visible* steps while keeping each step's logical number intact.
+ */
+const STEP_DEFS = [
+  { n: 1, label: 'Profil' },
+  { n: 2, label: 'Wallet' },
+  { n: 3, label: 'Kategori' },
+  { n: 4, label: 'Tim' },
+  { n: 5, label: 'Target' },
+] as const;
+
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'owner', label: 'Owner' },
   { value: 'admin', label: 'Admin' },
@@ -33,29 +48,31 @@ interface WizardProps {
 }
 
 export function Wizard({ onComplete }: WizardProps) {
-  // Cloud mode: employees are Supabase Auth accounts, no PIN needed.
-  // Wizard shows 4 steps (no Tim/PIN step); owner name lives in step 1.
+  // Cloud onboarding skips the Tim/PIN step (owner = signed-in account).
   const isCloud = isSupabaseConfigured;
-  const STEPS = isCloud
-    ? ['Profil', 'Wallet', 'Kategori', 'Target']
-    : ['Profil', 'Wallet', 'Kategori', 'Tim', 'Target'];
-  // In cloud mode UI step 4 = Target (business step 5 has no validation).
-  const validationStep = (uiStep: number) => (isCloud && uiStep === 4 ? 5 : uiStep);
+  const steps = isCloud ? STEP_DEFS.filter((s) => s.n !== 4) : STEP_DEFS;
 
-  const [step, setStep] = useState(1);
+  const [idx, setIdx] = useState(0);
   const [data, setData] = useState<WizardData>(emptyWizardData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
-  // Must be after useState to reference `step`.
-  const isTargetStep = isCloud ? step === 4 : step === 5;
+  const step = steps[idx].n; // current logical step number
+  const isLast = idx === steps.length - 1;
 
   const update = (patch: Partial<WizardData>) => setData((d) => ({ ...d, ...patch }));
 
   const errorMap = (): Record<string, string> => {
-    const list = validateStep(validationStep(step), data);
-    return Object.fromEntries(list.map((e) => [e.field, e.message]));
+    const list = validateStep(step, data);
+    const map: Record<string, string> = Object.fromEntries(
+      list.map((e) => [e.field, e.message]),
+    );
+    // Cloud captures the owner name on the Profil step (no Tim step).
+    if (isCloud && step === 1 && !data.employees[0]?.name.trim()) {
+      map.ownerName = 'Nama Anda wajib diisi';
+    }
+    return map;
   };
 
   const next = () => {
@@ -66,11 +83,11 @@ export function Wizard({ onComplete }: WizardProps) {
       return;
     }
     setErrors({});
-    setStep((s) => Math.min(s + 1, STEPS.length));
+    setIdx((i) => Math.min(i + 1, steps.length - 1));
   };
   const prev = () => {
     setErrors({});
-    setStep((s) => Math.max(s - 1, 1));
+    setIdx((i) => Math.max(i - 1, 0));
   };
 
   const finish = async () => {
@@ -90,9 +107,9 @@ export function Wizard({ onComplete }: WizardProps) {
     }
   };
 
-  // DEV-ONLY: populate a demo workspace and sign in as owner. The seed module
-  // is dynamically imported so it never lands in production bundles. The seed
-  // sets boot='ready', so AuthGate swaps the app in without onComplete.
+  // DEV-ONLY, LOCAL-ONLY: populate a demo workspace and sign in as owner. The
+  // seed module is dynamically imported so it never lands in production
+  // bundles. Hidden in cloud mode — demo data must never touch a real org.
   const runDevSeed = async () => {
     setSeeding(true);
     try {
@@ -117,7 +134,6 @@ export function Wizard({ onComplete }: WizardProps) {
           <p className={styles.subtitle}>Setup awal untuk memulai dashboard Anda</p>
         </header>
 
-        {/* Demo seed button — local dev only (seed uses IndexedDB, not Supabase). */}
         {import.meta.env.DEV && !isCloud && (
           <div className={styles.devBar}>
             <button
@@ -134,16 +150,15 @@ export function Wizard({ onComplete }: WizardProps) {
         )}
 
         <div className={styles.progress}>
-          {STEPS.map((label, i) => {
-            const n = i + 1;
-            const state = n < step ? 'done' : n === step ? 'active' : '';
+          {steps.map((s, i) => {
+            const state = i < idx ? 'done' : i === idx ? 'active' : '';
             return (
-              <div key={label} className={styles.progressItem}>
+              <div key={s.n} className={styles.progressItem}>
                 <span className={[styles.dot, styles[state]].join(' ')}>
-                  {n < step ? <Icon name="check" aria-hidden /> : n}
+                  {i < idx ? <Icon name="check" aria-hidden /> : i + 1}
                 </span>
-                <span className={styles.dotLabel}>{label}</span>
-                {n < STEPS.length && <span className={styles.line} />}
+                <span className={styles.dotLabel}>{s.label}</span>
+                {i < steps.length - 1 && <span className={styles.line} />}
               </div>
             );
           })}
@@ -165,6 +180,23 @@ export function Wizard({ onComplete }: WizardProps) {
                   });
                 }}
               />
+              {isCloud && (
+                <Input
+                  label="Nama Anda (Pemilik)"
+                  placeholder="Nama lengkap Anda"
+                  value={data.employees[0]?.name ?? ''}
+                  error={errors.ownerName}
+                  onChange={(e) => {
+                    const employees = [...data.employees];
+                    employees[0] = {
+                      ...(employees[0] ?? { role: 'owner', pin: '' }),
+                      name: e.target.value,
+                      role: 'owner',
+                    };
+                    update({ employees });
+                  }}
+                />
+              )}
               <div className={styles.row}>
                 <Input
                   label="Alamat"
@@ -186,19 +218,6 @@ export function Wizard({ onComplete }: WizardProps) {
                 value={data.phone}
                 onChange={(e) => update({ phone: e.target.value })}
               />
-              {/* Cloud mode: owner name displayed in sidebar — collected here since
-                  there is no Tim step. Local mode has a dedicated Tim step. */}
-              {isCloud && (
-                <Input
-                  label="Nama Anda (tampil di aplikasi)"
-                  placeholder="Nama lengkap"
-                  value={data.employees[0]?.name ?? ''}
-                  onChange={(e) => {
-                    const employees = [{ ...data.employees[0], name: e.target.value }];
-                    update({ employees });
-                  }}
-                />
-              )}
             </Step>
           )}
 
@@ -273,9 +292,7 @@ export function Wizard({ onComplete }: WizardProps) {
             </Step>
           )}
 
-          {/* Tim/PIN step — local mode only. In cloud mode each employee is a
-              separate Supabase Auth account; invitations are handled post-onboarding. */}
-          {!isCloud && step === 4 && (
+          {step === 4 && (
             <Step title="Tim / Karyawan" desc="Minimal 1 Owner dengan PIN 4 digit">
               {errors.employees && <p className={styles.formError}>{errors.employees}</p>}
               <div className={styles.list}>
@@ -345,7 +362,7 @@ export function Wizard({ onComplete }: WizardProps) {
             </Step>
           )}
 
-          {isTargetStep && (
+          {step === 5 && (
             <Step title="Target & Biaya Tetap" desc="Proyeksi bulanan (bisa diubah nanti)">
               <div className={styles.row}>
                 <Input
@@ -372,7 +389,7 @@ export function Wizard({ onComplete }: WizardProps) {
           )}
 
           <div className={styles.actions}>
-            {step > 1 ? (
+            {idx > 0 ? (
               <Button
                 variant="secondary"
                 onClick={prev}
@@ -383,7 +400,7 @@ export function Wizard({ onComplete }: WizardProps) {
             ) : (
               <span />
             )}
-            {step < STEPS.length ? (
+            {!isLast ? (
               <Button onClick={next} iconRight={<Icon name="arrow-right" aria-hidden />}>
                 Lanjut
               </Button>

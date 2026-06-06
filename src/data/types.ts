@@ -63,8 +63,6 @@ export interface Outlet extends BaseEntity {
   lat?: number | null;
   lng?: number | null;
   geofenceRadiusM?: number | null;
-  /** Require a selfie at clock-in for extra assurance. */
-  requireSelfie?: boolean;
 }
 
 // ---------- Customers ----------
