@@ -1,0 +1,262 @@
+/* ============================================================
+   Finance — "Cashbook Tape"
+   Wallets as meter readouts, a balance summary panel, and the
+   ledger as a monospace thermal tape with +/- entries (echoes
+   the POS receipt). Global tokens — matches the bench identity.
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---------- Wallet meters ---------- */
+.walletGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+.walletCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-glass);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.walletCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-brand-accent);
+}
+.walletName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.walletName::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 7px var(--accent);
+}
+.walletBalance {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.noWallet {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Summary balance panel ---------- */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.summaryCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.summaryCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.summaryCard span {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.summaryCard strong {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.summaryCard.income {
+  background: var(--success-soft);
+}
+.summaryCard.income::before {
+  background: var(--green-500);
+}
+.summaryCard.income strong {
+  color: var(--green-400);
+}
+.summaryCard.expense {
+  background: var(--danger-soft);
+}
+.summaryCard.expense::before {
+  background: var(--red-500);
+}
+.summaryCard.expense strong {
+  color: var(--red-400);
+}
+.summaryCard.net {
+  background: var(--brand-soft);
+}
+.summaryCard.net::before {
+  background: var(--gradient-brand);
+}
+.summaryCard.net strong {
+  color: var(--brand-hover);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ---------- Cashbook tape ---------- */
+.noPad {
+  padding: 0;
+}
+.tape {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+}
+.tapeRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 92px 1fr auto 36px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-5) 12px calc(var(--space-5) + 3px);
+  border-bottom: 1px dotted var(--border);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.tapeRow:last-child {
+  border-bottom: none;
+}
+.tapeRow:hover {
+  background: var(--bg-hover);
+}
+/* income/expense spine */
+.tapeRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.tapeRow.income::before {
+  background: var(--green-500);
+}
+.tapeRow.expense::before {
+  background: var(--red-500);
+}
+.tapeDate {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tapeBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tapeDesc {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tapeMeta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tapeCat {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tapeCat.inc {
+  color: var(--green-400);
+}
+.tapeCat.exp {
+  color: var(--amber-400);
+}
+.tapeAmount {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tapeAmount.inc {
+  color: var(--green-400);
+}
+.tapeAmount.exp {
+  color: var(--red-400);
+}
+.muted {
+  color: var(--text-muted);
+}
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.iconBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.iconBtn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  .tapeRow {
+    grid-template-columns: 76px 1fr auto;
+    row-gap: 4px;
+  }
+  .tapeRow .iconBtn {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}

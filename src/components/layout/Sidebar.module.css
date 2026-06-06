@@ -1,0 +1,740 @@
+/* ============================================================
+   Sidebar — "Live Diagnostic Rail"
+   A bench control panel: nameplate header with a power LED, nav
+   items as numbered channels with live status readouts (LED +
+   count), active item lit like a selected channel, and an
+   operator module footer. Collapsed = an at-a-glance LED tower.
+   Global tokens only — works in both dark & light themes.
+   ============================================================ */
+
+.sidebar {
+  width: var(--sidebar-width);
+  background:
+    linear-gradient(180deg, var(--bg-surface), var(--bg-app));
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-sidebar);
+  transition:
+    width var(--dur-normal) var(--ease-out),
+    transform var(--dur-normal) var(--ease-out);
+}
+.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+/* ---------- Nameplate header ---------- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  min-height: var(--topbar-height);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+}
+/* engraved seam under the nameplate */
+.header::after {
+  content: '';
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: -1px;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+  opacity: 0.5;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+.brandMark {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-brand);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-brand);
+  overflow: hidden;
+}
+/* engraved diagonal sheen on the unit */
+.brandMark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-sheen);
+  pointer-events: none;
+}
+.brandMono {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: var(--fw-extra);
+  letter-spacing: 0.02em;
+}
+/* power LED on the unit */
+.powerLed {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-400);
+  box-shadow: 0 0 6px var(--green-400);
+  animation: fm-pulse 2.4s var(--ease-in-out) infinite;
+  z-index: 1;
+}
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+.brandText strong {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--fw-extra);
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+.brandAccent {
+  color: var(--accent);
+}
+.unitLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+}
+.unitId {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.planBadge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border-brand);
+}
+.collapsed .brandText {
+  display: none;
+}
+
+.collapseBtn {
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: var(--radius-xs);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.collapseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.collapsed .collapseBtn svg {
+  transform: rotate(180deg);
+}
+
+/* ---------- Diagnostic rail ---------- */
+.nav {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  position: relative;
+  border: 1px solid transparent;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.navItem:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.navIcon {
+  width: 22px;
+  text-align: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* live readout: LED + mono count */
+.readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 2px 6px 2px 5px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+.readoutLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.readoutNum {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* tones */
+.tone_idle .readoutLed {
+  opacity: 0.35;
+}
+.tone_info {
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+.tone_info .readoutLed {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.tone_info .readoutNum {
+  color: var(--accent);
+}
+.tone_good {
+  background: var(--success-soft);
+}
+.tone_good .readoutLed {
+  background: var(--green-400);
+  box-shadow: 0 0 6px var(--green-400);
+}
+.tone_good .readoutNum {
+  color: var(--green-400);
+}
+.tone_warn {
+  background: var(--warning-soft);
+}
+.tone_warn .readoutLed {
+  background: var(--amber-400);
+  box-shadow: 0 0 6px var(--amber-400);
+}
+.tone_warn .readoutNum {
+  color: var(--amber-400);
+}
+.tone_crit {
+  background: var(--danger-soft);
+}
+.tone_crit .readoutLed {
+  background: var(--red-400);
+  box-shadow: 0 0 7px var(--red-400);
+}
+.tone_crit .readoutNum {
+  color: var(--red-400);
+}
+.pulse .readoutLed {
+  animation: fm-pulse 1s var(--ease-in-out) infinite;
+}
+
+/* active = selected/lit channel */
+.navItem.active {
+  background: var(--brand-soft);
+  color: var(--text-primary);
+  border-color: var(--border-brand);
+  box-shadow: inset 0 1px 0 var(--gradient-sheen);
+}
+.navItem.active::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 64%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-brand);
+  box-shadow: 0 0 8px var(--border-brand);
+}
+.navItem.active .navIcon {
+  filter: brightness(1.2);
+}
+
+/* ---------- Business unit (shop identity + branch selector) ---------- */
+.bizBlock {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+}
+.bizBlock::before {
+  content: '';
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  top: -1px;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+  opacity: 0.5;
+}
+.bizIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.bizLogo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bizLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bizLogoFallback {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: var(--fw-extra);
+  color: var(--brand-hover);
+}
+.bizInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bizLabel {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.bizName {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+}
+
+/* branch selector — a bench channel switch */
+.branchSel {
+  position: relative;
+}
+.branchBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.branchBtn:hover {
+  border-color: var(--border-brand);
+  background: var(--bg-surface-2);
+}
+.branchBtnOpen {
+  border-color: var(--border-brand);
+  box-shadow: var(--ring);
+}
+.branchLed {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--brand-400);
+  box-shadow: 0 0 7px var(--brand-400);
+}
+.branchAll .branchLed {
+  background: var(--accent);
+  box-shadow: 0 0 7px var(--accent);
+}
+.branchMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.branchTag {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.branchName {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branchCaret {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.branchBtnOpen .branchCaret {
+  transform: rotate(180deg);
+}
+/* menu opens upward (selector sits near the bottom) */
+.branchMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: var(--z-overlay);
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  animation: fm-branch-pop var(--dur-fast) var(--ease-out);
+}
+@keyframes fm-branch-pop {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.branchOpt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 9px;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.branchOpt:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.branchOptActive {
+  background: var(--brand-soft);
+  color: var(--text-primary);
+}
+.branchOptIcon {
+  font-size: 1rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.branchOptActive .branchOptIcon {
+  color: var(--brand-hover);
+}
+.branchOptName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branchPrimary {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brand-hover);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-brand);
+  flex-shrink: 0;
+}
+.branchCheck {
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+
+/* ---------- Operator module ---------- */
+.footer {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+}
+.footer::before {
+  content: '';
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  top: -1px;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+  opacity: 0.5;
+}
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+  border: 1px solid var(--border-brand);
+}
+.onlineLed {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green-400);
+  box-shadow: 0 0 6px var(--green-400);
+  border: 2px solid var(--bg-surface);
+}
+.userInfo {
+  min-width: 0;
+  overflow: hidden;
+}
+.userName {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.userRole {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.collapsed .userInfo {
+  display: none;
+}
+.logoutBtn {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.logoutBtn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.collapsed .logoutBtn {
+  display: none;
+}
+
+/* ---------- Collapsed: LED status tower ---------- */
+/* Stack the mark over the (rotated) expand button so there's always a
+   visible way to re-open the rail. */
+.collapsed .header {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+.collapsed .navItem {
+  justify-content: center;
+  padding: 10px 0;
+}
+.collapsed .navLabel,
+.collapsed .readoutNum {
+  display: none;
+}
+/* readout collapses to a corner status LED on the icon */
+.collapsed .readout {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  padding: 0;
+  background: transparent !important;
+  border: none;
+}
+.collapsed .tone_idle {
+  display: none;
+}
+.collapsed .avatar {
+  margin: 0 auto;
+}
+/* collapsed: business block shrinks to just the centered logo; the
+   branch selector hides its text and shows only the status LED. */
+.collapsed .bizBlock {
+  padding: var(--space-3) 0;
+  align-items: center;
+}
+.collapsed .bizInfo {
+  display: none;
+}
+.collapsed .branchMain,
+.collapsed .branchCaret {
+  display: none;
+}
+.collapsed .branchBtn {
+  justify-content: center;
+  padding: 8px 0;
+  width: 40px;
+  margin: 0 auto;
+}
+
+/* ---------- Mobile overlay ---------- */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: var(--z-overlay);
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width) !important;
+    box-shadow: none;
+  }
+  /* The open drawer must sit ABOVE the dimming overlay, otherwise the
+     overlay swallows menu taps and closes the drawer before selection. */
+  .sidebar.mobileOpen {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+    z-index: calc(var(--z-overlay) + 1);
+  }
+  /* on mobile the drawer is always full — never the collapsed tower */
+  .collapsed .brandText,
+  .collapsed .navLabel,
+  .collapsed .readoutNum,
+  .collapsed .userInfo,
+  .collapsed .logoutBtn,
+  .collapsed .collapseBtn,
+  .collapsed .bizInfo,
+  .collapsed .branchMain,
+  .collapsed .branchCaret {
+    display: flex;
+  }
+  .collapsed .bizBlock {
+    padding: var(--space-3) var(--space-4);
+    align-items: stretch;
+  }
+  .collapsed .branchBtn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 8px 10px;
+  }
+  .collapsed .navItem {
+    justify-content: flex-start;
+    padding: 9px 10px;
+  }
+  .collapsed .readout {
+    position: static;
+    padding: 2px 6px 2px 5px;
+  }
+  .collapsed .header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: var(--space-4);
+  }
+  .overlayOpen {
+    display: block;
+  }
+}

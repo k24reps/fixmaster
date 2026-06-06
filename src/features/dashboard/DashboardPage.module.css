@@ -1,0 +1,564 @@
+/* ============================================================
+   Dashboard — "Diagnostic Readout Panel"
+   A bench instrument cluster: status strip, mono metric gauges,
+   tick-marked target gauges, and channel level-meters. Matches
+   the POS register + Inventory parts-bin identity. Global tokens.
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---------- Console header (info NOT shown in the tiles) ---------- */
+.console {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 10px var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+.consoleBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--border);
+}
+.consolePulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: fm-pulse 1.8s var(--ease-in-out) infinite;
+}
+.consoleTitle {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.consoleReadouts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex: 1;
+  flex-wrap: wrap;
+}
+.consoleItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.consoleKey {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.consoleVal {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.consoleClock {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Hero readout (instrument screen) ----------
+   The screen stays dark in BOTH themes (like a real LCD), so every
+   text color here is a FIXED value or a bright scale token — never a
+   theme-flipping semantic token. That is exactly what broke the old
+   strip in light mode. */
+.hero {
+  border-radius: var(--radius-lg);
+  padding: 2px; /* gradient bezel */
+  background: var(--gradient-brand-accent);
+  box-shadow: var(--shadow-md);
+}
+.heroScreen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-6);
+  border-radius: calc(var(--radius-lg) - 2px);
+  background: radial-gradient(130% 150% at 0% 0%, #12161d, #0a0c10);
+  overflow: hidden;
+}
+.heroScan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+.heroMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  z-index: 1;
+}
+.heroLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8b97a6;
+}
+.heroLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: #8b97a6;
+}
+.heroValue {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
+  font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: #f1f4f8;
+  word-break: break-word;
+}
+.heroTag {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.18em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+  color: #8b97a6;
+}
+.heroAside {
+  display: flex;
+  gap: var(--space-6);
+  z-index: 1;
+}
+.heroStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.heroStatKey {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b7787;
+}
+.heroStatVal {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  color: #cfd6e0;
+  font-variant-numeric: tabular-nums;
+}
+/* hero state tints (LED + value + tag) */
+.hero.ok .heroLed { background: var(--green-400); box-shadow: 0 0 9px var(--green-400); }
+.hero.ok .heroValue { color: var(--green-400); }
+.hero.ok .heroTag { color: var(--green-400); }
+.hero.warn .heroLed { background: var(--amber-400); box-shadow: 0 0 9px var(--amber-400); }
+.hero.warn .heroValue { color: var(--amber-400); }
+.hero.warn .heroTag { color: var(--amber-400); }
+.hero.crit .heroLed { background: var(--red-400); box-shadow: 0 0 9px var(--red-400); animation: fm-pulse 1s var(--ease-in-out) infinite; }
+.hero.crit .heroValue { color: var(--red-400); }
+.hero.crit .heroTag { color: var(--red-400); }
+
+/* ---------- Metric gauges (instrument tiles) ---------- */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-3);
+}
+.metric {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast),
+    box-shadow var(--dur-fast);
+}
+/* tone spine on the left edge */
+.metric::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.metric:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.metricTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.metricIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.metricLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.metricLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+/* Value sits on its own full-width row so long Rupiah figures show in
+   full — responsive clamp + word-break instead of nowrap+ellipsis. */
+.metricValue {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+.metricUnit {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+/* metric tones */
+.metric.brand::before { background: var(--gradient-brand); }
+.metric.brand .metricIcon { background: var(--brand-soft); color: var(--brand-hover); }
+.metric.brand .metricLed { background: var(--brand-400); box-shadow: 0 0 7px var(--brand-400); }
+.metric.warning::before { background: linear-gradient(180deg, var(--amber-500), var(--amber-400)); }
+.metric.warning .metricIcon { background: var(--warning-soft); color: var(--amber-400); }
+.metric.warning .metricLed { background: var(--amber-400); box-shadow: 0 0 7px var(--amber-400); }
+.metric.success::before { background: linear-gradient(180deg, var(--green-500), var(--green-400)); }
+.metric.success .metricIcon { background: var(--success-soft); color: var(--green-400); }
+.metric.success .metricLed { background: var(--green-400); box-shadow: 0 0 7px var(--green-400); }
+.metric.danger::before { background: linear-gradient(180deg, var(--red-500), var(--red-400)); }
+.metric.danger .metricIcon { background: var(--danger-soft); color: var(--red-400); }
+.metric.danger .metricLed { background: var(--red-400); box-shadow: 0 0 7px var(--red-400); }
+.metric.accent::before { background: linear-gradient(180deg, var(--accent-500), var(--accent-400)); }
+.metric.accent .metricIcon { background: var(--accent-soft); color: var(--accent-400); }
+.metric.accent .metricLed { background: var(--accent-400); box-shadow: 0 0 7px var(--accent-400); }
+.metric.info::before { background: linear-gradient(180deg, var(--blue-500), var(--blue-400)); }
+.metric.info .metricIcon { background: var(--info-soft); color: var(--blue-400); }
+.metric.info .metricLed { background: var(--blue-400); box-shadow: 0 0 7px var(--blue-400); }
+
+/* ---------- Targets (tick gauges) ---------- */
+.targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+.targetItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.targetLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+.targetLabel span:first-child {
+  color: var(--text-secondary);
+}
+.targetPct {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-md);
+  color: var(--brand-hover);
+  font-variant-numeric: tabular-nums;
+}
+.gauge {
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.gaugeFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--gradient-brand);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.gauge.ok .gaugeFill {
+  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+}
+.gauge.warn .gaugeFill {
+  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+}
+.gauge.live .gaugeFill {
+  background: var(--gradient-brand);
+}
+/* tick marks overlay */
+.gauge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(10% - 1px),
+    var(--bg-base) calc(10% - 1px) 10%
+  );
+  opacity: 0.45;
+  pointer-events: none;
+}
+.targetPct.ok { color: var(--green-400); }
+.targetPct.warn { color: var(--amber-400); }
+.targetDetail {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Grid ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-4);
+}
+.noPad {
+  padding: 0;
+}
+
+/* ---------- Recent services ---------- */
+.recentList {
+  display: flex;
+  flex-direction: column;
+}
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), padding-left var(--dur-fast);
+}
+.recentItem:last-child {
+  border-bottom: none;
+}
+.recentItem:hover {
+  background: var(--bg-hover);
+  padding-left: calc(var(--space-5) + 4px);
+}
+.recentNo {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--brand-hover);
+  min-width: 76px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface-2);
+  text-align: center;
+}
+.recentDetail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.recentDetail strong {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recentDetail small {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ---------- Alerts (status log) ---------- */
+.alertList {
+  display: flex;
+  flex-direction: column;
+}
+.alertItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+  font-size: var(--text-sm);
+  position: relative;
+}
+.alertItem:last-child {
+  border-bottom: none;
+}
+.alertIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+.alertIcon.warning {
+  background: var(--warning-soft);
+  color: var(--amber-400);
+  border-color: var(--border-brand);
+}
+.alertIcon.danger {
+  background: var(--danger-soft);
+  color: var(--red-400);
+}
+.alertIcon.info {
+  background: var(--info-soft);
+  color: var(--blue-400);
+}
+
+/* ---------- Leaderboard (channel level-meters) ---------- */
+.leaderboard {
+  display: flex;
+  flex-direction: column;
+}
+.leaderItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+}
+.leaderItem:last-child {
+  border-bottom: none;
+}
+.chan {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.chan[data-rank='1'] {
+  background: var(--brand-soft);
+  border-color: var(--border-brand);
+  color: var(--brand-hover);
+}
+.leaderMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.leaderTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.leaderName {
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leaderStats {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.leaderStats strong {
+  color: var(--text-primary);
+}
+.meter {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.meterFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.meterFill[data-rank='1'] {
+  background: var(--gradient-brand);
+}
+
+@media (max-width: 1024px) {
+  .grid,
+  .targets {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .heroScreen {
+    padding: var(--space-4);
+  }
+  .heroAside {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+}

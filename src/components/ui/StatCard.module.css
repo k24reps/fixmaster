@@ -1,0 +1,117 @@
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  overflow: hidden;
+  transition:
+    transform var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out),
+    border-color var(--dur-normal) var(--ease-out);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+.label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: 3px;
+  font-weight: var(--fw-medium);
+}
+.value {
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  font-family: var(--font-display);
+  line-height: 1.2;
+  word-break: break-word;
+}
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  margin-top: 4px;
+}
+.up {
+  color: var(--green-400);
+}
+.down {
+  color: var(--red-400);
+}
+
+/* ---------- Tones ---------- */
+.brand::before {
+  background: var(--gradient-brand);
+}
+.brand .iconWrap {
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+}
+.success::before {
+  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+}
+.success .iconWrap {
+  background: var(--success-soft);
+  color: var(--green-400);
+}
+.warning::before {
+  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+}
+.warning .iconWrap {
+  background: var(--warning-soft);
+  color: var(--amber-400);
+}
+.danger::before {
+  background: linear-gradient(90deg, var(--red-500), var(--red-400));
+}
+.danger .iconWrap {
+  background: var(--danger-soft);
+  color: var(--red-400);
+}
+.info::before {
+  background: linear-gradient(90deg, var(--blue-500), var(--blue-400));
+}
+.info .iconWrap {
+  background: var(--info-soft);
+  color: var(--blue-400);
+}
+.accent::before {
+  background: linear-gradient(90deg, var(--accent-500), var(--accent-400));
+}
+.accent .iconWrap {
+  background: var(--accent-soft);
+  color: var(--accent-400);
+}

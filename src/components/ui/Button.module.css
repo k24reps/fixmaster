@@ -1,0 +1,102 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+  user-select: none;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* ---------- Sizes ---------- */
+.sm {
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+}
+.md {
+  padding: 9px 18px;
+  font-size: var(--text-sm);
+}
+.lg {
+  padding: 12px 24px;
+  font-size: var(--text-base);
+}
+
+.full {
+  width: 100%;
+}
+
+/* ---------- Variants ---------- */
+.primary {
+  background: var(--gradient-brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-brand);
+}
+.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(245, 166, 35, 0.42);
+}
+
+.secondary {
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-brand);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.danger {
+  background: var(--danger);
+  color: #fff;
+}
+.danger:hover:not(:disabled) {
+  background: var(--red-600);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.success {
+  background: var(--success);
+  color: #fff;
+}
+.success:hover:not(:disabled) {
+  background: var(--green-600);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+.spin {
+  animation: fm-spin 0.7s linear infinite;
+}

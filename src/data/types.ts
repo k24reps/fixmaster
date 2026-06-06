@@ -1,0 +1,296 @@
+/**
+ * FixMaster — Entity Types
+ * Single source of truth for all data shapes across the app.
+ * Designed for a relational model (one concern per entity), unlike
+ * FixNova's JSONB key-value blobs. Each entity carries audit fields
+ * to support per-row sync + conflict resolution later (Supabase phase).
+ */
+
+// ---------- Shared ----------
+export type ID = string;
+export type ISODate = string; // e.g. "2026-06-02"
+export type ISODateTime = string; // e.g. "2026-06-02T09:00:00.000Z"
+
+/** Audit fields present on every persisted record. */
+export interface BaseEntity {
+  id: ID;
+  orgId: ID;
+  outletId: ID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+  /** Soft-delete tombstone for sync safety. */
+  deletedAt: ISODateTime | null;
+}
+
+// ---------- Roles & Plans ----------
+export type Role = 'owner' | 'admin' | 'karyawan';
+
+export type PlanType = 'free' | 'standard' | 'enterprise' | 'trial' | 'suspended';
+
+// ---------- Organization & Users ----------
+export interface Organization {
+  id: ID;
+  name: string;
+  address: string;
+  phone: string;
+  logoDataUrl: string | null;
+  servicePrefix: string; // e.g. "FM"
+  planType: PlanType;
+  trialStartedAt: ISODateTime | null;
+  planExpiredAt: ISODateTime | null;
+  maxOutlets: number;
+  maxUsers: number;
+  createdAt: ISODateTime;
+}
+
+export interface Employee extends BaseEntity {
+  name: string;
+  role: Role;
+  /** Salted PIN hash (never plaintext). Format: "s2:<hex>". */
+  pinHash: string;
+  active: boolean;
+}
+
+export interface Outlet extends BaseEntity {
+  name: string;
+  address: string;
+  isPrimary: boolean;
+}
+
+// ---------- Customers ----------
+export interface Customer extends BaseEntity {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  note: string;
+}
+
+// ---------- Inventory & Suppliers ----------
+export interface InventoryItem extends BaseEntity {
+  name: string;
+  category: string;
+  sku: string;
+  stock: number;
+  minStock: number;
+  costPrice: number; // HPP
+  sellPrice: number;
+  supplierId: ID | null;
+}
+
+export interface Supplier extends BaseEntity {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  note: string;
+}
+
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partial' | 'received' | 'cancelled';
+
+export interface PurchaseOrderLine {
+  itemId: ID;
+  name: string;
+  qty: number;
+  costPrice: number;
+  receivedQty: number;
+}
+
+export interface PurchaseOrder extends BaseEntity {
+  poNumber: string;
+  supplierId: ID;
+  status: PurchaseOrderStatus;
+  lines: PurchaseOrderLine[];
+  orderedAt: ISODate | null;
+  receivedAt: ISODate | null;
+  note: string;
+}
+
+// ---------- Wallets & Finance ----------
+export interface Wallet extends BaseEntity {
+  name: string;
+  balance: number;
+  sortOrder: number;
+}
+
+export type IncomeCategory = 'Servis' | 'Penjualan' | 'Lainnya';
+export type ExpenseCategory =
+  | 'Sparepart'
+  | 'Operasional'
+  | 'Gaji'
+  | 'Sewa'
+  | 'Garansi'
+  | 'Refund Penjualan'
+  | 'Lainnya';
+
+export interface Income extends BaseEntity {
+  date: ISODate;
+  category: IncomeCategory;
+  amount: number;
+  walletId: ID;
+  description: string;
+  /** Link back to the originating service, if any. */
+  serviceId: ID | null;
+}
+
+export interface Expense extends BaseEntity {
+  date: ISODate;
+  category: ExpenseCategory;
+  amount: number;
+  walletId: ID;
+  description: string;
+}
+
+export interface FixedCost extends BaseEntity {
+  name: string;
+  amount: number;
+}
+
+// ---------- Services ----------
+export type ServiceStatus =
+  | 'diterima'
+  | 'diagnosa'
+  | 'konfirmasi'
+  | 'tunggu'
+  | 'pengerjaan'
+  | 'selesai'
+  | 'lunas'
+  | 'batal';
+
+export interface ServiceSparepart {
+  itemId: ID;
+  name: string;
+  qty: number;
+  costPrice: number;
+  sellPrice: number;
+  /** Whether stock has already been deducted (deferred until "pengerjaan"). */
+  deducted: boolean;
+}
+
+export interface ServiceHistoryEntry {
+  at: ISODateTime;
+  status: ServiceStatus | 'edit';
+  by: ID; // employee id
+  byName: string;
+  note: string;
+  /** Internal "edit" entries are hidden from the public tracking page. */
+  internal: boolean;
+}
+
+export interface Service extends BaseEntity {
+  serviceNo: string;
+  customerId: ID;
+  customerName: string;
+  customerPhone: string;
+  category: string; // device type
+  device: string;
+  complaint: string;
+  accessories: string;
+  status: ServiceStatus;
+  technicianId: ID | null;
+  technicianName: string;
+  estimateCost: number;
+  finalCost: number;
+  downPayment: number;
+  spareparts: ServiceSparepart[];
+  /** Service/labor warranty expiry (set when marked "selesai"). */
+  warrantyServiceUntil: ISODate | null;
+  /** Spare-part warranty expiry (set when marked "selesai"). */
+  warrantyPartsUntil: ISODate | null;
+  /** Whether the device has been physically collected by the customer. */
+  pickedUp: boolean;
+  /** When the device was collected (independent of payment status). */
+  pickedUpAt: ISODateTime | null;
+  /** If this ticket is a warranty claim, links to the original ticket ID. */
+  warrantyClaimOf: ID | null;
+  history: ServiceHistoryEntry[];
+  archived: boolean;
+}
+
+// ---------- POS Sales ----------
+export interface SaleLine {
+  itemId: ID;
+  name: string;
+  qty: number;
+  sellPrice: number;
+  costPrice: number;
+}
+
+export interface PaymentAllocation {
+  walletId: ID;
+  amount: number;
+}
+
+export interface Sale extends BaseEntity {
+  saleNo: string;
+  date: ISODate;
+  lines: SaleLine[];
+  subtotal: number;
+  discount: number;
+  discountType: 'percent' | 'amount';
+  total: number;
+  payments: PaymentAllocation[];
+  cashierId: ID;
+  cashierName: string;
+  voided: boolean;
+  voidedReason: string;
+}
+
+// ---------- Attendance ----------
+export type AttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'alpha';
+
+export interface Attendance extends BaseEntity {
+  employeeId: ID;
+  employeeName: string;
+  date: ISODate;
+  status: AttendanceStatus;
+  checkIn: string | null; // "HH:MM"
+  checkOut: string | null; // "HH:MM"
+  totalHours: number;
+  note: string;
+}
+
+// ---------- Internal Tasks (NEW — not in FixNova) ----------
+export type RecurrenceType = 'once' | 'daily' | 'weekly' | 'monthly';
+
+export type AssigneeType = 'role' | 'employee' | 'outlet';
+
+export interface TaskTemplate extends BaseEntity {
+  title: string;
+  description: string;
+  recurrence: RecurrenceType;
+  /** weekly: 0-6 (Sun-Sat). */
+  weekdays: number[];
+  /** monthly: 1-31. */
+  monthDays: number[];
+  /** once: specific date. */
+  onceDate: ISODate | null;
+  assigneeType: AssigneeType;
+  assigneeRole: Role | null;
+  assigneeEmployeeId: ID | null;
+  assigneeOutletId: ID | null;
+  active: boolean;
+  startDate: ISODate;
+  endDate: ISODate | null;
+}
+
+export type TaskInstanceStatus = 'pending' | 'done' | 'skipped';
+
+export interface TaskInstance extends BaseEntity {
+  templateId: ID;
+  title: string;
+  description: string;
+  dueDate: ISODate;
+  status: TaskInstanceStatus;
+  completedAt: ISODateTime | null;
+  completedById: ID | null;
+  completedByName: string;
+  note: string;
+}
+
+// ---------- Targets ----------
+export interface MonthlyTarget {
+  revenue: number;
+  serviceCount: number;
+  overheadBudget: number;
+}

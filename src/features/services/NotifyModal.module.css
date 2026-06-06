@@ -1,0 +1,62 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.templateTabs {
+  display: flex;
+  gap: var(--space-2);
+}
+.tab {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.tab:hover {
+  border-color: var(--border-brand);
+}
+.tabActive {
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+  border-color: var(--brand);
+}
+.label {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  resize: vertical;
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: var(--ring);
+}
+.copyLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--brand-hover);
+  padding: 4px 0;
+}
+.copyLink:hover {
+  text-decoration: underline;
+}

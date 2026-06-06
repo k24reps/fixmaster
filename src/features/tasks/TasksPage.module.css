@@ -1,0 +1,253 @@
+/* ============================================================
+   Tasks — "Job Board / Work Order"
+   Each task is a work-order ticket with a status spine, a
+   mechanical checkbox, and mono due tags. Templates are SOP
+   cards with recurrence chips. Global tokens — bench identity.
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- Tabs ---------- */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.tab:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.tabActive {
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+  border-color: var(--border-brand);
+}
+.addBtn {
+  margin-left: auto;
+}
+
+/* ---------- Quick add (ad-hoc task for today) ---------- */
+.quickAdd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.quickAdd > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.noPad {
+  padding: 0;
+}
+
+/* ---------- Work-order list ---------- */
+.taskList {
+  display: flex;
+  flex-direction: column;
+}
+.taskItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-5) 14px calc(var(--space-5) + 3px);
+  border-bottom: 1px dotted var(--border);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.taskItem:last-child {
+  border-bottom: none;
+}
+.taskItem:hover {
+  background: var(--bg-hover);
+}
+/* status spine */
+.taskItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--amber-500);
+}
+.taskItem.overdue::before {
+  background: var(--red-500);
+}
+.taskDone {
+  opacity: 0.65;
+}
+.taskDone::before {
+  background: var(--green-500);
+}
+
+/* mechanical checkbox */
+.checkbox {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  border: 2px solid var(--border-strong);
+  border-bottom-width: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #fff;
+  flex-shrink: 0;
+  background: var(--bg-input);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast),
+    background var(--dur-fast);
+}
+.checkbox:hover {
+  border-color: var(--brand);
+}
+.checkbox:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+.checked {
+  background: var(--success);
+  border-color: var(--success);
+  border-bottom-width: 2px;
+}
+.taskInfo {
+  flex: 1;
+  min-width: 0;
+}
+.taskInfo strong {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.taskDone .taskInfo strong {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.taskInfo small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* mono due tag */
+.dueTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.dueTag.late {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--red-400);
+}
+.dueTag.late::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red-500);
+  box-shadow: 0 0 7px var(--red-500);
+  animation: fm-pulse 1s var(--ease-in-out) infinite;
+}
+
+/* ---------- Templates (SOP cards) ---------- */
+.templateList {
+  display: flex;
+  flex-direction: column;
+}
+.templateItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.templateItem:last-child {
+  border-bottom: none;
+}
+.templateItem:hover {
+  background: var(--bg-hover);
+}
+.templateInfo {
+  flex: 1;
+  min-width: 0;
+}
+.templateInfo strong {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.templateMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 5px;
+}
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+}
+.metaChip svg {
+  color: var(--brand-hover);
+}
+.templateActions {
+  display: flex;
+  gap: var(--space-1);
+}
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.iconBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.iconBtn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}

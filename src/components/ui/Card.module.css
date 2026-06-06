@@ -1,0 +1,90 @@
+.card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition:
+    transform var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out),
+    border-color var(--dur-normal) var(--ease-out);
+}
+
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: var(--border-strong);
+}
+
+.interactive {
+  cursor: pointer;
+}
+.interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-brand);
+}
+
+.padded {
+  padding: var(--space-5);
+}
+
+/* ---------- Accent top bar ---------- */
+.accent_brand::before,
+.accent_success::before,
+.accent_warning::before,
+.accent_danger::before,
+.accent_info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.accent_brand::before {
+  background: var(--gradient-brand);
+}
+.accent_success::before {
+  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+}
+.accent_warning::before {
+  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+}
+.accent_danger::before {
+  background: linear-gradient(90deg, var(--red-500), var(--red-400));
+}
+.accent_info::before {
+  background: linear-gradient(90deg, var(--blue-500), var(--blue-400));
+}
+
+/* ---------- Header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+}
+.headerIcon {
+  color: var(--brand-hover);
+  font-size: 0.9em;
+}
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.body {
+  padding: var(--space-5);
+}

@@ -1,0 +1,82 @@
+/**
+ * Pure finance business logic: wallet balance effects of income/expense
+ * mutations, transfers, and reverse-cascade calculations.
+ * No DOM/repository dependencies → fully unit-testable.
+ */
+import type { Wallet, Income, Expense } from '@/data/types';
+
+/** Apply a signed delta to a wallet balance, returning a new wallet. */
+export function applyBalance(wallet: Wallet, delta: number): Wallet {
+  return { ...wallet, balance: wallet.balance + delta };
+}
+
+/**
+ * Compute net wallet deltas for a batch of income (+) and expense (-)
+ * records, keyed by walletId. Used to recompute balances after edits.
+ */
+export function netWalletDeltas(
+  incomes: Pick<Income, 'walletId' | 'amount'>[],
+  expenses: Pick<Expense, 'walletId' | 'amount'>[],
+): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const i of incomes) {
+    map.set(i.walletId, (map.get(i.walletId) ?? 0) + i.amount);
+  }
+  for (const e of expenses) {
+    map.set(e.walletId, (map.get(e.walletId) ?? 0) - e.amount);
+  }
+  return map;
+}
+
+/** Delta to reverse a single income record (subtract it from the wallet). */
+export function reverseIncomeDelta(income: Pick<Income, 'amount'>): number {
+  return -income.amount;
+}
+
+/** Delta to reverse a single expense record (add it back to the wallet). */
+export function reverseExpenseDelta(expense: Pick<Expense, 'amount'>): number {
+  return expense.amount;
+}
+
+export interface TransferResult {
+  ok: boolean;
+  error?: string;
+  fromWallet?: Wallet;
+  toWallet?: Wallet;
+}
+
+/** Move funds between two wallets, guarding against invalid/insufficient transfers. */
+export function transfer(from: Wallet, to: Wallet, amount: number): TransferResult {
+  if (from.id === to.id) return { ok: false, error: 'Wallet asal & tujuan sama' };
+  if (amount <= 0) return { ok: false, error: 'Nominal harus lebih dari 0' };
+  if (amount > from.balance) return { ok: false, error: 'Saldo tidak cukup' };
+  return {
+    ok: true,
+    fromWallet: applyBalance(from, -amount),
+    toWallet: applyBalance(to, amount),
+  };
+}
+
+export interface FinanceSummary {
+  income: number;
+  expense: number;
+  net: number;
+}
+
+/** Summarize income/expense totals over a pre-filtered set. */
+export function summarize(
+  incomes: Pick<Income, 'amount'>[],
+  expenses: Pick<Expense, 'amount'>[],
+): FinanceSummary {
+  const income = incomes.reduce((s, i) => s + i.amount, 0);
+  const expense = expenses.reduce((s, e) => s + e.amount, 0);
+  return { income, expense, net: income - expense };
+}
+
+/**
+ * Whether deleting a service-linked income should revert the service
+ * from "lunas" back to "selesai" (reverse-cascade rule).
+ */
+export function shouldRevertServiceOnIncomeDelete(income: Pick<Income, 'serviceId' | 'category'>): boolean {
+  return income.category === 'Servis' && !!income.serviceId;
+}

@@ -1,0 +1,185 @@
+.root {
+  position: relative;
+}
+
+/* Mirror the topbar search field styling for visual continuity. */
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.search:focus-within {
+  border-color: var(--brand);
+}
+.search svg {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+.search input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  width: 220px;
+  transition: width var(--dur-normal) var(--ease-out);
+}
+.search input::placeholder {
+  color: var(--text-muted);
+}
+.clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.clear:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ---------- Dropdown ---------- */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 380px;
+  max-width: 88vw;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 16px 40px rgba(0, 0, 0, 0.28));
+  padding: var(--space-2);
+  z-index: var(--z-dropdown, 1100);
+  animation: searchPop var(--dur-fast) var(--ease-out);
+}
+@keyframes searchPop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.group + .group {
+  margin-top: var(--space-1);
+  border-top: 1px dotted var(--border);
+  padding-top: var(--space-1);
+}
+.groupLabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 10px 4px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.itemActive {
+  background: var(--brand-soft);
+}
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+.itemActive .itemIcon {
+  background: var(--bg-surface);
+}
+.itemText {
+  flex: 1;
+  min-width: 0;
+}
+.itemText strong {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.itemText small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.itemGo {
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.itemActive .itemGo {
+  opacity: 1;
+  color: var(--brand-hover);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.empty svg {
+  font-size: 1.4rem;
+  opacity: 0.5;
+}
+
+@media (max-width: 640px) {
+  .search input {
+    width: 100px;
+  }
+  .search input:focus {
+    width: 150px;
+  }
+}
+
+@media (max-width: 400px) {
+  .search input {
+    width: 80px;
+  }
+  .search input:focus {
+    width: 125px;
+  }
+}
+

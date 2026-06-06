@@ -1,0 +1,197 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Card, CardHeader, CardBody, Button, EmptyState, Icon } from '@/components/ui';
+import { useCollection } from '@/hooks/useCollection';
+import { repository } from '@/data';
+import { newId } from '@/lib/id';
+import { localDateStr, localTimeStr, calcHours, fmtDate } from '@/lib/time';
+import { toast } from '@/stores/toast';
+import { useSessionStore } from '@/stores/session';
+import styles from './AttendancePage.module.css';
+
+export function AttendancePage() {
+  const { data: attendance } = useCollection('attendance');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const today = localDateStr();
+
+  const [busy, setBusy] = useState(false);
+
+  // Live LCD clock — ticks every second.
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const hhmmss = clock.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // The current user's open shift today (checked in, not out).
+  const myToday = useMemo(
+    () =>
+      attendance.find(
+        (a) => a.employeeId === me?.id && a.date === today && a.checkIn && !a.checkOut,
+      ) ?? null,
+    [attendance, me, today],
+  );
+
+  const myTodayDone = useMemo(
+    () =>
+      attendance.find(
+        (a) => a.employeeId === me?.id && a.date === today && a.checkIn && a.checkOut,
+      ) ?? null,
+    [attendance, me, today],
+  );
+
+  const todayRecords = useMemo(
+    () => attendance.filter((a) => a.date === today).sort((a, b) => (a.checkIn ?? '').localeCompare(b.checkIn ?? '')),
+    [attendance, today],
+  );
+
+  const recentByDay = useMemo(() => {
+    const sorted = [...attendance].sort((a, b) => b.date.localeCompare(a.date));
+    return sorted.slice(0, 30);
+  }, [attendance]);
+
+  const checkIn = async () => {
+    if (!me) return;
+    setBusy(true);
+    const now = new Date().toISOString();
+    try {
+      await repository.put('attendance', {
+        id: newId(),
+        orgId,
+        outletId: null,
+        employeeId: me.id,
+        employeeName: me.name,
+        date: today,
+        status: 'hadir',
+        checkIn: localTimeStr(),
+        checkOut: null,
+        totalHours: 0,
+        note: '',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+      toast.success(`Check-in ${localTimeStr()}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const checkOut = async () => {
+    if (!myToday) return;
+    setBusy(true);
+    const out = localTimeStr();
+    try {
+      await repository.put('attendance', {
+        ...myToday,
+        checkOut: out,
+        totalHours: calcHours(myToday.checkIn ?? '00:00', out),
+      });
+      toast.success(`Check-out ${out}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.wrap}>
+      <div className={styles.clock}>
+        <div className={styles.clockInfo}>
+          <span className={styles.clockGreet}>{me?.name ? `Operator · ${me.name}` : 'Operator'}</span>
+          <span className={styles.clockTime}>{hhmmss}</span>
+          <span className={styles.clockDate}>{fmtDate(today)}</span>
+          {myToday && (
+            <span className={styles.clockStatus}>
+              <span className={[styles.statusLed, styles.working].join(' ')} aria-hidden />
+              Bekerja sejak {myToday.checkIn}
+            </span>
+          )}
+          {myTodayDone && (
+            <span className={styles.clockStatus}>
+              <span className={[styles.statusLed, styles.done].join(' ')} aria-hidden />
+              Selesai · {myTodayDone.totalHours} jam ({myTodayDone.checkIn}–{myTodayDone.checkOut})
+            </span>
+          )}
+        </div>
+        <div className={styles.clockActions}>
+          {!myToday && !myTodayDone && (
+            <Button size="lg" onClick={checkIn} loading={busy} iconLeft={<Icon name="right-to-bracket" aria-hidden />}>
+              Check In
+            </Button>
+          )}
+          {myToday && (
+            <Button size="lg" variant="danger" onClick={checkOut} loading={busy} iconLeft={<Icon name="right-from-bracket" aria-hidden />}>
+              Check Out
+            </Button>
+          )}
+          {myTodayDone && (
+            <span className={[styles.statePill, styles.done].join(' ')}>
+              <Icon name="circle-check" aria-hidden /> Lengkap
+            </span>
+          )}
+        </div>
+      </div>
+
+      <Card glass>
+        <CardHeader icon={<Icon name="users" aria-hidden />} title="Kehadiran Hari Ini" />
+        <CardBody className={styles.noPad}>
+          {todayRecords.length === 0 ? (
+            <EmptyState
+              icon={<Icon name="user-clock" aria-hidden />}
+              title="Belum ada check-in"
+              description="Kehadiran tim hari ini akan tampil di sini."
+            />
+          ) : (
+            <ul className={styles.list}>
+              {todayRecords.map((a) => (
+                <li key={a.id} className={[styles.listItem, a.checkOut ? styles.complete : ''].join(' ')}>
+                  <span className={styles.plate}>{a.employeeName.charAt(0).toUpperCase()}</span>
+                  <div className={styles.itemInfo}>
+                    <strong>{a.employeeName}</strong>
+                    <small>
+                      {a.checkIn ?? '—'} {a.checkOut ? `– ${a.checkOut}` : ''}
+                    </small>
+                  </div>
+                  {a.checkOut ? (
+                    <span className={[styles.statePill, styles.done].join(' ')}>{a.totalHours} jam</span>
+                  ) : (
+                    <span className={[styles.statePill, styles.working].join(' ')}>Bekerja</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card glass>
+        <CardHeader icon={<Icon name="clock-rotate-left" aria-hidden />} title="Riwayat Absensi" />
+        <CardBody className={styles.noPad}>
+          {recentByDay.length === 0 ? (
+            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat" />
+          ) : (
+            <div className={styles.ledger}>
+              <div className={styles.ledgerHead}>
+                <span>Tanggal</span>
+                <span>Karyawan</span>
+                <span>Masuk</span>
+                <span>Keluar</span>
+                <span className={styles.hours}>Total</span>
+              </div>
+              {recentByDay.map((a) => (
+                <div key={a.id} className={styles.ledgerRow}>
+                  <span className={styles.punch}>{fmtDate(a.date)}</span>
+                  <span className={styles.ledgerName}>{a.employeeName}</span>
+                  <span className={styles.punch}>{a.checkIn ?? '—'}</span>
+                  <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}>—</span>}</span>
+                  <span className={styles.hours}>{a.checkOut ? `${a.totalHours} jam` : '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
