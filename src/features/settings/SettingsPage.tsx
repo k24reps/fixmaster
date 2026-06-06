@@ -842,7 +842,14 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
               {fmtRp(pendingInvoice.amount)}
             </p>
             {pendingInvoice.qrisUrl ? (
-              <img className={styles.qris} src={pendingInvoice.qrisUrl} alt="QRIS pembayaran" />
+              <a
+                className={styles.payLink}
+                href={pendingInvoice.qrisUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran Mayar
+              </a>
             ) : (
               <p className={styles.hint}>
                 Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur

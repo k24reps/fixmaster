@@ -239,6 +239,23 @@
   background: #fff;
   padding: var(--space-2);
 }
+.payLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand);
+  color: var(--on-brand);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-brand);
+  transition: filter 0.15s ease;
+}
+.payLink:hover {
+  filter: brightness(1.08);
+}
 .planGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
