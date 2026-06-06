@@ -173,6 +173,37 @@
   min-width: 140px;
 }
 
+.hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+.inviteRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.inviteRow > div {
+  flex: 1;
+  min-width: 160px;
+}
+.roleSelect {
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.roleSelect:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
 /* ---------- Service template editor ---------- */
 .tplHint {
   font-size: var(--text-sm);

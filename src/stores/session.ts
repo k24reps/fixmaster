@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Organization, Employee, ID } from '@/data/types';
 import { repository } from '@/data';
-import { isSupabaseConfigured, getMyMembership } from '@/data/supabase-client';
+import { isSupabaseConfigured, getMyMembership, claimInvite } from '@/data/supabase-client';
 
 const ACTIVE_EMP_KEY = 'fixmaster-active-emp'; // sessionStorage: forces PIN re-entry per tab
 const ACTIVE_ORG_KEY = 'fixmaster-active-org'; // localStorage: which org is loaded locally
@@ -42,7 +42,15 @@ export const useSessionStore = create<SessionState>((set) => ({
       // Defensive: ensure splash during (re)resolution. On account switch the
       // auth store also calls reset() so boot is already 'loading' here.
       set({ boot: 'loading' });
-      const membership = await getMyMembership();
+      let membership = await getMyMembership();
+      if (!membership) {
+        // New account may have been invited to an org — claim it before
+        // falling back to onboarding (joins as a member, skips the wizard).
+        const claimedOrgId = await claimInvite().catch(() => null);
+        if (claimedOrgId) {
+          membership = await getMyMembership();
+        }
+      }
       if (!membership) {
         set({ boot: 'needs-setup' });
         return;

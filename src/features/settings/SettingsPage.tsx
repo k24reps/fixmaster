@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -29,8 +29,18 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
+import { isValidInviteEmail } from '@/lib/business/team';
 import { useSessionStore } from '@/stores/session';
-import type { Wallet, Outlet } from '@/data/types';
+import {
+  isSupabaseConfigured,
+  inviteMember,
+  listPendingInvites,
+  revokeInvite,
+  setMemberRole,
+  deactivateMember,
+  type PendingInvite,
+} from '@/data/supabase-client';
+import type { Wallet, Outlet, Role } from '@/data/types';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -491,26 +501,205 @@ function WhatsAppTemplatesCard() {
   );
 }
 
+const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
+
 function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'employees'>>['data'] }) {
-  const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const { refetch } = useCollection('employees');
+
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<Role>('karyawan');
+  const [busy, setBusy] = useState(false);
+  const [confirmOff, setConfirmOff] = useState<string | null>(null);
+
+  const loadInvites = useCallback(async () => {
+    if (!isSupabaseConfigured || !orgId) return;
+    try {
+      setInvites(await listPendingInvites(orgId));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan');
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !orgId) return;
+    let cancelled = false;
+    listPendingInvites(orgId)
+      .then((data) => {
+        if (!cancelled) setInvites(data);
+      })
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan'),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const invite = async () => {
+    if (!name.trim()) return toast.error('Nama wajib diisi');
+    if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
+    setBusy(true);
+    try {
+      await inviteMember({ orgId, email, name, role });
+      toast.success(`Undangan untuk ${email.trim()} dibuat`);
+      setName('');
+      setEmail('');
+      setRole('karyawan');
+      await loadInvites();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengundang');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async (id: string) => {
+    try {
+      await revokeInvite(id);
+      await loadInvites();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membatalkan undangan');
+    }
+  };
+
+  const changeRole = async (memberId: string, newRole: Role) => {
+    try {
+      await setMemberRole(memberId, newRole);
+      toast.success('Peran diperbarui');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengubah peran');
+    }
+  };
+
+  const deactivate = async (memberId: string) => {
+    setConfirmOff(null);
+    try {
+      await deactivateMember(memberId);
+      toast.success('Anggota dinonaktifkan');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menonaktifkan');
+    }
+  };
+
   return (
-    <Card glass>
-      <CardHeader icon={<Icon name="users" aria-hidden />} title="Anggota Tim" />
-      <CardBody className={styles.noPad}>
-        <ul className={styles.list}>
-          {employees.map((e) => (
-            <li key={e.id} className={styles.listItem}>
-              <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
-              <div className={styles.itemInfo}>
-                <strong>{e.name}</strong>
-                <small>{ROLE_LABEL[e.role]}</small>
-              </div>
-              <Badge tone={e.active ? 'success' : 'neutral'}>{e.active ? 'Aktif' : 'Nonaktif'}</Badge>
-            </li>
-          ))}
-        </ul>
-      </CardBody>
-    </Card>
+    <>
+      {isSupabaseConfigured && (
+        <Card glass>
+          <CardHeader icon={<Icon name="user-plus" aria-hidden />} title="Undang Anggota" />
+          <CardBody>
+            <p className={styles.hint}>
+              Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis bergabung ke
+              organisasi ini saat masuk pertama kali.
+            </p>
+            <div className={styles.inviteRow}>
+              <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                placeholder="email@contoh.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <select
+                className={styles.roleSelect}
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                aria-label="Peran"
+              >
+                <option value="karyawan">Karyawan</option>
+                <option value="admin">Admin</option>
+              </select>
+              <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
+                Undang
+              </Button>
+            </div>
+            {invites.length > 0 && (
+              <ul className={styles.list}>
+                {invites.map((inv) => (
+                  <li key={inv.id} className={styles.listItem}>
+                    <span className={styles.avatar}>
+                      <Icon name="envelope" aria-hidden />
+                    </span>
+                    <div className={styles.itemInfo}>
+                      <strong>{inv.email}</strong>
+                      <small>{ROLE_LABEL[inv.role]} · menunggu pendaftaran</small>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void revoke(inv.id)}
+                      iconLeft={<Icon name="x" aria-hidden />}
+                    >
+                      Batalkan
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      <Card glass>
+        <CardHeader icon={<Icon name="users" aria-hidden />} title="Anggota Tim" />
+        <CardBody className={styles.noPad}>
+          <ul className={styles.list}>
+            {employees.map((e) => {
+              const isSelf = me?.id === e.id;
+              return (
+                <li key={e.id} className={styles.listItem}>
+                  <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
+                  <div className={styles.itemInfo}>
+                    <strong>{e.name}</strong>
+                    <small>{ROLE_LABEL[e.role]}</small>
+                  </div>
+                  {isSupabaseConfigured && !isSelf && e.active ? (
+                    <>
+                      <select
+                        className={styles.roleSelect}
+                        value={e.role}
+                        onChange={(ev) => void changeRole(e.id, ev.target.value as Role)}
+                        aria-label={`Peran ${e.name}`}
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="karyawan">Karyawan</option>
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmOff(e.id)}
+                        iconLeft={<Icon name="user-minus" aria-hidden />}
+                      >
+                        Nonaktifkan
+                      </Button>
+                    </>
+                  ) : (
+                    <Badge tone={e.active ? 'success' : 'neutral'}>
+                      {e.active ? 'Aktif' : 'Nonaktif'}
+                    </Badge>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </CardBody>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmOff !== null}
+        title="Nonaktifkan anggota?"
+        message="Anggota tidak akan bisa masuk sampai diaktifkan kembali. Data terkait tetap utuh."
+        confirmLabel="Nonaktifkan"
+        danger
+        onConfirm={() => confirmOff && void deactivate(confirmOff)}
+        onCancel={() => setConfirmOff(null)}
+      />
+    </>
   );
 }
 

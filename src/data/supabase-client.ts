@@ -111,3 +111,114 @@ export async function clockIn(args: {
   if (error) throw new Error(error.message);
   return data as string;
 }
+
+// ============================================================
+// Team management (Fase 1A). Invitations use the "pending-invite +
+// claim" model: a manager creates a pending_invites row; the invitee
+// signs up with that email; claim_invite() links them to the org.
+// All mutations go through security-definer RPCs (manager-checked).
+// ============================================================
+
+export interface PendingInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt: string;
+  claimedAt: string | null;
+}
+
+/** Manager creates a pending invite for an email + role. */
+export async function inviteMember(args: {
+  orgId: string;
+  email: string;
+  name: string;
+  role: string;
+}): Promise<PendingInvite> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c
+    .from('pending_invites')
+    .upsert(
+      {
+        org_id: args.orgId,
+        email: args.email.trim().toLowerCase(),
+        name: args.name.trim(),
+        role: args.role,
+        invited_by: (await c.auth.getUser()).data.user?.id ?? null,
+        claimed_at: null,
+      },
+      { onConflict: 'org_id,email' },
+    )
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    orgId: data.org_id,
+    email: data.email,
+    name: data.name,
+    role: data.role,
+    createdAt: data.created_at,
+    claimedAt: data.claimed_at,
+  };
+}
+
+/** List outstanding (unclaimed) invites for an org. */
+export async function listPendingInvites(orgId: string): Promise<PendingInvite[]> {
+  const c = getSupabase();
+  if (!c) return [];
+  const { data, error } = await c
+    .from('pending_invites')
+    .select('*')
+    .eq('org_id', orgId)
+    .is('claimed_at', null)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((d) => ({
+    id: d.id,
+    orgId: d.org_id,
+    email: d.email,
+    name: d.name,
+    role: d.role,
+    createdAt: d.created_at,
+    claimedAt: d.claimed_at,
+  }));
+}
+
+/** Revoke an outstanding invite. */
+export async function revokeInvite(inviteId: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.from('pending_invites').delete().eq('id', inviteId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Claim a pending invite for the signed-in account. Called right after a new
+ * signup; returns the joined org id, or null when there is no matching invite.
+ */
+export async function claimInvite(): Promise<string | null> {
+  const c = getSupabase();
+  if (!c) return null;
+  const { data, error } = await c.rpc('claim_invite');
+  if (error) throw new Error(error.message);
+  return (data as string | null) ?? null;
+}
+
+/** Manager changes a member's role (refuses to demote the last owner). */
+export async function setMemberRole(memberId: string, role: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('set_member_role', { p_member_id: memberId, p_role: role });
+  if (error) throw new Error(error.message);
+}
+
+/** Manager deactivates a member (refuses the last active owner). */
+export async function deactivateMember(memberId: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('deactivate_member', { p_member_id: memberId });
+  if (error) throw new Error(error.message);
+}
