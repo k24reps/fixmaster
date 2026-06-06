@@ -22,3 +22,45 @@ export function getSupabase(): SupabaseClient | null {
 
 /** Whether Supabase is configured (controls local-first vs cloud mode). */
 export const isSupabaseConfigured = Boolean(url && anonKey);
+
+// ============================================================
+// Auth helpers — thin wrappers so the store/UI never touch the
+// raw client. All return a normalized { error } shape on failure.
+// ============================================================
+
+export interface AuthResult {
+  /** Human-readable error message, or null on success. */
+  error: string | null;
+}
+
+/** Register a new account (the future org owner). */
+export async function authSignUp(email: string, password: string): Promise<AuthResult> {
+  const c = getSupabase();
+  if (!c) return { error: 'Supabase tidak terkonfigurasi' };
+  const { error } = await c.auth.signUp({ email, password });
+  return { error: error?.message ?? null };
+}
+
+/** Sign in with email + password. */
+export async function authSignIn(email: string, password: string): Promise<AuthResult> {
+  const c = getSupabase();
+  if (!c) return { error: 'Supabase tidak terkonfigurasi' };
+  const { error } = await c.auth.signInWithPassword({ email, password });
+  return { error: error?.message ?? null };
+}
+
+/** Sign out the current account. */
+export async function authSignOut(): Promise<AuthResult> {
+  const c = getSupabase();
+  if (!c) return { error: null };
+  const { error } = await c.auth.signOut();
+  return { error: error?.message ?? null };
+}
+
+/** Send a password-reset email. */
+export async function authResetPassword(email: string): Promise<AuthResult> {
+  const c = getSupabase();
+  if (!c) return { error: 'Supabase tidak terkonfigurasi' };
+  const { error } = await c.auth.resetPasswordForEmail(email);
+  return { error: error?.message ?? null };
+}

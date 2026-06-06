@@ -13,20 +13,20 @@ Bagian dari [[00 - FixMaster MOC]].
 - **React 19** + **react-router-dom 7** — UI & routing
 - **Vite 8** — dev server & bundler
 - **TypeScript** — strict typing di seluruh kode
-- **Zustand 5** — state global (session, settings)
+- **Zustand 5** — state global (session akun cloud `auth`, sesi workspace `session`, settings)
 - **TanStack Query 5** — fetching & cache koleksi (lihat [[Data Layer]])
 - **Zod 4** — validasi skema (form/wizard)
 
-## Persistensi
+## Persistensi & Auth
 - **idb** (IndexedDB) — adapter lokal default
-- **@supabase/supabase-js** — adapter cloud (opsional, di-detect via env)
+- **@supabase/supabase-js** — adapter cloud (opsional, di-detect via env) + **Supabase Auth** (email+password) untuk cloud mode. Lihat [[Decisions & Bug Fixes]] (auth dua-mode).
 
 ## UI / Aset
 - **@phosphor-icons/react** — set ikon (lihat [[Iconography]])
 - Vanilla CSS Modules + token global (lihat [[Design System]])
 
 ## Tooling & Kualitas
-- **Vitest** + Testing Library — unit/komponen (**154 test** lulus)
+- **Vitest** + Testing Library — unit/komponen (**164 test** lulus)
 - **Playwright** — screenshot & verifikasi UI fungsional
 - **ESLint** + **Prettier** — lint & format
 
