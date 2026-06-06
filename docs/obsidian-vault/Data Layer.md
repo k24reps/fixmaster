@@ -60,6 +60,14 @@ Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/
 > [!tip] Konsekuensi penting
 > Karena logika ini murni & dipakai ulang, [[Sidebar - Live Diagnostic Rail]] menampilkan angka yang **identik** dengan halamannya — tidak ada aturan terduplikasi.
 
+## Tabel & RPC cloud (Fase 1)
+
+Selain koleksi yang dipetakan ke repository, mode cloud punya tabel & RPC khusus SaaS yang **tidak** lewat adapter (diakses langsung via `supabase-client.ts`):
+
+**Tim (migration `0008`)** — tabel `pending_invites` (org_id, email, role, claimed_at) + RPC security-definer `claim_invite` (dipanggil di `session.bootstrap` saat akun baru belum punya membership → gabung org via email yang cocok), `set_member_role`, `deactivate_member`. Semua mengecek `is_org_manager` & menolak menurunkan/menonaktifkan owner aktif terakhir. Guard yang sama dicerminkan murni di `lib/business/team.ts`. Detail: [[Decisions & Bug Fixes]] (model undangan pending-invite + claim).
+
+**Billing (migration `0009`)** — tabel `invoices` (org_id, plan, amount, status, provider, qris_url, period_start/end, paid_at) + RPC `start_subscription` (bikin invoice pending 1 siklus), `apply_payment` (idempotent: tandai lunas + perpanjang `plan_expired_at` dari `max(now, expiry)`), fungsi `is_org_active` (cek belum suspended & belum lewat grace). Logika siklus murni di `lib/business/billing.ts` (`subscriptionPhase`, `canWrite`, `isOrgActive`). `plan_type` enum **tetap stabil** (label saja yang berganti di `plans.ts`). Provider Mayar di-abstraksi & masih mock — Edge Function `create-invoice`/`mayar-webhook` menyusul saat sandbox key tersedia. Detail: [[Decisions & Bug Fixes]] (billing invoice-based QRIS).
+
 ## Servis: pengambilan barang & garansi
 
 Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu sama lain:
