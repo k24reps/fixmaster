@@ -70,9 +70,25 @@ Keputusan penting yang dijaga:
 - **Enum `plan_type` Postgres TIDAK di-rename.** Nilainya tetap `('free','standard','enterprise','trial','suspended')` karena `PLANS` di `plans.ts` adalah `Record<PlanType, PlanDef>` dan ada org existing di staging. Mengganti enum = migrasi data berisiko demi kosmetik. Jadi hanya **label tampilan** yang berubah (standard→"Solo", enterprise→"Bisnis"), plus kuota & harga. Harga = **placeholder** (`// placeholder`), gampang diganti sebelum launch.
 - **Harga per-organisasi, tier by jumlah outlet, user UNLIMITED** (`maxUsers:-1` di semua tier pakai). Helper `withinOutletQuota`, `outletTierFor`, `PAID_TIERS`.
 - **Reminder H-3, grace 3 hari, lalu expired** — logika murni di `src/lib/business/billing.ts` (`subscriptionPhase`: active/reminder/grace/expired; `canWrite`; `isOrgActive`) + 13 test. Dicerminkan server-side oleh fungsi `is_org_active` (RPC `0009`).
-- **Provider di-abstraksi (mock dulu).** Kolom `provider`/`provider_ref`/`qris_url` di `invoices`. Integrasi Mayar nyata = Edge Function `create-invoice` (isi `qris_url`) + `mayar-webhook` (panggil `apply_payment`), **ditunda sampai user kasih sandbox key**. UI `BillingTab` jalan penuh dengan tombol "Saya sudah bayar" (mock confirm) untuk menguji alur perpanjangan tanpa Mayar.
+- **Provider di-abstraksi.** Kolom `provider`/`provider_ref`/`qris_url` di `invoices`. Integrasi Mayar nyata **sudah ditulis** (Edge Functions `create-invoice` + `mayar-webhook`) — tinggal deploy + key user. UI `BillingTab` coba Mayar dulu (buka link bayar di tab baru), dan **fallback** ke tombol "Saya sudah bayar" (mock confirm) bila fungsi belum di-deploy, jadi alur tetap bisa diuji tanpa Mayar. Detail di catatan integrasi Mayar di bawah.
 
 Catatan enforcement (Fase 1B lanjutan, migration `0010`): **write-blocking server-side saat langganan kedaluwarsa kini aktif**. Akar masalah: input (mis. pemasukan) menulis langsung ke tabel via adapter, dan RLS `*_write` policy cuma cek `is_org_member`/`is_org_manager` — tak pernah cek `is_org_active`. Jadi Postgres tetap mengizinkan tulis walau plan lewat grace. Fix: migration `0010_billing_enforcement.sql` membuat ulang **semua** `*_write` policy (operasional, finansial, config) agar `using`+`with check` juga wajib `is_org_active(org_id)`. Akibatnya tulis (insert/update/delete) diblokir di level DB saat kedaluwarsa, sementara **baca tetap jalan** (policy `*_select` tak disentuh) dan **bayar tetap bisa** (tabel `invoices`/`memberships` tak digerbang). Org trial baru tak terpengaruh (aktif 14 hari). Error RLS (`42501`) diterjemahkan `supabase-adapter` jadi pesan Indonesia ("Langganan kedaluwarsa atau melebihi kuota — perpanjang di Pengaturan → Langganan") alih-alih "row-level security policy" mentah. Lihat [[Data Layer]].
+
+### Integrasi Mayar nyata: 2 Edge Function (produksi) — Fase 1B lanjutan
+User pilih environment **produksi** (`api.mayar.id`, uang sungguhan), bukan sandbox (`api.mayar.club`). Bentuk API diverifikasi langsung dari docs resmi sebelum koding (bukan menebak). Dua Edge Function (runtime Deno, di `supabase/functions/`):
+
+1. **`create-invoice`** — dipanggil klien via `functions.invoke`. Alur: (a) verifikasi JWT pemanggil, panggil RPC `start_subscription` sebagai user itu (cek manager + bikin invoice `pending`), (b) `POST {MAYAR_API_BASE}/invoice/create` dengan `extraData.invoiceId` = id invoice kita (**kunci korelasi** balik dari webhook), (c) simpan `provider_ref` + `qris_url` (= hosted payment link Mayar) ke baris invoice, (d) balikkan link. Bila Mayar gagal, invoice di-set `canceled` (tak menggantung pending).
+2. **`mayar-webhook`** — endpoint **publik** (Mayar yang manggil, bukan user login → deploy `--no-verify-jwt`). Digerbang `MAYAR_WEBHOOK_TOKEN`, hanya proses event `payment.received`, korelasi via `extraData.invoiceId` (fallback `provider_ref`), lalu `apply_payment` (idempotent) pakai service-role.
+
+Keputusan & alasan:
+- **Pilih endpoint Invoice, bukan Dynamic QRCode.** Endpoint `qrcode/create` cuma terima `amount` — tak ada cara mengaitkan pembayaran balik ke invoice kita. `invoice/create` mendukung `extraData`, jadi webhook bisa tahu invoice mana yang lunas.
+- **Base URL env-driven** (`MAYAR_API_BASE`, default produksi). Tinggal ganti ke `api.mayar.club` kalau mau sandbox tanpa ubah kode.
+- **Key Mayar TAK PERNAH di browser** — hanya di Supabase secrets, dibaca `Deno.env.get`. Klien hanya kenal nama fungsi.
+- **Token webhook**: docs Mayar tak menyebut nama header pasti, jadi handler cek beberapa kandidat (`Authorization` bearer, `x-callback-token`, `x-webhook-token`); kalau `MAYAR_WEBHOOK_TOKEN` diset → wajib cocok.
+- **UI fallback**: `BillingTab.subscribe` coba `createMayarInvoice` dulu; bila fungsi belum di-deploy (error) → jatuh ke mock `start_subscription` + tombol "Saya sudah bayar". Jadi app tetap jalan sebelum & sesudah deploy.
+- **ESLint**: `supabase/functions` dimasukkan `globalIgnores` (runtime Deno, import URL, di luar `tsconfig.app` yang cuma `src`) — biar `npm run lint` browser-app tak rusak.
+
+Sisa (giliran user, perubahan akun/eksternal): set secrets, `supabase functions deploy`, daftar URL webhook di dashboard Mayar, uji bayar QRIS nominal kecil. Lihat [[Data Layer]] (Tabel & RPC cloud).
 
 ### Outlet dibuat di wizard + bug `outlets.outlet_id`
 Dua masalah berkaitan, diperbaiki bareng:

@@ -294,3 +294,24 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
   if (error) throw new Error(error.message);
   return (data ?? []).map(toInvoice);
 }
+
+/**
+ * Create a real Mayar payment invoice via the `create-invoice` Edge Function.
+ * Returns the hosted payment link (QRIS/checkout). The Mayar API key lives
+ * only in the Edge Function — never in the browser. Throws if the function
+ * is not deployed/configured, so callers can fall back to the mock flow.
+ */
+export async function createMayarInvoice(
+  plan: string,
+  amount: number,
+  redirectUrl?: string,
+): Promise<{ invoiceId: string; link: string }> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.functions.invoke('create-invoice', {
+    body: { plan, amount, redirectUrl },
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.link) throw new Error(data?.error ?? 'Gagal membuat invoice Mayar');
+  return { invoiceId: data.invoiceId as string, link: data.link as string };
+}

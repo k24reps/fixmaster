@@ -41,6 +41,7 @@ import {
   startSubscription,
   applyPayment,
   listInvoices,
+  createMayarInvoice,
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
@@ -752,8 +753,19 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     }
     setBusy(true);
     try {
-      await startSubscription(tier, parseAmount(PLANS[tier].priceLabel));
-      toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran`);
+      const amount = parseAmount(PLANS[tier].priceLabel);
+      try {
+        // Real provider: create a Mayar invoice and open the hosted payment
+        // page (QRIS/checkout). Confirmation arrives via the webhook.
+        const { link } = await createMayarInvoice(tier, amount, window.location.href);
+        window.open(link, '_blank', 'noopener');
+        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran di tab baru`);
+      } catch {
+        // Fallback (Edge Function not deployed yet): mock pending invoice,
+        // confirmable manually via "Saya sudah bayar".
+        await startSubscription(tier, amount);
+        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran`);
+      }
       await reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal membuat invoice');
