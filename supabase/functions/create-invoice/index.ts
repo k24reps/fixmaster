@@ -21,7 +21,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // supabase-js functions.invoke sends apikey + x-client-info in addition to
+  // authorization/content-type. All must be allowed or the browser blocks the
+  // POST after the OPTIONS preflight (symptom: OPTIONS 200 in logs, no POST,
+  // client silently falls back to mock).
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
