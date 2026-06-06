@@ -64,3 +64,24 @@ export async function authResetPassword(email: string): Promise<AuthResult> {
   const { error } = await c.auth.resetPasswordForEmail(email);
   return { error: error?.message ?? null };
 }
+
+/**
+ * Resolve the signed-in account's org membership. In cloud mode the org and
+ * the "current employee" are derived from this (membership.id IS the employee
+ * id used across the app), so login needs no PIN. Returns null when the user
+ * has no org yet (→ onboarding wizard).
+ */
+export async function getMyMembership(): Promise<{ orgId: string; membershipId: string } | null> {
+  const c = getSupabase();
+  if (!c) return null;
+  const { data: u } = await c.auth.getUser();
+  if (!u.user) return null;
+  const { data, error } = await c
+    .from('memberships')
+    .select('id, org_id')
+    .eq('user_id', u.user.id)
+    .eq('active', true)
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  return { orgId: data[0].org_id as string, membershipId: data[0].id as string };
+}

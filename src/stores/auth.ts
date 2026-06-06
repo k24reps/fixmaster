@@ -8,6 +8,7 @@ import {
   authResetPassword,
   type AuthResult,
 } from '@/data/supabase-client';
+import { useSessionStore } from '@/stores/session';
 
 /**
  * Cloud account session (Supabase Auth). This is SEPARATE from the
@@ -77,6 +78,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: (email, password) => authSignUp(email, password),
   signOut: async () => {
     await authSignOut();
+    // Clear the workspace session in the same tick, so the next signed-in
+    // account never momentarily sees the previous tenant's org data.
+    useSessionStore.getState().reset();
     set({ status: 'signed-out', userId: null, email: null });
   },
   resetPassword: (email) => authResetPassword(email),

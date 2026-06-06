@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Organization, Employee, ID } from '@/data/types';
 import { repository } from '@/data';
+import { isSupabaseConfigured, getMyMembership } from '@/data/supabase-client';
 
 const ACTIVE_EMP_KEY = 'fixmaster-active-emp'; // sessionStorage: forces PIN re-entry per tab
 const ACTIVE_ORG_KEY = 'fixmaster-active-org'; // localStorage: which org is loaded locally
@@ -22,6 +23,8 @@ interface SessionState {
   signInEmployee: (employee: Employee) => void;
   signOutEmployee: () => void;
   setActiveOutlet: (outletId: ID | null) => void;
+  /** Clear in-memory session (used on cloud account switch). Non-destructive. */
+  reset: () => void;
   resetWorkspace: () => Promise<void>;
 }
 
@@ -33,6 +36,29 @@ export const useSessionStore = create<SessionState>((set) => ({
   activeOutletId: null,
 
   bootstrap: async () => {
+    // Cloud mode: the signed-in account drives identity. Resolve the org +
+    // current employee from the user's membership (no PIN, no localStorage).
+    if (isSupabaseConfigured) {
+      // Defensive: ensure splash during (re)resolution. On account switch the
+      // auth store also calls reset() so boot is already 'loading' here.
+      set({ boot: 'loading' });
+      const membership = await getMyMembership();
+      if (!membership) {
+        set({ boot: 'needs-setup' });
+        return;
+      }
+      repository.setScope(membership.orgId, null);
+      const org = await repository.getSingleton('organization');
+      if (!org) {
+        set({ boot: 'needs-setup' });
+        return;
+      }
+      const employees = await repository.list('employees');
+      const emp = employees.find((e) => e.id === membership.membershipId) ?? null;
+      set({ org, employees, currentEmployee: emp, activeOutletId: null, boot: 'ready' });
+      return;
+    }
+
     const orgId = localStorage.getItem(ACTIVE_ORG_KEY);
     if (!orgId) {
       set({ boot: 'needs-setup' });
@@ -88,6 +114,10 @@ export const useSessionStore = create<SessionState>((set) => ({
     // refetch (triggered by the changed query key) reads the new scope.
     repository.setScope(orgId, outletId);
     set({ activeOutletId: outletId });
+  },
+
+  reset: () => {
+    set({ boot: 'loading', org: null, employees: [], currentEmployee: null, activeOutletId: null });
   },
 
   resetWorkspace: async () => {

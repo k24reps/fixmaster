@@ -4,6 +4,8 @@ import { Icon } from '@/components/ui';
 import { NAV_ITEMS } from '@/config/navigation';
 import { planAllows, PLANS } from '@/config/plans';
 import { useSessionStore } from '@/stores/session';
+import { useAuthStore } from '@/stores/auth';
+import { isSupabaseConfigured } from '@/data/supabase-client';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
@@ -32,12 +34,20 @@ export function Sidebar({
   const org = useSessionStore((s) => s.org);
   const employee = useSessionStore((s) => s.currentEmployee);
   const signOut = useSessionStore((s) => s.signOutEmployee);
+  const authSignOut = useAuthStore((s) => s.signOut);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const setActiveOutlet = useSessionStore((s) => s.setActiveOutlet);
   const { data: outlets } = useCollection('outlets');
   const t = useT();
   const language = useSettingsStore((s) => s.language);
   const signals = useNavSignals();
+
+  // Cloud: true sign-out of the Supabase account (→ AuthPage).
+  // Local: switch user (re-enter PIN) — there is no cloud account.
+  const handleLogout = () => {
+    if (isSupabaseConfigured) void authSignOut();
+    else signOut();
+  };
 
   const plan = org?.planType ?? 'trial';
   const visibleNav = NAV_ITEMS.filter((item) => !item.feature || planAllows(plan, item.feature));
@@ -166,7 +176,7 @@ export function Sidebar({
             </div>
             <button
               className={styles.logoutBtn}
-              onClick={signOut}
+              onClick={handleLogout}
               title={t('auth.logout')}
               aria-label={t('auth.logout')}
             >
