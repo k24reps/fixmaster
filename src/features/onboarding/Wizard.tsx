@@ -4,6 +4,7 @@ import { Button, Input as BaseInput, Icon } from '@/components/ui';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { derivePrefix } from '@/lib/id';
 import { toast } from '@/stores/toast';
+import { isSupabaseConfigured } from '@/data/supabase-client';
 import {
   emptyWizardData,
   validateStep,
@@ -21,7 +22,6 @@ function Input(props: ComponentProps<typeof BaseInput>) {
   return <BaseInput noAutoCap {...props} />;
 }
 
-const STEPS = ['Profil', 'Wallet', 'Kategori', 'Tim', 'Target'];
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'owner', label: 'Owner' },
   { value: 'admin', label: 'Admin' },
@@ -33,16 +33,28 @@ interface WizardProps {
 }
 
 export function Wizard({ onComplete }: WizardProps) {
+  // Cloud mode: employees are Supabase Auth accounts, no PIN needed.
+  // Wizard shows 4 steps (no Tim/PIN step); owner name lives in step 1.
+  const isCloud = isSupabaseConfigured;
+  const STEPS = isCloud
+    ? ['Profil', 'Wallet', 'Kategori', 'Target']
+    : ['Profil', 'Wallet', 'Kategori', 'Tim', 'Target'];
+  // In cloud mode UI step 4 = Target (business step 5 has no validation).
+  const validationStep = (uiStep: number) => (isCloud && uiStep === 4 ? 5 : uiStep);
+
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(emptyWizardData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
+  // Must be after useState to reference `step`.
+  const isTargetStep = isCloud ? step === 4 : step === 5;
+
   const update = (patch: Partial<WizardData>) => setData((d) => ({ ...d, ...patch }));
 
   const errorMap = (): Record<string, string> => {
-    const list = validateStep(step, data);
+    const list = validateStep(validationStep(step), data);
     return Object.fromEntries(list.map((e) => [e.field, e.message]));
   };
 
@@ -105,7 +117,8 @@ export function Wizard({ onComplete }: WizardProps) {
           <p className={styles.subtitle}>Setup awal untuk memulai dashboard Anda</p>
         </header>
 
-        {import.meta.env.DEV && (
+        {/* Demo seed button — local dev only (seed uses IndexedDB, not Supabase). */}
+        {import.meta.env.DEV && !isCloud && (
           <div className={styles.devBar}>
             <button
               type="button"
@@ -173,6 +186,19 @@ export function Wizard({ onComplete }: WizardProps) {
                 value={data.phone}
                 onChange={(e) => update({ phone: e.target.value })}
               />
+              {/* Cloud mode: owner name displayed in sidebar — collected here since
+                  there is no Tim step. Local mode has a dedicated Tim step. */}
+              {isCloud && (
+                <Input
+                  label="Nama Anda (tampil di aplikasi)"
+                  placeholder="Nama lengkap"
+                  value={data.employees[0]?.name ?? ''}
+                  onChange={(e) => {
+                    const employees = [{ ...data.employees[0], name: e.target.value }];
+                    update({ employees });
+                  }}
+                />
+              )}
             </Step>
           )}
 
@@ -247,7 +273,9 @@ export function Wizard({ onComplete }: WizardProps) {
             </Step>
           )}
 
-          {step === 4 && (
+          {/* Tim/PIN step — local mode only. In cloud mode each employee is a
+              separate Supabase Auth account; invitations are handled post-onboarding. */}
+          {!isCloud && step === 4 && (
             <Step title="Tim / Karyawan" desc="Minimal 1 Owner dengan PIN 4 digit">
               {errors.employees && <p className={styles.formError}>{errors.employees}</p>}
               <div className={styles.list}>
@@ -317,7 +345,7 @@ export function Wizard({ onComplete }: WizardProps) {
             </Step>
           )}
 
-          {step === 5 && (
+          {isTargetStep && (
             <Step title="Target & Biaya Tetap" desc="Proyeksi bulanan (bisa diubah nanti)">
               <div className={styles.row}>
                 <Input
