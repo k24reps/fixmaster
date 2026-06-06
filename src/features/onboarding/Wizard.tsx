@@ -31,6 +31,7 @@ function Input(props: ComponentProps<typeof BaseInput>) {
  */
 const STEP_DEFS = [
   { n: 1, label: 'Profil' },
+  { n: 6, label: 'Outlet' },
   { n: 2, label: 'Wallet' },
   { n: 3, label: 'Kategori' },
   { n: 4, label: 'Tim' },
@@ -385,6 +386,60 @@ export function Wizard({ onComplete }: WizardProps) {
                 value={data.overheadBudget ? fmtRpInput(String(data.overheadBudget)) : ''}
                 onChange={(e) => update({ overheadBudget: parseRpInput(e.target.value) })}
               />
+            </Step>
+          )}
+
+          {step === 6 && (
+            <Step title="Outlet / Lokasi" desc="Satu outlet untuk usaha tunggal, atau beberapa untuk multi-cabang">
+              {errors.outlets && <p className={styles.formError}>{errors.outlets}</p>}
+              <div className={styles.list}>
+                {data.outlets.map((o, i) => (
+                  <div key={i} className={styles.listRow}>
+                    <Input
+                      label={i === 0 ? 'Outlet Utama' : `Cabang ${i}`}
+                      placeholder={i === 0 ? (data.shopName || 'Nama outlet utama') : 'Nama cabang'}
+                      value={o.name}
+                      error={errors[`outlet-name-${i}`]}
+                      onChange={(e) => {
+                        const outlets = [...data.outlets];
+                        outlets[i] = { ...o, name: e.target.value };
+                        update({ outlets });
+                      }}
+                    />
+                    <Input
+                      label="Alamat"
+                      placeholder={i === 0 ? (data.address || 'Alamat outlet') : 'Alamat cabang'}
+                      value={o.address}
+                      onChange={(e) => {
+                        const outlets = [...data.outlets];
+                        outlets[i] = { ...o, address: e.target.value };
+                        update({ outlets });
+                      }}
+                    />
+                    {i > 0 && (
+                      <button
+                        className={styles.removeBtn}
+                        onClick={() => update({ outlets: data.outlets.filter((_, j) => j !== i) })}
+                        aria-label="Hapus"
+                      >
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className={styles.stepHint}>
+                <Icon name="info-circle" aria-hidden /> Outlet utama otomatis memakai nama &
+                alamat usaha bila dikosongkan. Tambah cabang hanya jika usaha Anda multi-lokasi.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Icon name="plus" aria-hidden />}
+                onClick={() => update({ outlets: [...data.outlets, { name: '', address: '' }] })}
+              >
+                Tambah Cabang
+              </Button>
             </Step>
           )}
 

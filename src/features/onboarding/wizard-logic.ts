@@ -3,6 +3,7 @@ import type {
   Employee,
   Wallet,
   FixedCost,
+  Outlet,
   Role,
   ID,
 } from '@/data/types';
@@ -24,6 +25,10 @@ export interface WizardCostDraft {
   name: string;
   amount: number;
 }
+export interface WizardOutletDraft {
+  name: string;
+  address: string;
+}
 
 export interface WizardData {
   shopName: string;
@@ -34,6 +39,8 @@ export interface WizardData {
   categories: string[];
   employees: WizardEmployeeDraft[];
   fixedCosts: WizardCostDraft[];
+  /** Physical locations. First entry is the primary outlet. */
+  outlets: WizardOutletDraft[];
   targetRevenue: number;
   targetServiceCount: number;
   overheadBudget: number;
@@ -49,6 +56,7 @@ export function emptyWizardData(): WizardData {
     categories: ['Laptop', 'HP / Smartphone', 'Printer', 'PC / Komputer'],
     employees: [{ name: '', role: 'owner', pin: '' }],
     fixedCosts: [],
+    outlets: [{ name: '', address: '' }],
     targetRevenue: 0,
     targetServiceCount: 0,
     overheadBudget: 0,
@@ -85,7 +93,44 @@ export function validateStep(step: number, data: WizardData): StepError[] {
         errors.push({ field: `emp-pin-${i}`, message: 'PIN harus 4 digit' });
     });
   }
+  // Step 6 = Outlet. The first outlet's name falls back to the shop name, so
+  // only additional outlets must be named. Always need at least one.
+  if (step === 6) {
+    if (data.outlets.length === 0)
+      errors.push({ field: 'outlets', message: 'Minimal 1 outlet diperlukan' });
+    data.outlets.forEach((o, i) => {
+      if (i > 0 && !o.name.trim())
+        errors.push({ field: `outlet-name-${i}`, message: 'Nama outlet wajib diisi' });
+    });
+  }
   return errors;
+}
+
+/**
+ * Map outlet drafts to records. The first outlet is primary and inherits the
+ * shop name/address when left blank (single-outlet shops need not retype it).
+ */
+function buildOutlets(
+  drafts: WizardOutletDraft[],
+  orgId: ID,
+  shopName: string,
+  shopAddress: string,
+  now: string,
+): Outlet[] {
+  return drafts.map((o, i) => ({
+    id: newId(),
+    orgId,
+    outletId: null,
+    name: o.name.trim() || (i === 0 ? shopName.trim() : `Outlet ${i + 1}`),
+    address: o.address.trim() || (i === 0 ? shopAddress.trim() : ''),
+    isPrimary: i === 0,
+    lat: null,
+    lng: null,
+    geofenceRadiusM: null,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  }));
 }
 
 /**
@@ -156,6 +201,10 @@ export async function commitWizard(
       deletedAt: null,
     }));
   await repository.putMany('wallets', wallets);
+
+  // Outlets (≥1; first is primary). Empty array = caller opts out (dev seed).
+  const outlets = buildOutlets(data.outlets, orgId, data.shopName, data.address, now);
+  if (outlets.length) await repository.putMany('outlets', outlets);
 
   // Fixed costs.
   const fixedCosts: FixedCost[] = data.fixedCosts
@@ -234,6 +283,10 @@ async function commitWizardCloud(
       deletedAt: null,
     }));
   if (wallets.length) await repository.putMany('wallets', wallets);
+
+  // Outlets (≥1; first is primary). Empty array = caller opts out (dev seed).
+  const outlets = buildOutlets(data.outlets, newOrgId, data.shopName, data.address, now);
+  if (outlets.length) await repository.putMany('outlets', outlets);
 
   // Fixed costs.
   const fixedCosts: FixedCost[] = data.fixedCosts
