@@ -5,8 +5,11 @@ project_id = "fixmaster"
 # accidental redeploys from re-enabling JWT on the public webhook.
 
 [functions.create-invoice]
-# Called by the logged-in app via functions.invoke → requires a valid Supabase JWT.
-verify_jwt = true
+# The platform JWT gate can reject new-format session tokens, which would
+# make the function unreachable (client sees 401 → silent mock fallback).
+# So we disable the gate and verify the caller INSIDE the function via
+# getUser() (it rejects missing/invalid tokens), keeping auth intact.
+verify_jwt = false
 
 [functions.mayar-webhook]
 # Called by Mayar's servers (no Supabase session) → must be public.
