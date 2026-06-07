@@ -53,6 +53,12 @@ const RepairTicketPrototype = lazy(() =>
     default: m.RepairTicketPrototype,
   })),
 );
+const PrivacyPage = lazy(() =>
+  import('@/features/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
+);
+const TermsPage = lazy(() =>
+  import('@/features/legal/TermsPage').then((m) => ({ default: m.TermsPage })),
+);
 
 export const router = createBrowserRouter([
   {
@@ -70,6 +76,24 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={null}>
         <TrackingPage />
+      </Suspense>
+    ),
+  },
+  {
+    // Public legal pages — linkable from signup consent, payment gateway,
+    // and app store listings (no auth required).
+    path: '/privacy',
+    element: (
+      <Suspense fallback={null}>
+        <PrivacyPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/terms',
+    element: (
+      <Suspense fallback={null}>
+        <TermsPage />
       </Suspense>
     ),
   },

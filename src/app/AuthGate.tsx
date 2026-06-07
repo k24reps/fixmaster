@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
@@ -6,6 +6,7 @@ import { repository } from '@/data';
 import { Wizard } from '@/features/onboarding/Wizard';
 import { PinLogin } from '@/features/auth/PinLogin';
 import { AuthPage } from '@/features/auth/AuthPage';
+import { LandingPage } from '@/features/landing/LandingPage';
 import styles from './AuthGate.module.css';
 
 interface AuthGateProps {
@@ -27,6 +28,10 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
   const authStatus = useAuthStore((s) => s.status);
   const initAuth = useAuthStore((s) => s.init);
+
+  // In cloud signed-out state, show the marketing landing page first; the CTA
+  // reveals the auth form. This is the public "front door" for selling.
+  const [showAuth, setShowAuth] = useState(false);
 
   const boot = useSessionStore((s) => s.boot);
   const bootstrap = useSessionStore((s) => s.bootstrap);
@@ -67,9 +72,13 @@ export function AuthGate({ children }: AuthGateProps) {
     );
   }
 
-  // Cloud mode: require account login before anything else.
+  // Cloud mode: marketing landing first, then the account login on CTA.
   if (authStatus === 'signed-out') {
-    return <AuthPage />;
+    return showAuth ? (
+      <AuthPage onBack={() => setShowAuth(false)} />
+    ) : (
+      <LandingPage onStart={() => setShowAuth(true)} />
+    );
   }
 
   if (boot === 'needs-setup') {

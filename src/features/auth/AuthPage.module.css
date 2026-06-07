@@ -243,6 +243,21 @@
   margin-bottom: var(--space-5);
 }
 
+.consent {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: calc(-1 * var(--space-2)) 0 0;
+}
+.consentLink {
+  color: var(--brand);
+  font-weight: var(--fw-medium);
+  text-decoration: underline;
+}
+.consentLink:hover {
+  color: var(--brand-hover);
+}
+
 .links {
   display: flex;
   flex-direction: column;

@@ -16,6 +16,20 @@ Sembilan halaman utama + halaman detail, masing-masing dengan metafora "alat" ta
 
 ---
 
+## Landing — Front Door Jualan (publik)
+
+Pintu depan saat **cloud signed-out**: sebelumnya langsung layar login, kini [`LandingPage`](src/features/landing/LandingPage.tsx) tampil dulu untuk **menjual** sebelum auth. Bahasa visual bench: hero dengan wash gradient brand + **blueprint grid**, badge LED berdenyut, judul dengan kata aksen ber-gradient. Lalu grid **12 modul** (framing benefit, bukan label nav), **pricing** Solo/Bisnis (ambil dari `config/plans.ts` agar tak pernah basi, Bisnis ber-badge "PALING LENGKAP"), CTA band, dan footer dengan tautan legal. CTA memanggil `onStart` → `AuthGate` membuka `AuthPage` (state lokal `showAuth`). `AuthPage` kini menerima `onBack` untuk balik ke landing.
+
+![[landing-dark.png]]
+
+## Legal — Privasi & S&K (publik, wajib UU PDP)
+
+Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa ditaut dari consent signup, gateway pembayaran, dan app store. Shell bersama [`LegalLayout`](src/features/legal/LegalLayout.tsx): topbar glass + brand, prose bergaya (h2 dengan **spine** brand, callout disclaimer amber), cross-link, footer. Konten [`PrivacyPage`](src/features/legal/PrivacyPage.tsx) disusun mengacu **UU PDP No. 27/2022** (data dikumpulkan, dasar/tujuan, hak subjek data, retensi, kontak); [`TermsPage`](src/features/legal/TermsPage.tsx) mencakup langganan/trial, pembayaran, larangan, batasan tanggung jawab, penghentian. Keduanya **template itikad baik** — perlu review hukum sebelum launch (ada callout). Signup `AuthPage` kini menampilkan baris consent bertaut ke kedua halaman.
+
+![[privacy-dark.png]]
+
+---
+
 ## Kasir POS — Register Readout
 
 Panel keranjang jadi **mesin kasir**: layar LCD total bergaya segment-display (digit mono, glow amber, ghost "88.888", scanline, indikator LIVE), badan **struk thermal monospace** dengan garis titik-titik, **perforasi sobek**, footer checkout. Tombol qty mekanis (turun saat ditekan).

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button, Input, Icon } from '@/components/ui';
 import { FormError } from '@/components/ui/Form';
 import { useAuthStore } from '@/stores/auth';
@@ -6,6 +7,11 @@ import { toast } from '@/stores/toast';
 import styles from './AuthPage.module.css';
 
 type Mode = 'login' | 'signup' | 'reset';
+
+interface AuthPageProps {
+  /** Return to the marketing landing page (cloud signed-out front door). */
+  onBack?: () => void;
+}
 
 const TITLES: Record<Mode, { heading: string; hint: string; cta: string }> = {
   login: { heading: 'Masuk ke FixMaster', hint: 'Nyalakan kembali meja kerjamu', cta: 'Masuk' },
@@ -28,7 +34,7 @@ const RAIL = [
  * the FixMaster identity + a live diagnostic rail; right panel is a screwed-down
  * faceplate with a power LED, mono labels, and the auth form.
  */
-export function AuthPage() {
+export function AuthPage({ onBack }: AuthPageProps = {}) {
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
   const resetPassword = useAuthStore((s) => s.resetPassword);
@@ -196,6 +202,15 @@ export function AuthPage() {
             <Button fullWidth onClick={() => void submit()} disabled={busy}>
               {busy ? 'Memproses…' : t.cta}
             </Button>
+
+            {mode === 'signup' && (
+              <p className={styles.consent}>
+                Dengan mendaftar, kamu menyetujui{' '}
+                <Link to="/terms" className={styles.consentLink}>Syarat &amp; Ketentuan</Link>{' '}
+                dan{' '}
+                <Link to="/privacy" className={styles.consentLink}>Kebijakan Privasi</Link>.
+              </p>
+            )}
           </div>
 
           <div className={styles.links}>
@@ -223,6 +238,11 @@ export function AuthPage() {
             {mode === 'reset' && (
               <button type="button" className={styles.link} onClick={() => setMode('login')}>
                 Kembali ke Masuk
+              </button>
+            )}
+            {onBack && (
+              <button type="button" className={styles.link} onClick={onBack}>
+                <Icon name="arrow-left" aria-hidden /> Kembali ke Beranda
               </button>
             )}
           </div>
