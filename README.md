@@ -8,7 +8,7 @@ SaaS multi-tenant untuk manajemen bisnis jasa reparasi **gadget & elektronik** (
 - **Vite + React 19 + TypeScript** — komponen kecil, type-safe.
 - **Vanilla CSS + CSS Modules** — sistem desain premium, tanpa Tailwind.
 - **Repository Pattern** — local-first (IndexedDB) untuk dev, Supabase untuk produksi.
-- **Vitest** — 150 unit + integration test.
+- **Vitest** — 228 unit + integration test.
 
 ## Fitur
 - Dashboard KPI, target bulanan, notifikasi, leaderboard teknisi
@@ -44,25 +44,28 @@ npm run test:coverage  # cakupan test
 
 ### 1. Setup Supabase
 1. Buat project di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor**, jalankan migrasi berurutan dari `supabase/migrations/`:
-   - `0001_initial_schema.sql`
-   - `0002_rls_policies.sql`
-   - `0003_rpc_functions.sql`
-3. Di **Project Settings → API**, salin **Project URL** dan **anon public key**.
+2. Buka **SQL Editor**, jalankan **semua** migrasi di `supabase/migrations/` secara berurutan (`0001_*` → `0015_*`). Termasuk schema, RLS, RPC atomik, geofence, tim, billing, **Storage logo** (`0014`), dan **rate limiting** (`0015`).
+3. (Opsional) Deploy Edge Functions: `supabase functions deploy create-invoice`, `fersaku-webhook`, dan `health` (probe uptime). Konfigurasi `verify_jwt` sudah di `supabase/config.toml`.
+4. Di **Project Settings → API**, salin **Project URL** dan **anon public key**.
 
 ### 2. Konfigurasi Environment
 Salin `.env.example` → `.env.local` dan isi:
 ```
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGc...
+# Opsional — error tracking (kosongkan untuk menonaktifkan):
+VITE_SENTRY_DSN=
 ```
-Saat env terisi, app otomatis memakai Supabase (bukan IndexedDB).
+Saat env terisi, app otomatis memakai Supabase (bukan IndexedDB). Tanpa `VITE_SENTRY_DSN`, SDK Sentry **tidak** dimuat (nol bobot bundle).
 
 ### 3. Deploy ke Vercel
 1. Push repo ke GitHub.
 2. Import project di [vercel.com](https://vercel.com).
 3. Tambahkan environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di Vercel.
-4. Deploy. `vercel.json` sudah mengatur SPA rewrites + caching.
+4. Deploy. `vercel.json` sudah mengatur SPA rewrites, caching aset, dan **security headers** (CSP/HSTS/dll).
+
+### 4. Backup & Pemulihan
+Prosedur cadangan, PITR, health check, dan rollback ada di [`docs/runbook-backup-recovery.md`](docs/runbook-backup-recovery.md).
 
 ## Arsitektur
 Data layer di-abstraksi lewat antarmuka `Repository`. Dua implementasi:
