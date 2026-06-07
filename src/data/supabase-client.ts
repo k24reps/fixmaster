@@ -326,6 +326,24 @@ export async function createPaymentInvoice(
 }
 
 /**
+ * Permanently delete the signed-in account's auth credential (email +
+ * password record) via the `delete-account` Edge Function. The function
+ * verifies the caller's JWT server-side and deletes only THEIR own id, using
+ * the service-role key that must never reach the browser.
+ *
+ * Call this AFTER erasing tenant data (repository.clearAll). Throws if the
+ * function isn't deployed/reachable, so the caller can fall back to a
+ * data-erasure-only flow.
+ */
+export async function deleteAccountCredential(): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.functions.invoke('delete-account', { body: {} });
+  if (error) throw new Error(error.message);
+  if (!data?.ok) throw new Error(data?.error ?? 'Gagal menghapus akun');
+}
+
+/**
  * Subscribe to realtime billing changes for one org. Fires `onChange` whenever
  * an `invoices` row for this org or the `organizations` row itself changes
  * (e.g. the webhook marks an invoice paid/expired and extends the plan). RLS

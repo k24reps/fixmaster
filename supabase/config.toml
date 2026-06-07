@@ -21,3 +21,9 @@ verify_jwt = false
 # Public liveness/readiness probe for external uptime monitors. Returns only
 # a status summary (no tenant data), so no auth is needed.
 verify_jwt = false
+
+[functions.delete-account]
+# Deletes the caller's OWN auth credential. We verify the caller's JWT inside
+# the function (getUser) and only ever delete that id, so the platform gate is
+# disabled to keep the function reachable for all valid session tokens.
+verify_jwt = false

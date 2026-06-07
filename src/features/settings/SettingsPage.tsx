@@ -44,6 +44,7 @@ import {
   listInvoices,
   subscribeOrgBilling,
   createPaymentInvoice,
+  deleteAccountCredential,
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
@@ -1355,12 +1356,26 @@ function SystemTab({
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      // Erase all tenant data we can reach from the client, then end the
-      // cloud session. NOTE: removing the Supabase auth *credential* record
-      // itself requires a privileged server function — surfaced honestly below.
+      // 1. Erase all tenant data reachable from the client.
       await repository.clearAll();
+
+      // 2. Delete the auth credential itself (email + password) via the
+      //    privileged Edge Function. If it isn't deployed/reachable, fall back
+      //    honestly: data is already gone, so still sign out and tell the user
+      //    the login credential needs support to remove.
+      let credentialDeleted = true;
+      try {
+        await deleteAccountCredential();
+      } catch {
+        credentialDeleted = false;
+      }
+
       await signOut();
-      toast.success('Data dihapus & keluar dari akun');
+      if (credentialDeleted) {
+        toast.success('Akun & seluruh data dihapus permanen');
+      } else {
+        toast.success('Data dihapus & keluar. Kredensial login perlu dihapus via dukungan.');
+      }
     } catch {
       toast.error('Gagal menghapus data');
     } finally {
@@ -1404,15 +1419,16 @@ function SystemTab({
               <>
                 <hr className={styles.dangerDivider} />
                 <p className={styles.dangerNote}>
-                  Hapus akun: seluruh data usaha dihapus permanen lalu kamu keluar dari akun.
-                  Untuk penghapusan penuh kredensial login, hubungi dukungan (perlu proses sisi server).
+                  Hapus akun permanen: seluruh data usaha dihapus, kredensial login
+                  (email &amp; sandi) dihapus dari server, lalu kamu keluar. Tindakan ini
+                  tidak dapat dibatalkan — export data lebih dulu bila perlu.
                 </p>
                 <Button
                   variant="danger"
                   onClick={() => setConfirmDelete(true)}
-                  iconLeft={<Icon name="right-from-bracket" aria-hidden />}
+                  iconLeft={<Icon name="trash" aria-hidden />}
                 >
-                  Hapus Data &amp; Keluar
+                  Hapus Akun Permanen
                 </Button>
               </>
             )}
@@ -1422,9 +1438,9 @@ function SystemTab({
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Hapus Akun & Semua Data?"
-        message="SEMUA data usaha (servis, transaksi, pelanggan, stok, keuangan) akan dihapus permanen dan kamu akan keluar dari akun. Tindakan ini tidak dapat dibatalkan. Pertimbangkan export data lebih dulu."
-        confirmLabel={deleting ? 'Menghapus…' : 'Ya, Hapus & Keluar'}
+        title="Hapus Akun Permanen?"
+        message="SEMUA data usaha (servis, transaksi, pelanggan, stok, keuangan) akan dihapus permanen, akun login (email & sandi) dihapus dari server, dan kamu akan keluar. Tindakan ini TIDAK dapat dibatalkan. Pertimbangkan export data lebih dulu."
+        confirmLabel={deleting ? 'Menghapus…' : 'Ya, Hapus Permanen'}
         danger
         onConfirm={handleDeleteAccount}
         onCancel={() => setConfirmDelete(false)}
