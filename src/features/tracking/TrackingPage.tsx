@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { repository } from '@/data';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
+import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate } from '@/lib/time';
 import { Badge, Icon } from '@/components/ui';
 import styles from './TrackingPage.module.css';
@@ -20,6 +21,25 @@ export function TrackingPage() {
 
   const [query, setQuery] = useState(initialNo);
   const [searchNo, setSearchNo] = useState(initialNo);
+  const [throttleMsg, setThrottleMsg] = useState('');
+  // Client-side defense-in-depth: the public page reads via the repository
+  // (not the rate-limited RPC), so throttle repeated lookups here too.
+  const searchTimes = useRef<number[]>([]);
+
+  const runSearch = () => {
+    const { allowed, timestamps, retryAfter } = slidingWindowAllow(
+      searchTimes.current,
+      10,
+      60_000,
+    );
+    searchTimes.current = timestamps;
+    if (!allowed) {
+      setThrottleMsg(`Terlalu banyak pencarian. Coba lagi dalam ${retryAfter} detik.`);
+      return;
+    }
+    setThrottleMsg('');
+    setSearchNo(query);
+  };
 
   const { data, isFetching, isFetched } = useQuery({
     queryKey: ['track', orgId, searchNo],
@@ -58,12 +78,19 @@ export function TrackingPage() {
             placeholder="Masukkan no. servis (mis. FM-0001)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && setSearchNo(query)}
+            onKeyDown={(e) => e.key === 'Enter' && runSearch()}
           />
-          <button className={styles.searchBtn} onClick={() => setSearchNo(query)} disabled={isFetching}>
+          <button className={styles.searchBtn} onClick={runSearch} disabled={isFetching}>
             {isFetching ? <Icon name="circle-notch" className="spin" aria-hidden /> : 'Lacak'}
           </button>
         </div>
+
+        {throttleMsg && (
+          <div className={styles.notFound}>
+            <Icon name="triangle-exclamation" aria-hidden />
+            <p>{throttleMsg}</p>
+          </div>
+        )}
 
         {notFound && (
           <div className={styles.notFound}>

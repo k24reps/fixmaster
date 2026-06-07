@@ -33,6 +33,11 @@ export interface Organization {
   name: string;
   address: string;
   phone: string;
+  /**
+   * Logo image src, rendered directly as `<img src>`. Holds either a data URL
+   * (local mode) or a public Storage URL (cloud — bucket `org-logos`). See
+   * `src/data/storage.ts`. Null = no logo (initial-letter fallback shown).
+   */
   logoDataUrl: string | null;
   servicePrefix: string; // e.g. "FM"
   planType: PlanType;

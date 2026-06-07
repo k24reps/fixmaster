@@ -53,3 +53,49 @@ export function registerSuccess(): AttemptState {
 export function attemptsLeft(state: AttemptState): number {
   return Math.max(0, MAX_ATTEMPTS - (state.fails % MAX_ATTEMPTS));
 }
+
+// ============================================================
+// Generic sliding-window limiter (pure, reusable).
+// Used beyond PIN lockout — e.g. throttling the public service-tracking
+// search so a single client can't hammer lookups. State is an array of
+// epoch-ms timestamps that the caller persists (component state / ref).
+// ============================================================
+
+/** Drop timestamps older than the window. Returns a NEW array. */
+export function pruneWindow(
+  timestamps: number[],
+  windowMs: number,
+  now: number = Date.now(),
+): number[] {
+  const cutoff = now - windowMs;
+  return timestamps.filter((t) => t > cutoff);
+}
+
+export interface SlidingWindowResult {
+  /** Whether this action is allowed. */
+  allowed: boolean;
+  /** The updated timestamp list to persist (includes `now` if allowed). */
+  timestamps: number[];
+  /** Seconds until the oldest in-window event expires (0 if allowed). */
+  retryAfter: number;
+}
+
+/**
+ * Allow at most `max` actions per `windowMs`. Pure: pass the prior timestamps
+ * in and persist the returned ones. When blocked, `retryAfter` tells the
+ * caller how long until a slot frees up.
+ */
+export function slidingWindowAllow(
+  timestamps: number[],
+  max: number,
+  windowMs: number,
+  now: number = Date.now(),
+): SlidingWindowResult {
+  const recent = pruneWindow(timestamps, windowMs, now);
+  if (recent.length >= max) {
+    const oldest = Math.min(...recent);
+    const retryAfter = Math.ceil((oldest + windowMs - now) / 1000);
+    return { allowed: false, timestamps: recent, retryAfter: Math.max(1, retryAfter) };
+  }
+  return { allowed: true, timestamps: [...recent, now], retryAfter: 0 };
+}

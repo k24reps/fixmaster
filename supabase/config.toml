@@ -16,3 +16,8 @@ verify_jwt = false
 # Authenticity is enforced inside the function via an SHA-256 signature
 # check against FERSAKU_WEBHOOK_SECRET.
 verify_jwt = false
+
+[functions.health]
+# Public liveness/readiness probe for external uptime monitors. Returns only
+# a status summary (no tenant data), so no auth is needed.
+verify_jwt = false

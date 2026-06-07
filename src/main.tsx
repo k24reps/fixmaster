@@ -4,12 +4,15 @@ import { App } from './App';
 import { initTheme } from './stores/theme';
 import { initSettings } from './stores/settings';
 import { initErrorTracking } from './lib/report';
+import { registerServiceWorker } from './lib/sw-register';
 import './styles/global.css';
 
 initTheme();
 initSettings();
 // Opt-in remote error tracking (no-op unless VITE_SENTRY_DSN is set).
 initErrorTracking();
+// App-shell offline caching (production builds only).
+registerServiceWorker();
 
 // DEV-ONLY: expose a demo-seed helper for Playwright + manual testing.
 // Tree-shaken from production builds via the import.meta.env.DEV guard.

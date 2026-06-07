@@ -49,6 +49,7 @@ import {
 } from '@/data/supabase-client';
 import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
 import { DATASETS, downloadCsv } from './exportDatasets';
+import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
 import styles from './SettingsPage.module.css';
 
@@ -186,7 +187,12 @@ function BusinessTab() {
     if (!file.type.startsWith('image/')) return toast.error('File harus berupa gambar');
     if (file.size > 2 * 1024 * 1024) return toast.error('Ukuran logo maksimal 2MB');
     try {
-      const logoDataUrl = await fileToLogoDataUrl(file);
+      // Downscale first (keeps both the upload and any local data URL small),
+      // then hand the blob to storage: cloud uploads to the bucket and returns
+      // a public URL; local mode returns a data URL (legacy behaviour).
+      const downscaled = await fileToLogoDataUrl(file);
+      const blob = await (await fetch(downscaled)).blob();
+      const logoDataUrl = await uploadOrgLogo(org.id, blob);
       const updated = { ...org, logoDataUrl };
       await repository.setSingleton('organization', updated);
       setOrg(updated);
@@ -198,6 +204,11 @@ function BusinessTab() {
 
   const removeLogo = async () => {
     if (!org) return;
+    try {
+      await removeOrgLogo(org.id); // delete bucket objects in cloud mode
+    } catch {
+      // Non-critical: still clear the reference below even if delete failed.
+    }
     const updated = { ...org, logoDataUrl: null };
     await repository.setSingleton('organization', updated);
     setOrg(updated);

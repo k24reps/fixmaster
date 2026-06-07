@@ -86,7 +86,19 @@ Helper murni di `lib/business/services.ts`: `warrantyEndDate(service)` (tanggal 
 
 **Hapus/erasure data (hak "penghapusan" UU PDP).** Di Settings → Sistem (Zona Berbahaya), mode cloud menambah aksi **"Hapus Data & Keluar"**: `repository.clearAll()` lalu `authStore.signOut()`. Disampaikan **jujur** bahwa penghapusan penuh **kredensial login** (record Supabase Auth) perlu fungsi sisi-server berhak akses — jadi UI tidak berpura-pura melakukannya. Disarankan export dulu sebelum hapus.
 
-**Seam pelaporan error.** `lib/report.ts` = satu titik kirim error. Default **console-only** (tanpa SDK/jaringan/bobot bundle); `setErrorReporter()` memasang tracker nyata (mis. Sentry) sekali saat startup tanpa mengubah call-site lain. `reportError()` membungkus non-Error & **tak pernah throw** walau reporter rusak. `ErrorBoundary.componentDidCatch` kini lewat seam ini (tag `source: root|route`). Sengaja **tidak** menambah SDK tak terkonfigurasi.
+**Seam pelaporan error.** `lib/report.ts` = satu titik kirim error. Default **console-only** (tanpa SDK/jaringan/bobot bundle); `setErrorReporter()` memasang tracker nyata (mis. Sentry) sekali saat startup tanpa mengubah call-site lain. `reportError()` membungkus non-Error & **tak pernah throw** walau reporter rusak. `ErrorBoundary.componentDidCatch` kini lewat seam ini (tag `source: root|route`). `initErrorTracking()` (dipanggil di `main.tsx`) lazy-import `@sentry/react` **hanya** bila `VITE_SENTRY_DSN` diset.
+
+## Object Storage, rate limiting, & availability (P1/P2 hardening)
+
+**Storage logo (`src/data/storage.ts`).** Logo org dipindah dari base64 di record `organization` → bucket Supabase Storage `org-logos` (migration `0014`). `uploadOrgLogo(orgId, blob)` — **cloud**: upload ke `org-logos/{orgId}/logo-<ts>.png`, prune logo lama, kembalikan **public URL**; **lokal**: kembalikan dataURL (perilaku lama). Caller cukup simpan hasil ke `Organization.logoDataUrl` (kini bisa dataURL **atau** public URL — dirender langsung sebagai `<img src>`, tanpa resolver). RLS Storage: baca publik (logo tampil di struk + tracking publik), tulis/hapus hanya **manager** org pemilik (`org_id` = segmen path pertama via `storage.foldername`). **Foto perangkat sengaja ditunda** (hindari beban storage).
+
+**Rate limiting (lapisan 9).** Migration `0015`: tabel `rate_events` (RLS-locked) + RPC `check_rate_limit(key, max, window)` (sliding window, self-cleaning, security-definer). RPC publik `track_service` di-redefine untuk throttle **60/menit per org** sebelum lookup (return kosong bila lewat — tanpa bocor error). Tradeoff jujur: per-**org**, bukan per-IP (IP klien tak andal di Postgres). Di klien, `lib/rate-limit.ts` kini punya `slidingWindowAllow()`/`pruneWindow()` murni & teruji; `TrackingPage` memakainya (10/menit) sebagai **defense-in-depth** karena halaman publik membaca via `repository.list`, bukan RPC ber-throttle. Webhook pembayaran sudah diamankan **HMAC** signature; `create-invoice` butuh JWT.
+
+**Availability & recovery (lapisan 13).** Edge Function publik `health` (`supabase/functions/health`, `verify_jwt=false`) → cek konektivitas DB (head-count `organizations`), balas `{status, db, version, time, latencyMs}` (200 sehat / 503 down) untuk uptime monitor eksternal. Prosedur lengkap (RPO/RTO, PITR, restore, rollback Vercel, checklist insiden) di `docs/runbook-backup-recovery.md`.
+
+**Service Worker app-shell (lapisan 10).** `public/sw.js` + `lib/sw-register.ts` (registrasi **prod-only**). Cache **app-shell + aset `/assets` ber-hash** (cache-first, aman karena content-hashed), navigasi network-first → fallback `index.html` offline, cache ber-versi + bersih cache lama agar update tak nyangkut. **Tidak** meng-cache API/data (app real-time/multi-tenant). CSP `worker-src 'self'` mengizinkannya.
+
+
 
 ## Terkait
 - [[Tech Stack]] · [[Decisions & Bug Fixes]] · [[Sidebar - Live Diagnostic Rail]]
