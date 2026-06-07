@@ -114,6 +114,13 @@ supabase db push                                   # apply HANYA 0004–0010
 
 **Sisa produksi (giliran user):** set secret LIVE (`FERSAKU_API_KEY=sk_live_*` + `FERSAKU_WEBHOOK_SECRET` live — **beda dari sandbox**) via `supabase secrets set ... --project-ref vmitplpvncfvyimgyxrn`; daftar webhook URL `https://vmitplpvncfvyimgyxrn.supabase.co/functions/v1/fersaku-webhook` di Fersaku mode Live; merge `feat/cloud-auth`→`main` via PR; uji 1 transaksi QRIS asli nominal kecil (simulate TAK tersedia di live). Live-mode Fersaku tak butuh KYC.
 
+### Invoice cancel + anti-tumpuk pending (migration `0011`)
+Masalah: tiap "Pilih Paket" memanggil `start_subscription` yang **selalu** membuat invoice `pending` baru, tanpa membatalkan yang lama & tanpa jalan cancel → invoice pending menumpuk di Riwayat Invoice. Fix (migration `0011_invoice_cancel.sql`):
+- **`cancel_invoice(p_invoice_id)`** — RPC manager-only, hanya membatalkan invoice ber-status `pending` (idempotent untuk status final; `paid` tak tersentuh). UI: tombol "Batalkan" (ghost) di tiap baris pending di Riwayat Invoice → wrapper `cancelInvoice` → `cancelPay` handler.
+- **`start_subscription` di-recreate**: sebelum insert invoice baru, `update invoices set status='canceled' where org_id=... and status='pending'` → **maksimal satu pending aktif** pada satu waktu (supersede otomatis).
+
+Total migration kini **0001–0011**. Verifikasi: build + 202 test + lint hijau.
+
 ---
 
 ### [HISTORIS] Integrasi Mayar — ditinggalkan
