@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, Input, Badge, Select, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
@@ -52,6 +52,9 @@ import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
 import { DATASETS, downloadCsv } from './exportDatasets';
 import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
+import { createBackup, downloadBackup, restoreBackup } from './backupRestore';
+import { useBackupStore } from '@/stores/backup';
+import { type BackupFrequency } from '@/lib/business/backup';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -87,7 +90,6 @@ async function fileToLogoDataUrl(file: File): Promise<string> {
 type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'sistem';
 
 export function SettingsPage() {
-  const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
   const resetWorkspace = useSessionStore((s) => s.resetWorkspace);
   const isOwner = me ? roleAllows(me.role, '*') : false;
@@ -140,7 +142,6 @@ export function SettingsPage() {
       {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
         <SystemTab
-          plan={org?.planType ?? 'trial'}
           onReset={() => setConfirmReset(true)}
           isOwner={isOwner}
         />
@@ -1338,16 +1339,142 @@ function ExportDataCard() {
   );
 }
 
+/**
+ * Full JSON backup + restore (local-first). Owner-only because a backup
+ * contains ALL data (finance + customer PII). Unlike CSV export, the JSON is
+ * lossless and restorable. Restore is REPLACE semantics and disabled in cloud
+ * mode (rely on Supabase backups/PITR there).
+ */
+function BackupCard() {
+  const org = useSessionStore((s) => s.org);
+  const cloud = isSupabaseConfigured;
+  const frequency = useBackupStore((s) => s.frequency);
+  const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
+  const setFrequency = useBackupStore((s) => s.setFrequency);
+  const markBackedUp = useBackupStore((s) => s.markBackedUp);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [pendingText, setPendingText] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const handleBackup = async () => {
+    setBusy(true);
+    try {
+      const backup = await createBackup(org?.id ?? null);
+      downloadBackup(backup);
+      markBackedUp();
+      toast.success('Backup berhasil diunduh');
+    } catch {
+      toast.error('Gagal membuat backup');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Read the picked file's text, then open the replace-confirm dialog.
+  const onPickFile = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    input.value = ''; // allow re-picking the same file later
+    if (!file) return;
+    try {
+      setPendingText(await file.text());
+    } catch {
+      toast.error('Gagal membaca file');
+    }
+  };
+
+  const handleRestore = async () => {
+    if (pendingText === null) return;
+    setRestoring(true);
+    try {
+      const res = await restoreBackup(pendingText);
+      if (res.ok) {
+        toast.success(`Berhasil memulihkan ${res.restored} data. Memuat ulang\u2026`);
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        toast.error(res.error);
+      }
+    } finally {
+      setRestoring(false);
+      setPendingText(null);
+    }
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="clock-rotate-left" aria-hidden />} title="Backup & Restore" />
+      <CardBody>
+        <p className={styles.dangerNote}>
+          Backup menyimpan SELURUH data sebagai satu file JSON yang bisa dipulihkan utuh
+          (berbeda dari Export CSV yang untuk laporan). Simpan file di tempat aman.
+        </p>
+        <div className={styles.backupRow}>
+          <Button onClick={handleBackup} loading={busy} iconLeft={<Icon name="download" aria-hidden />}>
+            Backup Sekarang
+          </Button>
+          {!cloud && (
+            <Button
+              variant="secondary"
+              onClick={() => fileRef.current?.click()}
+              iconLeft={<Icon name="clock-rotate-left" aria-hidden />}
+            >
+              Pulihkan dari File
+            </Button>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={(e) => void onPickFile(e.currentTarget)}
+            hidden
+          />
+        </div>
+        {cloud && (
+          <p className={styles.planNote}>
+            <Icon name="info-circle" aria-hidden /> Restore dinonaktifkan di mode cloud — gunakan
+            backup/PITR Supabase. Backup manual tetap bisa diunduh.
+          </p>
+        )}
+        <hr className={styles.dangerDivider} />
+        <Select
+          label="Pengingat backup"
+          value={frequency}
+          onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
+          options={[
+            { value: 'off', label: 'Nonaktif' },
+            { value: 'daily', label: 'Harian' },
+            { value: 'weekly', label: 'Mingguan' },
+            { value: 'monthly', label: 'Bulanan' },
+          ]}
+          hint={
+            lastBackupAt
+              ? `Backup terakhir: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
+              : 'Belum pernah backup di perangkat ini'
+          }
+        />
+      </CardBody>
+
+      <ConfirmDialog
+        open={pendingText !== null}
+        title="Pulihkan dari Backup?"
+        message="SEMUA data saat ini akan DIGANTI dengan isi file backup. Tindakan ini tidak dapat dibatalkan. Disarankan backup data saat ini lebih dulu."
+        confirmLabel={restoring ? 'Memulihkan\u2026' : 'Ya, Ganti & Pulihkan'}
+        danger
+        onConfirm={handleRestore}
+        onCancel={() => setPendingText(null)}
+      />
+    </Card>
+  );
+}
+
 function SystemTab({
-  plan,
   onReset,
   isOwner,
 }: {
-  plan: keyof typeof PLANS;
   onReset: () => void;
   isOwner: boolean;
 }) {
-  const planDef = PLANS[plan];
   const cloud = isSupabaseConfigured;
   const signOut = useAuthStore((s) => s.signOut);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1386,21 +1513,7 @@ function SystemTab({
 
   return (
     <div className={styles.systemGrid}>
-      <Card glass>
-        <CardHeader icon={<Icon name="crown" aria-hidden />} title="Paket Langganan" />
-        <CardBody>
-          <div className={styles.planRow}>
-            <div>
-              <strong className={styles.planName}>{planDef.name}</strong>
-              <p className={styles.planPrice}>{planDef.priceLabel}</p>
-            </div>
-            <Badge tone="brand">{planDef.features.length} fitur</Badge>
-          </div>
-          <p className={styles.planNote}>
-            <Icon name="info-circle" aria-hidden /> Upgrade paket via WhatsApp admin (integrasi billing menyusul).
-          </p>
-        </CardBody>
-      </Card>
+      {isOwner && <BackupCard />}
 
       {isOwner && <ExportDataCard />}
 

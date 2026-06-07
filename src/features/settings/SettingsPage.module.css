@@ -684,6 +684,12 @@
 }
 
 /* ---------- Export data ---------- */
+.backupRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
 .exportGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
