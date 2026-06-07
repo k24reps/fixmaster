@@ -19,6 +19,7 @@ export function PrivacyPage() {
   return (
     <LegalLayout
       title="Kebijakan Privasi"
+      docId="PRIVASI-001"
       intro="Bagaimana FixMaster mengumpulkan, menggunakan, dan melindungi data Anda serta data pelanggan usaha reparasi Anda."
       updated="2026-06-07"
     >

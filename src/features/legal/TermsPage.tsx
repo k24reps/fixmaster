@@ -18,6 +18,7 @@ export function TermsPage() {
   return (
     <LegalLayout
       title="Syarat & Ketentuan"
+      docId="SK-001"
       intro="Ketentuan penggunaan layanan FixMaster, termasuk langganan, pembayaran, dan tanggung jawab masing-masing pihak."
       updated="2026-06-07"
     >

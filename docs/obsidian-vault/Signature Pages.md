@@ -16,17 +16,29 @@ Sembilan halaman utama + halaman detail, masing-masing dengan metafora "alat" ta
 
 ---
 
-## Landing — Front Door Jualan (publik)
+## Landing — Instrument Bench (publik)
 
-Pintu depan saat **cloud signed-out**: sebelumnya langsung layar login, kini [`LandingPage`](src/features/landing/LandingPage.tsx) tampil dulu untuk **menjual** sebelum auth. Bahasa visual bench: hero dengan wash gradient brand + **blueprint grid**, badge LED berdenyut, judul dengan kata aksen ber-gradient. Lalu grid **12 modul** (framing benefit, bukan label nav), **pricing** Solo/Bisnis (ambil dari `config/plans.ts` agar tak pernah basi, Bisnis ber-badge "PALING LENGKAP"), CTA band, dan footer dengan tautan legal. CTA memanggil `onStart` → `AuthGate` membuka `AuthPage` (state lokal `showAuth`). `AuthPage` kini menerima `onBack` untuk balik ke landing.
+Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". [`LandingPage`](src/features/landing/LandingPage.tsx):
+- **Hero faceplate**: pelat bersekrup 4 sudut, `unitTag` LED hijau, judul ber-engrave gradient, plus **panel readout hidup** (MODUL 12/12, QRIS, SYNC, DATA + **uptime tick** per detik via `setInterval`).
+- **Module rack**: 12 modul jadi rack-unit ber-**slot vertikal** (`M01`…`M12`), border-kiri menyala saat hover, stamp `OK` ber-LED. Bukan kartu.
+- **Spec plates** (pricing): label alat bersekrup, harga mono besar, paket Bisnis ber-`specRating` "UNIT REKOMENDASI". Sumber `config/plans.ts` agar tak basi.
+- **Serial/compliance plate** (footer): pelat regulasi (SN, ©) yang otentik menampung tautan legal.
+- CTA → `onStart` → `AuthGate` buka `AuthPage` (state `showAuth`); `AuthPage` punya `onBack`.
 
 ![[landing-dark.png]]
 
-## Legal — Privasi & S&K (publik, wajib UU PDP)
+## Legal — Dokumen Teknis Terkontrol (publik, wajib UU PDP)
 
-Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa ditaut dari consent signup, gateway pembayaran, dan app store. Shell bersama [`LegalLayout`](src/features/legal/LegalLayout.tsx): topbar glass + brand, prose bergaya (h2 dengan **spine** brand, callout disclaimer amber), cross-link, footer. Konten [`PrivacyPage`](src/features/legal/PrivacyPage.tsx) disusun mengacu **UU PDP No. 27/2022** (data dikumpulkan, dasar/tujuan, hak subjek data, retensi, kontak); [`TermsPage`](src/features/legal/TermsPage.tsx) mencakup langganan/trial, pembayaran, larangan, batasan tanggung jawab, penghentian. Keduanya **template itikad baik** — perlu review hukum sebelum launch (ada callout). Signup `AuthPage` kini menampilkan baris consent bertaut ke kedua halaman.
+Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa ditaut dari consent signup, gateway pembayaran, app store. Di-redesign dari prosa biasa jadi **dokumen teknis terkontrol**. Shell [`LegalLayout`](src/features/legal/LegalLayout.tsx) kini menerima prop `docId`:
+- **Doc plate masthead** bersekrup: kode `DOK. PRIVASI-001` / `SK-001`, `REV 2026.06.07`, spec rows (STATUS ber-LED, DASAR UU PDP, BAHASA).
+- **Section bernomor manual**: `h2` di-prefix counter `decimal-leading-zero` (01, 02…) lewat CSS counter + badge brand mono.
+- Cross-link bergaya kode dokumen. Konten [`PrivacyPage`](src/features/legal/PrivacyPage.tsx) mengacu **UU PDP No. 27/2022**; [`TermsPage`](src/features/legal/TermsPage.tsx) mencakup langganan/trial, pembayaran, larangan, batasan tanggung jawab, penghentian. Keduanya **template itikad baik** — perlu review hukum sebelum launch (ada callout). Signup `AuthPage` menampilkan baris consent bertaut ke kedua halaman.
 
 ![[privacy-dark.png]]
+
+## Fallback Error — Fault Panel
+
+`ErrorBoundary` (root + route) juga di-redesign dari icon-card generik jadi **panel diagnostik fault** sefamili bench: pelat bersekrup, header **`FAULT` stamp** ber-LED danger berdenyut + **kode fault** (`FX-SYS-500` root / `FX-MOD-500` route), aksi pulih (Coba Lagi / Muat Ulang). Lihat [[Decisions & Bug Fixes]].
 
 ---
 

@@ -58,9 +58,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (!error) return this.props.children;
 
     const { root } = this.props;
+    const faultCode = root ? 'FX-SYS-500' : 'FX-MOD-500';
     return (
       <div className={[styles.wrap, root ? styles.rootWrap : ''].join(' ')} role="alert">
-        <div className={styles.card}>
+        <div className={styles.panel}>
+          <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
+          <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
+          <span className={[styles.screw, styles.screwBL].join(' ')} aria-hidden />
+          <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
+
+          <div className={styles.faultHead}>
+            <span className={styles.faultStamp}>
+              <span className={styles.led} /> FAULT
+            </span>
+            <span className={styles.faultCode}>{faultCode}</span>
+          </div>
+
           <span className={styles.icon}>
             <Icon name="triangle-exclamation" aria-hidden />
           </span>
