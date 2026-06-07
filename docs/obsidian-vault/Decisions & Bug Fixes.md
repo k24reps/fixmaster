@@ -91,7 +91,11 @@ Setelah Mayar ditinggalkan (KYC produksi berat + sandbox `api.mayar.club` down, 
 
 **Env (secrets):** `FERSAKU_API_KEY` (`sk_test_*`/`sk_live_*`), `FERSAKU_WEBHOOK_SECRET` (`whsec_*`), opsional `FERSAKU_API_BASE` (default `https://fersaku.com/api/v1`).
 
-**Sisa (giliran user):** set 2 secrets, deploy 2 fungsi, daftar URL webhook sandbox di dashboard Fersaku → `https://fpwwswngqpftaixdlozo.supabase.co/functions/v1/fersaku-webhook`, lalu uji via `POST /sandbox/simulate action=pay`.
+**Status: TERBUKTI JALAN (2026-06-07).** Uji sandbox end-to-end sukses — log `fersaku-webhook` di Supabase menampilkan `payment applied { invoiceId: ..., mode: "sandbox" }` (artinya: webhook sampai → signature SHA-256 cocok → korelasi `provider_ref` → `apply_payment`). Alur: Pilih Paket → checkout Fersaku terbuka → `POST /sandbox/simulate action=pay` → webhook → masa aktif bertambah otomatis. Catatan: dashboard Fersaku (sisi mereka) kadang tak menampilkan log sandbox; **sumber kebenaran = log Edge Function Supabase**. App **tidak** memproses query `?status=paid` dari redirect `finish_url` (diverifikasi), jadi perpanjangan murni dari webhook.
+
+**Integritas tombol "Saya sudah bayar"**: tombol konfirmasi manual memanggil `apply_payment` langsung dari browser — aman untuk mock, tapi di produksi = manager bisa perpanjang tanpa bayar. Fix: tombol kini **hanya muncul untuk invoice `provider === 'mock'`**. Invoice provider asli (Fersaku) cuma menampilkan link checkout + catatan "diperpanjang otomatis"; pelunasan **wajib** via webhook ber-signature.
+
+**Sisa (giliran user, saat promote ke produksi):** ganti secret ke key `sk_live_*` + webhook secret produksi, daftar URL webhook di dashboard Fersaku mode live.
 
 ---
 

@@ -841,28 +841,38 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
               Invoice {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan} ·{' '}
               {fmtRp(pendingInvoice.amount)}
             </p>
-            {pendingInvoice.qrisUrl ? (
-              <a
-                className={styles.payLink}
-                href={pendingInvoice.qrisUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran QRIS
-              </a>
+            {pendingInvoice.provider === 'mock' ? (
+              <>
+                <p className={styles.hint}>
+                  Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur
+                  perpanjangan langganan.
+                </p>
+                <Button
+                  onClick={() => void confirmPay(pendingInvoice.id)}
+                  loading={busy}
+                  iconLeft={<Icon name="check" aria-hidden />}
+                >
+                  Saya sudah bayar
+                </Button>
+              </>
             ) : (
-              <p className={styles.hint}>
-                Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur
-                perpanjangan langganan.
-              </p>
+              <>
+                {pendingInvoice.qrisUrl && (
+                  <a
+                    className={styles.payLink}
+                    href={pendingInvoice.qrisUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran QRIS
+                  </a>
+                )}
+                <p className={styles.hint}>
+                  Langganan diperpanjang otomatis setelah pembayaran diterima. Halaman ini akan
+                  diperbarui sendiri — tidak perlu konfirmasi manual.
+                </p>
+              </>
             )}
-            <Button
-              onClick={() => void confirmPay(pendingInvoice.id)}
-              loading={busy}
-              iconLeft={<Icon name="check" aria-hidden />}
-            >
-              Saya sudah bayar
-            </Button>
           </CardBody>
         </Card>
       )}
