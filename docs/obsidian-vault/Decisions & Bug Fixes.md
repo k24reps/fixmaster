@@ -133,9 +133,15 @@ Uji transaksi QRIS **asli (mode live)** di `getfixmaster.vercel.app` sukses end-
 
 **2. Webhook tangani expired/failed.** `fersaku-webhook` kini bertindak pada 4 event (sebelumnya hanya `payment.paid`): `payment.paid`→`apply_payment`; `payment.expired`→invoice `expired`; `payment.failed`/`payment.cancelled`→`canceled`. Transisi negatif **hanya** dari `pending` (`.eq('status','pending')` → race-safe, tak menimpa paid), via service role. Signature SHA-256 tetap gerbang untuk SEMUA aksi. Deployed staging + produksi.
 
-**3. Realtime auto-refresh UI.** Migration **`0012_realtime_billing.sql`**: tambah `invoices` + `organizations` ke publication `supabase_realtime` (DO block guarded via `pg_publication_tables`). Helper `subscribeOrgBilling(orgId, onChange)` di `supabase-client.ts` → channel `postgres_changes` pada `invoices` (filter `org_id`) + `organizations` (filter `id`), return unsubscribe (no-op bila unconfigured). RLS tetap berlaku di stream realtime → klien hanya terima baris org-nya. `BillingTab` (SettingsPage) subscribe saat mount; tiap event → reload invoice + refresh org di session store → UI berubah **tanpa reload manual** saat webhook menandai paid/expired. Verifikasi `0012`: `select * from pg_publication_tables where pubname='supabase_realtime'` (bukan hanya tracker).
+**3. Realtime auto-refresh UI.** Migration **`0012_realtime_billing.sql`** (**applied staging + produksi 2026-06-07**): tambah `invoices` + `organizations` ke publication `supabase_realtime` (DO block guarded via `pg_publication_tables`). Helper `subscribeOrgBilling(orgId, onChange)` di `supabase-client.ts` → channel `postgres_changes` pada `invoices` (filter `org_id`) + `organizations` (filter `id`), return unsubscribe (no-op bila unconfigured). RLS tetap berlaku di stream realtime → klien hanya terima baris org-nya. `BillingTab` (SettingsPage) subscribe saat mount; tiap event → reload invoice + refresh org di session store → UI berubah **tanpa reload manual** saat webhook menandai paid/expired. Verifikasi `0012`: `select * from pg_publication_tables where pubname='supabase_realtime'` (bukan hanya tracker).
 
 Total migration kini **0001–0012**. Verifikasi: build (entry 115 KB) + 202 test + lint hijau.
+
+> [!NOTE]
+> **`0012` SUDAH di-apply (2026-06-07)** ke staging **dan** produksi (user konfirmasi). Realtime auto-refresh kini **AKTIF** di kedua environment — `invoices` + `organizations` terdaftar di publication `supabase_realtime`. UI billing berubah tanpa reload manual saat webhook menandai paid/expired.
+
+### Auth: email confirmation DIMATIKAN (produksi, 2026-06-07)
+Supabase Auth produksi disetel **tanpa email confirmation** — akun baru langsung aktif setelah sign up, tak perlu klik link verifikasi email. Alasan: SMTP default Supabase punya rate-limit ketat & UX daftar jadi terhambat. Konsekuensi: tak ada verifikasi kepemilikan email (akun bisa daftar dgn email apa pun). Bila nanti butuh verifikasi (mis. reset password andal / anti-spam), aktifkan kembali + set SMTP kustom. Setelan ini di **dashboard Auth**, bukan di kode/migration.
 
 ---
 
