@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Signature Pages.md",
+                "file": "Sidebar - Live Diagnostic Rail.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Signature Pages"
+              "title": "Sidebar - Live Diagnostic Rail"
             }
           }
         ]
@@ -185,19 +185,20 @@
   },
   "active": "47f3c0cb44b8f54d",
   "lastOpenFiles": [
+    "attachments/bulk-task-dark.png",
+    "Decisions & Bug Fixes.md",
+    "Data Layer.md",
+    "Conventions.md",
+    "00 - FixMaster MOC.md",
+    "Signature Pages.md",
     "attachments/auth-dark.png",
     "attachments/billing-dark.png",
-    "00 - FixMaster MOC.md",
-    "Conventions.md",
     "daily/2026-06-04.md",
     "Tech Stack.md",
-    "Decisions & Bug Fixes.md",
     "Design System.md",
     "Domain & Scope.md",
     "Iconography.md",
     "Sidebar - Live Diagnostic Rail.md",
-    "Signature Pages.md",
-    "Data Layer.md",
     "attachments/status-warranty-dark.png",
     "attachments/settings-sistem-scale-dark.png",
     "attachments/settings-operasional-dark.png",

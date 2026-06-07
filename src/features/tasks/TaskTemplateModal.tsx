@@ -74,8 +74,17 @@ export function TaskTemplateModal({
   const toggleWeekday = (d: number) =>
     setWeekdays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
 
+  // When creating new, the title field accepts one task per line (bulk).
+  // When editing, exactly one template is updated, so only the first line is used.
+  const parsedTitles = editing
+    ? [title.trim()].filter(Boolean)
+    : title
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
   const save = async () => {
-    if (!title.trim()) return setError('Judul tugas wajib diisi');
+    if (parsedTitles.length === 0) return setError('Judul tugas wajib diisi');
     if (recurrence === 'weekly' && weekdays.length === 0)
       return setError('Pilih minimal satu hari');
 
@@ -88,11 +97,13 @@ export function TaskTemplateModal({
 
     setBusy(true);
     const now = new Date().toISOString();
-    const record: TaskTemplate = {
+    // One template per title; all bulk titles share the same recurrence +
+    // assignee settings. Editing keeps the original id/createdAt/active.
+    const records: TaskTemplate[] = parsedTitles.map((taskTitle) => ({
       id: editing?.id ?? newId(),
       orgId,
       outletId: null,
-      title: title.trim(),
+      title: taskTitle,
       description: description.trim(),
       recurrence,
       weekdays: recurrence === 'weekly' ? weekdays : [],
@@ -108,10 +119,16 @@ export function TaskTemplateModal({
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
-    };
+    }));
     try {
-      await repository.put('taskTemplates', record);
-      toast.success(editing ? 'Template tugas diperbarui' : 'Template tugas dibuat');
+      await repository.putMany('taskTemplates', records);
+      toast.success(
+        editing
+          ? 'Template tugas diperbarui'
+          : records.length > 1
+            ? `${records.length} template tugas dibuat`
+            : 'Template tugas dibuat',
+      );
       onClose();
     } catch {
       toast.error('Gagal menyimpan template');
@@ -139,7 +156,32 @@ export function TaskTemplateModal({
     >
       <div className={styles.body}>
         {error && <p className={styles.error}>{error}</p>}
-        <Input label="Judul Tugas" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Bersih-bersih area kerja" autoFocus />
+        {editing ? (
+          <Input label="Judul Tugas" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Bersih-bersih area kerja" autoFocus />
+        ) : (
+          <div className={styles.titlesField}>
+            <label className={styles.label} htmlFor="task-titles">
+              Judul Tugas
+            </label>
+            <textarea
+              id="task-titles"
+              className={styles.titlesArea}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={'Satu tugas per baris, contoh:\nBersih-bersih area kerja\nCek stok sparepart\nBackup data kasir'}
+              rows={4}
+              autoFocus
+            />
+            <div className={styles.titlesFoot}>
+              <span className={styles.hint}>
+                Satu judul per baris — semua dibuat dengan setelan pengulangan &amp; penerima yang sama.
+              </span>
+              {parsedTitles.length > 1 && (
+                <span className={styles.bulkCount}>{parsedTitles.length} tugas akan dibuat</span>
+              )}
+            </div>
+          </div>
+        )}
         <Input label="Deskripsi (opsional)" value={description} onChange={(e) => setDescription(e.target.value)} />
 
         <Select
