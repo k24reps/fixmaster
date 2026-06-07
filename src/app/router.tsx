@@ -1,32 +1,77 @@
+/* eslint-disable react-refresh/only-export-components -- router config module: lazy() route components live here by design, not a fast-refreshed component file. */
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthGate } from './AuthGate';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { ServicesPage } from '@/features/services/ServicesPage';
-import { ServiceDetailPage } from '@/features/services/ServiceDetailPage';
-import { CustomersPage } from '@/features/customers/CustomersPage';
-import { InventoryPage } from '@/features/inventory/InventoryPage';
-import { PosPage } from '@/features/pos/PosPage';
-import { FinancePage } from '@/features/finance/FinancePage';
-import { TasksPage } from '@/features/tasks/TasksPage';
-import { AttendancePage } from '@/features/attendance/AttendancePage';
-import { ReportsPage } from '@/features/reports/ReportsPage';
-import { TrackingPage } from '@/features/tracking/TrackingPage';
-import { SuppliersPage } from '@/features/suppliers/SuppliersPage';
-import { SettingsPage } from '@/features/settings/SettingsPage';
 import { NotFoundPage } from '@/components/NotFoundPage';
-import { RepairTicketPrototype } from '@/features/prototype/RepairTicketPrototype';
+
+// Route pages are code-split: each becomes its own chunk loaded on demand,
+// keeping the initial bundle small. The shell (AppLayout/AuthGate) and the
+// tiny NotFoundPage stay eager. A <Suspense> boundary in AppLayout renders a
+// fallback while a page chunk loads. Named exports are mapped to `default`.
+const DashboardPage = lazy(() =>
+  import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const ServicesPage = lazy(() =>
+  import('@/features/services/ServicesPage').then((m) => ({ default: m.ServicesPage })),
+);
+const ServiceDetailPage = lazy(() =>
+  import('@/features/services/ServiceDetailPage').then((m) => ({ default: m.ServiceDetailPage })),
+);
+const CustomersPage = lazy(() =>
+  import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
+);
+const InventoryPage = lazy(() =>
+  import('@/features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })),
+);
+const PosPage = lazy(() =>
+  import('@/features/pos/PosPage').then((m) => ({ default: m.PosPage })),
+);
+const FinancePage = lazy(() =>
+  import('@/features/finance/FinancePage').then((m) => ({ default: m.FinancePage })),
+);
+const TasksPage = lazy(() =>
+  import('@/features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
+);
+const AttendancePage = lazy(() =>
+  import('@/features/attendance/AttendancePage').then((m) => ({ default: m.AttendancePage })),
+);
+const ReportsPage = lazy(() =>
+  import('@/features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+const TrackingPage = lazy(() =>
+  import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
+);
+const SuppliersPage = lazy(() =>
+  import('@/features/suppliers/SuppliersPage').then((m) => ({ default: m.SuppliersPage })),
+);
+const SettingsPage = lazy(() =>
+  import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+const RepairTicketPrototype = lazy(() =>
+  import('@/features/prototype/RepairTicketPrototype').then((m) => ({
+    default: m.RepairTicketPrototype,
+  })),
+);
 
 export const router = createBrowserRouter([
   {
     // Public design prototype (no auth) — for visual evaluation only.
     path: '/prototype/ticket',
-    element: <RepairTicketPrototype />,
+    element: (
+      <Suspense fallback={null}>
+        <RepairTicketPrototype />
+      </Suspense>
+    ),
   },
   {
     // Public, no-login service tracking.
     path: '/track',
-    element: <TrackingPage />,
+    element: (
+      <Suspense fallback={null}>
+        <TrackingPage />
+      </Suspense>
+    ),
   },
   {
     path: '/',

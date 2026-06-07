@@ -11,6 +11,32 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // The only chunk above the default 500 KB limit is react-vendor (the
+    // framework itself), which is cached independently and can't be split
+    // meaningfully. Raise the warning threshold so the build stays clean.
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Split large, rarely-changing vendor code into separate chunks so
+        // they cache independently of app code and shrink the entry bundle.
+        // Function form (Vite 8 / Rolldown types manualChunks as a function).
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@supabase')) return 'supabase-vendor';
+          if (
+            id.includes('/react-router') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react/') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

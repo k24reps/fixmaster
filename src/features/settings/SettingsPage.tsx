@@ -42,6 +42,7 @@ import {
   applyPayment,
   cancelInvoice,
   listInvoices,
+  subscribeOrgBilling,
   createPaymentInvoice,
   type PendingInvite,
   type Invoice,
@@ -738,6 +739,26 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     return () => {
       cancelled = true;
     };
+  }, [orgId]);
+
+  // Auto-refresh: when the webhook (or another device) changes an invoice or
+  // the org's plan, Supabase Realtime notifies us — re-fetch invoices and
+  // refresh the org in session so the UI updates without a manual reload.
+  useEffect(() => {
+    if (!orgId) return;
+    const unsubscribe = subscribeOrgBilling(orgId, () => {
+      void (async () => {
+        try {
+          setInvoices(await listInvoices(orgId));
+          const fresh = await repository.getSingleton('organization');
+          if (fresh) useSessionStore.getState().setOrg(fresh);
+        } catch {
+          // Transient realtime refresh failure is non-fatal; next event or a
+          // manual action will reconcile.
+        }
+      })();
+    });
+    return unsubscribe;
   }, [orgId]);
 
   const reload = async () => {

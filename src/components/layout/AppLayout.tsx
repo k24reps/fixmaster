@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -48,7 +48,15 @@ export function AppLayout() {
           onToggleMobile={() => setMobileOpen((o) => !o)}
         />
         <main className={styles.content}>
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className={styles.routeFallback} aria-label="Memuat halaman" role="status">
+                <span className={styles.routeSpinner} />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

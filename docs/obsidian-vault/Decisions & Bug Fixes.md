@@ -127,6 +127,16 @@ Total migration kini **0001–0011**. Verifikasi: build + 202 test + lint hijau.
 ### Promote SELESAI — terbukti LIVE (2026-06-07)
 Uji transaksi QRIS **asli (mode live)** di `getfixmaster.vercel.app` sukses end-to-end: log `fersaku-webhook` produksi menampilkan `payment applied { mode: "live" }`, masa aktif bertambah otomatis. `cancel_invoice` terverifikasi ada di produksi (via `pg_proc`). Branch `feat/cloud-auth` ter-merge ke `main` (`73f9986`). **Gateway Fersaku resmi live di produksi.** Live-mode Fersaku tak butuh KYC; sandbox punya `simulate`, live hanya bisa diuji dgn bayar QRIS asli.
 
+### Tiga peningkatan post-promote (2026-06-07)
+
+**1. Code-splitting (Vite).** `src/app/router.tsx` dulu meng-import semua halaman eager → satu entry chunk 972 KB. Sekarang tiap halaman `React.lazy(() => import(...).then(m => ({ default: m.NamedExport })))` (named export di-map ke default). `<Suspense>` boundary di `AppLayout` (fallback `.routeSpinner`) + boundary terpisah untuk 2 route publik (`/track`, `/prototype/ticket`) yang di luar AppLayout. `vite.config.ts`: `manualChunks` **bentuk fungsi** (Vite 8/Rolldown menolak bentuk objek — `ManualChunksFunction`) memisah `react-vendor` + `supabase-vendor`; `chunkSizeWarningLimit: 600` (react-vendor ~504 KB irreducible). Hasil: entry **972 KB → 115 KB** (gzip 265→36). router.tsx perlu `/* eslint-disable react-refresh/only-export-components */` (file config, bukan komponen).
+
+**2. Webhook tangani expired/failed.** `fersaku-webhook` kini bertindak pada 4 event (sebelumnya hanya `payment.paid`): `payment.paid`→`apply_payment`; `payment.expired`→invoice `expired`; `payment.failed`/`payment.cancelled`→`canceled`. Transisi negatif **hanya** dari `pending` (`.eq('status','pending')` → race-safe, tak menimpa paid), via service role. Signature SHA-256 tetap gerbang untuk SEMUA aksi. Deployed staging + produksi.
+
+**3. Realtime auto-refresh UI.** Migration **`0012_realtime_billing.sql`**: tambah `invoices` + `organizations` ke publication `supabase_realtime` (DO block guarded via `pg_publication_tables`). Helper `subscribeOrgBilling(orgId, onChange)` di `supabase-client.ts` → channel `postgres_changes` pada `invoices` (filter `org_id`) + `organizations` (filter `id`), return unsubscribe (no-op bila unconfigured). RLS tetap berlaku di stream realtime → klien hanya terima baris org-nya. `BillingTab` (SettingsPage) subscribe saat mount; tiap event → reload invoice + refresh org di session store → UI berubah **tanpa reload manual** saat webhook menandai paid/expired. Verifikasi `0012`: `select * from pg_publication_tables where pubname='supabase_realtime'` (bukan hanya tracker).
+
+Total migration kini **0001–0012**. Verifikasi: build (entry 115 KB) + 202 test + lint hijau.
+
 ---
 
 ### [HISTORIS] Integrasi Mayar — ditinggalkan

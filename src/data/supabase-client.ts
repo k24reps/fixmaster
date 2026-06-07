@@ -324,3 +324,32 @@ export async function createPaymentInvoice(
   if (!data?.link) throw new Error(data?.error ?? 'Gagal membuat invoice pembayaran');
   return { invoiceId: data.invoiceId as string, link: data.link as string };
 }
+
+/**
+ * Subscribe to realtime billing changes for one org. Fires `onChange` whenever
+ * an `invoices` row for this org or the `organizations` row itself changes
+ * (e.g. the webhook marks an invoice paid/expired and extends the plan). RLS
+ * still applies on the realtime stream, so only rows the user may read are
+ * delivered. Requires tables to be in the `supabase_realtime` publication
+ * (migration 0012). Returns an unsubscribe function (no-op when unconfigured).
+ */
+export function subscribeOrgBilling(orgId: string, onChange: () => void): () => void {
+  const c = getSupabase();
+  if (!c || !orgId) return () => {};
+  const channel = c
+    .channel(`billing:${orgId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'invoices', filter: `org_id=eq.${orgId}` },
+      () => onChange(),
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'organizations', filter: `id=eq.${orgId}` },
+      () => onChange(),
+    )
+    .subscribe();
+  return () => {
+    void c.removeChannel(channel);
+  };
+}

@@ -76,15 +76,23 @@ Deno.serve(async (req) => {
   }
 
   // Acknowledge everything with 200 (keeps Fersaku's test ping + retries
-  // happy), but only a VERIFIED, paid event triggers the plan extension.
-  if (!signatureOk || body.event !== 'payment.paid') {
-    if (secret && !signatureOk) {
+  // happy). Only a VERIFIED signature unlocks any state change.
+  if (!signatureOk) {
+    if (secret) {
       console.warn('fersaku-webhook: signature mismatch', {
         event: body.event,
         mode: body.mode,
         hasSig: !!signature,
       });
     }
+    return new Response('ok', { status: 200 });
+  }
+
+  // We only act on a known set of payment events. Anything else (e.g.
+  // payment.created/pending) is acknowledged and ignored.
+  const event = body.event ?? '';
+  const ACTED = ['payment.paid', 'payment.expired', 'payment.failed', 'payment.cancelled'];
+  if (!ACTED.includes(event)) {
     return new Response('ok', { status: 200 });
   }
 
@@ -97,7 +105,7 @@ Deno.serve(async (req) => {
   // at creation time). Fersaku webhooks do not echo external_id.
   const { data: invoice } = await admin
     .from('invoices')
-    .select('id')
+    .select('id, status')
     .eq('provider_ref', body.payment_id)
     .maybeSingle();
 
@@ -106,13 +114,31 @@ Deno.serve(async (req) => {
     return new Response('no matching invoice', { status: 200 });
   }
 
-  // Idempotent: a second notification for an already-paid invoice is a no-op.
-  const { error } = await admin.rpc('apply_payment', { p_invoice_id: invoice.id });
-  if (error) {
-    console.error('fersaku-webhook: apply_payment failed', error.message);
-    return new Response('apply_payment failed', { status: 500 });
+  if (event === 'payment.paid') {
+    // Idempotent: a second notification for an already-paid invoice is a no-op.
+    const { error } = await admin.rpc('apply_payment', { p_invoice_id: invoice.id });
+    if (error) {
+      console.error('fersaku-webhook: apply_payment failed', error.message);
+      return new Response('apply_payment failed', { status: 500 });
+    }
+    console.log('fersaku-webhook: payment applied', { invoiceId: invoice.id, mode: body.mode });
+    return new Response('ok', { status: 200 });
   }
 
-  console.log('fersaku-webhook: payment applied', { invoiceId: invoice.id, mode: body.mode });
+  // Negative outcomes: mark the invoice's terminal state, but ONLY if it is
+  // still pending — never override a paid invoice (race-safe + idempotent).
+  const newStatus = event === 'payment.expired' ? 'expired' : 'canceled';
+  if (invoice.status === 'pending') {
+    const { error } = await admin
+      .from('invoices')
+      .update({ status: newStatus })
+      .eq('id', invoice.id)
+      .eq('status', 'pending');
+    if (error) {
+      console.error('fersaku-webhook: status update failed', error.message);
+      return new Response('status update failed', { status: 500 });
+    }
+    console.log('fersaku-webhook: invoice', newStatus, { invoiceId: invoice.id, mode: body.mode });
+  }
   return new Response('ok', { status: 200 });
 });
