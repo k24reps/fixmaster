@@ -48,3 +48,37 @@ export function reportError(error: unknown, context?: ErrorContext): void {
     consoleReporter(err, context);
   }
 }
+
+/**
+ * Opt-in remote error tracking. Call once at startup.
+ *
+ * Cost-safe by design: when `VITE_SENTRY_DSN` is unset (local dev, or any
+ * deploy that doesn't want it) this is a complete no-op AND the Sentry SDK
+ * is never imported — the dynamic import keeps it out of the initial bundle,
+ * so users who don't configure it pay nothing in bytes or network.
+ *
+ * When a DSN is present, the SDK loads lazily and becomes the active reporter
+ * via `setErrorReporter`, so every `reportError(...)` (including the one in
+ * ErrorBoundary) is forwarded to Sentry with its context as `extra`.
+ */
+export function initErrorTracking(): void {
+  const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+  if (!dsn) return; // No DSN → stay console-only, never load the SDK.
+
+  void import('@sentry/react')
+    .then((Sentry) => {
+      Sentry.init({
+        dsn,
+        // Keep volume (and cost) low by default; opt into more via env later.
+        tracesSampleRate: 0,
+        environment: import.meta.env.MODE,
+      });
+      setErrorReporter((err, ctx) => {
+        Sentry.captureException(err, { extra: ctx as Record<string, unknown> });
+      });
+    })
+    .catch((e) => {
+      // Loading/initialising Sentry must never break the app.
+      console.error('[FixMaster] Failed to init error tracking:', e);
+    });
+}
