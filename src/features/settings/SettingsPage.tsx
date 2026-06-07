@@ -825,12 +825,29 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     }
   };
 
-  const phaseTone: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
-    active: 'success',
-    reminder: 'warning',
-    grace: 'warning',
-    expired: 'danger',
+  // LED color per subscription phase (bench status-light language).
+  const phaseLed: Record<string, string> = {
+    active: styles.ledOk,
+    reminder: styles.ledWarn,
+    grace: styles.ledWarn,
+    expired: styles.ledCrit,
   };
+  // Phase tint applied to the charge gauge container (drives tick color).
+  const phaseGauge: Record<string, string> = {
+    active: styles.gaugeOk,
+    reminder: styles.gaugeWarn,
+    grace: styles.gaugeWarn,
+    expired: styles.gaugeCrit,
+  };
+
+  // Charge gauge: remaining subscription "power" as % of a ~30-day period.
+  // No expiry (e.g. unlimited) reads as full charge.
+  const chargePct = expiry ? Math.max(0, Math.min(100, Math.round(((days ?? 0) / 30) * 100))) : 100;
+  const TICKS = 24;
+  const filledTicks = Math.round((chargePct / 100) * TICKS);
+
+  const invoiceTone = (status: string) =>
+    status === 'paid' ? styles.tonePaid : status === 'pending' ? styles.tonePending : styles.toneVoid;
 
   const pendingInvoice = invoices.find((i) => i.status === 'pending');
 
@@ -839,20 +856,53 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       <Card glass>
         <CardHeader icon={<Icon name="crown" aria-hidden />} title="Status Langganan" />
         <CardBody>
-          <div className={styles.planStatus}>
-            <div>
-              <span className={styles.planName}>{PLANS[plan].name}</span>
-              <Badge tone={phaseTone[phase]}>{phaseLabel(phase)}</Badge>
+          {/* License meter — subscription as bench operating "power". */}
+          <div className={styles.licenseMeter}>
+            <div className={styles.licenseTop}>
+              <span className={[styles.led, phaseLed[phase]].join(' ')} aria-hidden />
+              <div className={styles.licenseName}>
+                <span className={styles.planName}>{PLANS[plan].name}</span>
+                <span className={styles.licensePhase}>{phaseLabel(phase)}</span>
+              </div>
+              {expiry && phase !== 'expired' && days != null && (
+                <div className={styles.daysReadout}>
+                  <span className={styles.daysNum}>{Math.max(0, days)}</span>
+                  <span className={styles.daysUnit}>hari</span>
+                </div>
+              )}
             </div>
+
             {expiry && (
-              <small className={styles.hint}>
-                {phase === 'expired'
-                  ? `Kedaluwarsa ${new Date(expiry).toLocaleDateString('id-ID')}`
-                  : days != null && days >= 0
-                    ? `Berlaku ${days} hari lagi (s/d ${new Date(expiry).toLocaleDateString('id-ID')})`
-                    : `Masa tenggang hingga ${GRACE_DAYS} hari setelah ${new Date(expiry).toLocaleDateString('id-ID')}`}
-              </small>
+              <div
+                className={[styles.chargeGauge, phaseGauge[phase]].join(' ')}
+                role="meter"
+                aria-valuenow={chargePct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Sisa masa langganan ${chargePct}%`}
+              >
+                {Array.from({ length: TICKS }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={[styles.tick, i < filledTicks ? styles.tickOn : ''].join(' ')}
+                  />
+                ))}
+              </div>
             )}
+
+            <div className={styles.licenseMeta}>
+              {expiry ? (
+                phase === 'expired' ? (
+                  <>Kedaluwarsa {new Date(expiry).toLocaleDateString('id-ID')}</>
+                ) : days != null && days >= 0 ? (
+                  <>Berlaku s/d {new Date(expiry).toLocaleDateString('id-ID')}</>
+                ) : (
+                  <>Masa tenggang hingga {GRACE_DAYS} hari setelah {new Date(expiry).toLocaleDateString('id-ID')}</>
+                )
+              ) : (
+                <>Tanpa batas masa aktif</>
+              )}
+            </div>
           </div>
 
           {(phase === 'reminder' || phase === 'grace' || phase === 'expired') && (
@@ -872,10 +922,13 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         <Card glass>
           <CardHeader icon={<Icon name="qr-code" aria-hidden />} title="Selesaikan Pembayaran" />
           <CardBody>
-            <p className={styles.hint}>
-              Invoice {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan} ·{' '}
-              {fmtRp(pendingInvoice.amount)}
-            </p>
+            <div className={styles.payDock}>
+              <span className={styles.payDockLabel}>Menunggu pembayaran</span>
+              <span className={styles.payDockAmount}>{fmtRp(pendingInvoice.amount)}</span>
+              <span className={styles.payDockPlan}>
+                {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan}
+              </span>
+            </div>
             {pendingInvoice.provider === 'mock' ? (
               <>
                 <p className={styles.hint}>
@@ -923,16 +976,21 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
             {PAID_TIERS.map((tier) => {
               const def = PLANS[tier];
               const fits = withinOutletQuota(tier, outletCount);
+              const isRec = suggested === tier;
               return (
                 <div
                   key={tier}
-                  className={[styles.planCard, suggested === tier ? styles.planCardRec : ''].join(' ')}
+                  className={[styles.planCard, isRec ? styles.planCardRec : ''].join(' ')}
                 >
-                  <strong>{def.name}</strong>
+                  <span className={styles.planSpine} aria-hidden />
+                  {isRec && <span className={styles.planRecTag}>Disarankan</span>}
+                  <strong className={styles.planCardName}>{def.name}</strong>
                   <span className={styles.planPrice}>{def.priceLabel}</span>
-                  <small className={styles.hint}>s/d {def.maxOutlets} outlet · user unlimited</small>
+                  <small className={styles.planQuota}>
+                    s/d {def.maxOutlets} outlet · user unlimited
+                  </small>
                   <Button
-                    variant={suggested === tier ? 'primary' : 'secondary'}
+                    variant={isRec ? 'primary' : 'secondary'}
                     size="sm"
                     disabled={!fits || busy}
                     onClick={() => void subscribe(tier)}
@@ -950,27 +1008,23 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         <Card glass>
           <CardHeader icon={<Icon name="receipt" aria-hidden />} title="Riwayat Invoice" />
           <CardBody className={styles.noPad}>
-            <ul className={styles.list}>
+            {/* Receipt tape — thermal-print language, shared with POS/Keuangan. */}
+            <div className={styles.tape}>
               {invoices.map((inv) => (
-                <li key={inv.id} className={styles.listItem}>
-                  <div className={styles.itemInfo}>
-                    <strong>{PLANS[inv.plan as PlanType]?.name ?? inv.plan}</strong>
-                    <small>
-                      {new Date(inv.createdAt).toLocaleDateString('id-ID')} · {fmtRp(inv.amount)}
-                    </small>
+                <div key={inv.id} className={[styles.tapeRow, invoiceTone(inv.status)].join(' ')}>
+                  <div className={styles.tapeInfo}>
+                    <strong className={styles.tapePlan}>
+                      {PLANS[inv.plan as PlanType]?.name ?? inv.plan}
+                    </strong>
+                    <span className={styles.tapeDate}>
+                      {new Date(inv.createdAt).toLocaleDateString('id-ID')}
+                    </span>
                   </div>
-                  <div className={styles.itemActions}>
-                    <Badge
-                      tone={
-                        inv.status === 'paid'
-                          ? 'success'
-                          : inv.status === 'pending'
-                            ? 'warning'
-                            : 'neutral'
-                      }
-                    >
+                  <div className={styles.tapeRight}>
+                    <span className={styles.tapeAmount}>{fmtRp(inv.amount)}</span>
+                    <span className={[styles.tapeStatus, invoiceTone(inv.status)].join(' ')}>
                       {inv.status}
-                    </Badge>
+                    </span>
                     {inv.status === 'pending' && (
                       <Button
                         variant="ghost"
@@ -983,9 +1037,9 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                       </Button>
                     )}
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </CardBody>
         </Card>
       )}

@@ -92,17 +92,18 @@ export function TasksPage() {
     });
   };
 
-  // Ad-hoc "quick task" for today: a TaskInstance with no template
-  // (templateId ''), so it never collides with template generation.
   const addQuickTask = async () => {
     const title = quickTitle.trim();
     if (!title) return;
     const now = new Date().toISOString();
+    // Ad-hoc "quick task" for today: a TaskInstance with no template
+    // (templateId null), so it never collides with template generation and
+    // is a valid NULL UUID in cloud Postgres (empty string '' would throw).
     await repository.put('taskInstances', {
       id: newId(),
       orgId,
       outletId: null,
-      templateId: '',
+      templateId: null,
       title,
       description: '',
       dueDate: today,

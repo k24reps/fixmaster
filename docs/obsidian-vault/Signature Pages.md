@@ -106,6 +106,21 @@ Halaman `/settings` punya enam tab. Tab **Operasional** (revisi lanjutan) mengel
 
 ---
 
+## Pengaturan — Langganan (Billing License Meter)
+
+Tab **Langganan** (`/settings`, owner + cloud-only) memakai metafora **"daya/lisensi bench"** — langganan = daya untuk mengoperasikan workshop. Senada bahasa visual Signature Pages lain (POS Register Readout, Cashbook Tape):
+
+- **License Meter** — kartu status: **LED** fase (ok hijau / warn amber / **crit merah berkedip** `fm-pulse`), nama plan font display, readout sisa hari mono besar, dan **charge-gauge** 24-tick (fill = sisa hari / ~30 hari, warna ikut fase) di atas wash grid blueprint.
+- **Pay dock** — invoice pending jadi panel readout (label mono, nominal besar, nama plan) + tombol/link QRIS.
+- **Tier modules** — kartu paket ber-**spine** kiri; kartu rekomendasi diberi spine gradient brand + tag mono "DISARANKAN"; harga **mono** tebal.
+- **Receipt tape** — riwayat invoice jadi **pita thermal mono** dengan divider titik-titik + spine status (paid hijau / pending amber / void abu) + chip status pill — senada struk POS & Cashbook Keuangan. Tombol Batalkan tetap untuk invoice pending.
+
+Logika tak berubah (subscribe/confirm/cancel + auto-refresh realtime); murni lapisan presentasi pakai token `var(--...)`.
+
+![[billing-dark.png]]
+
+---
+
 ## Terkait
 - [[Design System]] · [[Sidebar - Live Diagnostic Rail]] · [[Data Layer]] · [[Decisions & Bug Fixes]]
 

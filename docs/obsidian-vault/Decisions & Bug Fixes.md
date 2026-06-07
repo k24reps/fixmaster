@@ -143,6 +143,16 @@ Total migration kini **0001–0012**. Verifikasi: build (entry 115 KB) + 202 tes
 ### Auth: email confirmation DIMATIKAN (produksi, 2026-06-07)
 Supabase Auth produksi disetel **tanpa email confirmation** — akun baru langsung aktif setelah sign up, tak perlu klik link verifikasi email. Alasan: SMTP default Supabase punya rate-limit ketat & UX daftar jadi terhambat. Konsekuensi: tak ada verifikasi kepemilikan email (akun bisa daftar dgn email apa pun). Bila nanti butuh verifikasi (mis. reset password andal / anti-spam), aktifkan kembali + set SMTP kustom. Setelan ini di **dashboard Auth**, bukan di kode/migration.
 
+### Polish billing + wizard + bug tugas cepat (2026-06-07)
+
+**[BUG] Tugas cepat "hari ini" gagal di cloud.** `addQuickTask` (TasksPage) menulis `templateId: ''` (string kosong) untuk tugas ad-hoc tanpa template. Aman di IndexedDB lokal, tapi di Postgres cloud kolom `task_instances.template_id` bertipe **UUID** → `''` memicu `invalid input syntax for type uuid`, jadi tugas cepat **gagal senyap di produksi**. Fix: `TaskInstance.templateId` jadi `ID | null`, UI kirim `null`, `instanceKey(null,...)` → key stabil `adhoc::<tgl>` (tak bentrok dgn generasi template). Migration **`0013_task_instances_nullable_template.sql`**: `alter table task_instances alter column template_id drop not null` (idempotent). +2 unit test. **Pelajaran:** string kosong ≠ NULL di Postgres untuk kolom UUID/FK; mismatch lokal-vs-cloud kelihatan hanya di produksi. Verifikasi `0013`: `select is_nullable from information_schema.columns where table_name='task_instances' and column_name='template_id'` → `YES`.
+
+**Wizard placeholder.** Placeholder nama usaha contoh diganti dari `TechFix Center` (kesan generik/asing seperti FixNova) → **`Sinar Gadget Service`** (autentik konter Indonesia), inisial `TFC` → `SGS`. Murni placeholder, bukan default value.
+
+**Signature page Billing (License Meter).** Tab Langganan didesain ulang ke bahasa "Precision Electronics Bench" — lihat [[Signature Pages]]. License meter (LED fase + charge-gauge bertick), pay dock, tier module ber-spine, receipt-tape riwayat invoice. Token saja; logika billing tak berubah. Catatan: `BillingTab` cloud-only (`isSupabaseConfigured`) jadi tak bisa di-seed lokal → verifikasi visual lewat harness statis (`scripts/shoot-billing.mjs` + preview HTML) yang memuat CSS sumber asli, difoto dark+light.
+
+Total migration kini **0001–0013** (0013 perlu di-apply user ke staging + produksi). Verifikasi: build (entry 115 KB) + **204 test** + lint hijau.
+
 ---
 
 ### [HISTORIS] Integrasi Mayar — ditinggalkan

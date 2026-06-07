@@ -39,8 +39,8 @@ export function isDueOn(template: TaskTemplate, isoDate: string): boolean {
 }
 
 /** Stable key to detect whether an instance already exists for a template+date. */
-export function instanceKey(templateId: string, dueDate: string): string {
-  return `${templateId}::${dueDate}`;
+export function instanceKey(templateId: string | null, dueDate: string): string {
+  return `${templateId ?? 'adhoc'}::${dueDate}`;
 }
 
 /**

@@ -104,6 +104,21 @@ describe('instanceKey', () => {
   it('combines template id and due date', () => {
     expect(instanceKey('t1', '2026-06-01')).toBe('t1::2026-06-01');
   });
+  it('maps an ad-hoc (null) template to a stable adhoc key', () => {
+    expect(instanceKey(null, '2026-06-01')).toBe('adhoc::2026-06-01');
+  });
+  it('an ad-hoc instance does not block template generation on the same date', () => {
+    const daily = tpl({ recurrence: 'daily' });
+    const adhoc: TaskInstance = {
+      id: 'a', orgId: 'o1', outletId: null, templateId: null, title: 'Telepon supplier',
+      description: '', dueDate: '2026-06-02', status: 'pending', completedAt: null,
+      completedById: null, completedByName: '', note: '', createdAt: '', updatedAt: '', deletedAt: null,
+    };
+    const created = generateInstances([daily], [adhoc], '2026-06-01', '2026-06-03', 'o1');
+    // The ad-hoc task keys to 'adhoc::2026-06-02', so the template instance
+    // 't1::2026-06-02' is still generated.
+    expect(created.map((i) => i.dueDate)).toEqual(['2026-06-01', '2026-06-02', '2026-06-03']);
+  });
 });
 
 describe('describeRecurrence', () => {

@@ -170,7 +170,7 @@ export function Wizard({ onComplete }: WizardProps) {
             <Step title="Profil Usaha" desc="Informasi dasar tentang usaha reparasi Anda">
               <Input
                 label="Nama Usaha"
-                placeholder="Contoh: TechFix Center"
+                placeholder="Contoh: Sinar Gadget Service"
                 value={data.shopName}
                 error={errors.shopName}
                 onChange={(e) => {
@@ -207,7 +207,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 />
                 <Input
                   label="Inisial Servis"
-                  placeholder="TFC"
+                  placeholder="SGS"
                   maxLength={5}
                   value={data.servicePrefix}
                   onChange={(e) => update({ servicePrefix: e.target.value.toUpperCase() })}

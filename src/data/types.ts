@@ -285,7 +285,8 @@ export interface TaskTemplate extends BaseEntity {
 export type TaskInstanceStatus = 'pending' | 'done' | 'skipped';
 
 export interface TaskInstance extends BaseEntity {
-  templateId: ID;
+  /** Owning template, or null for an ad-hoc quick task (no template). */
+  templateId: ID | null;
   title: string;
   description: string;
   dueDate: ISODate;
