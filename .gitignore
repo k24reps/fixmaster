@@ -26,3 +26,6 @@ dist-ssr
 # Generated screenshots (rebuild with shoot-*.mjs scripts)
 scripts/shots/
 docs/obsidian-vault/attachments/
+
+# Supabase CLI local state (link metadata, temp files)
+supabase/.temp/

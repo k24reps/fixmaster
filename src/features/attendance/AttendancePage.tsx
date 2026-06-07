@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { isSupabaseConfigured, clockIn } from '@/data/supabase-client';
+import { getCurrentPosition } from '@/lib/geo';
+import { hasGeofence } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
 import { localDateStr, localTimeStr, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
@@ -9,10 +12,20 @@ import { useSessionStore } from '@/stores/session';
 import styles from './AttendancePage.module.css';
 
 export function AttendancePage() {
-  const { data: attendance } = useCollection('attendance');
+  const { data: attendance, refetch } = useCollection('attendance');
+  const { data: outlets } = useCollection('outlets');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const today = localDateStr();
+
+  // Outlet whose geofence applies to this check-in: the active branch if one is
+  // selected, otherwise the primary (or first) outlet.
+  const targetOutlet = useMemo(() => {
+    if (outlets.length === 0) return null;
+    if (activeOutletId) return outlets.find((o) => o.id === activeOutletId) ?? null;
+    return outlets.find((o) => o.isPrimary) ?? outlets[0];
+  }, [outlets, activeOutletId]);
 
   const [busy, setBusy] = useState(false);
 
@@ -54,25 +67,43 @@ export function AttendancePage() {
   const checkIn = async () => {
     if (!me) return;
     setBusy(true);
-    const now = new Date().toISOString();
     try {
-      await repository.put('attendance', {
-        id: newId(),
-        orgId,
-        outletId: null,
-        employeeId: me.id,
-        employeeName: me.name,
-        date: today,
-        status: 'hadir',
-        checkIn: localTimeStr(),
-        checkOut: null,
-        totalHours: 0,
-        note: '',
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      });
+      // Cloud + geofenced outlet → request GPS and let the server re-validate
+      // the radius (the real security boundary). The RPC bypasses the adapter
+      // change-subscription, so we refetch manually afterward.
+      if (isSupabaseConfigured && targetOutlet && hasGeofence(targetOutlet)) {
+        const pos = await getCurrentPosition();
+        await clockIn({
+          orgId,
+          outletId: targetOutlet.id,
+          employeeId: me.id,
+          lat: pos.lat,
+          lng: pos.lng,
+        });
+        await refetch();
+      } else {
+        // Legacy path: no geofence configured (or local mode) → direct write.
+        const now = new Date().toISOString();
+        await repository.put('attendance', {
+          id: newId(),
+          orgId,
+          outletId: targetOutlet?.id ?? null,
+          employeeId: me.id,
+          employeeName: me.name,
+          date: today,
+          status: 'hadir',
+          checkIn: localTimeStr(),
+          checkOut: null,
+          totalHours: 0,
+          note: '',
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+      }
       toast.success(`Check-in ${localTimeStr()}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal check-in');
     } finally {
       setBusy(false);
     }

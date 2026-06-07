@@ -44,4 +44,26 @@ describe('validateStep', () => {
     const errors = validateStep(4, data);
     expect(errors.some((e) => e.field === 'employees')).toBe(true);
   });
+
+  it('step 6 accepts the default single outlet (name inherited from shop)', () => {
+    const data = emptyWizardData();
+    // default has one outlet with blank name → valid (inherits shop name)
+    expect(validateStep(6, data)).toHaveLength(0);
+  });
+
+  it('step 6 requires named additional outlets', () => {
+    const data = emptyWizardData();
+    data.outlets = [
+      { name: '', address: '' },
+      { name: '', address: '' }, // second branch must be named
+    ];
+    const errors = validateStep(6, data);
+    expect(errors.some((e) => e.field === 'outlet-name-1')).toBe(true);
+  });
+
+  it('step 6 requires at least one outlet', () => {
+    const data = emptyWizardData();
+    data.outlets = [];
+    expect(validateStep(6, data).some((e) => e.field === 'outlets')).toBe(true);
+  });
 });

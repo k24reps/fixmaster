@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { Button, Input as BaseInput, Icon } from '@/components/ui';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { derivePrefix } from '@/lib/id';
+import { isSupabaseConfigured } from '@/data/supabase-client';
 import { toast } from '@/stores/toast';
 import {
   emptyWizardData,
@@ -21,7 +22,22 @@ function Input(props: ComponentProps<typeof BaseInput>) {
   return <BaseInput noAutoCap {...props} />;
 }
 
-const STEPS = ['Profil', 'Wallet', 'Kategori', 'Tim', 'Target'];
+/**
+ * Logical step numbers are STABLE (validateStep depends on them and is unit
+ * tested by number). The "Tim" step (4) is local-only: in cloud mode the owner
+ * IS the signed-in account and staff join later via invite, so there are no
+ * PINs to collect during onboarding. We therefore drive navigation by a list
+ * of *visible* steps while keeping each step's logical number intact.
+ */
+const STEP_DEFS = [
+  { n: 1, label: 'Profil' },
+  { n: 6, label: 'Outlet' },
+  { n: 2, label: 'Wallet' },
+  { n: 3, label: 'Kategori' },
+  { n: 4, label: 'Tim' },
+  { n: 5, label: 'Target' },
+] as const;
+
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'owner', label: 'Owner' },
   { value: 'admin', label: 'Admin' },
@@ -33,17 +49,31 @@ interface WizardProps {
 }
 
 export function Wizard({ onComplete }: WizardProps) {
-  const [step, setStep] = useState(1);
+  // Cloud onboarding skips the Tim/PIN step (owner = signed-in account).
+  const isCloud = isSupabaseConfigured;
+  const steps = isCloud ? STEP_DEFS.filter((s) => s.n !== 4) : STEP_DEFS;
+
+  const [idx, setIdx] = useState(0);
   const [data, setData] = useState<WizardData>(emptyWizardData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
+  const step = steps[idx].n; // current logical step number
+  const isLast = idx === steps.length - 1;
+
   const update = (patch: Partial<WizardData>) => setData((d) => ({ ...d, ...patch }));
 
   const errorMap = (): Record<string, string> => {
     const list = validateStep(step, data);
-    return Object.fromEntries(list.map((e) => [e.field, e.message]));
+    const map: Record<string, string> = Object.fromEntries(
+      list.map((e) => [e.field, e.message]),
+    );
+    // Cloud captures the owner name on the Profil step (no Tim step).
+    if (isCloud && step === 1 && !data.employees[0]?.name.trim()) {
+      map.ownerName = 'Nama Anda wajib diisi';
+    }
+    return map;
   };
 
   const next = () => {
@@ -54,11 +84,11 @@ export function Wizard({ onComplete }: WizardProps) {
       return;
     }
     setErrors({});
-    setStep((s) => Math.min(s + 1, STEPS.length));
+    setIdx((i) => Math.min(i + 1, steps.length - 1));
   };
   const prev = () => {
     setErrors({});
-    setStep((s) => Math.max(s - 1, 1));
+    setIdx((i) => Math.max(i - 1, 0));
   };
 
   const finish = async () => {
@@ -78,9 +108,9 @@ export function Wizard({ onComplete }: WizardProps) {
     }
   };
 
-  // DEV-ONLY: populate a demo workspace and sign in as owner. The seed module
-  // is dynamically imported so it never lands in production bundles. The seed
-  // sets boot='ready', so AuthGate swaps the app in without onComplete.
+  // DEV-ONLY, LOCAL-ONLY: populate a demo workspace and sign in as owner. The
+  // seed module is dynamically imported so it never lands in production
+  // bundles. Hidden in cloud mode — demo data must never touch a real org.
   const runDevSeed = async () => {
     setSeeding(true);
     try {
@@ -105,7 +135,7 @@ export function Wizard({ onComplete }: WizardProps) {
           <p className={styles.subtitle}>Setup awal untuk memulai dashboard Anda</p>
         </header>
 
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && !isCloud && (
           <div className={styles.devBar}>
             <button
               type="button"
@@ -121,16 +151,15 @@ export function Wizard({ onComplete }: WizardProps) {
         )}
 
         <div className={styles.progress}>
-          {STEPS.map((label, i) => {
-            const n = i + 1;
-            const state = n < step ? 'done' : n === step ? 'active' : '';
+          {steps.map((s, i) => {
+            const state = i < idx ? 'done' : i === idx ? 'active' : '';
             return (
-              <div key={label} className={styles.progressItem}>
+              <div key={s.n} className={styles.progressItem}>
                 <span className={[styles.dot, styles[state]].join(' ')}>
-                  {n < step ? <Icon name="check" aria-hidden /> : n}
+                  {i < idx ? <Icon name="check" aria-hidden /> : i + 1}
                 </span>
-                <span className={styles.dotLabel}>{label}</span>
-                {n < STEPS.length && <span className={styles.line} />}
+                <span className={styles.dotLabel}>{s.label}</span>
+                {i < steps.length - 1 && <span className={styles.line} />}
               </div>
             );
           })}
@@ -152,6 +181,23 @@ export function Wizard({ onComplete }: WizardProps) {
                   });
                 }}
               />
+              {isCloud && (
+                <Input
+                  label="Nama Anda (Pemilik)"
+                  placeholder="Nama lengkap Anda"
+                  value={data.employees[0]?.name ?? ''}
+                  error={errors.ownerName}
+                  onChange={(e) => {
+                    const employees = [...data.employees];
+                    employees[0] = {
+                      ...(employees[0] ?? { role: 'owner', pin: '' }),
+                      name: e.target.value,
+                      role: 'owner',
+                    };
+                    update({ employees });
+                  }}
+                />
+              )}
               <div className={styles.row}>
                 <Input
                   label="Alamat"
@@ -343,8 +389,62 @@ export function Wizard({ onComplete }: WizardProps) {
             </Step>
           )}
 
+          {step === 6 && (
+            <Step title="Outlet / Lokasi" desc="Satu outlet untuk usaha tunggal, atau beberapa untuk multi-cabang">
+              {errors.outlets && <p className={styles.formError}>{errors.outlets}</p>}
+              <div className={styles.list}>
+                {data.outlets.map((o, i) => (
+                  <div key={i} className={styles.listRow}>
+                    <Input
+                      label={i === 0 ? 'Outlet Utama' : `Cabang ${i}`}
+                      placeholder={i === 0 ? (data.shopName || 'Nama outlet utama') : 'Nama cabang'}
+                      value={o.name}
+                      error={errors[`outlet-name-${i}`]}
+                      onChange={(e) => {
+                        const outlets = [...data.outlets];
+                        outlets[i] = { ...o, name: e.target.value };
+                        update({ outlets });
+                      }}
+                    />
+                    <Input
+                      label="Alamat"
+                      placeholder={i === 0 ? (data.address || 'Alamat outlet') : 'Alamat cabang'}
+                      value={o.address}
+                      onChange={(e) => {
+                        const outlets = [...data.outlets];
+                        outlets[i] = { ...o, address: e.target.value };
+                        update({ outlets });
+                      }}
+                    />
+                    {i > 0 && (
+                      <button
+                        className={styles.removeBtn}
+                        onClick={() => update({ outlets: data.outlets.filter((_, j) => j !== i) })}
+                        aria-label="Hapus"
+                      >
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className={styles.stepHint}>
+                <Icon name="info-circle" aria-hidden /> Outlet utama otomatis memakai nama &
+                alamat usaha bila dikosongkan. Tambah cabang hanya jika usaha Anda multi-lokasi.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Icon name="plus" aria-hidden />}
+                onClick={() => update({ outlets: [...data.outlets, { name: '', address: '' }] })}
+              >
+                Tambah Cabang
+              </Button>
+            </Step>
+          )}
+
           <div className={styles.actions}>
-            {step > 1 ? (
+            {idx > 0 ? (
               <Button
                 variant="secondary"
                 onClick={prev}
@@ -355,7 +455,7 @@ export function Wizard({ onComplete }: WizardProps) {
             ) : (
               <span />
             )}
-            {step < STEPS.length ? (
+            {!isLast ? (
               <Button onClick={next} iconRight={<Icon name="arrow-right" aria-hidden />}>
                 Lanjut
               </Button>

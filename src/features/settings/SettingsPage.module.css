@@ -173,6 +173,114 @@
   min-width: 140px;
 }
 
+.hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+.inviteRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.inviteRow > div {
+  flex: 1;
+  min-width: 160px;
+}
+.roleSelect {
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.roleSelect:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+/* ---------- Billing / subscription ---------- */
+.planStatus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.planStatus > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.planName {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+}
+.billingBanner {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+.qris {
+  display: block;
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  margin: var(--space-3) 0;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: var(--space-2);
+}
+.payLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand);
+  color: var(--on-brand);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-brand);
+  transition: filter 0.15s ease;
+}
+.payLink:hover {
+  filter: brightness(1.08);
+}
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.planCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.planCardRec {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand) inset;
+}
+.planPrice {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--brand-hover);
+}
+
 /* ---------- Service template editor ---------- */
 .tplHint {
   font-size: var(--text-sm);
@@ -319,3 +427,50 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Outlet geofence editor ---------- */
+.outletItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.geofenceBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-left: 52px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.geofenceHint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.geofenceRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 120px;
+  gap: var(--space-3);
+}
+.geofenceActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.geofenceSpacer {
+  flex: 1;
+}
+@media (max-width: 768px) {
+  .geofenceRow {
+    grid-template-columns: 1fr;
+  }
+  .geofenceBox {
+    margin-left: 0;
+  }
+}
+

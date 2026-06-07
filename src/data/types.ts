@@ -55,6 +55,14 @@ export interface Outlet extends BaseEntity {
   name: string;
   address: string;
   isPrimary: boolean;
+  /**
+   * Attendance geofence (optional). When `lat`/`lng` are set, clock-in is
+   * validated server-side to be within `geofenceRadiusM` meters of this point.
+   * Unset = no geofence (clock-in allowed anywhere, legacy behavior).
+   */
+  lat?: number | null;
+  lng?: number | null;
+  geofenceRadiusM?: number | null;
 }
 
 // ---------- Customers ----------

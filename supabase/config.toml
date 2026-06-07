@@ -1,0 +1,18 @@
+project_id = "fixmaster"
+
+# Edge Functions config. Declaring verify_jwt here (instead of relying on the
+# --no-verify-jwt CLI flag) keeps the setting version-controlled and prevents
+# accidental redeploys from re-enabling JWT on the public webhook.
+
+[functions.create-invoice]
+# The platform JWT gate can reject new-format session tokens, which would
+# make the function unreachable (client sees 401 → silent mock fallback).
+# So we disable the gate and verify the caller INSIDE the function via
+# getUser() (it rejects missing/invalid tokens), keeping auth intact.
+verify_jwt = false
+
+[functions.fersaku-webhook]
+# Called by Fersaku's servers (no Supabase session) → must be public.
+# Authenticity is enforced inside the function via an SHA-256 signature
+# check against FERSAKU_WEBHOOK_SECRET.
+verify_jwt = false

@@ -29,6 +29,22 @@ const TABLE: Record<CollectionName, string> = {
   taskInstances: 'task_instances',
 };
 
+/**
+ * Translate a Supabase write error. A row-level-security violation (Postgres
+ * 42501) on a write almost always means the org's subscription has lapsed
+ * (is_org_active = false, migration 0010) — surface that in plain Indonesian
+ * instead of the raw "row-level security policy" message. Other errors pass
+ * through unchanged.
+ */
+function rethrowWrite(error: { code?: string; message?: string }): never {
+  if (error.code === '42501') {
+    throw new Error(
+      'Langganan kedaluwarsa atau melebihi kuota — perpanjang di Pengaturan → Langganan untuk melanjutkan.',
+    );
+  }
+  throw error;
+}
+
 const camelToSnake = (s: string) => s.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
 const snakeToCamel = (s: string) => s.replace(/_([a-z])/g, (_m, c) => c.toUpperCase());
 
@@ -99,7 +115,7 @@ export class SupabaseAdapter implements Repository {
       .upsert(row)
       .select()
       .single();
-    if (error) throw error;
+    if (error) rethrowWrite(error);
     this.notify(collection);
     return fromRow<EntityMap[K]>(data);
   }
@@ -112,7 +128,7 @@ export class SupabaseAdapter implements Repository {
       toRow({ ...r, orgId: (r as { orgId?: string }).orgId || this.orgId }),
     );
     const { data, error } = await this.client.from(TABLE[collection]).upsert(rows).select();
-    if (error) throw error;
+    if (error) rethrowWrite(error);
     this.notify(collection);
     return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
   }
@@ -120,7 +136,7 @@ export class SupabaseAdapter implements Repository {
   async remove<K extends CollectionName>(collection: K, id: ID): Promise<void> {
     // Hard delete; FK cascades + RLS protect integrity server-side.
     const { error } = await this.client.from(TABLE[collection]).delete().eq('id', id);
-    if (error) throw error;
+    if (error) rethrowWrite(error);
     this.notify(collection);
   }
 

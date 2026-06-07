@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { PLANS } from '@/config/plans';
-import { roleAllows } from '@/config/plans';
+import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor } from '@/config/plans';
+import { subscriptionPhase, daysUntil, phaseLabel, GRACE_DAYS } from '@/lib/business/billing';
 import {
   getComplaintTemplates,
   setComplaintTemplates,
@@ -28,8 +29,23 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
+import { isValidInviteEmail } from '@/lib/business/team';
 import { useSessionStore } from '@/stores/session';
-import type { Wallet, Outlet } from '@/data/types';
+import {
+  isSupabaseConfigured,
+  inviteMember,
+  listPendingInvites,
+  revokeInvite,
+  setMemberRole,
+  deactivateMember,
+  startSubscription,
+  applyPayment,
+  listInvoices,
+  createPaymentInvoice,
+  type PendingInvite,
+  type Invoice,
+} from '@/data/supabase-client';
+import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -62,7 +78,7 @@ async function fileToLogoDataUrl(file: File): Promise<string> {
   return canvas.toDataURL('image/png');
 }
 
-type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'sistem';
+type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'sistem';
 
 export function SettingsPage() {
   const org = useSessionStore((s) => s.org);
@@ -77,15 +93,18 @@ export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('usaha');
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const TABS: { id: Tab; label: string; icon: string; ownerOnly?: boolean }[] = [
+  const TABS: { id: Tab; label: string; icon: string; ownerOnly?: boolean; cloudOnly?: boolean }[] = [
     { id: 'usaha', label: 'Usaha', icon: 'fa-store' },
     { id: 'operasional', label: 'Operasional', icon: 'fa-sliders' },
     { id: 'tim', label: 'Tim', icon: 'fa-users', ownerOnly: true },
     { id: 'keuangan', label: 'Wallet', icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: 'Outlet', icon: 'fa-shop', ownerOnly: true },
+    { id: 'langganan', label: 'Langganan', icon: 'fa-crown', ownerOnly: true, cloudOnly: true },
     { id: 'sistem', label: 'Sistem', icon: 'fa-gear' },
   ];
-  const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner);
+  const visibleTabs = TABS.filter(
+    (t) => (!t.ownerOnly || isOwner) && (!t.cloudOnly || isSupabaseConfigured),
+  );
 
   return (
     <div className={styles.wrap}>
@@ -112,6 +131,7 @@ export function SettingsPage() {
       {tab === 'tim' && isOwner && <TeamTab employees={employees} />}
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
+      {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
         <SystemTab
           plan={org?.planType ?? 'trial'}
@@ -490,27 +510,445 @@ function WhatsAppTemplatesCard() {
   );
 }
 
+const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
+
 function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'employees'>>['data'] }) {
-  const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const { refetch } = useCollection('employees');
+
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<Role>('karyawan');
+  const [busy, setBusy] = useState(false);
+  const [confirmOff, setConfirmOff] = useState<string | null>(null);
+
+  const loadInvites = useCallback(async () => {
+    if (!isSupabaseConfigured || !orgId) return;
+    try {
+      setInvites(await listPendingInvites(orgId));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan');
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !orgId) return;
+    let cancelled = false;
+    listPendingInvites(orgId)
+      .then((data) => {
+        if (!cancelled) setInvites(data);
+      })
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan'),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const invite = async () => {
+    if (!name.trim()) return toast.error('Nama wajib diisi');
+    if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
+    setBusy(true);
+    try {
+      await inviteMember({ orgId, email, name, role });
+      toast.success(`Undangan untuk ${email.trim()} dibuat`);
+      setName('');
+      setEmail('');
+      setRole('karyawan');
+      await loadInvites();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengundang');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async (id: string) => {
+    try {
+      await revokeInvite(id);
+      await loadInvites();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membatalkan undangan');
+    }
+  };
+
+  const changeRole = async (memberId: string, newRole: Role) => {
+    try {
+      await setMemberRole(memberId, newRole);
+      toast.success('Peran diperbarui');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengubah peran');
+    }
+  };
+
+  const deactivate = async (memberId: string) => {
+    setConfirmOff(null);
+    try {
+      await deactivateMember(memberId);
+      toast.success('Anggota dinonaktifkan');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menonaktifkan');
+    }
+  };
+
   return (
-    <Card glass>
-      <CardHeader icon={<Icon name="users" aria-hidden />} title="Anggota Tim" />
-      <CardBody className={styles.noPad}>
-        <ul className={styles.list}>
-          {employees.map((e) => (
-            <li key={e.id} className={styles.listItem}>
-              <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
-              <div className={styles.itemInfo}>
-                <strong>{e.name}</strong>
-                <small>{ROLE_LABEL[e.role]}</small>
-              </div>
-              <Badge tone={e.active ? 'success' : 'neutral'}>{e.active ? 'Aktif' : 'Nonaktif'}</Badge>
-            </li>
-          ))}
-        </ul>
-      </CardBody>
-    </Card>
+    <>
+      {isSupabaseConfigured && (
+        <Card glass>
+          <CardHeader icon={<Icon name="user-plus" aria-hidden />} title="Undang Anggota" />
+          <CardBody>
+            <p className={styles.hint}>
+              Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis bergabung ke
+              organisasi ini saat masuk pertama kali.
+            </p>
+            <div className={styles.inviteRow}>
+              <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                placeholder="email@contoh.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <select
+                className={styles.roleSelect}
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                aria-label="Peran"
+              >
+                <option value="karyawan">Karyawan</option>
+                <option value="admin">Admin</option>
+              </select>
+              <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
+                Undang
+              </Button>
+            </div>
+            {invites.length > 0 && (
+              <ul className={styles.list}>
+                {invites.map((inv) => (
+                  <li key={inv.id} className={styles.listItem}>
+                    <span className={styles.avatar}>
+                      <Icon name="envelope" aria-hidden />
+                    </span>
+                    <div className={styles.itemInfo}>
+                      <strong>{inv.email}</strong>
+                      <small>{ROLE_LABEL[inv.role]} · menunggu pendaftaran</small>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void revoke(inv.id)}
+                      iconLeft={<Icon name="x" aria-hidden />}
+                    >
+                      Batalkan
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      <Card glass>
+        <CardHeader icon={<Icon name="users" aria-hidden />} title="Anggota Tim" />
+        <CardBody className={styles.noPad}>
+          <ul className={styles.list}>
+            {employees.map((e) => {
+              const isSelf = me?.id === e.id;
+              return (
+                <li key={e.id} className={styles.listItem}>
+                  <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
+                  <div className={styles.itemInfo}>
+                    <strong>{e.name}</strong>
+                    <small>{ROLE_LABEL[e.role]}</small>
+                  </div>
+                  {isSupabaseConfigured && !isSelf && e.active ? (
+                    <>
+                      <select
+                        className={styles.roleSelect}
+                        value={e.role}
+                        onChange={(ev) => void changeRole(e.id, ev.target.value as Role)}
+                        aria-label={`Peran ${e.name}`}
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="karyawan">Karyawan</option>
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmOff(e.id)}
+                        iconLeft={<Icon name="user-minus" aria-hidden />}
+                      >
+                        Nonaktifkan
+                      </Button>
+                    </>
+                  ) : (
+                    <Badge tone={e.active ? 'success' : 'neutral'}>
+                      {e.active ? 'Aktif' : 'Nonaktif'}
+                    </Badge>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </CardBody>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmOff !== null}
+        title="Nonaktifkan anggota?"
+        message="Anggota tidak akan bisa masuk sampai diaktifkan kembali. Data terkait tetap utuh."
+        confirmLabel="Nonaktifkan"
+        danger
+        onConfirm={() => confirmOff && void deactivate(confirmOff)}
+        onCancel={() => setConfirmOff(null)}
+      />
+    </>
   );
+}
+
+function BillingTab({ outlets }: { outlets: Outlet[] }) {
+  const org = useSessionStore((s) => s.org);
+  const orgId = org?.id ?? '';
+  const plan = (org?.planType ?? 'trial') as PlanType;
+  const expiry = org?.planExpiredAt ?? null;
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const phase = subscriptionPhase(expiry);
+  const days = expiry ? daysUntil(expiry) : null;
+  const outletCount = outlets.length || 1;
+  const suggested = outletTierFor(outletCount);
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    listInvoices(orgId)
+      .then((data) => {
+        if (!cancelled) setInvoices(data);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice'));
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const reload = async () => {
+    try {
+      setInvoices(await listInvoices(orgId));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice');
+    }
+  };
+
+  const subscribe = async (tier: PlanType) => {
+    if (!withinOutletQuota(tier, outletCount)) {
+      return toast.error(`Tier ${PLANS[tier].name} maksimal ${PLANS[tier].maxOutlets} outlet`);
+    }
+    setBusy(true);
+    try {
+      const amount = parseAmount(PLANS[tier].priceLabel);
+      try {
+        // Real provider: create a Fersaku payment and open the hosted checkout
+        // page (QRIS). Confirmation arrives via the webhook.
+        const { link } = await createPaymentInvoice(tier, amount, window.location.href);
+        window.open(link, '_blank', 'noopener');
+        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran di tab baru`);
+      } catch {
+        // Fallback (Edge Function not deployed yet): mock pending invoice,
+        // confirmable manually via "Saya sudah bayar".
+        await startSubscription(tier, amount);
+        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran`);
+      }
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membuat invoice');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmPay = async (invoiceId: string) => {
+    setBusy(true);
+    try {
+      await applyPayment(invoiceId);
+      toast.success('Pembayaran diterima — langganan diperpanjang');
+      await reload();
+      // Refresh org plan in session (expiry/plan changed).
+      const fresh = await repository.getSingleton('organization');
+      if (fresh) useSessionStore.getState().setOrg(fresh);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memproses pembayaran');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const phaseTone: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+    active: 'success',
+    reminder: 'warning',
+    grace: 'warning',
+    expired: 'danger',
+  };
+
+  const pendingInvoice = invoices.find((i) => i.status === 'pending');
+
+  return (
+    <>
+      <Card glass>
+        <CardHeader icon={<Icon name="crown" aria-hidden />} title="Status Langganan" />
+        <CardBody>
+          <div className={styles.planStatus}>
+            <div>
+              <span className={styles.planName}>{PLANS[plan].name}</span>
+              <Badge tone={phaseTone[phase]}>{phaseLabel(phase)}</Badge>
+            </div>
+            {expiry && (
+              <small className={styles.hint}>
+                {phase === 'expired'
+                  ? `Kedaluwarsa ${new Date(expiry).toLocaleDateString('id-ID')}`
+                  : days != null && days >= 0
+                    ? `Berlaku ${days} hari lagi (s/d ${new Date(expiry).toLocaleDateString('id-ID')})`
+                    : `Masa tenggang hingga ${GRACE_DAYS} hari setelah ${new Date(expiry).toLocaleDateString('id-ID')}`}
+              </small>
+            )}
+          </div>
+
+          {(phase === 'reminder' || phase === 'grace' || phase === 'expired') && (
+            <p className={styles.billingBanner}>
+              <Icon name="warning" aria-hidden />{' '}
+              {phase === 'expired'
+                ? 'Langganan kedaluwarsa. Perpanjang untuk membuka kembali operasi tulis.'
+                : phase === 'grace'
+                  ? 'Masa tenggang aktif. Segera bayar agar layanan tidak terhenti.'
+                  : 'Langganan akan jatuh tempo. Perpanjang sekarang.'}
+            </p>
+          )}
+        </CardBody>
+      </Card>
+
+      {pendingInvoice && (
+        <Card glass>
+          <CardHeader icon={<Icon name="qr-code" aria-hidden />} title="Selesaikan Pembayaran" />
+          <CardBody>
+            <p className={styles.hint}>
+              Invoice {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan} ·{' '}
+              {fmtRp(pendingInvoice.amount)}
+            </p>
+            {pendingInvoice.provider === 'mock' ? (
+              <>
+                <p className={styles.hint}>
+                  Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur
+                  perpanjangan langganan.
+                </p>
+                <Button
+                  onClick={() => void confirmPay(pendingInvoice.id)}
+                  loading={busy}
+                  iconLeft={<Icon name="check" aria-hidden />}
+                >
+                  Saya sudah bayar
+                </Button>
+              </>
+            ) : (
+              <>
+                {pendingInvoice.qrisUrl && (
+                  <a
+                    className={styles.payLink}
+                    href={pendingInvoice.qrisUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran QRIS
+                  </a>
+                )}
+                <p className={styles.hint}>
+                  Langganan diperpanjang otomatis setelah pembayaran diterima. Halaman ini akan
+                  diperbarui sendiri — tidak perlu konfirmasi manual.
+                </p>
+              </>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      <Card glass>
+        <CardHeader icon={<Icon name="tag" aria-hidden />} title="Pilih Paket" />
+        <CardBody>
+          <p className={styles.hint}>
+            Harga per organisasi, user tak terbatas. Tier menyesuaikan jumlah outlet (kamu punya{' '}
+            {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
+          </p>
+          <div className={styles.planGrid}>
+            {PAID_TIERS.map((tier) => {
+              const def = PLANS[tier];
+              const fits = withinOutletQuota(tier, outletCount);
+              return (
+                <div
+                  key={tier}
+                  className={[styles.planCard, suggested === tier ? styles.planCardRec : ''].join(' ')}
+                >
+                  <strong>{def.name}</strong>
+                  <span className={styles.planPrice}>{def.priceLabel}</span>
+                  <small className={styles.hint}>s/d {def.maxOutlets} outlet · user unlimited</small>
+                  <Button
+                    variant={suggested === tier ? 'primary' : 'secondary'}
+                    size="sm"
+                    disabled={!fits || busy}
+                    onClick={() => void subscribe(tier)}
+                  >
+                    {fits ? 'Pilih' : 'Outlet melebihi'}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardBody>
+      </Card>
+
+      {invoices.length > 0 && (
+        <Card glass>
+          <CardHeader icon={<Icon name="receipt" aria-hidden />} title="Riwayat Invoice" />
+          <CardBody className={styles.noPad}>
+            <ul className={styles.list}>
+              {invoices.map((inv) => (
+                <li key={inv.id} className={styles.listItem}>
+                  <div className={styles.itemInfo}>
+                    <strong>{PLANS[inv.plan as PlanType]?.name ?? inv.plan}</strong>
+                    <small>
+                      {new Date(inv.createdAt).toLocaleDateString('id-ID')} · {fmtRp(inv.amount)}
+                    </small>
+                  </div>
+                  <Badge
+                    tone={
+                      inv.status === 'paid'
+                        ? 'success'
+                        : inv.status === 'pending'
+                          ? 'warning'
+                          : 'neutral'
+                    }
+                  >
+                    {inv.status}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </CardBody>
+        </Card>
+      )}
+    </>
+  );
+}
+
+/** Parse "Rp 49.000/bln" → 49000 for the invoice amount. */
+function parseAmount(priceLabel: string): number {
+  const digits = priceLabel.replace(/[^0-9]/g, '');
+  return digits ? Number(digits) : 0;
 }
 
 function WalletTab({ wallets }: { wallets: Wallet[] }) {
@@ -583,14 +1021,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         ) : (
           <ul className={styles.list}>
             {outlets.map((o) => (
-              <li key={o.id} className={styles.listItem}>
-                <span className={styles.avatar}><Icon name="shop" aria-hidden /></span>
-                <div className={styles.itemInfo}>
-                  <strong>{o.name}</strong>
-                  <small>{o.address || '—'}</small>
-                </div>
-                {o.isPrimary && <Badge tone="brand">Utama</Badge>}
-              </li>
+              <OutletRow key={o.id} outlet={o} />
             ))}
           </ul>
         )}
@@ -601,6 +1032,148 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         </div>
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * One outlet row with an expandable geofence editor. Setting coordinates +
+ * radius turns on GPS-validated attendance for that outlet; leaving them empty
+ * keeps clock-in unrestricted. "Gunakan lokasi saya" fills lat/lng from the
+ * device GPS (owner is expected to set it while physically at the outlet).
+ */
+function OutletRow({ outlet }: { outlet: Outlet }) {
+  const [open, setOpen] = useState(false);
+  const [lat, setLat] = useState(outlet.lat != null ? String(outlet.lat) : '');
+  const [lng, setLng] = useState(outlet.lng != null ? String(outlet.lng) : '');
+  const [radius, setRadius] = useState(
+    outlet.geofenceRadiusM != null ? String(outlet.geofenceRadiusM) : '100',
+  );
+  const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  const geofenceOn = outlet.lat != null && outlet.lng != null && (outlet.geofenceRadiusM ?? 0) > 0;
+
+  const useMyLocation = async () => {
+    setLocating(true);
+    try {
+      const pos = await getCurrentPosition();
+      setLat(pos.lat.toFixed(6));
+      setLng(pos.lng.toFixed(6));
+      toast.success(`Lokasi terdeteksi (akurasi ±${Math.round(pos.accuracyM)}m)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengambil lokasi');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const save = async () => {
+    const latN = lat.trim() === '' ? null : Number(lat);
+    const lngN = lng.trim() === '' ? null : Number(lng);
+    const radN = radius.trim() === '' ? null : Math.round(Number(radius));
+    if (latN != null && (Number.isNaN(latN) || latN < -90 || latN > 90)) {
+      return toast.error('Latitude tidak valid (-90..90)');
+    }
+    if (lngN != null && (Number.isNaN(lngN) || lngN < -180 || lngN > 180)) {
+      return toast.error('Longitude tidak valid (-180..180)');
+    }
+    if (radN != null && (Number.isNaN(radN) || radN <= 0)) {
+      return toast.error('Radius harus lebih dari 0 meter');
+    }
+    setBusy(true);
+    try {
+      await repository.put('outlets', {
+        ...outlet,
+        lat: latN,
+        lng: lngN,
+        geofenceRadiusM: radN,
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success('Geofence outlet disimpan');
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clear = async () => {
+    setBusy(true);
+    try {
+      await repository.put('outlets', {
+        ...outlet,
+        lat: null,
+        lng: null,
+        geofenceRadiusM: null,
+        updatedAt: new Date().toISOString(),
+      });
+      setLat('');
+      setLng('');
+      setRadius('100');
+      toast.success('Geofence dimatikan (absensi bebas lokasi)');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li className={styles.outletItem}>
+      <div className={styles.listItem}>
+        <span className={styles.avatar}><Icon name="shop" aria-hidden /></span>
+        <div className={styles.itemInfo}>
+          <strong>{outlet.name}</strong>
+          <small>{outlet.address || '—'}</small>
+        </div>
+        {geofenceOn && (
+          <Badge tone="success">
+            <Icon name="map-pin" aria-hidden /> {outlet.geofenceRadiusM}m
+          </Badge>
+        )}
+        {outlet.isPrimary && <Badge tone="brand">Utama</Badge>}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setOpen((v) => !v)}
+          iconLeft={<Icon name="map-pin" aria-hidden />}
+        >
+          {open ? 'Tutup' : 'Geofence'}
+        </Button>
+      </div>
+
+      {open && (
+        <div className={styles.geofenceBox}>
+          <p className={styles.geofenceHint}>
+            <Icon name="info-circle" aria-hidden /> Isi koordinat + radius untuk mewajibkan
+            absensi dari lokasi outlet. Kosongkan untuk absensi bebas lokasi. Set saat Anda
+            sedang berada di outlet.
+          </p>
+          <div className={styles.geofenceRow}>
+            <Input label="Latitude" placeholder="-6.200000" value={lat} onChange={(e) => setLat(e.target.value)} />
+            <Input label="Longitude" placeholder="106.816666" value={lng} onChange={(e) => setLng(e.target.value)} />
+            <Input label="Radius (m)" type="number" placeholder="100" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </div>
+          <div className={styles.geofenceActions}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={useMyLocation}
+              loading={locating}
+              iconLeft={<Icon name="map-pin" aria-hidden />}
+            >
+              Gunakan lokasi saya
+            </Button>
+            <span className={styles.geofenceSpacer} />
+            {geofenceOn && (
+              <Button variant="ghost" size="sm" onClick={clear} disabled={busy}>
+                Matikan
+              </Button>
+            )}
+            <Button size="sm" onClick={save} loading={busy} iconLeft={<Icon name="check" aria-hidden />}>
+              Simpan
+            </Button>
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 

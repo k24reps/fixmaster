@@ -56,6 +56,8 @@ export async function seedDemoWorkspace(): Promise<void> {
   data.targetRevenue = 50_000_000;
   data.targetServiceCount = 60;
   data.overheadBudget = 5_000_000;
+  // Opt out of wizard outlet creation — the seed defines its own 3 outlets below.
+  data.outlets = [];
 
   const { org, owner } = await commitWizard(data);
   repository.setScope(org.id, null);
