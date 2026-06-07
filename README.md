@@ -67,6 +67,9 @@ Saat env terisi, app otomatis memakai Supabase (bukan IndexedDB). Tanpa `VITE_SE
 ### 4. Backup & Pemulihan
 Prosedur cadangan, PITR, health check, dan rollback ada di [`docs/runbook-backup-recovery.md`](docs/runbook-backup-recovery.md).
 
+### 5. Staging & Alur Rilis Aman
+Cara menguji fitur/migrasi tanpa menyentuh produksi (project Supabase staging, env var Vercel per-environment, alur branch, expand–contract) ada di [`docs/environments.md`](docs/environments.md).
+
 ## Arsitektur
 Data layer di-abstraksi lewat antarmuka `Repository`. Dua implementasi:
 - `LocalAdapter` (IndexedDB) — per-entitas, indeks `orgId`, soft-delete.

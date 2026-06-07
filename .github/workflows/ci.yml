@@ -1,12 +1,14 @@
 name: CI
 
-# Verify every push and PR against main: lint, type-check + build, and tests.
-# Mirrors the local "definition of done" gates so regressions never merge.
+# Verify every push and PR against main/staging: lint, type-check + build, and
+# tests. Mirrors the local "definition of done" gates so regressions never
+# merge. The staging branch is the integration gate before main (see
+# docs/environments.md).
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 # Cancel superseded runs on the same ref to save CI minutes.
 concurrency:
