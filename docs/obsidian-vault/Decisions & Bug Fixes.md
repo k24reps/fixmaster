@@ -19,6 +19,15 @@ Tiap halaman punya metafora alat sendiri, tapi semua memakai token + motif yang 
 ### Komponen bersama dibiarkan utuh
 `StatCard` dipakai Dashboard & Servis. Saat mendesain ulang Reports, dibuat **tile lokal** alih-alih mengubah `StatCard`, supaya halaman lain tak ikut berubah tak sengaja.
 
+### ErrorBoundary dua level (anti layar putih)
+Crash render React tanpa boundary = **layar putih kosong** tanpa pemulihan — tampak tidak profesional untuk produk berbayar. Solusi: komponen class [`ErrorBoundary`](src/components/ErrorBoundary.tsx) dipasang di **dua level**:
+- **Root** (`App.tsx`, prop `root`) — jaring terakhir full-screen dengan aksi "Muat Ulang Aplikasi".
+- **Rute** (`AppLayout`, bungkus `<Suspense><Outlet/>`) — crash satu halaman tetap menyisakan sidebar/topbar bisa dipakai. Pakai `resetKey={location.pathname}` → **auto-pulih saat pindah halaman** (via `componentDidUpdate`), plus tombol "Coba Lagi".
+
+Catatan: error boundary hanya menangkap error saat **render/lifecycle**, bukan di event handler/async (itu lewat toast). `componentDidCatch` jadi **satu-satunya seam** untuk memasang error tracker (mis. Sentry) nanti. Detail error hanya tampil di `import.meta.env.DEV`. Fallback pakai token (selaras `NotFoundPage`). Test pertama berbasis `@testing-library/react` di repo (4 test: render normal, fallback, varian root, auto-reset). Lihat [[Signature Pages]].
+
+![[error-dark.png]]
+
 ### Sidebar arah B + active-as-channel
 Dari beberapa opsi (Control Panel, Live Diagnostic Rail, Rack Unit, Boot Sequence), dipilih **Live Diagnostic Rail** karena unik *dan* fungsional — readout memakai data nyata. Tanpa grup bersekat. Lihat [[Sidebar - Live Diagnostic Rail]].
 

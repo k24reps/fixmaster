@@ -2,6 +2,7 @@ import { Suspense, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NAV_ITEMS } from '@/config/navigation';
 import { useT, type TranslationKey } from '@/i18n';
 import styles from './AppLayout.module.css';
@@ -48,15 +49,17 @@ export function AppLayout() {
           onToggleMobile={() => setMobileOpen((o) => !o)}
         />
         <main className={styles.content}>
-          <Suspense
-            fallback={
-              <div className={styles.routeFallback} aria-label="Memuat halaman" role="status">
-                <span className={styles.routeSpinner} />
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense
+              fallback={
+                <div className={styles.routeFallback} aria-label="Memuat halaman" role="status">
+                  <span className={styles.routeSpinner} />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
