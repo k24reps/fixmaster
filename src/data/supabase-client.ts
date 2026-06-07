@@ -282,6 +282,14 @@ export async function applyPayment(invoiceId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Cancel a pending invoice (manager-only). No-op if not pending. */
+export async function cancelInvoice(invoiceId: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('cancel_invoice', { p_invoice_id: invoiceId });
+  if (error) throw new Error(error.message);
+}
+
 /** List an org's invoices, newest first. */
 export async function listInvoices(orgId: string): Promise<Invoice[]> {
   const c = getSupabase();

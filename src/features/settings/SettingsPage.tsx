@@ -40,6 +40,7 @@ import {
   deactivateMember,
   startSubscription,
   applyPayment,
+  cancelInvoice,
   listInvoices,
   createPaymentInvoice,
   type PendingInvite,
@@ -790,6 +791,19 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     }
   };
 
+  const cancelPay = async (invoiceId: string) => {
+    setBusy(true);
+    try {
+      await cancelInvoice(invoiceId);
+      toast.success('Invoice dibatalkan');
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const phaseTone: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
     active: 'success',
     reminder: 'warning',
@@ -924,17 +938,30 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                       {new Date(inv.createdAt).toLocaleDateString('id-ID')} · {fmtRp(inv.amount)}
                     </small>
                   </div>
-                  <Badge
-                    tone={
-                      inv.status === 'paid'
-                        ? 'success'
-                        : inv.status === 'pending'
-                          ? 'warning'
-                          : 'neutral'
-                    }
-                  >
-                    {inv.status}
-                  </Badge>
+                  <div className={styles.itemActions}>
+                    <Badge
+                      tone={
+                        inv.status === 'paid'
+                          ? 'success'
+                          : inv.status === 'pending'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                    >
+                      {inv.status}
+                    </Badge>
+                    {inv.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void cancelPay(inv.id)}
+                        loading={busy}
+                        iconLeft={<Icon name="xmark" aria-hidden />}
+                      >
+                        Batalkan
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

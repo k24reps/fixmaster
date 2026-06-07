@@ -86,7 +86,7 @@ Setelah Mayar ditinggalkan (KYC produksi berat + sandbox `api.mayar.club` down, 
 - **Sandbox simulate**: `POST /sandbox/simulate { payment_id, action:"pay"|"expire"|"fail"|"cancel" }` (hanya `sk_test_*`) → memicu webhook nyata ber-`mode:sandbox`. Inilah cara uji webhook handler tanpa uang asli.
 
 **Dua Edge Function (runtime Deno, `supabase/functions/`):**
-1. **`create-invoice`** — dipanggil klien via `functions.invoke`; `verify_jwt=false` + self-verify `getUser()` (alasan & bug CORS lihat di bawah, sama spt era Mayar). Alur: (a) verifikasi caller, panggil RPC `start_subscription` (cek manager + invoice `pending`), (b) `POST {FERSAKU_API_BASE}/payments` dgn `external_id` = id invoice kita, (c) simpan `provider='fersaku'`, `provider_ref = id pembayaran Fersaku` (**kunci korelasi** — webhook Fersaku **tak** echo `external_id`, hanya kirim `payment_id`), `qris_url = checkout_url`, (d) balikkan link. Bila gagal, invoice di-set `canceled`.
+1. **`create-invoice`** — dipanggil klien via `functions.invoke`; `verify_jwt=false` + self-verify `getUser()` (alasan & bug CORS lihat di bawah, sama spt era Mayar). Alur: (a) verifikasi caller, panggil RPC `start_subscription` (cek manager + invoice `pending`), (b) `POST {FERSAKU_API_BASE}/payments` dgn `external_id` = id invoice kita, (c) simpan `provider='fersaku'`, `provider_ref = id pembayaran Fersaku` (**kunci korelasi** — webhook Fersaku **tak** echo `external_id`, hanya kirim `payment_id`), `qris_url = checkout_url`, (d) balikkan link. Bila gagal, invoice di-set `canceled`. **`expired_minutes: 30`** (jendela QRIS 30 menit). Catatan: nilai `expired_minutes` per-transaksi **menimpa** setelan "Waktu Kedaluwarsa Default" di dashboard Fersaku — jadi ubah di kode, bukan dashboard (timer checkout ditampilkan Fersaku dalam format **menit:detik**, mis. `30:00`).
 2. **`fersaku-webhook`** — endpoint **publik** (`verify_jwt=false` di `config.toml`). Acknowledge-then-verify: **selalu 200** (non-POST/test ping lolos), tapi `apply_payment` (idempotent, service-role) cuma jalan kalau **signature SHA-256 cocok** (timing-safe) **dan** event `payment.paid`. Korelasi via `provider_ref = payment_id`.
 
 **Env (secrets):** `FERSAKU_API_KEY` (`sk_test_*`/`sk_live_*`), `FERSAKU_WEBHOOK_SECRET` (`whsec_*`), opsional `FERSAKU_API_BASE` (default `https://fersaku.com/api/v1`).
@@ -96,6 +96,30 @@ Setelah Mayar ditinggalkan (KYC produksi berat + sandbox `api.mayar.club` down, 
 **Integritas tombol "Saya sudah bayar"**: tombol konfirmasi manual memanggil `apply_payment` langsung dari browser — aman untuk mock, tapi di produksi = manager bisa perpanjang tanpa bayar. Fix: tombol kini **hanya muncul untuk invoice `provider === 'mock'`**. Invoice provider asli (Fersaku) cuma menampilkan link checkout + catatan "diperpanjang otomatis"; pelunasan **wajib** via webhook ber-signature.
 
 **Sisa (giliran user, saat promote ke produksi):** ganti secret ke key `sk_live_*` + webhook secret produksi, daftar URL webhook di dashboard Fersaku mode live.
+
+### Promote staging → produksi (2026-06-07)
+Project produksi = `vmitplpvncfvyimgyxrn` ("FixMaster"), staging = `fpwwswngqpftaixdlozo`. Promote pertama kali setelah berbulan dev di staging.
+
+**Pelajaran penting — drift pelacak migration vs schema nyata:** `supabase migration list --linked` menunjukkan kolom **Remote kosong** (0001–0010 belum tercatat), TAPI `db push` langsung gagal `type "role_type" already exists (42710)`. Akar: dulu (sebelum CLI/staging ada) `0001–0003` dijalankan **manual via SQL Editor** di produksi, jadi objeknya ADA tapi tabel pelacak `supabase_migrations` KOSONG. Produksi juga **sudah berisi data nyata** (organisasi/transaksi) — jadi `db reset` HARAM.
+
+**Jalur aman yang dipakai (mempertahankan data):**
+```
+supabase link --project-ref vmitplpvncfvyimgyxrn   # butuh password DB produksi
+supabase migration repair --status applied 0001 0002 0003  # tandai pelacak, NOL sentuh data
+supabase db push                                   # apply HANYA 0004–0010
+```
+`repair` cuma update tabel pelacak (bukan schema/data). `db push` transaksional per-migration (gagal → rollback, tak merusak). Sebelum push, **semua 0004–0010 diaudit**: semua pakai `add column if not exists` / `create table if not exists` / drop-recreate RLS policy — **nol operasi destruktif terhadap baris data**. NOTICE "does not exist, skipping" saat apply = wajar (dari `drop if exists` defensif). Pra-cek: `select table_name from information_schema.tables where table_schema='public'` → 15 tabel `0001–0003` lengkap → aman.
+
+**Edge Functions produksi:** `create-invoice` + `fersaku-webhook` di-deploy ke `vmitplpvncfvyimgyxrn` (migration dulu, karena fungsi butuh RPC `start_subscription`/`apply_payment` dari 0009). Verifikasi: webhook GET → 200, CORS allow-headers `authorization, x-client-info, apikey, content-type` lengkap.
+
+**Sisa produksi (giliran user):** set secret LIVE (`FERSAKU_API_KEY=sk_live_*` + `FERSAKU_WEBHOOK_SECRET` live — **beda dari sandbox**) via `supabase secrets set ... --project-ref vmitplpvncfvyimgyxrn`; daftar webhook URL `https://vmitplpvncfvyimgyxrn.supabase.co/functions/v1/fersaku-webhook` di Fersaku mode Live; merge `feat/cloud-auth`→`main` via PR; uji 1 transaksi QRIS asli nominal kecil (simulate TAK tersedia di live). Live-mode Fersaku tak butuh KYC.
+
+### Invoice cancel + anti-tumpuk pending (migration `0011`)
+Masalah: tiap "Pilih Paket" memanggil `start_subscription` yang **selalu** membuat invoice `pending` baru, tanpa membatalkan yang lama & tanpa jalan cancel → invoice pending menumpuk di Riwayat Invoice. Fix (migration `0011_invoice_cancel.sql`):
+- **`cancel_invoice(p_invoice_id)`** — RPC manager-only, hanya membatalkan invoice ber-status `pending` (idempotent untuk status final; `paid` tak tersentuh). UI: tombol "Batalkan" (ghost) di tiap baris pending di Riwayat Invoice → wrapper `cancelInvoice` → `cancelPay` handler.
+- **`start_subscription` di-recreate**: sebelum insert invoice baru, `update invoices set status='canceled' where org_id=... and status='pending'` → **maksimal satu pending aktif** pada satu waktu (supersede otomatis).
+
+Total migration kini **0001–0011**. Verifikasi: build + 202 test + lint hijau.
 
 ---
 
