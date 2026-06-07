@@ -121,6 +121,12 @@ Masalah: tiap "Pilih Paket" memanggil `start_subscription` yang **selalu** membu
 
 Total migration kini **0001–0011**. Verifikasi: build + 202 test + lint hijau.
 
+> [!NOTE]
+> **Pelajaran apply migration (drift tracker):** urutan `db push` gagal-lalu-`repair` bisa membuat tracker menandai migration "applied" padahal body-nya **tak pernah jalan** (fungsi tak ada di DB). `supabase migration list` hanya membuktikan status **tracker**, bukan keberadaan objek. Verifikasi sebenarnya: `select proname from pg_proc where proname='<fn>'`. Bila kosong walau tracker "applied", jalankan SQL migration **langsung** di SQL Editor (semua RPC kita `create or replace` → idempotent, aman). Terjadi di staging **dan** produksi untuk `0011`.
+
+### Promote SELESAI — terbukti LIVE (2026-06-07)
+Uji transaksi QRIS **asli (mode live)** di `getfixmaster.vercel.app` sukses end-to-end: log `fersaku-webhook` produksi menampilkan `payment applied { mode: "live" }`, masa aktif bertambah otomatis. `cancel_invoice` terverifikasi ada di produksi (via `pg_proc`). Branch `feat/cloud-auth` ter-merge ke `main` (`73f9986`). **Gateway Fersaku resmi live di produksi.** Live-mode Fersaku tak butuh KYC; sandbox punya `simulate`, live hanya bisa diuji dgn bayar QRIS asli.
+
 ---
 
 ### [HISTORIS] Integrasi Mayar — ditinggalkan
