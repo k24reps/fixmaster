@@ -52,7 +52,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest (208 test)
+npm run test    # vitest (223 test)
 npm run lint    # eslint
 ```
 Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasumsi "kelihatannya benar". Pelajaran lengkap di `docs/obsidian-vault/Decisions & Bug Fixes.md`.

@@ -80,6 +80,14 @@ Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu
 
 Helper murni di `lib/business/services.ts`: `warrantyEndDate(service)` (tanggal garansi terjauh antara jasa & sparepart), `isUnderWarranty(service, today)` (true bila **salah satu** garansi masih berlaku, inklusif), dan `canClaimWarranty(service, today)` (syarat: `lunas`, masih dalam garansi, dan bukan tiket klaim). Kerugian garansi dicatat **manual** sebagai expense kategori `'Garansi'` — sengaja tidak ditarik dari inventory/POS. Lihat [[Signature Pages]] & [[Decisions & Bug Fixes]].
 
+## Export data, hapus/erasure, & pelaporan error (P1)
+
+**Export CSV.** `lib/business/export.ts` murni & teruji: `escapeCsvField` (RFC 4180 — quote bila ada koma/kutip/baris-baru, gandakan kutip) **plus guard formula-injection** (sel berawalan `= + - @` diberi prefiks apostrof agar tak dieksekusi Excel/Sheets), `rowsToCsv`/`buildCsv` (BOM UTF-8 agar Excel baca teks Indonesia benar), `csvFilename` (slug bertanggal). Definisi dataset di `features/settings/exportDatasets.ts` memetakan 5 koleksi (servis, penjualan, pelanggan, inventori, keuangan) ke kolom berlabel Indonesia, **skip tombstone** (`deletedAt`), lalu `downloadCsv` (Blob + anchor) di layer UI. Kartu "Export Data" tampil di Settings → **Sistem** (owner-only, karena memuat keuangan + PII). Untuk cadangan, laporan, atau pindah sistem.
+
+**Hapus/erasure data (hak "penghapusan" UU PDP).** Di Settings → Sistem (Zona Berbahaya), mode cloud menambah aksi **"Hapus Data & Keluar"**: `repository.clearAll()` lalu `authStore.signOut()`. Disampaikan **jujur** bahwa penghapusan penuh **kredensial login** (record Supabase Auth) perlu fungsi sisi-server berhak akses — jadi UI tidak berpura-pura melakukannya. Disarankan export dulu sebelum hapus.
+
+**Seam pelaporan error.** `lib/report.ts` = satu titik kirim error. Default **console-only** (tanpa SDK/jaringan/bobot bundle); `setErrorReporter()` memasang tracker nyata (mis. Sentry) sekali saat startup tanpa mengubah call-site lain. `reportError()` membungkus non-Error & **tak pernah throw** walau reporter rusak. `ErrorBoundary.componentDidCatch` kini lewat seam ini (tag `source: root|route`). Sengaja **tidak** menambah SDK tak terkonfigurasi.
+
 ## Terkait
 - [[Tech Stack]] · [[Decisions & Bug Fixes]] · [[Sidebar - Live Diagnostic Rail]]
 

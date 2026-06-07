@@ -1,5 +1,6 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { Icon } from '@/components/ui';
+import { reportError } from '@/lib/report';
 import styles from './ErrorBoundary.module.css';
 
 interface ErrorBoundaryProps {
@@ -46,9 +47,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Surface in the console for now. This is the single seam where a remote
-    // error tracker (e.g. Sentry) would be wired in later.
-    console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
+    // Route through the pluggable error reporter (console-only by default;
+    // a real tracker like Sentry can be wired via setErrorReporter at startup).
+    reportError(error, {
+      source: this.props.root ? 'root' : 'route',
+      componentStack: info.componentStack ?? undefined,
+    });
   }
 
   private reset = () => this.setState({ error: null });

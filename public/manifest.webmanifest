@@ -1,0 +1,29 @@
+{
+  "name": "FixMaster — Manajemen Usaha Reparasi",
+  "short_name": "FixMaster",
+  "description": "Aplikasi manajemen usaha servis reparasi gadget & elektronik: tiket servis, kasir, inventori, keuangan, dan tim dalam satu tempat.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#14171c",
+  "theme_color": "#14171c",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}

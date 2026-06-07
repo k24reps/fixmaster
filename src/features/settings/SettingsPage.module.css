@@ -683,6 +683,46 @@
   margin-bottom: 0;
 }
 
+/* ---------- Export data ---------- */
+.exportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.exportBtn span {
+  flex: 1;
+  text-align: left;
+}
+.exportBtn:hover:not(:disabled) {
+  border-color: var(--border-brand);
+  transform: translateY(-1px);
+}
+.exportBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Separator between reset and account-deletion within the danger card. */
+.dangerDivider {
+  border: none;
+  border-top: 1px dotted var(--border-strong);
+  margin: var(--space-4) 0;
+}
+
 @media (max-width: 768px) {
   .systemGrid {
     grid-template-columns: 1fr;

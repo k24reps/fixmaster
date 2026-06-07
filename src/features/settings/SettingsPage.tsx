@@ -48,6 +48,8 @@ import {
   type Invoice,
 } from '@/data/supabase-client';
 import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
+import { DATASETS, downloadCsv } from './exportDatasets';
+import { useAuthStore } from '@/stores/auth';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -1279,6 +1281,51 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
   );
 }
 
+/** CSV export of each major dataset. Owner-only (includes finance + PII). */
+function ExportDataCard() {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const onExport = async (key: string, label: string) => {
+    setBusy(key);
+    try {
+      const def = DATASETS.find((d) => d.key === key);
+      if (!def) return;
+      const csv = await def.toCsv();
+      downloadCsv(def.label, csv);
+      toast.success(`Data ${label} diekspor`);
+    } catch {
+      toast.error('Gagal mengekspor data');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="download" aria-hidden />} title="Export Data" />
+      <CardBody>
+        <p className={styles.dangerNote}>
+          Unduh data sebagai CSV (bisa dibuka di Excel/Spreadsheet) — untuk cadangan, laporan, atau pindah sistem.
+        </p>
+        <div className={styles.exportGrid}>
+          {DATASETS.map((d) => (
+            <button
+              key={d.key}
+              className={styles.exportBtn}
+              onClick={() => onExport(d.key, d.label)}
+              disabled={busy !== null}
+            >
+              <Icon name={d.icon} aria-hidden />
+              <span>{busy === d.key ? 'Menyiapkan…' : d.label}</span>
+              <Icon name="download" aria-hidden />
+            </button>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function SystemTab({
   plan,
   onReset,
@@ -1289,6 +1336,28 @@ function SystemTab({
   isOwner: boolean;
 }) {
   const planDef = PLANS[plan];
+  const cloud = isSupabaseConfigured;
+  const signOut = useAuthStore((s) => s.signOut);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      // Erase all tenant data we can reach from the client, then end the
+      // cloud session. NOTE: removing the Supabase auth *credential* record
+      // itself requires a privileged server function — surfaced honestly below.
+      await repository.clearAll();
+      await signOut();
+      toast.success('Data dihapus & keluar dari akun');
+    } catch {
+      toast.error('Gagal menghapus data');
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   return (
     <div className={styles.systemGrid}>
       <Card glass>
@@ -1307,6 +1376,8 @@ function SystemTab({
         </CardBody>
       </Card>
 
+      {isOwner && <ExportDataCard />}
+
       {isOwner && (
         <Card glass accent="danger">
           <CardHeader icon={<Icon name="triangle-exclamation" aria-hidden />} title="Zona Berbahaya" />
@@ -1317,9 +1388,36 @@ function SystemTab({
             <Button variant="danger" onClick={onReset} iconLeft={<Icon name="trash" aria-hidden />}>
               Reset Seluruh Data
             </Button>
+
+            {cloud && (
+              <>
+                <hr className={styles.dangerDivider} />
+                <p className={styles.dangerNote}>
+                  Hapus akun: seluruh data usaha dihapus permanen lalu kamu keluar dari akun.
+                  Untuk penghapusan penuh kredensial login, hubungi dukungan (perlu proses sisi server).
+                </p>
+                <Button
+                  variant="danger"
+                  onClick={() => setConfirmDelete(true)}
+                  iconLeft={<Icon name="right-from-bracket" aria-hidden />}
+                >
+                  Hapus Data &amp; Keluar
+                </Button>
+              </>
+            )}
           </CardBody>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Hapus Akun & Semua Data?"
+        message="SEMUA data usaha (servis, transaksi, pelanggan, stok, keuangan) akan dihapus permanen dan kamu akan keluar dari akun. Tindakan ini tidak dapat dibatalkan. Pertimbangkan export data lebih dulu."
+        confirmLabel={deleting ? 'Menghapus…' : 'Ya, Hapus & Keluar'}
+        danger
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
