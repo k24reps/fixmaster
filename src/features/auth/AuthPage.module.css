@@ -1,54 +1,238 @@
+/* ============================================================
+   AuthPage — "Terminal Akses Bench" signature
+   Split layout: brand panel (identitas + diagnostic rail) +
+   form panel (faceplate bersekrup). Token saja → dark/light auto.
+   ============================================================ */
+
 .overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg-app);
+  background: var(--bg-base);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+  overflow: auto;
 }
 
-.card {
+.shell {
   width: 100%;
-  max-width: 420px;
-  background: var(--surface-glass);
+  max-width: 880px;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  background: var(--bg-surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
   box-shadow: var(--shadow-lg);
-  text-align: center;
   animation: fm-scale-in var(--dur-normal) var(--ease-spring);
 }
 
-.logo {
+/* ---------- Brand panel ---------- */
+.brandPanel {
+  position: relative;
   display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 60%),
+    var(--bg-app);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
 }
-.logoMark {
-  width: 56px;
-  height: 56px;
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 26px 26px;
+  pointer-events: none;
+}
+.brandTop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.brandLogo {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   background: var(--gradient-brand);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 1.5rem;
+  color: var(--on-brand);
+  font-size: 1.25rem;
   box-shadow: var(--shadow-brand);
+  flex-shrink: 0;
+}
+.brandWord {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.brandBody {
+  position: relative;
+  margin-top: auto;
+}
+.brandTagline {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
+.brandSub {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Diagnostic rail — mirrors the sidebar's "live bench" language. */
+.rail {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px dotted var(--border-strong);
+}
+.railRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.railLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.railKey {
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+.railDots {
+  flex: 1;
+  border-bottom: 1px dotted var(--border-strong);
+  transform: translateY(-2px);
+}
+.railVal {
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+.brandFoot {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+/* ---------- Form panel: faceplate ---------- */
+.formPanel {
+  position: relative;
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+}
+.screw {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--border-strong), var(--bg-base));
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.screw::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-top: 1px solid var(--text-muted);
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+.screwTL { top: 12px; left: 12px; }
+.screwTR { top: 12px; right: 12px; }
+.screwBL { bottom: 12px; left: 12px; }
+.screwBR { bottom: 12px; right: 12px; }
+
+.mobileBrand {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  margin-bottom: var(--space-5);
+}
+
+.terminalTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+.terminalLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.modeTag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--border-brand);
+}
+
+/* LED status light (shared idiom with billing/sidebar). */
+.led {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.ledOk {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft), 0 0 9px var(--success);
+}
+.ledLive {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 9px var(--accent);
+  animation: fm-pulse 1.8s var(--ease-in-out) infinite;
 }
 
 .heading {
+  font-family: var(--font-display);
   font-size: var(--text-xl);
-  margin-bottom: 4px;
+  margin: 0 0 4px;
+  color: var(--text-primary);
 }
 .hint {
   color: var(--text-secondary);
   font-size: var(--text-sm);
-  margin-bottom: var(--space-6);
+  margin: 0 0 var(--space-6);
 }
 
 .fields {
@@ -66,6 +250,7 @@
   align-items: center;
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  margin-top: auto;
 }
 .linkRow {
   color: var(--text-muted);
@@ -93,8 +278,19 @@
   color: var(--brand-hover);
 }
 
-@media (max-width: 520px) {
-  .card {
+/* ---------- Responsive: collapse to a single faceplate ---------- */
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+  }
+  .brandPanel {
+    display: none;
+  }
+  .mobileBrand {
+    display: flex;
+  }
+  .formPanel {
     padding: var(--space-6);
   }
 }
