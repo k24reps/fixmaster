@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       customer_email: user.email,
       description: `Langganan FixMaster ${plan} (1 bulan)`,
       external_id: invoiceId,
-      expired_minutes: 60 * 24, // 24h window to pay
+      expired_minutes: 30, // 30-min QRIS window (matches Fersaku dashboard default)
       finish_url: redirectUrl ?? supabaseUrl,
     };
 
