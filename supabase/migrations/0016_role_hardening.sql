@@ -183,15 +183,20 @@ create or replace function guard_plan_type_change()
 returns trigger language plpgsql as $$
 begin
   if new.plan_type is distinct from old.plan_type then
-    -- Jalur billing yang diberkati (apply_payment set flag lokal).
-    if coalesce(current_setting('fixmaster.bypass_plan_lock', true), '') = '1' then
+    -- Jalur billing yang diberkati (apply_payment menandai flag transaksi)
+    -- ATAU backend/webhook (service_role) boleh mengubah paket.
+    if coalesce(current_setting('fixmaster.bypass_plan_lock', true), '') = '1'
+       or coalesce(auth.role(), '') = 'service_role' then
       return new;
     end if;
-    -- Backend/webhook/tooling.
-    if coalesce(auth.role(), '') = 'service_role' then
-      return new;
-    end if;
-    raise exception 'Paket hanya dapat diubah melalui pembayaran (billing)';
+    -- Selain itu: JANGAN gagalkan update — cukup PERTAHANKAN paket lama.
+    -- Penting: klien menyimpan profil usaha (nama/alamat/logo) dengan
+    -- meng-UPDATE seluruh baris organizations, termasuk plan_type yang bisa
+    -- BASI (mis. setelah webhook memperpanjang paket tapi cache klien belum
+    -- segar). Me-reject akan memblokir edit profil yang sah. Dengan meng-
+    -- coerce ke nilai lama, kolom tetap tak bisa diubah lewat UPDATE langsung
+    -- (anti-bypass) tanpa false-positive.
+    new.plan_type := old.plan_type;
   end if;
   return new;
 end;
