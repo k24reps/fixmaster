@@ -77,20 +77,34 @@ Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` =
 1. **Baca keuangan bocor** — `incomes_select`/`expenses_select` dulu `is_org_member`, jadi karyawan bisa menarik omzet/pengeluaran lewat API. `0016` mengubahnya ke **`is_org_manager`** → karyawan tak lagi melihat keuangan apa pun.
 2. **Admin = owner** — `0016` menambah helper **`is_org_owner`** dan memisahkan kuasa: kelola peran owner & seluruh billing kini **owner-only** (lihat catatan Tim & Billing di atas), `plan_type` dikunci trigger.
 
-Matriks final tiga lapis:
+Matriks final tiga lapis (diperketat lebih lanjut oleh `0017`, lihat di bawah):
 
 | Kemampuan | karyawan | admin (manager) | owner |
 |---|:-:|:-:|:-:|
-| Operasional (servis, POS, pelanggan, inventori, tugas) | ✅ tulis* | ✅ | ✅ |
+| Operasional inti — servis, POS, pelanggan (tambah/edit), tugas (selesai) | ✅ | ✅ | ✅ |
+| **Inventori** — tambah/edit/hapus item (harga modal/jual) | ❌¹ | ✅ | ✅ |
+| **Absensi** — tulis baris **milik sendiri** | ✅ | ✅ | ✅ |
+| Absensi — tulis baris karyawan lain | ❌ | ✅ | ✅ |
+| **Hard-delete** — customers/services/sales/task_instances | ❌ | ✅ | ✅ |
 | Baca keuangan (incomes/expenses, laporan) | ❌ | ✅ | ✅ |
 | Tulis keuangan & config (wallet/outlet/supplier/PO) | ❌ | ✅ | ✅ |
 | Kelola karyawan & admin | ❌ | ✅ | ✅ |
 | Kelola peran **owner** (promote/demote/nonaktif) | ❌ | ❌ | ✅ |
 | Billing/langganan + ubah `plan_type` | ❌ | ❌ | ✅ |
 
-\*tulis operasional karyawan masih `is_org_member` (lihat catatan: pengetatan absensi-diri/inventori-harga/hard-delete adalah P1, belum dikerjakan).
+¹ Stok berubah otomatis saat **POS** (`process_sale`) & **terima barang** (`receive_goods`) — keduanya RPC `security definer` yang **bypass RLS**, jadi tetap jalan untuk karyawan. Yang dikunci hanya editor item manual.
 
-**Cerminan UI** ada di `config/plans.ts`: `roleAllows` (kini `finance.view` untuk owner/admin saja), helper `isManager`/`isOwner`. Sidebar menyembunyikan **Keuangan** & **Laporan** dari karyawan (`navigation.managerOnly`), `ManagerRoute` mengalihkan akses-URL langsung, dan Dashboard menyembunyikan hero laba + metrik Pemasukan/Pengeluaran/Saldo + target pendapatan dari karyawan. Tab **Tim** & **Langganan** di Settings memang sudah `ownerOnly`. **Penegak sebenarnya tetap RLS server**; UI hanya mencegah kontrol yang pasti gagal. Detail: [[Decisions & Bug Fixes]] (role hardening 0016).
+**Cerminan UI** ada di `config/plans.ts`: `roleAllows` (kini `finance.view` untuk owner/admin saja), helper `isManager`/`isOwner`. Sidebar menyembunyikan **Keuangan** & **Laporan** dari karyawan (`navigation.managerOnly`), `ManagerRoute` mengalihkan akses-URL langsung, Dashboard menyembunyikan hero laba + metrik Pemasukan/Pengeluaran/Saldo + target pendapatan, InventoryPage menyembunyikan tombol tambah/edit/hapus item, dan tombol hapus (pelanggan, tugas-cepat) disembunyikan dari karyawan. Tab **Tim** & **Langganan** di Settings memang sudah `ownerOnly`. **Penegak sebenarnya tetap RLS server**; UI hanya mencegah kontrol yang pasti gagal. Detail: [[Decisions & Bug Fixes]] (role hardening 0016 & 0017).
+
+### Pengetatan integritas operasional (migration `0017`, P1)
+
+`0016` menutup celah **kerahasiaan** (baca keuangan) & **kepemilikan** (owner vs admin). `0017` menutup celah **integritas tulis operasional** yang sebelumnya masih `is_org_member`:
+
+1. **Inventori → manager-only (semua tulis).** Policy `inventory_write` (`for all`) kini `is_org_manager`. Karyawan tak bisa lagi mengubah harga modal/jual atau menambah/menghapus item lewat API. Penjualan & penerimaan barang tetap jalan karena memakai RPC `security definer` (`process_sale`/`receive_goods`) yang bypass RLS.
+2. **Absensi → self-only untuk member.** Helper baru `is_self_membership(member_id, org)`; policy insert/update mengizinkan manager **atau** pemilik baris (`employee_id` = membership aktif pemanggil). DELETE manager-only. Geofence `clock_in` (RPC) tak terpengaruh.
+3. **Hard-delete → manager-only.** Policy `*_write` gabungan pada `customers`, `services`, `sales`, `task_instances` dipecah jadi insert/update (tetap `is_org_member`) + **delete (`is_org_manager`)**. App memang pakai soft-delete/void; penghapusan permanen jadi aksi manager.
+
+Semua policy tulis tetap mempertahankan gerbang langganan `is_org_active()` dari `0010`. Expand-only & idempotent.
 
 ## Servis: pengambilan barang & garansi
 

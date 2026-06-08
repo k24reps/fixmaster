@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Card, Button, Input, EmptyState, Icon } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { useSessionStore } from '@/stores/session';
+import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { CustomerModal } from './CustomerModal';
@@ -14,6 +16,8 @@ type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
 export function CustomersPage() {
   const { data: customers } = useCollection('customers');
   const { data: services } = useCollection('services');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('svc_desc');
   const [modalOpen, setModalOpen] = useState(false);
@@ -170,13 +174,15 @@ export function CustomersPage() {
                     <button className={styles.iconBtn} onClick={() => openEdit(c)} aria-label="Edit">
                       <Icon name="pen" aria-hidden />
                     </button>
-                    <button
-                      className={[styles.iconBtn, styles.danger].join(' ')}
-                      onClick={() => setToDelete(c)}
-                      aria-label="Hapus"
-                    >
-                      <Icon name="trash" aria-hidden />
-                    </button>
+                    {isMgr && (
+                      <button
+                        className={[styles.iconBtn, styles.danger].join(' ')}
+                        onClick={() => setToDelete(c)}
+                        aria-label="Hapus"
+                      >
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
