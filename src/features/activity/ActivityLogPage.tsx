@@ -42,9 +42,11 @@ const ROLE_OPTIONS: { value: Role | 'all'; label: string }[] = [
 ];
 
 /**
- * Owner-only audit trail. Lists who did what across all roles, newest first,
- * with search + role/action filters. Read access is enforced server-side by
- * RLS (migration 0019); this page is also guarded by OwnerRoute.
+ * Owner-only audit trail, styled as a bench "Event Recorder — Diagnostic
+ * Trace": a multi-channel data-logger faceplate (live REC LED + readout)
+ * feeding a continuous vertical trace rail where each action is a glowing
+ * signal-node. Read access is enforced server-side by RLS (migration 0019);
+ * this page is also guarded by OwnerRoute.
  */
 export function ActivityLogPage() {
   const { data: logs, loading } = useCollection('activity');
@@ -57,7 +59,13 @@ export function ActivityLogPage() {
     [logs, query, role, action],
   );
 
-  // Group rows by calendar day (date label) for a timeline feel.
+  // Distinct actors among the filtered set = number of "channels" recorded.
+  const channels = useMemo(
+    () => new Set(filtered.map((l) => l.actorId ?? l.actorName)).size,
+    [filtered],
+  );
+
+  // Group rows by calendar day (date label) for the recorder tape segments.
   const groups = useMemo(() => {
     const map = new Map<string, typeof filtered>();
     for (const l of filtered) {
@@ -69,9 +77,38 @@ export function ActivityLogPage() {
     return [...map.entries()];
   }, [filtered]);
 
+  const hasFilter = query !== '' || role !== 'all' || action !== 'all';
+
   return (
     <div className={styles.wrap}>
-      {/* Filters */}
+      {/* ---------- Recorder faceplate ---------- */}
+      <div className={styles.recorder}>
+        <div className={styles.recLeft}>
+          <span className={styles.recLed} aria-hidden />
+          <div className={styles.recTitle}>
+            <span className={styles.recTag}>EVENT RECORDER</span>
+            <strong>Jejak Audit · Khusus Pemilik</strong>
+          </div>
+        </div>
+        <div className={styles.readout}>
+          <div className={styles.readItem}>
+            <span className={styles.readLabel}>TOTAL</span>
+            <strong className={styles.readValue}>{String(logs.length).padStart(3, '0')}</strong>
+          </div>
+          <div className={styles.readSep} aria-hidden />
+          <div className={styles.readItem}>
+            <span className={styles.readLabel}>TAMPIL</span>
+            <strong className={styles.readValue}>{String(filtered.length).padStart(3, '0')}</strong>
+          </div>
+          <div className={styles.readSep} aria-hidden />
+          <div className={styles.readItem}>
+            <span className={styles.readLabel}>KANAL</span>
+            <strong className={styles.readValue}>{String(channels).padStart(2, '0')}</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* ---------- Control strip (filters) ---------- */}
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <Icon name="magnifying-glass" className={styles.searchIcon} aria-hidden />
@@ -94,7 +131,7 @@ export function ActivityLogPage() {
           options={ACTION_OPTIONS}
           aria-label="Filter aksi"
         />
-        {(query || role !== 'all' || action !== 'all') && (
+        {hasFilter && (
           <Button
             variant="secondary"
             onClick={() => {
@@ -108,39 +145,51 @@ export function ActivityLogPage() {
         )}
       </div>
 
-      <Card glass>
+      <Card glass className={styles.traceCard}>
         <CardBody className={styles.noPad}>
           {loading ? (
-            <p className={styles.loading}>Memuat…</p>
+            <p className={styles.loading}>
+              <Icon name="circle-notch" className={styles.spin} aria-hidden /> Merekam…
+            </p>
           ) : filtered.length === 0 ? (
             <EmptyState
-              icon={<Icon name="clock-rotate-left" aria-hidden />}
-              title="Belum ada aktivitas"
-              description="Aktivitas tim akan muncul di sini saat mereka bekerja."
+              icon={<Icon name="pulse" aria-hidden />}
+              title={hasFilter ? 'Tidak ada event cocok' : 'Belum ada aktivitas'}
+              description={
+                hasFilter
+                  ? 'Coba longgarkan filter pencarian.'
+                  : 'Jejak aktivitas tim akan terekam di sini saat mereka bekerja.'
+              }
             />
           ) : (
-            <div className={styles.timeline}>
+            <div className={styles.trace}>
               {groups.map(([day, rows]) => (
-                <section key={day} className={styles.daySection}>
-                  <div className={styles.dayHead}>
+                <section key={day} className={styles.segment}>
+                  <div className={styles.segHead}>
                     <Icon name="calendar" aria-hidden /> {fmtDate(day)}
-                    <span className={styles.dayCount}>{rows.length}</span>
+                    <span className={styles.segCount}>{rows.length} event</span>
                   </div>
-                  <ul className={styles.rows}>
+                  <ul className={styles.events}>
                     {rows.map((log) => {
                       const meta = actionMeta(log.action);
                       return (
-                        <li key={log.id} className={styles.row}>
-                          <span className={[styles.dot, styles[`tone_${meta.tone}`]].join(' ')} aria-hidden>
+                        <li key={log.id} className={styles.event}>
+                          <span
+                            className={[styles.node, styles[`tone_${meta.tone}`]].join(' ')}
+                            aria-hidden
+                          >
                             <Icon name={meta.icon} aria-hidden />
                           </span>
-                          <div className={styles.rowBody}>
-                            <div className={styles.rowTop}>
+                          <div className={styles.evBody}>
+                            <div className={styles.evTop}>
                               <strong className={styles.action}>{meta.label}</strong>
                               {log.entityLabel && <span className={styles.entity}>{log.entityLabel}</span>}
                             </div>
-                            <div className={styles.rowMeta}>
-                              <span className={styles.actor}>{log.actorName || '—'}</span>
+                            <div className={styles.evMeta}>
+                              <span className={styles.actor}>
+                                <Icon name="user" className={styles.actorIcon} aria-hidden />
+                                {log.actorName || '—'}
+                              </span>
                               <Badge tone="neutral">{roleLabel(log.actorRole)}</Badge>
                             </div>
                           </div>

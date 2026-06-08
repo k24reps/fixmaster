@@ -87,12 +87,15 @@ Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown katego
 
 ![[rep-dark.png]]
 
-## Log Aktivitas — Audit Ticker (owner-only)
+## Log Aktivitas — Event Recorder · Diagnostic Trace (owner-only)
 
-Halaman `/activity` ([`ActivityLogPage`](src/features/activity/ActivityLogPage.tsx)), **khusus owner** (dijaga `OwnerRoute` + RLS SELECT owner-only, migration `0019`). Menjawab kebutuhan owner mengawasi aktivitas tiap peran. Bergaya **ticker tape audit**:
-- **Toolbar filter**: cari (nama aktor / label objek), dropdown peran, dropdown aksi, tombol reset.
-- **Timeline dikelompokkan per hari**: header tanggal sticky + penghitung; tiap baris = **dot aksi berwarna** (tone success/warning/danger/info via `actionMeta`), label aksi + label entitas mono, nama aktor + badge peran, dan **timestamp `HH:MM`** tabular di kanan.
-- **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create/delete, inventori CRUD, pelanggan CRUD, absensi edit/hapus, servis create & ubah status. Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. Lihat [[Data Layer]].
+Halaman `/activity` ([`ActivityLogPage`](src/features/activity/ActivityLogPage.tsx)), **khusus owner** (dijaga `OwnerRoute` + RLS SELECT owner-only, migration `0019`). Menjawab kebutuhan owner mengawasi aktivitas tiap peran. Metafora: **perekam data multi-kanal (event recorder)** sebench dengan POS Register & Cashbook Tape:
+- **Faceplate bersekrup** ber-wash grid blueprint: **LED REC merah berdenyut** (`recBlink`) + judul, dan **panel readout LCD** mono ber-glow amber (`TOTAL` / `TAMPIL` / `KANAL`, angka zero-pad tabular). `KANAL` = jumlah aktor unik pada hasil filter.
+- **Control strip**: cari (nama aktor / label objek), dropdown peran, dropdown aksi, tombol reset (muncul bila ada filter).
+- **Trace rail**: event dikelompokkan per hari (header tanggal sticky + hitung). Sebuah **spine vertikal putus-putus** (sinyal kanal) membentang di belakang **signal-node** — lingkaran ber-ring tone (success/warning/danger/info via `actionMeta`) berisi ikon aksi. Tiap baris: label aksi, label entitas (chip mono amber), aktor + badge peran, dan **timestamp `HH:MM`** tabular berpembatas kiri.
+- **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create/delete, inventori CRUD, pelanggan CRUD, absensi edit/hapus, servis create & ubah status. Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. State kosong & loading juga bertema (pulse / spinner mono). Lihat [[Data Layer]].
+
+![[activity-dark.png]]
 
 ## Tugas — Job Board
 

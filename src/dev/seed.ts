@@ -28,6 +28,7 @@ import type {
   TaskTemplate,
   TaskInstance,
   Outlet,
+  ActivityLog,
 } from '@/data/types';
 
 export async function seedDemoWorkspace(): Promise<void> {
@@ -283,6 +284,62 @@ export async function seedDemoWorkspace(): Promise<void> {
     { ...at(oDago), id: newId(), templateId: tmplDaily.id, title: 'Cek antrian unit Cabang Dago', description: '', dueDate: today, status: 'done', completedAt: now, completedById: owner.id, completedByName: owner.name, note: '' },
   ];
   await repository.putMany('taskInstances', taskInstances);
+
+  // 10b) Activity log — owner-only audit trail (migration 0019). A realistic
+  // spread across all three roles and two days so the Event Recorder page has
+  // signal to show. Actors are looked up from the seeded employees.
+  const admin = employees.find((e) => e.role === 'admin') ?? owner;
+  const staff = employees.find((e) => e.role === 'karyawan') ?? owner;
+  const yesterday = addDays(today, -1);
+  const ts = (date: string, hhmm: string) => `${date}T${hhmm}:00.000Z`;
+  const actor = (e: { id: string; name: string; role: 'owner' | 'admin' | 'karyawan' }) => ({
+    actorId: e.id,
+    actorName: e.name,
+    actorRole: e.role,
+  });
+  const mkLog = (
+    who: typeof owner,
+    createdAt: string,
+    action: ActivityLog['action'],
+    entityType: string,
+    entityLabel: string,
+    meta: Record<string, unknown> = {},
+  ): ActivityLog => ({
+    ...orgBase,
+    id: newId(),
+    createdAt,
+    updatedAt: createdAt,
+    ...actor(who as { id: string; name: string; role: 'owner' | 'admin' | 'karyawan' }),
+    action,
+    entityType,
+    entityId: newId(),
+    entityLabel,
+    meta,
+  });
+  const activity: ActivityLog[] = [
+    // Yesterday
+    mkLog(owner, ts(yesterday, '08:31'), 'auth.login', 'session', owner.name),
+    mkLog(staff, ts(yesterday, '08:35'), 'auth.login', 'session', staff.name),
+    mkLog(staff, ts(yesterday, '09:12'), 'service.create', 'service', 'FM-0003', { device: 'Asus ROG G14' }),
+    mkLog(admin, ts(yesterday, '10:48'), 'customer.create', 'customer', 'Citra Lestari'),
+    mkLog(staff, ts(yesterday, '13:20'), 'service.status', 'service', 'FM-0003', { from: 'diterima', to: 'pengerjaan' }),
+    mkLog(admin, ts(yesterday, '15:02'), 'expense.create', 'expense', 'Listrik harian cabang', { amount: 150_000 }),
+    mkLog(owner, ts(yesterday, '16:40'), 'inventory.update', 'inventory', 'SSD NVMe 512GB', { stock: 10 }),
+    // Today
+    mkLog(owner, ts(today, '08:30'), 'auth.login', 'session', owner.name),
+    mkLog(admin, ts(today, '08:33'), 'auth.login', 'session', admin.name),
+    mkLog(staff, ts(today, '08:34'), 'auth.login', 'session', staff.name),
+    mkLog(staff, ts(today, '09:05'), 'sale.create', 'sale', 'INV-0001', { total: 950_000, items: 1 }),
+    mkLog(admin, ts(today, '09:40'), 'income.create', 'income', 'Penjualan SSD NVMe 512GB', { amount: 950_000 }),
+    mkLog(staff, ts(today, '10:15'), 'service.create', 'service', 'FM-0006', { device: 'PC Rakitan' }),
+    mkLog(admin, ts(today, '11:22'), 'customer.update', 'customer', 'Andi Pratama'),
+    mkLog(owner, ts(today, '11:50'), 'sale.void', 'sale', 'INV-0002', { total: 1_950_000, reason: 'Salah input qty' }),
+    mkLog(staff, ts(today, '13:08'), 'inventory.create', 'inventory', 'Thermal Paste MX-4', { stock: 25 }),
+    mkLog(admin, ts(today, '14:30'), 'attendance.update', 'attendance', staff.name, { date: today }),
+    mkLog(owner, ts(today, '15:12'), 'expense.delete', 'expense', 'Alat solder & timah', { amount: 250_000 }),
+    mkLog(staff, ts(today, '16:00'), 'service.status', 'service', 'FM-0001', { from: 'selesai', to: 'lunas' }),
+  ];
+  await repository.putMany('activity', activity);
 
   // 11) Land on the authenticated app as the owner, scoped to all outlets
   // (reset any branch scope persisted by a previous seed).
