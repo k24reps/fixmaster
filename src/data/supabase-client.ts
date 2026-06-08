@@ -112,6 +112,22 @@ export async function clockIn(args: {
   return data as string;
 }
 
+/**
+ * Cloud void of a POS sale via the `void_sale` RPC (manager-only, atomic):
+ * restores stock, reverses wallet balances, deletes linked income rows, and
+ * marks the sale voided (row retained for audit). Throws the server's
+ * Indonesian message on failure (e.g. non-manager).
+ */
+export async function voidSale(saleId: string, reason: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('void_sale', {
+    p_sale_id: saleId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ============================================================
 // Team management (Fase 1A). Invitations use the "pending-invite +
 // claim" model: a manager creates a pending_invites row; the invitee

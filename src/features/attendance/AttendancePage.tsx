@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardHeader, CardBody, Button, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isSupabaseConfigured, clockIn } from '@/data/supabase-client';
+import { isManager } from '@/config/plans';
 import { getCurrentPosition } from '@/lib/geo';
 import { hasGeofence } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
 import { localDateStr, localTimeStr, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
+import type { Attendance } from '@/data/types';
 import styles from './AttendancePage.module.css';
 
 export function AttendancePage() {
@@ -18,6 +20,58 @@ export function AttendancePage() {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const today = localDateStr();
+  const isMgr = me ? isManager(me.role) : false;
+
+  // Manager correction: edit jam / status, or delete a row.
+  const [editRow, setEditRow] = useState<Attendance | null>(null);
+  const [editIn, setEditIn] = useState('');
+  const [editOut, setEditOut] = useState('');
+  const [editStatus, setEditStatus] = useState('hadir');
+  const [editNote, setEditNote] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const [toDelete, setToDelete] = useState<Attendance | null>(null);
+
+  const openEdit = (a: Attendance) => {
+    setEditRow(a);
+    setEditIn(a.checkIn ?? '');
+    setEditOut(a.checkOut ?? '');
+    setEditStatus(a.status);
+    setEditNote(a.note ?? '');
+  };
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    setEditBusy(true);
+    try {
+      const checkOut = editOut.trim() || null;
+      await repository.put('attendance', {
+        ...editRow,
+        checkIn: editIn.trim() || null,
+        checkOut,
+        status: editStatus as Attendance['status'],
+        note: editNote.trim(),
+        totalHours: checkOut ? calcHours(editIn.trim() || '00:00', checkOut) : 0,
+      });
+      toast.success('Absensi diperbarui');
+      setEditRow(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui absensi');
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await repository.remove('attendance', toDelete.id);
+      toast.success('Absensi dihapus');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus absensi');
+    } finally {
+      setToDelete(null);
+    }
+  };
 
   // Outlet whose geofence applies to this check-in: the active branch if one is
   // selected, otherwise the primary (or first) outlet.
@@ -203,26 +257,79 @@ export function AttendancePage() {
             <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat" />
           ) : (
             <div className={styles.ledger}>
-              <div className={styles.ledgerHead}>
+              <div className={[styles.ledgerHead, isMgr ? styles.withActions : ''].join(' ')}>
                 <span>Tanggal</span>
                 <span>Karyawan</span>
                 <span>Masuk</span>
                 <span>Keluar</span>
                 <span className={styles.hours}>Total</span>
+                {isMgr && <span className={styles.actionsCol}>Aksi</span>}
               </div>
               {recentByDay.map((a) => (
-                <div key={a.id} className={styles.ledgerRow}>
+                <div key={a.id} className={[styles.ledgerRow, isMgr ? styles.withActions : ''].join(' ')}>
                   <span className={styles.punch}>{fmtDate(a.date)}</span>
                   <span className={styles.ledgerName}>{a.employeeName}</span>
                   <span className={styles.punch}>{a.checkIn ?? '—'}</span>
                   <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}>—</span>}</span>
                   <span className={styles.hours}>{a.checkOut ? `${a.totalHours} jam` : '—'}</span>
+                  {isMgr && (
+                    <span className={styles.actionsCol}>
+                      <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Edit absensi">
+                        <Icon name="pen" aria-hidden />
+                      </button>
+                      <button className={[styles.rowBtn, styles.danger].join(' ')} onClick={() => setToDelete(a)} aria-label="Hapus absensi">
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </CardBody>
       </Card>
+
+      <Modal
+        open={editRow !== null}
+        onClose={() => setEditRow(null)}
+        title={`Koreksi Absensi · ${editRow?.employeeName ?? ''}`}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditRow(null)}>Batal</Button>
+            <Button onClick={saveEdit} loading={editBusy}>Simpan</Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <Input label="Jam Masuk" placeholder="HH:MM" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
+            <Input label="Jam Keluar" placeholder="HH:MM" value={editOut} onChange={(e) => setEditOut(e.target.value)} />
+          </div>
+          <Select
+            label="Status"
+            value={editStatus}
+            onChange={(e) => setEditStatus(e.target.value)}
+            options={[
+              { value: 'hadir', label: 'Hadir' },
+              { value: 'izin', label: 'Izin' },
+              { value: 'sakit', label: 'Sakit' },
+              { value: 'alpha', label: 'Alpha' },
+            ]}
+          />
+          <Input label="Catatan" placeholder="Opsional" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Hapus Absensi?"
+        message={`Baris absensi ${toDelete?.employeeName ?? ''} (${toDelete ? fmtDate(toDelete.date) : ''}) akan dihapus permanen.`}
+        confirmLabel="Hapus"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
   );
 }

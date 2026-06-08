@@ -54,6 +54,13 @@ Lanjutan dari `0016`. Sementara `0016` menutup celah **kerahasiaan** (baca keuan
 - **Hard-delete → manager-only.** Policy gabungan `*_write` (`for all`) dipecah jadi insert/update (`is_org_member`) + delete (`is_org_manager`) pada `customers`/`services`/`sales`/`task_instances`. App memang pakai soft-delete/void; penghapusan permanen jadi aksi manager.
 - Semua tetap mempertahankan gerbang `is_org_active()` (0010). Expand-only, idempotent, diuji di `fixmaster-staging` dulu. Cermin UI: tombol tambah/edit/hapus inventori + tombol hapus pelanggan & tugas-cepat disembunyikan dari karyawan.
 
+### Koreksi transaksi (migration `0018`) — void penjualan + edit absensi
+Menutup gap "recovery from error" yang ditemukan saat audit ketersediaan fitur edit per menu: POS & Absensi sebelumnya tak punya jalur koreksi in-app.
+- **Void, bukan delete, untuk penjualan.** Penjualan adalah transaksi finansial → membatalkannya harus membalik stok + saldo + pemasukan secara atomik, dan menyisakan jejak audit. Karena itu RPC `void_sale` (manager-only, `security definer`) menandai `voided=true` alih-alih menghapus baris. Lebih aman daripada "edit" yang bisa meninggalkan saldo tak konsisten.
+- **Tautan `incomes.sale_id`.** Tanpa ini, pembalikan finansial harus cocok-teks deskripsi (rapuh). Kolom FK baru membuat reversal deterministik; ada fallback deskripsi untuk sale lama/RPC yang belum punya `sale_id` (sale_no unik per org → deskripsi efektif unik).
+- **Absensi: UI-only.** Tidak menambah RLS — `0017` sudah memberi manager hak update/delete attendance. Edit menghitung ulang `totalHours` dari jam masuk/keluar.
+- **Pre-existing yang terungkap:** checkout POS menulis `sales`/`inventory`/`incomes`/`wallets` langsung via repository (bukan RPC `process_sale`). Karena `incomes`/`wallets` manager-only sejak `0002`, di cloud praktis **hanya manager yang bisa checkout**. Dicatat sebagai utang teknis; void dibuat manager-only agar konsisten dengan kenyataan itu.
+
 ### Auth dua-mode (cloud vs local) — Fase 0 SaaS
 Schema Supabase (RLS + RPC) dibangun untuk **Supabase Auth** (`auth.uid()`, `memberships.user_id → auth.users`), tapi app awalnya hanya punya **login PIN sisi-klien** yang tak pernah sign-in ke Supabase. Akibatnya cloud mode tak bisa membuat org / RLS memblokir semua. Keputusan (branch `feat/cloud-auth`):
 - **Dua sesi terpisah**: `stores/auth.ts` (akun cloud Supabase Auth, email+password) vs `stores/session.ts` (org + karyawan aktif). `AuthGate` mengorkestrasi keduanya.
