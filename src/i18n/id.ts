@@ -43,6 +43,7 @@ export const id = {
   'nav.tasks': 'Tugas Internal',
   'nav.attendance': 'Absensi',
   'nav.reports': 'Laporan',
+  'nav.activity': 'Log Aktivitas',
   'nav.settings': 'Pengaturan',
 
   // ---------- Page subtitles ----------
@@ -56,6 +57,7 @@ export const id = {
   'subtitle.tasks': 'Tugas internal & SOP tim',
   'subtitle.attendance': 'Kehadiran & jam kerja karyawan',
   'subtitle.reports': 'Analitik & laporan bisnis',
+  'subtitle.activity': 'Jejak aktivitas semua peran (khusus pemilik)',
   'subtitle.settings': 'Konfigurasi aplikasi & tim',
 
   // ---------- Service statuses ----------

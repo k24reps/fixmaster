@@ -7,6 +7,7 @@ import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
+import { logActivity } from '@/lib/activity';
 import { InventoryModal } from './InventoryModal';
 import type { InventoryItem } from '@/data/types';
 import styles from './InventoryPage.module.css';
@@ -66,6 +67,12 @@ export function InventoryPage() {
     if (!toDelete) return;
     await repository.remove('inventory', toDelete.id);
     toast.success('Sparepart dihapus');
+    logActivity({
+      action: 'inventory.delete',
+      entityType: 'inventory',
+      entityId: toDelete.id,
+      entityLabel: toDelete.name,
+    });
     setToDelete(null);
   };
 

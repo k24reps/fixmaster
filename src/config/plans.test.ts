@@ -5,12 +5,13 @@ describe('roleAllows', () => {
   it('owner can do everything', () => {
     expect(roleAllows('owner', '*')).toBe(true);
     expect(roleAllows('owner', 'finance.view')).toBe(true);
+    expect(roleAllows('owner', 'reports.view')).toBe(true);
     expect(roleAllows('owner', 'anything.at.all')).toBe(true);
   });
 
-  it('admin has operational + financial read, but not the owner wildcard', () => {
+  it('admin has operational + financial read, but NOT reports (owner-only) nor the owner wildcard', () => {
     expect(roleAllows('admin', 'finance.view')).toBe(true);
-    expect(roleAllows('admin', 'reports.view')).toBe(true);
+    expect(roleAllows('admin', 'reports.view')).toBe(false);
     expect(roleAllows('admin', 'services.write')).toBe(true);
     expect(roleAllows('admin', '*')).toBe(false);
   });

@@ -310,3 +310,41 @@ export interface MonthlyTarget {
   serviceCount: number;
   overheadBudget: number;
 }
+
+// ---------- Activity Log (audit trail, owner-only read) ----------
+/** Canonical action verbs recorded in the activity log. */
+export type ActivityAction =
+  | 'auth.login'
+  | 'sale.create'
+  | 'sale.void'
+  | 'income.create'
+  | 'income.delete'
+  | 'expense.create'
+  | 'expense.delete'
+  | 'inventory.create'
+  | 'inventory.update'
+  | 'inventory.delete'
+  | 'customer.create'
+  | 'customer.update'
+  | 'customer.delete'
+  | 'attendance.update'
+  | 'attendance.delete'
+  | 'service.create'
+  | 'service.status';
+
+export interface ActivityLog extends BaseEntity {
+  /** Membership id of who performed the action (null if removed later). */
+  actorId: ID | null;
+  actorName: string;
+  actorRole: Role | null;
+  action: ActivityAction;
+  /** Entity kind affected, e.g. 'sale', 'customer'. */
+  entityType: string;
+  /** Affected entity id (string; not an FK so logs survive deletes). */
+  entityId: string | null;
+  /** Human-readable label, e.g. sale no / customer name. */
+  entityLabel: string;
+  /** Free-form structured context (amounts, before/after, reason). */
+  meta: Record<string, unknown>;
+}
+

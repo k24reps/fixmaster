@@ -40,6 +40,7 @@ export const en: Dictionary = {
   'nav.tasks': 'Internal Tasks',
   'nav.attendance': 'Attendance',
   'nav.reports': 'Reports',
+  'nav.activity': 'Activity Log',
   'nav.settings': 'Settings',
 
   // ---------- Page subtitles ----------
@@ -53,6 +54,7 @@ export const en: Dictionary = {
   'subtitle.tasks': 'Internal tasks & team SOPs',
   'subtitle.attendance': 'Employee attendance & work hours',
   'subtitle.reports': 'Business analytics & reports',
+  'subtitle.activity': 'Activity trail across all roles (owner only)',
   'subtitle.settings': 'App & team configuration',
 
   // ---------- Service statuses ----------

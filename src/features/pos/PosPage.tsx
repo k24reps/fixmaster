@@ -4,6 +4,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { voidSale, isSupabaseConfigured } from '@/data/supabase-client';
 import { isManager } from '@/config/plans';
+import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr, fmtDate } from '@/lib/time';
@@ -78,6 +79,13 @@ export function PosPage() {
         });
       }
       toast.success(`Transaksi ${voidTarget.saleNo} dibatalkan`);
+      logActivity({
+        action: 'sale.void',
+        entityType: 'sale',
+        entityId: voidTarget.id,
+        entityLabel: voidTarget.saleNo,
+        meta: { total: voidTarget.total, reason: voidReason.trim() },
+      });
       setVoidTarget(null);
       setVoidReason('');
     } catch (e) {
@@ -233,6 +241,13 @@ export function PosPage() {
       }
 
       toast.success(`Transaksi ${saleNo} berhasil`);
+      logActivity({
+        action: 'sale.create',
+        entityType: 'sale',
+        entityId: sale.id,
+        entityLabel: saleNo,
+        meta: { total, items: cart.length },
+      });
       reset();
     } catch {
       toast.error('Gagal memproses transaksi');

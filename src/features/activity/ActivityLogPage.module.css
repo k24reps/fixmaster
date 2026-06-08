@@ -1,0 +1,191 @@
+/* ============================================================
+   Activity Log — owner-only audit trail
+   A timeline "ticker tape": day-grouped rows with a colored
+   action dot, actor + role, and a right-aligned timestamp.
+   Global tokens → inherits the bench identity (dark/light).
+   ============================================================ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- Filter toolbar ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+.search :global(input) {
+  padding-left: 38px;
+}
+.searchIcon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.noPad {
+  padding: 0;
+}
+.loading {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ---------- Timeline ---------- */
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+.daySection {
+  border-bottom: 1px solid var(--border);
+}
+.daySection:last-child {
+  border-bottom: none;
+}
+.dayHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.dayHead svg {
+  color: var(--brand-hover);
+}
+.dayCount {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 1px 9px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.row:last-child {
+  border-bottom: none;
+}
+.row:hover {
+  background: var(--bg-hover);
+}
+
+/* action dot */
+.dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+}
+.tone_neutral {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+.tone_success {
+  background: var(--success-soft);
+  color: var(--green-400);
+  border-color: transparent;
+}
+.tone_warning {
+  background: var(--warning-soft);
+  color: var(--amber-400);
+  border-color: transparent;
+}
+.tone_danger {
+  background: var(--warning-soft);
+  color: var(--danger);
+  border-color: transparent;
+}
+.tone_info {
+  background: var(--info-soft);
+  color: var(--blue-400);
+  border-color: transparent;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rowTop {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.action {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.entity {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--brand-hover);
+}
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.actor {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.time {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search {
+    min-width: 0;
+  }
+}

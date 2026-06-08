@@ -4,6 +4,7 @@ import { repository } from '@/data';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { findByPhone } from '@/lib/business/customers';
+import { logActivity } from '@/lib/activity';
 import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
@@ -180,6 +181,13 @@ export function ServiceModal({
           deletedAt: null,
         };
         await repository.put('services', record);
+        logActivity({
+          action: 'service.create',
+          entityType: 'service',
+          entityId: record.id,
+          entityLabel: serviceNo,
+          meta: { device: record.device, customer: record.customerName },
+        });
         toast.success(`Servis ${serviceNo} dibuat`);
       }
       onSaved();

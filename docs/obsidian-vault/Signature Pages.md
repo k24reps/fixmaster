@@ -82,7 +82,17 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
 
 Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif.
 
+> [!warning] Akses Laporan kini **owner-only** (migration `0019`)
+> Sebelumnya manager (owner+admin). Sekarang hanya **owner**: nav pakai flag `ownerOnly`, rute dibungkus `OwnerRoute`, dan `reports.view` dicabut dari admin. Lihat [[Decisions & Bug Fixes]].
+
 ![[rep-dark.png]]
+
+## Log Aktivitas — Audit Ticker (owner-only)
+
+Halaman `/activity` ([`ActivityLogPage`](src/features/activity/ActivityLogPage.tsx)), **khusus owner** (dijaga `OwnerRoute` + RLS SELECT owner-only, migration `0019`). Menjawab kebutuhan owner mengawasi aktivitas tiap peran. Bergaya **ticker tape audit**:
+- **Toolbar filter**: cari (nama aktor / label objek), dropdown peran, dropdown aksi, tombol reset.
+- **Timeline dikelompokkan per hari**: header tanggal sticky + penghitung; tiap baris = **dot aksi berwarna** (tone success/warning/danger/info via `actionMeta`), label aksi + label entitas mono, nama aktor + badge peran, dan **timestamp `HH:MM`** tabular di kanan.
+- **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create/delete, inventori CRUD, pelanggan CRUD, absensi edit/hapus, servis create & ubah status. Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. Lihat [[Data Layer]].
 
 ## Tugas — Job Board
 

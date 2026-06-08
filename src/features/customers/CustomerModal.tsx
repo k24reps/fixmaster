@@ -3,6 +3,7 @@ import { Modal, Input, Button, FormFields, FormError } from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { checkDuplicate } from '@/lib/business/customers';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import type { Customer } from '@/data/types';
@@ -79,6 +80,13 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
         }
       }
       toast.success(editing ? 'Pelanggan diperbarui' : 'Pelanggan ditambahkan');
+      logActivity({
+        action: editing ? 'customer.update' : 'customer.create',
+        entityType: 'customer',
+        entityId: record.id,
+        entityLabel: record.name,
+        meta: { phone: record.phone },
+      });
       onSaved();
       onClose();
     } catch {

@@ -4,6 +4,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isSupabaseConfigured, clockIn } from '@/data/supabase-client';
 import { isManager } from '@/config/plans';
+import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
 import { hasGeofence } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
@@ -53,6 +54,13 @@ export function AttendancePage() {
         totalHours: checkOut ? calcHours(editIn.trim() || '00:00', checkOut) : 0,
       });
       toast.success('Absensi diperbarui');
+      logActivity({
+        action: 'attendance.update',
+        entityType: 'attendance',
+        entityId: editRow.id,
+        entityLabel: editRow.employeeName,
+        meta: { date: editRow.date, checkIn: editIn.trim(), checkOut: editOut.trim(), status: editStatus },
+      });
       setEditRow(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal memperbarui absensi');
@@ -66,6 +74,13 @@ export function AttendancePage() {
     try {
       await repository.remove('attendance', toDelete.id);
       toast.success('Absensi dihapus');
+      logActivity({
+        action: 'attendance.delete',
+        entityType: 'attendance',
+        entityId: toDelete.id,
+        entityLabel: toDelete.employeeName,
+        meta: { date: toDelete.date },
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menghapus absensi');
     } finally {

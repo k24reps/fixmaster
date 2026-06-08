@@ -12,6 +12,7 @@ import {
   reverseExpenseDelta,
   shouldRevertServiceOnIncomeDelete,
 } from '@/lib/business/finance';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
 import type { Income, Expense } from '@/data/types';
@@ -99,10 +100,24 @@ export function FinancePage() {
           }
         }
         await repository.remove('incomes', toDelete.id);
+        logActivity({
+          action: 'income.delete',
+          entityType: 'income',
+          entityId: toDelete.id,
+          entityLabel: inc.description || inc.category,
+          meta: { amount: inc.amount, category: inc.category },
+        });
       } else {
         const exp = toDelete.record as Expense;
         if (wallet) await repository.put('wallets', applyBalance(wallet, reverseExpenseDelta(exp)));
         await repository.remove('expenses', toDelete.id);
+        logActivity({
+          action: 'expense.delete',
+          entityType: 'expense',
+          entityId: toDelete.id,
+          entityLabel: exp.description || exp.category,
+          meta: { amount: exp.amount, category: exp.category },
+        });
       }
       toast.success('Transaksi dihapus & saldo dikembalikan');
       setToDelete(null);

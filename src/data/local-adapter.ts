@@ -11,7 +11,7 @@ import type { BaseEntity, ID } from './types';
 import { newId } from '@/lib/id';
 
 const DB_NAME = 'fixmaster';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const COLLECTIONS: CollectionName[] = [
   'employees',
@@ -29,6 +29,7 @@ const COLLECTIONS: CollectionName[] = [
   'attendance',
   'taskTemplates',
   'taskInstances',
+  'activity',
 ];
 
 const SINGLETON_STORE = '_singletons';

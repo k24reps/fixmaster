@@ -115,6 +115,18 @@ Melengkapi alur "perbaiki kalau salah input" untuk transaksi finansial:
 
 Cermin UI: POS menampilkan panel **Transaksi Terakhir** dengan tombol batalkan (manager) + modal beralasan; halaman Absensi punya kolom aksi edit/hapus (manager). Dual-path seperti `clockIn` — cloud lewat RPC, lokal membalik via repository.
 
+### Log Aktivitas (migration `0019`) — jejak audit owner-only
+
+Menjawab kebutuhan owner: melihat aktivitas tiap peran (owner/admin/karyawan).
+- **Tabel `activity_logs`** (append-only): `actor_id/actor_name/actor_role`, `action` (verb kanonik), `entity_type/entity_id/entity_label`, `meta jsonb`, plus field BaseEntity. Index `(org_id, created_at desc)`.
+- **RLS unik dibanding tabel lain**: INSERT diizinkan untuk **semua member** (`is_org_member`, tidak digerbang `is_org_active` agar audit tetap jalan setelah masa tenggang), tetapi SELECT **owner-only** (`is_org_owner`). **Tanpa policy UPDATE/DELETE** → log immutable (klien tak bisa mengubah/menghapus).
+- **Koleksi baru `activity`** di EntityMap → tabel `activity_logs` (cloud) / object store IndexedDB (local, **DB_VERSION dinaikkan 1→2**).
+- **Helper `logActivity()`** (`src/lib/activity.ts`): ambil aktor dari `session` store, tulis fire-and-forget (`void repository.put('activity', …).catch()`) — **tak pernah** memblokir/menggagalkan aksi pengguna. Logika presentasi murni di `src/lib/business/activity.ts` (label/ikon/tone/filter, teruji).
+- **Aksi yang dicatat**: login; POS jual & void; pemasukan/pengeluaran create & delete; inventori create/update/delete; pelanggan create/update/delete; absensi update/delete; servis create & ubah status.
+
+> [!NOTE]
+> `activity_logs` adalah satu-satunya tabel dengan **SELECT owner-only** + **append-only** (tanpa update/delete). Ini sengaja: jejak audit harus kebal manipulasi dan hanya untuk pemilik.
+
 ## Servis: pengambilan barang & garansi
 
 Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu sama lain:

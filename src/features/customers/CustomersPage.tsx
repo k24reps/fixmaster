@@ -6,6 +6,7 @@ import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
+import { logActivity } from '@/lib/activity';
 import { CustomerModal } from './CustomerModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Customer } from '@/data/types';
@@ -69,6 +70,12 @@ export function CustomersPage() {
     if (!toDelete) return;
     await repository.remove('customers', toDelete.id);
     toast.success('Pelanggan dihapus');
+    logActivity({
+      action: 'customer.delete',
+      entityType: 'customer',
+      entityId: toDelete.id,
+      entityLabel: toDelete.name,
+    });
     setToDelete(null);
   };
 

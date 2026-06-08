@@ -61,6 +61,15 @@ Menutup gap "recovery from error" yang ditemukan saat audit ketersediaan fitur e
 - **Absensi: UI-only.** Tidak menambah RLS — `0017` sudah memberi manager hak update/delete attendance. Edit menghitung ulang `totalHours` dari jam masuk/keluar.
 - **Pre-existing yang terungkap:** checkout POS menulis `sales`/`inventory`/`incomes`/`wallets` langsung via repository (bukan RPC `process_sale`). Karena `incomes`/`wallets` manager-only sejak `0002`, di cloud praktis **hanya manager yang bisa checkout**. Dicatat sebagai utang teknis; void dibuat manager-only agar konsisten dengan kenyataan itu.
 
+### Laporan owner-only + Log Aktivitas (migration `0019`)
+Permintaan owner: (1) batasi menu Laporan ke owner saja, (2) buat menu log aktivitas tiap peran khusus owner.
+- **Laporan jadi owner-only (sebelumnya manager).** Sebelumnya `reports.view` dimiliki admin juga + nav `managerOnly`. Sekarang nav pakai flag baru `ownerOnly` (difilter `isOwner`), rute dibungkus `OwnerRoute` (bukan `ManagerRoute`), dan `reports.view` dicabut dari matriks admin (owner tetap lewat wildcard `*`). Defense-in-depth UI; tetap perlu RLS server bila laporan kelak dibangun atas tabel sensitif.
+- **Pola tiga lapis ditiru dari role hardening:** nav (sembunyikan) → route guard (redirect) → server. `OwnerRoute` cermin `ManagerRoute` tapi pakai `isOwner`.
+- **Log Aktivitas = tabel audit append-only, bukan view turunan.** Dipilih tabel `activity_logs` eksplisit (lihat Data Layer 0019) ketimbang merekonstruksi aktivitas dari tabel lain: lebih murah dibaca, menyimpan konteks (`meta`), dan tahan walau baris sumber dihapus (`entity_id` string, bukan FK). 
+- **INSERT semua member, SELECT owner-only, tanpa update/delete.** Setiap peran wajib bisa *menulis* jejaknya, tapi hanya owner *membaca*. Tanpa update/delete agar log tak bisa dipalsukan dari klien — penting untuk fungsi "mengawasi karyawan".
+- **Logging fire-and-forget.** `logActivity()` tidak di-await dan menelan error. Alasan: audit bersifat *best-effort* — kegagalan menulis log **tak boleh** menggagalkan transaksi/penjualan. Server RLS tetap batas integritas sebenarnya.
+- **Kenapa instrumentasi di UI handler, bukan di adapter `put`?** Agar verb bermakna domain (`sale.void`, `service.status`) dengan label entitas yang ramah, bukan "put incomes" generik. Login dicatat di `PinLogin` (bukan di store) untuk menghindari import siklik store↔helper.
+
 ### Auth dua-mode (cloud vs local) — Fase 0 SaaS
 Schema Supabase (RLS + RPC) dibangun untuk **Supabase Auth** (`auth.uid()`, `memberships.user_id → auth.users`), tapi app awalnya hanya punya **login PIN sisi-klien** yang tak pernah sign-in ke Supabase. Akibatnya cloud mode tak bisa membuat org / RLS memblokir semua. Keputusan (branch `feat/cloud-auth`):
 - **Dua sesi terpisah**: `stores/auth.ts` (akun cloud Supabase Auth, email+password) vs `stores/session.ts` (org + karyawan aktif). `AuthGate` mengorkestrasi keduanya.

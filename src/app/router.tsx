@@ -4,6 +4,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthGate } from './AuthGate';
 import { ManagerRoute } from './ManagerRoute';
+import { OwnerRoute } from './OwnerRoute';
 import { NotFoundPage } from '@/components/NotFoundPage';
 
 // Route pages are code-split: each becomes its own chunk loaded on demand,
@@ -39,6 +40,9 @@ const AttendancePage = lazy(() =>
 );
 const ReportsPage = lazy(() =>
   import('@/features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+const ActivityLogPage = lazy(() =>
+  import('@/features/activity/ActivityLogPage').then((m) => ({ default: m.ActivityLogPage })),
 );
 const TrackingPage = lazy(() =>
   import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
@@ -116,7 +120,8 @@ export const router = createBrowserRouter([
       { path: 'finance', element: <ManagerRoute><FinancePage /></ManagerRoute> },
       { path: 'tasks', element: <TasksPage /> },
       { path: 'attendance', element: <AttendancePage /> },
-      { path: 'reports', element: <ManagerRoute><ReportsPage /></ManagerRoute> },
+      { path: 'reports', element: <OwnerRoute><ReportsPage /></OwnerRoute> },
+      { path: 'activity', element: <OwnerRoute><ActivityLogPage /></OwnerRoute> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
