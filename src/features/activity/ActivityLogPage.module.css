@@ -1,8 +1,9 @@
 /* ============================================================
-   Activity Log — owner-only audit trail
-   A timeline "ticker tape": day-grouped rows with a colored
-   action dot, actor + role, and a right-aligned timestamp.
-   Global tokens → inherits the bench identity (dark/light).
+   Activity Log — "Event Recorder · Diagnostic Trace"
+   A bench multi-channel data-logger: screwed faceplate with a
+   live REC LED + LCD readout, feeding a continuous trace rail
+   where every action is a glowing signal-node wired to the
+   channel spine. All color via global tokens (dark/light safe).
    ============================================================ */
 
 .wrap {
@@ -11,7 +12,130 @@
   gap: var(--space-4);
 }
 
-/* ---------- Filter toolbar ---------- */
+/* ---------- Recorder faceplate ---------- */
+.recorder {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, var(--bg-surface-2), var(--bg-surface)),
+    var(--surface-glass);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+/* blueprint grid wash */
+.recorder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+/* corner screws */
+.recorder::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  background:
+    radial-gradient(circle, var(--text-muted) 0 1.5px, transparent 2px) 0 0,
+    radial-gradient(circle, var(--text-muted) 0 1.5px, transparent 2px) 100% 0,
+    radial-gradient(circle, var(--text-muted) 0 1.5px, transparent 2px) 0 100%,
+    radial-gradient(circle, var(--text-muted) 0 1.5px, transparent 2px) 100% 100%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+}
+
+.recLeft {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.recLed {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft), 0 0 10px var(--danger);
+  animation: recBlink 1.4s var(--ease-in-out) infinite;
+}
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.recTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.recTag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--danger);
+}
+.recTitle strong {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+}
+
+/* LCD readout panel */
+.readout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 10px var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+.readItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.readLabel {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+.readValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px var(--brand-soft);
+}
+.readSep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+/* ---------- Control strip (filters) ---------- */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -36,76 +160,106 @@
   z-index: 1;
 }
 
+/* ---------- Trace card ---------- */
+.traceCard {
+  overflow: hidden;
+}
 .noPad {
   padding: 0;
 }
 .loading {
-  padding: var(--space-6);
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-12);
   color: var(--text-muted);
   font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.1em;
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* ---------- Timeline ---------- */
-.timeline {
+/* ---------- Trace rail ---------- */
+.trace {
   display: flex;
   flex-direction: column;
 }
-.daySection {
+.segment {
   border-bottom: 1px solid var(--border);
 }
-.daySection:last-child {
+.segment:last-child {
   border-bottom: none;
 }
-.dayHead {
+.segHead {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 10px var(--space-5);
+  padding: 9px var(--space-5);
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: var(--bg-surface-2);
+  border-bottom: 1px dashed var(--border);
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
 }
-.dayHead svg {
-  color: var(--brand-hover);
+.segHead svg {
+  color: var(--brand);
 }
-.dayCount {
+.segCount {
   margin-left: auto;
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  background: var(--surface-glass);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 1px 9px;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
 
-.rows {
+.events {
   display: flex;
   flex-direction: column;
+  /* the channel spine: a continuous vertical trace line behind the nodes */
+  position: relative;
+  padding: var(--space-2) 0;
 }
-.row {
+.events::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-5) + 16px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+  pointer-events: none;
+}
+
+.event {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 12px var(--space-5);
-  border-bottom: 1px dotted var(--border);
+  gap: var(--space-4);
+  padding: 10px var(--space-5);
   transition: background var(--dur-fast) var(--ease-out);
 }
-.row:last-child {
-  border-bottom: none;
-}
-.row:hover {
+.event:hover {
   background: var(--bg-hover);
 }
 
-/* action dot */
-.dot {
+/* signal node sitting on the spine */
+.node {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -114,41 +268,41 @@
   flex: none;
   border-radius: 50%;
   font-size: 0.95rem;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-elevated);
 }
 .tone_neutral {
-  background: var(--surface-glass);
   color: var(--text-secondary);
 }
 .tone_success {
-  background: var(--success-soft);
   color: var(--green-400);
-  border-color: transparent;
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
 }
 .tone_warning {
-  background: var(--warning-soft);
   color: var(--amber-400);
-  border-color: transparent;
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-soft);
 }
 .tone_danger {
-  background: var(--warning-soft);
-  color: var(--danger);
-  border-color: transparent;
+  color: var(--red-400);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
 }
 .tone_info {
-  background: var(--info-soft);
   color: var(--blue-400);
-  border-color: transparent;
+  border-color: var(--info);
+  box-shadow: 0 0 0 3px var(--info-soft);
 }
 
-.rowBody {
+.evBody {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.rowTop {
+.evTop {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
@@ -162,15 +316,26 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--brand-hover);
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--brand-soft);
 }
-.rowMeta {
+.evMeta {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 .actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: var(--text-xs);
   color: var(--text-secondary);
+}
+.actorIcon {
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 .time {
   font-family: var(--font-mono);
@@ -178,8 +343,20 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
 }
 
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .recorder {
+    padding: var(--space-4);
+  }
+  .readout {
+    width: 100%;
+    justify-content: space-around;
+  }
+}
 @media (max-width: 640px) {
   .toolbar {
     flex-direction: column;
@@ -187,5 +364,19 @@
   }
   .search {
     min-width: 0;
+  }
+  .events::before {
+    left: calc(var(--space-4) + 16px);
+  }
+  .event {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recLed,
+  .spin {
+    animation: none;
   }
 }
