@@ -3,6 +3,8 @@ import { Card, Button, Input, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { useSessionStore } from '@/stores/session';
+import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { InventoryModal } from './InventoryModal';
@@ -20,6 +22,8 @@ function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
 export function InventoryPage() {
   const { data: inventory } = useCollection('inventory');
   const { data: services } = useCollection('services');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sort, setSort] = useState<SortKey>('low_first');
@@ -106,7 +110,7 @@ export function InventoryPage() {
             <option value="name_asc">Nama A-Z</option>
             <option value="stock_desc">Stok Terbanyak</option>
           </select>
-          <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
+          <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />} hidden={!isMgr} style={isMgr ? undefined : { display: 'none' }}>
             Tambah Sparepart
           </Button>
         </div>
@@ -163,12 +167,16 @@ export function InventoryPage() {
                     <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>
                   </div>
                   <div className={styles.binActions}>
-                    <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label="Edit">
-                      <Icon name="pen" aria-hidden />
-                    </button>
-                    <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label="Hapus">
-                      <Icon name="trash" aria-hidden />
-                    </button>
+                    {isMgr && (
+                      <>
+                        <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label="Edit">
+                          <Icon name="pen" aria-hidden />
+                        </button>
+                        <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label="Hapus">
+                          <Icon name="trash" aria-hidden />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

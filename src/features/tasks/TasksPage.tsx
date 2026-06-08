@@ -208,7 +208,7 @@ export function TasksPage() {
                         ) : (
                           <span className={styles.dueTag}>{fmtDate(t.dueDate)}</span>
                         )}
-                        {!t.templateId && (
+                        {!t.templateId && canManage && (
                           <button
                             className={[styles.iconBtn, styles.danger].join(' ')}
                             onClick={() => deleteAdhoc(t)}
