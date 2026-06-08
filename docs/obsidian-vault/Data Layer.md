@@ -64,11 +64,33 @@ Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/
 
 Selain koleksi yang dipetakan ke repository, mode cloud punya tabel & RPC khusus SaaS yang **tidak** lewat adapter (diakses langsung via `supabase-client.ts`):
 
-**Tim (migration `0008`)** — tabel `pending_invites` (org_id, email, role, claimed_at) + RPC security-definer `claim_invite` (dipanggil di `session.bootstrap` saat akun baru belum punya membership → gabung org via email yang cocok), `set_member_role`, `deactivate_member`. Semua mengecek `is_org_manager` & menolak menurunkan/menonaktifkan owner aktif terakhir. Guard yang sama dicerminkan murni di `lib/business/team.ts`. Detail: [[Decisions & Bug Fixes]] (model undangan pending-invite + claim).
+**Tim (migration `0008`, diperketat `0016`)** — tabel `pending_invites` (org_id, email, role, claimed_at) + RPC security-definer `claim_invite` (dipanggil di `session.bootstrap` saat akun baru belum punya membership → gabung org via email yang cocok), `set_member_role`, `deactivate_member`. Semua mengecek `is_org_manager` & menolak menurunkan/menonaktifkan owner aktif terakhir. **Sejak `0016`: hanya OWNER yang boleh mengelola peran owner** (promote ke owner, demote/nonaktifkan owner) — admin ditolak; policy `mbr_manage` juga menambah guard `role <> 'owner' or is_org_owner(...)` agar admin tak bisa mem-bypass via PostgREST langsung. Guard yang sama dicerminkan murni di `lib/business/team.ts`. Detail: [[Decisions & Bug Fixes]] (model undangan pending-invite + claim).
 
-**Billing (migration `0009`)** — tabel `invoices` (org_id, plan, amount, status, provider, qris_url, period_start/end, paid_at) + RPC `start_subscription` (bikin invoice pending 1 siklus), `apply_payment` (idempotent: tandai lunas + perpanjang `plan_expired_at` dari `max(now, expiry)`), fungsi `is_org_active` (cek belum suspended & belum lewat grace). Logika siklus murni di `lib/business/billing.ts` (`subscriptionPhase`, `canWrite`, `isOrgActive`). `plan_type` enum **tetap stabil** (label saja yang berganti di `plans.ts`). Provider Mayar di-abstraksi & masih mock — Edge Function `create-invoice`/`mayar-webhook` menyusul saat sandbox key tersedia. Detail: [[Decisions & Bug Fixes]] (billing invoice-based QRIS).
+**Billing (migration `0009`, diperketat `0016`)** — tabel `invoices` (org_id, plan, amount, status, provider, qris_url, period_start/end, paid_at) + RPC `start_subscription` (bikin invoice pending 1 siklus), `apply_payment` (idempotent: tandai lunas + perpanjang `plan_expired_at` dari `max(now, expiry)`), fungsi `is_org_active` (cek belum suspended & belum lewat grace). **Sejak `0016`: billing = OWNER-only** — `start_subscription`/`cancel_invoice` dan policy `invoices_manage` pakai `is_org_owner`; selain itu kolom `organizations.plan_type` dikunci oleh trigger `guard_plan_type_change` (hanya berubah lewat `apply_payment` yang menandai flag transaksi-lokal, atau `service_role` webhook) — jadi admin/siapa pun tak bisa mem-bypass pembayaran via `UPDATE` langsung. Edit profil usaha (nama/alamat/logo) tetap boleh manager karena trigger hanya menolak saat `plan_type` benar-benar berubah. Logika siklus murni di `lib/business/billing.ts`. Detail: [[Decisions & Bug Fixes]] (billing invoice-based QRIS).
 
 **Enforcement tulis (migration `0010`)** — semua RLS `*_write` policy (operasional, finansial, config) diperketat agar `using`+`with check` wajib `is_org_active(org_id)`. Jadi saat langganan kedaluwarsa (lewat grace), **insert/update/delete diblokir di level DB** untuk semua jalur tulis (termasuk input pemasukan via adapter yang tak lewat RPC) — sementara `*_select` tak disentuh (baca tetap jalan) dan `invoices`/`memberships` tak digerbang (bayar + kelola tim tetap bisa). `supabase-adapter` menerjemahkan error RLS `42501` jadi pesan Indonesia yang ramah.
+
+### Model akses peran (migration `0016`) — TIGA lapis
+
+Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` = owner/admin), sehingga ada dua celah yang hanya tertutup UI (bisa di-bypass via API):
+
+1. **Baca keuangan bocor** — `incomes_select`/`expenses_select` dulu `is_org_member`, jadi karyawan bisa menarik omzet/pengeluaran lewat API. `0016` mengubahnya ke **`is_org_manager`** → karyawan tak lagi melihat keuangan apa pun.
+2. **Admin = owner** — `0016` menambah helper **`is_org_owner`** dan memisahkan kuasa: kelola peran owner & seluruh billing kini **owner-only** (lihat catatan Tim & Billing di atas), `plan_type` dikunci trigger.
+
+Matriks final tiga lapis:
+
+| Kemampuan | karyawan | admin (manager) | owner |
+|---|:-:|:-:|:-:|
+| Operasional (servis, POS, pelanggan, inventori, tugas) | ✅ tulis* | ✅ | ✅ |
+| Baca keuangan (incomes/expenses, laporan) | ❌ | ✅ | ✅ |
+| Tulis keuangan & config (wallet/outlet/supplier/PO) | ❌ | ✅ | ✅ |
+| Kelola karyawan & admin | ❌ | ✅ | ✅ |
+| Kelola peran **owner** (promote/demote/nonaktif) | ❌ | ❌ | ✅ |
+| Billing/langganan + ubah `plan_type` | ❌ | ❌ | ✅ |
+
+\*tulis operasional karyawan masih `is_org_member` (lihat catatan: pengetatan absensi-diri/inventori-harga/hard-delete adalah P1, belum dikerjakan).
+
+**Cerminan UI** ada di `config/plans.ts`: `roleAllows` (kini `finance.view` untuk owner/admin saja), helper `isManager`/`isOwner`. Sidebar menyembunyikan **Keuangan** & **Laporan** dari karyawan (`navigation.managerOnly`), `ManagerRoute` mengalihkan akses-URL langsung, dan Dashboard menyembunyikan hero laba + metrik Pemasukan/Pengeluaran/Saldo + target pendapatan dari karyawan. Tab **Tim** & **Langganan** di Settings memang sudah `ownerOnly`. **Penegak sebenarnya tetap RLS server**; UI hanya mencegah kontrol yang pasti gagal. Detail: [[Decisions & Bug Fixes]] (role hardening 0016).
 
 ## Servis: pengambilan barang & garansi
 

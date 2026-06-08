@@ -8,7 +8,7 @@ SaaS multi-tenant untuk manajemen bisnis jasa reparasi **gadget & elektronik** (
 - **Vite + React 19 + TypeScript** — komponen kecil, type-safe.
 - **Vanilla CSS + CSS Modules** — sistem desain premium, tanpa Tailwind.
 - **Repository Pattern** — local-first (IndexedDB) untuk dev, Supabase untuk produksi.
-- **Vitest** — 241 unit + integration test.
+- **Vitest** — 250 unit + integration test.
 
 ## Fitur
 - Dashboard KPI, target bulanan, notifikasi, leaderboard teknisi

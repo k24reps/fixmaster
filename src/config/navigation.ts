@@ -10,6 +10,8 @@ export interface NavItem {
   color: string;
   /** Plan feature required to see this item (undefined = always shown). */
   feature?: Feature;
+  /** Manager-only (owner/admin). Hidden from karyawan — mirrors RLS. */
+  managerOnly?: boolean;
 }
 
 /**
@@ -23,9 +25,9 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/customers', labelKey: 'nav.customers', icon: 'fa-users', color: '#f59e0b', feature: 'customers' },
   { to: '/inventory', labelKey: 'nav.inventory', icon: 'fa-boxes-stacked', color: '#3dd9c4', feature: 'inventory' },
   { to: '/suppliers', labelKey: 'nav.suppliers', icon: 'fa-truck-field', color: '#60a5fa', feature: 'suppliers' },
-  { to: '/finance', labelKey: 'nav.finance', icon: 'fa-wallet', color: '#ec4899', feature: 'finance' },
+  { to: '/finance', labelKey: 'nav.finance', icon: 'fa-wallet', color: '#ec4899', feature: 'finance', managerOnly: true },
   { to: '/tasks', labelKey: 'nav.tasks', icon: 'fa-list-check', color: '#fbbf24', feature: 'tasks' },
   { to: '/attendance', labelKey: 'nav.attendance', icon: 'fa-calendar-check', color: '#34d399', feature: 'attendance' },
-  { to: '/reports', labelKey: 'nav.reports', icon: 'fa-chart-line', color: '#f97316', feature: 'reports' },
+  { to: '/reports', labelKey: 'nav.reports', icon: 'fa-chart-line', color: '#f97316', feature: 'reports', managerOnly: true },
   { to: '/settings', labelKey: 'nav.settings', icon: 'fa-gear', color: '#9aa4b3' },
 ];

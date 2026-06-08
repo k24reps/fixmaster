@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthGate } from './AuthGate';
+import { ManagerRoute } from './ManagerRoute';
 import { NotFoundPage } from '@/components/NotFoundPage';
 
 // Route pages are code-split: each becomes its own chunk loaded on demand,
@@ -112,10 +113,10 @@ export const router = createBrowserRouter([
       { path: 'customers', element: <CustomersPage /> },
       { path: 'inventory', element: <InventoryPage /> },
       { path: 'suppliers', element: <SuppliersPage /> },
-      { path: 'finance', element: <FinancePage /> },
+      { path: 'finance', element: <ManagerRoute><FinancePage /></ManagerRoute> },
       { path: 'tasks', element: <TasksPage /> },
       { path: 'attendance', element: <AttendancePage /> },
-      { path: 'reports', element: <ReportsPage /> },
+      { path: 'reports', element: <ManagerRoute><ReportsPage /></ManagerRoute> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
