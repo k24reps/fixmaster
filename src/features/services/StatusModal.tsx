@@ -11,6 +11,7 @@ import {
   STATUS_TONE,
   outstandingBalance,
 } from '@/lib/business/services';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { getWarrantyServiceDays, getWarrantyPartsDays, getWarrantyPresets } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
@@ -154,6 +155,13 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
       }
 
       toast.success(`Status → ${STATUS_LABELS[target]}`);
+      logActivity({
+        action: 'service.status',
+        entityType: 'service',
+        entityId: service.id,
+        entityLabel: service.serviceNo,
+        meta: { from: service.status, to: target },
+      });
       onSaved();
       onClose();
     } catch {

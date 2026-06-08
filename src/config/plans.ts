@@ -124,7 +124,7 @@ export function roleAllows(role: Role, action: string): boolean {
     owner: ['*'],
     admin: [
       'services.write', 'customers.write', 'pos.sell', 'inventory.write',
-      'suppliers.write', 'tasks.complete', 'attendance.write', 'reports.view',
+      'suppliers.write', 'tasks.complete', 'attendance.write',
       'finance.view',
     ],
     karyawan: ['services.write', 'pos.sell', 'tasks.complete', 'attendance.self'],

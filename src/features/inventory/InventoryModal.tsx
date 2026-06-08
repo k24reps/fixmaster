@@ -3,6 +3,7 @@ import { Modal, Input, Button, FormFields, FormRow, FormError } from '@/componen
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import type { InventoryItem } from '@/data/types';
@@ -63,6 +64,13 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     };
     try {
       await repository.put('inventory', record);
+      logActivity({
+        action: editing ? 'inventory.update' : 'inventory.create',
+        entityType: 'inventory',
+        entityId: record.id,
+        entityLabel: record.name,
+        meta: { stock: record.stock, sellPrice: record.sellPrice },
+      });
       toast.success(editing ? 'Sparepart diperbarui' : 'Sparepart ditambahkan');
       onClose();
     } catch {

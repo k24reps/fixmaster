@@ -5,6 +5,7 @@ import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { applyBalance } from '@/lib/business/finance';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import type { Wallet, IncomeCategory, ExpenseCategory } from '@/data/types';
@@ -59,8 +60,9 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
     const wallet = wallets.find((w) => w.id === walletId);
     try {
       if (kind === 'income') {
+        const id = newId();
         await repository.put('incomes', {
-          id: newId(),
+          id,
           orgId,
           outletId: null,
           date,
@@ -74,9 +76,17 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
           deletedAt: null,
         });
         if (wallet) await repository.put('wallets', applyBalance(wallet, value));
+        logActivity({
+          action: 'income.create',
+          entityType: 'income',
+          entityId: id,
+          entityLabel: description.trim() || (category as string),
+          meta: { amount: value, category },
+        });
       } else {
+        const id = newId();
         await repository.put('expenses', {
-          id: newId(),
+          id,
           orgId,
           outletId: null,
           date,
@@ -89,6 +99,13 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
           deletedAt: null,
         });
         if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
+        logActivity({
+          action: 'expense.create',
+          entityType: 'expense',
+          entityId: id,
+          entityLabel: description.trim() || (category as string),
+          meta: { amount: value, category },
+        });
       }
       toast.success(kind === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat');
       onClose();

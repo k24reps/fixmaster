@@ -15,6 +15,7 @@ import type {
   Attendance,
   TaskTemplate,
   TaskInstance,
+  ActivityLog,
   ID,
 } from './types';
 
@@ -39,6 +40,7 @@ export interface EntityMap {
   attendance: Attendance;
   taskTemplates: TaskTemplate;
   taskInstances: TaskInstance;
+  activity: ActivityLog;
 }
 
 export type CollectionName = keyof EntityMap;

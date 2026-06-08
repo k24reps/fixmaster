@@ -27,6 +27,7 @@ const TABLE: Record<CollectionName, string> = {
   attendance: 'attendance',
   taskTemplates: 'task_templates',
   taskInstances: 'task_instances',
+  activity: 'activity_logs',
 };
 
 /**

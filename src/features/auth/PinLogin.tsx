@@ -11,6 +11,7 @@ import {
   type AttemptState,
 } from '@/lib/rate-limit';
 import { useSessionStore } from '@/stores/session';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import type { Employee } from '@/data/types';
 import styles from './PinLogin.module.css';
@@ -78,6 +79,7 @@ export function PinLogin() {
       setAttempts(registerSuccess());
       toast.success(`Selamat datang, ${selected.name}!`);
       signInEmployee(selected as Employee);
+      logActivity({ action: 'auth.login', entityType: 'session', entityLabel: selected.name });
       return;
     }
     const nextAttempts = registerFailure(attempts);

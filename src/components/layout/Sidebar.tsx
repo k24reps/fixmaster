@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui';
 import { NAV_ITEMS } from '@/config/navigation';
-import { planAllows, PLANS, isManager } from '@/config/plans';
+import { planAllows, PLANS, isManager, isOwner } from '@/config/plans';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
 import { isSupabaseConfigured } from '@/data/supabase-client';
@@ -51,10 +51,12 @@ export function Sidebar({
 
   const plan = org?.planType ?? 'trial';
   const isMgr = employee ? isManager(employee.role) : false;
+  const isOwn = employee ? isOwner(employee.role) : false;
   const visibleNav = NAV_ITEMS.filter(
     (item) =>
       (!item.feature || planAllows(plan, item.feature)) &&
-      (!item.managerOnly || isMgr),
+      (!item.managerOnly || isMgr) &&
+      (!item.ownerOnly || isOwn),
   );
 
   return (

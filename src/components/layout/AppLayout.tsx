@@ -38,6 +38,7 @@ const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {
   '/tasks': 'subtitle.tasks',
   '/attendance': 'subtitle.attendance',
   '/reports': 'subtitle.reports',
+  '/activity': 'subtitle.activity',
   '/settings': 'subtitle.settings',
 };
 

@@ -12,6 +12,8 @@ export interface NavItem {
   feature?: Feature;
   /** Manager-only (owner/admin). Hidden from karyawan — mirrors RLS. */
   managerOnly?: boolean;
+  /** Owner-only. Hidden from admin + karyawan — mirrors RLS. */
+  ownerOnly?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/finance', labelKey: 'nav.finance', icon: 'fa-wallet', color: '#ec4899', feature: 'finance', managerOnly: true },
   { to: '/tasks', labelKey: 'nav.tasks', icon: 'fa-list-check', color: '#fbbf24', feature: 'tasks' },
   { to: '/attendance', labelKey: 'nav.attendance', icon: 'fa-calendar-check', color: '#34d399', feature: 'attendance' },
-  { to: '/reports', labelKey: 'nav.reports', icon: 'fa-chart-line', color: '#f97316', feature: 'reports', managerOnly: true },
+  { to: '/reports', labelKey: 'nav.reports', icon: 'fa-chart-line', color: '#f97316', feature: 'reports', ownerOnly: true },
+  { to: '/activity', labelKey: 'nav.activity', icon: 'fa-list-check', color: '#a78bfa', ownerOnly: true },
   { to: '/settings', labelKey: 'nav.settings', icon: 'fa-gear', color: '#9aa4b3' },
 ];
