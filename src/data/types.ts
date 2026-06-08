@@ -144,6 +144,8 @@ export interface Income extends BaseEntity {
   description: string;
   /** Link back to the originating service, if any. */
   serviceId: ID | null;
+  /** Link back to the originating POS sale, if any (for void reversal). */
+  saleId?: ID | null;
 }
 
 export interface Expense extends BaseEntity {

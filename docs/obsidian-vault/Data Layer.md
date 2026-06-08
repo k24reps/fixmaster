@@ -106,6 +106,15 @@ Matriks final tiga lapis (diperketat lebih lanjut oleh `0017`, lihat di bawah):
 
 Semua policy tulis tetap mempertahankan gerbang langganan `is_org_active()` dari `0010`. Expand-only & idempotent.
 
+### Koreksi transaksi (migration `0018`)
+
+Melengkapi alur "perbaiki kalau salah input" untuk transaksi finansial:
+- **`incomes.sale_id`** (kolom baru, FK → `sales`, `on delete set null`) — menautkan pemasukan POS ke penjualannya agar pembalikan saat void bersifat deterministik (bukan cocok-teks). Checkout POS kini menstempel `saleId`.
+- **RPC `void_sale(sale_id, reason)`** — MANAGER-only, `security definer`, ATOMIK: (1) kembalikan stok tiap baris, (2) kurangi saldo wallet sebesar income terkait, (3) hapus income terkait (cocok via `sale_id`, fallback deskripsi `Penjualan <no>` untuk sale lama), (4) tandai `sales.voided = true` + alasan. Baris sale **ditahan** untuk audit; laporan & dashboard sudah memfilter `voided`. Idempoten (sale yang sudah void = no-op).
+- **Koreksi absensi** TIDAK butuh policy baru — sejak `0017` manager sudah boleh `update`/`delete` attendance. Murni UI: manager bisa edit jam/status/catatan (hitung ulang total jam) & hapus baris.
+
+Cermin UI: POS menampilkan panel **Transaksi Terakhir** dengan tombol batalkan (manager) + modal beralasan; halaman Absensi punya kolom aksi edit/hapus (manager). Dual-path seperti `clockIn` — cloud lewat RPC, lokal membalik via repository.
+
 ## Servis: pengambilan barang & garansi
 
 Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu sama lain:

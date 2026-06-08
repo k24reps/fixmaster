@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Card, Input, Button, Badge, EmptyState, Icon } from '@/components/ui';
+import { Card, Input, Button, Badge, EmptyState, Icon, Modal } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
+import { voidSale, isSupabaseConfigured } from '@/data/supabase-client';
+import { isManager } from '@/config/plans';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { localDateStr } from '@/lib/time';
+import { localDateStr, fmtDate } from '@/lib/time';
 import {
   cartSubtotal,
   resolveDiscount,
@@ -26,6 +28,7 @@ export function PosPage() {
   const { data: sales } = useCollection('sales');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const isMgr = me ? isManager(me.role) : false;
 
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -33,6 +36,56 @@ export function PosPage() {
   const [discountType, setDiscountType] = useState<DiscountType>('amount');
   const [payments, setPayments] = useState<PaymentAllocation[]>([]);
   const [busy, setBusy] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidBusy, setVoidBusy] = useState(false);
+
+  // Most recent transactions (newest first) for the correction panel.
+  const recentSales = useMemo(
+    () => [...sales].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')).slice(0, 8),
+    [sales],
+  );
+
+  // Void a sale (manager-only). Cloud → atomic RPC; local → mirror the
+  // reversal (restore stock, reverse wallet, delete linked income, mark void).
+  const confirmVoid = async () => {
+    if (!voidTarget) return;
+    setVoidBusy(true);
+    try {
+      if (isSupabaseConfigured) {
+        await voidSale(voidTarget.id, voidReason.trim());
+      } else {
+        const inv = await repository.list('inventory');
+        const restocked = voidTarget.lines
+          .map((l) => {
+            const item = inv.find((i) => i.id === l.itemId);
+            return item ? { ...item, stock: item.stock + l.qty } : null;
+          })
+          .filter((x): x is InventoryItem => x !== null);
+        if (restocked.length) await repository.putMany('inventory', restocked);
+
+        const allIncomes = await repository.list('incomes');
+        const allWallets = await repository.list('wallets');
+        for (const inc of allIncomes.filter((i) => i.saleId === voidTarget.id)) {
+          const w = allWallets.find((x) => x.id === inc.walletId);
+          if (w) await repository.put('wallets', { ...w, balance: w.balance - inc.amount });
+          await repository.remove('incomes', inc.id);
+        }
+        await repository.put('sales', {
+          ...voidTarget,
+          voided: true,
+          voidedReason: voidReason.trim(),
+        });
+      }
+      toast.success(`Transaksi ${voidTarget.saleNo} dibatalkan`);
+      setVoidTarget(null);
+      setVoidReason('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan transaksi');
+    } finally {
+      setVoidBusy(false);
+    }
+  };
 
   const available = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -171,6 +224,7 @@ export function PosPage() {
           walletId: p.walletId,
           description: `Penjualan ${saleNo}`,
           serviceId: null,
+          saleId: sale.id,
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
@@ -343,6 +397,70 @@ export function PosPage() {
           </>
         )}
       </Card>
+
+      {isMgr && (
+        <Card glass className={styles.history}>
+          <div className={styles.historyHead}>
+            <h3>
+              <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
+            </h3>
+          </div>
+          {recentSales.length === 0 ? (
+            <p className={styles.emptyCart}>Belum ada transaksi.</p>
+          ) : (
+            <ul className={styles.historyList}>
+              {recentSales.map((s) => (
+                <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
+                  <div className={styles.historyInfo}>
+                    <strong>{s.saleNo}</strong>
+                    <small>{fmtDate(s.date)} · {s.lines.length} item</small>
+                  </div>
+                  <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
+                  {s.voided ? (
+                    <Badge tone="danger">Dibatalkan</Badge>
+                  ) : (
+                    <button
+                      className={styles.voidBtn}
+                      onClick={() => { setVoidTarget(s); setVoidReason(''); }}
+                      aria-label={`Batalkan ${s.saleNo}`}
+                      title="Batalkan transaksi"
+                    >
+                      <Icon name="circle-xmark" aria-hidden />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
+      <Modal
+        open={voidTarget !== null}
+        onClose={() => setVoidTarget(null)}
+        title={`Batalkan ${voidTarget?.saleNo ?? ''}?`}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setVoidTarget(null)}>
+              Batal
+            </Button>
+            <Button variant="danger" onClick={confirmVoid} loading={voidBusy}>
+              Batalkan Transaksi
+            </Button>
+          </>
+        }
+      >
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-3)' }}>
+          Stok akan dikembalikan, saldo wallet dikurangi, dan pemasukan terkait dihapus.
+          Transaksi tetap tersimpan dengan status <strong>Dibatalkan</strong> untuk jejak audit.
+        </p>
+        <Input
+          placeholder="Alasan pembatalan (opsional)"
+          value={voidReason}
+          onChange={(e) => setVoidReason(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 }
