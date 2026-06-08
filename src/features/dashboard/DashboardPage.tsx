@@ -11,6 +11,8 @@ import {
 } from '@/lib/business/dashboard';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
 import { getTarget } from '@/config/orgConfig';
+import { useSessionStore } from '@/stores/session';
+import { isManager } from '@/config/plans';
 import type { ServiceStatus } from '@/data/types';
 import styles from './DashboardPage.module.css';
 
@@ -23,6 +25,8 @@ function monthRange(): { from: string; to: string } {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const me = useSessionStore((s) => s.currentEmployee);
+  const isMgr = me ? isManager(me.role) : false;
   const { data: services } = useCollection('services');
   const { data: incomes } = useCollection('incomes');
   const { data: expenses } = useCollection('expenses');
@@ -107,6 +111,8 @@ export function DashboardPage() {
       <section
         className={[styles.hero, styles[profitState]].join(' ')}
         aria-label="Laba bersih bulan ini"
+        hidden={!isMgr}
+        style={isMgr ? undefined : { display: 'none' }}
       >
         <div className={styles.heroScreen}>
           <span className={styles.heroScan} aria-hidden />
@@ -134,18 +140,26 @@ export function DashboardPage() {
       <section className={styles.metrics}>
         <Metric label="Unit Masuk" value={kpis.unitsIn} unit="bulan ini" icon={<Icon name="download" aria-hidden />} tone="brand" />
         <Metric label="Belum Selesai" value={kpis.unitsPending} unit="dalam antrean" icon={<Icon name="screwdriver-wrench" aria-hidden />} tone="warning" />
-        <Metric label="Pemasukan" value={fmtRp(kpis.revenue)} unit="bulan ini" icon={<Icon name="arrow-trend-up" aria-hidden />} tone="success" />
-        <Metric label="Pengeluaran" value={fmtRp(kpis.expense)} unit="bulan ini" icon={<Icon name="arrow-trend-down" aria-hidden />} tone="danger" />
-        <Metric label="Total Saldo" value={fmtRp(kpis.totalWallet)} unit="semua wallet" icon={<Icon name="wallet" aria-hidden />} tone="info" />
+        {isMgr && (
+          <>
+            <Metric label="Pemasukan" value={fmtRp(kpis.revenue)} unit="bulan ini" icon={<Icon name="arrow-trend-up" aria-hidden />} tone="success" />
+            <Metric label="Pengeluaran" value={fmtRp(kpis.expense)} unit="bulan ini" icon={<Icon name="arrow-trend-down" aria-hidden />} tone="danger" />
+            <Metric label="Total Saldo" value={fmtRp(kpis.totalWallet)} unit="semua wallet" icon={<Icon name="wallet" aria-hidden />} tone="info" />
+          </>
+        )}
       </section>
 
-      {(target.revenue > 0 || target.serviceCount > 0) && (
+      {((isMgr && target.revenue > 0) || target.serviceCount > 0) && (
         <Card glass>
           <CardHeader icon={<Icon name="bullseye" aria-hidden />} title="Target Bulanan" />
           <CardBody>
             <div className={styles.targets}>
-              <Target label="Target Pendapatan" pct={revenuePct} detail={`${fmtRp(kpis.revenue)} / ${fmtRp(target.revenue)}`} />
-              <Target label="Target Servis" pct={servicePct} detail={`${kpis.unitsIn} / ${target.serviceCount} unit`} />
+              {isMgr && target.revenue > 0 && (
+                <Target label="Target Pendapatan" pct={revenuePct} detail={`${fmtRp(kpis.revenue)} / ${fmtRp(target.revenue)}`} />
+              )}
+              {target.serviceCount > 0 && (
+                <Target label="Target Servis" pct={servicePct} detail={`${kpis.unitsIn} / ${target.serviceCount} unit`} />
+              )}
             </div>
           </CardBody>
         </Card>

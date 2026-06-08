@@ -34,6 +34,19 @@ Dari beberapa opsi (Control Panel, Live Diagnostic Rail, Rack Unit, Boot Sequenc
 ### Ikon terpusat
 Migrasi ke Phosphor lewat satu komponen `Icon` agar penggantian set ikon = ubah satu file. Lihat [[Iconography]].
 
+### Role hardening 0016 — RLS sebagai batas nyata, bukan UI
+Kajian akses menemukan komentar skema "fix #3: role jadi batas keamanan" baru **benar untuk WRITE**, tapi ada dua celah READ/eskalasi yang hanya tertutup UI (bisa di-bypass via API PostgREST):
+1. **Baca keuangan bocor** — `incomes_select`/`expenses_select` dulu `is_org_member`, jadi karyawan bisa menarik omzet/pengeluaran lewat API meski UI menyembunyikannya. Kini `is_org_manager`.
+2. **Admin = owner** — `is_org_manager` menyamakan keduanya. Admin bisa promote dirinya jadi owner (`set_member_role`), ubah `plan_type`, atau `UPDATE organizations` langsung. Migrasi `0016` menambah helper **`is_org_owner`** + memisahkan kuasa.
+
+Keputusan kunci:
+- **Penegak = server (RLS/RPC), UI cuma cermin.** Tiap pembatasan dibuat di DB dulu (policy/trigger/RPC guard), lalu UI (`isManager`/`isOwner`, `navigation.managerOnly`, `ManagerRoute`, Dashboard) hanya menyembunyikan kontrol yang pasti gagal. Pelajaran: jangan pernah andalkan UI untuk kerahasiaan data.
+- **Guard ganda (RPC + policy).** RPC `security definer` melewati RLS, jadi guard owner ditaruh **di RPC** (`set_member_role`/`deactivate_member`) **dan** di policy `mbr_manage` (untuk jalur PostgREST langsung). Dua pintu, dua kunci.
+- **Kunci `plan_type` via trigger + flag transaksi.** Daripada melarang semua update `organizations` (akan memblokir edit profil/logo), trigger `guard_plan_type_change` hanya menolak saat `plan_type` **berubah** dan pemanggil bukan owner/`service_role`. Jalur sah `apply_payment` menandai `set_config('fixmaster.bypass_plan_lock','1',true)` (transaksi-lokal) agar webhook tetap bisa memperpanjang langganan.
+- **Expand-only.** Tak ada DROP kolom/tabel → aman untuk sesi user berjalan; diuji di `fixmaster-staging` dulu sebelum produksi.
+
+Perubahan perilaku yang disengaja: **karyawan tak lagi melihat keuangan apa pun**; **admin kehilangan billing + kelola-owner** (jadi owner-only). Matriks lengkap di [[Data Layer]]. Sub-peran kasir/teknisi (separation of duties) & pengetatan absensi-diri/inventori-harga/hard-delete ditandai **P1** (belum dikerjakan).
+
 ### Auth dua-mode (cloud vs local) — Fase 0 SaaS
 Schema Supabase (RLS + RPC) dibangun untuk **Supabase Auth** (`auth.uid()`, `memberships.user_id → auth.users`), tapi app awalnya hanya punya **login PIN sisi-klien** yang tak pernah sign-in ke Supabase. Akibatnya cloud mode tak bisa membuat org / RLS memblokir semua. Keputusan (branch `feat/cloud-auth`):
 - **Dua sesi terpisah**: `stores/auth.ts` (akun cloud Supabase Auth, email+password) vs `stores/session.ts` (org + karyawan aktif). `AuthGate` mengorkestrasi keduanya.

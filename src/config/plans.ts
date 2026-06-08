@@ -109,16 +109,36 @@ export function outletTierFor(outletCount: number): PlanType | null {
   return null;
 }
 
-/** Role-based permissions independent of plan. */
+/**
+ * Role-based permissions independent of plan.
+ *
+ * Mirrors the server's RLS boundary (migration 0016):
+ *   - manager (owner/admin): operational + financial READ + reports.
+ *   - owner ONLY: billing/subscription + managing the owner role.
+ *   - karyawan: scoped operational writes; NO financial visibility.
+ * The server is the real enforcer; this keeps the UI from showing controls
+ * that would just fail.
+ */
 export function roleAllows(role: Role, action: string): boolean {
   const matrix: Record<Role, string[]> = {
     owner: ['*'],
     admin: [
       'services.write', 'customers.write', 'pos.sell', 'inventory.write',
       'suppliers.write', 'tasks.complete', 'attendance.write', 'reports.view',
+      'finance.view',
     ],
     karyawan: ['services.write', 'pos.sell', 'tasks.complete', 'attendance.self'],
   };
   const allowed = matrix[role];
   return allowed.includes('*') || allowed.includes(action);
+}
+
+/** Manager = owner or admin. Matches the server's is_org_manager(). */
+export function isManager(role: Role): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+/** Owner-only capabilities (billing, managing the owner role). */
+export function isOwner(role: Role): boolean {
+  return role === 'owner';
 }
