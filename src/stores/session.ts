@@ -28,7 +28,7 @@ interface SessionState {
   resetWorkspace: () => Promise<void>;
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   boot: 'loading',
   org: null,
   employees: [],
@@ -131,6 +131,20 @@ export const useSessionStore = create<SessionState>((set) => ({
   },
 
   resetWorkspace: async () => {
+    // Cloud: clearAll() is intentionally a no-op (multi-tenant safety), so a
+    // reset must go through the atomic, owner-only RPC. An empty payload wipes
+    // ALL operational data while KEEPING the org, team (memberships), and
+    // subscription — the account stays signed in with an empty workspace (it
+    // does NOT return to the wizard, since the org still exists). The RPC
+    // notifies every collection, so the UI refetches to empty.
+    if (isSupabaseConfigured) {
+      const orgId = get().org?.id;
+      if (orgId && repository.restoreOrgData) {
+        await repository.restoreOrgData(orgId, {});
+      }
+      return;
+    }
+    // Local: full wipe + back to the setup wizard.
     await repository.clearAll();
     localStorage.removeItem(ACTIVE_ORG_KEY);
     localStorage.removeItem(ACTIVE_OUTLET_KEY);

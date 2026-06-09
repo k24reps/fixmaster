@@ -28,6 +28,10 @@ Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya 
 - **Data demo kumulatif**: `scripts/make-demo-backup.mjs` menghasilkan file backup yang **bertumbuh tiap hari** (hari-1→hari ini, deterministik per-hari). Dijalankan tiap hari lalu di-restore. Realtime sinkronisasi data domain direncanakan **terpisah** (`implementation_plan_realtime.md`).
 - **Konsekuensi jujur**: menu Tim hanya menampilkan akun login asli (bukan nama dummy dari file). Solusinya buat beberapa akun karyawan sekali manual. Lihat [[Data Layer]].
 
+### Bug fix: "Reset Seluruh Data" menyesatkan di cloud
+**Gejala**: tombol "Reset Seluruh Data" memanggil `resetWorkspace()` → `repository.clearAll()`. Di cloud `clearAll()` sengaja **no-op** (keamanan multi-tenant), jadi reset hanya membersihkan state lokal & melempar ke wizard, **tanpa menghapus data di server** — padahal teksnya berjanji "menghapus seluruh data". Menyesatkan.
+**Perbaikan**: di cloud, `resetWorkspace()` kini memanggil RPC `restore_org_data(orgId, {})` (payload kosong) → benar-benar mengosongkan SELURUH data operasional secara atomik & owner-only, sambil **mempertahankan** tim/langganan/profil org (akun tetap login, workspace kosong, TIDAK kembali ke wizard). Teks dialog & catatan Zona Berbahaya dibuat **per-mode** agar jujur. Mode lokal tak berubah (wipe penuh + wizard).
+
 ### ErrorBoundary dua level (anti layar putih)
 Crash render React tanpa boundary = **layar putih kosong** tanpa pemulihan — tampak tidak profesional untuk produk berbayar. Solusi: komponen class [`ErrorBoundary`](src/components/ErrorBoundary.tsx) dipasang di **dua level**:
 - **Root** (`App.tsx`, prop `root`) — jaring terakhir full-screen dengan aksi "Muat Ulang Aplikasi".

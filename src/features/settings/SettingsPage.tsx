@@ -150,7 +150,11 @@ export function SettingsPage() {
       <ConfirmDialog
         open={confirmReset}
         title="Reset Seluruh Data?"
-        message="SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan."
+        message={
+          isSupabaseConfigured
+            ? 'SEMUA data operasional (servis, transaksi, stok, keuangan) akan dihapus permanen. Tim, langganan, dan profil usaha TETAP. Workspace jadi kosong. Tindakan ini tidak dapat dibatalkan.'
+            : 'SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan.'
+        }
         confirmLabel="Ya, Reset Semua"
         danger
         onConfirm={async () => {
@@ -1528,7 +1532,9 @@ function SystemTab({
           <CardHeader icon={<Icon name="triangle-exclamation" aria-hidden />} title="Zona Berbahaya" />
           <CardBody>
             <p className={styles.dangerNote}>
-              Reset menghapus seluruh data dan mengembalikan ke setup awal.
+              {cloud
+                ? 'Reset mengosongkan seluruh data operasional org ini (servis, transaksi, stok, keuangan). Tim, langganan, dan profil usaha tetap.'
+                : 'Reset menghapus seluruh data dan mengembalikan ke setup awal.'}
             </p>
             <Button variant="danger" onClick={onReset} iconLeft={<Icon name="trash" aria-hidden />}>
               Reset Seluruh Data
