@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildBackup,
+  buildRestorePayload,
   serializeBackup,
   parseBackup,
   countRecords,
@@ -61,6 +62,51 @@ describe('countRecords', () => {
   it('sums across all collections', () => {
     const b = buildBackup({ a: [1, 2], b: [3], c: [] }, null, null);
     expect(countRecords(b)).toBe(3);
+  });
+});
+
+describe('buildRestorePayload (cloud)', () => {
+  it('maps collections to snake_case tables and converts field keys', () => {
+    const b = buildBackup(
+      {
+        customers: [{ id: 'c1', orgId: 'o1', customerName: 'Andi' }],
+        inventory: [{ id: 'i1', minStock: 2, sellPrice: 100 }],
+        purchaseOrders: [{ id: 'p1', poNumber: 'PO-1' }],
+      },
+      { id: 'o1' },
+      'o1',
+    );
+    const payload = buildRestorePayload(b);
+    // collection name → table name
+    expect(payload.inventory_items).toBeDefined();
+    expect(payload.purchase_orders).toBeDefined();
+    // field keys converted to snake_case
+    expect(payload.customers[0]).toEqual({ id: 'c1', org_id: 'o1', customer_name: 'Andi' });
+    expect(payload.inventory_items[0]).toEqual({ id: 'i1', min_stock: 2, sell_price: 100 });
+  });
+
+  it('NEVER includes memberships/employees or the org profile', () => {
+    const b = buildBackup(
+      { employees: [{ id: 'e1', name: 'Owner' }], customers: [{ id: 'c1' }] },
+      { id: 'o1', planType: 'enterprise', isDemo: true },
+      'o1',
+    );
+    const payload = buildRestorePayload(b);
+    // employees → memberships excluded entirely
+    expect(payload.memberships).toBeUndefined();
+    expect(payload.employees).toBeUndefined();
+    // no organization key anywhere
+    expect(payload.organizations).toBeUndefined();
+    expect(payload.organization).toBeUndefined();
+    // domain data still present
+    expect(payload.customers).toHaveLength(1);
+  });
+
+  it('skips empty or missing collections', () => {
+    const b = buildBackup({ customers: [], sales: undefined as never }, null, 'o1');
+    const payload = buildRestorePayload(b);
+    expect(payload.customers).toBeUndefined();
+    expect(payload.sales).toBeUndefined();
   });
 });
 

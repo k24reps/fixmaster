@@ -181,6 +181,32 @@ export class SupabaseAdapter implements Repository {
     // Intentionally not destructive from the client.
   }
 
+  /**
+   * Demo-only atomic restore (RPC restore_org_data, migration 0020). The server
+   * enforces owner + is_demo, forces org_id, and runs in one transaction. On
+   * success we notify every collection so all live queries refetch.
+   */
+  async restoreOrgData(orgId: ID, payload: Record<string, unknown[]>): Promise<number> {
+    const { data, error } = await this.client.rpc('restore_org_data', {
+      p_org_id: orgId,
+      p_payload: payload,
+    });
+    if (error) {
+      const msg = error.message ?? '';
+      if (/Forbidden/i.test(msg)) {
+        throw new Error('Hanya owner yang boleh memulihkan data.');
+      }
+      if (/demo/i.test(msg)) {
+        throw new Error('Restore hanya tersedia untuk akun demo.');
+      }
+      throw error;
+    }
+    // Refetch all collections in the UI.
+    for (const c of Object.keys(TABLE) as CollectionName[]) this.notify(c);
+    const result = data as { ok?: boolean; restored?: number } | null;
+    return result?.restored ?? 0;
+  }
+
   /** Access the raw client for RPC calls (atomic mutations). */
   rpc() {
     return this.client;

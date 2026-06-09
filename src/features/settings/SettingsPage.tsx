@@ -1348,6 +1348,10 @@ function ExportDataCard() {
 function BackupCard() {
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
+  const isDemo = Boolean(org?.isDemo);
+  // Restore is allowed in local mode, OR in cloud mode only for demo orgs
+  // (server enforces owner + is_demo via restore_org_data, migration 0020).
+  const canRestore = !cloud || isDemo;
   const frequency = useBackupStore((s) => s.frequency);
   const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
   const setFrequency = useBackupStore((s) => s.setFrequency);
@@ -1413,7 +1417,7 @@ function BackupCard() {
           <Button onClick={handleBackup} loading={busy} iconLeft={<Icon name="download" aria-hidden />}>
             Backup Sekarang
           </Button>
-          {!cloud && (
+          {canRestore && (
             <Button
               variant="secondary"
               onClick={() => fileRef.current?.click()}
@@ -1430,7 +1434,13 @@ function BackupCard() {
             hidden
           />
         </div>
-        {cloud && (
+        {cloud && isDemo && (
+          <p className={styles.planNote}>
+            <Icon name="info-circle" aria-hidden /> Akun demo: restore mengganti SELURUH data
+            operasional org ini. Tim, langganan, dan profil org TIDAK ikut diganti.
+          </p>
+        )}
+        {cloud && !isDemo && (
           <p className={styles.planNote}>
             <Icon name="info-circle" aria-hidden /> Restore dinonaktifkan di mode cloud — gunakan
             backup/PITR Supabase. Backup manual tetap bisa diunduh.

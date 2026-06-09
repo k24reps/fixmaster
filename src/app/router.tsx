@@ -122,7 +122,7 @@ export const router = createBrowserRouter([
       { path: 'attendance', element: <AttendancePage /> },
       { path: 'reports', element: <OwnerRoute><ReportsPage /></OwnerRoute> },
       { path: 'activity', element: <OwnerRoute><ActivityLogPage /></OwnerRoute> },
-      { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings', element: <OwnerRoute><SettingsPage /></OwnerRoute> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

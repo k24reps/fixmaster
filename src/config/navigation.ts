@@ -32,5 +32,5 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/attendance', labelKey: 'nav.attendance', icon: 'fa-calendar-check', color: '#34d399', feature: 'attendance' },
   { to: '/reports', labelKey: 'nav.reports', icon: 'fa-chart-line', color: '#f97316', feature: 'reports', ownerOnly: true },
   { to: '/activity', labelKey: 'nav.activity', icon: 'fa-list-check', color: '#a78bfa', ownerOnly: true },
-  { to: '/settings', labelKey: 'nav.settings', icon: 'fa-gear', color: '#9aa4b3' },
+  { to: '/settings', labelKey: 'nav.settings', icon: 'fa-gear', color: '#9aa4b3', ownerOnly: true },
 ];

@@ -102,6 +102,59 @@ export function backupFilename(now: Date = new Date()): string {
 }
 
 // ============================================================
+// Cloud restore payload — pure mapping for the restore_org_data RPC.
+// ============================================================
+
+/**
+ * Collection (EntityMap key) → Postgres table name, for the cloud restore RPC.
+ * `employees` (→ memberships) is INTENTIONALLY OMITTED: team/login accounts are
+ * never overwritten by restore (see migration 0020). FK columns that point at
+ * memberships (technician_id, cashier_id, …) are nulled server-side, so the
+ * client does not need to scrub them here.
+ */
+export const RESTORE_TABLE_MAP: Record<string, string> = {
+  outlets: 'outlets',
+  suppliers: 'suppliers',
+  customers: 'customers',
+  wallets: 'wallets',
+  inventory: 'inventory_items',
+  fixedCosts: 'fixed_costs',
+  services: 'services',
+  purchaseOrders: 'purchase_orders',
+  sales: 'sales',
+  incomes: 'incomes',
+  expenses: 'expenses',
+  attendance: 'attendance',
+  activity: 'activity_logs',
+  taskTemplates: 'task_templates',
+  taskInstances: 'task_instances',
+};
+
+const camelToSnakeKey = (s: string) => s.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
+
+/**
+ * Build the `restore_org_data` payload from a backup: keyed by snake_case table
+ * name, each row converted to snake_case columns. Excludes memberships and the
+ * organization profile/billing (never overwritten). Pure + testable.
+ */
+export function buildRestorePayload(backup: BackupFile): Record<string, unknown[]> {
+  const out: Record<string, unknown[]> = {};
+  for (const [collection, table] of Object.entries(RESTORE_TABLE_MAP)) {
+    const rows = backup.collections[collection];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+    out[table] = rows.map((rec) => {
+      const row: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(rec as Record<string, unknown>)) {
+        if (v === undefined) continue;
+        row[camelToSnakeKey(k)] = v;
+      }
+      return row;
+    });
+  }
+  return out;
+}
+
+// ============================================================
 // Backup reminder — pure due-date logic.
 // ============================================================
 

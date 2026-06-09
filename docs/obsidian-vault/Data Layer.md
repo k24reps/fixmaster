@@ -127,6 +127,25 @@ Menjawab kebutuhan owner: melihat aktivitas tiap peran (owner/admin/karyawan).
 > [!NOTE]
 > `activity_logs` adalah satu-satunya tabel dengan **SELECT owner-only** + **append-only** (tanpa update/delete). Ini sengaja: jejak audit harus kebal manipulasi dan hanya untuk pemilik.
 
+### Restore data org (migration `0020`) — RPC transaksional, demo-only
+
+Membuka kembali fitur **Restore di mode cloud**, tetapi hanya untuk **akun demo** (workspace yang dipampang publik di landing page agar calon pembeli bisa mencoba). Sebelumnya restore cloud dimatikan karena `clearAll + putMany` dari browser tidak aman di DB multi-tenant.
+
+- **Kolom `organizations.is_demo`** (default `false`) — penanda akun demo. Org pelanggan asli `false`, jadi datanya **tak mungkin** ke-wipe restore.
+- **RPC `restore_org_data(p_org_id, p_payload jsonb)`** — `security definer`, satu transaksi atomik (gagal di tengah = rollback penuh). Pengaman berlapis:
+  1. `is_org_owner(p_org_id)` → hanya owner.
+  2. Gate `is_demo = true` → menolak org non-demo (`raise exception`).
+  3. **`org_id` tiap baris DIPAKSA = `p_org_id`** (abaikan `org_id` dalam file) → file termanipulasi tak bisa menyentuh tenant lain.
+  4. Hapus data org urutan **anak→induk** (FK-safe), lalu insert urutan **induk→anak** via `jsonb_populate_record`.
+  5. **FK ke memberships di-NULL** saat insert (`technician_id`, `cashier_id`, `employee_id`, `actor_id`, `assignee_employee_id`, `completed_by_id`) — nama tetap tampil lewat kolom `*_name` denormalized.
+- **Yang DITIMPA**: seluruh data domain (outlets, customers, suppliers, wallets, inventory, fixed_costs, services, purchase_orders, sales, incomes, expenses, attendance, activity_logs, task_templates/instances).
+- **Yang TIDAK disentuh** (sengaja): `memberships` (akun login/PIN demo aman), `organizations` (profil + **billing/plan** → enterprise demo tak pernah ter-reset), `invoices`.
+- **Klien**: `Repository.restoreOrgData?()` opsional; `SupabaseAdapter` memanggil RPC + notify semua koleksi. `buildRestorePayload()` (`lib/business/backup.ts`, teruji) memetakan koleksi→tabel snake_case & **mengecualikan `employees`/organization**. `restoreBackup()` (`features/settings/backupRestore.ts`) bercabang: cloud→RPC, lokal→`clearAll+putMany` (tak berubah).
+- **UI**: tombol "Pulihkan dari File" muncul di cloud **hanya bila `org.isDemo`**. Refresh data demo dilakukan **manual** (tanpa pg_cron/seed RPC); `scripts/re-date-backup.mjs` menggeser tanggal file backup demo ke hari ini.
+
+> [!NOTE]
+> **Menu Pengaturan kini owner-only** (`navigation.ts` `ownerOnly: true` + `<OwnerRoute>` di `router.tsx`) — admin & karyawan tak lagi melihat/membuka `/settings`, mirror dengan kebijakan RLS. Berlaku global (semua tenant), bukan hanya demo.
+
 ## Servis: pengambilan barang & garansi
 
 Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu sama lain:

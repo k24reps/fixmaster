@@ -84,4 +84,12 @@ export interface Repository {
 
   // ---- Maintenance ----
   clearAll(): Promise<void>;
+
+  /**
+   * Cloud-only, demo-only atomic restore. Replaces ALL domain data for the
+   * given org in a single server transaction (RPC restore_org_data, migration
+   * 0020). Optional: the local adapter restores via clearAll + putMany instead.
+   * `payload` keys are snake_case table names → arrays of snake_case rows.
+   */
+  restoreOrgData?(orgId: ID, payload: Record<string, unknown[]>): Promise<number>;
 }
