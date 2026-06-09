@@ -1486,6 +1486,7 @@ function SystemTab({
   isOwner: boolean;
 }) {
   const cloud = isSupabaseConfigured;
+  const isDemo = Boolean(useSessionStore((s) => s.org)?.isDemo);
   const signOut = useAuthStore((s) => s.signOut);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1540,7 +1541,7 @@ function SystemTab({
               Reset Seluruh Data
             </Button>
 
-            {cloud && (
+            {cloud && !isDemo && (
               <>
                 <hr className={styles.dangerDivider} />
                 <p className={styles.dangerNote}>

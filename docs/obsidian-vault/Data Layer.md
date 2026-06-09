@@ -144,7 +144,7 @@ Membuka kembali fitur **Restore di mode cloud** untuk **setiap owner** memulihka
 - **Tooling demo**: `scripts/make-demo-backup.mjs` — generator data demo **kumulatif** (data hari-1→hari ini, bertumbuh tiap hari, deterministik per-hari). Dijalankan tiap hari lalu di-restore agar akun demo selalu segar & berkembang.
 
 > [!NOTE]
-> **Menu Pengaturan kini owner-only** (`navigation.ts` `ownerOnly: true` + `<OwnerRoute>` di `router.tsx`) — admin & karyawan tak lagi melihat/membuka `/settings`, mirror dengan kebijakan RLS. Berlaku global (semua tenant), bukan hanya demo.
+> **Menu Pengaturan kini owner-only** (`navigation.ts` `ownerOnly: true` + `<OwnerRoute>` di `router.tsx`) — admin & karyawan tak lagi melihat/membuka `/settings`, mirror dengan kebijakan RLS. Berlaku global (semua tenant), bukan hanya demo. Catatan: tombol **"Hapus Akun Permanen"** disembunyikan saat `org.isDemo` (lindungi akun demo publik dari penghapusan oleh pengunjung); tetap tersedia untuk pelanggan asli demi kepatuhan UU PDP. **"Reset Seluruh Data"** di cloud kini memakai RPC `restore_org_data(orgId, {})` (mengosongkan data operasional, mempertahankan tim/langganan).
 
 ### Realtime sinkronisasi data domain (migration `0021`) — multi-device live
 
