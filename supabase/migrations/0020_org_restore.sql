@@ -1,24 +1,28 @@
 -- ============================================================
--- FixMaster — 0020: Restore data org (aman, transaksional, demo-only)
--- Tujuan: mengisi ulang akun DEMO dengan data dummy dari file backup,
--- tanpa membahayakan tenant lain / langganan / akun login.
+-- FixMaster — 0020: Restore data org (aman, transaksional)
+-- Tujuan: setiap OWNER bisa memulihkan SELURUH data operasional org-nya
+-- sendiri dari file backup — untuk pelanggan (pulihkan saat ada kendala)
+-- maupun akun demo (refresh isi). Menggantikan larangan restore di cloud
+-- lama yang tak aman (clearAll+putMany dari browser).
 --
--- Pengaman berlapis:
+-- Pengaman berlapis (membuatnya aman untuk SEMUA org, bukan hanya demo):
 --   1) security definer + is_org_owner(p_org_id) → hanya OWNER org itu.
---   2) Gate is_demo = true → org pelanggan ASLI mustahil ke-wipe.
---   3) org_id tiap baris DIPAKSA = p_org_id (abaikan org_id dalam file)
---      → file yang dimanipulasi tak bisa menyentuh org lain.
---   4) memberships / organizations / billing TIDAK disentuh
---      → enterprise plan & akun login demo aman walau di-restore berkali2.
---   5) FK ke memberships (teknisi/kasir/karyawan/aktor/assignee) di-NULL
+--   2) org_id tiap baris DIPAKSA = p_org_id (abaikan org_id dalam file)
+--      → file termanipulasi tak bisa menyentuh tenant lain (anti lintas-tenant).
+--   3) memberships / organizations / billing TIDAK disentuh
+--      → akun login & langganan (plan) aman walau di-restore berkali2.
+--   4) FK ke memberships (teknisi/kasir/karyawan/aktor/assignee) di-NULL
 --      saat insert (nama tetap tampil lewat kolom *_name denormalized).
---   6) Satu transaksi (fungsi plpgsql) → atomik; gagal di tengah = rollback
+--   5) Satu transaksi (fungsi plpgsql) → atomik; gagal di tengah = rollback
 --      penuh, tak ada keadaan "data separuh terhapus".
+--
+-- Kolom is_demo: hanya PENANDA informatif akun demo (mis. untuk banner/
+-- analitik), TIDAK lagi menggerbang restore.
 --
 -- Expand-only, idempotent. Diuji di staging dulu.
 -- ============================================================
 
--- 1) Penanda akun demo. Default false → semua org existing aman by default.
+-- 1) Penanda akun demo (informatif). Default false.
 alter table organizations
   add column if not exists is_demo boolean not null default false;
 
@@ -37,11 +41,6 @@ begin
   -- Pengaman 1: harus owner org target.
   if not is_org_owner(p_org_id) then
     raise exception 'Forbidden: hanya owner yang boleh memulihkan data';
-  end if;
-
-  -- Pengaman 2: hanya akun demo.
-  if not exists (select 1 from organizations where id = p_org_id and is_demo) then
-    raise exception 'Restore hanya tersedia untuk akun demo';
   end if;
 
   -- ---- HAPUS data org (urutan FK: anak → induk) ----

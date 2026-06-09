@@ -196,8 +196,10 @@ export class SupabaseAdapter implements Repository {
       if (/Forbidden/i.test(msg)) {
         throw new Error('Hanya owner yang boleh memulihkan data.');
       }
-      if (/demo/i.test(msg)) {
-        throw new Error('Restore hanya tersedia untuk akun demo.');
+      if (error.code === '42501') {
+        throw new Error(
+          'Langganan kedaluwarsa atau melebihi kuota — perpanjang di Pengaturan → Langganan untuk melanjutkan.',
+        );
       }
       throw error;
     }

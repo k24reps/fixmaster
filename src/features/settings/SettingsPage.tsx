@@ -1349,9 +1349,10 @@ function BackupCard() {
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(org?.isDemo);
-  // Restore is allowed in local mode, OR in cloud mode only for demo orgs
-  // (server enforces owner + is_demo via restore_org_data, migration 0020).
-  const canRestore = !cloud || isDemo;
+  // Restore is available to every owner (this whole page is owner-only). The
+  // server RPC restore_org_data (migration 0020) enforces owner + forces
+  // org_id, so an owner can only ever replace THEIR OWN org's data.
+  const canRestore = true;
   const frequency = useBackupStore((s) => s.frequency);
   const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
   const setFrequency = useBackupStore((s) => s.setFrequency);
@@ -1434,16 +1435,11 @@ function BackupCard() {
             hidden
           />
         </div>
-        {cloud && isDemo && (
+        {cloud && (
           <p className={styles.planNote}>
-            <Icon name="info-circle" aria-hidden /> Akun demo: restore mengganti SELURUH data
-            operasional org ini. Tim, langganan, dan profil org TIDAK ikut diganti.
-          </p>
-        )}
-        {cloud && !isDemo && (
-          <p className={styles.planNote}>
-            <Icon name="info-circle" aria-hidden /> Restore dinonaktifkan di mode cloud — gunakan
-            backup/PITR Supabase. Backup manual tetap bisa diunduh.
+            <Icon name="info-circle" aria-hidden /> Restore mengganti SELURUH data operasional
+            org ini dengan isi file. Tim, langganan, dan profil org TIDAK ikut diganti. Disarankan
+            backup dulu sebelum memulihkan.{isDemo ? ' (Akun demo)' : ''}
           </p>
         )}
         <hr className={styles.dangerDivider} />

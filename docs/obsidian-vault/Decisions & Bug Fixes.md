@@ -19,14 +19,14 @@ Tiap halaman punya metafora alat sendiri, tapi semua memakai token + motif yang 
 ### Komponen bersama dibiarkan utuh
 `StatCard` dipakai Dashboard & Servis. Saat mendesain ulang Reports, dibuat **tile lokal** alih-alih mengubah `StatCard`, supaya halaman lain tak ikut berubah tak sengaja.
 
-### Restore cloud: RPC server transaksional, bukan loop klien (`0020`)
-Restore cloud dibuka kembali untuk **akun demo** (dipampang di landing page). Keputusan kunci & alasannya:
-- **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data demo separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
-- **Gate `is_demo` + owner-only di server**, bukan sekadar sembunyi di UI. Pertahanan berlapis: walau seseorang memanggil RPC langsung (bypass UI) atau pembeli asli menekan tombol, org non-demo **mustahil** ke-wipe.
-- **`org_id` dipaksa server** (abaikan isi file) → file backup yang dimanipulasi tak bisa menyerang tenant lain. Ini proteksi lintas-tenant inti.
-- **Kecualikan `memberships` + `organizations` (profil & billing)**: `memberships.user_id` FK ke `auth.users`; menulis ulang bisa mengunci owner keluar dari akun demo. Mengecualikan billing menjaga **enterprise plan demo tak ter-reset** tiap restore. FK ke memberships di-NULL saat insert (nama tetap tampil via kolom `*_name`).
-- **Refresh demo = manual** (via file backup + `scripts/re-date-backup.mjs`), bukan pg_cron/seed RPC — menyederhanakan scope sesuai keputusan user. Realtime sinkronisasi data domain direncanakan **terpisah** (`implementation_plan_realtime.md`).
-- **Konsekuensi jujur**: menu Tim demo hanya menampilkan akun login asli (bukan nama dummy dari file). Solusinya buat beberapa akun karyawan sekali manual di akun demo. Lihat [[Data Layer]].
+### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
+Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
+- **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
+- **Aman untuk semua org tanpa gate `is_demo`**, karena proteksi inti tetap: **owner-only** di server + **`org_id` dipaksa server** (abaikan isi file) → owner hanya bisa menimpa **org-nya sendiri**; mustahil lintas-tenant. (`is_demo` tinggal penanda informatif.)
+- **Kecualikan `memberships` + `organizations` (profil & billing)**: `memberships.user_id` FK ke `auth.users`; menulis ulang bisa mengunci owner keluar. Mengecualikan billing menjaga **langganan tak ter-reset** tiap restore. FK ke memberships di-NULL saat insert (nama tetap tampil via kolom `*_name`).
+- **Risiko sisa** (owner menimpa data baru dengan backup lama) inheren pada "restore" — dimitigasi `ConfirmDialog` berbahaya + saran "backup dulu".
+- **Data demo kumulatif**: `scripts/make-demo-backup.mjs` menghasilkan file backup yang **bertumbuh tiap hari** (hari-1→hari ini, deterministik per-hari). Dijalankan tiap hari lalu di-restore. Realtime sinkronisasi data domain direncanakan **terpisah** (`implementation_plan_realtime.md`).
+- **Konsekuensi jujur**: menu Tim hanya menampilkan akun login asli (bukan nama dummy dari file). Solusinya buat beberapa akun karyawan sekali manual. Lihat [[Data Layer]].
 
 ### ErrorBoundary dua level (anti layar putih)
 Crash render React tanpa boundary = **layar putih kosong** tanpa pemulihan — tampak tidak profesional untuk produk berbayar. Solusi: komponen class [`ErrorBoundary`](src/components/ErrorBoundary.tsx) dipasang di **dua level**:
