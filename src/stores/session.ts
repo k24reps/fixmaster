@@ -125,6 +125,8 @@ export const useSessionStore = create<SessionState>((set) => ({
   },
 
   reset: () => {
+    // Release any cloud realtime channels bound to the previous org/account.
+    repository.dispose?.();
     set({ boot: 'loading', org: null, employees: [], currentEmployee: null, activeOutletId: null });
   },
 

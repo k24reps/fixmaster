@@ -146,6 +146,18 @@ Membuka kembali fitur **Restore di mode cloud** untuk **setiap owner** memulihka
 > [!NOTE]
 > **Menu Pengaturan kini owner-only** (`navigation.ts` `ownerOnly: true` + `<OwnerRoute>` di `router.tsx`) — admin & karyawan tak lagi melihat/membuka `/settings`, mirror dengan kebijakan RLS. Berlaku global (semua tenant), bukan hanya demo.
 
+### Realtime sinkronisasi data domain (migration `0021`) — multi-device live
+
+Memperluas `0012` (yang hanya realtime untuk billing). Tujuan: aksi satu kasir langsung tampil di device lain pada org yang sama, tanpa refresh manual.
+
+- **Publication**: `0021_realtime_domain.sql` menambahkan **15 tabel domain** (`outlets, customers, suppliers, inventory_items, wallets, fixed_costs, services, purchase_orders, sales, incomes, expenses, attendance, task_templates, task_instances, activity_logs`) ke `supabase_realtime` (idempotent, loop). `memberships` sengaja tak disertakan.
+- **Klien `subscribeOrgTables(orgId, tables, onChange)`** (`supabase-client.ts`): satu channel `org-domain:<orgId>`, satu listener `postgres_changes` per-tabel dengan filter `org_id=eq.<orgId>`. RLS tetap berlaku di stream → device hanya menerima baris org-nya.
+- **`SupabaseAdapter`**: `setScope()` membuka channel (menutup yang lama saat ganti org). Event masuk → `TABLE_TO_COLLECTION[table]` → `notifyDebounced(collection)` (**debounce 250ms** untuk meredam ledakan event saat bulk-write seperti restore `0020`). Strategi **re-fetch koleksi terdampak**, bukan patch store → sederhana & anti-drift. `dispose()` melepas channel + timer, dipanggil dari `session.reset()` (sign-out/ganti akun).
+- **Kontrak**: `Repository.dispose?()` opsional (local adapter no-op).
+
+> [!NOTE]
+> Realtime di FixMaster kini dua lapis: **billing** (`0012`, `subscribeOrgBilling`) + **data domain** (`0021`, `subscribeOrgTables`). Keduanya per-org & terkurung RLS.
+
 ## Servis: pengambilan barang & garansi
 
 Entity `Service` (di `data/types.ts`) punya field penting yang **terpisah** satu sama lain:

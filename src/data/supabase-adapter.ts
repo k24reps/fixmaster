@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabase } from './supabase-client';
+import { getSupabase, subscribeOrgTables } from './supabase-client';
 import type {
   Repository,
   CollectionName,
@@ -29,6 +29,25 @@ const TABLE: Record<CollectionName, string> = {
   taskInstances: 'task_instances',
   activity: 'activity_logs',
 };
+
+/**
+ * Reverse of TABLE: Postgres table name → repository collection. Used to map a
+ * realtime event's table back to the collection a UI query should refetch.
+ */
+export const TABLE_TO_COLLECTION: Record<string, CollectionName> = Object.fromEntries(
+  (Object.entries(TABLE) as [CollectionName, string][]).map(([col, tbl]) => [tbl, col]),
+) as Record<string, CollectionName>;
+
+/**
+ * Domain tables synced via realtime (migration 0021). Excludes `memberships`
+ * (team/login rarely changes and isn't org_id-filtered the same way) — that
+ * mirrors the publication contents.
+ */
+export const REALTIME_TABLES: readonly string[] = [
+  'outlets', 'customers', 'suppliers', 'inventory_items', 'wallets',
+  'fixed_costs', 'services', 'purchase_orders', 'sales', 'incomes',
+  'expenses', 'attendance', 'task_templates', 'task_instances', 'activity_logs',
+];
 
 /**
  * Translate a Supabase write error. A row-level-security violation (Postgres
@@ -75,6 +94,10 @@ export class SupabaseAdapter implements Repository {
   private orgId: ID = '';
   private listeners = new Set<ChangeListener>();
   private client: SupabaseClient;
+  /** Unsubscribe handle for the active org's realtime channel. */
+  private unsubscribeRealtime: (() => void) | null = null;
+  /** Per-collection debounce timers, to coalesce bursts of realtime events. */
+  private debounceTimers = new Map<CollectionName, ReturnType<typeof setTimeout>>();
 
   constructor() {
     const c = getSupabase();
@@ -83,11 +106,46 @@ export class SupabaseAdapter implements Repository {
   }
 
   setScope(orgId: ID): void {
+    if (orgId === this.orgId && this.unsubscribeRealtime) return;
     this.orgId = orgId;
+    // (Re)bind the realtime channel to this org so other devices' changes
+    // refetch the affected collection here. Tear down any previous channel.
+    this.unsubscribeRealtime?.();
+    this.unsubscribeRealtime = null;
+    if (orgId) {
+      this.unsubscribeRealtime = subscribeOrgTables(orgId, REALTIME_TABLES, (table) => {
+        const collection = TABLE_TO_COLLECTION[table];
+        if (collection) this.notifyDebounced(collection);
+      });
+    }
   }
 
   private notify(collection: CollectionName) {
     for (const l of this.listeners) l(collection);
+  }
+
+  /**
+   * Notify after a short quiet period per collection. Bulk server writes (e.g.
+   * a restore) emit many events; debouncing collapses them into one refetch.
+   */
+  private notifyDebounced(collection: CollectionName) {
+    const existing = this.debounceTimers.get(collection);
+    if (existing) clearTimeout(existing);
+    this.debounceTimers.set(
+      collection,
+      setTimeout(() => {
+        this.debounceTimers.delete(collection);
+        this.notify(collection);
+      }, 250),
+    );
+  }
+
+  /** Tear down the realtime channel + pending timers (call on sign-out). */
+  dispose(): void {
+    this.unsubscribeRealtime?.();
+    this.unsubscribeRealtime = null;
+    for (const t of this.debounceTimers.values()) clearTimeout(t);
+    this.debounceTimers.clear();
   }
 
   async list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]> {
