@@ -23,6 +23,11 @@ if (import.meta.env.DEV) {
   void import('./data').then(({ repository }) => {
     (window as unknown as { __repo?: unknown }).__repo = repository;
   });
+  // Session store, so screenshot scripts can flip plan/tier to capture
+  // plan-gated UI (e.g. the Solo \"locked feature\" sidebar state).
+  void import('./stores/session').then(({ useSessionStore }) => {
+    (window as unknown as { __session?: unknown }).__session = useSessionStore;
+  });
 }
 
 createRoot(document.getElementById('root')!).render(

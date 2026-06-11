@@ -35,33 +35,36 @@ export const PLANS: Record<PlanType, PlanDef> = {
   // NOTE: the plan_type enum keys are fixed in Postgres
   // ('free','standard','enterprise','trial','suspended'). We keep the keys
   // stable (no risky enum migration) and only tune labels/quotas/prices.
-  // Locked decision: users UNLIMITED on every usable tier; price tiers by
-  // number of outlets. Price numbers are PLACEHOLDER — confirm before launch.
-  free: {
-    id: 'free',
-    name: 'Free',
-    priceLabel: 'Rp 0',
-    features: ['services', 'customers', 'pos'],
-    maxWallets: 1,
-    maxOutlets: 1,
-    maxUsers: -1,
-  },
+  // 'free' is a LEGACY enum value that is intentionally NOT offered: FixMaster
+  // uses a trial→paid model (signup grants 'trial', then the org subscribes to
+  // a paid tier). No org is ever assigned 'free', so it has no PlanDef here.
+  //
+  // Two paid tiers, differentiated by FEATURE + quota to make Solo "itch" to
+  // upgrade (see priceForOutlets for Pro's per-outlet add-on):
+  //   - Solo (standard): a solo technician just starting out. Capped at ONE
+  //     user — hiring a 2nd person is the strongest upgrade trigger in the
+  //     repair niche. Core ops only; team/branding/scale features are locked.
+  //   - Pro (enterprise): a growing business. Unlimited users + every feature
+  //     + multi-outlet. 2 outlets included; extras priced via priceForOutlets,
+  //     so maxOutlets is unlimited (-1).
   standard: {
     id: 'standard',
     name: 'Solo',
-    priceLabel: 'Rp 49.000/bln', // placeholder
-    features: ['services', 'customers', 'pos', 'inventory', 'finance', 'reports', 'attendance', 'tasks', 'waTemplates', 'logo'],
-    maxWallets: 5,
+    priceLabel: 'Rp 99.000/bln',
+    // Core operating loop only. Locked (Pro-only): suppliers, attendance,
+    // tasks, multiOutlet, exportImport, logo, waTemplates.
+    features: ['services', 'customers', 'pos', 'inventory', 'finance', 'reports'],
+    maxWallets: 2,
     maxOutlets: 1,
-    maxUsers: -1,
+    maxUsers: 1, // single-user — second hire forces the upgrade to Pro
   },
   enterprise: {
     id: 'enterprise',
-    name: 'Bisnis',
-    priceLabel: 'Rp 199.000/bln', // placeholder
+    name: 'Pro',
+    priceLabel: 'Rp 149.000/bln',
     features: ENTERPRISE_FEATURES,
     maxWallets: 99,
-    maxOutlets: 10,
+    maxOutlets: -1, // unlimited; 2 included, extras priced via priceForOutlets
     maxUsers: -1,
   },
   trial: {
@@ -93,9 +96,32 @@ export function planAllows(plan: PlanType, feature: Feature): boolean {
 /** Paid tiers a customer can subscribe to, cheapest first (by outlet capacity). */
 export const PAID_TIERS: PlanType[] = ['standard', 'enterprise'];
 
-/** Whether `outletCount` fits within the plan's outlet quota. */
+/** Whether `outletCount` fits within the plan's outlet quota. -1 = unlimited. */
 export function withinOutletQuota(plan: PlanType, outletCount: number): boolean {
-  return outletCount <= PLANS[plan].maxOutlets;
+  const max = PLANS[plan].maxOutlets;
+  return max < 0 || outletCount <= max;
+}
+
+/** Whether `userCount` fits within the plan's user quota. -1 = unlimited. */
+export function withinUserQuota(plan: PlanType, userCount: number): boolean {
+  const max = PLANS[plan].maxUsers;
+  return max < 0 || userCount <= max;
+}
+
+// ---------- Pro per-outlet pricing ----------
+// Pro's base price includes PRO_INCLUDED_OUTLETS outlets; each extra outlet
+// adds OUTLET_ADDON_PRICE, capped at PRO_PRICE_CEILING (beyond which outlets
+// are effectively unlimited at a flat ceiling). Keeps multi-outlet pricing
+// from ballooning while still capturing value as a chain grows.
+export const PRO_BASE_PRICE = 149000;
+export const PRO_INCLUDED_OUTLETS = 2;
+export const OUTLET_ADDON_PRICE = 50000;
+export const PRO_PRICE_CEILING = 299000;
+
+/** Monthly Pro price (rupiah) for running `outletCount` outlets. */
+export function priceForOutlets(outletCount: number): number {
+  const extra = Math.max(0, outletCount - PRO_INCLUDED_OUTLETS);
+  return Math.min(PRO_BASE_PRICE + extra * OUTLET_ADDON_PRICE, PRO_PRICE_CEILING);
 }
 
 /**

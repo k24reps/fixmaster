@@ -5,6 +5,7 @@ import { NAV_ITEMS } from '@/config/navigation';
 import { planAllows, PLANS, isManager, isOwner } from '@/config/plans';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
+import { demoGuard } from '@/stores/demo';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
@@ -45,6 +46,7 @@ export function Sidebar({
   // Cloud: true sign-out of the Supabase account (→ AuthPage).
   // Local: switch user (re-enter PIN) — there is no cloud account.
   const handleLogout = () => {
+    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akunmu sendiri.')) return;
     if (isSupabaseConfigured) void authSignOut();
     else signOut();
   };
@@ -52,12 +54,16 @@ export function Sidebar({
   const plan = org?.planType ?? 'trial';
   const isMgr = employee ? isManager(employee.role) : false;
   const isOwn = employee ? isOwner(employee.role) : false;
+  // Role-gating (managerOnly/ownerOnly) HIDES items — it mirrors server RLS,
+  // so showing them would just lead to failures. Feature-gating (plan lacks
+  // the feature) instead SHOWS the item locked with a "Pro" badge, so Solo
+  // users see what upgrading unlocks (the upgrade "itch").
   const visibleNav = NAV_ITEMS.filter(
-    (item) =>
-      (!item.feature || planAllows(plan, item.feature)) &&
-      (!item.managerOnly || isMgr) &&
-      (!item.ownerOnly || isOwn),
-  );
+    (item) => (!item.managerOnly || isMgr) && (!item.ownerOnly || isOwn),
+  ).map((item) => ({
+    item,
+    locked: !!item.feature && !planAllows(plan, item.feature),
+  }));
 
   return (
     <>
@@ -100,7 +106,30 @@ export function Sidebar({
 
         {/* ---------- Diagnostic rail ---------- */}
         <nav className={styles.nav} aria-label="Navigasi utama">
-          {visibleNav.map((item) => {
+          {visibleNav.map(({ item, locked }) => {
+            if (locked) {
+              return (
+                <NavLink
+                  key={item.to}
+                  to="/settings"
+                  onClick={onCloseMobile}
+                  className={[styles.navItem, styles.locked].join(' ')}
+                  title={`${t(item.labelKey)} — tersedia di paket Pro`}
+                >
+                  <Icon
+                    name={item.icon}
+                    className={styles.navIcon}
+                    style={{ color: item.color }}
+                    aria-hidden
+                  />
+                  <span className={styles.navLabel}>{t(item.labelKey)}</span>
+                  <span className={styles.lockBadge}>
+                    <span className={styles.lockLed} aria-hidden />
+                    <span className={styles.lockBadgeText}>Pro</span>
+                  </span>
+                </NavLink>
+              );
+            }
             const sig = signals[item.to];
             return (
               <NavLink

@@ -30,8 +30,12 @@ export function AuthGate({ children }: AuthGateProps) {
   const initAuth = useAuthStore((s) => s.init);
 
   // In cloud signed-out state, show the marketing landing page first; the CTA
-  // reveals the auth form. This is the public "front door" for selling.
-  const [showAuth, setShowAuth] = useState(false);
+  // reveals the auth form. This is the public "front door" for selling. The
+  // demo's "Daftar Gratis" CTA deep-links here via /?auth=1, so honor it.
+  const [showAuth, setShowAuth] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('auth') === '1';
+  });
 
   const boot = useSessionStore((s) => s.boot);
   const bootstrap = useSessionStore((s) => s.bootstrap);

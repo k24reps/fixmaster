@@ -1,0 +1,60 @@
+/* ---------- Demo shell ---------- */
+.demoRoot {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg-base);
+}
+
+/* The running app fills the space below the persistent demo faceplate. The
+   app normally scrolls the document, but here it lives in a fixed-height shell,
+   so this stage becomes the scroll container (else content is clipped). */
+.demoStage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ---------- Boot splash (while seeding) ---------- */
+.boot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg-base);
+  color: var(--text-secondary);
+}
+.bootMark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 1.6rem;
+  border: 1px solid var(--border-brand);
+}
+.bootSpinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: demoSpin 0.7s linear infinite;
+}
+.bootText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+}
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

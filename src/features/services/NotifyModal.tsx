@@ -12,6 +12,7 @@ import {
 } from '@/lib/business/notify';
 import { getWaTemplateOverrides } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
+import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import type { Service } from '@/data/types';
 import styles from './NotifyModal.module.css';
@@ -45,6 +46,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
   if (!service || !org) return null;
 
   const sendWa = () => {
+    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh — daftar gratis.')) return;
     window.open(waLink(service.customerPhone, message), '_blank');
     toast.success('Membuka WhatsApp…');
   };
@@ -61,6 +63,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
   };
 
   const printReceipt = () => {
+    if (demoGuard('Cetak nota aktif di FixMaster versi penuh — daftar gratis.')) return;
     const lines = serviceReceiptLines(service);
     const win = window.open('', '_blank', 'width=380,height=600');
     if (!win) {

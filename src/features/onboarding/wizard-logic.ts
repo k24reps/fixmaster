@@ -140,8 +140,13 @@ function buildOutlets(
  */
 export async function commitWizard(
   data: WizardData,
+  opts?: { forceLocal?: boolean },
 ): Promise<{ org: Organization; owner: Employee }> {
-  if (isSupabaseConfigured) return commitWizardCloud(data);
+  // `forceLocal` is used by the public landing demo: it runs in production
+  // (Supabase configured) but writes to a swapped in-memory repository, so it
+  // must take the local commit path rather than the cloud RPC (which needs an
+  // authenticated account the anonymous visitor doesn't have).
+  if (isSupabaseConfigured && !opts?.forceLocal) return commitWizardCloud(data);
 
   const orgId = newId();
   const now = new Date().toISOString();

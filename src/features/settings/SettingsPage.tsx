@@ -6,7 +6,7 @@ import { repository } from '@/data';
 import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor } from '@/config/plans';
+import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor, withinUserQuota, priceForOutlets } from '@/config/plans';
 import { subscriptionPhase, daysUntil, phaseLabel, GRACE_DAYS } from '@/lib/business/billing';
 import {
   getComplaintTemplates,
@@ -29,6 +29,7 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
+import { demoGuard } from '@/stores/demo';
 import { isValidInviteEmail } from '@/lib/business/team';
 import { useSessionStore } from '@/stores/session';
 import {
@@ -142,7 +143,10 @@ export function SettingsPage() {
       {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
         <SystemTab
-          onReset={() => setConfirmReset(true)}
+          onReset={() => {
+            if (demoGuard('Reset data dinonaktifkan di demo. Pakai tombol "Reset Demo" di atas untuk mengembalikan data contoh.')) return;
+            setConfirmReset(true);
+          }}
           isOwner={isOwner}
         />
       )}
@@ -536,6 +540,7 @@ const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', kar
 function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'employees'>>['data'] }) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
+  const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
   const { refetch } = useCollection('employees');
 
   const [invites, setInvites] = useState<PendingInvite[]>([]);
@@ -569,7 +574,14 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
     };
   }, [orgId]);
 
+  // Solo is single-user (the owner). Inviting anyone exceeds the quota and
+  // forces an upgrade to Pro. Active members + outstanding invites both count.
+  const seatsUsed = employees.length + invites.length;
+  const canInvite = withinUserQuota(plan, seatsUsed + 1);
+
   const invite = async () => {
+    if (!canInvite)
+      return toast.error('Paket Solo hanya untuk 1 pengguna. Upgrade ke Pro untuk menambah anggota tim.');
     if (!name.trim()) return toast.error('Nama wajib diisi');
     if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
     setBusy(true);
@@ -627,26 +639,33 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
               Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis bergabung ke
               organisasi ini saat masuk pertama kali.
             </p>
-            <div className={styles.inviteRow}>
-              <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input
-                placeholder="email@contoh.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <select
-                className={styles.roleSelect}
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-                aria-label="Peran"
-              >
-                <option value="karyawan">Karyawan</option>
-                <option value="admin">Admin</option>
-              </select>
-              <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
-                Undang
-              </Button>
-            </div>
+            {!canInvite ? (
+              <p className={styles.hint} role="note">
+                Paket <strong>{PLANS[plan].name}</strong> hanya untuk 1 pengguna. Upgrade ke{' '}
+                <strong>Pro</strong> untuk menambah anggota tim tanpa batas.
+              </p>
+            ) : (
+              <div className={styles.inviteRow}>
+                <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  placeholder="email@contoh.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <select
+                  className={styles.roleSelect}
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as Role)}
+                  aria-label="Peran"
+                >
+                  <option value="karyawan">Karyawan</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
+                  Undang
+                </Button>
+              </div>
+            )}
             {invites.length > 0 && (
               <ul className={styles.list}>
                 {invites.map((inv) => (
@@ -794,7 +813,12 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     }
     setBusy(true);
     try {
-      const amount = parseAmount(PLANS[tier].priceLabel);
+      // Pro (enterprise) scales with outlet count: base covers 2 outlets,
+      // +addon per extra, capped at the ceiling. Solo is a flat label price.
+      const amount =
+        tier === 'enterprise'
+          ? priceForOutlets(outletCount)
+          : parseAmount(PLANS[tier].priceLabel);
       try {
         // Real provider: create a Fersaku payment and open the hosted checkout
         // page (QRIS). Confirmation arrives via the webhook.
@@ -988,8 +1012,8 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         <CardHeader icon={<Icon name="tag" aria-hidden />} title="Pilih Paket" />
         <CardBody>
           <p className={styles.hint}>
-            Harga per organisasi, user tak terbatas. Tier menyesuaikan jumlah outlet (kamu punya{' '}
-            {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
+            Harga per organisasi. Solo untuk 1 pengguna; Pro pengguna tak terbatas. Pro menyesuaikan
+            jumlah outlet (kamu punya {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
           </p>
           <div className={styles.planGrid}>
             {PAID_TIERS.map((tier) => {
@@ -1004,9 +1028,14 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   <span className={styles.planSpine} aria-hidden />
                   {isRec && <span className={styles.planRecTag}>Disarankan</span>}
                   <strong className={styles.planCardName}>{def.name}</strong>
-                  <span className={styles.planPrice}>{def.priceLabel}</span>
+                  <span className={styles.planPrice}>
+                    {tier === 'enterprise'
+                      ? `${fmtRp(priceForOutlets(outletCount))}/bln`
+                      : def.priceLabel}
+                  </span>
                   <small className={styles.planQuota}>
-                    s/d {def.maxOutlets} outlet · user unlimited
+                    {def.maxOutlets < 0 ? 'Outlet tanpa batas' : `s/d ${def.maxOutlets} outlet`} ·{' '}
+                    {def.maxUsers < 0 ? 'user tak terbatas' : `${def.maxUsers} pengguna`}
                   </small>
                   <Button
                     variant={isRec ? 'primary' : 'secondary'}
@@ -1368,6 +1397,7 @@ function BackupCard() {
   const [restoring, setRestoring] = useState(false);
 
   const handleBackup = async () => {
+    if (demoGuard('Backup tersedia di FixMaster versi penuh — daftar gratis.')) return;
     setBusy(true);
     try {
       const backup = await createBackup(org?.id ?? null);
@@ -1394,6 +1424,7 @@ function BackupCard() {
   };
 
   const handleRestore = async () => {
+    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh — daftar gratis.')) return;
     if (pendingText === null) return;
     setRestoring(true);
     try {
@@ -1492,6 +1523,7 @@ function SystemTab({
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
+    if (demoGuard('Hapus akun dinonaktifkan di demo.')) return;
     setDeleting(true);
     try {
       // 1. Erase all tenant data reachable from the client.

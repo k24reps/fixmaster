@@ -18,14 +18,40 @@ Sembilan halaman utama + halaman detail, masing-masing dengan metafora "alat" ta
 
 ## Landing — Instrument Bench (publik)
 
-Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". [`LandingPage`](src/features/landing/LandingPage.tsx):
-- **Hero faceplate**: pelat bersekrup 4 sudut, `unitTag` LED hijau, judul ber-engrave gradient, plus **panel readout hidup** (MODUL 12/12, QRIS, SYNC, DATA + **uptime tick** per detik via `setInterval`).
-- **Module rack**: 12 modul jadi rack-unit ber-**slot vertikal** (`M01`…`M12`), border-kiri menyala saat hover, stamp `OK` ber-LED. Bukan kartu.
-- **Spec plates** (pricing): label alat bersekrup, harga mono besar, paket Bisnis ber-`specRating` "UNIT REKOMENDASI". Sumber `config/plans.ts` agar tak basi.
-- **Serial/compliance plate** (footer): pelat regulasi (SN, ©) yang otentik menampung tautan legal.
-- CTA → `onStart` → `AuthGate` buka `AuthPage` (state `showAuth`); `AuthPage` punya `onBack`.
+Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". **Revisi total (9 Jun 2026)** menambah elemen konversi (diadopsi dari analisis kompetitor FixNova/FixMate, tapi **diterjemahkan ke bahasa bench** — bukan tiru visual) + memperbaiki klaim plan yang basi. [`LandingPage`](src/features/landing/LandingPage.tsx):
+- **Hero faceplate**: pelat bersekrup 4 sudut, `unitTag` LED hijau, judul ber-engrave gradient, **coverage chips** (HP/Laptop/Tablet/Printer/Konsol/Elektronik — tegaskan cakupan semua elektronik), plus **panel readout hidup** (CAKUPAN, MODUL 14/14, SYNC, DATA + **uptime tick** per detik).
+- **Fault panel** (pain points): 6 "gejala toko tanpa sistem" jadi **kartu fault** — spine amber, ikon warning-soft, badge `FAULT` LED merah, lalu baris "fix" ber-LED hijau (gejala→solusi). Resonansi emosional dalam bahasa diagnostik.
+- **Demo langsung** (section "DEMO LANGSUNG · UNIT HIDUP"): menggantikan viewport statis lama. Dalam **bingkai instrumen** (title-bar 3 dot + address `fixmaster · /demo`), pengunjung **menjalankan aplikasi FixMaster yang asli** tanpa daftar. Layar lebar: poster *click-to-activate* → memuat `<iframe src="/demo">` (isolasi JS penuh, paint awal ringan). HP: poster disembunyikan, diganti tombol **"Buka Demo Layar Penuh"** → route `/demo` (AppLayout butuh ruang desktop). Lihat section **Demo Interaktif** di bawah.
+- **Module rack**: kini **14 modul** rack-unit ber-**slot vertikal** (`M01`…`M14`), termasuk **Jejak Audit** & **Backup**. Modul Pro-only (Supplier+PO, Tugas, Absensi) bertanda **badge LED brand + "PRO"** (idiom show-locked sefamili sidebar), sisanya stamp `OK` ber-LED.
+- **Spec plates** (pricing): label alat bersekrup, harga mono besar + **framing harga harian** ("± Rp x/hari · setara kopi"). Klaim **diperbaiki agar jujur**: Solo = 1 pengguna · 1 outlet · 2 dompet (bukan lagi "tugas/absensi" / "karyawan tak terbatas"); Pro = pengguna tak terbatas, **outlet tak terbatas** (+Rp50rb/outlet) — bukan lagi render rusak "s/d -1 cabang". Sumber `config/plans.ts` agar tak basi.
+- **Matriks banding** (3-brand): **datasheet bench** bersekrup membandingkan FixMaster vs FixNova vs FixMate. Pagar: hanya baris **FixMaster unggul/imbang** (keunggulan kompetitor spt CRM tak ditampilkan); sel kompetitor belum pasti = **"?" amber** (bukan tebakan ya/tidak); 3 fitur khas (Supplier+PO, Tugas, Audit) ber-tag `KHAS`; kolom FixMaster ber-LED "UNIT INI" + brand-soft. Disclaimer bertanggal.
+- **Manual plate** (FAQ): pertanyaan jadi `<details>` bergaya lembar manual (data aman? bisa offline? servis apa saja? dst) — bunuh keberatan umum.
+- **Serial/compliance plate** (footer): pelat regulasi (SN, ©) menampung tautan legal.
+- CTA → `onStart` → `AuthGate` buka `AuthPage`.
+
+> [!important] Pagar strategi (lihat [[Decisions & Bug Fixes]])
+> Landing FixMaster **memuat matriks banding bernama** (FixMaster vs FixNova vs FixMate) — ini **mekanisme inti decoy**: halo hanya bekerja bila pembeli melihat ketiganya berdampingan. Syarat: (1) tiap sel **faktual benar** (sel belum pasti = "?"); (2) **hanya** tampilkan baris di mana FixMaster unggul/imbang — keunggulan kompetitor disembunyikan; (3) nada **faktual, bukan menjatuhkan**. FixMaster & FixNova **tidak boleh mirror** (beda penekanan/kata) agar tak terbaca satu tim. Klaim fiktif (statistik/testimoni) tetap dilarang di semua brand.
 
 ![[landing-dark.png]]
+
+## Demo Interaktif — Bench Hidup (publik, tanpa login)
+
+Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, bukan mockup statis. Route publik **`/demo`** (intersep di level `App`, bukan child router), juga di-*embed* sebagai `<iframe>` di landing.
+
+**Arsitektur isolasi** (lihat [[Data Layer]] § InMemoryAdapter):
+- [`DemoApp`](src/features/demo/DemoApp.tsx) saat mount: `installRepository(new InMemoryAdapter())` (RAM-only, nol jejak disk — IndexedDB asli pengunjung tak tersentuh), `useDemoStore.enter()`, lalu **pakai ulang seed yang sudah ada** (`src/dev/seed.ts` via `commitWizard({forceLocal:true})`) → konter gadget terkurasi. Sesi masuk sebagai **owner** → semua menu terbuka (termasuk Laporan, Aktivitas, Pengaturan).
+- Berjalan di **`MemoryRouter`** sendiri yang memakai ulang `appChildRoutes` (rute anak yang sama dengan app asli, via [`appChildRoutes.tsx`](src/app/appChildRoutes.tsx)) → navigasi sidebar tetap di dalam demo, URL browser tetap `/demo`.
+- **Nested-router trap**: `MemoryRouter` tak boleh di dalam `BrowserRouter`. Solusi: `App` mengintersep `pathname.startsWith('/demo')` **sebelum** `RouterProvider` mount → DemoApp jadi satu-satunya router. Route `/demo` **dihapus** dari `router.tsx`.
+- **Bersih saat unmount**: `resetRepository()` (kembali ke adapter asli) + `session.reset()` + hapus meta `noindex`.
+- **`noindex`**: meta robots disuntik selama demo mounted (demo = sandbox, bukan konten SEO).
+
+**Faceplate demo** ([`DemoChrome`](src/features/demo/DemoChrome.tsx)): bar instrumen menetap di atas app — sekrup sudut, **LED warning berdenyut**, readout mono `MODE DEMO · data contoh · tidak tersimpan`, tombol **Reset Demo** (re-seed dataset awal), dan CTA brand **Daftar Gratis** (`exitDemoToSignup` → `/?auth=1`, menembus iframe via `window.top`). Bukan banner SaaS generik.
+
+**Aksi sensitif dijinakkan** (`demoGuard()` di [`stores/demo.ts`](src/stores/demo.ts)): Keluar/ganti akun (Sidebar), Reset & Hapus Akun + Backup/Restore (Settings), Kirim WhatsApp & Cetak Nota (NotifyModal) → semua menampilkan toast + ajakan daftar, **tanpa** menjalankan logika destruktif/keluar-app.
+
+**Landing**: layar lebar menampilkan poster *click-to-activate* → iframe `/demo`; HP disembunyikan dan diganti tombol "Buka Demo Layar Penuh".
+
+![[demo-dashboard-dark.png]]
 
 ## Legal — Dokumen Teknis Terkontrol (publik, wajib UU PDP)
 

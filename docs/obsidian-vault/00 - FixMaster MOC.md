@@ -46,6 +46,7 @@ Tiap halaman punya metafora "alat" sendiri tapi berbagi satu bahasa visual. Liha
 ## 🧠 Keputusan & Pelajaran
 
 - [[Decisions & Bug Fixes]] — keputusan desain + bug nyata yang ditemukan saat verifikasi
+- [[Testing & Security]] — audit keamanan, lingkungan staging, rencana testing RLS/edge (memori persisten)
 
 ## 📅 Log Sesi
 
