@@ -12,6 +12,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
 - **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org.
+- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per 11 Jun 2026 **disinkronkan ke migrasi 0022** + 4 edge function ter-deploy. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Edge functions ter-deploy di staging**: `create-invoice`, `delete-account`, `fersaku-webhook`, `health` (4 fungsi). Jadi Tier 2 bisa diuji langsung di staging.
