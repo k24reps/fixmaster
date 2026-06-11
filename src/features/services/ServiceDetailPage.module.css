@@ -371,6 +371,62 @@
 }
 
 /* ---------- Sparepart BOM ---------- */
+.bomHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.bomActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.bomAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.bomAddBtn:hover {
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
+.costActions {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dotted var(--border-subtle);
+}
+.costActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.costActionBtn:hover {
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
 .emptyParts {
   font-size: var(--text-sm);
   color: var(--text-muted);
@@ -382,7 +438,7 @@
 }
 .bomRow {
   display: grid;
-  grid-template-columns: 28px 1fr auto auto auto;
+  grid-template-columns: 28px 1fr auto auto auto auto;
   align-items: center;
   gap: var(--space-3);
   padding: 11px 0;
@@ -435,6 +491,78 @@
   color: var(--warning);
   background: var(--warning-soft);
 }
+.stateModal {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.bomDel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.bomDel:hover {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+.bomEdit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.bomEdit:hover {
+  color: var(--brand);
+  border-color: var(--border-brand);
+}
+
+/* Inline "modal dadakan" entry form */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.modalFormRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.modalHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.modalFormBtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+@media (max-width: 520px) {
+  .modalFormRow {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ---------- Cost totals ---------- */
 .costList dd {
@@ -459,6 +587,9 @@
 }
 .costProfit dd {
   color: var(--success) !important;
+}
+.costProfit[data-loss='true'] dd {
+  color: var(--danger) !important;
 }
 
 /* ---------- Log ---------- */

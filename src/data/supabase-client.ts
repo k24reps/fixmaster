@@ -128,6 +128,48 @@ export async function voidSale(saleId: string, reason: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Public tracking lookup result (safe fields only — no internal history). */
+export interface TrackServiceResult {
+  serviceNo: string;
+  device: string;
+  category: string;
+  status: string;
+  orgName: string;
+  /** History entries already filtered server-side to non-internal only. */
+  publicHistory: { status: string; at: string; note?: string; internal?: boolean }[];
+}
+
+/**
+ * Public, no-login service tracking via the `track_service` RPC. This RPC is
+ * `security definer` and granted to `anon`, so it works for customers opening
+ * the link on any device/browser — UNLIKE a direct `services` table read,
+ * which RLS (`services_select` = is_org_member) blocks for anonymous visitors.
+ * The RPC also returns only safe fields + internal-filtered history, and is
+ * throttled server-side (60/min per org). Returns null when not found.
+ */
+export async function trackService(
+  orgId: string,
+  serviceNo: string,
+): Promise<TrackServiceResult | null> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('track_service', {
+    p_org_id: orgId,
+    p_service_no: serviceNo,
+  });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    serviceNo: row.service_no,
+    device: row.device,
+    category: row.category,
+    status: row.status,
+    orgName: row.org_name,
+    publicHistory: (row.public_history ?? []) as TrackServiceResult['publicHistory'],
+  };
+}
+
 // ============================================================
 // Team management (Fase 1A). Invitations use the "pending-invite +
 // claim" model: a manager creates a pending_invites row; the invitee

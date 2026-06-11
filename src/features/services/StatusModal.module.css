@@ -8,6 +8,100 @@
   align-items: center;
   gap: var(--space-3);
 }
+.modeTabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.modeTab {
+  flex: 1;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  padding: 7px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.modeTab:hover {
+  color: var(--text-primary);
+}
+.modeTabActive {
+  background: var(--bg-elevated);
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
+.splitBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.splitLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+.splitRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+.splitRemove {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.splitRemove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.splitFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
+}
+.splitAdd {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--border-brand);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.splitAdd:hover {
+  background: var(--bg-elevated);
+}
+.splitTally {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  color: var(--amber-400, var(--warning));
+}
+.splitTally[data-balanced='true'] {
+  color: var(--success);
+}
 .label {
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -28,6 +122,38 @@
   background: var(--warning-soft);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
+}
+
+/* Read-only sparepart/modal summary */
+.partsSummary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.partsList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.partsList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.partCost {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary);
+}
+.partsHint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 /* Warranty capture block (shown when finishing a job) */

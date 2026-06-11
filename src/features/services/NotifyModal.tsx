@@ -33,8 +33,12 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
   const templates = resolveWaTemplates(getWaTemplateOverrides());
 
   const [lastKey, setLastKey] = useState<string | null>(null);
-  if (open && service && org && lastKey !== service.id + templateKey) {
-    setLastKey(service.id + templateKey);
+  // Include finalCost + updatedAt in the memo key so the message regenerates
+  // when the cost (or any field) changes after the modal was first opened.
+  // Without this, the WA text kept a stale "Rp 0" until a full page refresh.
+  const memoKey = service ? `${service.id}|${templateKey}|${service.finalCost}|${service.updatedAt}` : null;
+  if (open && service && org && lastKey !== memoKey) {
+    setLastKey(memoKey);
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const vars = {
       ...serviceVars(service, org),

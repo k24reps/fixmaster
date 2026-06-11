@@ -9,6 +9,8 @@ import {
   STATUS_LABELS,
   STATUS_TONE,
   isActive,
+  serviceProfit,
+  serviceModalTotal,
 } from '@/lib/business/services';
 import { getCategories } from '@/config/orgConfig';
 import { ServiceModal } from './ServiceModal';
@@ -23,6 +25,7 @@ export function ServicesPage() {
   const { data: employees } = useCollection('employees');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const techs = employees.length ? employees : sessionEmployees;
+  const isOwner = useSessionStore((s) => s.currentEmployee?.role) === 'owner';
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
@@ -80,15 +83,15 @@ export function ServicesPage() {
         <Icon name="up-right-from-square" aria-hidden />
       </Link>
       <button
-        className={styles.iconBtn}
+        className={styles.updateBtn}
         onClick={() => {
           setStatusTarget(s);
           setStatusOpen(true);
         }}
-        title="Update status"
-        aria-label="Update status"
+        title="Update status servis"
+        aria-label="Update status servis"
       >
-        <Icon name="arrow-right-arrow-left" aria-hidden />
+        <Icon name="arrow-right-arrow-left" aria-hidden /> Status
       </button>
       <button
         className={styles.iconBtn}
@@ -194,6 +197,8 @@ export function ServicesPage() {
                     <th>Perangkat</th>
                     <th>Teknisi</th>
                     <th className={styles.num}>Biaya</th>
+                    {isOwner && <th className={styles.num}>Modal</th>}
+                    {isOwner && <th className={styles.num}>Profit</th>}
                     <th>Status</th>
                     <th className={styles.actionsCol}>Aksi</th>
                   </tr>
@@ -217,12 +222,47 @@ export function ServicesPage() {
                       </td>
                       <td>{s.technicianName || <span className={styles.muted}>—</span>}</td>
                       <td className={styles.num}>
-                        {s.finalCost > 0 ? fmtRp(s.finalCost) : <span className={styles.muted}>—</span>}
+                        {s.finalCost > 0 ? (
+                          <span className={styles.cost}>{fmtRp(s.finalCost)}</span>
+                        ) : (
+                          <span className={styles.muted}>—</span>
+                        )}
                       </td>
+                      {isOwner && (
+                        <td className={styles.num}>
+                          {serviceModalTotal(s.spareparts) > 0 ? (
+                            <span className={styles.modal}>{fmtRp(serviceModalTotal(s.spareparts))}</span>
+                          ) : (
+                            <span className={styles.muted}>—</span>
+                          )}
+                        </td>
+                      )}
+                      {isOwner && (
+                        <td className={styles.num}>
+                          {s.finalCost > 0 ? (
+                            <span data-loss={serviceProfit(s) < 0 ? 'true' : undefined} className={styles.profit}>
+                              {fmtRp(serviceProfit(s))}
+                            </span>
+                          ) : (
+                            <span className={styles.muted}>—</span>
+                          )}
+                        </td>
+                      )}
                       <td>
-                        <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
-                          {STATUS_LABELS[s.status]}
-                        </Badge>
+                        <button
+                          type="button"
+                          className={styles.statusBtn}
+                          onClick={() => {
+                            setStatusTarget(s);
+                            setStatusOpen(true);
+                          }}
+                          title="Klik untuk update status"
+                        >
+                          <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
+                            {STATUS_LABELS[s.status]}
+                          </Badge>
+                          <Icon name="pen" aria-hidden />
+                        </button>
                       </td>
                       <td className={styles.actionsCol}>{renderActions(s)}</td>
                     </tr>
@@ -238,9 +278,20 @@ export function ServicesPage() {
                     <Link to={`/services/${s.id}`} className={styles.jobNo}>
                       {s.serviceNo}
                     </Link>
-                    <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
-                      {STATUS_LABELS[s.status]}
-                    </Badge>
+                    <button
+                      type="button"
+                      className={styles.statusBtn}
+                      onClick={() => {
+                        setStatusTarget(s);
+                        setStatusOpen(true);
+                      }}
+                      title="Klik untuk update status"
+                    >
+                      <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
+                        {STATUS_LABELS[s.status]}
+                      </Badge>
+                      <Icon name="pen" aria-hidden />
+                    </button>
                   </div>
                   <div className={styles.jobDevice}>
                     <strong>{s.device}</strong>
@@ -263,6 +314,14 @@ export function ServicesPage() {
                     <span className={styles.jobCost}>
                       {s.finalCost > 0 ? fmtRp(s.finalCost) : <span className={styles.muted}>Belum ada biaya</span>}
                     </span>
+                    {isOwner && s.finalCost > 0 && (
+                      <span
+                        className={styles.jobProfit}
+                        data-loss={serviceProfit(s) < 0 ? 'true' : undefined}
+                      >
+                        Profit {fmtRp(serviceProfit(s))}
+                      </span>
+                    )}
                     <div className={styles.jobActions}>{renderActions(s)}</div>
                   </div>
                 </li>
