@@ -804,20 +804,14 @@
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
-/* Embedded live-demo stage (wide screens). Hidden on small screens, where the
-   full-screen route is offered instead (the real AppLayout needs room). */
+/* Demo stage (wide screens). Poster meng-link ke rute /demo layar penuh
+   (tanpa iframe). Pada layar kecil, baris tombol layar-penuh yang ditawarkan. */
 .demoStageWrap {
   position: relative;
   height: 600px;
   background: var(--bg-base);
 }
-.demoFrame {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-}
-/* Click-to-activate poster — keeps first paint light (iframe mounts on click). */
+/* Poster meng-link ke rute /demo (navigasi penuh, bukan embed). */
 .demoPoster {
   position: relative;
   width: 100%;
@@ -832,6 +826,7 @@
   border: 0;
   cursor: pointer;
   text-align: center;
+  text-decoration: none;
   overflow: hidden;
 }
 .demoPlay {

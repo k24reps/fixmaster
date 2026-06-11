@@ -132,9 +132,6 @@ function perDayLabel(plan: { priceLabel: string }): string {
  */
 export function LandingPage({ onStart }: LandingPageProps) {
   const [uptime, setUptime] = useState(0);
-  // Click-to-activate the embedded live demo (wide screens). Keeps first paint
-  // light: the real app iframe only mounts after the visitor opts in.
-  const [demoLive, setDemoLive] = useState(false);
 
   useEffect(() => {
     const prev = document.title;
@@ -278,31 +275,20 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <span className={styles.viewportAddr}>fixmaster · /demo</span>
           </div>
 
-          {/* Wide screens: click-to-activate the real app in an isolated iframe. */}
+          {/* Poster membuka rute demo layar penuh (/demo) — tanpa iframe embed.
+              Plain <a> (bukan <Link>): /demo di-intercept di level App di luar
+              router, jadi butuh navigasi browser asli. */}
           <div className={styles.demoStageWrap}>
-            {demoLive ? (
-              <iframe
-                className={styles.demoFrame}
-                src="/demo"
-                title="Demo langsung FixMaster"
-                loading="lazy"
-              />
-            ) : (
-              <button
-                type="button"
-                className={styles.demoPoster}
-                onClick={() => setDemoLive(true)}
-              >
-                <span className={styles.grid} aria-hidden />
-                <span className={styles.demoPlay}>
-                  <Icon name="right-to-bracket" aria-hidden />
-                </span>
-                <span className={styles.demoPosterTitle}>Coba Langsung</span>
-                <span className={styles.demoPosterSub}>
-                  Jalankan FixMaster asli di sini — data contoh, aman dicoba.
-                </span>
-              </button>
-            )}
+            <a href="/demo" className={styles.demoPoster}>
+              <span className={styles.grid} aria-hidden />
+              <span className={styles.demoPlay}>
+                <Icon name="right-to-bracket" aria-hidden />
+              </span>
+              <span className={styles.demoPosterTitle}>Coba Langsung</span>
+              <span className={styles.demoPosterSub}>
+                Jalankan FixMaster asli — data contoh, aman dicoba.
+              </span>
+            </a>
           </div>
         </div>
 
