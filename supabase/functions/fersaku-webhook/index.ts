@@ -62,9 +62,16 @@ Deno.serve(async (req) => {
   const secret = Deno.env.get('FERSAKU_WEBHOOK_SECRET');
   const signature = req.headers.get('X-Webhook-Signature') ?? '';
 
-  // Verify the signature. If the secret is unset we skip (test only).
-  let signatureOk = !secret;
-  if (secret && body.payment_id != null) {
+  // Verify the signature. We FAIL CLOSED (F1): without a configured secret the
+  // request is unverifiable, so it must NEVER unlock a privileged state change
+  // (the webhook acts via service_role, which bypasses RLS). Set
+  // FERSAKU_WEBHOOK_SECRET to enable processing.
+  let signatureOk = false;
+  if (!secret) {
+    console.error(
+      'fersaku-webhook: FERSAKU_WEBHOOK_SECRET belum diset — menolak (fail-closed)',
+    );
+  } else if (body.payment_id != null) {
     const signString =
       String(body.payment_id) +
       String(body.order_id ?? '') +

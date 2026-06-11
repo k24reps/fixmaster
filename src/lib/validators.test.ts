@@ -9,7 +9,7 @@ import {
 
 describe('customerSchema', () => {
   it('accepts a valid customer', () => {
-    const r = validate(customerSchema, { id: '1', name: 'Andi', phone: '0812', email: '' });
+    const r = validate(customerSchema, { id: '1', name: 'Andi', phone: '08123456789', email: '' });
     expect(r.ok).toBe(true);
   });
   it('rejects a missing name', () => {

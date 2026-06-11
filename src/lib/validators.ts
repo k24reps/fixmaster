@@ -11,10 +11,25 @@ const id = z.string().min(1);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD');
 const money = z.number().finite().min(0, 'Nilai tidak boleh negatif');
 
+/**
+ * No. HP: hanya digit + pemisah umum (+ - spasi ( )), dengan 8–15 digit
+ * setelah strip non-digit. Menolak teks/simbol & nomor terlalu pendek (F2).
+ * 0812..., 62812..., +62 812-3456-7890 semua valid.
+ */
+const phone = z
+  .string()
+  .trim()
+  .min(1, 'No. HP wajib diisi')
+  .refine((v) => /^[\d+\-\s()]+$/.test(v), 'No. HP hanya boleh angka dan + - ( ) spasi')
+  .refine((v) => {
+    const digits = v.replace(/\D/g, '');
+    return digits.length >= 8 && digits.length <= 15;
+  }, 'No. HP harus 8–15 digit');
+
 export const customerSchema = z.object({
   id,
   name: z.string().trim().min(1, 'Nama pelanggan wajib diisi'),
-  phone: z.string().trim().min(1, 'No. HP wajib diisi'),
+  phone,
   email: z.string().email('Email tidak valid').or(z.literal('')),
 });
 

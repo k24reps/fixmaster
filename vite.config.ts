@@ -42,6 +42,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // The offline unit suite lives under src/. Network-bound integration
+    // tests (tests/integration/**) run separately via test:integration so a
+    // plain `npm run test` stays fast and hermetic.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['tests/integration/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       include: ['src/lib/**', 'src/data/**'],

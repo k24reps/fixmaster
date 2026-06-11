@@ -15,11 +15,21 @@ FixMaster memakai **abstraksi repository** yang adapter-agnostic. Berbeda dari p
 
 ```
 Repository (interface)
-├── local-adapter.ts    → IndexedDB (via idb), default offline
-└── supabase-adapter.ts → Supabase (cloud), aktif bila env terkonfigurasi
+├── local-adapter.ts     → IndexedDB (via idb), default offline
+├── supabase-adapter.ts  → Supabase (cloud), aktif bila env terkonfigurasi
+└── in-memory-adapter.ts → RAM-only (Map), khusus demo publik
 ```
 
 Metode inti: `list`, `get`, `put`, `putMany`, `remove`, `subscribe`, `clearAll`.
+
+### Repository swappable (live-binding) — untuk demo publik
+
+`src/data/index.ts` meng-ekspor `repository` sebagai **ES live-binding mutable**. `installRepository(impl)` menukar instance saat runtime, `resetRepository()` mengembalikannya. Karena semua pemanggil (`useCollection`, `session`, dll) membaca binding **saat dipanggil**, menukar instance langsung mengalihkan seluruh app tanpa reload.
+
+[`InMemoryAdapter`](src/data/in-memory-adapter.ts) — implementasi `Repository` berbasis `Map` (singleton per-instance), mencerminkan `LocalAdapter`: audit-stamp (`createdAt/updatedAt`), scoping `orgId`, soft-delete (tombstone), singleton per-org, dan mekanik `notify()`/`subscribe()`. **RAM-only**: nol jejak disk, hilang saat tab ditutup, tak menyentuh IndexedDB asli pengunjung. Dipakai oleh **demo interaktif** (lihat [[Signature Pages]] § Demo Interaktif). Teruji paritas di `in-memory-adapter.test.ts` (8 tes).
+
+> [!NOTE]
+> `commitWizard()` punya opsi `{forceLocal}`. Di produksi (`isSupabaseConfigured`) wizard normal menulis ke cloud RPC; demo memakai `forceLocal:true` agar seed menulis ke `InMemoryAdapter` yang baru dipasang (pengunjung anonim tak punya akun cloud).
 
 ## Koleksi (EntityMap)
 
@@ -66,7 +76,7 @@ Selain koleksi yang dipetakan ke repository, mode cloud punya tabel & RPC khusus
 
 **Tim (migration `0008`, diperketat `0016`)** — tabel `pending_invites` (org_id, email, role, claimed_at) + RPC security-definer `claim_invite` (dipanggil di `session.bootstrap` saat akun baru belum punya membership → gabung org via email yang cocok), `set_member_role`, `deactivate_member`. Semua mengecek `is_org_manager` & menolak menurunkan/menonaktifkan owner aktif terakhir. **Sejak `0016`: hanya OWNER yang boleh mengelola peran owner** (promote ke owner, demote/nonaktifkan owner) — admin ditolak; policy `mbr_manage` juga menambah guard `role <> 'owner' or is_org_owner(...)` agar admin tak bisa mem-bypass via PostgREST langsung. Guard yang sama dicerminkan murni di `lib/business/team.ts`. Detail: [[Decisions & Bug Fixes]] (model undangan pending-invite + claim).
 
-**Billing (migration `0009`, diperketat `0016`)** — tabel `invoices` (org_id, plan, amount, status, provider, qris_url, period_start/end, paid_at) + RPC `start_subscription` (bikin invoice pending 1 siklus), `apply_payment` (idempotent: tandai lunas + perpanjang `plan_expired_at` dari `max(now, expiry)`), fungsi `is_org_active` (cek belum suspended & belum lewat grace). **Sejak `0016`: billing = OWNER-only** — `start_subscription`/`cancel_invoice` dan policy `invoices_manage` pakai `is_org_owner`; selain itu kolom `organizations.plan_type` dikunci oleh trigger `guard_plan_type_change` (hanya berubah lewat `apply_payment` yang menandai flag transaksi-lokal, atau `service_role` webhook) — jadi admin/siapa pun tak bisa mem-bypass pembayaran via `UPDATE` langsung. Edit profil usaha (nama/alamat/logo) tetap aman: klien menyimpan profil dengan meng-`UPDATE` seluruh baris (termasuk `plan_type` yang bisa **basi** dari cache), jadi trigger **mempertahankan** nilai lama (`new.plan_type := old.plan_type`) alih-alih menggagalkan update — anti-bypass tanpa false-positive. Logika siklus murni di `lib/business/billing.ts`. Detail: [[Decisions & Bug Fixes]] (billing invoice-based QRIS).
+**Billing (migration `0009`, diperketat `0016`, `0022`)** — tabel `invoices` (org_id, plan, amount, status, provider, qris_url, period_start/end, paid_at) + RPC `start_subscription` (bikin invoice pending 1 siklus), `apply_payment` (idempotent: tandai lunas + perpanjang `plan_expired_at` dari `max(now, expiry)`), fungsi `is_org_active` (cek belum suspended & belum lewat grace). **Sejak `0016`: billing = OWNER-only** — `start_subscription`/`cancel_invoice` dan policy `invoices_manage` pakai `is_org_owner`; selain itu kolom `organizations.plan_type` dikunci oleh trigger `guard_plan_type_change` (hanya berubah lewat `apply_payment` yang menandai flag transaksi-lokal, atau `service_role` webhook) — jadi admin/siapa pun tak bisa mem-bypass pembayaran via `UPDATE` langsung. Edit profil usaha (nama/alamat/logo) tetap aman: klien menyimpan profil dengan meng-`UPDATE` seluruh baris (termasuk `plan_type` yang bisa **basi** dari cache), jadi trigger **mempertahankan** nilai lama (`new.plan_type := old.plan_type`) alih-alih menggagalkan update — anti-bypass tanpa false-positive. **Sejak `0022` (fix F5): `apply_payment` punya guard pemanggil eksplisit** — hanya `service_role` (webhook) ATAU `is_org_owner` pemilik invoice; sebelumnya di-grant `authenticated` tanpa cek sehingga karyawan bisa menandai invoice lunas tanpa bayar (terbukti via test integrasi, kini regresi 2-arah hijau). Logika siklus murni di `lib/business/billing.ts`. Detail: [[Decisions & Bug Fixes]] (billing invoice-based QRIS) & [[Testing & Security]] (fase perbaikan).
 
 **Enforcement tulis (migration `0010`)** — semua RLS `*_write` policy (operasional, finansial, config) diperketat agar `using`+`with check` wajib `is_org_active(org_id)`. Jadi saat langganan kedaluwarsa (lewat grace), **insert/update/delete diblokir di level DB** untuk semua jalur tulis (termasuk input pemasukan via adapter yang tak lewat RPC) — sementara `*_select` tak disentuh (baca tetap jalan) dan `invoices`/`memberships` tak digerbang (bayar + kelola tim tetap bisa). `supabase-adapter` menerjemahkan error RLS `42501` jadi pesan Indonesia yang ramah.
 
