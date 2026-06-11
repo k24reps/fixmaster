@@ -60,7 +60,7 @@ export async function seedDemoWorkspace(): Promise<void> {
   // Opt out of wizard outlet creation — the seed defines its own 3 outlets below.
   data.outlets = [];
 
-  const { org, owner } = await commitWizard(data);
+  const { org, owner } = await commitWizard(data, { forceLocal: true });
   repository.setScope(org.id, null);
 
   // Default service templates (quick-picks in the service form, editable in

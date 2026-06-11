@@ -42,6 +42,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 ## 3. Konvensi singkat (detail di Conventions.md)
 
 - **Warna**: selalu `var(--token)` dari `src/styles/tokens.css` — jangan hardcode hex (otomatis benar dark/light).
+- **Visual/UI WAJIB otentik "Precision Electronics Bench"**: tiap elemen visual baru harus original, unik, dan khas FixMaster — pakai motif bench (LED status, readout **mono**, **spine** tepi kartu, **tick-gauge**, **divider titik**). **DILARANG** pola UI generik SaaS (mis. ikon gembok polos untuk fitur terkunci, badge/komponen bawaan library tanpa token). Contoh benar: fitur terkunci di sidebar = baris redup + badge **LED brand + "PRO" mono**, bukan padlock. Detail & pilar warna di `docs/obsidian-vault/Design System.md`.
 - **Data**: baca via `useCollection('<koleksi>')`, mutasi via `repository` (`src/data/`).
 - **Logika domain**: tulis murni & testable di `src/lib/business/`, panggil dari UI.
 - **Ikon**: hanya lewat komponen `Icon` (`src/components/ui/Icon.tsx`).
@@ -52,7 +53,8 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest (250 test)
+npm run test    # vitest unit (288 test, offline)
+npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
 Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasumsi "kelihatannya benar". Pelajaran lengkap di `docs/obsidian-vault/Decisions & Bug Fixes.md`.

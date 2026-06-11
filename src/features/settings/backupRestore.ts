@@ -1,7 +1,10 @@
 import { repository } from '@/data';
 import type { CollectionName } from '@/data/repository';
+import { isSupabaseConfigured } from '@/data/supabase-client';
+import { useSessionStore } from '@/stores/session';
 import {
   buildBackup,
+  buildRestorePayload,
   serializeBackup,
   parseBackup,
   backupFilename,
@@ -11,12 +14,15 @@ import {
 /**
  * Backup / Restore IO — the bridge between the pure backup core and the
  * repository. Captures every collection plus the organization singleton into
- * one lossless JSON file, and restores by REPLACING all data (clearAll +
- * putMany), which is the safest, most predictable semantics for a restore.
+ * one lossless JSON file.
  *
- * Scope: local-first mode. In cloud mode, restore is intentionally disabled
- * (cross-tenant id collisions + RLS make a blind bulk overwrite unsafe);
- * cloud users rely on Supabase backups/PITR instead.
+ * Restore semantics depend on the active mode:
+ *   - Local-first: REPLACE everything (clearAll + putMany).
+ *   - Cloud: delegate to the atomic, demo-only RPC `restore_org_data`
+ *     (migration 0020) via repository.restoreOrgData. Team (memberships) and
+ *     the org profile/billing are excluded; the server enforces owner +
+ *     is_demo and forces org_id (cross-tenant safety). Non-demo cloud orgs
+ *     rely on Supabase backups/PITR instead.
  */
 
 /** All persisted collections (mirrors EntityMap). */
@@ -81,14 +87,26 @@ export async function restoreBackup(text: string): Promise<RestoreResult> {
   const backup = parsed.backup;
 
   try {
+    // Cloud mode: delegate to the atomic, demo-only server RPC. Team
+    // (memberships) + org profile/billing are excluded by buildRestorePayload,
+    // and the server enforces owner + is_demo. The active org's id wins over
+    // whatever the file claims (cross-tenant safety).
+    if (isSupabaseConfigured && repository.restoreOrgData) {
+      const orgId = useSessionStore.getState().org?.id;
+      if (!orgId) return { ok: false, error: 'Tidak ada organisasi aktif.' };
+      const payload = buildRestorePayload(backup);
+      const restored = await repository.restoreOrgData(orgId, payload);
+      return { ok: true, restored };
+    }
+
+    // Local mode: wipe everything, then bulk-insert each collection + the org
+    // singleton. Records keep ids/timestamps so relations stay intact.
     await repository.clearAll();
 
     let restored = 0;
     for (const name of ALL_COLLECTIONS) {
       const rows = backup.collections[name];
       if (Array.isArray(rows) && rows.length > 0) {
-        // The backup carries fully-formed records; putMany re-stamps updatedAt
-        // but preserves id/orgId/createdAt, so relations are kept.
         await repository.putMany(name, rows as never);
         restored += rows.length;
       }

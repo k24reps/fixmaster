@@ -25,7 +25,11 @@ export interface BaseEntity {
 // ---------- Roles & Plans ----------
 export type Role = 'owner' | 'admin' | 'karyawan';
 
-export type PlanType = 'free' | 'standard' | 'enterprise' | 'trial' | 'suspended';
+// NOTE: the Postgres `plan_type` enum also contains a legacy 'free' value,
+// but FixMaster uses a trial→paid model, so 'free' is NOT offered and is
+// intentionally omitted here. Signup always grants 'trial'; no org is ever
+// assigned 'free'. The enum value is left in the DB to avoid a risky migration.
+export type PlanType = 'standard' | 'enterprise' | 'trial' | 'suspended';
 
 // ---------- Organization & Users ----------
 export interface Organization {
@@ -45,6 +49,13 @@ export interface Organization {
   planExpiredAt: ISODateTime | null;
   maxOutlets: number;
   maxUsers: number;
+  /**
+   * Demo workspace flag (cloud). When true, the owner may REPLACE all domain
+   * data via restore_org_data (migration 0020) — used to keep the public
+   * landing-page demo account fresh. Real customer orgs are false, so their
+   * data can never be wiped by restore. Defaults false everywhere.
+   */
+  isDemo?: boolean;
   createdAt: ISODateTime;
 }
 

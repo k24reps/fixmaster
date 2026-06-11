@@ -52,6 +52,10 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email tidak valid';
     if (mode === 'reset') return null;
     if (password.length < 8) return 'Password minimal 8 karakter';
+    // F3: syarat kompleksitas hanya saat signup (jangan kunci akun lama saat login).
+    if (mode === 'signup' && !(/[a-zA-Z]/.test(password) && /\d/.test(password))) {
+      return 'Password harus mengandung huruf dan angka';
+    }
     if (mode === 'signup' && password !== confirm) return 'Konfirmasi password tidak cocok';
     return null;
   };

@@ -6,7 +6,7 @@ import { repository } from '@/data';
 import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor } from '@/config/plans';
+import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor, withinUserQuota, priceForOutlets } from '@/config/plans';
 import { subscriptionPhase, daysUntil, phaseLabel, GRACE_DAYS } from '@/lib/business/billing';
 import {
   getComplaintTemplates,
@@ -29,6 +29,7 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
+import { demoGuard } from '@/stores/demo';
 import { isValidInviteEmail } from '@/lib/business/team';
 import { useSessionStore } from '@/stores/session';
 import {
@@ -142,7 +143,10 @@ export function SettingsPage() {
       {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
         <SystemTab
-          onReset={() => setConfirmReset(true)}
+          onReset={() => {
+            if (demoGuard('Reset data dinonaktifkan di demo. Pakai tombol "Reset Demo" di atas untuk mengembalikan data contoh.')) return;
+            setConfirmReset(true);
+          }}
           isOwner={isOwner}
         />
       )}
@@ -150,7 +154,11 @@ export function SettingsPage() {
       <ConfirmDialog
         open={confirmReset}
         title="Reset Seluruh Data?"
-        message="SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan."
+        message={
+          isSupabaseConfigured
+            ? 'SEMUA data operasional (servis, transaksi, stok, keuangan) akan dihapus permanen. Tim, langganan, dan profil usaha TETAP. Workspace jadi kosong. Tindakan ini tidak dapat dibatalkan.'
+            : 'SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan.'
+        }
         confirmLabel="Ya, Reset Semua"
         danger
         onConfirm={async () => {
@@ -532,6 +540,7 @@ const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', kar
 function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'employees'>>['data'] }) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
+  const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
   const { refetch } = useCollection('employees');
 
   const [invites, setInvites] = useState<PendingInvite[]>([]);
@@ -565,7 +574,14 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
     };
   }, [orgId]);
 
+  // Solo is single-user (the owner). Inviting anyone exceeds the quota and
+  // forces an upgrade to Pro. Active members + outstanding invites both count.
+  const seatsUsed = employees.length + invites.length;
+  const canInvite = withinUserQuota(plan, seatsUsed + 1);
+
   const invite = async () => {
+    if (!canInvite)
+      return toast.error('Paket Solo hanya untuk 1 pengguna. Upgrade ke Pro untuk menambah anggota tim.');
     if (!name.trim()) return toast.error('Nama wajib diisi');
     if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
     setBusy(true);
@@ -623,26 +639,33 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
               Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis bergabung ke
               organisasi ini saat masuk pertama kali.
             </p>
-            <div className={styles.inviteRow}>
-              <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input
-                placeholder="email@contoh.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <select
-                className={styles.roleSelect}
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-                aria-label="Peran"
-              >
-                <option value="karyawan">Karyawan</option>
-                <option value="admin">Admin</option>
-              </select>
-              <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
-                Undang
-              </Button>
-            </div>
+            {!canInvite ? (
+              <p className={styles.hint} role="note">
+                Paket <strong>{PLANS[plan].name}</strong> hanya untuk 1 pengguna. Upgrade ke{' '}
+                <strong>Pro</strong> untuk menambah anggota tim tanpa batas.
+              </p>
+            ) : (
+              <div className={styles.inviteRow}>
+                <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  placeholder="email@contoh.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <select
+                  className={styles.roleSelect}
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as Role)}
+                  aria-label="Peran"
+                >
+                  <option value="karyawan">Karyawan</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
+                  Undang
+                </Button>
+              </div>
+            )}
             {invites.length > 0 && (
               <ul className={styles.list}>
                 {invites.map((inv) => (
@@ -790,7 +813,12 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     }
     setBusy(true);
     try {
-      const amount = parseAmount(PLANS[tier].priceLabel);
+      // Pro (enterprise) scales with outlet count: base covers 2 outlets,
+      // +addon per extra, capped at the ceiling. Solo is a flat label price.
+      const amount =
+        tier === 'enterprise'
+          ? priceForOutlets(outletCount)
+          : parseAmount(PLANS[tier].priceLabel);
       try {
         // Real provider: create a Fersaku payment and open the hosted checkout
         // page (QRIS). Confirmation arrives via the webhook.
@@ -984,8 +1012,8 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         <CardHeader icon={<Icon name="tag" aria-hidden />} title="Pilih Paket" />
         <CardBody>
           <p className={styles.hint}>
-            Harga per organisasi, user tak terbatas. Tier menyesuaikan jumlah outlet (kamu punya{' '}
-            {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
+            Harga per organisasi. Solo untuk 1 pengguna; Pro pengguna tak terbatas. Pro menyesuaikan
+            jumlah outlet (kamu punya {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
           </p>
           <div className={styles.planGrid}>
             {PAID_TIERS.map((tier) => {
@@ -1000,9 +1028,14 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   <span className={styles.planSpine} aria-hidden />
                   {isRec && <span className={styles.planRecTag}>Disarankan</span>}
                   <strong className={styles.planCardName}>{def.name}</strong>
-                  <span className={styles.planPrice}>{def.priceLabel}</span>
+                  <span className={styles.planPrice}>
+                    {tier === 'enterprise'
+                      ? `${fmtRp(priceForOutlets(outletCount))}/bln`
+                      : def.priceLabel}
+                  </span>
                   <small className={styles.planQuota}>
-                    s/d {def.maxOutlets} outlet · user unlimited
+                    {def.maxOutlets < 0 ? 'Outlet tanpa batas' : `s/d ${def.maxOutlets} outlet`} ·{' '}
+                    {def.maxUsers < 0 ? 'user tak terbatas' : `${def.maxUsers} pengguna`}
                   </small>
                   <Button
                     variant={isRec ? 'primary' : 'secondary'}
@@ -1348,6 +1381,11 @@ function ExportDataCard() {
 function BackupCard() {
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
+  const isDemo = Boolean(org?.isDemo);
+  // Restore is available to every owner (this whole page is owner-only). The
+  // server RPC restore_org_data (migration 0020) enforces owner + forces
+  // org_id, so an owner can only ever replace THEIR OWN org's data.
+  const canRestore = true;
   const frequency = useBackupStore((s) => s.frequency);
   const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
   const setFrequency = useBackupStore((s) => s.setFrequency);
@@ -1359,6 +1397,7 @@ function BackupCard() {
   const [restoring, setRestoring] = useState(false);
 
   const handleBackup = async () => {
+    if (demoGuard('Backup tersedia di FixMaster versi penuh — daftar gratis.')) return;
     setBusy(true);
     try {
       const backup = await createBackup(org?.id ?? null);
@@ -1385,6 +1424,7 @@ function BackupCard() {
   };
 
   const handleRestore = async () => {
+    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh — daftar gratis.')) return;
     if (pendingText === null) return;
     setRestoring(true);
     try {
@@ -1413,7 +1453,7 @@ function BackupCard() {
           <Button onClick={handleBackup} loading={busy} iconLeft={<Icon name="download" aria-hidden />}>
             Backup Sekarang
           </Button>
-          {!cloud && (
+          {canRestore && (
             <Button
               variant="secondary"
               onClick={() => fileRef.current?.click()}
@@ -1432,8 +1472,9 @@ function BackupCard() {
         </div>
         {cloud && (
           <p className={styles.planNote}>
-            <Icon name="info-circle" aria-hidden /> Restore dinonaktifkan di mode cloud — gunakan
-            backup/PITR Supabase. Backup manual tetap bisa diunduh.
+            <Icon name="info-circle" aria-hidden /> Restore mengganti SELURUH data operasional
+            org ini dengan isi file. Tim, langganan, dan profil org TIDAK ikut diganti. Disarankan
+            backup dulu sebelum memulihkan.{isDemo ? ' (Akun demo)' : ''}
           </p>
         )}
         <hr className={styles.dangerDivider} />
@@ -1476,11 +1517,13 @@ function SystemTab({
   isOwner: boolean;
 }) {
   const cloud = isSupabaseConfigured;
+  const isDemo = Boolean(useSessionStore((s) => s.org)?.isDemo);
   const signOut = useAuthStore((s) => s.signOut);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
+    if (demoGuard('Hapus akun dinonaktifkan di demo.')) return;
     setDeleting(true);
     try {
       // 1. Erase all tenant data reachable from the client.
@@ -1522,13 +1565,15 @@ function SystemTab({
           <CardHeader icon={<Icon name="triangle-exclamation" aria-hidden />} title="Zona Berbahaya" />
           <CardBody>
             <p className={styles.dangerNote}>
-              Reset menghapus seluruh data dan mengembalikan ke setup awal.
+              {cloud
+                ? 'Reset mengosongkan seluruh data operasional org ini (servis, transaksi, stok, keuangan). Tim, langganan, dan profil usaha tetap.'
+                : 'Reset menghapus seluruh data dan mengembalikan ke setup awal.'}
             </p>
             <Button variant="danger" onClick={onReset} iconLeft={<Icon name="trash" aria-hidden />}>
               Reset Seluruh Data
             </Button>
 
-            {cloud && (
+            {cloud && !isDemo && (
               <>
                 <hr className={styles.dangerDivider} />
                 <p className={styles.dangerNote}>

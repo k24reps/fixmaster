@@ -1,0 +1,128 @@
+/* ---------- Demo faceplate bar ---------- */
+.bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+/* Corner screws — bench-instrument idiom. */
+.screw {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--text-muted), var(--bg-base));
+  opacity: 0.5;
+}
+.screwRight {
+  left: auto;
+  right: 10px;
+}
+
+/* ---------- Status cluster ---------- */
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+}
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
+  animation: demoPulse 1.8s ease-in-out infinite;
+}
+@keyframes demoPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.statusText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+}
+.statusSub {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* ---------- Actions ---------- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: var(--space-3);
+}
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.resetBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+.signupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--on-brand);
+  background: var(--brand);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.15s;
+}
+.signupBtn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.signupLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--on-brand);
+  opacity: 0.9;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .bar {
+    padding: var(--space-2) var(--space-3);
+  }
+  .statusSub {
+    display: none;
+  }
+  .resetBtn span {
+    display: none;
+  }
+}

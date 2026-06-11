@@ -19,6 +19,75 @@ Tiap halaman punya metafora alat sendiri, tapi semua memakai token + motif yang 
 ### Komponen bersama dibiarkan utuh
 `StatCard` dipakai Dashboard & Servis. Saat mendesain ulang Reports, dibuat **tile lokal** alih-alih mengubah `StatCard`, supaya halaman lain tak ikut berubah tak sengaja.
 
+### Demo interaktif: live-binding repository + iframe, bukan app terpisah
+Tujuan: pengunjung **memakai FixMaster asli** sebelum daftar (bukan video/mockup). Keputusan kunci & alasannya:
+- **Tukar `repository` saat runtime (live-binding)** alih-alih membangun app demo terpisah. `src/data/index.ts` mengekspor `repository` mutable; `installRepository(new InMemoryAdapter())` mengalihkan **seluruh** app ke RAM tanpa menyentuh kode fitur. Ini menjaga demo **selalu = produk asli** (tak ada drift), biaya pemeliharaan ~0.
+- **`InMemoryAdapter` (RAM-only)** — nol jejak disk, tak menyentuh IndexedDB asli pengunjung, hilang saat tab ditutup. Mencerminkan `LocalAdapter` agar perilaku identik.
+- **Pakai ulang seed yang sudah ada** (`src/dev/seed.ts`) lewat opsi `commitWizard({forceLocal})` — bukan menulis seed baru. Di produksi wizard menulis ke cloud RPC; `forceLocal` memaksa jalur lokal agar seed menulis ke adapter in-memory (pengunjung anonim tak punya akun cloud). Hemat waktu & konsisten dengan dev.
+- **Reuse `appChildRoutes`** di `MemoryRouter` demo → menu & halaman persis sama dengan app asli.
+- **Nested-router trap**: `MemoryRouter` tak boleh bersarang di `BrowserRouter` (React Router melempar error). Solusi final: **intersep `/demo` di level `App`** sebelum `RouterProvider` mount, dan **hapus** route `/demo` dari `router.tsx`. Melayani kunjungan langsung **dan** `<iframe src="/demo">` di landing dengan satu jalur.
+- **Aksi sensitif dijinakkan, bukan disembunyikan** (`demoGuard()`): keluar, reset/hapus akun, backup/restore, kirim WhatsApp, cetak nota → toast + ajakan daftar. Pengunjung tetap melihat tombolnya (terasa app penuh) tanpa risiko keluar-app/destruktif.
+- **`noindex`** disuntik selama demo mounted (sandbox, bukan konten SEO). **HP** memakai route layar penuh `/demo` (iframe disembunyikan — AppLayout butuh ruang desktop).
+- Verifikasi: build + **280 test** (272 → +8 paritas InMemoryAdapter) + lint hijau; render `/demo` dark/light/mobile difoto via `scripts/shoot-demo.mjs`. Detail di [[Signature Pages]] & [[Data Layer]].
+
+### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
+Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
+- **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
+- **Aman untuk semua org tanpa gate `is_demo`**, karena proteksi inti tetap: **owner-only** di server + **`org_id` dipaksa server** (abaikan isi file) → owner hanya bisa menimpa **org-nya sendiri**; mustahil lintas-tenant. (`is_demo` tinggal penanda informatif.)
+- **Kecualikan `memberships` + `organizations` (profil & billing)**: `memberships.user_id` FK ke `auth.users`; menulis ulang bisa mengunci owner keluar. Mengecualikan billing menjaga **langganan tak ter-reset** tiap restore. FK ke memberships di-NULL saat insert (nama tetap tampil via kolom `*_name`).
+- **Risiko sisa** (owner menimpa data baru dengan backup lama) inheren pada "restore" — dimitigasi `ConfirmDialog` berbahaya + saran "backup dulu".
+- **Data demo kumulatif**: `scripts/make-demo-backup.mjs` menghasilkan file backup yang **bertumbuh tiap hari** (hari-1→hari ini, deterministik per-hari). Dijalankan tiap hari lalu di-restore. Realtime sinkronisasi data domain direncanakan **terpisah** (`implementation_plan_realtime.md`).
+- **Konsekuensi jujur**: menu Tim hanya menampilkan akun login asli (bukan nama dummy dari file). Solusinya buat beberapa akun karyawan sekali manual. Lihat [[Data Layer]].
+
+### Bug fix: "Reset Seluruh Data" menyesatkan di cloud
+**Gejala**: tombol "Reset Seluruh Data" memanggil `resetWorkspace()` → `repository.clearAll()`. Di cloud `clearAll()` sengaja **no-op** (keamanan multi-tenant), jadi reset hanya membersihkan state lokal & melempar ke wizard, **tanpa menghapus data di server** — padahal teksnya berjanji "menghapus seluruh data". Menyesatkan.
+**Perbaikan**: di cloud, `resetWorkspace()` kini memanggil RPC `restore_org_data(orgId, {})` (payload kosong) → benar-benar mengosongkan SELURUH data operasional secara atomik & owner-only, sambil **mempertahankan** tim/langganan/profil org (akun tetap login, workspace kosong, TIDAK kembali ke wizard). Teks dialog & catatan Zona Berbahaya dibuat **per-mode** agar jujur. Mode lokal tak berubah (wipe penuh + wizard).
+
+### Keputusan: tier `free` TIDAK ditawarkan (model trial→bayar)
+**Konteks**: `plans.ts` sempat punya `PlanDef` untuk tier `free` (Rp 0; fitur Servis/Pelanggan/POS), dan `free` ada di union `PlanType` serta enum Postgres `plan_type`. Tapi **tidak ada org yang pernah di-assign `free`**: `create_organization` (`0003`) selalu memberi `'trial'` (14 hari), dan default kolom juga `'trial'`. Setelah trial+grace habis, `is_org_active` mengembalikan `false` — tak ada jalur auto-downgrade ke `free`. Jadi `free` adalah tier "yatim" yang menyesatkan (mis. di kajian harga sempat disebut sebagai "free tier permanen" → keliru).
+**Keputusan**: FixMaster memakai model **trial → bayar** (sama seperti FixNova & FixMate). Tier `free` **dibuang dari config**: dihapus dari `PLANS` ([plans.ts](src/config/plans.ts)) dan dari union `PlanType` ([types.ts](src/data/types.ts)). Nilai enum `'free'` **dibiarkan di Postgres** (tak ada migrasi berisiko) — hanya tak lagi dipakai di app. Test `plans.test.ts` yang mengandalkan `free` diganti jadi uji batas fitur Solo vs Pro. (Struktur tier berbayar terbaru: lihat keputusan **Restrukturisasi tier Solo/Pro** di bawah.)
+
+
+### Restrukturisasi tier berbayar: Solo vs Pro (diversifikasi fitur + per-outlet)
+**Konteks**: dua tier berbayar dibedakan agar Solo "gatal" upgrade ke Pro. Pemicu terkuat di niche reparasi = **rekrut karyawan pertama** (butuh multi-user) dan **buka cabang ke-2** (multi-outlet). Maka kunci yang "tumbuh seiring bisnis", bukan core loop.
+
+**Matriks final** ([plans.ts](src/config/plans.ts)):
+- **Solo** (`standard`, Rp 99rb): core ops saja — `services, customers, pos, inventory, finance, reports`. `maxUsers: 1`, `maxWallets: 2`, `maxOutlets: 1`. **Single-user** = pemicu upgrade utama.
+- **Pro** (`enterprise`, Rp 149rb): semua fitur + `maxUsers: -1`, `maxWallets: 99`, `maxOutlets: -1` (unlimited). 2 outlet termasuk; ekstra **+Rp50rb/outlet**, **mentok Rp 299rb** lalu unlimited.
+- Eksklusif Pro (terkunci di Solo): **suppliers, attendance, tasks, multiOutlet, exportImport, logo, waTemplates**.
+
+**Keputusan teknis**:
+- **`maxUsers` kini DITEGAKKAN.** Sebelumnya cuma config kosmetik (tak ada guard). Ditambah helper `withinUserQuota(plan, n)` di `plans.ts`, dipanggil di `SettingsPage` TeamTab: undang anggota diblok bila `seatsUsed+1` lewat kuota (anggota aktif + undangan pending dihitung), dengan notice upgrade. RPC server tetap batas sebenarnya (belum di-enforce server-side — TODO bila perlu ketat).
+- **`maxOutlets: -1` = unlimited.** `withinOutletQuota` kini memperlakukan `-1` sebagai tak terbatas. `outletTierFor(n)` kini selalu mengembalikan `enterprise` untuk jumlah besar (bukan `null`).
+- **Per-outlet pricing**: helper murni `priceForOutlets(n)` + konstanta `PRO_BASE_PRICE/PRO_INCLUDED_OUTLETS/OUTLET_ADDON_PRICE/PRO_PRICE_CEILING`. Diuji di `plans.test.ts`.
+- **Nav "show-locked"** ([Sidebar.tsx](src/components/layout/Sidebar.tsx)): item fitur yang dikunci tak lagi *disembunyikan* — tampil redup + badge **"Pro"** + tautan ke `/settings` (memunculkan "itch"). Role-gating (`managerOnly`/`ownerOnly`) tetap *disembunyikan* karena mencerminkan RLS server.
+- Verifikasi: build + **272 test** + lint hijau.
+
+**Strategi 3-brand (decoy, Jalur A)**: FixNova adalah produk milik tim sendiri yang diposisikan sebagai **decoy peer-tinggi** — tampil seolah developer independen (tanpa funnel/cross-link ke FixMaster). Ladder fitur di tier tertinggi: **FixMate < FixNova < FixMaster**. FixNova sengaja TIDAK punya fitur tanda-tangan FixMaster (Supplier+PO, Tugas Internal, Activity Log). Pesaing riil hanya **FixMate** (terverifikasi **khusus HP** dari copy resminya; FixNova & FixMaster mencakup semua gadget/elektronik). Syarat legal: tiap klaim faktual tiap brand harus benar — klaim fiktif (statistik/testimoni) di FixNova wajib dibersihkan. FixNova ada di **repo terpisah** (bukan workspace ini). Detail di artifact `implementation_plan.md` + `perbandingan_harga_kompetitor.md`.
+
+### Revisi total landing page + guardrail strategi (9 Jun 2026)
+**Konteks**: landing ([LandingPage.tsx](src/features/landing/LandingPage.tsx)) di-revisi total dari hasil komparasi 3-brand. Tujuan ganda: (a) **perbaiki klaim basi** yang jadi bug faktual; (b) **angkat elemen konversi** yang kuat dari kompetitor tanpa merusak keaslian.
+
+**Bug faktual diperbaiki** (klaim wajib jujur demi strategi multi-brand):
+- Spec Solo dulu mengklaim "Tugas, absensi, laporan" & "Karyawan tak terbatas" → **salah** (kini Solo = core ops + `maxUsers:1`). Diganti: 1 pengguna · 1 outlet · 2 dompet.
+- Spec Pro merender literal **"s/d -1 cabang"** (karena `maxOutlets:-1`) → diganti "outlet tak terbatas" + info add-on per-outlet.
+
+**Elemen diadopsi dari kompetitor (pola, BUKAN visual)**:
+- Dari FixNova: **fault panel** (pain points), **viewport preview** interaktif, **framing harga harian**, **FAQ**. Semua diterjemahkan ke bahasa "Precision Electronics Bench" (spine, LED, mono, sekrup) — bukan tiru gradient/glow mereka.
+- Dari FixMate: **kejelasan target** → diubah jadi keunggulan **cakupan** (chips HP/Laptop/Tablet/Printer/Konsol/Elektronik), bukan menyempit ke 1 jenis.
+
+> [!important] Guardrail strategi (REVISI 10 Jun 2026 — menggantikan pagar "tanpa komparasi")
+> Keputusan awal "landing tanpa tabel komparasi" **dibalik** atas arahan owner. Landing FixMaster **kini memuat matriks banding bernama** (FixMaster vs FixNova vs FixMate) — disadari ini justru **mekanisme inti decoy**: efek halo hanya bekerja bila pembeli melihat ketiganya berdampingan (lih. `implementation_plan.md`). Pagar pengganti yang ketat:
+> 1. **Tiap sel faktual benar.** Sel kompetitor yang belum terkonfirmasi = **"?" amber**, bukan tebakan ya/tidak (hindari false advertising).
+> 2. **Hanya baris FixMaster unggul/imbang.** Keunggulan eksklusif kompetitor (mis. CRM FixMate) **tidak ditampilkan** — bukan komparasi netral, tapi "alasan pilih FixMaster".
+> 3. **Nada faktual, bukan menjatuhkan.** Klaim diri ("FixMaster punya X") aman; hindari klaim negatif eksplisit soal rival.
+> 4. **FixMaster ≠ FixNova mirror.** Beda penekanan/kata/struktur agar dua landing tak terbaca satu tim. FixNova boleh banding FixMate saja (tak sebut FixMaster) — asimetri ini natural.
+> 5. **Disclaimer bertanggal** ("per Jun 2026, fitur kompetitor dapat berubah") di bawah matriks.
+>
+> Klaim fiktif (statistik/testimoni palsu) tetap dilarang di semua brand.
+
+**Social proof**: sengaja **tidak** memalsukan angka (50+ bisnis dst) — justru hal yang harus dibersihkan FixNova. Trust dibangun lewat sinyal jujur (data terisolasi/RLS, backup, realtime). Verifikasi: build + **272 test** + lint hijau; render dark/light/mobile difoto via `scripts/shoot-landing.mjs`. Detail visual di [[Signature Pages]].
+
 ### ErrorBoundary dua level (anti layar putih)
 Crash render React tanpa boundary = **layar putih kosong** tanpa pemulihan — tampak tidak profesional untuk produk berbayar. Solusi: komponen class [`ErrorBoundary`](src/components/ErrorBoundary.tsx) dipasang di **dua level**:
 - **Root** (`App.tsx`, prop `root`) — jaring terakhir full-screen dengan aksi "Muat Ulang Aplikasi".
@@ -112,8 +181,8 @@ Semua mutasi tim lewat RPC **security definer** (`claim_invite`, `set_member_rol
 QRIS itu **bayar sekali** (bukan auto-debit recurring seperti kartu). Maka model langganan = **tiap siklus generate invoice → user scan QRIS → bayar → webhook tandai lunas → perpanjang `plan_expired_at`**. Diimplementasi: tabel `invoices` + RPC `start_subscription` (bikin invoice pending) & `apply_payment` (idempotent: tandai lunas + perpanjang plan dari `max(now, expiry)` agar bayar lebih awal tak hangus). Migration `0009`.
 
 Keputusan penting yang dijaga:
-- **Enum `plan_type` Postgres TIDAK di-rename.** Nilainya tetap `('free','standard','enterprise','trial','suspended')` karena `PLANS` di `plans.ts` adalah `Record<PlanType, PlanDef>` dan ada org existing di staging. Mengganti enum = migrasi data berisiko demi kosmetik. Jadi hanya **label tampilan** yang berubah (standard→"Solo", enterprise→"Bisnis"), plus kuota & harga. Harga = **placeholder** (`// placeholder`), gampang diganti sebelum launch.
-- **Harga per-organisasi, tier by jumlah outlet, user UNLIMITED** (`maxUsers:-1` di semua tier pakai). Helper `withinOutletQuota`, `outletTierFor`, `PAID_TIERS`.
+- **Enum `plan_type` Postgres TIDAK di-rename.** Nilainya tetap `('free','standard','enterprise','trial','suspended')` karena `PLANS` di `plans.ts` adalah `Record<PlanType, PlanDef>` dan ada org existing di staging. Mengganti enum = migrasi data berisiko demi kosmetik. Jadi hanya **label tampilan** yang berubah (standard→"Solo", enterprise→"Pro"), plus kuota & harga. (Lihat keputusan **Restrukturisasi tier Solo/Pro** untuk struktur & harga terbaru.)
+- **Harga per-organisasi, tier by jumlah outlet.** User TIDAK lagi unlimited di semua tier: **Solo `maxUsers:1`** (pemicu upgrade), **Pro `maxUsers:-1`**. Helper `withinOutletQuota`, `withinUserQuota`, `outletTierFor`, `priceForOutlets`, `PAID_TIERS`.
 - **Reminder H-3, grace 3 hari, lalu expired** — logika murni di `src/lib/business/billing.ts` (`subscriptionPhase`: active/reminder/grace/expired; `canWrite`; `isOrgActive`) + 13 test. Dicerminkan server-side oleh fungsi `is_org_active` (RPC `0009`).
 - **Provider di-abstraksi.** Kolom `provider`/`provider_ref`/`qris_url` di `invoices`. **Gateway aktif = Fersaku** (Edge Functions `create-invoice` + `fersaku-webhook`). UI `BillingTab` coba gateway dulu (buka checkout di tab baru), dan **fallback** ke tombol "Saya sudah bayar" (mock confirm) bila fungsi belum di-deploy, jadi alur tetap bisa diuji. Mayar dipakai sebelumnya tapi ditinggalkan (lihat catatan di bawah). Detail di catatan integrasi Fersaku di bawah.
 

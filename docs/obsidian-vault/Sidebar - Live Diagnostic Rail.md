@@ -53,6 +53,18 @@ Lihat detail akar masalah di [[Decisions & Bug Fixes]].
 ![[fix-mobile-open-dark.png]]
 ![[fix-collapsed-dark.png]]
 
+## Fitur terkunci = "show-locked" (pemicu upgrade Solo → Pro)
+
+Item yang **digerbang fitur** (mis. Supplier, Tugas, Absensi) tidak lagi *disembunyikan* untuk plan yang tak memilikinya. Sebaliknya, ia **tetap tampil** sebagai channel redup dengan badge **LED brand + "PRO" mono** dan menautkan ke `/settings` (memunculkan "itch" upgrade). Sebaliknya, gerbang **peran** (`managerOnly`/`ownerOnly`) tetap *disembunyikan* karena mencerminkan batas RLS server — menampilkannya hanya akan berujung gagal.
+
+> [!important] Otentik "Precision Electronics Bench"
+> Badge terkunci memakai **LED status brand** + readout **mono**, **BUKAN ikon gembok** generik SaaS. Aturan visual ini dikunci di `AGENTS.md` (§3) & [[Design System]]: tiap elemen baru wajib pakai motif bench (LED, mono, spine, tick-gauge), bukan komponen library polos.
+
+Logika: `Sidebar.tsx` memetakan `NAV_ITEMS` → `{ item, locked }` (locked = punya `feature` tapi `!planAllows(plan, feature)`). Diverifikasi dengan plan Solo (`standard`): **4 channel terkunci** muncul, dark + light.
+
+![[locked-nav-dark.png]]
+![[locked-nav-light.png]]
+
 ## Terkait
 - [[Design System]] · [[Data Layer]] · [[Decisions & Bug Fixes]] · [[Signature Pages]]
 

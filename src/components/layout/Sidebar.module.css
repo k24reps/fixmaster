@@ -306,6 +306,55 @@
   filter: brightness(1.2);
 }
 
+/* locked = feature gated to Pro; shown dimmed with a "Pro" badge so Solo
+   users see what upgrading unlocks. Links to Settings (upgrade). */
+.locked {
+  opacity: 0.5;
+}
+.locked:hover {
+  opacity: 0.85;
+}
+.locked .navIcon {
+  filter: grayscale(0.6);
+}
+.lockBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 1px 7px 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  border: 1px solid var(--border-brand);
+  color: var(--brand-hover);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* status LED on the locked channel (bench language, not a generic padlock) */
+.lockLed {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--brand-400);
+  box-shadow: 0 0 6px var(--brand-400);
+}
+/* collapsed tower: badge shrinks to a corner lock on the icon */
+.collapsed .lockBadge {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.collapsed .lockBadgeText {
+  display: none;
+}
+
 /* ---------- Business unit (shop identity + branch selector) ---------- */
 .bizBlock {
   flex-shrink: 0;
@@ -727,6 +776,16 @@
   .collapsed .readout {
     position: static;
     padding: 2px 6px 2px 5px;
+  }
+  /* mobile drawer is always full: restore the inline Pro badge */
+  .collapsed .lockBadge {
+    position: static;
+    padding: 1px 7px 1px 6px;
+    background: var(--brand-soft);
+    border: 1px solid var(--border-brand);
+  }
+  .collapsed .lockBadgeText {
+    display: inline;
   }
   .collapsed .header {
     flex-direction: row;

@@ -387,3 +387,33 @@ export function subscribeOrgBilling(orgId: string, onChange: () => void): () => 
     void c.removeChannel(channel);
   };
 }
+
+/**
+ * Subscribe to realtime changes for a set of DOMAIN tables in one org, on a
+ * single channel. Fires `onChange(table)` for every insert/update/delete on a
+ * row belonging to this org, so other devices can refetch the affected
+ * collection (multi-cashier live sync). RLS still applies on the stream, and
+ * an explicit `org_id=eq.<orgId>` filter scopes each listener. Requires the
+ * tables to be in the `supabase_realtime` publication (migration 0021).
+ * Returns an unsubscribe function (no-op when unconfigured).
+ */
+export function subscribeOrgTables(
+  orgId: string,
+  tables: readonly string[],
+  onChange: (table: string) => void,
+): () => void {
+  const c = getSupabase();
+  if (!c || !orgId || tables.length === 0) return () => {};
+  let channel = c.channel(`org-domain:${orgId}`);
+  for (const table of tables) {
+    channel = channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}` },
+      (payload) => onChange((payload.table as string) ?? table),
+    );
+  }
+  channel.subscribe();
+  return () => {
+    void c.removeChannel(channel);
+  };
+}
