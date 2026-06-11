@@ -30,6 +30,7 @@ Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradien
 - **Manual plate** (FAQ): pertanyaan jadi `<details>` bergaya lembar manual (data aman? bisa offline? servis apa saja? dst) — bunuh keberatan umum.
 - **Serial/compliance plate** (footer): pelat regulasi (SN, ©) menampung tautan legal.
 - CTA → `onStart` → `AuthGate` buka `AuthPage`. **Label trial disatukan** jadi **"Mulai Gratis 14 Hari"** (hero + CTA akhir) untuk konsistensi; "MASUK" tetap untuk login, "Pasang Solo/Pro" kontekstual di pricing.
+- **Top rail**: kini memuat **toggle tema** sun/moon (`useThemeStore`) di samping tombol MASUK. Di **mobile** anchor nav (Masalah/Modul/Banding/Paket) disembunyikan agar rail tak berdesakan — sisakan logo + toggle tema + MASUK.
 
 ### SEO (revisi 11 Jun 2026)
 Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.html` statis** + aset publik:
@@ -80,6 +81,8 @@ Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa
 ## Kasir POS — Register Readout
 
 Panel keranjang jadi **mesin kasir**: layar LCD total bergaya segment-display (digit mono, glow amber, ghost "88.888", scanline, indikator LIVE), badan **struk thermal monospace** dengan garis titik-titik, **perforasi sobek**, footer checkout. Tombol qty mekanis (turun saat ditekan).
+
+**Tab bar (11 Jun 2026).** Halaman dipecah jadi dua tab bergaya bench (mono uppercase, underline brand saat aktif): **Kasir** (grid produk + register) dan **Transaksi Terakhir** (riwayat + void, manager-only, dengan badge jumlah). Sebelumnya panel riwayat menumpuk di bawah register dan mengganggu alur kasir; kini terpisah sehingga layar kasir bersih dan riwayat punya ruang sendiri. Modal void diangkat ke level halaman agar bisa dipanggil dari tab manapun.
 
 ![[pos-dark.png]]
 
@@ -152,6 +155,14 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (responsif). Tiap baris/kartu = job card dengan badge status bertone, nomor servis mono, biaya tabular, dan kolom aksi.
 
+**Kolom Modal & Profit (owner-only).** Di desktop, tabel menambah kolom **Modal** (total HPP sparepart + modal dadakan) & **Profit** (`finalCost − modal`, tone hijau untung / merah rugi); kartu mobile menambah baris Profit. Keduanya **hanya tampil untuk owner** (`role === 'owner'` via session) — admin & karyawan tak lihat margin. Profit hanya muncul saat `finalCost > 0` (sebelum biaya final pasti → em-dash, agar tak menyesatkan).
+
+**Tiga kolom uang dibedakan warna (11 Jun 2026).** Untuk scan cepat: **Biaya** = amber (`--brand-hover`), **Modal** = biru info (`--info`), **Profit** = hijau/merah (untung/rugi). Semua mono tabular, lewat token (otomatis benar dark/light).
+
+**Status bisa diklik + aksi Update Status mencolok (11 Jun 2026).** Badge status di tabel & kartu kini **tombol** — klik membuka StatusModal langsung (ikon pensil muncul saat hover, hover brand-soft). Di kolom aksi, tombol update status diubah dari ikon polos jadi **pill brand berlabel "Status"** (border brand, hover terisi penuh + shadow-brand) agar jadi aksi utama yang jelas. Dua jalur ini berbagi handler yang sama dengan ikon-aksi lain.
+
+![[modal-profit-table-dark.png]]
+
 ## Detail Servis — Repair Ticket
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
@@ -160,6 +171,19 @@ Fitur tambahan (revisi Fase 4):
 - **Toggle "Sudah Diambil"** — menandai barang sudah diambil pelanggan, terpisah dari status pembayaran; indikator status ambil tampil di header.
 - **Garansi saat "selesai"** — saat status → `selesai`, StatusModal menampilkan input lama garansi **Jasa** & **Sparepart** (hari), wajib minimal salah satu, prefill default dari Pengaturan + chip preset durasi. Menghasilkan `warrantyServiceUntil` & `warrantyPartsUntil` terpisah (tampil dua baris di header detail).
 - **Tombol "Klaim Garansi"** — muncul hanya pada tiket `lunas` yang masih dalam masa garansi → membuka [[Data Layer|tiket klaim tertaut]] gratis lewat `WarrantyClaimModal`, dengan opsi catat kerugian garansi manual.
+
+Fitur tambahan (profit per unit — revisi 11 Jun 2026):
+- **Panel SPAREPART · BOM** punya dua tombol: **"+ Sparepart"** (buka `SparepartPickerModal` — pilih item inventory + qty, idiom bench: LED stok, SKU mono) dan **"+ Modal Dadakan"** (form inline: keterangan + nominal + **dropdown wallet**). Tiap baris bisa dihapus (ikon trash); baris **modal dadakan** juga bisa **diedit** (ikon pensil, hover brand) — form yang sama terbuka pra-isi dengan label "Perbarui Modal".
+- **Modal dadakan** membuat Expense kategori `Sparepart` (kas keluar) + memotong wallet terpilih; hapus baris membalikkannya (hapus Expense + refund wallet). **Edit** baris menyinkronkan Expense terkait (nominal/wallet/keterangan) dan **men-net saldo wallet** lewat helper murni `walletDeltasForModalEdit` (refund debit lama + terapkan debit baru; edit di wallet sama → satu delta, mis. 100k→150k = −50k; no-op → nol tulisan). Sparepart inventory hanya memotong stok saat Pengerjaan (tak buat Expense) — anti dobel-hitung. Lihat [[Data Layer]] § Sparepart BOM & modal dadakan.
+- **Wallet A1 + ingat terakhir**: dropdown default ke wallet terakhir dipakai (per-perangkat), fallback wallet pertama; bisa diganti per transaksi.
+- **Panel BIAYA** kini **read-only** untuk angka finansial: baris **Modal** & **Profit unit** (tone untung/rugi, **owner-only**), Estimasi, Biaya final, dan bila ada DP baris **DP diterima** (negatif) + **Sisa tagihan**. Tak ada lagi tombol input DP/koreksi inline di sini.
+- **Input finansial terpusat di StatusModal** (tombol **Update Status**; untuk tiket `lunas` ada tombol **Koreksi Biaya** yang membuka modal sama). StatusModal punya **tab sub-aksi** sesuai status + peran:
+  - **Ubah Status** — pilih status tujuan, biaya final, garansi. Saat target **`lunas`** tampil **editor pembayaran (split payment)**: daftar leg `{wallet, nominal}` + tombol **+ Tambah wallet** + ringkasan **terbayar/sisa** (mono, hijau saat balance). Default satu leg menutup penuh; bisa dipecah ke beberapa wallet (mis. Cash + QRIS). Total wajib sama persis dengan sisa tagihan. Memperbaiki kerancuan lama "pelunasan lewat wallet apa" (dulu hard-coded wallet pertama).
+  - **Terima DP** — nominal + wallet; mencatat DP sebagai **kas masuk nyata** (Income kategori Servis + kredit wallet) & mengakumulasi `downPayment`. Saat lunas hanya **sisa tagihan** dicatat; saat batal DP otomatis di-refund.
+  - **Koreksi Biaya** — owner/admin, hanya saat `lunas`; pra-isi `finalCost`, menyesuaikan pendapatan pelunasan & saldo wallet **tanpa membatalkan tiket** (log internal). Guard: tak boleh < DP. Lihat [[Data Layer]] § DP, pelunasan & koreksi biaya.
+- **StatusModal** juga menampilkan ringkasan read-only sparepart & modal terpasang (kelola BOM tetap di halaman detail — satu-satunya input yang tersisa di detail, karena iteratif).
+
+![[modal-profit-detail-dark.png]]
 
 ![[detail-dark.png]]
 
@@ -204,7 +228,7 @@ Logika tak berubah (subscribe/confirm/cancel + auto-refresh realtime); murni lap
 Halaman auth (`AuthPage`, cloud-only, sebelum workspace boot) — login / daftar / reset. Dulu kartu glass polos di tengah; kini **split-panel "terminal akses bench"** senada identitas produk:
 
 - **Panel brand (kiri)** — logo + wordmark FixMaster, tagline domain (reparasi gadget/elektronik), dan **diagnostic rail** ber-LED (BENCH ONLINE / DATA TERSINKRON / QRIS SIAP) bergaya mono — gema dari [[Sidebar - Live Diagnostic Rail]]. Wash grid blueprint + radial brand.
-- **Panel form (kanan)** — **faceplate bersekrup** di empat sudut, header "Terminal Akses" dengan **power LED** (accent, berkedip `fm-pulse`) + tag mode mono (login/signup/reset), lalu form (email/password/konfirmasi) + tautan.
+- **Panel form (kanan)** — **faceplate bersekrup** di empat sudut, header "Terminal Akses" dengan **power LED** (accent, berkedip `fm-pulse`) + tag mode mono (login/signup/reset), lalu form (email/password/konfirmasi) + tautan. Header kini juga memuat tombol **"Beranda"** ber-ikon di kiri (kembali ke landing — selalu terlihat tanpa scroll, gantikan tautan lama di dasar) dan **toggle tema** sun/moon di kanan.
 - **Responsif** — di ≤720px panel brand disembunyikan, form jadi faceplate tunggal dengan wordmark ringkas di atas.
 
 Logika auth tak berubah (Supabase Auth: signIn/signUp/resetPassword). Copy toast signup diperbaiki: tak lagi menyebut "cek email untuk verifikasi" karena email confirmation dimatikan — akun langsung aktif → arahkan ke login. Token `var(--...)` saja.

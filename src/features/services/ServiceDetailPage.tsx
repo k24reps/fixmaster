@@ -10,18 +10,25 @@ import {
   STATUS_LABELS,
   outstandingBalance,
   serviceProfit,
-  sparepartCost,
+  serviceModalTotal,
+  walletDeltasForModalEdit,
   isTerminal,
   canClaimWarranty,
 } from '@/lib/business/services';
+import { applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
+import { newId } from '@/lib/id';
+import { fmtRpInput, parseRpInput } from '@/lib/format';
+import { logActivity } from '@/lib/activity';
+import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { trackingUrl } from '@/lib/business/notify';
-import { Button, Icon } from '@/components/ui';
+import { Button, Icon, Input, Select } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
-import type { ServiceStatus } from '@/data/types';
+import { SparepartPickerModal } from './SparepartPickerModal';
+import type { ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
 
 /** Linear "job traveler" stages (cancel handled separately). */
@@ -43,13 +50,24 @@ export function ServiceDetailPage() {
 
   const { data: services } = useCollection('services');
   const { data: customers } = useCollection('customers');
+  const { data: wallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const me = useSessionStore((s) => s.currentEmployee);
+  const isOwner = me?.role === 'owner';
 
   const [editOpen, setEditOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Ad-hoc "modal dadakan" entry form (inline in the cost panel).
+  const [modalFormOpen, setModalFormOpen] = useState(false);
+  // Index of the manual line being edited; null = adding a new line.
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [modalName, setModalName] = useState('');
+  const [modalAmount, setModalAmount] = useState('');
+  const [modalWalletId, setModalWalletId] = useState('');
+  const [savingCost, setSavingCost] = useState(false);
 
   const service = useMemo(() => services.find((s) => s.id === id) ?? null, [services, id]);
 
@@ -69,11 +87,242 @@ export function ServiceDetailPage() {
   const currentIndex = TRAVELER.indexOf(service.status);
   const outstanding = outstandingBalance(service);
   const profit = serviceProfit(service);
-  const partsCost = sparepartCost(service.spareparts);
+  const modalTotal = serviceModalTotal(service.spareparts);
   const claimable = canClaimWarranty(service, localDateStr());
   const originTicket = service.warrantyClaimOf
     ? services.find((s) => s.id === service.warrantyClaimOf) ?? null
     : null;
+
+  /**
+   * Append an inventory sparepart line AND deduct its stock immediately
+   * (stock leaves the shelf the moment the part is committed to the ticket).
+   * Re-reads the item as the authoritative guard against insufficient stock
+   * (the picker's check uses cached state). The line is stored `deducted:true`
+   * so the later "pengerjaan" transition won't deduct it again, and cancelling
+   * the ticket gives the stock back (see computeStockRestore).
+   */
+  const addSparepartLine = async (line: ServiceSparepart) => {
+    const now = new Date().toISOString();
+    if (line.itemId) {
+      const inventory = await repository.list('inventory');
+      const item = inventory.find((i) => i.id === line.itemId);
+      if (!item) return toast.error('Item inventory tidak ditemukan');
+      if (item.stock < line.qty) {
+        return toast.warning(`Stok ${item.name} hanya ${item.stock}, tidak cukup untuk ×${line.qty}`);
+      }
+      await repository.put('inventory', { ...item, stock: item.stock - line.qty });
+    }
+    await repository.put('services', {
+      ...service,
+      spareparts: [...service.spareparts, { ...line, deducted: line.itemId ? true : line.deducted }],
+      updatedAt: now,
+    });
+    toast.success('Sparepart ditambahkan & stok dipotong');
+  };
+
+  /** Open the ad-hoc modal form for a NEW line, wallet defaults to last-used. */
+  const openModalForm = () => {
+    const last = getLastExpenseWallet();
+    const fallback = wallets[0]?.id ?? '';
+    setEditIndex(null);
+    setModalWalletId(wallets.some((w) => w.id === last) ? last : fallback);
+    setModalName('');
+    setModalAmount('');
+    setModalFormOpen(true);
+  };
+
+  /** Open the form pre-filled to EDIT an existing manual line. */
+  const openEditModal = (index: number) => {
+    const line = service.spareparts[index];
+    if (!line || line.kind !== 'manual') return;
+    const wid = line.walletId ?? getLastExpenseWallet();
+    const fallback = wallets[0]?.id ?? '';
+    setEditIndex(index);
+    setModalName(line.name);
+    setModalAmount(fmtRpInput(String(line.costPrice)));
+    setModalWalletId(wallets.some((w) => w.id === wid) ? wid : fallback);
+    setModalFormOpen(true);
+  };
+
+  /** Close the modal form and clear edit state. */
+  const closeModalForm = () => {
+    setModalFormOpen(false);
+    setEditIndex(null);
+  };
+
+  /**
+   * Record an ad-hoc "modal dadakan": creates a manual cost line AND a linked
+   * Expense (real cash out), debiting the chosen wallet. The expense id is kept
+   * on the line so it can be reversed if the line is later removed.
+   */
+  const addManualModal = async () => {
+    const amount = parseRpInput(modalAmount);
+    if (!modalName.trim()) return toast.warning('Isi keterangan modal');
+    if (amount <= 0) return toast.warning('Nominal modal harus lebih dari 0');
+    if (!modalWalletId) return toast.warning('Pilih wallet sumber dana');
+    setSavingCost(true);
+    const now = new Date().toISOString();
+    try {
+      const expenseId = newId();
+      await repository.put('expenses', {
+        id: expenseId,
+        orgId: service.orgId,
+        outletId: service.outletId,
+        date: localDateStr(),
+        category: 'Sparepart',
+        amount,
+        walletId: modalWalletId,
+        description: `Modal servis ${service.serviceNo} — ${modalName.trim()}`,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+      const wallet = wallets.find((w) => w.id === modalWalletId);
+      if (wallet) await repository.put('wallets', applyBalance(wallet, -amount));
+      const line: ServiceSparepart = {
+        itemId: null,
+        name: modalName.trim(),
+        qty: 1,
+        costPrice: amount,
+        sellPrice: 0,
+        deducted: false,
+        kind: 'manual',
+        expenseId,
+        walletId: modalWalletId,
+      };
+      await repository.put('services', {
+        ...service,
+        spareparts: [...service.spareparts, line],
+        updatedAt: now,
+      });
+      setLastExpenseWallet(modalWalletId);
+      logActivity({
+        action: 'expense.create',
+        entityType: 'expense',
+        entityId: expenseId,
+        entityLabel: `Modal ${service.serviceNo}`,
+        meta: { amount, serviceId: service.id },
+      });
+      toast.success('Modal dadakan dicatat & masuk keuangan');
+      closeModalForm();
+    } catch {
+      toast.error('Gagal mencatat modal');
+    } finally {
+      setSavingCost(false);
+    }
+  };
+
+  /**
+   * Edit an existing manual "modal dadakan" line. Keeps cash consistent by
+   * reversing the old wallet debit and applying the new one (netted per wallet
+   * so editing on the same wallet doesn't double-apply), updates the linked
+   * Expense (amount/wallet/description), and rewrites the cost line. The linked
+   * Expense id is preserved so the audit trail stays continuous.
+   */
+  const updateManualModal = async () => {
+    if (editIndex == null) return;
+    const line = service.spareparts[editIndex];
+    if (!line || line.kind !== 'manual') return;
+    const amount = parseRpInput(modalAmount);
+    if (!modalName.trim()) return toast.warning('Isi keterangan modal');
+    if (amount <= 0) return toast.warning('Nominal modal harus lebih dari 0');
+    if (!modalWalletId) return toast.warning('Pilih wallet sumber dana');
+
+    setSavingCost(true);
+    const now = new Date().toISOString();
+    try {
+      const oldAmount = line.costPrice;
+      const oldWalletId = line.walletId ?? null;
+      // Net the cash movement per wallet (refund old debit, apply new debit).
+      const delta = walletDeltasForModalEdit(oldWalletId, oldAmount, modalWalletId, amount);
+      for (const [wid, d] of delta) {
+        const wallet = wallets.find((w) => w.id === wid);
+        if (wallet) await repository.put('wallets', applyBalance(wallet, d));
+      }
+
+      // Sync the linked Expense (or create one if an older line lacked it).
+      const expenseId = line.expenseId ?? newId();
+      const expenses = await repository.list('expenses');
+      const existing = expenses.find((e) => e.id === expenseId);
+      await repository.put('expenses', {
+        id: expenseId,
+        orgId: service.orgId,
+        outletId: service.outletId,
+        date: existing?.date ?? localDateStr(),
+        category: 'Sparepart',
+        amount,
+        walletId: modalWalletId,
+        description: `Modal servis ${service.serviceNo} — ${modalName.trim()}`,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+
+      const updatedLine: ServiceSparepart = {
+        ...line,
+        name: modalName.trim(),
+        costPrice: amount,
+        expenseId,
+        walletId: modalWalletId,
+      };
+      await repository.put('services', {
+        ...service,
+        spareparts: service.spareparts.map((sp, i) => (i === editIndex ? updatedLine : sp)),
+        updatedAt: now,
+      });
+      setLastExpenseWallet(modalWalletId);
+      logActivity({
+        action: 'expense.update',
+        entityType: 'expense',
+        entityId: expenseId,
+        entityLabel: `Modal ${service.serviceNo}`,
+        meta: { amount, prevAmount: oldAmount, serviceId: service.id },
+      });
+      toast.success('Modal dadakan diperbarui');
+      closeModalForm();
+    } catch {
+      toast.error('Gagal memperbarui modal');
+    } finally {
+      setSavingCost(false);
+    }
+  };
+
+  /**
+   * Remove a cost line. For manual lines this also reverses the linked Expense
+   * and refunds the wallet (atomic), so cash & profit stay consistent. For
+   * inventory lines already deducted, stock is returned to the item.
+   */
+  const removeCostLine = async (index: number) => {
+    const line = service.spareparts[index];
+    if (!line) return;
+    const now = new Date().toISOString();
+    try {
+      if (line.kind === 'manual') {
+        if (line.expenseId) {
+          const expenses = await repository.list('expenses');
+          const exp = expenses.find((e) => e.id === line.expenseId);
+          await repository.remove('expenses', line.expenseId);
+          if (exp) {
+            const wallet = wallets.find((w) => w.id === exp.walletId);
+            if (wallet) await repository.put('wallets', applyBalance(wallet, exp.amount));
+          }
+        }
+      } else if (line.deducted && line.itemId) {
+        // Return previously-deducted stock to inventory.
+        const inventory = await repository.list('inventory');
+        const item = inventory.find((i) => i.id === line.itemId);
+        if (item) await repository.put('inventory', { ...item, stock: item.stock + line.qty });
+      }
+      await repository.put('services', {
+        ...service,
+        spareparts: service.spareparts.filter((_, i) => i !== index),
+        updatedAt: now,
+      });
+      toast.success('Baris dihapus');
+    } catch {
+      toast.error('Gagal menghapus baris');
+    }
+  };
 
   /** Latest history timestamp for a given stage. */
   const stageAt = (stage: ServiceStatus): string | null => {
@@ -85,6 +334,32 @@ export function ServiceDetailPage() {
   // Include the org param so the public /track page can scope the lookup
   // (mirrors the WhatsApp link). Without it, tracking returns "not found".
   const trackingLink = trackingUrl(window.location.origin, service.orgId, service.serviceNo);
+
+  /**
+   * Copy the public tracking link with explicit feedback. Uses the async
+   * Clipboard API when available, falling back to a hidden-textarea +
+   * execCommand for non-secure contexts (e.g. plain HTTP on a LAN device).
+   */
+  const copyTrackingLink = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(trackingLink);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = trackingLink;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('execCommand failed');
+      }
+      toast.success('Link tracking disalin');
+    } catch {
+      toast.error('Gagal menyalin link. Salin manual dari struk.');
+    }
+  };
 
   // Toggle physical collection of the device — independent of payment.
   const togglePickup = async () => {
@@ -226,7 +501,7 @@ export function ServiceDetailPage() {
               </button>
               <button
                 className={styles.ghostBtn}
-                onClick={() => void navigator.clipboard?.writeText(trackingLink)}
+                onClick={() => void copyTrackingLink()}
               >
                 <Icon name="link" aria-hidden /> Salin tracking
               </button>
@@ -257,26 +532,111 @@ export function ServiceDetailPage() {
 
         {/* ---------- Sparepart BOM ---------- */}
         <section className={styles.panel}>
-          <div className={styles.panelLabel}>SPAREPART · BILL OF MATERIALS</div>
+          <div className={styles.bomHead}>
+            <div className={styles.panelLabel}>SPAREPART · BILL OF MATERIALS</div>
+            {!cancelled && (
+              <div className={styles.bomActions}>
+                <button className={styles.bomAddBtn} onClick={() => setPickerOpen(true)}>
+                  <Icon name="plus" aria-hidden /> Sparepart
+                </button>
+                <button className={styles.bomAddBtn} onClick={openModalForm}>
+                  <Icon name="plus" aria-hidden /> Modal Dadakan
+                </button>
+              </div>
+            )}
+          </div>
+
+          {modalFormOpen && (
+            <div className={styles.modalForm}>
+              <Input
+                label="Keterangan modal"
+                value={modalName}
+                onChange={(e) => setModalName(e.target.value)}
+                placeholder="mis. Beli LCD di toko sebelah"
+                autoFocus
+              />
+              <div className={styles.modalFormRow}>
+                <Input
+                  label="Nominal modal"
+                  value={modalAmount}
+                  onChange={(e) => setModalAmount(fmtRpInput(e.target.value))}
+                  placeholder="250.000"
+                />
+                <Select
+                  label="Dari wallet"
+                  value={modalWalletId}
+                  onChange={(e) => setModalWalletId(e.target.value)}
+                  options={wallets.map((w) => ({ value: w.id, label: w.name }))}
+                />
+              </div>
+              <p className={styles.modalHint}>
+                <Icon name="circle-info" aria-hidden />{' '}
+                {editIndex == null
+                  ? 'Mengurangi saldo wallet & tercatat di Keuangan (kategori Sparepart).'
+                  : 'Menyesuaikan saldo wallet & pengeluaran terkait di Keuangan.'}
+              </p>
+              <div className={styles.modalFormBtns}>
+                <Button variant="secondary" size="sm" onClick={closeModalForm}>
+                  Batal
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={editIndex == null ? addManualModal : updateManualModal}
+                  loading={savingCost}
+                >
+                  {editIndex == null ? 'Simpan Modal' : 'Perbarui Modal'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {service.spareparts.length === 0 ? (
-            <p className={styles.emptyParts}>Belum ada sparepart ditambahkan.</p>
+            <p className={styles.emptyParts}>Belum ada sparepart atau modal ditambahkan.</p>
           ) : (
             <div className={styles.bom}>
-              {service.spareparts.map((p, i) => (
-                <div key={`${p.itemId}-${i}`} className={styles.bomRow}>
-                  <span className={styles.bomIcon}>
-                    <Icon name="microchip" aria-hidden />
-                  </span>
-                  <span className={styles.bomName}>{p.name}</span>
-                  <span className={styles.bomQty}>×{p.qty}</span>
-                  <span className={styles.bomCost}>{fmtMoney(p.sellPrice * p.qty)}</span>
-                  <span
-                    className={[styles.bomState, p.deducted ? styles.stateOk : styles.stateWait].join(' ')}
-                  >
-                    {p.deducted ? 'Terpasang' : 'Menunggu'}
-                  </span>
-                </div>
-              ))}
+              {service.spareparts.map((p, i) => {
+                const manual = p.kind === 'manual';
+                return (
+                  <div key={`${p.itemId ?? 'm'}-${i}`} className={styles.bomRow}>
+                    <span className={styles.bomIcon}>
+                      <Icon name={manual ? 'money-bill-wave' : 'microchip'} aria-hidden />
+                    </span>
+                    <span className={styles.bomName}>{p.name}</span>
+                    <span className={styles.bomQty}>{manual ? '' : `×${p.qty}`}</span>
+                    <span className={styles.bomCost}>
+                      {manual ? fmtMoney(p.costPrice) : fmtMoney(p.sellPrice * p.qty)}
+                    </span>
+                    <span
+                      className={[
+                        styles.bomState,
+                        manual ? styles.stateModal : p.deducted ? styles.stateOk : styles.stateWait,
+                      ].join(' ')}
+                    >
+                      {manual ? 'Modal (kas)' : p.deducted ? 'Terpasang' : 'Menunggu'}
+                    </span>
+                    {!cancelled && manual && (
+                      <button
+                        className={styles.bomEdit}
+                        onClick={() => openEditModal(i)}
+                        title="Edit modal"
+                        aria-label="Edit modal"
+                      >
+                        <Icon name="pen" aria-hidden />
+                      </button>
+                    )}
+                    {!cancelled && (
+                      <button
+                        className={styles.bomDel}
+                        onClick={() => removeCostLine(i)}
+                        title="Hapus baris"
+                        aria-label="Hapus baris"
+                      >
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -304,10 +664,18 @@ export function ServiceDetailPage() {
                 <dt>Sisa tagihan</dt>
                 <dd>{fmtMoney(outstanding)}</dd>
               </div>
-              <div className={styles.costProfit}>
-                <dt>Est. profit (− part {fmtMoney(partsCost)})</dt>
-                <dd>{fmtMoney(profit)}</dd>
-              </div>
+              {isOwner && (
+                <>
+                  <div>
+                    <dt>Modal (part + dadakan)</dt>
+                    <dd className={styles.dp}>− {fmtMoney(modalTotal)}</dd>
+                  </div>
+                  <div className={styles.costProfit} data-loss={profit < 0}>
+                    <dt>Profit unit</dt>
+                    <dd>{fmtMoney(profit)}</dd>
+                  </div>
+                </>
+              )}
             </dl>
           </div>
 
@@ -361,6 +729,11 @@ export function ServiceDetailPage() {
               Update Status <Icon name="arrow-right" aria-hidden />
             </button>
           )}
+          {service.status === 'lunas' && (me?.role === 'owner' || me?.role === 'admin') && (
+            <button className={styles.primaryBtn} onClick={() => setStatusOpen(true)}>
+              <Icon name="pen" aria-hidden /> Koreksi Biaya
+            </button>
+          )}
         </div>
       </div>
 
@@ -387,6 +760,12 @@ export function ServiceDetailPage() {
         origin={service}
         services={services}
         onSaved={() => {}}
+      />
+      <SparepartPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        existingItemIds={service.spareparts.map((p) => p.itemId).filter((x): x is string => !!x)}
+        onPick={addSparepartLine}
       />
     </div>
   );

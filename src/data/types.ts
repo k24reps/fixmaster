@@ -184,13 +184,29 @@ export type ServiceStatus =
   | 'batal';
 
 export interface ServiceSparepart {
-  itemId: ID;
+  /**
+   * Inventory item id, or `null` for an ad-hoc "modal dadakan" cost line
+   * (a part/service bought outside stock). Kept in the same JSONB array as
+   * inventory parts so no DB migration is needed.
+   */
+  itemId: ID | null;
   name: string;
   qty: number;
   costPrice: number;
   sellPrice: number;
   /** Whether stock has already been deducted (deferred until "pengerjaan"). */
   deducted: boolean;
+  /**
+   * Line kind. 'inventory' (default) = drawn from stock, deducts inventory,
+   * makes NO expense (capital already spent at purchase). 'manual' = ad-hoc
+   * out-of-pocket cost that DOES create a linked Expense (real cash out).
+   * Optional so legacy rows (no field) read as 'inventory'.
+   */
+  kind?: 'inventory' | 'manual';
+  /** For 'manual' lines: the linked Expense id, so it can be reversed on delete. */
+  expenseId?: ID | null;
+  /** For 'manual' lines: wallet the cash came out of (for the linked Expense). */
+  walletId?: ID | null;
 }
 
 export interface ServiceHistoryEntry {
@@ -331,6 +347,7 @@ export type ActivityAction =
   | 'income.create'
   | 'income.delete'
   | 'expense.create'
+  | 'expense.update'
   | 'expense.delete'
   | 'inventory.create'
   | 'inventory.update'

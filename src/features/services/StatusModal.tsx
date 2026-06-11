@@ -1,85 +1,164 @@
 import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge } from '@/components/ui';
 import { repository } from '@/data';
+import { useCollection } from '@/hooks/useCollection';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr } from '@/lib/time';
+import { newId } from '@/lib/id';
 import {
   nextStatuses,
   canSetStatus,
   computeStockDeduction,
+  computeStockRestore,
+  isTerminal,
   STATUS_LABELS,
   STATUS_TONE,
   outstandingBalance,
+  settlementAmount,
+  normalizeSplits,
+  validateSplit,
+  settlementIncomeDescription,
+  dpIncomeDescription,
 } from '@/lib/business/services';
+import type { PaymentSplit } from '@/lib/business/services';
+import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { getWarrantyServiceDays, getWarrantyPartsDays, getWarrantyPresets } from '@/config/orgConfig';
+import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './StatusModal.module.css';
+
+/** Sub-actions this modal hosts. It is the single hub for all financial input. */
+type Mode = 'status' | 'dp' | 'koreksi';
 
 interface StatusModalProps {
   open: boolean;
   onClose: () => void;
   service: Service | null;
   onSaved: () => void;
+  /** Which sub-action to open on. Falls back to the first available. */
+  initialMode?: Mode;
 }
 
-export function StatusModal({ open, onClose, service, onSaved }: StatusModalProps) {
+const MODE_LABELS: Record<Mode, string> = {
+  status: 'Ubah Status',
+  dp: 'Terima DP',
+  koreksi: 'Koreksi Biaya',
+};
+
+export function StatusModal({ open, onClose, service, onSaved, initialMode = 'status' }: StatusModalProps) {
   const me = useSessionStore((s) => s.currentEmployee);
   const role = me?.role ?? 'karyawan';
+  const isManager = role === 'owner' || role === 'admin';
+  const { data: wallets } = useCollection('wallets');
 
+  const [mode, setMode] = useState<Mode>('status');
+  // Status sub-action
   const [target, setTarget] = useState<ServiceStatus | ''>('');
   const [finalCost, setFinalCost] = useState('');
   const [note, setNote] = useState('');
-  // Warranty lengths (days) captured when finishing a job ("selesai").
   const [warrantyService, setWarrantyService] = useState('');
   const [warrantyParts, setWarrantyParts] = useState('');
+  // Settlement payment legs ("split payment"): each leg = wallet + amount.
+  // A single-wallet payment is just one leg.
+  const [splits, setSplits] = useState<{ walletId: string; amount: string }[]>([]);
+  // DP sub-action
+  const [dpAmount, setDpAmount] = useState('');
+  const [dpWalletId, setDpWalletId] = useState('');
+  // Koreksi sub-action
+  const [correctAmount, setCorrectAmount] = useState('');
+
   const [busy, setBusy] = useState(false);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  if (open && service && lastKey !== service.id) {
-    setLastKey(service.id);
-    setTarget('');
-    setFinalCost(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
-    setNote('');
-    setWarrantyService('');
-    setWarrantyParts('');
+  // Available sub-actions depend on status + role.
+  const allowed = service ? nextStatuses(service.status).filter((s) => canSetStatus(role, s)) : [];
+  const canDp = service ? !isTerminal(service.status) : false;
+  const canKoreksi = service ? service.status === 'lunas' && isManager : false;
+  const modes: Mode[] = [];
+  if (allowed.length > 0) modes.push('status');
+  if (canDp) modes.push('dp');
+  if (canKoreksi) modes.push('koreksi');
+
+  const defaultWallet = () => {
+    const last = getLastExpenseWallet();
+    return wallets.some((w) => w.id === last) ? last : wallets[0]?.id ?? '';
+  };
+
+  // Reset once per open (edge-triggered) so reopening always starts fresh.
+  const [prevOpen, setPrevOpen] = useState(false);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open && service) {
+      const startMode = modes.includes(initialMode) ? initialMode : modes[0] ?? 'status';
+      setMode(startMode);
+      setTarget('');
+      setFinalCost(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
+      setNote('');
+      setWarrantyService('');
+      setWarrantyParts('');
+      setSplits([]);
+      setDpAmount('');
+      setDpWalletId(defaultWallet());
+      setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
+    }
   }
 
   if (!service) return null;
 
-  const allowed = nextStatuses(service.status).filter((s) => canSetStatus(role, s));
   const needsCost = target === 'konfirmasi' || target === 'selesai' || target === 'lunas';
   const needsWarranty = target === 'selesai';
   const warrantyPresets = getWarrantyPresets();
+  const walletOptions = wallets.map((w) => ({ value: w.id, label: w.name }));
 
-  // Prefill warranty lengths from org defaults the first time "selesai" is picked.
+  // Amount still owed at settlement given the (possibly edited) final cost.
+  const settleDue = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
+
   const onTargetChange = (next: ServiceStatus | '') => {
     setTarget(next);
     if (next === 'selesai') {
       setWarrantyService((v) => (v === '' ? String(getWarrantyServiceDays()) : v));
       setWarrantyParts((v) => (v === '' ? String(getWarrantyPartsDays()) : v));
     }
+    if (next === 'lunas') {
+      // Seed a single payment leg covering the full balance (the common case);
+      // the user can split it across wallets from there.
+      const due = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
+      setSplits([{ walletId: defaultWallet(), amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+    }
   };
 
-  const apply = async () => {
-    if (!target) {
-      toast.warning('Pilih status tujuan');
-      return;
-    }
+  // --- Split payment editing helpers (UI-local) ---
+  const setSplitWallet = (i: number, walletId: string) =>
+    setSplits((prev) => prev.map((s, idx) => (idx === i ? { ...s, walletId } : s)));
+  const setSplitAmount = (i: number, amount: string) =>
+    setSplits((prev) => prev.map((s, idx) => (idx === i ? { ...s, amount: fmtRpInput(amount) } : s)));
+  const addSplit = () => setSplits((prev) => [...prev, { walletId: defaultWallet(), amount: '' }]);
+  const removeSplit = (i: number) => setSplits((prev) => prev.filter((_, idx) => idx !== i));
+  const splitsAsNumbers = (): PaymentSplit[] =>
+    splits.map((s) => ({ walletId: s.walletId, amount: parseRpInput(s.amount) }));
+  const splitPaid = splitsAsNumbers().reduce((sum, s) => sum + s.amount, 0);
+
+  // ---- Sub-action: change status ----
+  const applyStatus = async () => {
+    if (!target) return toast.warning('Pilih status tujuan');
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
     const partsDays = Math.max(0, Math.round(Number(warrantyParts) || 0));
     if (needsWarranty && svcDays <= 0 && partsDays <= 0) {
-      toast.warning('Isi minimal salah satu garansi (jasa atau sparepart)');
-      return;
+      return toast.warning('Isi minimal salah satu garansi (jasa atau sparepart)');
+    }
+    const cost = needsCost ? parseRpInput(finalCost) : service.finalCost;
+    const settle = settlementAmount(cost, service.downPayment);
+    if (target === 'lunas' && settle > 0) {
+      const err = validateSplit(splitsAsNumbers(), settle);
+      if (err === 'empty') return toast.warning('Isi minimal satu pembayaran');
+      if (err === 'mismatch')
+        return toast.warning(`Total pembayaran (${fmtRp(splitPaid)}) harus sama dengan sisa tagihan (${fmtRp(settle)})`);
     }
     setBusy(true);
     const now = new Date().toISOString();
-    const cost = needsCost ? parseRpInput(finalCost) : service.finalCost;
-
     try {
-      // Deferred stock deduction when entering "pengerjaan".
       const { deductions, updated } = computeStockDeduction(service.spareparts, target);
       if (deductions.length) {
         const inventory = await repository.list('inventory');
@@ -92,21 +171,11 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
         if (toUpdate.length) await repository.putMany('inventory', toUpdate);
       }
 
-      // Warranty is captured when finishing the job ("selesai"): compute expiry
-      // from today + the entered lengths. Preserve existing values otherwise.
       const finishDate = localDateStr();
       const warrantyServiceUntil =
-        target === 'selesai'
-          ? svcDays > 0
-            ? addDays(finishDate, svcDays)
-            : null
-          : service.warrantyServiceUntil;
+        target === 'selesai' ? (svcDays > 0 ? addDays(finishDate, svcDays) : null) : service.warrantyServiceUntil;
       const warrantyPartsUntil =
-        target === 'selesai'
-          ? partsDays > 0
-            ? addDays(finishDate, partsDays)
-            : null
-          : service.warrantyPartsUntil;
+        target === 'selesai' ? (partsDays > 0 ? addDays(finishDate, partsDays) : null) : service.warrantyPartsUntil;
 
       const updatedService: Service = {
         ...service,
@@ -130,31 +199,73 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
       };
       await repository.put('services', updatedService);
 
-      // On settle ("lunas"), record income + credit the first wallet.
-      if (target === 'lunas') {
-        const wallets = await repository.list('wallets');
-        const wallet = wallets[0];
-        if (wallet) {
-          const amount = outstandingBalance(updatedService) || cost;
+      // Settle: record income for the amount still owed after DP, split across
+      // one or more wallets ("split payment"). One Income row per leg, each
+      // crediting its wallet. DP-covered (settle 0) → nothing booked.
+      if (target === 'lunas' && settle > 0) {
+        const legs = normalizeSplits(splitsAsNumbers());
+        for (const leg of legs) {
+          const wallet = wallets.find((w) => w.id === leg.walletId);
+          if (!wallet) continue;
           await repository.put('incomes', {
-            id: crypto.randomUUID(),
+            id: newId(),
             orgId: service.orgId,
             outletId: service.outletId,
             date: now.slice(0, 10),
             category: 'Servis',
-            amount,
+            amount: leg.amount,
             walletId: wallet.id,
-            description: `Pelunasan servis ${service.serviceNo}`,
+            description: settlementIncomeDescription(service.serviceNo),
             serviceId: service.id,
             createdAt: now,
             updatedAt: now,
             deletedAt: null,
           });
-          await repository.put('wallets', { ...wallet, balance: wallet.balance + amount });
+          await repository.put('wallets', applyBalance(wallet, leg.amount));
+        }
+        if (legs[0]) setLastExpenseWallet(legs[0].walletId);
+      }
+
+      // Cancel: give back any deducted inventory stock AND refund any DP, then
+      // write the service ONCE so the two reversals don't clobber each other's
+      // fields (restored spareparts + zeroed downPayment).
+      if (target === 'batal') {
+        const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts);
+        if (restorations.length) {
+          const inventory = await repository.list('inventory');
+          const toRestore = inventory
+            .filter((item) => restorations.some((r) => r.itemId === item.id))
+            .map((item) => {
+              const r = restorations.find((x) => x.itemId === item.id)!;
+              return { ...item, stock: item.stock + r.qty };
+            });
+          if (toRestore.length) await repository.putMany('inventory', toRestore);
+        }
+
+        let refundedDp = false;
+        if (service.downPayment > 0) {
+          const incomes = await repository.list('incomes');
+          const dpIncomes = incomes.filter(
+            (i) => i.serviceId === service.id && !i.deletedAt && i.description === dpIncomeDescription(service.serviceNo),
+          );
+          for (const dpIncome of dpIncomes) {
+            const wallet = wallets.find((w) => w.id === dpIncome.walletId);
+            if (wallet) await repository.put('wallets', applyBalance(wallet, -dpIncome.amount));
+            await repository.remove('incomes', dpIncome.id);
+          }
+          refundedDp = dpIncomes.length > 0;
+        }
+
+        if (restorations.length || refundedDp) {
+          await repository.put('services', {
+            ...updatedService,
+            spareparts: restoredParts,
+            downPayment: refundedDp ? 0 : service.downPayment,
+            updatedAt: now,
+          });
         }
       }
 
-      toast.success(`Status → ${STATUS_LABELS[target]}`);
       logActivity({
         action: 'service.status',
         entityType: 'service',
@@ -162,6 +273,7 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
         entityLabel: service.serviceNo,
         meta: { from: service.status, to: target },
       });
+      toast.success(`Status → ${STATUS_LABELS[target]}`);
       onSaved();
       onClose();
     } catch {
@@ -171,18 +283,150 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
     }
   };
 
+  // ---- Sub-action: receive DP (real cash in) ----
+  const applyDp = async () => {
+    const amount = parseRpInput(dpAmount);
+    if (amount <= 0) return toast.warning('Nominal DP harus lebih dari 0');
+    if (!dpWalletId) return toast.warning('Pilih wallet tujuan');
+    setBusy(true);
+    const now = new Date().toISOString();
+    try {
+      const incomeId = newId();
+      await repository.put('incomes', {
+        id: incomeId,
+        orgId: service.orgId,
+        outletId: service.outletId,
+        date: localDateStr(),
+        category: 'Servis',
+        amount,
+        walletId: dpWalletId,
+        description: dpIncomeDescription(service.serviceNo),
+        serviceId: service.id,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+      const wallet = wallets.find((w) => w.id === dpWalletId);
+      if (wallet) await repository.put('wallets', applyBalance(wallet, amount));
+      await repository.put('services', {
+        ...service,
+        downPayment: service.downPayment + amount,
+        updatedAt: now,
+      });
+      setLastExpenseWallet(dpWalletId);
+      logActivity({
+        action: 'income.create',
+        entityType: 'income',
+        entityId: incomeId,
+        entityLabel: `DP ${service.serviceNo}`,
+        meta: { amount, serviceId: service.id },
+      });
+      toast.success('DP diterima & masuk keuangan');
+      onSaved();
+      onClose();
+    } catch {
+      toast.error('Gagal mencatat DP');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---- Sub-action: correct final cost after settlement (owner/admin) ----
+  const applyKoreksi = async () => {
+    const newFinal = parseRpInput(correctAmount);
+    if (newFinal < 0) return toast.warning('Biaya final tidak valid');
+    if (newFinal < service.downPayment) return toast.warning('Biaya final tidak boleh kurang dari DP yang sudah diterima');
+    const oldFinal = service.finalCost;
+    if (newFinal === oldFinal) {
+      onClose();
+      return;
+    }
+    setBusy(true);
+    const now = new Date().toISOString();
+    try {
+      const newSettle = settlementAmount(newFinal, service.downPayment);
+      const incomes = await repository.list('incomes');
+      // All settlement income rows for this ticket (split payment → several).
+      const settleIncomes = incomes.filter(
+        (i) => i.serviceId === service.id && !i.deletedAt && i.description === settlementIncomeDescription(service.serviceNo),
+      );
+      // Reverse every existing settlement row: refund its wallet, then remove it.
+      for (const inc of settleIncomes) {
+        const wallet = wallets.find((w) => w.id === inc.walletId);
+        if (wallet) await repository.put('wallets', applyBalance(wallet, -inc.amount));
+        await repository.remove('incomes', inc.id);
+      }
+      // Rebook the corrected balance (if any) to a single wallet. Prefer the
+      // wallet of the first prior settlement leg; else last-used. Split is not
+      // re-prompted on correction — owner adjusts the number, cash stays sane.
+      const targetWalletId = settleIncomes[0]?.walletId ?? defaultWallet();
+      if (newSettle > 0 && targetWalletId) {
+        const wallet = wallets.find((w) => w.id === targetWalletId);
+        if (wallet) await repository.put('wallets', applyBalance(wallet, newSettle));
+        await repository.put('incomes', {
+          id: newId(),
+          orgId: service.orgId,
+          outletId: service.outletId,
+          date: localDateStr(),
+          category: 'Servis',
+          amount: newSettle,
+          walletId: targetWalletId,
+          description: settlementIncomeDescription(service.serviceNo),
+          serviceId: service.id,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+      }
+      await repository.put('services', {
+        ...service,
+        finalCost: newFinal,
+        updatedAt: now,
+        history: [
+          ...service.history,
+          {
+            at: now,
+            status: 'edit',
+            by: me?.id ?? '',
+            byName: me?.name ?? '',
+            note: `Koreksi biaya final: ${fmtRp(oldFinal)} → ${fmtRp(newFinal)}`,
+            internal: true,
+          },
+        ],
+      });
+      logActivity({
+        action: 'service.status',
+        entityType: 'service',
+        entityId: service.id,
+        entityLabel: service.serviceNo,
+        meta: { correctFinalCost: true, from: oldFinal, to: newFinal },
+      });
+      toast.success('Biaya final dikoreksi');
+      onSaved();
+      onClose();
+    } catch {
+      toast.error('Gagal mengoreksi biaya final');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const apply = mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : applyStatus;
+  const applyLabel = mode === 'dp' ? 'Simpan DP' : mode === 'koreksi' ? 'Perbarui Biaya' : 'Terapkan';
+  const noActions = modes.length === 0;
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Update Status — ${service.serviceNo}`}
+      title={`Update — ${service.serviceNo}`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Batal
           </Button>
-          <Button onClick={apply} loading={busy} disabled={allowed.length === 0}>
-            Terapkan
+          <Button onClick={apply} loading={busy} disabled={noActions}>
+            {applyLabel}
           </Button>
         </>
       }
@@ -190,17 +434,52 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
       <div className={styles.body}>
         <div className={styles.current}>
           <span className={styles.label}>Status saat ini</span>
-          <Badge tone={STATUS_TONE[service.status] as 'brand'}>
-            {STATUS_LABELS[service.status]}
-          </Badge>
+          <Badge tone={STATUS_TONE[service.status] as 'brand'}>{STATUS_LABELS[service.status]}</Badge>
         </div>
 
-        {allowed.length === 0 ? (
+        {modes.length > 1 && (
+          <div className={styles.modeTabs}>
+            {modes.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={[styles.modeTab, mode === m ? styles.modeTabActive : ''].join(' ')}
+                onClick={() => setMode(m)}
+              >
+                {MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {service.spareparts.length > 0 && (
+          <div className={styles.partsSummary}>
+            <span className={styles.label}>Sparepart & Modal</span>
+            <ul className={styles.partsList}>
+              {service.spareparts.map((p, i) => (
+                <li key={`${p.itemId ?? 'm'}-${i}`}>
+                  <span>
+                    {p.kind === 'manual' ? '💵 ' : ''}
+                    {p.name}
+                    {p.kind === 'manual' ? '' : ` ×${p.qty}`}
+                  </span>
+                  <span className={styles.partCost}>{fmtRp(p.kind === 'manual' ? p.costPrice : p.sellPrice * p.qty)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.partsHint}>Kelola sparepart & modal di halaman detail servis.</p>
+          </div>
+        )}
+
+        {noActions && (
           <p className={styles.terminal}>
-            Status ini final, tidak ada transisi lanjutan
+            Status ini final, tidak ada aksi lanjutan
             {!canSetStatus(role, 'lunas') && ' (sebagian aksi butuh peran owner/admin)'}.
           </p>
-        ) : (
+        )}
+
+        {/* ---- Status sub-action ---- */}
+        {mode === 'status' && allowed.length > 0 && (
           <>
             <Select
               label="Status Tujuan"
@@ -216,6 +495,48 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
                 onChange={(e) => setFinalCost(fmtRpInput(e.target.value))}
                 placeholder="250.000"
               />
+            )}
+            {target === 'lunas' && settleDue > 0 && (
+              <div className={styles.splitBlock}>
+                <span className={styles.splitLabel}>Pembayaran (bisa dipecah ke beberapa wallet)</span>
+                {splits.map((s, i) => (
+                  <div key={i} className={styles.splitRow}>
+                    <Select
+                      value={s.walletId}
+                      onChange={(e) => setSplitWallet(i, e.target.value)}
+                      options={walletOptions}
+                      placeholder="Wallet…"
+                    />
+                    <Input
+                      value={s.amount}
+                      onChange={(e) => setSplitAmount(i, e.target.value)}
+                      placeholder="0"
+                    />
+                    {splits.length > 1 && (
+                      <button
+                        type="button"
+                        className={styles.splitRemove}
+                        onClick={() => removeSplit(i)}
+                        title="Hapus pembayaran"
+                        aria-label="Hapus pembayaran"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div className={styles.splitFooter}>
+                  <button type="button" className={styles.splitAdd} onClick={addSplit}>
+                    + Tambah wallet
+                  </button>
+                  <span
+                    className={styles.splitTally}
+                    data-balanced={splitPaid === settleDue}
+                  >
+                    {fmtRp(splitPaid)} / {fmtRp(settleDue)}
+                  </span>
+                </div>
+              </div>
             )}
             {needsWarranty && (
               <div className={styles.warranty}>
@@ -243,20 +564,10 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
                     <span className={styles.presetHint}>Cepat:</span>
                     {warrantyPresets.map((d) => (
                       <span key={d} className={styles.presetChips}>
-                        <button
-                          type="button"
-                          className={styles.presetChip}
-                          onClick={() => setWarrantyService(String(d))}
-                          title={`Garansi jasa ${d} hari`}
-                        >
+                        <button type="button" className={styles.presetChip} onClick={() => setWarrantyService(String(d))} title={`Garansi jasa ${d} hari`}>
                           Jasa {d}h
                         </button>
-                        <button
-                          type="button"
-                          className={styles.presetChip}
-                          onClick={() => setWarrantyParts(String(d))}
-                          title={`Garansi sparepart ${d} hari`}
-                        >
+                        <button type="button" className={styles.presetChip} onClick={() => setWarrantyParts(String(d))} title={`Garansi sparepart ${d} hari`}>
                           Part {d}h
                         </button>
                       </span>
@@ -265,11 +576,7 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
                 )}
               </div>
             )}
-            <Input
-              label="Catatan (opsional)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
+            <Input label="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} />
             {service.downPayment > 0 && (
               <p className={styles.dp}>
                 DP diterima: {fmtRp(service.downPayment)} · Sisa:{' '}
@@ -279,15 +586,51 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
           </>
         )}
 
+        {/* ---- DP sub-action ---- */}
+        {mode === 'dp' && (
+          <>
+            <Input
+              label="Nominal DP"
+              value={dpAmount}
+              onChange={(e) => setDpAmount(fmtRpInput(e.target.value))}
+              placeholder="100.000"
+            />
+            <Select
+              label="Ke wallet"
+              value={dpWalletId}
+              onChange={(e) => setDpWalletId(e.target.value)}
+              options={walletOptions}
+              placeholder="Pilih wallet…"
+            />
+            <p className={styles.dp}>
+              Menambah saldo wallet & tercatat di Keuangan (kategori Servis). Saat lunas hanya sisa tagihan yang dicatat.
+              {service.downPayment > 0 && ` DP terkumpul saat ini: ${fmtRp(service.downPayment)}.`}
+            </p>
+          </>
+        )}
+
+        {/* ---- Koreksi sub-action ---- */}
+        {mode === 'koreksi' && (
+          <>
+            <Input
+              label="Biaya final (koreksi)"
+              value={correctAmount}
+              onChange={(e) => setCorrectAmount(fmtRpInput(e.target.value))}
+              placeholder="0"
+            />
+            <p className={styles.dp}>
+              Menyesuaikan pendapatan pelunasan & saldo wallet tanpa membatalkan tiket. Tercatat di log internal.
+              {service.downPayment > 0 && ` DP diterima: ${fmtRp(service.downPayment)}.`}
+            </p>
+          </>
+        )}
+
         <div className={styles.history}>
           <span className={styles.label}>Riwayat</span>
           <ul className={styles.timeline}>
             {[...service.history].reverse().map((h, i) => (
               <li key={i} className={styles.timelineItem}>
-                <span
-                  className={styles.dot}
-                  data-tone={h.status === 'edit' ? 'neutral' : STATUS_TONE[h.status as ServiceStatus]}
-                />
+                <span className={styles.dot} data-tone={h.status === 'edit' ? 'neutral' : STATUS_TONE[h.status as ServiceStatus]} />
                 <div>
                   <strong>{h.status === 'edit' ? 'Edit' : STATUS_LABELS[h.status as ServiceStatus]}</strong>
                   <small>

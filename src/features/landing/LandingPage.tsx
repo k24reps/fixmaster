@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Icon, type IconName } from '@/components/ui';
 import { PLANS, OUTLET_ADDON_PRICE, PRO_INCLUDED_OUTLETS } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
+import { useThemeStore } from '@/stores/theme';
 import styles from './LandingPage.module.css';
 
 interface LandingPageProps {
@@ -146,6 +147,8 @@ function perDayLabel(plan: { priceLabel: string }): string {
  */
 export function LandingPage({ onStart }: LandingPageProps) {
   const [uptime, setUptime] = useState(0);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   useEffect(() => {
     const prev = document.title;
@@ -179,10 +182,18 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </span>
         </div>
         <nav className={styles.topNav}>
-          <a href="#fault" className={styles.topNavLink}>Masalah</a>
-          <a href="#rack" className={styles.topNavLink}>Modul</a>
-          <a href="#banding" className={styles.topNavLink}>Banding</a>
-          <a href="#spec" className={styles.topNavLink}>Paket</a>
+          <a href="#fault" className={[styles.topNavLink, styles.navLink].join(' ')}>Masalah</a>
+          <a href="#rack" className={[styles.topNavLink, styles.navLink].join(' ')}>Modul</a>
+          <a href="#banding" className={[styles.topNavLink, styles.navLink].join(' ')}>Banding</a>
+          <a href="#spec" className={[styles.topNavLink, styles.navLink].join(' ')}>Paket</a>
+          <button
+            className={styles.themeBtn}
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+            title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+          >
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
+          </button>
           <button className={styles.powerBtn} onClick={onStart}>
             <span className={[styles.led, styles.ledLive].join(' ')} /> MASUK
           </button>

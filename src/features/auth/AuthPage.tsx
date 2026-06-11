@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button, Input, Icon } from '@/components/ui';
 import { FormError } from '@/components/ui/Form';
 import { useAuthStore } from '@/stores/auth';
+import { useThemeStore } from '@/stores/theme';
 import { toast } from '@/stores/toast';
 import styles from './AuthPage.module.css';
 
@@ -38,6 +39,8 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
   const resetPassword = useAuthStore((s) => s.resetPassword);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -154,9 +157,23 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
           </div>
 
           <div className={styles.terminalTop}>
+            {onBack && (
+              <button type="button" className={styles.backBtn} onClick={onBack}>
+                <Icon name="arrow-left" aria-hidden /> Beranda
+              </button>
+            )}
             <span className={[styles.led, styles.ledLive].join(' ')} aria-hidden />
             <span className={styles.terminalLabel}>Terminal Akses</span>
             <span className={styles.modeTag}>{mode}</span>
+            <button
+              type="button"
+              className={styles.themeBtn}
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+              title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
+            </button>
           </div>
 
           <h1 className={styles.heading}>{t.heading}</h1>
@@ -242,11 +259,6 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
             {mode === 'reset' && (
               <button type="button" className={styles.link} onClick={() => setMode('login')}>
                 Kembali ke Masuk
-              </button>
-            )}
-            {onBack && (
-              <button type="button" className={styles.link} onClick={onBack}>
-                <Icon name="arrow-left" aria-hidden /> Kembali ke Beranda
               </button>
             )}
           </div>

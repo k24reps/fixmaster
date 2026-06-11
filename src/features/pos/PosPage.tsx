@@ -40,6 +40,7 @@ export function PosPage() {
   const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [voidBusy, setVoidBusy] = useState(false);
+  const [tab, setTab] = useState<'pos' | 'history'>('pos');
 
   // Most recent transactions (newest first) for the correction panel.
   const recentSales = useMemo(
@@ -257,8 +258,34 @@ export function PosPage() {
   };
 
   return (
-    <div className={styles.layout}>
-      <div className={styles.products}>
+    <div className={styles.page}>
+      <div className={styles.tabs} role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'pos'}
+          className={[styles.tab, tab === 'pos' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('pos')}
+        >
+          <Icon name="cart-shopping" aria-hidden /> Kasir
+        </button>
+        {isMgr && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'history'}
+            className={[styles.tab, tab === 'history' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setTab('history')}
+          >
+            <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
+            {recentSales.length > 0 && <span className={styles.tabCount}>{recentSales.length}</span>}
+          </button>
+        )}
+      </div>
+
+      {tab === 'pos' && (
+      <div className={styles.layout}>
+        <div className={styles.products}>
         <Input
           placeholder="Cari produk untuk ditambahkan…"
           value={query}
@@ -412,8 +439,10 @@ export function PosPage() {
           </>
         )}
       </Card>
+      </div>
+      )}
 
-      {isMgr && (
+      {tab === 'history' && isMgr && (
         <Card glass className={styles.history}>
           <div className={styles.historyHead}>
             <h3>

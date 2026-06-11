@@ -134,3 +134,15 @@ export function getTarget(): MonthlyTarget {
 export function setTarget(target: MonthlyTarget): void {
   localStorage.setItem(`fixmaster-target-${orgId()}`, JSON.stringify(target));
 }
+
+/**
+ * Last wallet used for an ad-hoc "modal dadakan" expense (per-device memory).
+ * Powers the "remember last" default on the service detail cost entry, with a
+ * caller-side fallback to the first wallet when empty.
+ */
+export function getLastExpenseWallet(): string {
+  return localStorage.getItem(`fixmaster-last-modal-wallet-${orgId()}`) ?? '';
+}
+export function setLastExpenseWallet(walletId: string): void {
+  localStorage.setItem(`fixmaster-last-modal-wallet-${orgId()}`, walletId);
+}

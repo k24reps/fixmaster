@@ -85,7 +85,7 @@ export function GlobalSearch() {
 
   return (
     <div className={styles.root} ref={rootRef}>
-      <div className={styles.search}>
+      <div className={styles.search} onClick={() => inputRef.current?.focus()}>
         <Icon name="magnifying-glass" aria-hidden />
         <input
           ref={inputRef}

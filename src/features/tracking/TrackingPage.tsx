@@ -1,18 +1,30 @@
 import { useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { repository } from '@/data';
+import { repository, isSupabaseConfigured } from '@/data';
+import { trackService } from '@/data/supabase-client';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
 import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate } from '@/lib/time';
 import { Badge, Icon } from '@/components/ui';
 import styles from './TrackingPage.module.css';
 
+/** Normalized tracking result shared by both the cloud-RPC and local paths. */
+interface TrackResult {
+  orgName: string;
+  service: { serviceNo: string; device: string; category: string; status: string } | null;
+  publicHistory: { status: string; at: string; note?: string }[];
+}
+
 /**
  * Public, no-login service tracking page. Looks up a service by org + no.
- * Only non-internal history entries are shown (privacy). Org is scoped via
- * the query param so cross-tenant data can't leak. Uses TanStack Query so
- * there's no manual effect/setState.
+ *
+ * Cloud mode reads via the `track_service` RPC (security-definer, granted to
+ * `anon`) — a direct `services` table read is blocked by RLS for anonymous
+ * visitors, which is why a shared link must NOT use `repository.list`. The RPC
+ * already returns only safe fields and non-internal history. Local/dev mode
+ * (no Supabase) reads the IndexedDB repository, scoped by the org query param.
+ * Uses TanStack Query so there's no manual effect/setState.
  */
 export function TrackingPage() {
   const [params] = useSearchParams();
@@ -22,8 +34,8 @@ export function TrackingPage() {
   const [query, setQuery] = useState(initialNo);
   const [searchNo, setSearchNo] = useState(initialNo);
   const [throttleMsg, setThrottleMsg] = useState('');
-  // Client-side defense-in-depth: the public page reads via the repository
-  // (not the rate-limited RPC), so throttle repeated lookups here too.
+  // Client-side defense-in-depth: throttle repeated lookups (the cloud RPC is
+  // also throttled server-side at 60/min per org).
   const searchTimes = useRef<number[]>([]);
 
   const runSearch = () => {
@@ -41,24 +53,42 @@ export function TrackingPage() {
     setSearchNo(query);
   };
 
-  const { data, isFetching, isFetched } = useQuery({
+  const { data, isFetching, isFetched } = useQuery<TrackResult>({
     queryKey: ['track', orgId, searchNo],
     enabled: !!orgId && !!searchNo.trim(),
     queryFn: async () => {
+      if (isSupabaseConfigured) {
+        // Cloud: public RPC bypasses RLS safely for anonymous visitors.
+        const r = await trackService(orgId, searchNo.trim());
+        return {
+          orgName: r?.orgName ?? 'FixMaster',
+          service: r
+            ? { serviceNo: r.serviceNo, device: r.device, category: r.category, status: r.status }
+            : null,
+          publicHistory: (r?.publicHistory ?? []).filter((h) => !h.internal),
+        };
+      }
+      // Local/dev: read the IndexedDB repository, scoped to the org param.
       repository.setScope(orgId, null);
       const [org, services] = await Promise.all([
         repository.getSingleton('organization'),
         repository.list('services'),
       ]);
-      const service =
+      const svc =
         services.find((s) => s.serviceNo.toLowerCase() === searchNo.trim().toLowerCase()) ?? null;
-      return { org, service };
+      return {
+        orgName: (org as { name?: string } | null)?.name ?? 'FixMaster',
+        service: svc
+          ? { serviceNo: svc.serviceNo, device: svc.device, category: svc.category, status: svc.status }
+          : null,
+        publicHistory: (svc?.history ?? []).filter((h) => !h.internal),
+      };
     },
   });
 
-  const org = data?.org ?? null;
+  const orgName = data?.orgName ?? 'FixMaster';
   const service = data?.service ?? null;
-  const publicHistory = service?.history.filter((h) => !h.internal) ?? [];
+  const publicHistory = data?.publicHistory ?? [];
   const notFound = isFetched && !isFetching && !service;
 
   return (
@@ -68,7 +98,7 @@ export function TrackingPage() {
           <span className={styles.logoMark}>
             <Icon name="screwdriver-wrench" aria-hidden />
           </span>
-          <h1 className={styles.title}>{org?.name ?? 'FixMaster'}</h1>
+          <h1 className={styles.title}>{orgName}</h1>
           <p className={styles.subtitle}>Lacak Status Servis Anda</p>
         </header>
 
@@ -107,8 +137,8 @@ export function TrackingPage() {
                 <h2>{service.device}</h2>
                 <p className={styles.deviceMeta}>{service.category}</p>
               </div>
-              <Badge tone={STATUS_TONE[service.status] as 'brand'} dot>
-                {STATUS_LABELS[service.status]}
+              <Badge tone={STATUS_TONE[service.status as keyof typeof STATUS_TONE] as 'brand'} dot>
+                {STATUS_LABELS[service.status as keyof typeof STATUS_LABELS]}
               </Badge>
             </div>
 
