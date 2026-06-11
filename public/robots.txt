@@ -1,0 +1,9 @@
+# FixMaster — robots
+User-agent: *
+Allow: /
+# /demo is a live sandbox (in-memory, sample data), not indexable content.
+Disallow: /demo
+# /track is a per-ticket public lookup; no canonical content to index.
+Disallow: /track
+
+Sitemap: https://getfixmaster.vercel.app/sitemap.xml

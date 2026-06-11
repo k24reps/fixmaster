@@ -62,6 +62,20 @@ const FAULTS: FaultDef[] = [
   { icon: 'chart-pie', fault: 'Tutup buku akhir bulan selalu bikin pusing.', fix: 'Laporan omzet & performa toko terbentuk otomatis.' },
 ];
 
+// Honest assurance strip — verifiable product facts, NOT fabricated
+// testimonials/customer counts. Keeps the page truthful (see matrix "?" idiom).
+interface AssureDef {
+  icon: IconName;
+  title: string;
+  sub: string;
+}
+const ASSURE: AssureDef[] = [
+  { icon: 'shield-halved', title: 'Data terisolasi', sub: 'Tiap toko terpisah penuh di level baris database.' },
+  { icon: 'lightning', title: 'Jalan tanpa internet', sub: 'Lokal-first — tetap bekerja, sinkron saat online.' },
+  { icon: 'download', title: 'Cadangkan kapan saja', sub: 'Ekspor seluruh data jadi satu berkas, pulihkan utuh.' },
+  { icon: 'circle-check', title: 'Tanpa kontrak', sub: 'Uji coba 14 hari tanpa kartu · berhenti kapan saja.' },
+];
+
 interface FaqDef {
   q: string;
   a: string;
@@ -203,7 +217,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             </ul>
             <div className={styles.faceActions}>
               <button className={styles.btnPower} onClick={onStart}>
-                <Icon name="lightning" aria-hidden /> Nyalakan Uji Coba 14 Hari
+                <Icon name="lightning" aria-hidden /> Mulai Gratis 14 Hari
               </button>
               <a href="#rack" className={styles.btnPlate}>Lihat Modul</a>
             </div>
@@ -234,6 +248,21 @@ export function LandingPage({ onStart }: LandingPageProps) {
         </div>
       </section>
 
+      {/* ===== Assurance strip (honest facts, not testimonials) ===== */}
+      <section className={styles.assureStrip} aria-label="Jaminan">
+        {ASSURE.map((a) => (
+          <div key={a.title} className={styles.assureItem}>
+            <span className={styles.assureIcon}>
+              <Icon name={a.icon} aria-hidden />
+            </span>
+            <div className={styles.assureBody}>
+              <span className={styles.assureTitle}>{a.title}</span>
+              <span className={styles.assureSub}>{a.sub}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+
       {/* ===== Fault panel (pain points) ===== */}
       <section id="fault" className={styles.section}>
         <div className={styles.sectionHead}>
@@ -262,7 +291,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       </section>
 
       {/* ===== Live demo ===== */}
-      <section id="demo" className={styles.section}>
+      <section id="demo" className={[styles.section, styles.sectionAlt].join(' ')}>
         <div className={styles.sectionHead}>
           <span className={styles.sectionNo}>DEMO LANGSUNG · UNIT HIDUP</span>
           <h2 className={styles.sectionTitle}>Coba sendiri, tanpa daftar</h2>
@@ -280,7 +309,20 @@ export function LandingPage({ onStart }: LandingPageProps) {
               router, jadi butuh navigasi browser asli. */}
           <div className={styles.demoStageWrap}>
             <a href="/demo" className={styles.demoPoster}>
-              <span className={styles.grid} aria-hidden />
+              <img
+                src="/screenshots/demo-dashboard-dark.png"
+                alt="Pratinjau dashboard FixMaster"
+                className={styles.posterShotDark}
+                loading="lazy"
+              />
+              <img
+                src="/screenshots/demo-dashboard-light.png"
+                alt=""
+                aria-hidden
+                className={styles.posterShotLight}
+                loading="lazy"
+              />
+              <span className={styles.posterScrim} aria-hidden />
               <span className={styles.demoPlay}>
                 <Icon name="right-to-bracket" aria-hidden />
               </span>
@@ -328,9 +370,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
                   <span className={[styles.led, styles.ledLive].join(' ')} /> PRO
                 </span>
               ) : (
-                <span className={styles.rackStamp}>
-                  <span className={[styles.led, styles.ledOk].join(' ')} /> OK
-                </span>
+                <span className={styles.rackStamp}>OK</span>
               )}
             </article>
           ))}
@@ -338,7 +378,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       </section>
 
       {/* ===== Comparison matrix ===== */}
-      <section id="banding" className={styles.section}>
+      <section id="banding" className={[styles.section, styles.sectionAlt].join(' ')}>
         <div className={styles.sectionHead}>
           <span className={styles.sectionNo}>MATRIKS BANDING · 3 UNIT</span>
           <h2 className={styles.sectionTitle}>Bandingkan sebelum memilih</h2>
@@ -430,7 +470,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       </section>
 
       {/* ===== Manual plate (FAQ) ===== */}
-      <section id="manual" className={styles.section}>
+      <section id="manual" className={[styles.section, styles.sectionAlt].join(' ')}>
         <div className={styles.sectionHead}>
           <span className={styles.sectionNo}>LEMBAR MANUAL · Q&amp;A</span>
           <h2 className={styles.sectionTitle}>Pertanyaan yang sering muncul</h2>
@@ -459,7 +499,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <p className={styles.ctaSub}>Pasang dalam beberapa menit. Tanpa kartu kredit.</p>
           </div>
           <button className={styles.btnPower} onClick={onStart}>
-            <Icon name="lightning" aria-hidden /> Mulai Sekarang
+            <Icon name="lightning" aria-hidden /> Mulai Gratis 14 Hari
           </button>
         </div>
       </section>

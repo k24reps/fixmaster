@@ -5,12 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#14171c" />
-    <title>FixMaster — Dashboard Manajemen Servis Reparasi</title>
+    <title>FixMaster — Aplikasi Kasir & Manajemen Servis HP, Laptop, Elektronik</title>
     <meta
       name="description"
-      content="FixMaster: platform manajemen bisnis jasa reparasi all-in-one. Kelola tiket servis, kasir (POS), inventori, keuangan, absensi, tugas internal, dan laporan dalam satu dashboard yang cepat dan modern."
+      content="Aplikasi manajemen usaha servis reparasi gadget & elektronik. Kelola tiket servis HP/laptop, kasir (POS), stok sparepart, keuangan, pelanggan, dan tim dalam satu aplikasi. Coba gratis 14 hari, tanpa kartu kredit."
+    />
+    <meta
+      name="keywords"
+      content="aplikasi servis hp, software konter hp, manajemen reparasi, kasir servis, pos reparasi, aplikasi servis laptop, manajemen bengkel elektronik, tiket servis"
     />
     <meta name="robots" content="index, follow" />
+    <meta name="author" content="FixMaster" />
+    <link rel="canonical" href="https://getfixmaster.vercel.app/" />
 
     <!-- PWA: installable web app -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -21,12 +27,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Open Graph / social share -->
-    <meta property="og:title" content="FixMaster — Dashboard Manajemen Servis Reparasi" />
+    <meta property="og:title" content="FixMaster — Aplikasi Kasir & Manajemen Servis HP, Laptop, Elektronik" />
     <meta
       property="og:description"
-      content="Platform manajemen bisnis jasa reparasi all-in-one untuk toko servis modern."
+      content="Kelola tiket servis, kasir (POS), stok sparepart, keuangan, dan tim dalam satu aplikasi. Untuk semua gadget & elektronik. Coba gratis 14 hari."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://getfixmaster.vercel.app/" />
     <meta property="og:locale" content="id_ID" />
     <meta property="og:site_name" content="FixMaster" />
     <meta property="og:image" content="/og-image.png" />
@@ -34,12 +41,104 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="FixMaster — manajemen usaha servis reparasi" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="FixMaster — Dashboard Manajemen Servis Reparasi" />
+    <meta name="twitter:title" content="FixMaster — Aplikasi Kasir & Manajemen Servis HP, Laptop, Elektronik" />
     <meta
       name="twitter:description"
-      content="Platform manajemen bisnis jasa reparasi all-in-one untuk toko servis modern."
+      content="Kelola tiket servis, kasir (POS), stok sparepart, keuangan, dan tim dalam satu aplikasi. Untuk semua gadget & elektronik. Coba gratis 14 hari."
     />
     <meta name="twitter:image" content="/og-image.png" />
+
+    <!-- Structured data (JSON-LD) for rich results -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "name": "FixMaster",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "description": "Aplikasi manajemen usaha servis reparasi gadget & elektronik: tiket servis, kasir (POS), inventori sparepart, keuangan, pelanggan, dan tim.",
+            "url": "https://getfixmaster.vercel.app/",
+            "inLanguage": "id-ID",
+            "offers": [
+              {
+                "@type": "Offer",
+                "name": "Solo",
+                "price": "99000",
+                "priceCurrency": "IDR",
+                "description": "1 pengguna, 1 outlet. Tiket servis, kasir, inventori, keuangan, laporan."
+              },
+              {
+                "@type": "Offer",
+                "name": "Pro",
+                "price": "149000",
+                "priceCurrency": "IDR",
+                "description": "Pengguna tak terbatas, multi-outlet, supplier+PO, tugas, absensi, dan semua fitur."
+              }
+            ]
+          },
+          {
+            "@type": "Organization",
+            "name": "FixMaster",
+            "url": "https://getfixmaster.vercel.app/",
+            "logo": "https://getfixmaster.vercel.app/icon-maskable.svg",
+            "description": "Manajemen usaha reparasi gadget & elektronik."
+          },
+          {
+            "@type": "WebSite",
+            "name": "FixMaster",
+            "url": "https://getfixmaster.vercel.app/",
+            "inLanguage": "id-ID"
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Apakah data toko saya aman?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Tiap toko terisolasi penuh (baris-level di database). Kamu juga bisa cadangkan seluruh data jadi satu berkas kapan saja."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Bisa dipakai saat internet mati?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Bisa. FixMaster mengutamakan kerja lokal — tetap jalan tanpa internet, lalu menyinkron saat kembali online."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Servis apa saja yang didukung?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Semua gadget & elektronik konsumen: HP, laptop, tablet, printer, konsol, dan perangkat elektronik lain — bukan cuma satu jenis."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Ribet tidak pindah dari buku/Excel?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Mulai dari uji coba 14 hari tanpa kartu. Paket Pro mendukung impor data agar perpindahan mulus."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Bagaimana cara bayarnya?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Lewat QRIS, diperpanjang tiap bulan. Tanpa kontrak — berhenti kapan saja."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -50,6 +149,28 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <section style="max-width: 720px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; line-height: 1.6">
+        <h1>FixMaster — Aplikasi Manajemen Usaha Servis Reparasi Gadget &amp; Elektronik</h1>
+        <p>
+          FixMaster adalah aplikasi all-in-one untuk usaha reparasi gadget dan elektronik —
+          konter HP, jasa servis laptop, tablet, printer, konsol, dan perangkat elektronik lain.
+          Kelola tiket servis, kasir (POS), stok sparepart, keuangan, pelanggan, dan tim dalam satu tempat.
+        </p>
+        <h2>Fitur utama</h2>
+        <ul>
+          <li>Tiket servis digital — lacak tiap perbaikan dari masuk sampai diambil.</li>
+          <li>Kasir (POS) — jual sparepart &amp; jasa, cetak struk.</li>
+          <li>Inventori sparepart dengan peringatan stok menipis.</li>
+          <li>Keuangan multi-dompet &amp; laba per servis.</li>
+          <li>Tautan lacak publik agar pelanggan cek status sendiri.</li>
+          <li>Laporan, absensi, multi-peran, dan jejak audit.</li>
+        </ul>
+        <p>
+          Coba gratis 14 hari tanpa kartu kredit. Aktifkan JavaScript untuk menjalankan aplikasi.
+        </p>
+      </section>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -339,6 +339,57 @@
   margin: 0 auto;
   padding: var(--space-12) var(--space-6);
 }
+/* Alternating section: a subtly inset panel to break the uniform pelat rhythm. */
+.sectionAlt {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-6);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Assurance strip (honest facts, not testimonials) ---------- */
+.assureStrip {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  border-top: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+}
+.assureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.assureIcon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 1.05rem;
+}
+.assureBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.assureTitle {
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.assureSub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
 .sectionHead {
   display: flex;
   flex-direction: column;
@@ -811,7 +862,8 @@
   height: 600px;
   background: var(--bg-base);
 }
-/* Poster meng-link ke rute /demo (navigasi penuh, bukan embed). */
+/* Poster meng-link ke rute /demo (navigasi penuh, bukan embed). Latar = screenshot
+   produk asli (theme-aware), diberi scrim agar teks & tombol tetap terbaca. */
 .demoPoster {
   position: relative;
   width: 100%;
@@ -828,6 +880,39 @@
   text-align: center;
   text-decoration: none;
   overflow: hidden;
+}
+/* Product screenshot backdrop — only the theme-matching image is shown. */
+.posterShotDark,
+.posterShotLight {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  z-index: 0;
+}
+.posterShotLight { display: none; }
+:global([data-theme='light']) .posterShotDark { display: none; }
+:global([data-theme='light']) .posterShotLight { display: block; }
+/* Scrim keeps the existing text tokens readable over the screenshot in both
+   themes; screenshot stays faintly visible to advertise the real product. */
+.posterScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--bg-app) 55%, transparent), color-mix(in srgb, var(--bg-app) 88%, transparent));
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.demoPoster:hover .posterScrim {
+  opacity: 0.82;
+}
+.demoPoster > .demoPlay,
+.demoPoster > .demoPosterTitle,
+.demoPoster > .demoPosterSub {
+  position: relative;
+  z-index: 2;
 }
 .demoPlay {
   display: grid;

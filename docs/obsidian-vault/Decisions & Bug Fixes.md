@@ -36,6 +36,16 @@ Tujuan: pengunjung **memakai FixMaster asli** sebelum daftar (bukan video/mockup
 - **Keputusan**: **hapus iframe sepenuhnya**. Poster "Coba Langsung" + tombol "Buka Demo Layar Penuh" kini sama-sama **meng-link** (`<a href="/demo">`, navigasi penuh) ke rute demo. Lebih sederhana, lebih cepat, dan **menghapus seluruh kelas masalah framing/CSP**. Header `vercel.json` dikembalikan ke setelan **paling ketat** (`DENY` / `frame-ancestors 'none'`) karena tak ada lagi yang perlu di-frame.
 - **Dihapus**: state `demoLive` + cabang `<iframe>` di `LandingPage.tsx`, CSS `.demoFrame`. Verifikasi: build + lint hijau.
 
+### Perbaikan kelemahan landing + fondasi SEO (11 Jun 2026)
+Setelah kritik jujur, 7 kelemahan landing diperbaiki **tetap dalam bahasa "Precision Electronics Bench"** (bukan pola SaaS generik), plus fondasi SEO untuk SPA CSR.
+- **Demo box kosong (regresi pasca-iframe)** → akar masalah: bingkai instrumen 600px kehilangan isi saat iframe dihapus, menyisakan kotak kosong yang ironis. **Solusi**: poster `/demo` kini **berlatar screenshot dashboard produk asli** (theme-aware `demo-dashboard-dark/light.png` di `public/screenshots/`) + **scrim radial** token agar judul/tombol play tetap terbaca. Sekaligus memamerkan produk nyata sebelum klik.
+- **Tanpa bukti sosial** → ditambah **strip jaminan** berisi 4 **fakta produk terverifikasi** (data terisolasi, offline-first, backup, tanpa kontrak). **Bukan testimoni/angka karangan** — konsisten dengan pagar kejujuran (idiom "?" di matriks).
+- **Monoton** → `sectionAlt` (panel `bg-base`) berselang dengan `bg-app` memecah pola pelat-sekrup seragam.
+- **LED berlebih** → stamp `OK` di rack-unit kini teks mono polos (LED hanya pada status bermakna).
+- **CTA tak konsisten** → label trial disatukan jadi **"Mulai Gratis 14 Hari"**.
+- **SEO** (landing CSR di `AuthGate`, jadi crawler perlu HTML statis): tambah `public/robots.txt` (disallow `/demo`+`/track`), `public/sitemap.xml`, dan di `index.html`: title/description berbasis keyword, canonical+og:url, **JSON-LD** (`SoftwareApplication`+offers, `Organization`, `WebSite`, `FAQPage`), serta **`<noscript>`** berisi H1+fitur agar ada konten nyata tanpa JS.
+- **Verifikasi**: build ✓ (2.09s) + **288 test** ✓ + lint ✓; render landing dark/light/mobile via `scripts/shoot-landing.mjs`. Detail di [[Signature Pages]].
+
 ### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
 Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
 - **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
