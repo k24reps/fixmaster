@@ -1,0 +1,76 @@
+name: Scheduled Go-Live (staging → main)
+
+# ONE-SHOT cloud promote: merge staging → main at 01:00 WIB 12 Jun 2026
+# (= 18:00 UTC 11 Jun). Runs entirely on GitHub's servers — your laptop can be
+# OFF. Once main updates, Vercel auto-deploys production.
+#
+# TIMING CAVEAT: GitHub scheduled runs can be delayed during high load
+# (the top of every hour is peak). Expect the deploy ~01:00–01:45 WIB.
+#
+# A CI gate (lint + build + test) runs on the staging code first; if it fails,
+# NOTHING is promoted. `workflow_dispatch` lets you trigger it manually too.
+#
+# After it has run successfully, delete this file (it is single-use).
+
+on:
+  schedule:
+    - cron: '0 18 11 6 *'   # 18:00 UTC 11 Jun 2026 = 01:00 WIB 12 Jun 2026
+  workflow_dispatch: {}
+
+concurrency:
+  group: golive
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Gate staging then promote to main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch staging & main
+        run: git fetch origin staging main
+
+      - name: Nothing to promote? (idempotent no-op)
+        id: check
+        run: |
+          if [ "$(git rev-parse origin/main)" = "$(git rev-parse origin/staging)" ]; then
+            echo "main already equals staging — nothing to promote."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: CI gate on staging code (lint · build · test)
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          git checkout staging
+          npm ci
+          npm run lint
+          npm run build
+          npm run test
+
+      - name: Promote staging → main
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          git checkout main
+          git merge --no-edit staging
+          git push origin main
+          echo "Promoted. Vercel will auto-deploy production from main."
