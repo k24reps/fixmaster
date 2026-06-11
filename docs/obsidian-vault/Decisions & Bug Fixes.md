@@ -25,10 +25,16 @@ Tujuan: pengunjung **memakai FixMaster asli** sebelum daftar (bukan video/mockup
 - **`InMemoryAdapter` (RAM-only)** — nol jejak disk, tak menyentuh IndexedDB asli pengunjung, hilang saat tab ditutup. Mencerminkan `LocalAdapter` agar perilaku identik.
 - **Pakai ulang seed yang sudah ada** (`src/dev/seed.ts`) lewat opsi `commitWizard({forceLocal})` — bukan menulis seed baru. Di produksi wizard menulis ke cloud RPC; `forceLocal` memaksa jalur lokal agar seed menulis ke adapter in-memory (pengunjung anonim tak punya akun cloud). Hemat waktu & konsisten dengan dev.
 - **Reuse `appChildRoutes`** di `MemoryRouter` demo → menu & halaman persis sama dengan app asli.
-- **Nested-router trap**: `MemoryRouter` tak boleh bersarang di `BrowserRouter` (React Router melempar error). Solusi final: **intersep `/demo` di level `App`** sebelum `RouterProvider` mount, dan **hapus** route `/demo` dari `router.tsx`. Melayani kunjungan langsung **dan** `<iframe src="/demo">` di landing dengan satu jalur.
+- **Nested-router trap**: `MemoryRouter` tak boleh bersarang di `BrowserRouter` (React Router melempar error). Solusi final: **intersep `/demo` di level `App`** sebelum `RouterProvider` mount, dan **hapus** route `/demo` dari `router.tsx`. Satu jalur melayani kunjungan langsung **dan** link dari landing (poster + tombol layar penuh).
 - **Aksi sensitif dijinakkan, bukan disembunyikan** (`demoGuard()`): keluar, reset/hapus akun, backup/restore, kirim WhatsApp, cetak nota → toast + ajakan daftar. Pengunjung tetap melihat tombolnya (terasa app penuh) tanpa risiko keluar-app/destruktif.
-- **`noindex`** disuntik selama demo mounted (sandbox, bukan konten SEO). **HP** memakai route layar penuh `/demo` (iframe disembunyikan — AppLayout butuh ruang desktop).
+- **`noindex`** disuntik selama demo mounted (sandbox, bukan konten SEO). Landing meng-link ke route layar penuh `/demo` (poster + tombol) — **bukan** iframe (lihat keputusan 11 Jun di bawah).
 - Verifikasi: build + **280 test** (272 → +8 paritas InMemoryAdapter) + lint hijau; render `/demo` dark/light/mobile difoto via `scripts/shoot-demo.mjs`. Detail di [[Signature Pages]] & [[Data Layer]].
+
+### Demo iframe dihapus — "refused to connect" di produksi (11 Jun 2026)
+- **Gejala**: di produksi Vercel, poster "Coba Langsung" memuat iframe `/demo` tapi browser menolak → **"getfixmaster.vercel.app refused to connect"**. Lokal aman (header `vercel.json` tak aktif di dev).
+- **Akar sebab**: [vercel.json](vercel.json) menyetel `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` (anti-clickjacking) — ini melarang **semua** framing, termasuk same-origin, jadi halaman tak bisa meng-embed `/demo` miliknya sendiri.
+- **Keputusan**: **hapus iframe sepenuhnya**. Poster "Coba Langsung" + tombol "Buka Demo Layar Penuh" kini sama-sama **meng-link** (`<a href="/demo">`, navigasi penuh) ke rute demo. Lebih sederhana, lebih cepat, dan **menghapus seluruh kelas masalah framing/CSP**. Header `vercel.json` dikembalikan ke setelan **paling ketat** (`DENY` / `frame-ancestors 'none'`) karena tak ada lagi yang perlu di-frame.
+- **Dihapus**: state `demoLive` + cabang `<iframe>` di `LandingPage.tsx`, CSS `.demoFrame`. Verifikasi: build + lint hijau.
 
 ### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
 Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:

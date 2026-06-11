@@ -21,7 +21,7 @@ Sembilan halaman utama + halaman detail, masing-masing dengan metafora "alat" ta
 Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". **Revisi total (9 Jun 2026)** menambah elemen konversi (diadopsi dari analisis kompetitor FixNova/FixMate, tapi **diterjemahkan ke bahasa bench** — bukan tiru visual) + memperbaiki klaim plan yang basi. [`LandingPage`](src/features/landing/LandingPage.tsx):
 - **Hero faceplate**: pelat bersekrup 4 sudut, `unitTag` LED hijau, judul ber-engrave gradient, **coverage chips** (HP/Laptop/Tablet/Printer/Konsol/Elektronik — tegaskan cakupan semua elektronik), plus **panel readout hidup** (CAKUPAN, MODUL 14/14, SYNC, DATA + **uptime tick** per detik).
 - **Fault panel** (pain points): 6 "gejala toko tanpa sistem" jadi **kartu fault** — spine amber, ikon warning-soft, badge `FAULT` LED merah, lalu baris "fix" ber-LED hijau (gejala→solusi). Resonansi emosional dalam bahasa diagnostik.
-- **Demo langsung** (section "DEMO LANGSUNG · UNIT HIDUP"): menggantikan viewport statis lama. Dalam **bingkai instrumen** (title-bar 3 dot + address `fixmaster · /demo`), pengunjung **menjalankan aplikasi FixMaster yang asli** tanpa daftar. Layar lebar: poster *click-to-activate* → memuat `<iframe src="/demo">` (isolasi JS penuh, paint awal ringan). HP: poster disembunyikan, diganti tombol **"Buka Demo Layar Penuh"** → route `/demo` (AppLayout butuh ruang desktop). Lihat section **Demo Interaktif** di bawah.
+- **Demo langsung** (section "DEMO LANGSUNG · UNIT HIDUP"): menggantikan viewport statis lama. Dalam **bingkai instrumen** (title-bar 3 dot + address `fixmaster · /demo`), poster mengajak pengunjung **menjalankan aplikasi FixMaster yang asli** tanpa daftar. Poster **meng-link ke rute `/demo` layar penuh** (navigasi browser penuh, **bukan iframe** — dihapus karena header anti-framing memblokirnya di produksi). Tombol **"Buka Demo Layar Penuh"** menuju rute yang sama. Lihat section **Demo Interaktif** di bawah.
 - **Module rack**: kini **14 modul** rack-unit ber-**slot vertikal** (`M01`…`M14`), termasuk **Jejak Audit** & **Backup**. Modul Pro-only (Supplier+PO, Tugas, Absensi) bertanda **badge LED brand + "PRO"** (idiom show-locked sefamili sidebar), sisanya stamp `OK` ber-LED.
 - **Spec plates** (pricing): label alat bersekrup, harga mono besar + **framing harga harian** ("± Rp x/hari · setara kopi"). Klaim **diperbaiki agar jujur**: Solo = 1 pengguna · 1 outlet · 2 dompet (bukan lagi "tugas/absensi" / "karyawan tak terbatas"); Pro = pengguna tak terbatas, **outlet tak terbatas** (+Rp50rb/outlet) — bukan lagi render rusak "s/d -1 cabang". Sumber `config/plans.ts` agar tak basi.
 - **Matriks banding** (3-brand): **datasheet bench** bersekrup membandingkan FixMaster vs FixNova vs FixMate. Pagar: hanya baris **FixMaster unggul/imbang** (keunggulan kompetitor spt CRM tak ditampilkan); sel kompetitor belum pasti = **"?" amber** (bukan tebakan ya/tidak); 3 fitur khas (Supplier+PO, Tugas, Audit) ber-tag `KHAS`; kolom FixMaster ber-LED "UNIT INI" + brand-soft. Disclaimer bertanggal.
@@ -36,7 +36,7 @@ Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradien
 
 ## Demo Interaktif — Bench Hidup (publik, tanpa login)
 
-Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, bukan mockup statis. Route publik **`/demo`** (intersep di level `App`, bukan child router), juga di-*embed* sebagai `<iframe>` di landing.
+Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, bukan mockup statis. Route publik **`/demo`** (intersep di level `App`, bukan child router). Landing **meng-link** ke route ini (poster + tombol), **tidak** lagi meng-embed via iframe.
 
 **Arsitektur isolasi** (lihat [[Data Layer]] § InMemoryAdapter):
 - [`DemoApp`](src/features/demo/DemoApp.tsx) saat mount: `installRepository(new InMemoryAdapter())` (RAM-only, nol jejak disk — IndexedDB asli pengunjung tak tersentuh), `useDemoStore.enter()`, lalu **pakai ulang seed yang sudah ada** (`src/dev/seed.ts` via `commitWizard({forceLocal:true})`) → konter gadget terkurasi. Sesi masuk sebagai **owner** → semua menu terbuka (termasuk Laporan, Aktivitas, Pengaturan).
@@ -45,11 +45,11 @@ Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, 
 - **Bersih saat unmount**: `resetRepository()` (kembali ke adapter asli) + `session.reset()` + hapus meta `noindex`.
 - **`noindex`**: meta robots disuntik selama demo mounted (demo = sandbox, bukan konten SEO).
 
-**Faceplate demo** ([`DemoChrome`](src/features/demo/DemoChrome.tsx)): bar instrumen menetap di atas app — sekrup sudut, **LED warning berdenyut**, readout mono `MODE DEMO · data contoh · tidak tersimpan`, tombol **Reset Demo** (re-seed dataset awal), dan CTA brand **Daftar Gratis** (`exitDemoToSignup` → `/?auth=1`, menembus iframe via `window.top`). Bukan banner SaaS generik.
+**Faceplate demo** ([`DemoChrome`](src/features/demo/DemoChrome.tsx)): bar instrumen menetap di atas app — sekrup sudut, **LED warning berdenyut**, readout mono `MODE DEMO · data contoh · tidak tersimpan`, tombol **Reset Demo** (re-seed dataset awal), dan CTA brand **Daftar Gratis** (`exitDemoToSignup` → `/?auth=1`). Bukan banner SaaS generik.
 
 **Aksi sensitif dijinakkan** (`demoGuard()` di [`stores/demo.ts`](src/stores/demo.ts)): Keluar/ganti akun (Sidebar), Reset & Hapus Akun + Backup/Restore (Settings), Kirim WhatsApp & Cetak Nota (NotifyModal) → semua menampilkan toast + ajakan daftar, **tanpa** menjalankan logika destruktif/keluar-app.
 
-**Landing**: layar lebar menampilkan poster *click-to-activate* → iframe `/demo`; HP disembunyikan dan diganti tombol "Buka Demo Layar Penuh".
+**Landing**: poster "Coba Langsung" + tombol "Buka Demo Layar Penuh" sama-sama **meng-link ke rute `/demo`** (navigasi penuh). Iframe embed sudah **dihapus** (gagal di produksi karena header `X-Frame-Options: DENY` / CSP `frame-ancestors 'none'` — yang kini dikembalikan ke setelan paling ketat). Detail di [[Decisions & Bug Fixes]].
 
 ![[demo-dashboard-dark.png]]
 
