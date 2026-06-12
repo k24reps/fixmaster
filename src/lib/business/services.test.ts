@@ -53,12 +53,12 @@ describe('role gates', () => {
     expect(canSetStatus('owner', 'lunas')).toBe(true);
     expect(canSetStatus('admin', 'batal')).toBe(true);
   });
-  it('blocks staff from confirm/settle/cancel', () => {
-    expect(canSetStatus('karyawan', 'konfirmasi')).toBe(false);
+  it('blocks staff from settle/cancel', () => {
     expect(canSetStatus('karyawan', 'lunas')).toBe(false);
     expect(canSetStatus('karyawan', 'batal')).toBe(false);
   });
-  it('lets staff set work statuses', () => {
+  it('lets staff set work statuses (full pipeline incl. konfirmasi)', () => {
+    expect(canSetStatus('karyawan', 'konfirmasi')).toBe(true);
     expect(canSetStatus('karyawan', 'pengerjaan')).toBe(true);
     expect(canSetStatus('karyawan', 'selesai')).toBe(true);
   });

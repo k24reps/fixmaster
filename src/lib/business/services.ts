@@ -30,8 +30,15 @@ export function nextStatuses(from: ServiceStatus): ServiceStatus[] {
   return TRANSITIONS[from] ?? [];
 }
 
-/** Statuses an employee (non owner/admin) is NOT allowed to set. */
-const RESTRICTED_FOR_STAFF: ServiceStatus[] = ['konfirmasi', 'lunas', 'batal'];
+/**
+ * Statuses an employee (non owner/admin) is NOT allowed to set. Only the
+ * money-sensitive settlement (`lunas`) and the destructive cancellation
+ * (`batal`) are owner/admin-only. Staff own the full work pipeline INCLUDING
+ * `konfirmasi` (cost-estimate confirmation) — otherwise they'd be stuck at
+ * `diagnosa`, whose only forward transitions are `konfirmasi`/`batal` (both
+ * blocked), which also forced the Status modal into the DP-only screen.
+ */
+const RESTRICTED_FOR_STAFF: ServiceStatus[] = ['lunas', 'batal'];
 
 /** Whether a role may move a ticket into a given status. */
 export function canSetStatus(role: Role, status: ServiceStatus): boolean {
