@@ -136,6 +136,12 @@ Dua aliran kerja bertabrakan di produksi: **Level 2 (RLS `0028`)** dan batch **s
 - **Merge dengan konflik 3 file** (`StatusModal`, `supabase-client`, `AGENTS`) diselesaikan: cloud=RPC, lokal=tulis langsung (dual-path dipertahankan). Branch `feat/outlet-level2` → merge ke `staging`.
 - **Verifikasi**: build ✓ + **321 unit** ✓ + **45 integration** ✓ (+3 Tier 3B: split-settle 2 wallet, tolak outlet lain, cancel restore+refund) + lint ✓. `0029` **applied staging + PRODUKSI** (12 Jun 2026); frontend gabungan ter-deploy ke produksi via Vercel (`staging`→`main`).
 
+### DP via RPC — jalur billing terakhir (`0030`, 12 Jun 2026)
+Lapor user: ubah status ke **diagnosa**, lalu update lagi → muncul input DP, ditekan **Simpan DP** → toast "Gagal menyimpan DP". Akar masalah & fix:
+- **Bug kelas yang sama dengan `0029`, satu jalur terlewat.** `applyDp` di `StatusModal` masih `repository.put` langsung ke `incomes` + `wallets` + `services`. Setelah `0028` (live di produksi), tulis wallet/income = **manager-only** → kasir-karyawan gagal. (Bonus bug: insert income klien membawa field `deletedAt` yang **tak ada** sebagai kolom server.)
+- **Fix: RPC `record_down_payment`** (`0030`) — atomik, security-definer; insert income `'DP servis <no>'` (cocok dgn refund `cancel_service`), kredit wallet, akumulasi `down_payment` (dukung cicilan). `applyDp` jadi dual-path (cloud=RPC, lokal=tulis langsung). Kini **SEMUA** jalur billing (POS/lunas/batal/DP) lewat RPC.
+- **Verifikasi**: build ✓ + **321 unit** ✓ + **47 integration** ✓ (+2 Tier 3B: DP sukses utk outlet sendiri, ditolak utk outlet lain) + lint ✓. `0030` applied staging; **menunggu gate produksi**.
+
 ### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
 Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
 - **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
