@@ -134,7 +134,7 @@ Dua aliran kerja bertabrakan di produksi: **Level 2 (RLS `0028`)** dan batch **s
 - **Solusi: pindahkan SEMUA jalur tulis billing ke RPC** (filosofi `0017`/`0025`). `0029`: (A) `settle_service` di-recreate single-wallet → **`p_payments` (array leg)**, mendukung split server-side; (B) **RPC baru `cancel_service`** (restore stok + refund DP + status batal, atomik). POS sudah lewat `process_sale` (yang **sudah** terima `p_payments`), jadi tak perlu diubah.
 - **Bug pencocokan income diperbaiki.** `settle_service` di `0025` menulis deskripsi `'Pelunasan servis'` (tanpa nomor), padahal koreksi final-cost mencocokkan `'Pelunasan servis <no>'`. `0029` menyamakannya jadi ber-nomor → koreksi tetap cocok.
 - **Merge dengan konflik 3 file** (`StatusModal`, `supabase-client`, `AGENTS`) diselesaikan: cloud=RPC, lokal=tulis langsung (dual-path dipertahankan). Branch `feat/outlet-level2` → merge ke `staging`.
-- **Verifikasi**: build ✓ + **321 unit** ✓ + **45 integration** ✓ (+3 Tier 3B: split-settle 2 wallet, tolak outlet lain, cancel restore+refund) + lint ✓. `0029` applied staging. **Belum di produksi** — menunggu deploy frontend gabungan + apply `0029` prod.
+- **Verifikasi**: build ✓ + **321 unit** ✓ + **45 integration** ✓ (+3 Tier 3B: split-settle 2 wallet, tolak outlet lain, cancel restore+refund) + lint ✓. `0029` **applied staging + PRODUKSI** (12 Jun 2026); frontend gabungan ter-deploy ke produksi via Vercel (`staging`→`main`).
 
 ### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
 Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
