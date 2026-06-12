@@ -182,8 +182,8 @@ export async function processSale(args: {
 export async function settleService(args: {
   orgId: string;
   serviceId: string;
-  walletId: string;
-  amount: number;
+  /** Split payment legs: one or more wallets each receiving part of the bill. */
+  payments: { walletId: string; amount: number }[];
   history: unknown[];
   outletId: string | null;
 }): Promise<void> {
@@ -192,8 +192,30 @@ export async function settleService(args: {
   const { error } = await c.rpc('settle_service', {
     p_org_id: args.orgId,
     p_service_id: args.serviceId,
-    p_wallet_id: args.walletId,
-    p_amount: args.amount,
+    p_payments: args.payments,
+    p_history: args.history,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Cloud service cancellation via the `cancel_service` RPC (atomic): restores
+ * deducted inventory stock, refunds any DP (reverses wallet + removes the DP
+ * income), and sets the service to 'batal' — all server-side so a staff member
+ * can cancel without manager-only wallet/inventory writes (RLS 0010/0017/0028).
+ */
+export async function cancelService(args: {
+  orgId: string;
+  serviceId: string;
+  history: unknown[];
+  outletId: string | null;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('cancel_service', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
     p_history: args.history,
     p_outlet_id: args.outletId,
   });
