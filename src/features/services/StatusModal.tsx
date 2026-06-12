@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge } from '@/components/ui';
 import { repository } from '@/data';
+import { settleService, isSupabaseConfigured } from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr } from '@/lib/time';
 import {
@@ -130,27 +131,41 @@ export function StatusModal({ open, onClose, service, onSaved }: StatusModalProp
       };
       await repository.put('services', updatedService);
 
-      // On settle ("lunas"), record income + credit the first wallet.
+      // On settle ("lunas"), record income + credit a wallet. Cloud uses the
+      // atomic settle_service RPC (member-allowed) since direct wallet/income
+      // writes are manager-only under RLS; local mirrors it directly. Income is
+      // tagged to the service's outlet for per-branch reporting.
       if (target === 'lunas') {
         const wallets = await repository.list('wallets');
         const wallet = wallets[0];
         if (wallet) {
           const amount = outstandingBalance(updatedService) || cost;
-          await repository.put('incomes', {
-            id: crypto.randomUUID(),
-            orgId: service.orgId,
-            outletId: service.outletId,
-            date: now.slice(0, 10),
-            category: 'Servis',
-            amount,
-            walletId: wallet.id,
-            description: `Pelunasan servis ${service.serviceNo}`,
-            serviceId: service.id,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
-          });
-          await repository.put('wallets', { ...wallet, balance: wallet.balance + amount });
+          if (isSupabaseConfigured) {
+            await settleService({
+              orgId: service.orgId,
+              serviceId: service.id,
+              walletId: wallet.id,
+              amount,
+              history: updatedService.history,
+              outletId: service.outletId,
+            });
+          } else {
+            await repository.put('incomes', {
+              id: crypto.randomUUID(),
+              orgId: service.orgId,
+              outletId: service.outletId,
+              date: now.slice(0, 10),
+              category: 'Servis',
+              amount,
+              walletId: wallet.id,
+              description: `Pelunasan servis ${service.serviceNo}`,
+              serviceId: service.id,
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+            });
+            await repository.put('wallets', { ...wallet, balance: wallet.balance + amount });
+          }
         }
       }
 

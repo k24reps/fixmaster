@@ -16,6 +16,12 @@ interface SessionState {
   currentEmployee: Employee | null;
   /** Active branch scope. null = "All Outlets". */
   activeOutletId: ID | null;
+  /**
+   * Outlets this user may access (cloud Level 2). Empty = no restriction
+   * (manager, local mode, or pre-assignment). Drives the branch selector and
+   * transaction outlet resolution.
+   */
+  allowedOutletIds: ID[];
 
   bootstrap: () => Promise<void>;
   setOrg: (org: Organization) => void;
@@ -34,6 +40,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   employees: [],
   currentEmployee: null,
   activeOutletId: null,
+  allowedOutletIds: [],
 
   bootstrap: async () => {
     // Cloud mode: the signed-in account drives identity. Resolve the org +
@@ -63,7 +70,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }
       const employees = await repository.list('employees');
       const emp = employees.find((e) => e.id === membership.membershipId) ?? null;
-      set({ org, employees, currentEmployee: emp, activeOutletId: null, boot: 'ready' });
+      set({
+        org,
+        employees,
+        currentEmployee: emp,
+        activeOutletId: null,
+        allowedOutletIds: membership.outletIds ?? [],
+        boot: 'ready',
+      });
       return;
     }
 
@@ -127,7 +141,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   reset: () => {
     // Release any cloud realtime channels bound to the previous org/account.
     repository.dispose?.();
-    set({ boot: 'loading', org: null, employees: [], currentEmployee: null, activeOutletId: null });
+    set({ boot: 'loading', org: null, employees: [], currentEmployee: null, activeOutletId: null, allowedOutletIds: [] });
   },
 
   resetWorkspace: async () => {
@@ -156,4 +170,37 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 /** Convenience selector for the current employee's id. */
 export function currentEmployeeId(): ID | null {
   return useSessionStore.getState().currentEmployee?.id ?? null;
+}
+
+/**
+ * Resolve which outlet a newly-created transaction should be stamped with.
+ * - If a specific outlet is active, use it.
+ * - Else ("All Outlets"): fall back to the user's single allowed outlet, or
+ *   the org's primary/first outlet. Returns null only when no outlet exists.
+ * `requirePick` (OQ-C) is true for multi-outlet staff who must choose a branch
+ * explicitly; callers should block and prompt when this returns null.
+ */
+export function resolveCreateOutlet(outlets: { id: ID; isPrimary?: boolean }[]): ID | null {
+  const { activeOutletId, allowedOutletIds } = useSessionStore.getState();
+  if (activeOutletId) return activeOutletId;
+  // Staff restricted to exactly one outlet → unambiguous.
+  if (allowedOutletIds.length === 1) return allowedOutletIds[0];
+  // Otherwise default to primary (or first) outlet within the allowed set.
+  const pool = allowedOutletIds.length
+    ? outlets.filter((o) => allowedOutletIds.includes(o.id))
+    : outlets;
+  if (pool.length === 0) return null;
+  return (pool.find((o) => o.isPrimary) ?? pool[0]).id;
+}
+
+/**
+ * Whether a multi-outlet user must explicitly pick a branch before transacting
+ * (OQ-C): true when "All Outlets" is active AND they can access more than one
+ * outlet. Managers (no restriction) with multiple outlets also must pick.
+ */
+export function mustPickOutlet(outletCount: number): boolean {
+  const { activeOutletId, allowedOutletIds } = useSessionStore.getState();
+  if (activeOutletId) return false;
+  const reachable = allowedOutletIds.length || outletCount;
+  return reachable > 1;
 }

@@ -71,7 +71,7 @@ export async function authResetPassword(email: string): Promise<AuthResult> {
  * id used across the app), so login needs no PIN. Returns null when the user
  * has no org yet (→ onboarding wizard).
  */
-export async function getMyMembership(): Promise<{ orgId: string; membershipId: string } | null> {
+export async function getMyMembership(): Promise<{ orgId: string; membershipId: string; outletIds: string[] } | null> {
   const c = getSupabase();
   if (!c) return null;
   const { data: u } = await c.auth.getUser();
@@ -83,7 +83,16 @@ export async function getMyMembership(): Promise<{ orgId: string; membershipId: 
     .eq('active', true)
     .limit(1);
   if (error || !data || data.length === 0) return null;
-  return { orgId: data[0].org_id as string, membershipId: data[0].id as string };
+  const membershipId = data[0].id as string;
+  // Resolve assigned outlets (Level 2 scoping). Empty = treated as no
+  // restriction at the UI layer (manager, or pre-assignment staff).
+  let outletIds: string[] = [];
+  const { data: mo } = await c
+    .from('membership_outlets')
+    .select('outlet_id')
+    .eq('membership_id', membershipId);
+  if (mo) outletIds = mo.map((r) => r.outlet_id as string);
+  return { orgId: data[0].org_id as string, membershipId, outletIds };
 }
 
 /**
@@ -128,6 +137,69 @@ export async function voidSale(saleId: string, reason: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Cloud POS checkout via the `process_sale` RPC (atomic, security-definer):
+ * validates + locks stock, inserts the sale, deducts stock, credits wallets,
+ * and records income — all server-side. This is the ONLY write path that lets
+ * a staff cashier complete a sale in cloud mode (direct wallet/inventory writes
+ * are manager-only under RLS). `outletId` tags the sale + income to a branch.
+ * Returns the new sale id.
+ */
+export async function processSale(args: {
+  orgId: string;
+  saleNo: string;
+  lines: unknown[];
+  payments: unknown[];
+  subtotal: number;
+  discount: number;
+  discountType: string;
+  total: number;
+  outletId: string | null;
+}): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('process_sale', {
+    p_org_id: args.orgId,
+    p_sale_no: args.saleNo,
+    p_lines: args.lines,
+    p_payments: args.payments,
+    p_subtotal: args.subtotal,
+    p_discount: args.discount,
+    p_discount_type: args.discountType,
+    p_total: args.total,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/**
+ * Cloud service settlement via the `settle_service` RPC (atomic): marks the
+ * service 'lunas', credits the wallet, and records income — server-side so a
+ * staff member can settle without manager-only wallet writes. `outletId` tags
+ * the income to the service's branch.
+ */
+export async function settleService(args: {
+  orgId: string;
+  serviceId: string;
+  walletId: string;
+  amount: number;
+  history: unknown[];
+  outletId: string | null;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('settle_service', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_wallet_id: args.walletId,
+    p_amount: args.amount,
+    p_history: args.history,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ============================================================
 // Team management (Fase 1A). Invitations use the "pending-invite +
 // claim" model: a manager creates a pending_invites row; the invitee
@@ -145,12 +217,13 @@ export interface PendingInvite {
   claimedAt: string | null;
 }
 
-/** Manager creates a pending invite for an email + role. */
+/** Manager creates a pending invite for an email + role (+ assigned outlets). */
 export async function inviteMember(args: {
   orgId: string;
   email: string;
   name: string;
   role: string;
+  outletIds?: string[];
 }): Promise<PendingInvite> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -162,6 +235,7 @@ export async function inviteMember(args: {
         email: args.email.trim().toLowerCase(),
         name: args.name.trim(),
         role: args.role,
+        outlet_ids: args.outletIds ?? [],
         invited_by: (await c.auth.getUser()).data.user?.id ?? null,
         claimed_at: null,
       },
@@ -179,6 +253,50 @@ export async function inviteMember(args: {
     createdAt: data.created_at,
     claimedAt: data.claimed_at,
   };
+}
+
+/** Manager sets the outlets a member is assigned to (replaces the set). */
+export async function setMemberOutlets(memberId: string, outletIds: string[]): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('set_member_outlets', {
+    p_member_id: memberId,
+    p_outlet_ids: outletIds,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** List a member's assigned outlet ids. */
+export async function getMemberOutlets(memberId: string): Promise<string[]> {
+  const c = getSupabase();
+  if (!c) return [];
+  const { data, error } = await c
+    .from('membership_outlets')
+    .select('outlet_id')
+    .eq('membership_id', memberId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => r.outlet_id as string);
+}
+
+/**
+ * Fetch all member->outlet assignments for an org in one query, keyed by
+ * membership_id. Used by the team list to show each member's branches at a
+ * glance without an N+1 query per row.
+ */
+export async function getOrgMemberOutlets(orgId: string): Promise<Record<string, string[]>> {
+  const c = getSupabase();
+  if (!c) return {};
+  const { data, error } = await c
+    .from('membership_outlets')
+    .select('membership_id, outlet_id')
+    .eq('org_id', orgId);
+  if (error) throw new Error(error.message);
+  const map: Record<string, string[]> = {};
+  for (const r of data ?? []) {
+    const mid = r.membership_id as string;
+    (map[mid] ??= []).push(r.outlet_id as string);
+  }
+  return map;
 }
 
 /** List outstanding (unclaimed) invites for an org. */

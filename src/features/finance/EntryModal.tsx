@@ -7,7 +7,8 @@ import { localDateStr } from '@/lib/time';
 import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
-import { useSessionStore } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useCollection } from '@/hooks/useCollection';
 import type { Wallet, IncomeCategory, ExpenseCategory } from '@/data/types';
 
 interface EntryModalProps {
@@ -30,6 +31,7 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
 
 export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const { data: outlets } = useCollection('outlets');
   const [date, setDate] = useState(localDateStr());
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -58,13 +60,14 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
     setBusy(true);
     const now = new Date().toISOString();
     const wallet = wallets.find((w) => w.id === walletId);
+    const txOutletId = resolveCreateOutlet(outlets);
     try {
       if (kind === 'income') {
         const id = newId();
         await repository.put('incomes', {
           id,
           orgId,
-          outletId: null,
+          outletId: txOutletId,
           date,
           category: category as IncomeCategory,
           amount: value,
@@ -88,7 +91,7 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
         await repository.put('expenses', {
           id,
           orgId,
-          outletId: null,
+          outletId: txOutletId,
           date,
           category: category as ExpenseCategory,
           amount: value,

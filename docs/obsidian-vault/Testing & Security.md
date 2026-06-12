@@ -12,7 +12,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
 - **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org.
-- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per 11 Jun 2026 **disinkronkan ke migrasi 0022** + 4 edge function ter-deploy. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
+- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per 12 Jun 2026 **disinkronkan ke migrasi 0028** (Level 2 outlet/RLS lock applied via `db push`) + 4 edge function ter-deploy. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Edge functions ter-deploy di staging**: `create-invoice`, `delete-account`, `fersaku-webhook`, `health` (4 fungsi). Jadi Tier 2 bisa diuji langsung di staging.
@@ -88,6 +88,17 @@ Setelah find-first, keempat temuan diperbaiki + diverifikasi:
 - **F3** — password wajib huruf+angka (min 8), **hanya saat signup** (login akun lama tak terkunci).
 
 **Verifikasi**: `npm run test` 288 hijau · `npm run test:integration` **36/36 hijau** · build + lint bersih.
+
+## Penegakan outlet per-cabang — RLS 0028 (12 Jun 2026)
+
+Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (Expand) → owner assign outlet karyawan via Pengaturan → Tim → jaring pengaman `0027` → RLS lock `0028` (Contract). **Riwayat migrasi staging kini tersinkron penuh** (`supabase migration list` → kolom Local|Remote|Time terisi `0023`–`0028`). Awalnya skema di-apply via SQL Editor (riwayat tak tercatat); lalu di-rapikan via `supabase db push` — semua migrasi idempotent (NOTICE "already exists, skipping" pada objek yang sudah ada), jadi re-apply aman tanpa hapus data. (Catatan: RLS lock sempat bernomor `0027` saat apply manual pertama, lalu di-rename ke `0028` agar urut dengan jaring pengaman `0027_heal_unassigned_outlets`; isi SQL tak berubah.)
+
+- **Test baru**: [tier3-outlet.integration.test.ts](tests/integration/tier3-outlet.integration.test.ts) (6 test) — membuktikan penegakan **server-side** (bukan filter klien): karyawan yang ditugaskan ke Outlet 1 BISA baca/tulis data Outlet 1 + data bersama (`outlet_id null`), tetapi **TIDAK** bisa baca Outlet 2 maupun INSERT service ber-stempel Outlet 2 (ditolak `with check`); manager (owner) lihat **semua** cabang (Model A). Self-contained: bikin org + 2 outlet + karyawan, lalu teardown.
+- **Helper**: `createUser`/`signIn` di [helpers.ts](tests/integration/helpers.ts) di-export agar reusable lintas file test.
+- **Hasil**: `npm run test:integration` **42/42 hijau** (36 lama + 6 Tier 3) — tidak ada regresi, tidak ada lockout, penguncian cabang terbukti bekerja. Unit `npm run test` 300 hijau, lint bersih.
+
+> [!NOTE]
+> Model A: admin = manager (`is_org_manager`), menembus semua cabang. Penugasan outlet hanya berlaku untuk peran `karyawan`. UI menampilkan badge "Semua cabang" untuk owner/admin + ringkasan cabang per karyawan di daftar Tim.
 
 ## Status
 

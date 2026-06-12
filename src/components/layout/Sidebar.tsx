@@ -38,6 +38,7 @@ export function Sidebar({
   const authSignOut = useAuthStore((s) => s.signOut);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const setActiveOutlet = useSessionStore((s) => s.setActiveOutlet);
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   const { data: outlets } = useCollection('outlets');
   const t = useT();
   const language = useSettingsStore((s) => s.language);
@@ -190,7 +191,11 @@ export function Sidebar({
           </div>
           {outlets.length > 0 && (
             <BranchSelector
-              outlets={outlets}
+              outlets={
+                allowedOutletIds.length > 0
+                  ? outlets.filter((o) => allowedOutletIds.includes(o.id))
+                  : outlets
+              }
               activeOutletId={activeOutletId}
               onSelect={setActiveOutlet}
             />

@@ -7,7 +7,8 @@ import { findByPhone } from '@/lib/business/customers';
 import { logActivity } from '@/lib/activity';
 import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
-import { useSessionStore } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useCollection } from '@/hooks/useCollection';
 import type { Service, Customer, Employee } from '@/data/types';
 import styles from './ServiceModal.module.css';
 
@@ -32,6 +33,7 @@ export function ServiceModal({
 }: ServiceModalProps) {
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
+  const { data: outlets } = useCollection('outlets');
   const categories = getCategories();
   const complaintTemplates = getComplaintTemplates();
   const accessoryTemplates = getAccessoryTemplates();
@@ -144,7 +146,7 @@ export function ServiceModal({
         const record: Service = {
           id: newId(),
           orgId,
-          outletId: null,
+          outletId: resolveCreateOutlet(outlets),
           serviceNo,
           customerId: customer.id,
           customerName: customerName.trim(),
