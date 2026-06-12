@@ -229,4 +229,58 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     expect(Number(svcRow!.down_payment)).toBe(0);
     expect((svcRow!.spareparts as { deducted: boolean }[])[0].deducted).toBe(false);
   });
+
+  it('karyawan BISA record_down_payment: income DP + kredit wallet + akumulasi DP', async () => {
+    const no = `SVC-DP-${Date.now().toString(36)}`;
+    const { data: svc } = await ctx.admin
+      .from('services')
+      .insert({ org_id: ctx.orgId, service_no: no, device: 'iPad', status: 'diagnosa', outlet_id: ctx.outlet1, final_cost: 0, down_payment: 0 })
+      .select('id')
+      .single();
+    const { data: wBefore } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletB).single();
+
+    const { error } = await ctx.karyawan.client.rpc('record_down_payment', {
+      p_org_id: ctx.orgId,
+      p_service_id: svc!.id,
+      p_wallet_id: ctx.walletB,
+      p_amount: 100000,
+      p_outlet_id: ctx.outlet1,
+    });
+    expect(error).toBeNull();
+
+    // Income 'DP servis <no>' tercatat, ter-tag outlet & service.
+    const { data: dpIncomes } = await ctx.admin
+      .from('incomes')
+      .select('amount, description')
+      .eq('service_id', svc!.id)
+      .eq('description', `DP servis ${no}`);
+    expect((dpIncomes ?? []).length).toBe(1);
+    expect(Number(dpIncomes![0].amount)).toBe(100000);
+
+    // Wallet bertambah 100k (delta — tak bergantung urutan test).
+    const { data: wAfter } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletB).single();
+    expect(Number(wAfter!.balance) - Number(wBefore!.balance)).toBe(100000);
+
+    // down_payment service terakumulasi.
+    const { data: svcRow } = await ctx.admin.from('services').select('down_payment').eq('id', svc!.id).single();
+    expect(Number(svcRow!.down_payment)).toBe(100000);
+  });
+
+  it('karyawan TIDAK bisa record_down_payment untuk outlet di luar penugasan', async () => {
+    const no = `SVC-DPDENY-${Date.now().toString(36)}`;
+    const { data: svc } = await ctx.admin
+      .from('services')
+      .insert({ org_id: ctx.orgId, service_no: no, device: 'Hp', status: 'diagnosa', outlet_id: ctx.outlet2, final_cost: 0, down_payment: 0 })
+      .select('id')
+      .single();
+
+    const { error } = await ctx.karyawan.client.rpc('record_down_payment', {
+      p_org_id: ctx.orgId,
+      p_service_id: svc!.id,
+      p_wallet_id: ctx.walletA,
+      p_amount: 50000,
+      p_outlet_id: ctx.outlet2,
+    });
+    expect(error).not.toBeNull(); // ditolak: outlet bukan penugasannya
+  });
 });

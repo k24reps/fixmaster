@@ -264,6 +264,32 @@ export async function cancelService(args: {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Cloud down-payment via the `record_down_payment` RPC (atomic): inserts the DP
+ * income ('DP servis <no>'), credits the wallet, and accumulates the service's
+ * down_payment — server-side so a staff member can take a DP without
+ * manager-only wallet/income writes (RLS 0010/0028). `outletId` tags the income
+ * to the service's branch.
+ */
+export async function recordDownPayment(args: {
+  orgId: string;
+  serviceId: string;
+  walletId: string;
+  amount: number;
+  outletId: string | null;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('record_down_payment', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_wallet_id: args.walletId,
+    p_amount: args.amount,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ============================================================
 // Team management (Fase 1A). Invitations use the "pending-invite +
 // claim" model: a manager creates a pending_invites row; the invitee

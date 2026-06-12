@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
-import { settleService, cancelService, isSupabaseConfigured } from '@/data/supabase-client';
+import { settleService, cancelService, recordDownPayment, isSupabaseConfigured } from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr } from '@/lib/time';
 import { newId } from '@/lib/id';
@@ -314,28 +314,41 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     setBusy(true);
     const now = new Date().toISOString();
     try {
+      // DP is a billing write (income + wallet). Cloud uses the atomic
+      // record_down_payment RPC (member-allowed) since direct wallet/income
+      // writes are manager-only under RLS 0028; local mirrors it directly.
       const incomeId = newId();
-      await repository.put('incomes', {
-        id: incomeId,
-        orgId: service.orgId,
-        outletId: service.outletId,
-        date: localDateStr(),
-        category: 'Servis',
-        amount,
-        walletId: dpWalletId,
-        description: dpIncomeDescription(service.serviceNo),
-        serviceId: service.id,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      });
-      const wallet = wallets.find((w) => w.id === dpWalletId);
-      if (wallet) await repository.put('wallets', applyBalance(wallet, amount));
-      await repository.put('services', {
-        ...service,
-        downPayment: service.downPayment + amount,
-        updatedAt: now,
-      });
+      if (isSupabaseConfigured) {
+        await recordDownPayment({
+          orgId: service.orgId,
+          serviceId: service.id,
+          walletId: dpWalletId,
+          amount,
+          outletId: service.outletId,
+        });
+      } else {
+        await repository.put('incomes', {
+          id: incomeId,
+          orgId: service.orgId,
+          outletId: service.outletId,
+          date: localDateStr(),
+          category: 'Servis',
+          amount,
+          walletId: dpWalletId,
+          description: dpIncomeDescription(service.serviceNo),
+          serviceId: service.id,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        const wallet = wallets.find((w) => w.id === dpWalletId);
+        if (wallet) await repository.put('wallets', applyBalance(wallet, amount));
+        await repository.put('services', {
+          ...service,
+          downPayment: service.downPayment + amount,
+          updatedAt: now,
+        });
+      }
       setLastExpenseWallet(dpWalletId);
       logActivity({
         action: 'income.create',
