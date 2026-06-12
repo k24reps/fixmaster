@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, Input, Button, Badge, EmptyState, Icon, Modal } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
-import { voidSale, isSupabaseConfigured } from '@/data/supabase-client';
+import { voidSale, processSale, isSupabaseConfigured } from '@/data/supabase-client';
 import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
@@ -19,7 +19,7 @@ import {
   type DiscountType,
 } from '@/lib/business/pos';
 import { toast } from '@/stores/toast';
-import { useSessionStore } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import type { InventoryItem, Sale, PaymentAllocation } from '@/data/types';
 import styles from './PosPage.module.css';
 
@@ -27,6 +27,7 @@ export function PosPage() {
   const { data: inventory } = useCollection('inventory');
   const { data: wallets } = useCollection('wallets');
   const { data: sales } = useCollection('sales');
+  const { data: outlets } = useCollection('outlets');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const isMgr = me ? isManager(me.role) : false;
@@ -173,85 +174,113 @@ export function PosPage() {
       toast.error('Total pembayaran harus sama dengan total transaksi');
       return;
     }
+    // OQ-C: a user who can reach multiple outlets must pick a specific branch
+    // first, so the sale is tagged to the right outlet (not guessed).
+    if (mustPickOutlet(outlets.length)) {
+      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum transaksi');
+      return;
+    }
+    const txOutletId = resolveCreateOutlet(outlets);
     setBusy(true);
     const now = new Date().toISOString();
     try {
-      // Re-validate stock against latest inventory (multi-device safety).
-      const fresh = await repository.list('inventory');
-      for (const c of cart) {
-        const item = fresh.find((i) => i.id === c.itemId);
-        if (!item || item.stock < c.qty) {
-          toast.error(`Stok "${c.name}" berubah, periksa ulang`);
-          setBusy(false);
-          return;
-        }
-      }
-
       const saleNo = nextDocNumber('INV', sales.map((s) => s.saleNo));
-      const sale: Sale = {
-        id: newId(),
-        orgId,
-        outletId: null,
-        saleNo,
-        date: localDateStr(),
-        lines: toSaleLines(cart),
-        subtotal,
-        discount: discountValue,
-        discountType,
-        total,
-        payments,
-        cashierId: me?.id ?? '',
-        cashierName: me?.name ?? '',
-        voided: false,
-        voidedReason: '',
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      };
-      await repository.put('sales', sale);
+      let saleId: string;
 
-      // Deduct stock.
-      const updatedInv = fresh
-        .filter((i) => cart.some((c) => c.itemId === i.id))
-        .map((i) => {
-          const c = cart.find((x) => x.itemId === i.id)!;
-          return { ...i, stock: i.stock - c.qty };
-        });
-      await repository.putMany('inventory', updatedInv);
-
-      // Record income + credit wallets per allocation.
-      for (const p of payments) {
-        const wallet = wallets.find((w) => w.id === p.walletId);
-        if (!wallet) continue;
-        await repository.put('incomes', {
-          id: newId(),
+      if (isSupabaseConfigured) {
+        // Cloud: atomic, server-side RPC. This is the ONLY path that lets a
+        // staff cashier complete a sale, since wallet/inventory writes are
+        // manager-only under RLS. Stock re-validation + deduction, wallet
+        // credit, and income insert all happen in one transaction.
+        saleId = await processSale({
           orgId,
-          outletId: null,
+          saleNo,
+          lines: toSaleLines(cart),
+          payments,
+          subtotal,
+          discount: discountValue,
+          discountType,
+          total,
+          outletId: txOutletId,
+        });
+      } else {
+        // Local: re-validate stock against latest inventory (multi-device safety).
+        const fresh = await repository.list('inventory');
+        for (const c of cart) {
+          const item = fresh.find((i) => i.id === c.itemId);
+          if (!item || item.stock < c.qty) {
+            toast.error(`Stok "${c.name}" berubah, periksa ulang`);
+            setBusy(false);
+            return;
+          }
+        }
+        saleId = newId();
+        const sale: Sale = {
+          id: saleId,
+          orgId,
+          outletId: txOutletId,
+          saleNo,
           date: localDateStr(),
-          category: 'Penjualan',
-          amount: p.amount,
-          walletId: p.walletId,
-          description: `Penjualan ${saleNo}`,
-          serviceId: null,
-          saleId: sale.id,
+          lines: toSaleLines(cart),
+          subtotal,
+          discount: discountValue,
+          discountType,
+          total,
+          payments,
+          cashierId: me?.id ?? '',
+          cashierName: me?.name ?? '',
+          voided: false,
+          voidedReason: '',
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
-        });
-        await repository.put('wallets', { ...wallet, balance: wallet.balance + p.amount });
+        };
+        await repository.put('sales', sale);
+
+        // Deduct stock.
+        const updatedInv = fresh
+          .filter((i) => cart.some((c) => c.itemId === i.id))
+          .map((i) => {
+            const c = cart.find((x) => x.itemId === i.id)!;
+            return { ...i, stock: i.stock - c.qty };
+          });
+        await repository.putMany('inventory', updatedInv);
+
+        // Record income + credit wallets per allocation. Description must stay
+        // 'Penjualan <no>' so void_sale's fallback match still works.
+        for (const p of payments) {
+          const wallet = wallets.find((w) => w.id === p.walletId);
+          if (!wallet) continue;
+          await repository.put('incomes', {
+            id: newId(),
+            orgId,
+            outletId: txOutletId,
+            date: localDateStr(),
+            category: 'Penjualan',
+            amount: p.amount,
+            walletId: p.walletId,
+            description: `Penjualan ${saleNo}`,
+            serviceId: null,
+            saleId,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          });
+          await repository.put('wallets', { ...wallet, balance: wallet.balance + p.amount });
+        }
       }
 
       toast.success(`Transaksi ${saleNo} berhasil`);
       logActivity({
         action: 'sale.create',
         entityType: 'sale',
-        entityId: sale.id,
+        entityId: saleId,
         entityLabel: saleNo,
         meta: { total, items: cart.length },
       });
       reset();
-    } catch {
-      toast.error('Gagal memproses transaksi');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memproses transaksi');
     } finally {
       setBusy(false);
     }

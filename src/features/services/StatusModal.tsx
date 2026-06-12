@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
+import { settleService, cancelService, isSupabaseConfigured } from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr } from '@/lib/time';
 import { newId } from '@/lib/id';
@@ -199,70 +200,92 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       };
       await repository.put('services', updatedService);
 
-      // Settle: record income for the amount still owed after DP, split across
-      // one or more wallets ("split payment"). One Income row per leg, each
-      // crediting its wallet. DP-covered (settle 0) → nothing booked.
+      // Settle ("lunas"): book income for the bill still owed after DP, split
+      // across one or more wallets. Cloud uses the atomic settle_service RPC
+      // (member-allowed; direct wallet/income writes are manager-only under RLS
+      // 0028) with ALL legs; local mirrors it per-leg directly. DP-covered
+      // (settle 0) → nothing booked. Income tagged to the service's outlet.
       if (target === 'lunas' && settle > 0) {
         const legs = normalizeSplits(splitsAsNumbers());
-        for (const leg of legs) {
-          const wallet = wallets.find((w) => w.id === leg.walletId);
-          if (!wallet) continue;
-          await repository.put('incomes', {
-            id: newId(),
+        if (isSupabaseConfigured) {
+          await settleService({
             orgId: service.orgId,
-            outletId: service.outletId,
-            date: now.slice(0, 10),
-            category: 'Servis',
-            amount: leg.amount,
-            walletId: wallet.id,
-            description: settlementIncomeDescription(service.serviceNo),
             serviceId: service.id,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
+            payments: legs,
+            history: updatedService.history,
+            outletId: service.outletId,
           });
-          await repository.put('wallets', applyBalance(wallet, leg.amount));
+        } else {
+          for (const leg of legs) {
+            const wallet = wallets.find((w) => w.id === leg.walletId);
+            if (!wallet) continue;
+            await repository.put('incomes', {
+              id: newId(),
+              orgId: service.orgId,
+              outletId: service.outletId,
+              date: now.slice(0, 10),
+              category: 'Servis',
+              amount: leg.amount,
+              walletId: wallet.id,
+              description: settlementIncomeDescription(service.serviceNo),
+              serviceId: service.id,
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+            });
+            await repository.put('wallets', applyBalance(wallet, leg.amount));
+          }
         }
         if (legs[0]) setLastExpenseWallet(legs[0].walletId);
       }
 
-      // Cancel: give back any deducted inventory stock AND refund any DP, then
-      // write the service ONCE so the two reversals don't clobber each other's
-      // fields (restored spareparts + zeroed downPayment).
+      // Cancel ("batal"): give back deducted stock AND refund any DP. Cloud uses
+      // the atomic cancel_service RPC (member-allowed); local mirrors it: restore
+      // stock + refund DP, then write the service ONCE so the two reversals don't
+      // clobber each other's fields (restored spareparts + zeroed downPayment).
       if (target === 'batal') {
-        const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts);
-        if (restorations.length) {
-          const inventory = await repository.list('inventory');
-          const toRestore = inventory
-            .filter((item) => restorations.some((r) => r.itemId === item.id))
-            .map((item) => {
-              const r = restorations.find((x) => x.itemId === item.id)!;
-              return { ...item, stock: item.stock + r.qty };
-            });
-          if (toRestore.length) await repository.putMany('inventory', toRestore);
-        }
-
-        let refundedDp = false;
-        if (service.downPayment > 0) {
-          const incomes = await repository.list('incomes');
-          const dpIncomes = incomes.filter(
-            (i) => i.serviceId === service.id && !i.deletedAt && i.description === dpIncomeDescription(service.serviceNo),
-          );
-          for (const dpIncome of dpIncomes) {
-            const wallet = wallets.find((w) => w.id === dpIncome.walletId);
-            if (wallet) await repository.put('wallets', applyBalance(wallet, -dpIncome.amount));
-            await repository.remove('incomes', dpIncome.id);
-          }
-          refundedDp = dpIncomes.length > 0;
-        }
-
-        if (restorations.length || refundedDp) {
-          await repository.put('services', {
-            ...updatedService,
-            spareparts: restoredParts,
-            downPayment: refundedDp ? 0 : service.downPayment,
-            updatedAt: now,
+        if (isSupabaseConfigured) {
+          await cancelService({
+            orgId: service.orgId,
+            serviceId: service.id,
+            history: updatedService.history,
+            outletId: service.outletId,
           });
+        } else {
+          const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts);
+          if (restorations.length) {
+            const inventory = await repository.list('inventory');
+            const toRestore = inventory
+              .filter((item) => restorations.some((r) => r.itemId === item.id))
+              .map((item) => {
+                const r = restorations.find((x) => x.itemId === item.id)!;
+                return { ...item, stock: item.stock + r.qty };
+              });
+            if (toRestore.length) await repository.putMany('inventory', toRestore);
+          }
+
+          let refundedDp = false;
+          if (service.downPayment > 0) {
+            const incomes = await repository.list('incomes');
+            const dpIncomes = incomes.filter(
+              (i) => i.serviceId === service.id && !i.deletedAt && i.description === dpIncomeDescription(service.serviceNo),
+            );
+            for (const dpIncome of dpIncomes) {
+              const wallet = wallets.find((w) => w.id === dpIncome.walletId);
+              if (wallet) await repository.put('wallets', applyBalance(wallet, -dpIncome.amount));
+              await repository.remove('incomes', dpIncome.id);
+            }
+            refundedDp = dpIncomes.length > 0;
+          }
+
+          if (restorations.length || refundedDp) {
+            await repository.put('services', {
+              ...updatedService,
+              spareparts: restoredParts,
+              downPayment: refundedDp ? 0 : service.downPayment,
+              updatedAt: now,
+            });
+          }
         }
       }
 

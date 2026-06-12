@@ -54,6 +54,15 @@ Pemilihan cabang dipegang `session store` (`activeOutletId`, persist di localSto
 > [!tip] Kenapa aturan "null = tampil di semua scope" penting
 > Itu membuat perubahan **backward-compatible**: data lama tanpa cabang tetap muncul, dan 164 test tidak berubah. Record bersama (wallet, karyawan) sengaja `outletId null` agar selalu tampil di cabang manapun.
 
+### Tim per-outlet & wallet Hybrid (Level 2 — migrasi `0023`–`0026`)
+
+Memperluas scoping menjadi **penguncian per-karyawan** + laporan per-cabang akurat. Detail migrasi di bawah; ringkas kontraknya:
+
+- **`allowedOutletIds`** (session store) — daftar outlet yang boleh diakses user. Diisi dari `membership_outlets` saat `getMyMembership()`. **Kosong = tanpa batasan** (manager, mode lokal, atau pra-penugasan).
+- **`resolveCreateOutlet(outlets)`** & **`mustPickOutlet(count)`** (`session.ts`, teruji 12 test) — menentukan outlet yang distempel pada transaksi baru (aktif → satu-satunya yang diizinkan → primary/pertama) dan apakah user multi-cabang **wajib memilih** cabang dulu (OQ-C).
+- **Wallet Hybrid**: `wallets.outlet_id` nullable. `null` = kas **Bersama** (semua cabang), berisi ID = kas **khusus cabang**. Saat scope cabang aktif, `list('wallets')` menampilkan kas bersama + kas cabang itu (aturan `or(outlet_id.eq,outlet_id.is.null)`).
+- **RPC sadar-outlet**: `process_sale` & `settle_service` kini menstempel `outlet_id` + memvalidasi lewat `can_use_outlet()`. Ini juga **memperbaiki bug laten**: tulis wallet/inventory dari klien = manager-only (RLS `0010`/`0017`), jadi kasir-karyawan sebelumnya **tak bisa** menuntaskan transaksi di cloud. POS/StatusModal kini memakai RPC (cloud) vs tulis langsung (lokal).
+
 ## Logika bisnis murni
 
 Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/repository, jadi 100% unit-testable. Contoh: `isActive()` (servis), `isOverdue()` (tugas), `computeKpis()` (dashboard). Hook UI memanggilnya lalu mem-persist hasil.
@@ -167,6 +176,33 @@ Memperluas `0012` (yang hanya realtime untuk billing). Tujuan: aksi satu kasir l
 
 > [!NOTE]
 > Realtime di FixMaster kini dua lapis: **billing** (`0012`, `subscribeOrgBilling`) + **data domain** (`0021`, `subscribeOrgTables`). Keduanya per-org & terkurung RLS.
+
+### Tim per-outlet, wallet Hybrid, laporan per-cabang (migrasi `0023`–`0028`)
+
+Rilis bertahap **Expand → Contract** agar aman di produksi (tak ada *lockout* data). `0023`–`0026` = Rilis 1 (Expand); `0027` = jaring pengaman anti-lockout; `0028` = Rilis 2 (Contract / RLS lock, **applied di staging** 12 Jun 2026, **belum di produksi**). **Nomor file = urutan eksekusi.**
+
+- **`0023_backfill_outlet_id.sql`** — menstempel record transaksi lama (`outlet_id null`) ke **outlet utama** org (is_primary → terlama). Hanya tabel transaksi (`services, sales, incomes, expenses, attendance, purchase_orders, task_instances`); data bersama (wallet/pelanggan/inventori) dibiarkan `null`. Idempotent, forward-only. **Kenapa**: tanpa ini, record null muncul di SETIAP cabang dan menggelembungkan total per-cabang.
+- **`0024_membership_outlets.sql`** — junction **`membership_outlets`** (karyawan↔outlet, RLS: member baca, manager kelola) + helper **`auth_outlet_ids()`** (security definer stable, pola `auth_org_ids`) + RPC **`set_member_outlets(member, outlet[])`** (replace, manager-only) + **backfill semua anggota→semua outlet** (cegah lockout saat `0028`) + **`pending_invites.outlet_ids`** dengan `claim_invite()` mengisi junction (fallback: semua outlet bila invite tak menyebut).
+- **`0025_outlet_aware_rpc.sql`** — `process_sale` & `settle_service` di-recreate: tambah `p_outlet_id` (default null → tanda tangan lama tetap jalan), validasi **`can_use_outlet(org, outlet)`** (null/manager/∈ auth_outlet_ids), dan `incomes.sale_id` diisi (void deterministik). Deskripsi income tetap `'Penjualan <no>'` agar fallback `void_sale` (`0018`) tetap cocok.
+- **`0026_ensure_primary_outlet.sql`** (Rilis 1, siap apply) — **menjamin invarian "tiap org punya 1 outlet utama"**: (A) org lama tanpa outlet → buat 1 outlet utama (nama = nama org); (B) org punya outlet tapi tak ada `is_primary` → tandai yang terlama; (C) **re-jalankan backfill** transaksi (identik `0023`) agar baris `null` kini menempel ke outlet utama. **Kenapa perlu**: org dibuat sebelum wizard punya langkah Outlet bisa nol outlet, membuat `0023` jadi no-op (transaksi lama tak masuk cabang manapun). Org baru via wizard sudah otomatis primary (`buildOutlets: isPrimary = i===0`), jadi A/B hanya menyentuh org lama. Menggantikan kebutuhan re-run `0023` manual.
+- **`0027_heal_unassigned_outlets.sql`** (jaring pengaman, siap apply) — untuk tiap **karyawan aktif dengan NOL penugasan**, tugaskan ke SEMUA outlet org-nya (filosofi sama backfill `0024`). **Kenapa perlu**: org nol-outlet membuat backfill `0024` jadi no-op → karyawannya 0 penugasan → terkunci dari transaksi lama (yang sudah di-stempel outlet utama oleh `0026`) setelah `0028`. **Presisi**: HANYA menyentuh yang 0 penugasan (pembatasan owner yang sudah ada dihormati), hanya peran `karyawan`. Idempotent, hanya MEMBERI akses (tak pernah mencabut) → aman sebelum/sesudah `0028`.
+- **`0028_rls_outlet_scope.sql`** (Rilis 2, **applied di staging + PRODUKSI** 12 Jun 2026) — mengetatkan RLS select/insert/update transaksi + select wallet ke `is_org_manager OR outlet_id IS NULL OR outlet_id IN (auth_outlet_ids)`. Tetap pertahankan gerbang `is_org_active` (`0010`), delete manager-only (`0017`), keuangan baca manager-only (`0016`, sengaja tak dilonggarkan). Header memuat prasyarat apply. Diverifikasi [[Testing & Security]] (Tier 3, 6 test).
+
+> [!WARNING]
+> `0028` mengubah batas keamanan. Urutan aman ke produksi: apply `0023`–`0026` → cek karyawan tanpa penugasan (query di bawah) → owner assign outlet di **Pengaturan → Tim** dan/atau jalankan jaring pengaman `0027` → uji staging (`npm run test:integration`) → baru apply `0028`. Karyawan tanpa penugasan akan kehilangan akses data transaksi setelah `0028`.
+>
+> Migrasi global (sekali jalan, semua tenant); penugasan outlet **per-org** & opt-in (toko 1-outlet tak perlu apa-apa). Cek karyawan berisiko:
+> ```sql
+> select m.org_id, m.name from memberships m
+> where m.active = true and m.role = 'karyawan'
+>   and not exists (select 1 from membership_outlets mo where mo.membership_id = m.id);
+> ```
+
+### Klien sadar-outlet (data layer + UI)
+
+- **`supabase-adapter.ts`**: set `OUTLET_SCOPED` (services, sales, incomes, expenses, attendance, purchaseOrders, taskInstances, wallets) — hanya tabel ini difilter di `list()` (tabel tanpa kolom outlet_id akan error bila difilter). `setScope` menyimpan `outletId` **sebelum** early-return realtime.
+- **`supabase-client.ts`**: `getMyMembership()` kini mengembalikan `outletIds`; `inviteMember({outletIds})`; baru: `setMemberOutlets`, `getMemberOutlets`, `processSale`, `settleService`.
+- **UI**: Sidebar BranchSelector difilter ke `allowedOutletIds`; SettingsPage **TeamTab** (chip multi-select cabang saat undang + editor per-anggota `MemberOutletsEditor`, **hanya peran `karyawan`**; owner/admin diberi badge **"Semua cabang"** karena Model A = manager menembus semua scope; tiap baris karyawan menampilkan **ringkasan cabang** via `getOrgMemberOutlets` (1 query/org, di-refresh setelah simpan) agar penugasan terlihat sekilas) & **WalletTab** (pilih Bersama/cabang); PosPage (RPC `process_sale` + guard `mustPickOutlet` + stempel outlet); StatusModal (RPC `settle_service`); ServiceModal/EntryModal (stempel `resolveCreateOutlet`); ReportsPage (badge scope cabang).
 
 ## Servis: pengambilan barang & garansi
 

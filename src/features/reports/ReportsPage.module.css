@@ -53,6 +53,21 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
 }
+/* Branch scope badge — which outlet the figures cover. */
+.scopeTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-brand);
+  background: var(--brand-soft);
+  color: var(--brand-hover);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
 /* ---------- Metric tiles ---------- */
 .metrics {

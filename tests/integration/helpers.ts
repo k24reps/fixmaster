@@ -83,7 +83,7 @@ export interface TenantCtx {
   serviceANo: string;
 }
 
-async function createUser(admin: SupabaseClient, email: string, password: string): Promise<string> {
+export async function createUser(admin: SupabaseClient, email: string, password: string): Promise<string> {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
@@ -93,7 +93,7 @@ async function createUser(admin: SupabaseClient, email: string, password: string
   return data.user.id;
 }
 
-async function signIn(email: string, password: string): Promise<SupabaseClient> {
+export async function signIn(email: string, password: string): Promise<SupabaseClient> {
   const c = makeAnon();
   const { error } = await c.auth.signInWithPassword({ email, password });
   if (error) throw new Error(`signIn ${email}: ${error.message}`);

@@ -38,6 +38,9 @@ import {
   listPendingInvites,
   revokeInvite,
   setMemberRole,
+  setMemberOutlets,
+  getMemberOutlets,
+  getOrgMemberOutlets,
   deactivateMember,
   startSubscription,
   applyPayment,
@@ -137,8 +140,8 @@ export function SettingsPage() {
           <WhatsAppTemplatesCard />
         </>
       )}
-      {tab === 'tim' && isOwner && <TeamTab employees={employees} />}
-      {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} />}
+      {tab === 'tim' && isOwner && <TeamTab employees={employees} outlets={outlets} />}
+      {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} outlets={outlets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
       {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
       {tab === 'sistem' && (
@@ -537,7 +540,102 @@ function WhatsAppTemplatesCard() {
 
 const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
 
-function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'employees'>>['data'] }) {
+/**
+ * Inline editor to assign a staff member to one or more branches (outlets).
+ * Loads the current assignment on open, toggles chips, and replaces the set
+ * via the set_member_outlets RPC. Empty selection = access to no specific
+ * branch (only org-wide rows) once RLS is tightened — so we warn on empty.
+ */
+function MemberOutletsEditor({
+  memberId,
+  outlets,
+  onClose,
+}: {
+  memberId: string;
+  outlets: Outlet[];
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMemberOutlets(memberId)
+      .then((ids) => {
+        if (!cancelled) setSelected(ids);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Gagal memuat cabang'))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberId]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await setMemberOutlets(memberId, selected);
+      toast.success('Penugasan cabang disimpan');
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan cabang');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.outletEditor}>
+      <div className={styles.outletEditorHead}>
+        <strong>Cabang yang dapat diakses</strong>
+        <small className={styles.hint}>Karyawan hanya melihat &amp; mengelola data cabang terpilih.</small>
+      </div>
+      {loading ? (
+        <small className={styles.hint}>Memuat…</small>
+      ) : (
+        <div className={styles.tplChips}>
+          {outlets.map((o) => {
+            const on = selected.includes(o.id);
+            return (
+              <button
+                type="button"
+                key={o.id}
+                className={[styles.tplChip, on ? styles.tplChipOn : ''].join(' ')}
+                aria-pressed={on}
+                onClick={() => toggle(o.id)}
+              >
+                <Icon name={on ? 'check' : 'shop'} aria-hidden /> {o.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!loading && selected.length === 0 && (
+        <small className={styles.hint} role="note">
+          Tidak ada cabang terpilih — anggota ini tak akan melihat data transaksi cabang mana pun.
+        </small>
+      )}
+      <div className={styles.addRow}>
+        <Button variant="secondary" size="sm" onClick={onClose}>Tutup</Button>
+        <Button size="sm" onClick={save} loading={busy}>Simpan</Button>
+      </div>
+    </div>
+  );
+}
+
+function TeamTab({
+  employees,
+  outlets,
+}: {
+  employees: ReturnType<typeof useCollection<'employees'>>['data'];
+  outlets: Outlet[];
+}) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
   const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
@@ -547,8 +645,26 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('karyawan');
+  // Outlets to assign on invite (empty = all, decided at claim time).
+  const [inviteOutlets, setInviteOutlets] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmOff, setConfirmOff] = useState<string | null>(null);
+  // Per-member outlet assignment editor (memberId being edited).
+  const [editOutletsFor, setEditOutletsFor] = useState<string | null>(null);
+  // membership_id -> assigned outlet ids, for the at-a-glance summary per row.
+  const [memberOutlets, setMemberOutlets2] = useState<Record<string, string[]>>({});
+
+  const loadMemberOutlets = useCallback(async () => {
+    if (!isSupabaseConfigured || !orgId) return;
+    try {
+      setMemberOutlets2(await getOrgMemberOutlets(orgId));
+    } catch {
+      // Non-fatal: the summary is informational; editor still works.
+    }
+  }, [orgId]);
+
+  const toggleInviteOutlet = (id: string) =>
+    setInviteOutlets((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const loadInvites = useCallback(async () => {
     if (!isSupabaseConfigured || !orgId) return;
@@ -574,6 +690,24 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
     };
   }, [orgId]);
 
+  // Load the per-member outlet assignment summary (for the team list badges).
+  // Inline .then() with a cancelled guard — mirrors the invites effect so the
+  // setState is not flagged as synchronous-in-effect.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !orgId) return;
+    let cancelled = false;
+    getOrgMemberOutlets(orgId)
+      .then((m) => {
+        if (!cancelled) setMemberOutlets2(m);
+      })
+      .catch(() => {
+        // Non-fatal: summary is informational; editor still works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
   // Solo is single-user (the owner). Inviting anyone exceeds the quota and
   // forces an upgrade to Pro. Active members + outstanding invites both count.
   const seatsUsed = employees.length + invites.length;
@@ -586,11 +720,12 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
     if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
     setBusy(true);
     try {
-      await inviteMember({ orgId, email, name, role });
+      await inviteMember({ orgId, email, name, role, outletIds: inviteOutlets });
       toast.success(`Undangan untuk ${email.trim()} dibuat`);
       setName('');
       setEmail('');
       setRole('karyawan');
+      setInviteOutlets([]);
       await loadInvites();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal mengundang');
@@ -666,6 +801,30 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
                 </Button>
               </div>
             )}
+            {canInvite && role === 'karyawan' && outlets.length > 0 && (
+              <div className={styles.outletPick}>
+                <span className={styles.tplLabel}>Tugaskan cabang (opsional)</span>
+                <div className={styles.tplChips}>
+                  {outlets.map((o) => {
+                    const on = inviteOutlets.includes(o.id);
+                    return (
+                      <button
+                        type="button"
+                        key={o.id}
+                        className={[styles.tplChip, on ? styles.tplChipOn : ''].join(' ')}
+                        aria-pressed={on}
+                        onClick={() => toggleInviteOutlet(o.id)}
+                      >
+                        <Icon name={on ? 'check' : 'shop'} aria-hidden /> {o.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <small className={styles.hint}>
+                  Kosongkan untuk akses semua cabang. Bisa diubah nanti per anggota.
+                </small>
+              </div>
+            )}
             {invites.length > 0 && (
               <ul className={styles.list}>
                 {invites.map((inv) => (
@@ -705,6 +864,17 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
                   <div className={styles.itemInfo}>
                     <strong>{e.name}</strong>
                     <small>{ROLE_LABEL[e.role]}</small>
+                    {isSupabaseConfigured && e.role === 'karyawan' && outlets.length > 0 && (
+                      <small className={styles.memberOutlets}>
+                        <Icon name="shop" aria-hidden />{' '}
+                        {(memberOutlets[e.id] ?? []).length === 0
+                          ? 'Belum ada cabang'
+                          : outlets
+                              .filter((o) => (memberOutlets[e.id] ?? []).includes(o.id))
+                              .map((o) => o.name)
+                              .join(', ')}
+                      </small>
+                    )}
                   </div>
                   {isSupabaseConfigured && !isSelf && e.active ? (
                     <>
@@ -718,6 +888,28 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
                         <option value="admin">Admin</option>
                         <option value="karyawan">Karyawan</option>
                       </select>
+                      {e.role === 'karyawan' && outlets.length > 0 ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditOutletsFor(editOutletsFor === e.id ? null : e.id)}
+                          iconLeft={<Icon name="shop" aria-hidden />}
+                        >
+                          Cabang
+                        </Button>
+                      ) : (
+                        outlets.length > 0 && (
+                          // Model A: owner/admin (manager) selalu mencakup semua
+                          // cabang (RLS is_org_manager), jadi penugasan outlet
+                          // tak berlaku. Tampilkan label eksplisit, bukan tombol
+                          // kosong, agar tak terkesan ada opsi yang hilang.
+                          <span title="Owner & admin mencakup semua cabang">
+                            <Badge tone="info">
+                              <Icon name="boxes-stacked" aria-hidden /> Semua cabang
+                            </Badge>
+                          </span>
+                        )
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -736,6 +928,17 @@ function TeamTab({ employees }: { employees: ReturnType<typeof useCollection<'em
               );
             })}
           </ul>
+          {editOutletsFor && (
+            <MemberOutletsEditor
+              key={editOutletsFor}
+              memberId={editOutletsFor}
+              outlets={outlets}
+              onClose={() => {
+                setEditOutletsFor(null);
+                void loadMemberOutlets();
+              }}
+            />
+          )}
         </CardBody>
       </Card>
 
@@ -1101,32 +1304,46 @@ function parseAmount(priceLabel: string): number {
   return digits ? Number(digits) : 0;
 }
 
-function WalletTab({ wallets }: { wallets: Wallet[] }) {
+function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] }) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
+  // Hybrid wallet (OQ Q2): a wallet is either shared org-wide (null) or tied
+  // to a specific branch. '' = Bersama (shared).
+  const [outletId, setOutletId] = useState('');
+
+  const outletName = (id: string | null) =>
+    id ? (outlets.find((o) => o.id === id)?.name ?? 'Cabang') : 'Bersama';
 
   const add = async () => {
     if (!name.trim()) return toast.error('Nama wallet wajib diisi');
     const now = new Date().toISOString();
     await repository.put('wallets', {
-      id: newId(), orgId, outletId: null, name: name.trim(),
+      id: newId(), orgId, outletId: outletId || null, name: name.trim(),
       balance: parseRpInput(balance), sortOrder: wallets.length,
       createdAt: now, updatedAt: now, deletedAt: null,
     });
     toast.success('Wallet ditambahkan');
     setName('');
     setBalance('');
+    setOutletId('');
   };
 
   return (
     <Card glass>
       <CardHeader icon={<Icon name="wallet" aria-hidden />} title="Wallet / Kas" />
       <CardBody>
+        <p className={styles.hint}>
+          Kas bisa <strong>Bersama</strong> (dipakai semua cabang) atau dikhususkan ke satu
+          cabang. Saat transaksi, hanya kas bersama + kas cabang aktif yang tampil.
+        </p>
         <ul className={styles.walletList}>
           {wallets.map((w) => (
             <li key={w.id} className={styles.walletItem}>
-              <span>{w.name}</span>
+              <span>
+                {w.name}
+                <Badge tone={w.outletId ? 'info' : 'neutral'}>{outletName(w.outletId)}</Badge>
+              </span>
               <strong>{fmtRp(w.balance)}</strong>
             </li>
           ))}
@@ -1134,6 +1351,17 @@ function WalletTab({ wallets }: { wallets: Wallet[] }) {
         <div className={styles.addRow}>
           <Input placeholder="Nama wallet" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Saldo awal" value={balance} onChange={(e) => setBalance(fmtRpInput(e.target.value))} />
+          {outlets.length > 0 && (
+            <Select
+              aria-label="Cabang wallet"
+              value={outletId}
+              onChange={(e) => setOutletId(e.target.value)}
+              options={[
+                { value: '', label: 'Bersama (semua cabang)' },
+                ...outlets.map((o) => ({ value: o.id, label: o.name })),
+              ]}
+            />
+          )}
           <Button onClick={add} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
         </div>
       </CardBody>

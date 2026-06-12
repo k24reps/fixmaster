@@ -6,6 +6,7 @@ import { localDateStr, fmtDate, isInRange } from '@/lib/time';
 import { summarize } from '@/lib/business/finance';
 import { technicianLeaderboard } from '@/lib/business/dashboard';
 import { getTarget } from '@/config/orgConfig';
+import { useSessionStore } from '@/stores/session';
 import styles from './ReportsPage.module.css';
 
 function monthRange() {
@@ -21,6 +22,11 @@ export function ReportsPage() {
   const { data: expenses } = useCollection('expenses');
   const { data: services } = useCollection('services');
   const { data: sales } = useCollection('sales');
+  const { data: outlets } = useCollection('outlets');
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  const scopeLabel = activeOutletId
+    ? (outlets.find((o) => o.id === activeOutletId)?.name ?? 'Cabang')
+    : 'Semua Outlet';
 
   const [from, setFrom] = useState(monthRange().from);
   const [to, setTo] = useState(monthRange().to);
@@ -74,6 +80,9 @@ export function ReportsPage() {
               <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={styles.dateInput} />
             </label>
             <span className={styles.range}>{fmtDate(from)} – {fmtDate(to)}</span>
+            <span className={styles.scopeTag} title="Cakupan laporan">
+              <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
+            </span>
           </div>
         </CardBody>
       </Card>

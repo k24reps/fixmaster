@@ -50,6 +50,18 @@ export const REALTIME_TABLES: readonly string[] = [
 ];
 
 /**
+ * Collections whose Postgres table has an `outlet_id` column AND should be
+ * filtered by the active outlet scope. Transactional data + Hybrid wallets.
+ * Shared config (customers, inventory, suppliers, employees, outlets) is
+ * intentionally org-wide (OQ-A), so it is NOT outlet-filtered here. Filtering a
+ * table without the column would raise a Postgres error, so this set is exact.
+ */
+const OUTLET_SCOPED: ReadonlySet<CollectionName> = new Set<CollectionName>([
+  'services', 'sales', 'incomes', 'expenses',
+  'attendance', 'purchaseOrders', 'taskInstances', 'wallets',
+]);
+
+/**
  * Translate a Supabase write error. A row-level-security violation (Postgres
  * 42501) on a write almost always means the org's subscription has lapsed
  * (is_org_active = false, migration 0010) — surface that in plain Indonesian
@@ -92,6 +104,8 @@ function fromRow<T>(row: Record<string, unknown>): T {
  */
 export class SupabaseAdapter implements Repository {
   private orgId: ID = '';
+  /** Active outlet scope. null = "All Outlets" (no outlet filter). */
+  private outletId: ID | null = null;
   private listeners = new Set<ChangeListener>();
   private client: SupabaseClient;
   /** Unsubscribe handle for the active org's realtime channel. */
@@ -105,7 +119,10 @@ export class SupabaseAdapter implements Repository {
     this.client = c;
   }
 
-  setScope(orgId: ID): void {
+  setScope(orgId: ID, outletId: ID | null = null): void {
+    // Store outlet scope first: an outlet-only change (same org) must still
+    // take effect even though the realtime channel below is rebound per-org.
+    this.outletId = outletId;
     if (orgId === this.orgId && this.unsubscribeRealtime) return;
     this.orgId = orgId;
     // (Re)bind the realtime channel to this org so other devices' changes
@@ -149,10 +166,14 @@ export class SupabaseAdapter implements Repository {
   }
 
   async list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]> {
-    const { data, error } = await this.client
-      .from(TABLE[collection])
-      .select('*')
-      .eq('org_id', this.orgId);
+    let query = this.client.from(TABLE[collection]).select('*').eq('org_id', this.orgId);
+    // Outlet scoping (mirrors the local adapter): when a specific outlet is
+    // active, return that outlet's rows PLUS org-wide rows (outlet_id null).
+    // Only applied to tables that actually have an outlet_id column.
+    if (this.outletId && OUTLET_SCOPED.has(collection)) {
+      query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
   }
