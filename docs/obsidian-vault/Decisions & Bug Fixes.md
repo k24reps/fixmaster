@@ -142,6 +142,13 @@ Lapor user: ubah status ke **diagnosa**, lalu update lagi → muncul input DP, d
 - **Fix: RPC `record_down_payment`** (`0030`) — atomik, security-definer; insert income `'DP servis <no>'` (cocok dgn refund `cancel_service`), kredit wallet, akumulasi `down_payment` (dukung cicilan). `applyDp` jadi dual-path (cloud=RPC, lokal=tulis langsung). Kini **SEMUA** jalur billing (POS/lunas/batal/DP) lewat RPC.
 - **Verifikasi**: build ✓ + **321 unit** ✓ + **47 integration** ✓ (+2 Tier 3B: DP sukses utk outlet sendiri, ditolak utk outlet lain) + lint ✓. `0030` **applied staging + PRODUKSI** (12 Jun 2026); frontend ter-deploy ke produksi via Vercel (`staging`→`main`). Kini SEMUA jalur billing (POS/lunas/batal/DP) lewat RPC di produksi.
 
+### Karyawan mentok di `diagnosa` & dipaksa DP — matriks peran kontradiktif (12 Jun 2026)
+Lapor user: karyawan hanya bisa sampai status **diagnosa**, lalu modal **memaksa input DP** (tak bisa lanjut tanpa DP). Akar masalah & fix:
+- **Kontradiksi gating peran.** `RESTRICTED_FOR_STAFF` memblokir `['konfirmasi','lunas','batal']`. Tapi dari `diagnosa`, satu-satunya transisi maju (state machine) = `konfirmasi`/`batal` — **dua-duanya terblokir** untuk karyawan. Maka `allowed=[]` di [StatusModal](src/features/services/StatusModal.tsx) → tab **"Ubah Status" hilang** → satu-satunya mode tersisa `canDp` → modal jatuh ke **layar DP saja**. Karyawan tak pernah bisa memajukan tiket, padahal matriks **mengizinkan** `pengerjaan`/`selesai` (gerbang menuju ke sana justru diblok — mustahil sesuai workflow).
+- **Fix**: keluarkan `konfirmasi` dari daftar terlarang → `RESTRICTED_FOR_STAFF = ['lunas','batal']`. Karyawan kini menguasai **pipeline kerja penuh** (`diagnosa→konfirmasi→pengerjaan→selesai`); hanya aksi **uang** (`lunas`) & **destruktif** (`batal`) yang owner/admin-only. DP tetap opsional (sub-aksi terpisah, bukan paksaan).
+- **Pelajaran**: gating peran harus konsisten dengan state machine — memblokir status antara yang merupakan **satu-satunya gerbang** ke status yang diizinkan = dead-end senyap. Murni client-side (tak ada migrasi).
+- **Verifikasi**: build ✓ + **321 unit** ✓ (test `role gates` disesuaikan: staff boleh `konfirmasi`) + lint ✓.
+
 ### Restore cloud: RPC server transaksional, untuk semua owner (`0020`)
 Restore cloud dibuka kembali agar **setiap owner** bisa memulihkan data org-nya sendiri (pelanggan: pemulihan saat kendala; akun demo: refresh isi). Keputusan kunci & alasannya:
 - **RPC `security definer` satu transaksi**, bukan `clearAll + putMany` dari browser. Loop klien tidak atomik → kalau putus di tengah, data separuh terhapus. Fungsi Postgres = rollback penuh saat gagal.
