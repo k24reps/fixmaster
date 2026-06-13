@@ -34,7 +34,7 @@ Empat fitur dari umpan balik pilot, satu batch (migrasi `0031`). Keputusan kunci
 - **Transfer wallet TIDAK membuat income/expense.** Transfer antar kas bukan untung/rugi → kalau dicatat sebagai income+expense akan menggelembungkan kedua sisi laporan. RPC `transfer_wallet` hanya menggeser saldo (manager-only, atomik, `for update`), dicatat di Activity Log (`wallet.transfer`). Fungsi murni `transfer()` di `finance.ts` sudah ada + bertest → dipakai ulang untuk path lokal.
 - **Kategori perangkat tetap localStorage (bukan cloud).** Konsisten pola `getCategories`/`setCategories` di `orgConfig` (sama dengan Template Servis & Garansi). Caveat per-perangkat diterima: kategori jarang berubah & diatur sekali di awal. Migrasi cloud bisa menyusul bila perlu sinkron lintas perangkat.
 - **Warna nama pelanggan via token.** `var(--brand)` + semibold di tabel & kartu mobile, beda jelas dari nama teknisi (redup + ikon obeng). Tanpa hardcode hex → otomatis benar dark/light.
-- Verifikasi: build + lint + **321 unit** hijau, `0031` applied staging, **52 integration** hijau.
+- Verifikasi: build + lint + **321 unit** hijau, **52 integration** hijau. `0031` **applied staging + PRODUKSI** (13 Jun 2026); frontend gabungan (0031 + ketahanan realtime) ter-deploy ke produksi via Vercel (`staging`→`main`, commit `064dc26`).
 
 ### Ketahanan realtime: adopsi selektif, bukan smart-merge (13 Jun 2026)
 Dipicu studi banding dengan FixNova (varian yang pakai sinkronisasi merge-klien). Keputusan kunci:
