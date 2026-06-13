@@ -1,4 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  computeBackoff,
+  withJitter,
+  isHealthDue,
+  HEALTH_IDLE_MS,
+} from '@/lib/business/realtime-timing';
 
 /**
  * Supabase client singleton. Reads credentials from Vite env vars:
@@ -243,15 +249,23 @@ export async function settleService(args: {
 
 /**
  * Cloud service cancellation via the `cancel_service` RPC (atomic): restores
- * deducted inventory stock, refunds any DP (reverses wallet + removes the DP
- * income), and sets the service to 'batal' — all server-side so a staff member
- * can cancel without manager-only wallet/inventory writes (RLS 0010/0017/0028).
+ * deducted inventory stock, optionally refunds a CHOSEN amount of the DP, and
+ * sets the service to 'batal' — all server-side so a staff member can cancel
+ * without manager-only wallet/inventory writes (RLS 0010/0017/0028).
+ *
+ * Refund model (0031): the DP income ('DP servis <no>') is KEPT (the money did
+ * come in — audit stays intact); the refunded portion is booked as an EXPENSE
+ * ('Refund DP servis <no>') from `refundWalletId`. Whatever the shop retains
+ * (e.g. a diagnosis fee) becomes net income automatically. Pass refundAmount=0
+ * (or omit) to keep the whole DP.
  */
 export async function cancelService(args: {
   orgId: string;
   serviceId: string;
   history: unknown[];
   outletId: string | null;
+  refundAmount?: number;
+  refundWalletId?: string | null;
 }): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -260,6 +274,8 @@ export async function cancelService(args: {
     p_service_id: args.serviceId,
     p_history: args.history,
     p_outlet_id: args.outletId,
+    p_refund_amount: args.refundAmount ?? 0,
+    p_refund_wallet_id: args.refundWalletId ?? null,
   });
   if (error) throw new Error(error.message);
 }
@@ -286,6 +302,30 @@ export async function recordDownPayment(args: {
     p_wallet_id: args.walletId,
     p_amount: args.amount,
     p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Cloud wallet-to-wallet transfer via the `transfer_wallet` RPC (atomic,
+ * manager-only). Moves funds between two wallets in the same org without
+ * booking income/expense (a transfer is neither profit nor loss, so it must
+ * not distort reports). Server validates manager role, distinct wallets,
+ * positive amount, and sufficient balance.
+ */
+export async function transferWallet(args: {
+  orgId: string;
+  fromWalletId: string;
+  toWalletId: string;
+  amount: number;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('transfer_wallet', {
+    p_org_id: args.orgId,
+    p_from_wallet_id: args.fromWalletId,
+    p_to_wallet_id: args.toWalletId,
+    p_amount: args.amount,
   });
   if (error) throw new Error(error.message);
 }
@@ -596,6 +636,9 @@ export function subscribeOrgBilling(orgId: string, onChange: () => void): () => 
   };
 }
 
+/** Connection status surfaced to the UI (badge) and used to drive resync. */
+export type RealtimeStatus = 'connecting' | 'live' | 'offline';
+
 /**
  * Subscribe to realtime changes for a set of DOMAIN tables in one org, on a
  * single channel. Fires `onChange(table)` for every insert/update/delete on a
@@ -603,25 +646,109 @@ export function subscribeOrgBilling(orgId: string, onChange: () => void): () => 
  * collection (multi-cashier live sync). RLS still applies on the stream, and
  * an explicit `org_id=eq.<orgId>` filter scopes each listener. Requires the
  * tables to be in the `supabase_realtime` publication (migration 0021).
+ *
+ * RESILIENCE (the FixNova lesson, adapted): a Supabase channel can die silently
+ * after sleep / network drop and never recover, leaving a device stale with no
+ * signal. So this:
+ *   - reports status via `onStatus` ('connecting' | 'live' | 'offline'),
+ *   - auto-reconnects with exponential backoff + jitter on
+ *     CHANNEL_ERROR / TIMED_OUT / CLOSED,
+ *   - runs a health-check that force-reconnects a "zombie" channel (no events
+ *     for HEALTH_IDLE_MS while not joined).
+ * The caller (SupabaseAdapter) uses the 'offline'→'live' transition to trigger
+ * a full resync (refetch every collection), since events may have been missed.
+ *
  * Returns an unsubscribe function (no-op when unconfigured).
  */
 export function subscribeOrgTables(
   orgId: string,
   tables: readonly string[],
   onChange: (table: string) => void,
+  onStatus?: (status: RealtimeStatus) => void,
 ): () => void {
   const c = getSupabase();
   if (!c || !orgId || tables.length === 0) return () => {};
-  let channel = c.channel(`org-domain:${orgId}`);
-  for (const table of tables) {
-    channel = channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}` },
-      (payload) => onChange((payload.table as string) ?? table),
-    );
-  }
-  channel.subscribe();
+
+  let channel: ReturnType<SupabaseClient['channel']> | null = null;
+  let attempt = 0;
+  let lastEventAt = Date.now();
+  let disposed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let healthTimer: ReturnType<typeof setInterval> | null = null;
+
+  const setStatus = (s: RealtimeStatus) => {
+    if (!disposed) onStatus?.(s);
+  };
+
+  const teardownChannel = () => {
+    if (channel) {
+      void c.removeChannel(channel);
+      channel = null;
+    }
+  };
+
+  const scheduleReconnect = () => {
+    if (disposed || reconnectTimer) return;
+    const delay = withJitter(computeBackoff(attempt));
+    attempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
+  };
+
+  const connect = () => {
+    if (disposed) return;
+    teardownChannel();
+    setStatus('connecting');
+    let ch = c.channel(`org-domain:${orgId}`);
+    for (const table of tables) {
+      ch = ch.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}` },
+        (payload) => {
+          lastEventAt = Date.now();
+          onChange((payload.table as string) ?? table);
+        },
+      );
+    }
+    channel = ch;
+    ch.subscribe((status) => {
+      if (disposed) return;
+      lastEventAt = Date.now();
+      if (status === 'SUBSCRIBED') {
+        attempt = 0;
+        setStatus('live');
+      } else if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        setStatus('offline');
+        scheduleReconnect();
+      }
+    });
+  };
+
+  // Health-check: a channel that has gone silent past the idle window AND is no
+  // longer joined is a zombie → force a reconnect. A joined-but-silent channel
+  // is normal (no writes happening), so we leave it alone.
+  healthTimer = setInterval(() => {
+    if (disposed) return;
+    const joined = channel?.state === 'joined';
+    if (!joined && isHealthDue(lastEventAt, Date.now())) {
+      setStatus('offline');
+      teardownChannel();
+      scheduleReconnect();
+    }
+  }, HEALTH_IDLE_MS);
+
+  connect();
+
   return () => {
-    void c.removeChannel(channel);
+    disposed = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (healthTimer) clearInterval(healthTimer);
+    teardownChannel();
   };
 }

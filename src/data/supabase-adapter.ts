@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabase, subscribeOrgTables } from './supabase-client';
+import { getSupabase, subscribeOrgTables, type RealtimeStatus } from './supabase-client';
+import { useRealtimeStore } from '@/stores/realtime';
 import type {
   Repository,
   CollectionName,
@@ -112,6 +113,8 @@ export class SupabaseAdapter implements Repository {
   private unsubscribeRealtime: (() => void) | null = null;
   /** Per-collection debounce timers, to coalesce bursts of realtime events. */
   private debounceTimers = new Map<CollectionName, ReturnType<typeof setTimeout>>();
+  /** Last realtime status seen, to detect offline→live reconnects (resync). */
+  private lastStatus: RealtimeStatus | null = null;
 
   constructor() {
     const c = getSupabase();
@@ -129,16 +132,36 @@ export class SupabaseAdapter implements Repository {
     // refetch the affected collection here. Tear down any previous channel.
     this.unsubscribeRealtime?.();
     this.unsubscribeRealtime = null;
+    this.lastStatus = null;
     if (orgId) {
-      this.unsubscribeRealtime = subscribeOrgTables(orgId, REALTIME_TABLES, (table) => {
-        const collection = TABLE_TO_COLLECTION[table];
-        if (collection) this.notifyDebounced(collection);
-      });
+      this.unsubscribeRealtime = subscribeOrgTables(
+        orgId,
+        REALTIME_TABLES,
+        (table) => {
+          const collection = TABLE_TO_COLLECTION[table];
+          if (collection) this.notifyDebounced(collection);
+        },
+        (status) => {
+          useRealtimeStore.getState().setStatus(status);
+          // Reconnect after an outage: events may have been missed while the
+          // channel was down, so refetch every collection (full resync). The
+          // server stays the source of truth — we never merge on the client.
+          if (status === 'live' && this.lastStatus === 'offline') {
+            this.notifyAll();
+          }
+          this.lastStatus = status;
+        },
+      );
     }
   }
 
   private notify(collection: CollectionName) {
     for (const l of this.listeners) l(collection);
+  }
+
+  /** Notify every collection so all live queries refetch (resync / restore). */
+  private notifyAll() {
+    for (const c of Object.keys(TABLE) as CollectionName[]) this.notify(c);
   }
 
   /**
@@ -161,8 +184,10 @@ export class SupabaseAdapter implements Repository {
   dispose(): void {
     this.unsubscribeRealtime?.();
     this.unsubscribeRealtime = null;
+    this.lastStatus = null;
     for (const t of this.debounceTimers.values()) clearTimeout(t);
     this.debounceTimers.clear();
+    useRealtimeStore.getState().reset();
   }
 
   async list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]> {
@@ -283,7 +308,7 @@ export class SupabaseAdapter implements Repository {
       throw error;
     }
     // Refetch all collections in the UI.
-    for (const c of Object.keys(TABLE) as CollectionName[]) this.notify(c);
+    this.notifyAll();
     const result = data as { ok?: boolean; restored?: number } | null;
     return result?.restored ?? 0;
   }

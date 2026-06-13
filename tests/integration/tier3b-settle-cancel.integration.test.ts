@@ -22,6 +22,7 @@ interface Ctx {
   orgId: string;
   outlet1: string;
   outlet2: string;
+  ownerClient: SupabaseClient;
   karyawan: Actor;
   walletA: string;
   walletB: string;
@@ -86,6 +87,7 @@ beforeAll(async () => {
     orgId: orgId as string,
     outlet1: o1!.id,
     outlet2: o2!.id,
+    ownerClient,
     karyawan: { email: karyawanEmail, userId: karyawanId, membershipId: mKar!.id, client: karyawanClient },
     walletA: wA!.id,
     walletB: wB!.id,
@@ -161,7 +163,7 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     expect(error).not.toBeNull(); // ditolak: outlet bukan penugasannya
   });
 
-  it('karyawan BISA cancel_service: restore stok + refund DP + status batal', async () => {
+  it('karyawan BISA cancel_service dengan refund DP PARSIAL: expense refund + income DP tetap', async () => {
     const no = `SVC-CXL-${Date.now().toString(36)}`;
     // Inventory item with stock already deducted by 2.
     const { data: item } = await ctx.admin
@@ -185,7 +187,7 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
       })
       .select('id')
       .single();
-    await ctx.admin.from('wallets').update({ balance: 75000 }).eq('id', ctx.walletA);
+    const { data: wBefore } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
     await ctx.admin.from('incomes').insert({
       org_id: ctx.orgId,
       outlet_id: ctx.outlet1,
@@ -197,11 +199,14 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
       service_id: svc!.id,
     });
 
+    // Refund only 50k of the 75k DP (shop keeps 25k, e.g. diagnosis fee).
     const { error } = await ctx.karyawan.client.rpc('cancel_service', {
       p_org_id: ctx.orgId,
       p_service_id: svc!.id,
       p_history: [],
       p_outlet_id: ctx.outlet1,
+      p_refund_amount: 50000,
+      p_refund_wallet_id: ctx.walletA,
     });
     expect(error).toBeNull();
 
@@ -209,25 +214,65 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     const { data: itemRow } = await ctx.admin.from('inventory_items').select('stock').eq('id', item!.id).single();
     expect(itemRow!.stock).toBe(10);
 
-    // DP income removed + wallet reversed back to 75000 - 75000 = 0.
+    // DP income KEPT (audit intact).
     const { data: dpIncomes } = await ctx.admin
       .from('incomes')
-      .select('id')
+      .select('amount')
       .eq('service_id', svc!.id)
       .eq('description', `DP servis ${no}`);
-    expect((dpIncomes ?? []).length).toBe(0);
-    const { data: wa } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
-    expect(Number(wa!.balance)).toBe(0);
+    expect((dpIncomes ?? []).length).toBe(1);
 
-    // Service is batal, DP zeroed, sparepart un-deducted.
+    // Refund booked as an expense.
+    const { data: refundExp } = await ctx.admin
+      .from('expenses')
+      .select('amount')
+      .eq('org_id', ctx.orgId)
+      .eq('description', `Refund DP servis ${no}`);
+    expect((refundExp ?? []).length).toBe(1);
+    expect(Number(refundExp![0].amount)).toBe(50000);
+
+    // Wallet debited only by the refund (delta = -50k), not the full DP.
+    const { data: wAfter } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
+    expect(Number(wAfter!.balance) - Number(wBefore!.balance)).toBe(-50000);
+
+    // Service is batal, sparepart un-deducted (down_payment left as-is).
     const { data: svcRow } = await ctx.admin
       .from('services')
-      .select('status, down_payment, spareparts')
+      .select('status, spareparts')
       .eq('id', svc!.id)
       .single();
     expect(svcRow!.status).toBe('batal');
-    expect(Number(svcRow!.down_payment)).toBe(0);
     expect((svcRow!.spareparts as { deducted: boolean }[])[0].deducted).toBe(false);
+  });
+
+  it('karyawan BISA cancel_service tanpa refund (refund 0): tak ada expense, wallet utuh', async () => {
+    const no = `SVC-CXL0-${Date.now().toString(36)}`;
+    const { data: svc } = await ctx.admin
+      .from('services')
+      .insert({ org_id: ctx.orgId, service_no: no, device: 'Hp', status: 'diagnosa', outlet_id: ctx.outlet1, final_cost: 0, down_payment: 30000 })
+      .select('id')
+      .single();
+    const { data: wBefore } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
+
+    const { error } = await ctx.karyawan.client.rpc('cancel_service', {
+      p_org_id: ctx.orgId,
+      p_service_id: svc!.id,
+      p_history: [],
+      p_outlet_id: ctx.outlet1,
+      p_refund_amount: 0,
+      p_refund_wallet_id: null,
+    });
+    expect(error).toBeNull();
+
+    // No refund expense, wallet unchanged (shop keeps the whole DP).
+    const { data: refundExp } = await ctx.admin
+      .from('expenses').select('id').eq('org_id', ctx.orgId).eq('description', `Refund DP servis ${no}`);
+    expect((refundExp ?? []).length).toBe(0);
+    const { data: wAfter } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
+    expect(Number(wAfter!.balance) - Number(wBefore!.balance)).toBe(0);
+
+    const { data: svcRow } = await ctx.admin.from('services').select('status').eq('id', svc!.id).single();
+    expect(svcRow!.status).toBe('batal');
   });
 
   it('karyawan BISA record_down_payment: income DP + kredit wallet + akumulasi DP', async () => {
@@ -282,5 +327,57 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
       p_outlet_id: ctx.outlet2,
     });
     expect(error).not.toBeNull(); // ditolak: outlet bukan penugasannya
+  });
+
+  it('owner (manager) BISA transfer_wallet: saldo pindah antar wallet', async () => {
+    // Seed walletA with a known balance, then move 40k → walletB.
+    await ctx.admin.from('wallets').update({ balance: 100000 }).eq('id', ctx.walletA);
+    const { data: aBefore } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
+    const { data: bBefore } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletB).single();
+
+    const { error } = await ctx.ownerClient.rpc('transfer_wallet', {
+      p_org_id: ctx.orgId,
+      p_from_wallet_id: ctx.walletA,
+      p_to_wallet_id: ctx.walletB,
+      p_amount: 40000,
+    });
+    expect(error).toBeNull();
+
+    const { data: aAfter } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletA).single();
+    const { data: bAfter } = await ctx.admin.from('wallets').select('balance').eq('id', ctx.walletB).single();
+    expect(Number(aAfter!.balance) - Number(aBefore!.balance)).toBe(-40000);
+    expect(Number(bAfter!.balance) - Number(bBefore!.balance)).toBe(40000);
+  });
+
+  it('transfer_wallet ditolak bila saldo tidak cukup', async () => {
+    await ctx.admin.from('wallets').update({ balance: 1000 }).eq('id', ctx.walletA);
+    const { error } = await ctx.ownerClient.rpc('transfer_wallet', {
+      p_org_id: ctx.orgId,
+      p_from_wallet_id: ctx.walletA,
+      p_to_wallet_id: ctx.walletB,
+      p_amount: 999999,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it('transfer_wallet ditolak bila wallet asal = tujuan', async () => {
+    const { error } = await ctx.ownerClient.rpc('transfer_wallet', {
+      p_org_id: ctx.orgId,
+      p_from_wallet_id: ctx.walletA,
+      p_to_wallet_id: ctx.walletA,
+      p_amount: 1000,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it('karyawan TIDAK bisa transfer_wallet (manager-only)', async () => {
+    await ctx.admin.from('wallets').update({ balance: 100000 }).eq('id', ctx.walletA);
+    const { error } = await ctx.karyawan.client.rpc('transfer_wallet', {
+      p_org_id: ctx.orgId,
+      p_from_wallet_id: ctx.walletA,
+      p_to_wallet_id: ctx.walletB,
+      p_amount: 1000,
+    });
+    expect(error).not.toBeNull(); // ditolak: bukan manager
   });
 });

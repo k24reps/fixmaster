@@ -7,7 +7,12 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, refetchOnWindowFocus: false },
+    // refetchOnReconnect: when the browser regains connectivity (the `online`
+    // event), refetch active queries. This is the safety net for the case where
+    // the realtime channel died silently while offline/asleep — see
+    // subscribeOrgTables auto-reconnect. 'always' refetches even if data is
+    // still within staleTime, since "we were offline" implies possibly-stale.
+    queries: { staleTime: 30_000, refetchOnWindowFocus: false, refetchOnReconnect: 'always' },
   },
 });
 

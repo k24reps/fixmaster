@@ -33,6 +33,7 @@ const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'attendance.delete': { label: 'Hapus absensi', icon: 'trash', tone: 'danger' },
   'service.create': { label: 'Servis baru', icon: 'screwdriver-wrench', tone: 'success' },
   'service.status': { label: 'Ubah status servis', icon: 'wrench', tone: 'info' },
+  'wallet.transfer': { label: 'Transfer saldo', icon: 'arrow-right-arrow-left', tone: 'info' },
 };
 
 const FALLBACK_META: ActionMeta = { label: 'Aktivitas', icon: 'info-circle', tone: 'neutral' };

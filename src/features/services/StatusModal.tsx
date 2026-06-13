@@ -68,6 +68,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // DP sub-action
   const [dpAmount, setDpAmount] = useState('');
   const [dpWalletId, setDpWalletId] = useState('');
+  // Cancel ("batal") sub-action: optional partial DP refund.
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundWalletId, setRefundWalletId] = useState('');
   // Koreksi sub-action
   const [correctAmount, setCorrectAmount] = useState('');
 
@@ -102,6 +105,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setSplits([]);
       setDpAmount('');
       setDpWalletId(defaultWallet());
+      setRefundAmount('');
+      setRefundWalletId(defaultWallet());
       setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
     }
   }
@@ -127,6 +132,11 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       // the user can split it across wallets from there.
       const due = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
       setSplits([{ walletId: defaultWallet(), amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+    }
+    if (next === 'batal' && service.downPayment > 0) {
+      // Default to refunding the full DP; the owner can lower it (the shop keeps
+      // the difference, e.g. a diagnosis fee) or zero it out.
+      setRefundAmount(fmtRpInput(String(service.downPayment)));
     }
   };
 
@@ -239,17 +249,20 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         if (legs[0]) setLastExpenseWallet(legs[0].walletId);
       }
 
-      // Cancel ("batal"): give back deducted stock AND refund any DP. Cloud uses
-      // the atomic cancel_service RPC (member-allowed); local mirrors it: restore
-      // stock + refund DP, then write the service ONCE so the two reversals don't
-      // clobber each other's fields (restored spareparts + zeroed downPayment).
+      // Cancel ("batal"): give back deducted stock AND optionally refund a CHOSEN
+      // part of the DP. Cloud uses the atomic cancel_service RPC (member-allowed).
+      // Refund model (0031): the DP income is KEPT; the refunded portion is booked
+      // as an expense — local mirrors that so reports match across modes.
       if (target === 'batal') {
+        const refund = service.downPayment > 0 ? Math.min(parseRpInput(refundAmount), service.downPayment) : 0;
         if (isSupabaseConfigured) {
           await cancelService({
             orgId: service.orgId,
             serviceId: service.id,
             history: updatedService.history,
             outletId: service.outletId,
+            refundAmount: refund,
+            refundWalletId: refund > 0 ? refundWalletId : null,
           });
         } else {
           const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts);
@@ -264,28 +277,33 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             if (toRestore.length) await repository.putMany('inventory', toRestore);
           }
 
-          let refundedDp = false;
-          if (service.downPayment > 0) {
-            const incomes = await repository.list('incomes');
-            const dpIncomes = incomes.filter(
-              (i) => i.serviceId === service.id && !i.deletedAt && i.description === dpIncomeDescription(service.serviceNo),
-            );
-            for (const dpIncome of dpIncomes) {
-              const wallet = wallets.find((w) => w.id === dpIncome.walletId);
-              if (wallet) await repository.put('wallets', applyBalance(wallet, -dpIncome.amount));
-              await repository.remove('incomes', dpIncome.id);
+          // Refund a chosen amount: book it as an expense + debit the wallet. The
+          // DP income stays (audit intact); the shop keeps any un-refunded balance.
+          if (refund > 0 && refundWalletId) {
+            const wallet = wallets.find((w) => w.id === refundWalletId);
+            if (wallet) {
+              await repository.put('expenses', {
+                id: newId(),
+                orgId: service.orgId,
+                outletId: service.outletId,
+                date: now.slice(0, 10),
+                category: 'Lainnya',
+                amount: refund,
+                walletId: wallet.id,
+                description: `Refund DP servis ${service.serviceNo}`,
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: null,
+              });
+              await repository.put('wallets', applyBalance(wallet, -refund));
             }
-            refundedDp = dpIncomes.length > 0;
           }
 
-          if (restorations.length || refundedDp) {
-            await repository.put('services', {
-              ...updatedService,
-              spareparts: restoredParts,
-              downPayment: refundedDp ? 0 : service.downPayment,
-              updatedAt: now,
-            });
-          }
+          await repository.put('services', {
+            ...updatedService,
+            spareparts: restoredParts,
+            updatedAt: now,
+          });
         }
       }
 
@@ -610,6 +628,29 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+            {target === 'batal' && service.downPayment > 0 && (
+              <div className={styles.warranty}>
+                <span className={styles.warrantyLabel}>Refund DP (DP diterima: {fmtRp(service.downPayment)})</span>
+                <div className={styles.warrantyRow}>
+                  <Input
+                    label="Nominal Refund"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(fmtRpInput(e.target.value))}
+                    placeholder="0"
+                  />
+                  <Select
+                    label="Dari wallet"
+                    value={refundWalletId}
+                    onChange={(e) => setRefundWalletId(e.target.value)}
+                    options={walletOptions}
+                    placeholder="Pilih wallet…"
+                  />
+                </div>
+                <p className={styles.dp}>
+                  Kosongkan/0 jika DP tidak dikembalikan (jadi pendapatan toko). Refund dicatat sebagai pengeluaran; income DP tetap tersimpan.
+                </p>
               </div>
             )}
             <Input label="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} />

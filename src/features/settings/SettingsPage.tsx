@@ -21,6 +21,8 @@ import {
   setWarrantyPresets,
   getWaTemplateOverrides,
   setWaTemplateOverrides,
+  getCategories,
+  setCategories,
 } from '@/config/orgConfig';
 import {
   DEFAULT_WA_TEMPLATES,
@@ -31,6 +33,8 @@ import {
 import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
 import { isValidInviteEmail } from '@/lib/business/team';
+import { transfer } from '@/lib/business/finance';
+import { logActivity } from '@/lib/activity';
 import { useSessionStore } from '@/stores/session';
 import {
   isSupabaseConfigured,
@@ -49,6 +53,7 @@ import {
   subscribeOrgBilling,
   createPaymentInvoice,
   deleteAccountCredential,
+  transferWallet,
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
@@ -136,6 +141,7 @@ export function SettingsPage() {
       {tab === 'operasional' && (
         <>
           <ServiceTemplatesCard />
+          <DeviceCategoriesCard />
           <WarrantyCard />
           <WhatsAppTemplatesCard />
         </>
@@ -332,6 +338,43 @@ function ServiceTemplatesCard() {
           items={accessories}
           onAdd={addAccessory}
           onRemove={removeAccessory}
+        />
+      </CardBody>
+    </Card>
+  );
+}
+
+/**
+ * Device categories (e.g. "Laptop", "HP / Smartphone") offered as the category
+ * dropdown when creating a service. Stored per-org in orgConfig (localStorage).
+ */
+function DeviceCategoriesCard() {
+  const [categories, setCats] = useState<string[]>(() => getCategories());
+
+  const addCategory = (value: string) => {
+    const next = [...categories, value];
+    setCategories(next);
+    setCats(next);
+  };
+  const removeCategory = (value: string) => {
+    const next = categories.filter((c) => c !== value);
+    setCategories(next);
+    setCats(next);
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="laptop" aria-hidden />} title="Kategori Perangkat" />
+      <CardBody>
+        <p className={styles.tplHint}>
+          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan kategori saat membuat servis baru.
+        </p>
+        <StringListEditor
+          label="Kategori"
+          placeholder="mis. Tablet"
+          items={categories}
+          onAdd={addCategory}
+          onRemove={removeCategory}
         />
       </CardBody>
     </Card>
@@ -1311,6 +1354,11 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
   // Hybrid wallet (OQ Q2): a wallet is either shared org-wide (null) or tied
   // to a specific branch. '' = Bersama (shared).
   const [outletId, setOutletId] = useState('');
+  // Transfer sub-action: move funds between two wallets.
+  const [fromId, setFromId] = useState('');
+  const [toId, setToId] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferring, setTransferring] = useState(false);
 
   const outletName = (id: string | null) =>
     id ? (outlets.find((o) => o.id === id)?.name ?? 'Cabang') : 'Bersama';
@@ -1327,6 +1375,40 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     setName('');
     setBalance('');
     setOutletId('');
+  };
+
+  const doTransfer = async () => {
+    const amount = parseRpInput(transferAmount);
+    const from = wallets.find((w) => w.id === fromId);
+    const to = wallets.find((w) => w.id === toId);
+    if (!from || !to) return toast.error('Pilih wallet asal & tujuan');
+    // Validate locally first (same guards the server enforces) for instant feedback.
+    const result = transfer(from, to, amount);
+    if (!result.ok) return toast.error(result.error ?? 'Transfer gagal');
+    setTransferring(true);
+    try {
+      if (isSupabaseConfigured) {
+        await transferWallet({ orgId, fromWalletId: fromId, toWalletId: toId, amount });
+      } else {
+        await repository.put('wallets', { ...result.fromWallet!, updatedAt: new Date().toISOString() });
+        await repository.put('wallets', { ...result.toWallet!, updatedAt: new Date().toISOString() });
+      }
+      logActivity({
+        action: 'wallet.transfer',
+        entityType: 'wallet',
+        entityId: fromId,
+        entityLabel: `${from.name} → ${to.name}`,
+        meta: { amount, toWalletId: toId },
+      });
+      toast.success(`Transfer ${fmtRp(amount)}: ${from.name} → ${to.name}`);
+      setTransferAmount('');
+      setFromId('');
+      setToId('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Transfer gagal');
+    } finally {
+      setTransferring(false);
+    }
   };
 
   return (
@@ -1364,6 +1446,39 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
           )}
           <Button onClick={add} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
         </div>
+
+        {wallets.length >= 2 && (
+          <div className={styles.tplGroup}>
+            <span className={styles.tplLabel}>Transfer Saldo Antar Wallet</span>
+            <p className={styles.tplHint}>
+              Pindahkan saldo antar kas. Tidak tercatat sebagai pemasukan/pengeluaran (bukan untung/rugi).
+            </p>
+            <div className={styles.addRow}>
+              <Select
+                aria-label="Wallet asal"
+                value={fromId}
+                onChange={(e) => setFromId(e.target.value)}
+                options={wallets.map((w) => ({ value: w.id, label: `${w.name} (${fmtRp(w.balance)})` }))}
+                placeholder="Dari wallet…"
+              />
+              <Select
+                aria-label="Wallet tujuan"
+                value={toId}
+                onChange={(e) => setToId(e.target.value)}
+                options={wallets.filter((w) => w.id !== fromId).map((w) => ({ value: w.id, label: w.name }))}
+                placeholder="Ke wallet…"
+              />
+              <Input
+                placeholder="Nominal"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(fmtRpInput(e.target.value))}
+              />
+              <Button onClick={doTransfer} disabled={transferring} iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}>
+                Transfer
+              </Button>
+            </div>
+          </div>
+        )}
       </CardBody>
     </Card>
   );

@@ -95,6 +95,55 @@
   animation: fm-pulse 2s infinite;
 }
 
+/* Realtime connection readout: LED + mono label (bench motif). */
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  user-select: none;
+}
+.syncLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 0 0 0 transparent;
+  flex-shrink: 0;
+}
+.sync[data-status='live'] {
+  color: var(--success);
+  border-color: var(--success-soft);
+}
+.sync[data-status='live'] .syncLed {
+  background: var(--success);
+  box-shadow: 0 0 6px 1px var(--success);
+}
+.sync[data-status='connecting'] {
+  color: var(--warning);
+  border-color: var(--warning-soft);
+}
+.sync[data-status='connecting'] .syncLed {
+  background: var(--warning);
+  animation: fm-pulse 1.2s infinite;
+}
+.sync[data-status='offline'] {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+}
+.sync[data-status='offline'] .syncLed {
+  background: var(--danger);
+  box-shadow: 0 0 6px 1px var(--danger);
+}
+
 @media (max-width: 1024px) {
   .mobileToggle {
     display: block;
@@ -114,6 +163,13 @@
   }
   .topbar {
     padding: 0 var(--space-4);
+  }
+  /* Keep the LED, drop the label so the badge stays compact on phones. */
+  .syncText {
+    display: none;
+  }
+  .sync {
+    padding: 0 10px;
   }
 }
 

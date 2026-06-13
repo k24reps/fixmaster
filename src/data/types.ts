@@ -358,7 +358,8 @@ export type ActivityAction =
   | 'attendance.update'
   | 'attendance.delete'
   | 'service.create'
-  | 'service.status';
+  | 'service.status'
+  | 'wallet.transfer';
 
 export interface ActivityLog extends BaseEntity {
   /** Membership id of who performed the action (null if removed later). */

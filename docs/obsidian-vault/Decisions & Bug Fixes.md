@@ -28,6 +28,28 @@ Dari umpan balik 3 toko pilot. Empat kendala diselesaikan sekaligus; keputusan k
 - **Profit owner-only.** Kolom Modal/Profit di tabel + panel BIAYA detail hanya `role === 'owner'` (admin & karyawan tak lihat margin). Profit di tabel hanya saat `finalCost > 0`.
 - Verifikasi: build + **292 test** (288 → +4: profit dengan baris manual, deduct skip manual, `serviceModalTotal`, finalCost=0) + lint hijau. Render alur via `scripts/shoot-modal-profit.mjs` (lewat `/demo`).
 
+### Refund DP parsial, transfer wallet, kategori, warna nama (13 Jun 2026)
+Empat fitur dari umpan balik pilot, satu batch (migrasi `0031`). Keputusan kunci:
+- **Refund DP = model EXPENSE, bukan hapus-income.** Saat batal servis ber-DP, owner pilih nominal refund. Income `'DP servis <no>'` **dipertahankan** (uang memang pernah masuk → audit utuh); bagian refund dicatat sebagai expense `'Refund DP servis <no>'` (kategori `'Lainnya'`) + kurangi wallet. Sisa yang ditahan toko (mis. biaya diagnosa) otomatis jadi pendapatan bersih. Model lama (`0029`) selalu refund penuh + hapus income → tak bisa parsial & merusak jejak audit. `cancel_service` di-recreate; test Tier 3B di-update (refund parsial + refund 0).
+- **Transfer wallet TIDAK membuat income/expense.** Transfer antar kas bukan untung/rugi → kalau dicatat sebagai income+expense akan menggelembungkan kedua sisi laporan. RPC `transfer_wallet` hanya menggeser saldo (manager-only, atomik, `for update`), dicatat di Activity Log (`wallet.transfer`). Fungsi murni `transfer()` di `finance.ts` sudah ada + bertest → dipakai ulang untuk path lokal.
+- **Kategori perangkat tetap localStorage (bukan cloud).** Konsisten pola `getCategories`/`setCategories` di `orgConfig` (sama dengan Template Servis & Garansi). Caveat per-perangkat diterima: kategori jarang berubah & diatur sekali di awal. Migrasi cloud bisa menyusul bila perlu sinkron lintas perangkat.
+- **Warna nama pelanggan via token.** `var(--brand)` + semibold di tabel & kartu mobile, beda jelas dari nama teknisi (redup + ikon obeng). Tanpa hardcode hex → otomatis benar dark/light.
+- Verifikasi: build + lint + **321 unit** hijau, `0031` applied staging, **52 integration** hijau.
+
+### Ketahanan realtime: adopsi selektif, bukan smart-merge (13 Jun 2026)
+Dipicu studi banding dengan FixNova (varian yang pakai sinkronisasi merge-klien). Keputusan kunci:
+- **Adopsi celahnya, bukan arsitekturnya.** FixNova menutup "channel mati senyap setelah sleep/wifi putus" dengan paket berat: smart-merge `id`+`_modifiedAt`, tombstone hapus, echo-suppression, retry-queue offline. FixMaster **menolak** semua itu — sumber kebenaran adalah **server** (RPC atomik + RLS), bukan klien. Merge-klien akan menduplikasi logika otoritas server & berisiko *resurrection* data. Yang **diambil** hanya 4 hal yang murni soal koneksi: deteksi putus, auto-reconnect, resync penuh, indikator status.
+- **Resync pakai refetch, bukan rekonsiliasi.** Saat channel pulih (`offline → live`), adapter memanggil `notifyAll()` (refetch SEMUA koleksi via TanStack Query) — bukan menambal store dari payload. Konsisten dengan strategi `notifyDebounced` (`0021`): server selalu menang, anti-drift, tak ada cabang merge yang harus dites.
+- **Logika timing dipisah jadi murni & teruji.** `computeBackoff`/`withJitter`/`isHealthDue` ditaruh di `src/lib/business/realtime-timing.ts` (15 unit test, tanpa DOM/Supabase) — pola "logika domain murni di `lib/business`". `subscribe-org-tables` tinggal merangkai timer. Health-check membedakan channel *zombie* (tak `joined` + idle) dari channel sehat-tapi-sepi (jangan di-teardown).
+- **Dua lapis jaring, sengaja redundan.** Channel-level (reconnect + health-check di `supabase-client.ts`) menutup kasus channel rusak; query-level (`refetchOnReconnect: 'always'` di `App.tsx`, dengar event `online` browser) menutup kasus jaringan pulih tapi channel telat. Keduanya murah & saling tutup celah "data basi setelah bangun tidur".
+- **Status visual wajib otentik bench.** Badge Topbar = LED + readout mono (`LIVE`/`SYNC…`/`OFFLINE`), bukan komponen toast/spinner generik. Cloud-only (`active`) → mode lokal/demo tetap bersih. Pelajaran [[Design System]] dihormati.
+- Verifikasi: build + lint + **336 unit** hijau (321 + 15 `realtime-timing`). Badge difoto via `scripts/shoot-sync-badge.mjs` (hook DEV `window.__realtime`) di 3 state. Detail teknis di [[Data Layer]] §Ketahanan realtime.
+
+
+> [!CAUTION]
+> **Pelajaran tooling screenshot (5 kali gagal).** Skrip `shoot-*.mjs` yang pakai `window.__fixmasterSeed()` **GAGAL** di sini karena dev server lokal jalan di **mode cloud** (`.env.local` → Supabase staging) — seed lokal (`repository.clearAll()` + wizard commit) melempar error. **Solusi**: pakai rute **`/demo`** (memaksa mode demo terlepas dari env) + navigasi via **klik link sidebar** (`getByRole('link', {name:/Servis|Pengaturan/})`), JANGAN `page.goto()` ke rute app (reload SPA → buang state demo). Pakai **context baru per shot**. Pola ini ada di `scripts/shoot-4feat.mjs`. Shot modal multi-langkah (refund DP) tetap rapuh karena overlay → andalkan integration test untuk logikanya.
+
+
 ### Bug: pesan WhatsApp "Rp 0" sampai refresh (11 Jun 2026)
 - **Gejala**: setelah set biaya final lalu buka NotifyModal "Selesai"/"Konfirmasi", template `{biaya}` tampil **Rp 0**; baru benar setelah refresh halaman.
 - **Akar sebab**: NotifyModal me-regenerate pesan hanya saat kunci memo `service.id + templateKey` berubah. `finalCost` tak ada di kunci → saat biaya berubah tapi id/template sama, pesan **tak** di-generate ulang (pakai snapshot lama).

@@ -213,7 +213,7 @@ export function ServicesPage() {
                       </td>
                       <td>{fmtDate(s.createdAt.slice(0, 10))}</td>
                       <td>
-                        <strong>{s.customerName}</strong>
+                        <strong className={styles.customerName}>{s.customerName}</strong>
                         <small className={styles.sub}>{s.customerPhone}</small>
                       </td>
                       <td>
@@ -298,7 +298,7 @@ export function ServicesPage() {
                     <small>{s.category}</small>
                   </div>
                   <div className={styles.jobMeta}>
-                    <span>
+                    <span className={styles.customerName}>
                       <Icon name="user" aria-hidden /> {s.customerName}
                     </span>
                     <span>

@@ -28,6 +28,11 @@ if (import.meta.env.DEV) {
   void import('./stores/session').then(({ useSessionStore }) => {
     (window as unknown as { __session?: unknown }).__session = useSessionStore;
   });
+  // Realtime status store, so screenshot scripts can drive the cloud-only
+  // connection badge (live/connecting/offline) which is hidden in demo/local.
+  void import('./stores/realtime').then(({ useRealtimeStore }) => {
+    (window as unknown as { __realtime?: unknown }).__realtime = useRealtimeStore;
+  });
 }
 
 createRoot(document.getElementById('root')!).render(
