@@ -63,11 +63,31 @@ export async function authSignOut(): Promise<AuthResult> {
   return { error: error?.message ?? null };
 }
 
-/** Send a password-reset email. */
+/**
+ * Send a password-reset email. `redirectTo` brings the user back to THIS app's
+ * /reset-password screen (on whatever origin they requested from — prod, preview,
+ * or local) instead of the project's default Site URL. The target origin must be
+ * present in the Supabase dashboard's Auth redirect allow-list.
+ */
 export async function authResetPassword(email: string): Promise<AuthResult> {
   const c = getSupabase();
   if (!c) return { error: 'Supabase tidak terkonfigurasi' };
-  const { error } = await c.auth.resetPasswordForEmail(email);
+  const redirectTo =
+    typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+  const { error } = await c.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Set a new password for the user in an active recovery session (after they
+ * land on /reset-password from the email link). supabase-js parses the recovery
+ * token from the URL on load (detectSessionInUrl) and emits PASSWORD_RECOVERY,
+ * establishing a temporary session that authorizes this update.
+ */
+export async function authUpdatePassword(newPassword: string): Promise<AuthResult> {
+  const c = getSupabase();
+  if (!c) return { error: 'Supabase tidak terkonfigurasi' };
+  const { error } = await c.auth.updateUser({ password: newPassword });
   return { error: error?.message ?? null };
 }
 

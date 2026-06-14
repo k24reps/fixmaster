@@ -23,6 +23,9 @@ const PrivacyPage = lazy(() =>
 const TermsPage = lazy(() =>
   import('@/features/legal/TermsPage').then((m) => ({ default: m.TermsPage })),
 );
+const ResetPasswordPage = lazy(() =>
+  import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+);
 
 export const router = createBrowserRouter([
   {
@@ -58,6 +61,16 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={null}>
         <TermsPage />
+      </Suspense>
+    ),
+  },
+  {
+    // Password recovery landing (email link target). Public — outside AuthGate
+    // — so supabase-js can parse the recovery token and authorize the update.
+    path: '/reset-password',
+    element: (
+      <Suspense fallback={null}>
+        <ResetPasswordPage />
       </Suspense>
     ),
   },

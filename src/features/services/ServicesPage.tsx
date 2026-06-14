@@ -37,7 +37,10 @@ export function ServicesPage() {
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
 
-  const categories = getCategories();
+  // Subscribe to the org slice so the category filter reflects cloud-synced
+  // edits (and updates from other devices) without a manual reload.
+  const orgCategories = useSessionStore((s) => s.org?.settings?.deviceCategories);
+  const categories = orgCategories ?? getCategories();
 
   const visible = services.filter((s) => !s.archived);
 

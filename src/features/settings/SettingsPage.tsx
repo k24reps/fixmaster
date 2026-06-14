@@ -23,6 +23,7 @@ import {
   setWaTemplateOverrides,
   getCategories,
   setCategories,
+  seedCategoriesFromLocal,
 } from '@/config/orgConfig';
 import {
   DEFAULT_WA_TEMPLATES,
@@ -346,20 +347,38 @@ function ServiceTemplatesCard() {
 
 /**
  * Device categories (e.g. "Laptop", "HP / Smartphone") offered as the category
- * dropdown when creating a service. Stored per-org in orgConfig (localStorage).
+ * dropdown when creating a service. Stored on the organization row
+ * (settings.deviceCategories, migration 0032) so they sync across devices.
  */
 function DeviceCategoriesCard() {
-  const [categories, setCats] = useState<string[]>(() => getCategories());
+  // Read reactively from the org slice so a save here (and realtime updates
+  // from other devices) re-render the list immediately.
+  const org = useSessionStore((s) => s.org);
+  const categories = org?.settings?.deviceCategories ?? getCategories();
+  const [busy, setBusy] = useState(false);
+
+  // One-time lift of any legacy per-device list into the cloud copy.
+  useEffect(() => {
+    void seedCategoriesFromLocal();
+  }, []);
+
+  const persist = async (next: string[]) => {
+    setBusy(true);
+    try {
+      await setCategories(next);
+    } catch {
+      toast.error('Gagal menyimpan kategori');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const addCategory = (value: string) => {
-    const next = [...categories, value];
-    setCategories(next);
-    setCats(next);
+    if (categories.includes(value)) return;
+    void persist([...categories, value]);
   };
   const removeCategory = (value: string) => {
-    const next = categories.filter((c) => c !== value);
-    setCategories(next);
-    setCats(next);
+    void persist(categories.filter((c) => c !== value));
   };
 
   return (
@@ -367,7 +386,7 @@ function DeviceCategoriesCard() {
       <CardHeader icon={<Icon name="laptop" aria-hidden />} title="Kategori Perangkat" />
       <CardBody>
         <p className={styles.tplHint}>
-          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan kategori saat membuat servis baru.
+          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan kategori saat membuat servis baru. Tersinkron di semua perangkat.
         </p>
         <StringListEditor
           label="Kategori"
@@ -375,6 +394,7 @@ function DeviceCategoriesCard() {
           items={categories}
           onAdd={addCategory}
           onRemove={removeCategory}
+          disabled={busy}
         />
       </CardBody>
     </Card>
@@ -387,12 +407,14 @@ function StringListEditor({
   items,
   onAdd,
   onRemove,
+  disabled = false,
 }: {
   label: string;
   placeholder: string;
   items: string[];
   onAdd: (value: string) => void;
   onRemove: (value: string) => void;
+  disabled?: boolean;
 }) {
   const [value, setValue] = useState('');
   const commit = () => {
@@ -413,7 +435,7 @@ function StringListEditor({
           {items.map((item) => (
             <span key={item} className={styles.tplChip}>
               {item}
-              <button onClick={() => onRemove(item)} aria-label={`Hapus ${item}`} title="Hapus">
+              <button onClick={() => onRemove(item)} aria-label={`Hapus ${item}`} title="Hapus" disabled={disabled}>
                 <Icon name="times" aria-hidden />
               </button>
             </span>
@@ -426,8 +448,9 @@ function StringListEditor({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
+          disabled={disabled}
         />
-        <Button onClick={commit} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+        <Button onClick={commit} iconLeft={<Icon name="plus" aria-hidden />} disabled={disabled}>Tambah</Button>
       </div>
     </div>
   );

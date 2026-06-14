@@ -1,27 +1,74 @@
+import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
 import type { MonthlyTarget } from '@/data/types';
 
 /**
- * Org-scoped config persisted locally (categories + monthly targets).
- * In the Supabase phase these move into the organization row.
+ * Org-scoped config. Most keys are persisted locally (per-device localStorage),
+ * but DEVICE CATEGORIES live on the organization row (`settings.deviceCategories`,
+ * migration 0032) so they sync across devices — a category added on desktop must
+ * appear on the phone for the same org.
  */
 
 function orgId(): string {
   return useSessionStore.getState().org?.id ?? '';
 }
 
-export function getCategories(): string[] {
+/** Legacy per-device categories key (pre-0032). Read-only fallback now. */
+function readLocalCategories(): string[] {
   const raw = localStorage.getItem(`fixmaster-categories-${orgId()}`);
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as string[];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed.filter((v) => typeof v === 'string') as string[]) : [];
   } catch {
     return [];
   }
 }
 
-export function setCategories(categories: string[]): void {
-  localStorage.setItem(`fixmaster-categories-${orgId()}`, JSON.stringify(categories));
+/**
+ * Device categories for the "new service" dropdown. Reads from the org row
+ * (cloud-synced). Falls back to the legacy per-device localStorage list when
+ * the org has no cloud categories yet (pre-0032 data, until an owner re-saves
+ * which seeds the cloud copy — see seedCategoriesFromLocal).
+ */
+export function getCategories(): string[] {
+  const cloud = useSessionStore.getState().org?.settings?.deviceCategories;
+  if (Array.isArray(cloud)) return cloud;
+  return readLocalCategories();
+}
+
+/**
+ * Persist device categories to the org row (synced across devices) and refresh
+ * the session store so readers (service form, filters) react immediately.
+ * Manager-only at the data layer (RLS on organizations UPDATE).
+ */
+export async function setCategories(categories: string[]): Promise<void> {
+  const org = useSessionStore.getState().org;
+  if (!org) {
+    // No active org (shouldn't happen in-app); keep a local copy as fallback.
+    localStorage.setItem(`fixmaster-categories-${orgId()}`, JSON.stringify(categories));
+    return;
+  }
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), deviceCategories: categories },
+  });
+  // setOrg() would reset the outlet scope; update the org slice directly.
+  useSessionStore.setState({ org: saved });
+}
+
+/**
+ * One-time migration helper: if the org has no cloud categories yet but this
+ * device has a legacy localStorage list, copy it to the cloud. No-op when the
+ * cloud copy already exists or there is nothing local to seed.
+ */
+export async function seedCategoriesFromLocal(): Promise<boolean> {
+  const org = useSessionStore.getState().org;
+  if (!org || Array.isArray(org.settings?.deviceCategories)) return false;
+  const local = readLocalCategories();
+  if (local.length === 0) return false;
+  await setCategories(local);
+  return true;
 }
 
 /** Default service/labor warranty length (days) prefilled when a job is finished. */

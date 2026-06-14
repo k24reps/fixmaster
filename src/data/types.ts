@@ -56,7 +56,20 @@ export interface Organization {
    * data can never be wiped by restore. Defaults false everywhere.
    */
   isDemo?: boolean;
+  /**
+   * Org-scoped config that must sync across devices (cloud) instead of living
+   * in per-browser localStorage. Extensible jsonb (migration 0032). Currently
+   * holds the device-category dropdown list; future org config can be added
+   * here without a new migration. Optional + tolerant of missing keys.
+   */
+  settings?: OrgSettings;
   createdAt: ISODateTime;
+}
+
+/** Shape of `Organization.settings` (jsonb). All keys optional. */
+export interface OrgSettings {
+  /** Device categories offered in the "new service" dropdown. */
+  deviceCategories?: string[];
 }
 
 export interface Employee extends BaseEntity {
