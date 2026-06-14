@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase, subscribeOrgTables, type RealtimeStatus } from './supabase-client';
 import { useRealtimeStore } from '@/stores/realtime';
+import { useSessionStore } from '@/stores/session';
 import type {
   Repository,
   CollectionName,
@@ -136,18 +137,26 @@ export class SupabaseAdapter implements Repository {
     if (orgId) {
       this.unsubscribeRealtime = subscribeOrgTables(
         orgId,
-        REALTIME_TABLES,
+        // `organizations` carries org-level config (e.g. device categories) on
+        // the singleton row, not a collection — refreshed specially below.
+        [...REALTIME_TABLES, 'organizations'],
         (table) => {
+          if (table === 'organizations') {
+            void this.refreshOrganization();
+            return;
+          }
           const collection = TABLE_TO_COLLECTION[table];
           if (collection) this.notifyDebounced(collection);
         },
         (status) => {
           useRealtimeStore.getState().setStatus(status);
           // Reconnect after an outage: events may have been missed while the
-          // channel was down, so refetch every collection (full resync). The
-          // server stays the source of truth — we never merge on the client.
+          // channel was down, so refetch every collection (full resync) plus
+          // the org singleton. The server stays the source of truth — we never
+          // merge on the client.
           if (status === 'live' && this.lastStatus === 'offline') {
             this.notifyAll();
+            void this.refreshOrganization();
           }
           this.lastStatus = status;
         },
@@ -162,6 +171,22 @@ export class SupabaseAdapter implements Repository {
   /** Notify every collection so all live queries refetch (resync / restore). */
   private notifyAll() {
     for (const c of Object.keys(TABLE) as CollectionName[]) this.notify(c);
+  }
+
+  /**
+   * Refetch the organization singleton into the session store. The org row is
+   * loaded once at boot (not a TanStack collection), so realtime edits to
+   * org-level config (e.g. device categories saved on another device) need an
+   * explicit refresh here. Updates the `org` slice directly — NOT setOrg(),
+   * which would reset the active outlet scope. Best-effort.
+   */
+  private async refreshOrganization(): Promise<void> {
+    try {
+      const org = await this.getSingleton('organization');
+      if (org) useSessionStore.setState({ org });
+    } catch {
+      /* realtime refresh is best-effort; next boot/refetch will reconcile */
+    }
   }
 
   /**

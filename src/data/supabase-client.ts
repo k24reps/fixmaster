@@ -723,9 +723,12 @@ export function subscribeOrgTables(
     setStatus('connecting');
     let ch = c.channel(`org-domain:${orgId}`);
     for (const table of tables) {
+      // `organizations` is keyed by `id`; every domain table is keyed by
+      // `org_id`. Filtering the wrong column silently yields zero events.
+      const filter = table === 'organizations' ? `id=eq.${orgId}` : `org_id=eq.${orgId}`;
       ch = ch.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}` },
+        { event: '*', schema: 'public', table, filter },
         (payload) => {
           lastEventAt = Date.now();
           onChange((payload.table as string) ?? table);
