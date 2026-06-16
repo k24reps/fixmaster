@@ -161,6 +161,12 @@ Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (res
 
 **Status bisa diklik + aksi Update Status mencolok (11 Jun 2026).** Badge status di tabel & kartu kini **tombol** — klik membuka StatusModal langsung (ikon pensil muncul saat hover, hover brand-soft). Di kolom aksi, tombol update status diubah dari ikon polos jadi **pill brand berlabel "Status"** (border brand, hover terisi penuh + shadow-brand) agar jadi aksi utama yang jelas. Dua jalur ini berbagi handler yang sama dengan ikon-aksi lain.
 
+**Status pengambilan barang (16 Jun 2026).** Pengambilan fisik unit dilacak terpisah dari status bayar (field `pickedUp`/`pickedUpAt`, kolom DB sejak `0006`). Definisi "menunggu diambil" = helper murni **`isAwaitingPickup`** (`!pickedUp` & status `selesai`/`lunas`/`batal`) di `lib/business/services.ts` — satu sumber kebenaran, dipakai bersama dashboard. Di `/services`:
+- **Filter Pengambilan** (select baru): Semua / Belum diambil / Sudah diambil.
+- **Stat card "Menunggu Diambil"** (tone warning, ikon box) di deret atas.
+- **Indikator visual** per baris tabel & kartu mobile — bench motif: **LED warning + readout mono** "Belum diambil" (menonjol) vs penanda redup "Diambil" (hanya dirender untuk unit selesai/lunas/batal; unit proses tak berisik).
+- **Aksi cepat "Tandai Diambil"** langsung dari daftar (toggle, tanpa buka detail) — **khusus owner/admin** (karyawan lihat status tapi tak lihat tombolnya).
+
 ![[modal-profit-table-dark.png]]
 
 ## Detail Servis — Repair Ticket
@@ -168,7 +174,7 @@ Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (res
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
 
 Fitur tambahan (revisi Fase 4):
-- **Toggle "Sudah Diambil"** — menandai barang sudah diambil pelanggan, terpisah dari status pembayaran; indikator status ambil tampil di header.
+- **Toggle "Sudah Diambil"** — menandai barang sudah diambil pelanggan, terpisah dari status pembayaran; indikator status ambil tampil di header. **Tombol kini khusus owner/admin** (16 Jun 2026) — karyawan tetap melihat indikator, tapi tak bisa men-toggle. Aksi sama tersedia sebagai aksi cepat di Daftar Servis.
 - **Garansi saat "selesai"** — saat status → `selesai`, StatusModal menampilkan input lama garansi **Jasa** & **Sparepart** (hari), wajib minimal salah satu, prefill default dari Pengaturan + chip preset durasi. Menghasilkan `warrantyServiceUntil` & `warrantyPartsUntil` terpisah (tampil dua baris di header detail).
 - **Tombol "Klaim Garansi"** — muncul hanya pada tiket `lunas` yang masih dalam masa garansi → membuka [[Data Layer|tiket klaim tertaut]] gratis lewat `WarrantyClaimModal`, dengan opsi catat kerugian garansi manual.
 
@@ -182,6 +188,7 @@ Fitur tambahan (profit per unit — revisi 11 Jun 2026):
   - **Terima DP** — nominal + wallet; mencatat DP sebagai **kas masuk nyata** (Income kategori Servis + kredit wallet) & mengakumulasi `downPayment`. Saat lunas hanya **sisa tagihan** dicatat; saat batal DP otomatis di-refund.
   - **Koreksi Biaya** — owner/admin, hanya saat `lunas`; pra-isi `finalCost`, menyesuaikan pendapatan pelunasan & saldo wallet **tanpa membatalkan tiket** (log internal). Guard: tak boleh < DP. Lihat [[Data Layer]] § DP, pelunasan & koreksi biaya.
 - **StatusModal** juga menampilkan ringkasan read-only sparepart & modal terpasang (kelola BOM tetap di halaman detail — satu-satunya input yang tersisa di detail, karena iteratif).
+- **UX karyawan saat hanya bisa DP (16 Jun 2026).** Pada unit `selesai`, karyawan tak bisa ubah status (pelunasan owner/admin) sehingga modal jatuh ke DP-only. Dua perbaikan agar tak menyesatkan: (1) StatusModal menampilkan **catatan kontekstual** di atas form DP ("Pekerjaan selesai. Pelunasan hanya bisa owner/admin. Kamu masih bisa menerima DP.") — gaya bench: spine brand kiri + wash brand-soft; (2) tombol action bar di detail **relabel jadi "Terima DP"** (bukan "Update Status") bila satu-satunya aksi yang diizinkan role ini adalah DP. Dihitung via `nextStatuses` + `canSetStatus` (flag `staffDpOnly`/`onlyDp`). Aturan keamanan tak berubah.
 
 ![[modal-profit-detail-dark.png]]
 
