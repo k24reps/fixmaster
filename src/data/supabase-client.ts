@@ -377,22 +377,17 @@ export async function inviteMember(args: {
 }): Promise<PendingInvite> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c
-    .from('pending_invites')
-    .upsert(
-      {
-        org_id: args.orgId,
-        email: args.email.trim().toLowerCase(),
-        name: args.name.trim(),
-        role: args.role,
-        outlet_ids: args.outletIds ?? [],
-        invited_by: (await c.auth.getUser()).data.user?.id ?? null,
-        claimed_at: null,
-      },
-      { onConflict: 'org_id,email' },
-    )
-    .select()
-    .single();
+  // Go through the create_invite RPC (security definer) rather than a direct
+  // upsert: it enforces one-shop-per-email by rejecting emails already an active
+  // member or pending invite in ANOTHER org (a cross-org check RLS hides from
+  // the client). Throws the server's Indonesian message on rejection.
+  const { data, error } = await c.rpc('create_invite', {
+    p_org_id: args.orgId,
+    p_email: args.email.trim().toLowerCase(),
+    p_name: args.name.trim(),
+    p_role: args.role,
+    p_outlet_ids: args.outletIds ?? [],
+  });
   if (error) throw new Error(error.message);
   return {
     id: data.id,
