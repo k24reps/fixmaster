@@ -165,6 +165,9 @@ export async function commitWizard(
     maxOutlets: 5,
     maxUsers: -1,
     createdAt: now,
+    // Device categories live on the org row (settings.deviceCategories, 0032)
+    // so they sync across devices and are never lost on a second device.
+    settings: { deviceCategories: data.categories },
   };
 
   // Scope the repository to the new org before writing.
@@ -226,8 +229,8 @@ export async function commitWizard(
     }));
   if (fixedCosts.length) await repository.putMany('fixedCosts', fixedCosts);
 
-  // Categories + targets persisted as org config singletons.
-  localStorage.setItem(`fixmaster-categories-${orgId}`, JSON.stringify(data.categories));
+  // Targets stay per-device (localStorage); categories already persisted on the
+  // org row above (settings.deviceCategories) so they sync across devices.
   localStorage.setItem(
     `fixmaster-target-${orgId}`,
     JSON.stringify({
@@ -308,8 +311,7 @@ async function commitWizardCloud(
     }));
   if (fixedCosts.length) await repository.putMany('fixedCosts', fixedCosts);
 
-  // Categories + targets (per-device for now; revisit with an org_config table).
-  localStorage.setItem(`fixmaster-categories-${newOrgId}`, JSON.stringify(data.categories));
+  // Targets stay per-device (localStorage); revisit with an org_config table.
   localStorage.setItem(
     `fixmaster-target-${newOrgId}`,
     JSON.stringify({
@@ -319,8 +321,16 @@ async function commitWizardCloud(
     }),
   );
 
-  const org = await repository.getSingleton('organization');
-  if (!org) throw new Error('Gagal memuat organisasi yang baru dibuat');
+  // Device categories live on the org row (settings.deviceCategories, 0032) so
+  // they sync across devices. Write the owner's chosen list to the cloud column
+  // — NOT localStorage, which would leave new orgs with empty cloud categories
+  // (the category dropdown would then be empty on every other device).
+  const created = await repository.getSingleton('organization');
+  if (!created) throw new Error('Gagal memuat organisasi yang baru dibuat');
+  const org = await repository.setSingleton('organization', {
+    ...created,
+    settings: { ...(created.settings ?? {}), deviceCategories: data.categories },
+  });
   const employees = await repository.list('employees');
   const owner = employees.find((e) => e.role === 'owner') ?? employees[0];
   return { org, owner };

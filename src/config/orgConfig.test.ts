@@ -63,8 +63,13 @@ describe('orgConfig device categories (cloud-backed, 0032)', () => {
     expect(getCategories()).toEqual(['Printer']);
   });
 
-  it('returns empty list when neither cloud nor local has data', () => {
-    expect(getCategories()).toEqual([]);
+  it('falls back to the default starter list when neither cloud nor local has data', () => {
+    expect(getCategories()).toEqual(['Laptop', 'HP / Smartphone', 'Printer', 'PC / Komputer']);
+  });
+
+  it('treats an empty configured cloud list as unconfigured (returns defaults)', () => {
+    state.org = makeOrg({ settings: { deviceCategories: [] } });
+    expect(getCategories()).toEqual(['Laptop', 'HP / Smartphone', 'Printer', 'PC / Komputer']);
   });
 
   it('persists categories to the org row and refreshes the session store', async () => {

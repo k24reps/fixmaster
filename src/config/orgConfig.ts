@@ -26,15 +26,28 @@ function readLocalCategories(): string[] {
 }
 
 /**
+ * Sensible starter device categories for the "new service" dropdown, used when
+ * an org has no configured list yet — a brand-new cloud org (settings '{}',
+ * deviceCategories undefined) or a pre-0032 org with no local data. Mirrors the
+ * onboarding wizard's initial list. Deterministic, so the fallback is identical
+ * on every device.
+ */
+export const DEFAULT_DEVICE_CATEGORIES = ['Laptop', 'HP / Smartphone', 'Printer', 'PC / Komputer'];
+
+/**
  * Device categories for the "new service" dropdown. Reads from the org row
- * (cloud-synced). Falls back to the legacy per-device localStorage list when
- * the org has no cloud categories yet (pre-0032 data, until an owner re-saves
- * which seeds the cloud copy — see seedCategoriesFromLocal).
+ * (cloud-synced, 0032). Falls back to the legacy per-device localStorage list,
+ * then to {@link DEFAULT_DEVICE_CATEGORIES} so the form is never empty. An empty
+ * configured list is treated as "unconfigured" (the service form always needs
+ * at least one category; onboarding enforces ≥1). The owner can customize in
+ * Settings, which persists the chosen list to the cloud.
  */
 export function getCategories(): string[] {
   const cloud = useSessionStore.getState().org?.settings?.deviceCategories;
-  if (Array.isArray(cloud)) return cloud;
-  return readLocalCategories();
+  if (Array.isArray(cloud) && cloud.length > 0) return cloud;
+  const local = readLocalCategories();
+  if (local.length > 0) return local;
+  return DEFAULT_DEVICE_CATEGORIES;
 }
 
 /**
