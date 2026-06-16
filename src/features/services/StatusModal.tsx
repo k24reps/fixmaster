@@ -84,6 +84,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   if (allowed.length > 0) modes.push('status');
   if (canDp) modes.push('dp');
   if (canKoreksi) modes.push('koreksi');
+  // Staff on a closed-but-unpaid unit (e.g. "selesai") can't change status —
+  // settlement is owner/admin-only — so the modal lands on DP-only. Surface a
+  // note so the DP form doesn't feel like a wrong turn from "Update Status".
+  const staffDpOnly = !isManager && allowed.length === 0 && canDp;
 
   const defaultWallet = () => {
     const last = getLastExpenseWallet();
@@ -666,6 +670,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         {/* ---- DP sub-action ---- */}
         {mode === 'dp' && (
           <>
+            {staffDpOnly && (
+              <p className={styles.staffNote}>
+                Pekerjaan {STATUS_LABELS[service.status].toLowerCase()}. Pelunasan hanya bisa
+                dilakukan owner/admin. Kamu masih bisa menerima DP.
+              </p>
+            )}
             <Input
               label="Nominal DP"
               value={dpAmount}

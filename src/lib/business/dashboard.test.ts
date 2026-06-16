@@ -28,7 +28,7 @@ const baseSvc = (over: Partial<Service>): Service => ({
   spareparts: [],
   warrantyServiceUntil: null,
   warrantyPartsUntil: null,
-  pickedUp: false,
+  pickedUp: over.pickedUp ?? false,
   pickedUpAt: null,
   warrantyClaimOf: null,
   history: [],
@@ -93,14 +93,19 @@ describe('computeAlerts', () => {
       { id: 'b', orgId: 'o1', outletId: null, name: 'Y', category: '', sku: '', stock: 1, minStock: 3, costPrice: 0, sellPrice: 0, supplierId: null, createdAt: '', updatedAt: '', deletedAt: null },
     ];
     const alerts = computeAlerts(
-      [baseSvc({ id: '1', status: 'konfirmasi' }), baseSvc({ id: '2', status: 'selesai' })],
+      [
+        baseSvc({ id: '1', status: 'konfirmasi' }),
+        baseSvc({ id: '2', status: 'selesai' }),
+        // Already collected → must NOT count toward "menunggu diambil".
+        baseSvc({ id: '3', status: 'lunas', pickedUp: true }),
+      ],
       inv,
     );
     const messages = alerts.map((a) => a.message).join(' | ');
     expect(messages).toContain('menunggu konfirmasi');
     expect(messages).toContain('habis');
     expect(messages).toContain('menipis');
-    expect(messages).toContain('menunggu diambil');
+    expect(messages).toContain('1 unit menunggu diambil');
   });
 
   it('returns no alerts when all clear', () => {

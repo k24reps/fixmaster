@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Input, Badge, StatCard, EmptyState, Icon } from '@/components/ui';
+import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
+import { toast } from '@/stores/toast';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import {
   STATUS_LABELS,
   STATUS_TONE,
   isActive,
+  isAwaitingPickup,
   serviceProfit,
   serviceModalTotal,
 } from '@/lib/business/services';
@@ -25,11 +28,15 @@ export function ServicesPage() {
   const { data: employees } = useCollection('employees');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const techs = employees.length ? employees : sessionEmployees;
-  const isOwner = useSessionStore((s) => s.currentEmployee?.role) === 'owner';
+  const me = useSessionStore((s) => s.currentEmployee);
+  const role = me?.role;
+  const isOwner = role === 'owner';
+  const isManager = role === 'owner' || role === 'admin';
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting' | 'collected'>('all');
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -48,10 +55,11 @@ export function ServicesPage() {
     const total = visible.length;
     const inProcess = visible.filter((s) => isActive(s.status) && s.status !== 'diterima').length;
     const done = visible.filter((s) => s.status === 'selesai' || s.status === 'lunas').length;
+    const awaitingPickup = visible.filter(isAwaitingPickup).length;
     const revenue = visible
       .filter((s) => s.status === 'lunas')
       .reduce((sum, s) => sum + s.finalCost, 0);
-    return { total, inProcess, done, revenue };
+    return { total, inProcess, done, awaitingPickup, revenue };
   }, [visible]);
 
   const rows = useMemo(() => {
@@ -59,6 +67,13 @@ export function ServicesPage() {
     return visible
       .filter((s) => statusFilter === 'all' || s.status === statusFilter)
       .filter((s) => categoryFilter === 'all' || s.category === categoryFilter)
+      .filter((s) =>
+        pickupFilter === 'all'
+          ? true
+          : pickupFilter === 'awaiting'
+            ? isAwaitingPickup(s)
+            : s.pickedUp,
+      )
       .filter(
         (s) =>
           !q ||
@@ -67,11 +82,56 @@ export function ServicesPage() {
           s.device.toLowerCase().includes(q),
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [visible, query, statusFilter, categoryFilter]);
+  }, [visible, query, statusFilter, categoryFilter, pickupFilter]);
 
   const openNew = () => {
     setEditing(null);
     setEditOpen(true);
+  };
+
+  // Toggle physical collection (manager-only). Mirrors ServiceDetailPage so the
+  // list and detail stay consistent; pickup is independent of payment status.
+  const togglePickup = async (s: Service) => {
+    const now = new Date().toISOString();
+    const nowPicked = !s.pickedUp;
+    await repository.put('services', {
+      ...s,
+      pickedUp: nowPicked,
+      pickedUpAt: nowPicked ? now : null,
+      updatedAt: now,
+      history: [
+        ...s.history,
+        {
+          at: now,
+          status: 'edit',
+          by: me?.id ?? '',
+          byName: me?.name ?? '',
+          note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
+          internal: false,
+        },
+      ],
+    });
+    toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+  };
+
+  // Pickup indicator: prominent "Belum diambil" for closed-but-uncollected
+  // units, dim "Diambil" for collected ones, nothing for in-progress tickets.
+  const renderPickup = (s: Service) => {
+    if (s.pickedUp) {
+      return (
+        <span className={styles.pickupDone}>
+          <Icon name="circle-check" aria-hidden /> Diambil
+        </span>
+      );
+    }
+    if (isAwaitingPickup(s)) {
+      return (
+        <span className={styles.pickupWait}>
+          <Icon name="box" aria-hidden /> Belum diambil
+        </span>
+      );
+    }
+    return null;
   };
 
   // Shared action cluster so the desktop table and mobile cards stay in sync.
@@ -118,6 +178,16 @@ export function ServicesPage() {
       >
         <Icon name="pen" aria-hidden />
       </button>
+      {isManager && (isAwaitingPickup(s) || s.pickedUp) && (
+        <button
+          className={[styles.iconBtn, s.pickedUp ? styles.pickedActive : ''].join(' ')}
+          onClick={() => void togglePickup(s)}
+          title={s.pickedUp ? 'Batalkan tanda ambil' : 'Tandai sudah diambil'}
+          aria-label={s.pickedUp ? 'Batalkan tanda ambil' : 'Tandai sudah diambil'}
+        >
+          <Icon name={s.pickedUp ? 'circle-check' : 'box'} aria-hidden />
+        </button>
+      )}
     </>
   );
 
@@ -126,6 +196,7 @@ export function ServicesPage() {
       <div className={styles.stats}>
         <StatCard label="Total Servis" value={stats.total} icon={<Icon name="clipboard-list" aria-hidden />} tone="brand" />
         <StatCard label="Dalam Proses" value={stats.inProcess} icon={<Icon name="spinner" aria-hidden />} tone="warning" />
+        <StatCard label="Menunggu Diambil" value={stats.awaitingPickup} icon={<Icon name="box" aria-hidden />} tone="warning" />
         <StatCard label="Selesai / Lunas" value={stats.done} icon={<Icon name="check-double" aria-hidden />} tone="success" />
         <StatCard label="Pendapatan Aktual" value={fmtRp(stats.revenue)} icon={<Icon name="coins" aria-hidden />} tone="accent" />
       </div>
@@ -163,6 +234,16 @@ export function ServicesPage() {
                 {c}
               </option>
             ))}
+          </select>
+          <select
+            className={styles.select}
+            value={pickupFilter}
+            onChange={(e) => setPickupFilter(e.target.value as 'all' | 'awaiting' | 'collected')}
+            title="Filter status pengambilan barang"
+          >
+            <option value="all">Semua Pengambilan</option>
+            <option value="awaiting">Belum diambil</option>
+            <option value="collected">Sudah diambil</option>
           </select>
         </div>
         <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
@@ -222,6 +303,7 @@ export function ServicesPage() {
                       <td>
                         {s.device}
                         <small className={styles.sub}>{s.category}</small>
+                        {renderPickup(s)}
                       </td>
                       <td>{s.technicianName || <span className={styles.muted}>—</span>}</td>
                       <td className={styles.num}>
@@ -299,6 +381,7 @@ export function ServicesPage() {
                   <div className={styles.jobDevice}>
                     <strong>{s.device}</strong>
                     <small>{s.category}</small>
+                    {renderPickup(s)}
                   </div>
                   <div className={styles.jobMeta}>
                     <span className={styles.customerName}>

@@ -124,6 +124,17 @@
   border-radius: var(--radius-sm);
 }
 
+/* Contextual note for staff who can only take a DP (settlement is manager-only).
+   Bench motif: a brand "status spine" on the left edge + soft brand wash. */
+.staffNote {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--brand-soft);
+  border-left: 3px solid var(--brand);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
 /* Read-only sparepart/modal summary */
 .partsSummary {
   display: flex;

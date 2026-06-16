@@ -5,7 +5,7 @@
  */
 import type { Service, Income, Expense, Wallet, InventoryItem } from '@/data/types';
 import { isInRange } from '@/lib/time';
-import { isActive } from './services';
+import { isActive, isAwaitingPickup } from './services';
 
 export interface DashboardKpis {
   unitsIn: number;
@@ -91,12 +91,12 @@ export function computeAlerts(services: Service[], inventory: InventoryItem[]): 
     });
   }
 
-  const readyUncollected = services.filter((s) => s.status === 'selesai').length;
+  const readyUncollected = services.filter(isAwaitingPickup).length;
   if (readyUncollected > 0) {
     alerts.push({
       tone: 'info',
       icon: 'fa-box',
-      message: `${readyUncollected} unit selesai menunggu diambil`,
+      message: `${readyUncollected} unit menunggu diambil`,
     });
   }
 

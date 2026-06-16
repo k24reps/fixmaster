@@ -20,6 +20,7 @@ import {
   settlementIncomeDescription,
   isTerminal,
   isActive,
+  isAwaitingPickup,
   isUnderWarranty,
   canClaimWarranty,
 } from './services';
@@ -45,6 +46,17 @@ describe('status machine', () => {
     expect(isTerminal('pengerjaan')).toBe(false);
     expect(isActive('pengerjaan')).toBe(true);
     expect(isActive('lunas')).toBe(false);
+  });
+  it('detects awaiting-pickup (closed but uncollected)', () => {
+    // Closed/done statuses that are not yet collected → awaiting pickup.
+    expect(isAwaitingPickup({ status: 'selesai', pickedUp: false })).toBe(true);
+    expect(isAwaitingPickup({ status: 'lunas', pickedUp: false })).toBe(true);
+    expect(isAwaitingPickup({ status: 'batal', pickedUp: false })).toBe(true);
+    // Already collected → not awaiting, regardless of status.
+    expect(isAwaitingPickup({ status: 'lunas', pickedUp: true })).toBe(false);
+    // Still in progress → not awaiting pickup even if uncollected.
+    expect(isAwaitingPickup({ status: 'pengerjaan', pickedUp: false })).toBe(false);
+    expect(isAwaitingPickup({ status: 'diterima', pickedUp: false })).toBe(false);
   });
 });
 

@@ -229,6 +229,25 @@ export function isActive(status: ServiceStatus): boolean {
 }
 
 /**
+ * Statuses at which a unit is "closed" work-wise and the physical device is
+ * waiting for the customer to collect it: finished (`selesai`), paid (`lunas`),
+ * or cancelled (`batal`). A still-in-progress ticket is NOT awaiting pickup.
+ */
+export const AWAITING_PICKUP_STATUSES: ServiceStatus[] = ['selesai', 'lunas', 'batal'];
+
+/**
+ * Whether the device is done/closed but NOT yet physically collected. Single
+ * source of truth shared by the Services page (filter, stat, indicator) and the
+ * dashboard alert, so "menunggu diambil" means the same thing everywhere.
+ * Pickup is independent of payment — a unit can be paid but uncollected.
+ */
+export function isAwaitingPickup(
+  service: Pick<Service, 'status' | 'pickedUp'>,
+): boolean {
+  return !service.pickedUp && AWAITING_PICKUP_STATUSES.includes(service.status);
+}
+
+/**
  * Latest warranty expiry across service & parts (null if neither set).
  * Used to decide overall coverage and to display "garansi s/d".
  */

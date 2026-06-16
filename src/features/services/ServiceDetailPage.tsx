@@ -13,6 +13,8 @@ import {
   serviceModalTotal,
   walletDeltasForModalEdit,
   isTerminal,
+  nextStatuses,
+  canSetStatus,
   canClaimWarranty,
 } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
@@ -53,7 +55,9 @@ export function ServiceDetailPage() {
   const { data: wallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const me = useSessionStore((s) => s.currentEmployee);
-  const isOwner = me?.role === 'owner';
+  const role = me?.role ?? 'karyawan';
+  const isOwner = role === 'owner';
+  const isManager = role === 'owner' || role === 'admin';
 
   const [editOpen, setEditOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -89,6 +93,11 @@ export function ServiceDetailPage() {
   const profit = serviceProfit(service);
   const modalTotal = serviceModalTotal(service.spareparts);
   const claimable = canClaimWarranty(service, localDateStr());
+  // When the only thing this role can do is take a DP (no allowed status
+  // transitions, but the ticket isn't terminal), label the action accordingly
+  // instead of the misleading "Update Status" — e.g. staff on a finished unit.
+  const allowedNext = nextStatuses(service.status).filter((s) => canSetStatus(role, s));
+  const onlyDp = allowedNext.length === 0 && !isTerminal(service.status);
   const originTicket = service.warrantyClaimOf
     ? services.find((s) => s.id === service.warrantyClaimOf) ?? null
     : null;
@@ -712,13 +721,15 @@ export function ServiceDetailPage() {
           <button className={styles.secondaryBtn} onClick={() => setEditOpen(true)}>
             <Icon name="pen" aria-hidden /> Edit
           </button>
-          <button
-            className={[styles.secondaryBtn, service.pickedUp ? styles.pickedActive : ''].join(' ')}
-            onClick={togglePickup}
-          >
-            <Icon name={service.pickedUp ? 'circle-check' : 'box'} aria-hidden />{' '}
-            {service.pickedUp ? 'Diambil ✓' : 'Tandai Diambil'}
-          </button>
+          {isManager && (
+            <button
+              className={[styles.secondaryBtn, service.pickedUp ? styles.pickedActive : ''].join(' ')}
+              onClick={togglePickup}
+            >
+              <Icon name={service.pickedUp ? 'circle-check' : 'box'} aria-hidden />{' '}
+              {service.pickedUp ? 'Diambil ✓' : 'Tandai Diambil'}
+            </button>
+          )}
           {claimable && (
             <button className={styles.primaryBtn} onClick={() => setClaimOpen(true)}>
               <Icon name="shield-halved" aria-hidden /> Klaim Garansi
@@ -726,7 +737,15 @@ export function ServiceDetailPage() {
           )}
           {!isTerminal(service.status) && (
             <button className={styles.primaryBtn} onClick={() => setStatusOpen(true)}>
-              Update Status <Icon name="arrow-right" aria-hidden />
+              {onlyDp ? (
+                <>
+                  <Icon name="money-bill-wave" aria-hidden /> Terima DP
+                </>
+              ) : (
+                <>
+                  Update Status <Icon name="arrow-right" aria-hidden />
+                </>
+              )}
             </button>
           )}
           {service.status === 'lunas' && (me?.role === 'owner' || me?.role === 'admin') && (
