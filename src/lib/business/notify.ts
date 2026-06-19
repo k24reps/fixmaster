@@ -5,6 +5,7 @@
  */
 import type { Service, Organization } from '@/data/types';
 import { fmtRp } from '@/lib/format';
+import { fmtDate } from '@/lib/time';
 import { STATUS_LABELS } from './services';
 
 /** Normalize an Indonesian phone to wa.me format (62xxxxxxxxxx, digits only). */
@@ -111,6 +112,14 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
   if (service.downPayment > 0) {
     lines.push({ label: 'DP', value: fmtRp(service.downPayment) });
     lines.push({ label: 'Sisa', value: fmtRp(Math.max(0, service.finalCost - service.downPayment)) });
+  }
+  // Warranty (auto-filled from the shop's default when a service is marked
+  // 'selesai'). Printed so the customer has proof of coverage on the nota.
+  if (service.warrantyServiceUntil) {
+    lines.push({ label: 'Garansi Jasa s/d', value: fmtDate(service.warrantyServiceUntil) });
+  }
+  if (service.warrantyPartsUntil) {
+    lines.push({ label: 'Garansi Part s/d', value: fmtDate(service.warrantyPartsUntil) });
   }
   return lines;
 }

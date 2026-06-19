@@ -7,6 +7,7 @@ import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
 import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate } from '@/lib/time';
 import { Badge, Icon } from '@/components/ui';
+import { useSessionStore } from '@/stores/session';
 import styles from './TrackingPage.module.css';
 
 /** Normalized tracking result shared by both the cloud-RPC and local paths. */
@@ -28,7 +29,12 @@ interface TrackResult {
  */
 export function TrackingPage() {
   const [params] = useSearchParams();
-  const orgId = params.get('org') ?? '';
+  // Tracking is inherently org-scoped (service numbers like FM-0001 repeat
+  // across shops). Prefer the ?org= param from a shared link; if absent (e.g.
+  // an owner opening /track directly while logged in), fall back to the
+  // session org so the lookup still works.
+  const sessionOrgId = useSessionStore((s) => s.org?.id ?? '');
+  const orgId = params.get('org') || sessionOrgId;
   const initialNo = params.get('no') ?? '';
 
   const [query, setQuery] = useState(initialNo);
@@ -50,6 +56,13 @@ export function TrackingPage() {
       return;
     }
     setThrottleMsg('');
+    if (!orgId) {
+      // No org from the link and no logged-in session → we can't know which
+      // shop's service to look up. Tell the visitor instead of silently doing
+      // nothing (the lookup query stays disabled without an org).
+      setThrottleMsg('Link tidak lengkap (tanpa kode toko). Gunakan link lacak yang diberikan toko Anda.');
+      return;
+    }
     setSearchNo(query);
   };
 
