@@ -125,9 +125,17 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
 
 ## Laporan — Analyzer Printout
 
-Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif.
+Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif. Sejak 19 Jun 2026 diperkaya **8 visual analitik** (logika agregasi murni di [`lib/business/reports.ts`](src/lib/business/reports.ts), teruji 19 unit test):
+1. **Tren Pemasukan vs Pengeluaran** — grafik garis **SVG murni** (komponen [`TrendChart`](src/features/reports/TrendChart.tsx), tanpa library) dengan crosshair hover, area pemasukan, gridline + label mono. Bucket auto: harian (≤31 hr) / mingguan (≤184 hr) / bulanan (selebihnya).
+2. **Rincian Transaksi** — tabel on-screen (versi layar dari CSV): tag jenis, kategori, keterangan, nominal bertanda; cap 100 baris (sisanya via ekspor).
+3. **Laba per Kategori Perangkat** — omzet + laba kotor (finalCost − biaya part) per jenis perangkat (HP/laptop/dst), servis selesai/lunas.
+4. **Sparepart Terlaris + Saran Restok** — part paling sering dipakai (qty+biaya) & item ≤ minStock (neediest first).
+5. **Funnel Servis + Turnaround** — jumlah unit per status (urutan workflow) + rata-rata hari diterima→selesai (dari history).
+6. **Delta vs Periode Lalu** — metric tile pemasukan/pengeluaran/laba menampilkan % perubahan vs jendela sebelumnya yang setara (pengeluaran: naik = merah).
+7. **Perbandingan Antar-Outlet** — income/expense/net per cabang (hanya muncul bila >1 outlet; null = "Tanpa Cabang").
+8. **Aging Piutang** — tabel servis selesai yang belum lunas (sisa = finalCost − DP), umur dari tanggal selesai dengan tag 0-7 / 8-30 / 31+.
 
-- **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Helper baru `lib/csv.ts`: `toCsv()` (escaping RFC-4180) + `downloadCsv()` (BOM UTF-8 agar Excel baca rupiah/aksen benar). Nama file memuat scope + rentang tanggal. Catatan: Laporan belum punya grafik garis/tabel transaksi inline — visualnya metric/gauge/bar/leaderboard.
+- **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Helper baru `lib/csv.ts`: `toCsv()` (escaping RFC-4180) + `downloadCsv()` (BOM UTF-8 agar Excel baca rupiah/aksen benar). Nama file memuat scope + rentang tanggal.
 
 > [!warning] Akses Laporan kini **owner-only** (migration `0019`)
 > Sebelumnya manager (owner+admin). Sekarang hanya **owner**: nav pakai flag `ownerOnly`, rute dibungkus `OwnerRoute`, dan `reports.view` dicabut dari admin. Lihat [[Decisions & Bug Fixes]].

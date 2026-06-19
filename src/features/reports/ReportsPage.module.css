@@ -297,6 +297,135 @@
   background: var(--gradient-brand);
 }
 
+/* ---------- Metric delta (vs previous period) ---------- */
+.metricDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Card header trailing readout ---------- */
+.turnaround {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Extra bar fills + tones ---------- */
+.warn {
+  color: var(--amber-400);
+}
+.warnFill {
+  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+}
+.accentFill {
+  background: linear-gradient(90deg, var(--accent-500), var(--accent-400));
+}
+
+/* ---------- Data tables (receivables + transactions) ---------- */
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.table th {
+  text-align: left;
+  padding: 10px var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table td {
+  padding: 10px var(--space-5);
+  border-bottom: 1px dotted var(--border);
+  color: var(--text-secondary);
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.descCell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tableNote {
+  padding: var(--space-3) var(--space-5);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Transaction type tag */
+.typeTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.typeInc {
+  background: var(--success-soft);
+  color: var(--green-400);
+}
+.typeExp {
+  background: var(--danger-soft);
+  color: var(--red-400);
+}
+
+/* Aging tag (receivables) */
+.ageTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+.ageNew {
+  background: var(--success-soft);
+  color: var(--green-400);
+}
+.ageMid {
+  background: var(--warning-soft);
+  color: var(--amber-400);
+}
+.ageOld {
+  background: var(--danger-soft);
+  color: var(--red-400);
+}
+
 @media (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;

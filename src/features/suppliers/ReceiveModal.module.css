@@ -55,7 +55,7 @@
   border: 1px solid var(--border);
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
+  background: var(--bg-surface-2);
 }
 .valueRow {
   display: flex;
