@@ -77,6 +77,12 @@ Dua perubahan dari smoke test (frontend-only, **tanpa migrasi** — `picked_up`/
 - **UX karyawan.** Pada unit `selesai`, karyawan tak bisa ubah status (pelunasan owner/admin) → "Update Status" malah membuka form DP (aman tapi menyesatkan). Perbaikan tanpa ubah aturan: (1) catatan kontekstual di StatusModal saat `staffDpOnly` (karyawan, tak ada transisi diizinkan, DP masih boleh); (2) tombol action bar relabel jadi **"Terima DP"** saat `onlyDp`. **Pelajaran**: gating yang benar tetap butuh label yang jujur — keamanan ≠ kejelasan.
 - Verifikasi: build + lint + **346 unit** hijau (+`isAwaitingPickup`, +dashboard exclude-collected). Frontend ter-deploy via Vercel (`staging`→`main`, commit `31663e8`).
 
+### Flash empty-state pasca-login di daftar Servis (19 Jun 2026)
+- **Gejala (lapor user)**: setelah login ulang, daftar/inputan servis kadang **telat muncul** — awalnya tampak kosong (\"Belum ada servis\") lalu tiba-tiba terisi.
+- **Akar masalah**: `ServicesPage` hanya bercabang pada `rows.length === 0`, **mengabaikan flag `loading`** yang sudah disediakan `useCollection`. Saat fetch cloud pasca-login berjalan, `placeholderData: []` membuat list tampak kosong → empty-state tampil sesaat sebelum data nyata datang.
+- **Perbaikan (frontend-only)**: tambah cabang **loading** (spinner mono \"Memuat servis…\" via util global `.spin`) sebelum empty-state, mengikuti pola yang sudah benar di `ActivityLogPage`. Commit `aa906ff`.
+- **Catatan sistemik (utang teknis)**: pola \"abaikan `loading`\" ini **masih ada** di halaman daftar lain — Pelanggan, Inventori, Supplier, Tugas, POS — yang juga hanya cek `length === 0`. Hanya **Servis** yang sudah diperbaiki (yang dilaporkan). Sisanya rentan flash serupa; kandidat perbaikan menyeluruh berikutnya (ekstrak pola `loading → empty → data`).
+
 
 > [!CAUTION]
 > **Pelajaran tooling screenshot (5 kali gagal).** Skrip `shoot-*.mjs` yang pakai `window.__fixmasterSeed()` **GAGAL** di sini karena dev server lokal jalan di **mode cloud** (`.env.local` → Supabase staging) — seed lokal (`repository.clearAll()` + wizard commit) melempar error. **Solusi**: pakai rute **`/demo`** (memaksa mode demo terlepas dari env) + navigasi via **klik link sidebar** (`getByRole('link', {name:/Servis|Pengaturan/})`), JANGAN `page.goto()` ke rute app (reload SPA → buang state demo). Pakai **context baru per shot**. Pola ini ada di `scripts/shoot-4feat.mjs`. Shot modal multi-langkah (refund DP) tetap rapuh karena overlay → andalkan integration test untuk logikanya.
