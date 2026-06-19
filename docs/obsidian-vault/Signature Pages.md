@@ -110,6 +110,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 
 Tab PO jadi **baris docket** dengan spine status (biru dipesan / amber sebagian / hijau diterima / abu draft), chip PO mono, total tabular, **tombol Terima mekanis**. Tab Supplier jadi kartu vendor + readout pembelian.
 
+- **Sinkron PO → Keuangan + void otomatis (19 Jun 2026).** ReceiveModal kini menampilkan **readout nilai diterima** (mono) + **checkbox "Potong dari wallet"** (default ON + wallet utama) dengan pemilih wallet. Terima barang → otomatis catat **Expense `'Pembelian stok PO <no>'`** (partial-aware: senilai yang masuk saat itu) & (bila tunai) potong saldo wallet — atomik via RPC `receive_goods_v2` di cloud, tulis berurutan di lokal. Tiap docket PO (non-draft/non-cancelled) punya **tombol batalkan** (ikon danger): **void otomatis** balikkan stok, refund wallet, hapus expense ter-link, set `cancelled`. Lihat [[Data Layer]] migrasi `0034`.
+
 ![[sup-dark.png]]
 
 ## Keuangan — Cashbook Tape
