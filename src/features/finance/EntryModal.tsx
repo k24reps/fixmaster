@@ -9,13 +9,15 @@ import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
-import type { Wallet, IncomeCategory, ExpenseCategory } from '@/data/types';
+import type { Wallet, IncomeCategory, ExpenseCategory, Expense } from '@/data/types';
 
 interface EntryModalProps {
   open: boolean;
   onClose: () => void;
   kind: 'income' | 'expense';
   wallets: Wallet[];
+  /** When set, the modal edits this expense instead of creating a new entry. */
+  editing?: Expense | null;
 }
 
 const INCOME_CATEGORIES: IncomeCategory[] = ['Servis', 'Penjualan', 'Lainnya'];
@@ -29,7 +31,7 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Lainnya',
 ];
 
-export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
+export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: outlets } = useCollection('outlets');
   const [date, setDate] = useState(localDateStr());
@@ -43,11 +45,20 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
   const [lastOpen, setLastOpen] = useState(false);
   if (open && !lastOpen) {
     setLastOpen(true);
-    setDate(localDateStr());
-    setCategory(kind === 'income' ? 'Lainnya' : 'Operasional');
-    setAmount('');
-    setWalletId(wallets[0]?.id ?? '');
-    setDescription('');
+    if (editing) {
+      // Edit mode: prefill from the existing expense record.
+      setDate(editing.date);
+      setCategory(editing.category);
+      setAmount(fmtRpInput(String(editing.amount)));
+      setWalletId(editing.walletId);
+      setDescription(editing.description);
+    } else {
+      setDate(localDateStr());
+      setCategory(kind === 'income' ? 'Lainnya' : 'Operasional');
+      setAmount('');
+      setWalletId(wallets[0]?.id ?? '');
+      setDescription('');
+    }
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
@@ -62,6 +73,38 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
     const wallet = wallets.find((w) => w.id === walletId);
     const txOutletId = resolveCreateOutlet(outlets);
     try {
+      if (editing) {
+        // ----- Edit expense: update record + reconcile wallet balance(s). -----
+        await repository.put('expenses', {
+          ...editing,
+          date,
+          category: category as ExpenseCategory,
+          amount: value,
+          walletId,
+          description: description.trim(),
+          updatedAt: now,
+        });
+        // Reconcile wallets. The wallets prop already reflects the OLD expense,
+        // so we reverse the old amount and apply the new one.
+        if (editing.walletId === walletId) {
+          // Same wallet: net adjustment = oldAmount - newValue.
+          if (wallet) await repository.put('wallets', applyBalance(wallet, editing.amount - value));
+        } else {
+          const oldWallet = wallets.find((w) => w.id === editing.walletId);
+          if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, editing.amount));
+          if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
+        }
+        logActivity({
+          action: 'expense.update',
+          entityType: 'expense',
+          entityId: editing.id,
+          entityLabel: description.trim() || (category as string),
+          meta: { amount: value, prevAmount: editing.amount, category },
+        });
+        toast.success('Pengeluaran diperbarui');
+        onClose();
+        return;
+      }
       if (kind === 'income') {
         const id = newId();
         await repository.put('incomes', {
@@ -125,7 +168,7 @@ export function EntryModal({ open, onClose, kind, wallets }: EntryModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title={kind === 'income' ? 'Catat Pemasukan' : 'Catat Pengeluaran'}
+      title={editing ? 'Edit Pengeluaran' : kind === 'income' ? 'Catat Pemasukan' : 'Catat Pengeluaran'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

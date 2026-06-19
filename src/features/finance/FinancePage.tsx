@@ -15,6 +15,7 @@ import {
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
+import { TransferModal } from './TransferModal';
 import type { Income, Expense } from '@/data/types';
 import styles from './FinancePage.module.css';
 
@@ -42,6 +43,8 @@ export function FinancePage() {
   const { data: incomes } = useCollection('incomes');
   const { data: expenses } = useCollection('expenses');
   const [modalKind, setModalKind] = useState<'income' | 'expense' | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
 
   const { from, to } = monthRange();
@@ -174,6 +177,15 @@ export function FinancePage() {
         <Button variant="secondary" onClick={() => setModalKind('expense')} iconLeft={<Icon name="arrow-up" aria-hidden />}>
           Pengeluaran
         </Button>
+        {wallets.length >= 2 && (
+          <Button
+            variant="secondary"
+            onClick={() => setTransferOpen(true)}
+            iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
+          >
+            Transfer
+          </Button>
+        )}
       </div>
 
       <Card glass>
@@ -206,6 +218,18 @@ export function FinancePage() {
                     <span className={[styles.tapeAmount, inc ? styles.inc : styles.exp].join(' ')}>
                       {inc ? '+' : '−'}{fmtRp(r.amount)}
                     </span>
+                    {r.kind === 'expense' && (
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => {
+                          setEditingExpense(r.record as Expense);
+                          setModalKind('expense');
+                        }}
+                        aria-label="Edit"
+                      >
+                        <Icon name="pen" aria-hidden />
+                      </button>
+                    )}
                     <button
                       className={[styles.iconBtn, styles.danger].join(' ')}
                       onClick={() => setToDelete(r)}
@@ -223,10 +247,15 @@ export function FinancePage() {
 
       <EntryModal
         open={modalKind !== null}
-        onClose={() => setModalKind(null)}
+        onClose={() => {
+          setModalKind(null);
+          setEditingExpense(null);
+        }}
         kind={modalKind ?? 'income'}
         wallets={wallets}
+        editing={editingExpense}
       />
+      <TransferModal open={transferOpen} onClose={() => setTransferOpen(false)} wallets={wallets} />
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Transaksi?"
