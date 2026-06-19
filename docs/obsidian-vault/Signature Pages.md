@@ -154,6 +154,8 @@ Tiap tugas jadi **tiket kerja** dengan spine status (amber pending / merah berke
 
 Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED status). Kehadiran jadi baris **punch-card**; riwayat jadi **timecard ledger** mono.
 
+- **Scoping riwayat per peran (19 Jun 2026).** "Kehadiran Hari Ini" tetap papan tim bersama, tapi **Riwayat Absensi** kini di-scope: **manager** (owner/admin) lihat seluruh tim, **karyawan** hanya barisnya sendiri (`attendance.filter(employeeId===me)`). Sebelumnya semua user lihat semua baris (bocor privasi rekan). Aksi koreksi/hapus tetap manager-only.
+
 ![[att-dark.png]]
 
 ## Daftar Servis — Repair Job Cards
