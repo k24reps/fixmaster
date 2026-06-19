@@ -28,6 +28,7 @@ import { Button, Icon, Input, Select } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
+import { printServiceReceipt } from './printReceipt';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
 import type { ServiceStatus, ServiceSparepart } from '@/data/types';
@@ -54,6 +55,7 @@ export function ServiceDetailPage() {
   const { data: customers } = useCollection('customers');
   const { data: wallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
+  const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
   const role = me?.role ?? 'karyawan';
   const isOwner = role === 'owner';
@@ -721,6 +723,11 @@ export function ServiceDetailPage() {
           <button className={styles.secondaryBtn} onClick={() => setEditOpen(true)}>
             <Icon name="pen" aria-hidden /> Edit
           </button>
+          {org && (
+            <button className={styles.secondaryBtn} onClick={() => printServiceReceipt(service, org)}>
+              <Icon name="print" aria-hidden /> Cetak Nota
+            </button>
+          )}
           {isManager && (
             <button
               className={[styles.secondaryBtn, service.pickedUp ? styles.pickedActive : ''].join(' ')}
