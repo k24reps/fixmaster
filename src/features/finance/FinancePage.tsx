@@ -66,7 +66,16 @@ export function FinancePage() {
         description: e.description, amount: e.amount, walletId: e.walletId, record: e,
       })),
     ];
-    return rows.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 100);
+    // Sort by ledger date desc, then by actual creation time desc. Using the
+    // record's createdAt (not the random UUID id) ensures the newest entry on a
+    // given day — e.g. a just-recorded DP — surfaces at the top of that day.
+    return rows
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.record.createdAt ?? '').localeCompare(a.record.createdAt ?? ''),
+      )
+      .slice(0, 100);
   }, [incomes, expenses]);
 
   const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
