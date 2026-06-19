@@ -302,6 +302,19 @@
   color: var(--success);
   border-color: color-mix(in srgb, var(--success) 40%, transparent);
 }
+/* Loading readout while the collection hydrates (distinguishes "memuat" from
+   a genuinely empty list — avoids the post-login empty-state flash). */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-12);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.1em;
+}
 .customerName {
   color: var(--brand);
   font-weight: var(--fw-semibold);

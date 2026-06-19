@@ -23,7 +23,7 @@ import type { Service, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
 
 export function ServicesPage() {
-  const { data: services } = useCollection('services');
+  const { data: services, loading } = useCollection('services');
   const { data: customers } = useCollection('customers');
   const { data: employees } = useCollection('employees');
   const sessionEmployees = useSessionStore((s) => s.employees);
@@ -252,7 +252,11 @@ export function ServicesPage() {
       </div>
 
       <Card glass>
-        {rows.length === 0 ? (
+        {loading ? (
+          <p className={styles.loading}>
+            <Icon name="circle-notch" className="spin" aria-hidden /> Memuat servis…
+          </p>
+        ) : rows.length === 0 ? (
           <EmptyState
             icon={<Icon name="screwdriver-wrench" aria-hidden />}
             title={visible.length === 0 ? 'Belum ada servis' : 'Tidak ada hasil'}
