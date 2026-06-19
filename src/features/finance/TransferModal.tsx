@@ -32,12 +32,23 @@ export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
   const [lastOpen, setLastOpen] = useState(false);
   if (open && !lastOpen) {
     setLastOpen(true);
-    setFromId(wallets[0]?.id ?? '');
-    setToId('');
+    // Default both selects to real wallets so the displayed option matches
+    // state. A native <select> with an unmatched value silently shows the
+    // first option while state stays empty → misleading "pick wallet" error.
+    const first = wallets[0]?.id ?? '';
+    const second = wallets.find((w) => w.id !== first)?.id ?? '';
+    setFromId(first);
+    setToId(second);
     setAmount('');
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
+
+  // Keep the destination valid: if it collides with the new source, move it.
+  const onFromChange = (id: string) => {
+    setFromId(id);
+    if (id === toId) setToId(wallets.find((w) => w.id !== id)?.id ?? '');
+  };
 
   const save = async () => {
     const value = parseRpInput(amount);
@@ -98,7 +109,7 @@ export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
           <Select
             label="Dari wallet"
             value={fromId}
-            onChange={(e) => setFromId(e.target.value)}
+            onChange={(e) => onFromChange(e.target.value)}
             options={wallets.map((w) => ({ value: w.id, label: `${w.name} (${fmtRp(w.balance)})` }))}
           />
           <Select
