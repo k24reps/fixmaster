@@ -129,9 +129,12 @@ export function AttendancePage() {
   );
 
   const recentByDay = useMemo(() => {
-    const sorted = [...attendance].sort((a, b) => b.date.localeCompare(a.date));
+    // Managers (owner/admin) see the whole team's history; staff only see their
+    // own rows (privacy — a karyawan shouldn't see colleagues' attendance).
+    const scoped = isMgr ? attendance : attendance.filter((a) => a.employeeId === me?.id);
+    const sorted = [...scoped].sort((a, b) => b.date.localeCompare(a.date));
     return sorted.slice(0, 30);
-  }, [attendance]);
+  }, [attendance, isMgr, me]);
 
   const checkIn = async () => {
     if (!me) return;
