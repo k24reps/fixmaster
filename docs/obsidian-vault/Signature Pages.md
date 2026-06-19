@@ -116,6 +116,9 @@ Tab PO jadi **baris docket** dengan spine status (biru dipesan / amber sebagian 
 
 Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan spine income/expense (hijau/merah), nominal +/- mono — senada struk POS.
 
+- **Edit pengeluaran (19 Jun 2026).** Tiap baris **pengeluaran** punya tombol **Edit** (pensil); income tidak (income sistem dari servis/POS — hanya `expense.update` ada di `ActivityAction`, tak ada `income.update`). `EntryModal` kini punya **mode edit**: prefill record + **rekonsiliasi saldo wallet** (wallet sama → selisih `old−new`; wallet diganti → kembalikan lama, potong baru). Log `expense.update` dengan `meta.prevAmount`.
+- **Transfer antar wallet (19 Jun 2026).** Dulu **hanya di Pengaturan**; kini tombol **Transfer** juga di menu Keuangan (muncul bila ≥2 wallet) → `TransferModal` memakai helper murni `transfer()` + RPC `transfer_wallet` (atomik, manager-only) yang sama. Transfer **tak membukukan income/expense** (bukan untung/rugi → laporan tak menggelembung), hanya pindah saldo + log `wallet.transfer`.
+
 ![[fin-dark.png]]
 
 ## Laporan — Analyzer Printout
