@@ -174,6 +174,12 @@ export function AttendancePage() {
         });
       }
       toast.success(`Check-in ${localTimeStr()}`);
+      logActivity({
+        action: 'attendance.checkin',
+        entityType: 'attendance',
+        entityLabel: me.name,
+        meta: { time: localTimeStr(), outletId: targetOutlet?.id ?? null },
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal check-in');
     } finally {
@@ -192,6 +198,13 @@ export function AttendancePage() {
         totalHours: calcHours(myToday.checkIn ?? '00:00', out),
       });
       toast.success(`Check-out ${out}`);
+      logActivity({
+        action: 'attendance.checkout',
+        entityType: 'attendance',
+        entityId: myToday.id,
+        entityLabel: myToday.employeeName,
+        meta: { time: out, totalHours: calcHours(myToday.checkIn ?? '00:00', out) },
+      });
     } finally {
       setBusy(false);
     }

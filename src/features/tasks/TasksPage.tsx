@@ -11,6 +11,7 @@ import {
   isOverdue,
 } from '@/lib/business/tasks';
 import { roleAllows } from '@/config/plans';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { TaskTemplateModal } from './TaskTemplateModal';
@@ -79,6 +80,12 @@ export function TasksPage() {
       completedById: me?.id ?? '',
       completedByName: me?.name ?? '',
     });
+    logActivity({
+      action: 'task.complete',
+      entityType: 'task',
+      entityId: inst.id,
+      entityLabel: inst.title,
+    });
     toast.success('Tugas selesai');
   };
 
@@ -117,6 +124,11 @@ export function TasksPage() {
       deletedAt: null,
     });
     setQuickTitle('');
+    logActivity({
+      action: 'task.create',
+      entityType: 'task',
+      entityLabel: title,
+    });
     toast.success('Tugas cepat ditambahkan');
   };
 

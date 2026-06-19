@@ -53,6 +53,10 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
 }
+/* Export button sits at the far end of the bar. */
+.exportBtn {
+  flex-shrink: 0;
+}
 /* Branch scope badge — which outlet the figures cover. */
 .scopeTag {
   display: inline-flex;

@@ -370,6 +370,10 @@ export type ActivityAction =
   | 'customer.delete'
   | 'attendance.update'
   | 'attendance.delete'
+  | 'attendance.checkin'
+  | 'attendance.checkout'
+  | 'task.create'
+  | 'task.complete'
   | 'service.create'
   | 'service.status'
   | 'wallet.transfer';

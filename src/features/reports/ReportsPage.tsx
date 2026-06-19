@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Card, CardHeader, CardBody, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, EmptyState, Icon, Button } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { fmtRp, fmtPercent } from '@/lib/format';
 import { localDateStr, fmtDate, isInRange } from '@/lib/time';
@@ -7,6 +7,8 @@ import { summarize } from '@/lib/business/finance';
 import { technicianLeaderboard } from '@/lib/business/dashboard';
 import { getTarget } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
+import { toCsv, downloadCsv } from '@/lib/csv';
+import { toast } from '@/stores/toast';
 import styles from './ReportsPage.module.css';
 
 function monthRange() {
@@ -48,6 +50,25 @@ export function ReportsPage() {
   const breakEvenPct = target.overheadBudget > 0 ? summary.net / target.overheadBudget : 0;
   const salesTotal = fSales.reduce((sum, s) => sum + s.total, 0);
 
+  // Export the period's transactions (income + expense) as one CSV, newest
+  // first. Scoped to whatever outlet filter is active (data is already scoped).
+  const exportCsv = () => {
+    const rows = [
+      ...fIncomes.map((i) => ({ date: i.date, type: 'Pemasukan', category: i.category, desc: i.description, amount: i.amount })),
+      ...fExpenses.map((e) => ({ date: e.date, type: 'Pengeluaran', category: e.category, desc: e.description, amount: -e.amount })),
+    ].sort((a, b) => b.date.localeCompare(a.date));
+    if (rows.length === 0) {
+      toast.error('Tidak ada transaksi pada periode ini');
+      return;
+    }
+    const csv = toCsv(
+      ['Tanggal', 'Jenis', 'Kategori', 'Keterangan', 'Nominal'],
+      rows.map((r) => [r.date, r.type, r.category, r.desc, r.amount]),
+    );
+    downloadCsv(`laporan_${scopeLabel.replace(/\s+/g, '-').toLowerCase()}_${from}_sd_${to}.csv`, csv);
+    toast.success(`${rows.length} transaksi diekspor`);
+  };
+
   // Income by category breakdown.
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -83,6 +104,14 @@ export function ReportsPage() {
             <span className={styles.scopeTag} title="Cakupan laporan">
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
+            <Button
+              variant="secondary"
+              onClick={exportCsv}
+              iconLeft={<Icon name="download" aria-hidden />}
+              className={styles.exportBtn}
+            >
+              Ekspor CSV
+            </Button>
           </div>
         </CardBody>
       </Card>
