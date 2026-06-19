@@ -102,6 +102,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 
 **Grid kartu arsip**: plate inisial, **ID mono** (ID-XXXXXX), baris kontak HP/email/alamat mono, readout aktivitas (jumlah servis + total transaksi), penanda **Pelanggan Setia** (LED cyan).
 
+- **Drawer Riwayat Servis (19 Jun 2026).** Klik kartu pelanggan → **panel geser kanan** (`CustomerHistoryDrawer`) berisi daftar tiket pelanggan itu (newest-first): **LED status per tone** (pakai `STATUS_TONE`), no tiket mono, perangkat (`category · device`), tanggal, biaya, + link ke detail tiket. Data servis sudah di-load di halaman (untuk statistik) → tanpa fetch baru. Kartu kini `role=button` + keyboard (Enter/Space); tombol edit/hapus pakai `stopPropagation` agar tak ikut membuka drawer. Menjawab kebutuhan "lihat unit apa saja yang pernah masuk", bukan sekadar angka jumlah.
+
 ![[cust-dark.png]]
 
 ## Supplier — Vendor Ledger
