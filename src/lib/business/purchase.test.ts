@@ -5,6 +5,7 @@ import {
   poReceivedQty,
   deriveStatus,
   receiveGoods,
+  receivedValue,
 } from './purchase';
 import type { PurchaseOrder, PurchaseOrderLine } from '@/data/types';
 
@@ -86,5 +87,36 @@ describe('receiveGoods', () => {
     const order = po([line({ itemId: 'a', qty: 3 }), line({ itemId: 'b', qty: 2 })]);
     const result = receiveGoods(order, { a: 3, b: 2 });
     expect(result.status).toBe('received');
+  });
+});
+
+describe('receivedValue', () => {
+  it('values goods received now (full)', () => {
+    const order = po([line({ itemId: 'a', qty: 10, costPrice: 50000 })]);
+    expect(receivedValue(order, { a: 10 })).toBe(500000);
+  });
+
+  it('values only the partial qty received now', () => {
+    const order = po([line({ itemId: 'a', qty: 10, costPrice: 50000 })]);
+    expect(receivedValue(order, { a: 4 })).toBe(200000);
+  });
+
+  it('clamps over-entry to the remaining qty', () => {
+    const order = po([line({ itemId: 'a', qty: 10, costPrice: 50000, receivedQty: 8 })]);
+    // Only 2 remaining → value caps at 2 × 50000.
+    expect(receivedValue(order, { a: 5 })).toBe(100000);
+  });
+
+  it('sums across multiple lines', () => {
+    const order = po([
+      line({ itemId: 'a', qty: 10, costPrice: 50000 }),
+      line({ itemId: 'b', qty: 2, costPrice: 100000 }),
+    ]);
+    expect(receivedValue(order, { a: 3, b: 2 })).toBe(350000);
+  });
+
+  it('is zero when nothing received', () => {
+    const order = po([line({ itemId: 'a', qty: 10, costPrice: 50000 })]);
+    expect(receivedValue(order, { a: 0 })).toBe(0);
   });
 });

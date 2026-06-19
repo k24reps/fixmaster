@@ -2,11 +2,15 @@ import { useMemo, useState } from 'react';
 import { Card, Button, Badge, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
-import { repository } from '@/data';
+import { repository, isSupabaseConfigured } from '@/data';
+import { voidPurchaseOrder } from '@/data/supabase-client';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { poTotal, PO_STATUS_LABELS, PO_STATUS_TONE } from '@/lib/business/purchase';
+import { applyBalance } from '@/lib/business/finance';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
+import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseOrderModal } from './PurchaseOrderModal';
 import { ReceiveModal } from './ReceiveModal';
@@ -14,9 +18,13 @@ import type { Supplier, PurchaseOrder } from '@/data/types';
 import styles from './SuppliersPage.module.css';
 
 export function SuppliersPage() {
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: suppliers } = useCollection('suppliers');
   const { data: purchaseOrders } = useCollection('purchaseOrders');
   const { data: inventory } = useCollection('inventory');
+  const { data: wallets } = useCollection('wallets');
+  const { data: outlets } = useCollection('outlets');
+  const { data: expenses } = useCollection('expenses');
 
   const [tab, setTab] = useState<'po' | 'suppliers'>('po');
   const [supplierModal, setSupplierModal] = useState(false);
@@ -24,6 +32,8 @@ export function SuppliersPage() {
   const [poModal, setPoModal] = useState(false);
   const [receiveTarget, setReceiveTarget] = useState<PurchaseOrder | null>(null);
   const [deleteSupplier, setDeleteSupplier] = useState<Supplier | null>(null);
+  const [voidTarget, setVoidTarget] = useState<PurchaseOrder | null>(null);
+  const [voiding, setVoiding] = useState(false);
 
   const supplierName = (id: string) => suppliers.find((s) => s.id === id)?.name ?? '—';
 
@@ -55,6 +65,61 @@ export function SuppliersPage() {
     await repository.remove('suppliers', deleteSupplier.id);
     toast.success('Supplier dihapus');
     setDeleteSupplier(null);
+  };
+
+  // Automatic void: reverse received stock, refund wallets for linked expenses,
+  // delete those expenses, and set the PO to 'cancelled'. Atomic via RPC in
+  // cloud; sequential reversal in local/dev mode.
+  const confirmVoid = async () => {
+    if (!voidTarget) return;
+    setVoiding(true);
+    const now = new Date().toISOString();
+    try {
+      const txOutletId = resolveCreateOutlet(outlets);
+      if (isSupabaseConfigured) {
+        await voidPurchaseOrder({ orgId, poId: voidTarget.id, outletId: txOutletId });
+      } else {
+        // Reverse received stock.
+        const stockUpdates = inventory
+          .filter((i) => voidTarget.lines.some((l) => l.itemId === i.id && l.receivedQty > 0))
+          .map((i) => {
+            const l = voidTarget.lines.find((x) => x.itemId === i.id)!;
+            return { ...i, stock: i.stock - l.receivedQty, updatedAt: now };
+          });
+        if (stockUpdates.length) await repository.putMany('inventory', stockUpdates);
+
+        // Refund wallets for linked expenses, then delete those expenses.
+        const linked = expenses.filter((e) => e.poId === voidTarget.id);
+        for (const exp of linked) {
+          if (exp.walletId) {
+            const w = wallets.find((x) => x.id === exp.walletId);
+            if (w) await repository.put('wallets', applyBalance(w, exp.amount));
+          }
+          await repository.remove('expenses', exp.id);
+        }
+
+        // Reset receivedQty to 0 and cancel.
+        await repository.put('purchaseOrders', {
+          ...voidTarget,
+          lines: voidTarget.lines.map((l) => ({ ...l, receivedQty: 0 })),
+          status: 'cancelled',
+          updatedAt: now,
+        });
+      }
+      logActivity({
+        action: 'expense.delete',
+        entityType: 'purchaseOrder',
+        entityId: voidTarget.id,
+        entityLabel: `Batal PO ${voidTarget.poNumber}`,
+        meta: { poId: voidTarget.id },
+      });
+      toast.success('PO dibatalkan, stok & keuangan dikembalikan');
+      setVoidTarget(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan PO');
+    } finally {
+      setVoiding(false);
+    }
   };
 
   return (
@@ -119,6 +184,16 @@ export function SuppliersPage() {
                     {(po.status === 'ordered' || po.status === 'partial') && (
                       <button className={styles.receiveBtn} onClick={() => setReceiveTarget(po)}>
                         <Icon name="box-open" aria-hidden /> Terima
+                      </button>
+                    )}
+                    {po.status !== 'cancelled' && po.status !== 'draft' && (
+                      <button
+                        className={styles.voidBtn}
+                        onClick={() => setVoidTarget(po)}
+                        aria-label="Batalkan PO"
+                        title="Batalkan PO (kembalikan stok & keuangan)"
+                      >
+                        <Icon name="circle-xmark" aria-hidden />
                       </button>
                     )}
                   </div>
@@ -213,6 +288,15 @@ export function SuppliersPage() {
         danger
         onConfirm={confirmDeleteSupplier}
         onCancel={() => setDeleteSupplier(null)}
+      />
+      <ConfirmDialog
+        open={!!voidTarget}
+        title="Batalkan PO?"
+        message={`PO ${voidTarget?.poNumber ?? ''} akan dibatalkan. Stok yang sudah diterima dikembalikan, pengeluaran terkait dihapus, dan saldo wallet dikembalikan. Tindakan ini tidak bisa diurungkan.`}
+        confirmLabel={voiding ? 'Membatalkan…' : 'Batalkan PO'}
+        danger
+        onConfirm={confirmVoid}
+        onCancel={() => setVoidTarget(null)}
       />
     </div>
   );

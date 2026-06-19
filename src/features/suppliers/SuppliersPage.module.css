@@ -148,6 +148,24 @@
   transform: translateY(2px);
   border-bottom-width: 1px;
 }
+/* Void PO: subtle danger icon button, fills red on hover. */
+.voidBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
+}
+.voidBtn:hover {
+  background: var(--danger-soft);
+  color: var(--red-400);
+  border-color: rgba(239, 68, 68, 0.3);
+}
 
 /* ---------- Vendor cards ---------- */
 .vendorGrid {

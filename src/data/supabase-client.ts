@@ -327,6 +327,57 @@ export async function recordDownPayment(args: {
 }
 
 /**
+ * Cloud PO receiving via `receive_goods_v2` (atomic, 0034): adds stock, updates
+ * the PO, records a partial-aware Expense ('Pembelian stok PO <no>'), and
+ * optionally debits a wallet (cash purchase) — all server-side. Keeps Finance
+ * in sync with stock purchases. `amount` is the value received in THIS event.
+ */
+export async function receiveGoodsWithFinance(args: {
+  orgId: string;
+  poId: string;
+  lines: unknown[];
+  deltas: unknown[];
+  status: string;
+  outletId: string | null;
+  walletId: string | null;
+  amount: number;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('receive_goods_v2', {
+    p_org_id: args.orgId,
+    p_po_id: args.poId,
+    p_lines: args.lines,
+    p_deltas: args.deltas,
+    p_status: args.status,
+    p_outlet_id: args.outletId,
+    p_wallet_id: args.walletId,
+    p_amount: args.amount,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Cloud PO void via `void_po` (atomic, 0034): reverses received stock, refunds
+ * wallet balances for linked expenses, deletes those expenses, and sets the PO
+ * to 'cancelled'. Used for automatic, clean cancellation of a received PO.
+ */
+export async function voidPurchaseOrder(args: {
+  orgId: string;
+  poId: string;
+  outletId: string | null;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('void_po', {
+    p_org_id: args.orgId,
+    p_po_id: args.poId,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Cloud wallet-to-wallet transfer via the `transfer_wallet` RPC (atomic,
  * manager-only). Moves funds between two wallets in the same org without
  * booking income/expense (a transfer is neither profit nor loss, so it must

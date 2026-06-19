@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Modal, Input, Button, Badge } from '@/components/ui';
-import { repository } from '@/data';
-import { receiveGoods, PO_STATUS_LABELS } from '@/lib/business/purchase';
+import { Modal, Input, Button, Badge, Select } from '@/components/ui';
+import { repository, isSupabaseConfigured } from '@/data';
+import { receiveGoodsWithFinance } from '@/data/supabase-client';
+import { receiveGoods, receivedValue, PO_STATUS_LABELS } from '@/lib/business/purchase';
+import { applyBalance } from '@/lib/business/finance';
+import { newId } from '@/lib/id';
 import { localDateStr } from '@/lib/time';
+import { fmtRp } from '@/lib/format';
+import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
+import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useCollection } from '@/hooks/useCollection';
 import type { PurchaseOrder, Supplier } from '@/data/types';
 import styles from './ReceiveModal.module.css';
 
@@ -15,8 +22,16 @@ interface ReceiveModalProps {
 }
 
 export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps) {
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const { data: wallets } = useCollection('wallets');
+  const { data: outlets } = useCollection('outlets');
   const [receipts, setReceipts] = useState<Record<string, number>>({});
+  // Q1=(c): cash payment is optional. Default ON + primary wallet (sortOrder).
+  const [payFromWallet, setPayFromWallet] = useState(true);
+  const [walletId, setWalletId] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const sortedWallets = [...wallets].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const [lastKey, setLastKey] = useState<string | null>(null);
   if (open && po && lastKey !== po.id) {
@@ -25,18 +40,46 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
     const init: Record<string, number> = {};
     for (const l of po.lines) init[l.itemId] = Math.max(0, l.qty - l.receivedQty);
     setReceipts(init);
+    setPayFromWallet(true);
+    setWalletId(sortedWallets[0]?.id ?? '');
   }
 
   if (!po) return null;
 
+  // Value of goods being received in this event (partial-aware).
+  const amount = receivedValue(po, receipts);
+
   const apply = async () => {
+    if (payFromWallet && amount > 0 && !walletId) {
+      toast.error('Pilih wallet pembayaran');
+      return;
+    }
     setBusy(true);
     const now = new Date().toISOString();
     try {
       const { lines, stockDeltas, status } = receiveGoods(po, receipts);
+      if (stockDeltas.length === 0) {
+        toast.warning('Tidak ada qty diterima');
+        setBusy(false);
+        return;
+      }
+      const txOutletId = resolveCreateOutlet(outlets);
+      const payWalletId = payFromWallet && amount > 0 ? walletId : null;
 
-      // Apply stock increments to inventory.
-      if (stockDeltas.length) {
+      if (isSupabaseConfigured) {
+        // Cloud: one atomic RPC (stock + PO + expense + optional wallet debit).
+        await receiveGoodsWithFinance({
+          orgId,
+          poId: po.id,
+          lines,
+          deltas: stockDeltas,
+          status,
+          outletId: txOutletId,
+          walletId: payWalletId,
+          amount,
+        });
+      } else {
+        // Local/dev: sequential writes (no transaction available offline).
         const inventory = await repository.list('inventory');
         const updates = inventory
           .filter((i) => stockDeltas.some((d) => d.itemId === i.id))
@@ -45,19 +88,51 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
             return { ...i, stock: i.stock + d.delta };
           });
         if (updates.length) await repository.putMany('inventory', updates);
+
+        await repository.put('purchaseOrders', {
+          ...po,
+          lines,
+          status,
+          receivedAt: status === 'received' ? localDateStr() : po.receivedAt,
+          updatedAt: now,
+        });
+
+        if (amount > 0) {
+          await repository.put('expenses', {
+            id: newId(),
+            orgId,
+            outletId: txOutletId,
+            date: localDateStr(),
+            category: 'Sparepart',
+            amount,
+            walletId: payWalletId ?? '',
+            description: `Pembelian stok PO ${po.poNumber}`,
+            poId: po.id,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          });
+          if (payWalletId) {
+            const w = sortedWallets.find((x) => x.id === payWalletId);
+            if (w) await repository.put('wallets', applyBalance(w, -amount));
+          }
+        }
       }
 
-      await repository.put('purchaseOrders', {
-        ...po,
-        lines,
-        status,
-        receivedAt: status === 'received' ? localDateStr() : po.receivedAt,
-        updatedAt: now,
+      logActivity({
+        action: 'expense.create',
+        entityType: 'expense',
+        entityLabel: `Stok PO ${po.poNumber}`,
+        meta: { amount, poId: po.id, status },
       });
-      toast.success('Barang diterima & stok diperbarui');
+      toast.success(
+        amount > 0
+          ? 'Barang diterima, stok & pengeluaran tercatat'
+          : 'Barang diterima & stok diperbarui',
+      );
       onClose();
-    } catch {
-      toast.error('Gagal menerima barang');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menerima barang');
     } finally {
       setBusy(false);
     }
@@ -113,6 +188,38 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
               </div>
             );
           })}
+        </div>
+
+        {/* Finance: value received now + optional cash payment from a wallet. */}
+        <div className={styles.finance}>
+          <div className={styles.valueRow}>
+            <span>Nilai diterima</span>
+            <strong className={styles.value}>{fmtRp(amount)}</strong>
+          </div>
+          <label className={styles.payToggle}>
+            <input
+              type="checkbox"
+              checked={payFromWallet}
+              onChange={(e) => setPayFromWallet(e.target.checked)}
+            />
+            <span>Potong dari wallet (bayar tunai)</span>
+          </label>
+          {payFromWallet && (
+            <Select
+              label="Wallet pembayaran"
+              value={walletId}
+              onChange={(e) => setWalletId(e.target.value)}
+              options={sortedWallets.map((w) => ({
+                value: w.id,
+                label: `${w.name} · ${fmtRp(w.balance)}`,
+              }))}
+            />
+          )}
+          {!payFromWallet && (
+            <p className={styles.tempoNote}>
+              Mode tempo/hutang: pengeluaran dicatat, saldo wallet tak berubah.
+            </p>
+          )}
         </div>
       </div>
     </Modal>

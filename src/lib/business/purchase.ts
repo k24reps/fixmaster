@@ -66,6 +66,23 @@ export function receiveGoods(
   return { lines, stockDeltas, status: deriveStatus(lines, po.status) };
 }
 
+/**
+ * Rupiah value of the goods received in THIS event (Σ qty diterima sekarang ×
+ * costPrice per baris). Clamps each line to its remaining qty so over-entry
+ * never inflates the expense. Used to record a partial-aware Expense.
+ */
+export function receivedValue(
+  po: PurchaseOrder,
+  receipts: Record<string, number>,
+): number {
+  return po.lines.reduce((sum, line) => {
+    const incoming = Math.max(0, receipts[line.itemId] ?? 0);
+    const remaining = Math.max(0, line.qty - line.receivedQty);
+    const applied = Math.min(incoming, remaining);
+    return sum + applied * line.costPrice;
+  }, 0);
+}
+
 export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   draft: 'Draft',
   ordered: 'Dipesan',

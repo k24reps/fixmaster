@@ -178,6 +178,8 @@ export interface Expense extends BaseEntity {
   amount: number;
   walletId: ID;
   description: string;
+  /** For expenses auto-created when receiving a PO; lets void_po reverse them. */
+  poId?: ID | null;
 }
 
 export interface FixedCost extends BaseEntity {
