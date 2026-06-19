@@ -8,6 +8,7 @@ import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { logActivity } from '@/lib/activity';
 import { CustomerModal } from './CustomerModal';
+import { CustomerHistoryDrawer } from './CustomerHistoryDrawer';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Customer } from '@/data/types';
 import styles from './CustomersPage.module.css';
@@ -24,6 +25,7 @@ export function CustomersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [toDelete, setToDelete] = useState<Customer | null>(null);
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
 
   // Per-customer service count + total transaction value.
   const stats = useMemo(() => {
@@ -134,7 +136,20 @@ export function CustomersPage() {
           {rows.map((c) => {
             const st = stats.get(c.id) ?? { count: 0, total: 0 };
             return (
-              <div key={c.id} className={styles.record}>
+              <div
+                key={c.id}
+                className={styles.record}
+                role="button"
+                tabIndex={0}
+                onClick={() => setHistoryCustomer(c)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setHistoryCustomer(c);
+                  }
+                }}
+                title="Lihat riwayat servis"
+              >
                 <div className={styles.head}>
                   <span className={styles.plate}>{c.name.charAt(0).toUpperCase()}</span>
                   <div className={styles.ident}>
@@ -178,13 +193,23 @@ export function CustomersPage() {
                     <span className={styles.newcomer}>{st.count === 1 ? 'Pernah servis' : 'Belum servis'}</span>
                   )}
                   <div className={styles.cardActions}>
-                    <button className={styles.iconBtn} onClick={() => openEdit(c)} aria-label="Edit">
+                    <button
+                      className={styles.iconBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(c);
+                      }}
+                      aria-label="Edit"
+                    >
                       <Icon name="pen" aria-hidden />
                     </button>
                     {isMgr && (
                       <button
                         className={[styles.iconBtn, styles.danger].join(' ')}
-                        onClick={() => setToDelete(c)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setToDelete(c);
+                        }}
                         aria-label="Hapus"
                       >
                         <Icon name="trash" aria-hidden />
@@ -204,6 +229,12 @@ export function CustomersPage() {
         editing={editing}
         customers={customers}
         onSaved={() => {}}
+      />
+      <CustomerHistoryDrawer
+        open={historyCustomer !== null}
+        onClose={() => setHistoryCustomer(null)}
+        customer={historyCustomer}
+        services={services}
       />
       <ConfirmDialog
         open={!!toDelete}
