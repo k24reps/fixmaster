@@ -83,6 +83,12 @@ Dua perubahan dari smoke test (frontend-only, **tanpa migrasi** — `picked_up`/
 - **Perbaikan (frontend-only)**: tambah cabang **loading** (spinner mono \"Memuat servis…\" via util global `.spin`) sebelum empty-state, mengikuti pola yang sudah benar di `ActivityLogPage`. Commit `aa906ff`.
 - **Catatan sistemik (utang teknis)**: pola \"abaikan `loading`\" ini **masih ada** di halaman daftar lain — Pelanggan, Inventori, Supplier, Tugas, POS — yang juga hanya cek `length === 0`. Hanya **Servis** yang sudah diperbaiki (yang dilaporkan). Sisanya rentan flash serupa; kandidat perbaikan menyeluruh berikutnya (ekstrak pola `loading → empty → data`).
 
+### Urutan Buku Kas: DP terbaru tak tampil paling atas (19 Jun 2026)
+- **Gejala (lapor user)**: income DP tercatat benar, tapi di Keuangan → Buku Kas **tidak muncul di paling atas** history.
+- **Akar masalah**: `FinancePage` mengurut ledger `by date desc` lalu **tiebreaker `id` (UUID acak)**. Untuk transaksi di **tanggal yang sama**, urutan jadi acak — DP yang baru dicatat nyempil di tengah, bukan di atas. Field `date` hanya tanggal (tanpa jam), jadi tak bisa membedakan urutan dalam satu hari.
+- **Perbaikan (frontend-only)**: ganti tiebreaker ke **`record.createdAt`** (kolom `created_at timestamptz default now()` di semua tabel sejak 0001 → terisi waktu insert sebenarnya, termasuk dari RPC `record_down_payment` yang tak set kolom itu eksplisit). Commit `afe7371`.
+- **Pelajaran**: jangan pakai UUID acak sebagai tiebreaker urutan kronologis — selalu pakai `createdAt`. Pola ini perlu dicek di daftar lain yang juga mengurut per-tanggal.
+
 
 > [!CAUTION]
 > **Pelajaran tooling screenshot (5 kali gagal).** Skrip `shoot-*.mjs` yang pakai `window.__fixmasterSeed()` **GAGAL** di sini karena dev server lokal jalan di **mode cloud** (`.env.local` → Supabase staging) — seed lokal (`repository.clearAll()` + wizard commit) melempar error. **Solusi**: pakai rute **`/demo`** (memaksa mode demo terlepas dari env) + navigasi via **klik link sidebar** (`getByRole('link', {name:/Servis|Pengaturan/})`), JANGAN `page.goto()` ke rute app (reload SPA → buang state demo). Pakai **context baru per shot**. Pola ini ada di `scripts/shoot-4feat.mjs`. Shot modal multi-langkah (refund DP) tetap rapuh karena overlay → andalkan integration test untuk logikanya.
