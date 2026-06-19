@@ -125,6 +125,8 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
 
 Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif.
 
+- **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Helper baru `lib/csv.ts`: `toCsv()` (escaping RFC-4180) + `downloadCsv()` (BOM UTF-8 agar Excel baca rupiah/aksen benar). Nama file memuat scope + rentang tanggal. Catatan: Laporan belum punya grafik garis/tabel transaksi inline — visualnya metric/gauge/bar/leaderboard.
+
 > [!warning] Akses Laporan kini **owner-only** (migration `0019`)
 > Sebelumnya manager (owner+admin). Sekarang hanya **owner**: nav pakai flag `ownerOnly`, rute dibungkus `OwnerRoute`, dan `reports.view` dicabut dari admin. Lihat [[Decisions & Bug Fixes]].
 
@@ -136,7 +138,7 @@ Halaman `/activity` ([`ActivityLogPage`](src/features/activity/ActivityLogPage.t
 - **Faceplate bersekrup** ber-wash grid blueprint: **LED REC merah berdenyut** (`recBlink`) + judul, dan **panel readout LCD** mono ber-glow amber (`TOTAL` / `TAMPIL` / `KANAL`, angka zero-pad tabular). `KANAL` = jumlah aktor unik pada hasil filter.
 - **Control strip**: cari (nama aktor / label objek), dropdown peran, dropdown aksi, tombol reset (muncul bila ada filter).
 - **Trace rail**: event dikelompokkan per hari (header tanggal sticky + hitung). Sebuah **spine vertikal putus-putus** (sinyal kanal) membentang di belakang **signal-node** — lingkaran ber-ring tone (success/warning/danger/info via `actionMeta`) berisi ikon aksi. Tiap baris: label aksi, label entitas (chip mono amber), aktor + badge peran, dan **timestamp `HH:MM`** tabular berpembatas kiri.
-- **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create/delete, inventori CRUD, pelanggan CRUD, absensi edit/hapus, servis create & ubah status. Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. State kosong & loading juga bertema (pulse / spinner mono). Lihat [[Data Layer]].
+- **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create+update+delete, transfer wallet, inventori CRUD, pelanggan CRUD, absensi check-in/out/koreksi/hapus, tugas buat/selesai, servis create & ubah status. (19 Jun 2026: ditambah `task.create`, `task.complete`, `attendance.checkin`, `attendance.checkout` — sebelumnya tugas tak di-log & absensi hanya koreksi.) Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. State kosong & loading juga bertema (pulse / spinner mono). Lihat [[Data Layer]].
 
 ![[activity-dark.png]]
 
