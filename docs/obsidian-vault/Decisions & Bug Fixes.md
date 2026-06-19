@@ -89,6 +89,12 @@ Dua perubahan dari smoke test (frontend-only, **tanpa migrasi** — `picked_up`/
 - **Perbaikan (frontend-only)**: ganti tiebreaker ke **`record.createdAt`** (kolom `created_at timestamptz default now()` di semua tabel sejak 0001 → terisi waktu insert sebenarnya, termasuk dari RPC `record_down_payment` yang tak set kolom itu eksplisit). Commit `afe7371`.
 - **Pelajaran**: jangan pakai UUID acak sebagai tiebreaker urutan kronologis — selalu pakai `createdAt`. Pola ini perlu dicek di daftar lain yang juga mengurut per-tanggal.
 
+### Cetak Nota di action bar tiket servis (19 Jun 2026)
+- **Permintaan user**: Cetak Nota hanya tersedia di modal **Notifikasi & nota** (NotifyModal), perlu juga di **menu tiket** (detail servis).
+- **Temuan**: `ServiceDetailPage` sebenarnya sudah me-render `<NotifyModal>` tapi **tak pernah dibuka** — `setNotifyOpen(true)` tak dipanggil di mana pun (komponen mati/dead). Logika cetak juga terkunci lokal di NotifyModal.
+- **Perbaikan**: ekstrak logika cetak ke helper bersama **`printServiceReceipt(service, org)`** (`src/features/services/printReceipt.ts`), dipakai NotifyModal **dan** tombol baru **"Cetak Nota"** di action bar detail tiket. Format nota identik (satu sumber). Tombol tampil bila `org` tersedia. Guard demo tetap. Commit `fb5f743`.
+- **Pelajaran**: cek komponen "ter-render tapi tak terpicu" — NotifyModal di detail adalah dead-end sampai temuan ini. Aksi cetak kini langsung (tanpa buka modal).
+
 
 > [!CAUTION]
 > **Pelajaran tooling screenshot (5 kali gagal).** Skrip `shoot-*.mjs` yang pakai `window.__fixmasterSeed()` **GAGAL** di sini karena dev server lokal jalan di **mode cloud** (`.env.local` → Supabase staging) — seed lokal (`repository.clearAll()` + wizard commit) melempar error. **Solusi**: pakai rute **`/demo`** (memaksa mode demo terlepas dari env) + navigasi via **klik link sidebar** (`getByRole('link', {name:/Servis|Pengaturan/})`), JANGAN `page.goto()` ke rute app (reload SPA → buang state demo). Pakai **context baru per shot**. Pola ini ada di `scripts/shoot-4feat.mjs`. Shot modal multi-langkah (refund DP) tetap rapuh karena overlay → andalkan integration test untuk logikanya.
