@@ -1123,50 +1123,84 @@
 }
 
 /* ---------- Menu gallery (real product shots + fault→fix) ---------- */
-.galleryGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-5);
-}
-.galleryCard {
-  position: relative;
+/* ---------- Menu showcase: real shots framed as instrument screens ---------- */
+.showcase {
   display: flex;
   flex-direction: column;
+  gap: var(--space-16);
+}
+.showRow {
+  display: grid;
+  grid-template-columns: 1.32fr 1fr;
+  gap: var(--space-10);
+  align-items: center;
+}
+/* Alternate the screen side for rhythm; the info panel fills the other column. */
+.showRow[data-flip='true'] .showScreen {
+  order: 2;
+}
+
+/* Instrument screen: screwed-down bezel wrapping the real screenshot. */
+.showScreen {
+  position: relative;
+  margin: 0;
+  padding: var(--space-3);
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-lg);
 }
-.galleryCard:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-brand);
+.showBezel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3) var(--space-2);
 }
-/* Card edge spine — the signature bench motif. */
-.galleryCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: linear-gradient(180deg, var(--brand), transparent);
-  z-index: 2;
+.showScreenLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
 }
-.galleryShotWrap {
+.showStamp {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  font-weight: var(--fw-bold);
+  color: var(--success);
+}
+.showShotWrap {
   position: relative;
   aspect-ratio: 16 / 10;
-  background: var(--bg-surface-2);
-  border-bottom: 1px solid var(--border-strong);
   overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
 }
-.galleryShot {
+.showShot {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: top left;
   display: block;
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+.showRow:hover .showShot {
+  transform: scale(1.02);
+}
+/* Faint screen sheen — reads as a powered instrument display. */
+.showScan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 100%
+  );
 }
 /* Dark/light shot swap (mirrors the demo poster idiom). */
 .galleryShotLight {
@@ -1178,59 +1212,65 @@
 :global([data-theme='light']) .galleryShotLight {
   display: block;
 }
-.gallerySlot {
-  position: absolute;
-  top: var(--space-2);
-  left: var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
-  z-index: 1;
-}
-.galleryBody {
+
+/* Info panel */
+.showInfo {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-4);
 }
-.galleryTitle {
+.showSlot {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  padding: 2px 8px;
+}
+.showTitle {
   font-family: var(--font-display);
-  font-size: var(--text-md);
+  font-size: var(--text-2xl);
   font-weight: var(--fw-bold);
   color: var(--text-primary);
   margin: 0;
 }
-.galleryFault,
-.galleryFix {
+.showRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-top: 1px dotted var(--border);
+  padding-top: var(--space-5);
+}
+.showFault,
+.showFix {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
+  gap: var(--space-3);
   font-size: var(--text-sm);
-  line-height: 1.45;
+  line-height: 1.5;
+  margin: 0;
 }
-.galleryFault {
+.showFault {
   color: var(--text-secondary);
 }
-.galleryFix {
+.showFix {
   color: var(--text-primary);
 }
-.galleryFault .led,
-.galleryFix .led {
+.showFault .led,
+.showFix .led {
   margin-top: 5px;
   flex-shrink: 0;
 }
+
 .galleryTag {
+  display: block;
   font-family: var(--font-mono);
   font-size: 0.56rem;
   letter-spacing: 0.1em;
   font-weight: var(--fw-bold);
-  flex-shrink: 0;
-  width: 64px;
+  margin-bottom: 3px;
 }
 .galleryTagFault {
   color: var(--danger);
@@ -1250,8 +1290,21 @@
   .demoStageWrap {
     display: none;
   }
-  .galleryGrid {
+  /* Stack showcase rows: instrument screen on top, info below. Reset the
+     flip so every row reads top-to-bottom the same way on mobile. */
+  .showcase {
+    gap: var(--space-10);
+  }
+  .showRow,
+  .showRow[data-flip='true'] {
     grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+  .showRow[data-flip='true'] .showScreen {
+    order: 0;
+  }
+  .showTitle {
+    font-size: var(--text-xl);
   }
 }
 @media (max-width: 600px) {

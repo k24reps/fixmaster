@@ -3,6 +3,7 @@ export { Card, CardHeader, CardBody } from './Card';
 export { Badge } from './Badge';
 export { StatCard } from './StatCard';
 export { Input } from './Input';
+export { PasswordStrength } from './PasswordStrength';
 export { Textarea } from './Textarea';
 export { Select } from './Select';
 export { Modal } from './Modal';

@@ -48,6 +48,36 @@
 .withIcon {
   padding-left: 38px;
 }
+.withReveal {
+  padding-right: 42px;
+}
+
+.reveal {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.reveal:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+.reveal:focus-visible {
+  outline: none;
+  color: var(--brand);
+  box-shadow: var(--ring);
+}
 
 .hasError .input {
   border-color: var(--danger);

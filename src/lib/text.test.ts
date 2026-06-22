@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { capitalizeFirst, capitalizeLines } from './text';
+import { capitalizeFirst, capitalizeLines, capitalizeWords } from './text';
 
 describe('capitalizeFirst', () => {
   it('capitalizes a leading lowercase letter', () => {
@@ -28,5 +28,26 @@ describe('capitalizeLines', () => {
   });
   it('leaves already-capitalized lines unchanged', () => {
     expect(capitalizeLines('Servis\nBackup')).toBe('Servis\nBackup');
+  });
+});
+
+describe('capitalizeWords', () => {
+  it('capitalizes the first letter of each word', () => {
+    expect(capitalizeWords('budi santoso')).toBe('Budi Santoso');
+  });
+  it('capitalizes after multiple spaces', () => {
+    expect(capitalizeWords('macbook pro 2019')).toBe('Macbook Pro 2019');
+  });
+  it('leaves already-cased letters mid-word alone', () => {
+    expect(capitalizeWords('iPhone 14')).toBe('IPhone 14');
+  });
+  it('does not touch leading digits of a word', () => {
+    expect(capitalizeWords('3 idiots')).toBe('3 Idiots');
+  });
+  it('preserves existing spacing', () => {
+    expect(capitalizeWords('andi  budi')).toBe('Andi  Budi');
+  });
+  it('handles empty string', () => {
+    expect(capitalizeWords('')).toBe('');
   });
 });

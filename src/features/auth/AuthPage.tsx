@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input, Icon } from '@/components/ui';
+import { Button, Input, Icon, PasswordStrength } from '@/components/ui';
 import { FormError } from '@/components/ui/Form';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
@@ -195,6 +195,7 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
             {mode !== 'reset' && (
               <Input
                 noAutoCap
+                revealable
                 type="password"
                 name="password"
                 label="Password"
@@ -205,9 +206,12 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
               />
             )}
 
+            {mode === 'signup' && <PasswordStrength password={password} />}
+
             {mode === 'signup' && (
               <Input
                 noAutoCap
+                revealable
                 type="password"
                 name="confirm"
                 label="Konfirmasi Password"

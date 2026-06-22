@@ -7,6 +7,8 @@ import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { logActivity } from '@/lib/activity';
+import { waLink } from '@/lib/business/notify';
+import { demoGuard } from '@/stores/demo';
 import { CustomerModal } from './CustomerModal';
 import { CustomerHistoryDrawer } from './CustomerHistoryDrawer';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -19,9 +21,11 @@ export function CustomersPage() {
   const { data: customers } = useCollection('customers');
   const { data: services } = useCollection('services');
   const me = useSessionStore((s) => s.currentEmployee);
+  const org = useSessionStore((s) => s.org);
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('svc_desc');
+  const [category, setCategory] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [toDelete, setToDelete] = useState<Customer | null>(null);
@@ -39,11 +43,36 @@ export function CustomersPage() {
     return map;
   }, [services]);
 
+  // Device categories each customer has ever brought in (derived from their
+  // service history), plus the full set of categories for the filter dropdown.
+  const custCategories = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const s of services) {
+      const cat = (s.category || '').trim();
+      if (!cat) continue;
+      const set = map.get(s.customerId) ?? new Set<string>();
+      set.add(cat);
+      map.set(s.customerId, set);
+    }
+    return map;
+  }, [services]);
+
+  const allCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of services) {
+      const cat = (s.category || '').trim();
+      if (cat) set.add(cat);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [services]);
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = customers.filter(
-      (c) => !q || c.name.toLowerCase().includes(q) || c.phone.includes(q),
-    );
+    let list = customers.filter((c) => {
+      if (q && !(c.name.toLowerCase().includes(q) || c.phone.includes(q))) return false;
+      if (category !== 'all' && !custCategories.get(c.id)?.has(category)) return false;
+      return true;
+    });
     list = [...list].sort((a, b) => {
       if (sort === 'name_asc') return a.name.localeCompare(b.name);
       const sa = stats.get(a.id) ?? { count: 0, total: 0 };
@@ -52,7 +81,7 @@ export function CustomersPage() {
       return sb.count - sa.count;
     });
     return list;
-  }, [customers, query, sort, stats]);
+  }, [customers, query, sort, stats, category, custCategories]);
 
   const repeatCount = useMemo(
     () => customers.filter((c) => (stats.get(c.id)?.count ?? 0) > 1).length,
@@ -66,6 +95,16 @@ export function CustomersPage() {
   const openEdit = (c: Customer) => {
     setEditing(c);
     setModalOpen(true);
+  };
+
+  // Open WhatsApp with a pre-filled, shop-branded greeting the user can edit
+  // before sending. Mirrors NotifyModal: wa.me deep link, demo-guarded.
+  const sendWa = (c: Customer) => {
+    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh — daftar gratis.')) return;
+    const toko = org?.name?.trim();
+    const greeting = toko ? `Halo ${c.name}, ${toko} di sini. ` : `Halo ${c.name}, `;
+    window.open(waLink(c.phone, greeting), '_blank');
+    toast.success('Membuka WhatsApp…');
   };
 
   const confirmDelete = async () => {
@@ -93,6 +132,21 @@ export function CustomersPage() {
           />
         </div>
         <div className={styles.actions}>
+          {allCategories.length > 0 && (
+            <select
+              className={styles.sortSelect}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              aria-label="Filter kategori perangkat"
+            >
+              <option value="all">Semua Perangkat</option>
+              {allCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             className={styles.sortSelect}
             value={sort}
@@ -193,6 +247,19 @@ export function CustomersPage() {
                     <span className={styles.newcomer}>{st.count === 1 ? 'Pernah servis' : 'Belum servis'}</span>
                   )}
                   <div className={styles.cardActions}>
+                    {c.phone && (
+                      <button
+                        className={[styles.iconBtn, styles.wa].join(' ')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendWa(c);
+                        }}
+                        aria-label="Kirim WhatsApp"
+                        title="Kirim WhatsApp"
+                      >
+                        <Icon name="whatsapp" aria-hidden />
+                      </button>
+                    )}
                     <button
                       className={styles.iconBtn}
                       onClick={(e) => {

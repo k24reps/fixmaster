@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePhone, findByPhone, checkDuplicate, planCsvImport } from './customers';
+import { normalizePhone, findByPhone, checkDuplicate, planCsvImport, searchCustomers } from './customers';
 import type { Customer } from '@/data/types';
 
 const mk = (over: Partial<Customer>): Customer => ({
@@ -72,5 +72,31 @@ describe('planCsvImport', () => {
     ]);
     expect(result.toAdd).toHaveLength(1);
     expect(result.skipped).toBe(1);
+  });
+});
+
+describe('searchCustomers', () => {
+  const list = [
+    mk({ id: 'c1', name: 'Andi Wijaya', phone: '08123456789' }),
+    mk({ id: 'c2', name: 'Budi Santoso', phone: '08987654321' }),
+    mk({ id: 'c3', name: 'Andika', phone: '08111222333' }),
+    { ...mk({ id: 'c4', name: 'Citra (terhapus)', phone: '08000' }), deletedAt: 'x' },
+  ];
+  it('returns empty for blank query', () => {
+    expect(searchCustomers(list, '   ')).toEqual([]);
+  });
+  it('matches by name substring, case-insensitive (both Andi* names)', () => {
+    const r = searchCustomers(list, 'andi');
+    expect(r.map((c) => c.id).sort()).toEqual(['c1', 'c3']);
+  });
+  it('matches by normalized phone', () => {
+    const r = searchCustomers(list, '+62 898');
+    expect(r.map((c) => c.id)).toEqual(['c2']);
+  });
+  it('excludes soft-deleted customers', () => {
+    expect(searchCustomers(list, 'Citra')).toEqual([]);
+  });
+  it('respects the limit', () => {
+    expect(searchCustomers(list, 'andi', 1)).toHaveLength(1);
   });
 });

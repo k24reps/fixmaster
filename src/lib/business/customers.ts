@@ -48,6 +48,30 @@ export function checkDuplicate(
   };
 }
 
+/**
+ * Live quick-suggest for the new-service form: match active customers by name
+ * (case-insensitive substring) or by normalized phone. Returns up to `limit`
+ * matches, name-sorted. Helps the user pick an EXISTING customer instead of
+ * retyping — the main source of near-duplicate records.
+ */
+export function searchCustomers(
+  customers: Customer[],
+  query: string,
+  limit = 5,
+): Customer[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const qPhone = normalizePhone(query);
+  const matches = customers.filter((c) => {
+    if (c.deletedAt) return false;
+    const byName = c.name.toLowerCase().includes(q);
+    const byPhone = qPhone.length >= 3 && normalizePhone(c.phone).includes(qPhone);
+    return byName || byPhone;
+  });
+  matches.sort((a, b) => a.name.localeCompare(b.name));
+  return matches.slice(0, limit);
+}
+
 export interface CsvImportResult {
   toAdd: { name: string; phone: string }[];
   toUpdate: { id: string; name: string }[];

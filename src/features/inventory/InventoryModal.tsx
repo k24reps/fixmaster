@@ -98,7 +98,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama Sparepart / Produk" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input label="Nama Sparepart / Produk" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <Input
           label="Kategori"
           value={category}

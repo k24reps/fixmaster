@@ -276,7 +276,7 @@ function BusinessTab() {
               />
             </div>
           </div>
-          <Input label="Nama Usaha" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="Nama Usaha" value={name} autoCapWords onChange={(e) => setName(e.target.value)} />
           <Input label="Alamat" value={address} onChange={(e) => setAddress(e.target.value)} />
           <Input label="No. Telepon" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Button onClick={save} loading={busy}>Simpan Perubahan</Button>

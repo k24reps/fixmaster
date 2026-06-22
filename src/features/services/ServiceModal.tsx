@@ -3,7 +3,7 @@ import { Modal, Input, Select, Button, FormFields, FormRow, FormError, Icon } fr
 import { repository } from '@/data';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
-import { findByPhone } from '@/lib/business/customers';
+import { findByPhone, searchCustomers } from '@/lib/business/customers';
 import { logActivity } from '@/lib/activity';
 import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
@@ -48,6 +48,10 @@ export function ServiceModal({
   const [estimateCost, setEstimateCost] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Quick-suggest: which customer field is active (drives the dropdown). Only
+  // for NEW services — picking an existing customer here is the main way to
+  // avoid near-duplicate records from re-typing a slightly different name.
+  const [suggestField, setSuggestField] = useState<'name' | 'phone' | null>(null);
 
   const [lastKey, setLastKey] = useState<string | null>(null);
   const currentKey = editing?.id ?? 'new';
@@ -68,6 +72,42 @@ export function ServiceModal({
     { value: '', label: '— Belum ditentukan —' },
     ...employees.map((e) => ({ value: e.id, label: e.name })),
   ];
+
+  const suggestions =
+    !editing && suggestField
+      ? searchCustomers(customers, suggestField === 'name' ? customerName : customerPhone)
+      : [];
+
+  const pickCustomer = (c: Customer) => {
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setSuggestField(null);
+  };
+
+  // Close the dropdown on blur, but defer so a suggestion click registers first.
+  // Compares against the field that blurred so moving focus name→phone is safe.
+  const hideSuggest = (field: 'name' | 'phone') =>
+    window.setTimeout(() => setSuggestField((f) => (f === field ? null : f)), 150);
+
+  const suggestList = suggestions.length > 0 && (
+    <div className={styles.suggest} role="listbox">
+      <span className={styles.suggestHint}>Pelanggan terdaftar — klik untuk pakai:</span>
+      {suggestions.map((c) => (
+        <button
+          type="button"
+          key={c.id}
+          className={styles.suggestItem}
+          role="option"
+          aria-selected={false}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => pickCustomer(c)}
+        >
+          <span className={styles.suggestName}>{c.name}</span>
+          <span className={styles.suggestPhone}>{c.phone}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   /** Append a template snippet to a field, comma-joining when non-empty. */
   const appendToField = (
@@ -221,18 +261,35 @@ export function ServiceModal({
       <FormFields>
         <FormError>{error}</FormError>
         <FormRow>
-          <Input
-            label="Nama Pelanggan"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            autoFocus
-          />
-          <Input
-            label="No. HP Pelanggan"
-            value={customerPhone}
-            inputMode="tel"
-            onChange={(e) => setCustomerPhone(e.target.value)}
-          />
+          <div className={styles.suggestWrap}>
+            <Input
+              label="Nama Pelanggan"
+              value={customerName}
+              autoCapWords
+              onChange={(e) => {
+                setCustomerName(e.target.value);
+                setSuggestField('name');
+              }}
+              onFocus={() => setSuggestField('name')}
+              onBlur={() => hideSuggest('name')}
+              autoFocus
+            />
+            {suggestField === 'name' && suggestList}
+          </div>
+          <div className={styles.suggestWrap}>
+            <Input
+              label="No. HP Pelanggan"
+              value={customerPhone}
+              inputMode="tel"
+              onChange={(e) => {
+                setCustomerPhone(e.target.value);
+                setSuggestField('phone');
+              }}
+              onFocus={() => setSuggestField('phone')}
+              onBlur={() => hideSuggest('phone')}
+            />
+            {suggestField === 'phone' && suggestList}
+          </div>
         </FormRow>
         <FormRow>
           <Select
@@ -246,6 +303,7 @@ export function ServiceModal({
             label="Perangkat"
             placeholder="Contoh: MacBook Pro 2019"
             value={device}
+            autoCapWords
             onChange={(e) => setDevice(e.target.value)}
           />
         </FormRow>

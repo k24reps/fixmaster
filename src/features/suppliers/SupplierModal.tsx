@@ -80,7 +80,7 @@ export function SupplierModal({ open, onClose, editing }: SupplierModalProps) {
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama Supplier" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input label="Nama Supplier" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <FormRow>
           <Input label="No. Telepon" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />

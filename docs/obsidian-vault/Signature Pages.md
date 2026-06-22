@@ -41,6 +41,8 @@ Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.htm
 
 > [!important] Galeri menu masalah→solusi (revisi 22 Jun 2026)
 > Matriks banding bernama (FixMaster vs FixNova vs FixMate) **DIHAPUS** atas keputusan user. Diganti **galeri menu** (`#galeri`, data `MENU_GALLERY`): satu kartu per menu (Dashboard, Servis, POS, Inventaris, Pelanggan, Keuangan, Laporan, Pengaturan) berisi **screenshot asli** (dark/light auto-swap, `loading="lazy"`) + dua baris narasi bench: **"Tanpa sistem"** (baris FAULT, LED merah — keluhan tanpa aplikasi) → **"Dengan FixMaster"** (baris FIX, LED hijau — manfaat menu). Nav "Banding"→"Galeri". Screenshot diregenerasi via `scripts/shoot-menus.mjs` → `public/screenshots/menu-<slot>-{dark,light}.png` (16 file). Demo interaktif tetap ada. Aturan tetap: klaim fiktif (statistik/testimoni) dilarang.
+>
+> **Redesign showcase (22 Jun 2026, malam):** grid 2-kolom polos diganti **showcase imersif** (`.showcase` → `.showRow`). Tiap menu = screenshot dibingkai sebagai **layar instrumen** (bezel ber-LED `LIVE` + label menu + stamp, 4 sekrup sudut pakai kelas `.screw` bersama, sheen `.showScan`, hover zoom halus) di satu kolom, dan **panel info** (slot mono, judul besar `font-display`, divider titik, baris TANPA SISTEM→FIXMASTER) di kolom lain. **Desktop**: baris **berselang kiri/kanan** (`data-flip` ganjil → `order:2` pada layar) untuk ritme. **Mobile** (≤860px): menumpuk 1 kolom (layar di atas info, flip di-reset). Token-only, dark/light auto. Verifikasi via Playwright (desktop dark/light + mobile dark).
 
 ![[landing-dark.png]]
 
@@ -103,6 +105,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 **Grid kartu arsip**: plate inisial, **ID mono** (ID-XXXXXX), baris kontak HP/email/alamat mono, readout aktivitas (jumlah servis + total transaksi), penanda **Pelanggan Setia** (LED cyan).
 
 - **Drawer Riwayat Servis (19 Jun 2026).** Klik kartu pelanggan → **panel geser kanan** (`CustomerHistoryDrawer`) berisi daftar tiket pelanggan itu (newest-first): **LED status per tone** (pakai `STATUS_TONE`), no tiket mono, perangkat (`category · device`), tanggal, biaya, + link ke detail tiket. Data servis sudah di-load di halaman (untuk statistik) → tanpa fetch baru. Kartu kini `role=button` + keyboard (Enter/Space); tombol edit/hapus pakai `stopPropagation` agar tak ikut membuka drawer. Menjawab kebutuhan "lihat unit apa saja yang pernah masuk", bukan sekadar angka jumlah.
+
+- **Filter kategori perangkat + Kirim WA (22 Jun 2026).** Toolbar dapat **dropdown "Semua Perangkat"** — daftar kategori diturunkan dari **riwayat servis** tiap pelanggan (`custCategories`: map customerId → set `service.category`), bukan field di Customer (Customer tak punya kategori sendiri). Filter hanya muncul bila ada ≥1 kategori. Tiap kartu pelanggan ber-nomor kini punya tombol **WhatsApp** (LED hijau hover `--success-soft`) di footer: buka `wa.me` (helper `waLink`/`toWaNumber` dari [[Data Layer]]) dengan sapaan ber-merek toko (`Halo {nama}, {toko} di sini.`) yang bisa diedit user sebelum kirim. **Demo-guarded** (`demoGuard`) seperti `NotifyModal`. Batasan jujur: `wa.me` hanya buka **satu chat per klik** — tak ada auto-blast massal (butuh WA Business API). Tombol hanya tampil bila pelanggan punya nomor.
 
 ![[cust-dark.png]]
 
@@ -186,6 +190,8 @@ Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (res
 - **Indikator visual** per baris tabel & kartu mobile — bench motif: **LED warning + readout mono** "Belum diambil" (menonjol) vs penanda redup "Diambil" (hanya dirender untuk unit selesai/lunas/batal; unit proses tak berisik).
 - **Aksi cepat "Tandai Diambil"** langsung dari daftar (toggle, tanpa buka detail) — **khusus owner/admin** (karyawan lihat status tapi tak lihat tombolnya).
 
+**Quick-suggest pelanggan di Servis Baru (22 Jun 2026, anti-duplikasi).** Form `ServiceModal` (Servis Baru) kini menampilkan **dropdown saran pelanggan terdaftar** saat mengetik di field Nama / No. HP — maks 5, cocok via nama (substring) atau HP ternormalisasi (helper murni `searchCustomers`, [[Data Layer]]). Klik saran → isi nama+HP sekaligus, mencegah pembuatan pelanggan **nyaris-duplikat** akibat ketik ulang nama berbeda tipis. Dropdown bergaya bench: **spine kiri brand saat hover**, nama + **readout HP mono** di kanan. Backstop tetap: saat simpan, `findByPhone` me-link ke pelanggan existing (tak buat baru). Hanya untuk servis **baru** (bukan edit). Field **Nama Pelanggan** & **Perangkat** kini auto-kapital tiap kata (prop `autoCapWords`, [[Conventions]]).
+
 ![[modal-profit-table-dark.png]]
 
 ## Detail Servis — Repair Ticket
@@ -262,6 +268,8 @@ Halaman auth (`AuthPage`, cloud-only, sebelum workspace boot) — login / daftar
 - **Responsif** — di ≤720px panel brand disembunyikan, form jadi faceplate tunggal dengan wordmark ringkas di atas.
 
 Logika auth tak berubah (Supabase Auth: signIn/signUp/resetPassword). Copy toast signup diperbaiki: tak lagi menyebut "cek email untuk verifikasi" karena email confirmation dimatikan — akun langsung aktif → arahkan ke login. Token `var(--...)` saja.
+
+**Show-password + indikator kekuatan (22 Jun 2026).** Field password (login, daftar, reset) kini punya **tombol mata** (`revealable` di `Input`, ikon `eye`/`eye-slash`) untuk toggle tampil/sembunyi. Saat **daftar** (dan di halaman reset), muncul **indikator kekuatan** `PasswordStrength` bergaya bench (BUKAN bar generik): **LED status + readout mono** LEMAH/SEDANG/KUAT, **tick-gauge 4 segmen**, dan chip per-kriteria (min. 8 karakter, huruf, angka, **simbol = bonus**). Warna level lewat token (`--danger`/`--warning`/`--success`). Syarat WAJIB tetap huruf+angka+≥8 (tak mengunci akun lama saat login); simbol hanya menambah skor. Skor dihitung helper murni `scorePassword` (`lib/business/password.ts`, teruji unit).
 
 ![[auth-dark.png]]
 

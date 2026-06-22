@@ -270,6 +270,10 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
+.iconBtn.wa:hover {
+  background: var(--success-soft);
+  color: var(--success);
+}
 
 @media (max-width: 560px) {
   .grid {

@@ -114,7 +114,7 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input label="Nama" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <Input
           label="No. HP / WhatsApp"
           value={phone}

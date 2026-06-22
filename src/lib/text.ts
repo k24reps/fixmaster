@@ -27,3 +27,25 @@ export function capitalizeLines(value: string): string {
     })
     .join('\n');
 }
+
+/**
+ * Capitalize the first letter of EACH word (Title Case). Ideal for proper
+ * nouns: customer names, device names, product/supplier names. Only forces a
+ * *lowercase* letter at a word start to upper-case; letters that are already
+ * cased mid-word are left as typed (so "iPhone" keeps its casing after the
+ * first char). Changes are made in place, preserving the caret position.
+ */
+export function capitalizeWords(value: string): string {
+  let out = '';
+  let atWordStart = true;
+  for (const ch of value) {
+    if (atWordStart && /[a-z]/.test(ch)) {
+      out += ch.toUpperCase();
+    } else {
+      out += ch;
+    }
+    // A new word starts after whitespace; everything else continues a word.
+    atWordStart = /\s/.test(ch);
+  }
+  return out;
+}

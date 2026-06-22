@@ -423,48 +423,78 @@ export function LandingPage({ onStart }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ===== Menu gallery (real shots + fault→fix) ===== */}
+      {/* ===== Menu showcase (real shots framed as instrument screens) ===== */}
       <section id="galeri" className={[styles.section, styles.sectionAlt].join(' ')}>
         <div className={styles.sectionHead}>
           <span className={styles.sectionNo}>GALERI MODUL · {MENU_GALLERY.length} TAMPILAN</span>
-          <h2 className={styles.sectionTitle}>Lihat tiap menu — sebelum & sesudah pakai sistem</h2>
+          <h2 className={styles.sectionTitle}>Lihat tiap menu — sebelum &amp; sesudah pakai sistem</h2>
         </div>
-        <div className={styles.galleryGrid}>
-          {MENU_GALLERY.map((m) => (
-            <article key={m.slot} className={styles.galleryCard}>
-              <div className={styles.galleryShotWrap}>
-                <span className={styles.gallerySlot}>{m.slot}</span>
-                <img
-                  src={`/screenshots/menu-${m.shot}-dark.png`}
-                  alt={`Tampilan menu ${m.title} di FixMaster`}
-                  className={[styles.galleryShot, styles.galleryShotDark].join(' ')}
-                  loading="lazy"
-                />
-                <img
-                  src={`/screenshots/menu-${m.shot}-light.png`}
-                  alt=""
-                  aria-hidden
-                  className={[styles.galleryShot, styles.galleryShotLight].join(' ')}
-                  loading="lazy"
-                />
-              </div>
-              <div className={styles.galleryBody}>
-                <h3 className={styles.galleryTitle}>{m.title}</h3>
-                <p className={styles.galleryFault}>
-                  <span className={[styles.led, styles.ledCrit].join(' ')} aria-hidden />
-                  <span className={[styles.galleryTag, styles.galleryTagFault].join(' ')}>TANPA SISTEM</span>
-                  <span>{m.fault}</span>
-                </p>
-                <p className={styles.galleryFix}>
-                  <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden />
-                  <span className={[styles.galleryTag, styles.galleryTagFix].join(' ')}>FIXMASTER</span>
-                  <span>{m.fix}</span>
-                </p>
+        <div className={styles.showcase}>
+          {MENU_GALLERY.map((m, i) => (
+            <article
+              key={m.slot}
+              className={styles.showRow}
+              data-flip={i % 2 === 1 ? 'true' : undefined}
+            >
+              {/* Instrument screen: real screenshot behind a screwed-down bezel. */}
+              <figure className={styles.showScreen}>
+                <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
+                <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
+                <span className={[styles.screw, styles.screwBL].join(' ')} aria-hidden />
+                <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
+                <div className={styles.showBezel}>
+                  <span className={[styles.led, styles.ledLive].join(' ')} aria-hidden />
+                  <span className={styles.showScreenLabel}>{m.title}</span>
+                  <span className={styles.showStamp}>LIVE</span>
+                </div>
+                <div className={styles.showShotWrap}>
+                  <img
+                    src={`/screenshots/menu-${m.shot}-dark.png`}
+                    alt={`Tampilan menu ${m.title} di FixMaster`}
+                    className={[styles.showShot, styles.galleryShotDark].join(' ')}
+                    loading="lazy"
+                  />
+                  <img
+                    src={`/screenshots/menu-${m.shot}-light.png`}
+                    alt=""
+                    aria-hidden
+                    className={[styles.showShot, styles.galleryShotLight].join(' ')}
+                    loading="lazy"
+                  />
+                  <span className={styles.showScan} aria-hidden />
+                </div>
+              </figure>
+
+              {/* Info panel: slot readout, title, fault → fix. */}
+              <div className={styles.showInfo}>
+                <span className={styles.showSlot}>{m.slot}</span>
+                <h3 className={styles.showTitle}>{m.title}</h3>
+                <div className={styles.showRows}>
+                  <p className={styles.showFault}>
+                    <span className={[styles.led, styles.ledCrit].join(' ')} aria-hidden />
+                    <span>
+                      <span className={[styles.galleryTag, styles.galleryTagFault].join(' ')}>
+                        TANPA SISTEM
+                      </span>
+                      {m.fault}
+                    </span>
+                  </p>
+                  <p className={styles.showFix}>
+                    <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden />
+                    <span>
+                      <span className={[styles.galleryTag, styles.galleryTagFix].join(' ')}>
+                        FIXMASTER
+                      </span>
+                      {m.fix}
+                    </span>
+                  </p>
+                </div>
               </div>
             </article>
           ))}
         </div>
       </section>
+
 
       {/* ===== Spec plates (pricing) ===== */}
       <section id="spec" className={styles.section}>

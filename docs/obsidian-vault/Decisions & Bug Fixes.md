@@ -578,6 +578,34 @@ Verifikasi kode: build ✓, 378 unit test ✓, lint ✓. Landing galeri difoto (
 
 ---
 
+## Paket 6 — 3 perbaikan UX (servis dedup, password, auto-kapital) (22 Jun 2026)
+
+Tiga permintaan user, dikerjakan via `/goal` (eksekusi otonom + verifikasi).
+
+**6a. Quick-suggest pelanggan di Servis Baru (anti-duplikasi).** Akar masalah: dedup saat simpan sudah ada (`findByPhone` me-link, tak buat baru), tapi tanpa saran cepat user mengetik ulang nama berbeda tipis → record nyaris-duplikat. Solusi: dropdown saran live di `ServiceModal` (helper murni `searchCustomers`, maks 5, cocok nama/HP-ternormalisasi). Klik → isi nama+HP. Backstop `findByPhone` tetap. Lihat [[Signature Pages]], [[Data Layer]].
+
+**6b. Indikator kekuatan password + show-password.** Prop `revealable` di `Input` (tombol mata `eye`/`eye-slash`) untuk login/daftar/reset. Komponen `PasswordStrength` (LED + tick-gauge 4 segmen + chip kriteria, bench-styled — bukan bar generik) saat daftar/reset. Keputusan: syarat WAJIB tetap huruf+angka+≥8 (tak kunci akun lama); **simbol = bonus skor**, bukan syarat. Skor murni `scorePassword` (`lib/business/password.ts`).
+
+**6c. Auto-kapital tiap kata.** Akar masalah: `Input` hanya `capitalizeFirst` (huruf pertama seluruh nilai) → tak kapital setelah spasi. Tambah helper `capitalizeWords` + prop opt-in `autoCapWords` (default tetap `capitalizeFirst` agar field kalimat seperti "Keluhan" tak salah jadi Title Case). Diterapkan ke field nama diri: ServiceModal (Nama Pelanggan, Perangkat), CustomerModal, SupplierModal, InventoryModal, SettingsPage (Nama Usaha). Lihat [[Conventions]].
+
+Verifikasi kode: build ✓, **394 unit test** ✓ (dari 378, +16), lint ✓. AuthPage signup + ServiceModal quick-suggest difoto via Playwright (dark/light). Lihat [[Signature Pages]], [[Data Layer]], [[Conventions]].
+
+#decision #bugfix
+
+---
+
+## Bug: hasil global search terpotong di mobile (22 Jun 2026)
+
+**Gejala:** di mobile, dropdown hasil pencarian global meluber ke luar tepi kiri layar — label section terpotong ("SERVIS"→"ERVIS", "PELANGGAN"→"ELANGGAN").
+
+**Akar masalah:** `.dropdown` di `GlobalSearch.module.css` memakai `position: absolute; right: 0; width: 380px` relatif ke `.root`. Di mobile, `.root` menyusut jadi ikon search kecil di tengah topbar, jadi panel 380px memanjang ke kiri dari titik itu dan keluar layar.
+
+**Fix:** di media query `≤640px`, dropdown di-anchor ke **viewport** (`position: fixed`) full-width minus margin samping (`left/right: var(--space-3)`), tepat di bawah topbar (`top: calc(var(--topbar-height) + 6px)`), dengan `max-height` mengikuti `100dvh`. Desktop tak berubah. Diverifikasi via Playwright (dark/light, 390px). Lihat [[Signature Pages]].
+
+#bugfix
+
+---
+
 ## Pelajaran utama
 
 > [!tip]

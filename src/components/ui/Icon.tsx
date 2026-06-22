@@ -96,6 +96,8 @@ import {
   XCircle,
   ShieldCheck,
   SlidersHorizontal,
+  Eye,
+  EyeSlash,
   type IconProps as PhosphorIconProps,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react';
@@ -183,7 +185,9 @@ export type IconName =
   | 'circle-xmark'
   | 'circle-info'
   | 'shield-halved'
-  | 'sliders';
+  | 'sliders'
+  | 'eye'
+  | 'eye-slash';
 
 /** Name → Phosphor component. Aliases collapse onto shared glyphs. */
 const REGISTRY: Record<IconName, PhosphorIcon> = {
@@ -270,6 +274,8 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   'circle-info': Info,
   'shield-halved': ShieldCheck,
   sliders: SlidersHorizontal,
+  eye: Eye,
+  'eye-slash': EyeSlash,
 };
 
 // Reference rarely-used imports so tree-shaking keeps them and lint stays happy.

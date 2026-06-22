@@ -197,5 +197,20 @@
     padding: 0;
     pointer-events: auto;
   }
+
+  /* Anchor the results panel to the VIEWPORT, not the (collapsed) search root.
+     On mobile the root shrinks to the search icon mid-topbar, so the
+     right-aligned absolute panel used to overflow off the left edge and clip
+     the section labels. Fixed full-width (minus side margins) under the topbar
+     keeps every row fully visible. */
+  .dropdown {
+    position: fixed;
+    top: calc(var(--topbar-height) + 6px);
+    left: var(--space-3);
+    right: var(--space-3);
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - var(--topbar-height) - 24px);
+  }
 }
 

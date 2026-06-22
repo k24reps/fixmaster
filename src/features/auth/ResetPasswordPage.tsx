@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Icon } from '@/components/ui';
+import { Button, Input, Icon, PasswordStrength } from '@/components/ui';
 import { FormError } from '@/components/ui/Form';
 import { getSupabase, authUpdatePassword } from '@/data/supabase-client';
 import { useThemeStore } from '@/stores/theme';
@@ -170,6 +170,7 @@ export function ResetPasswordPage() {
               <div className={styles.fields} onKeyDown={onKeyDown}>
                 <Input
                   noAutoCap
+                  revealable
                   type="password"
                   name="password"
                   label="Password Baru"
@@ -179,8 +180,10 @@ export function ResetPasswordPage() {
                   autoComplete="new-password"
                   autoFocus
                 />
+                <PasswordStrength password={password} />
                 <Input
                   noAutoCap
+                  revealable
                   type="password"
                   name="confirm"
                   label="Konfirmasi Password"
