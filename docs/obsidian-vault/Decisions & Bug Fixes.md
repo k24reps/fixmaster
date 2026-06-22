@@ -569,8 +569,8 @@ Logika dipindah ke `src/lib/text.ts`: `capitalizeFirst` (huruf pertama) & `capit
 **5b. Admin per-cabang (RLS, BERISIKO).**
 Migrasi `0036`: dulu owner **dan** admin = `is_org_manager` → tembus semua outlet. Kini predikat outlet pakai `is_org_owner(org_id) OR outlet_id IS NULL OR outlet_id IN auth_outlet_ids()`. Owner tembus semua; admin di-scope ke outlet yang ditugaskan (seperti karyawan untuk **cakupan data**, tapi **kewenangan** delete/settle/kelola-tim tetap manager-level via `is_org_manager`). Keuangan (incomes/expenses) baca: owner semua / admin per-cabang / karyawan nol. `SettingsPage`: pemilih outlet kini muncul untuk semua role non-owner (dulu hanya `karyawan`).
 
-> [!warning] Gate apply migrasi
-> `0034` (PO→Keuangan), `0035` (tracking), `0036` (admin-scope) **belum** di-apply. `0036` mengubah batas keamanan: owner WAJIB menetapkan outlet tiap admin sebelum apply (admin tanpa penugasan hanya lihat record `outlet_id IS NULL`, bukan semua). Wajib `npm run test:integration` di staging + konfirmasi user sebelum produksi.
+> [!note] Status apply migrasi (update 22 Jun 2026)
+> `0034` (PO→Keuangan), `0035` (tracking), `0036` (admin-scope) **sudah applied ke STAGING + PRODUKSI**. `0036` (batas keamanan) di-apply ke prod setelah gerbang terpenuhi: admin toko testing sudah di-set outlet, toko pilot owner-only (tanpa admin/karyawan) → nol risiko lockout. Alur: `npm run test:integration` staging (56/56 ✓) → konfirmasi user → `supabase link` prod → `db push` (dry-run dulu) → relink balik staging.
 
 Verifikasi kode: build ✓, 378 unit test ✓, lint ✓. Landing galeri difoto (dark/light). Lihat [[Signature Pages]], [[Data Layer]], [[Conventions]].
 
