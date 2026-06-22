@@ -600,38 +600,57 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               <div className={styles.warranty}>
                 <span className={styles.warrantyLabel}>Garansi (isi minimal salah satu)</span>
                 <div className={styles.warrantyRow}>
-                  <Input
-                    label="Garansi Jasa (hari)"
-                    type="number"
-                    inputMode="numeric"
-                    value={warrantyService}
-                    onChange={(e) => setWarrantyService(e.target.value)}
-                    placeholder="30"
-                  />
-                  <Input
-                    label="Garansi Sparepart (hari)"
-                    type="number"
-                    inputMode="numeric"
-                    value={warrantyParts}
-                    onChange={(e) => setWarrantyParts(e.target.value)}
-                    placeholder="7"
-                  />
-                </div>
-                {warrantyPresets.length > 0 && (
-                  <div className={styles.presetRow}>
-                    <span className={styles.presetHint}>Cepat:</span>
-                    {warrantyPresets.map((d) => (
-                      <span key={d} className={styles.presetChips}>
-                        <button type="button" className={styles.presetChip} onClick={() => setWarrantyService(String(d))} title={`Garansi jasa ${d} hari`}>
-                          Jasa {d}h
-                        </button>
-                        <button type="button" className={styles.presetChip} onClick={() => setWarrantyParts(String(d))} title={`Garansi sparepart ${d} hari`}>
-                          Part {d}h
-                        </button>
-                      </span>
-                    ))}
+                  <div className={styles.warrantyField}>
+                    <Input
+                      label="Garansi Jasa (hari)"
+                      type="number"
+                      inputMode="numeric"
+                      value={warrantyService}
+                      onChange={(e) => setWarrantyService(e.target.value)}
+                      placeholder="30"
+                    />
+                    {warrantyPresets.length > 0 && (
+                      <div className={styles.presetRow}>
+                        {warrantyPresets.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            className={styles.presetChip}
+                            onClick={() => setWarrantyService(String(d))}
+                            title={`Garansi jasa ${d} hari`}
+                          >
+                            {d} hari
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                  <div className={styles.warrantyField}>
+                    <Input
+                      label="Garansi Sparepart (hari)"
+                      type="number"
+                      inputMode="numeric"
+                      value={warrantyParts}
+                      onChange={(e) => setWarrantyParts(e.target.value)}
+                      placeholder="7"
+                    />
+                    {warrantyPresets.length > 0 && (
+                      <div className={styles.presetRow}>
+                        {warrantyPresets.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            className={styles.presetChip}
+                            onClick={() => setWarrantyParts(String(d))}
+                            title={`Garansi sparepart ${d} hari`}
+                          >
+                            {d} hari
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             {target === 'batal' && service.downPayment > 0 && (

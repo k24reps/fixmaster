@@ -546,6 +546,38 @@ Verifikasi: 12 screenshot mobile diregenerasi via `scripts/shoot-mobile.mjs` (vi
 
 ---
 
+## 2026-06-22 — Paket 5 perbaikan (landing, tracking, garansi, auto-kapital, harga & role)
+
+> [!note] Konteks
+> Lima permintaan revisi sekaligus. Dikerjakan bertahap: Fase 1 (aman, tanpa server), Fase 2 (RPC tracking), Fase 3 (RLS admin per-cabang, berisiko).
+
+**1. Landing — galeri menu, hapus komparasi kompetitor.**
+Matriks `COMPARE` dihapus; diganti `MENU_GALLERY` (kartu per menu: screenshot dark/light auto-swap + narasi "Tanpa sistem" (FAULT/LED merah) → "Dengan FixMaster" (FIX/LED hijau)). Demo tetap ada. Screenshot via `scripts/shoot-menus.mjs` (16 file `public/screenshots/menu-*-{dark,light}.png`). Nav "Banding"→"Galeri".
+
+**2. Lacak publik — kontak toko + garansi, TANPA harga.**
+`track_service` RPC diperluas ([[Data Layer]], migrasi `0035`): tambah `org_phone`, `org_address`, `org_logo_url`, `warranty_service_until`, `warranty_parts_until`, `picked_up`. **Sengaja tanpa** biaya/estimasi/DP. `TrackingPage` kini menampilkan blok Garansi (tanggal s/d, mono) + Kontak Toko (tombol WhatsApp `wa.me` + alamat). Kolom garansi bertipe `date` (bukan timestamptz) — sesuai 0006.
+
+**3. Chip template garansi — per-field, bukan pasangan.**
+`StatusModal`: dulu 6 tombol ("Jasa 7h/Part 14h" dst). Kini tiap field garansi (Jasa, Sparepart) punya baris chip angka hari `7 · 14 · 30` yang mengisi field di atasnya. Konteks dari label field, bukan dari teks chip.
+
+**4. Auto-kapital konsisten.**
+Logika dipindah ke `src/lib/text.ts`: `capitalizeFirst` (huruf pertama) & `capitalizeLines` (huruf pertama tiap baris non-kosong), + 8 unit test. `Input` pakai `capitalizeFirst`; komponen baru `Textarea` pakai `capitalizeLines`. No servis & email tidak di-cap (`noAutoCap`/type).
+
+**5a. Harga — Skenario A.**
+`plans.ts`: Solo Rp 99rb, Pro base Rp 199rb (2 outlet), add-on Rp 50rb/outlet, plafon Rp 349rb. Gap Solo→Pro Rp 100rb (beda kelas terasa). Tetap 2 paket (tier ketiga ditolak).
+
+**5b. Admin per-cabang (RLS, BERISIKO).**
+Migrasi `0036`: dulu owner **dan** admin = `is_org_manager` → tembus semua outlet. Kini predikat outlet pakai `is_org_owner(org_id) OR outlet_id IS NULL OR outlet_id IN auth_outlet_ids()`. Owner tembus semua; admin di-scope ke outlet yang ditugaskan (seperti karyawan untuk **cakupan data**, tapi **kewenangan** delete/settle/kelola-tim tetap manager-level via `is_org_manager`). Keuangan (incomes/expenses) baca: owner semua / admin per-cabang / karyawan nol. `SettingsPage`: pemilih outlet kini muncul untuk semua role non-owner (dulu hanya `karyawan`).
+
+> [!warning] Gate apply migrasi
+> `0034` (PO→Keuangan), `0035` (tracking), `0036` (admin-scope) **belum** di-apply. `0036` mengubah batas keamanan: owner WAJIB menetapkan outlet tiap admin sebelum apply (admin tanpa penugasan hanya lihat record `outlet_id IS NULL`, bukan semua). Wajib `npm run test:integration` di staging + konfirmasi user sebelum produksi.
+
+Verifikasi kode: build ✓, 378 unit test ✓, lint ✓. Landing galeri difoto (dark/light). Lihat [[Signature Pages]], [[Data Layer]], [[Conventions]].
+
+#decision #bugfix
+
+---
+
 ## Pelajaran utama
 
 > [!tip]

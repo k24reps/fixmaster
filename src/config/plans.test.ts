@@ -85,15 +85,15 @@ describe('outlet quota helpers', () => {
 
 describe('priceForOutlets (Pro per-outlet add-on)', () => {
   it('includes 2 outlets in the base price', () => {
-    expect(priceForOutlets(1)).toBe(149000);
-    expect(priceForOutlets(2)).toBe(149000);
+    expect(priceForOutlets(1)).toBe(199000);
+    expect(priceForOutlets(2)).toBe(199000);
   });
   it('adds Rp50rb per extra outlet', () => {
-    expect(priceForOutlets(3)).toBe(199000);
-    expect(priceForOutlets(4)).toBe(249000);
+    expect(priceForOutlets(3)).toBe(249000);
+    expect(priceForOutlets(4)).toBe(299000);
   });
-  it('caps at the Rp299rb ceiling', () => {
-    expect(priceForOutlets(5)).toBe(299000);
-    expect(priceForOutlets(100)).toBe(299000);
+  it('caps at the Rp349rb ceiling', () => {
+    expect(priceForOutlets(5)).toBe(349000);
+    expect(priceForOutlets(100)).toBe(349000);
   });
 });

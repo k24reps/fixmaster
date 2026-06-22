@@ -1122,121 +1122,121 @@
   line-height: 1.6;
 }
 
-/* ---------- Comparison matrix (bench datasheet) ---------- */
-.matrixWrap {
-  overflow-x: auto;
+/* ---------- Menu gallery (real product shots + fault→fix) ---------- */
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
 }
-.matrix {
+.galleryCard {
   position: relative;
-  min-width: 640px;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-4) var(--space-4);
+  overflow: hidden;
   box-shadow: var(--shadow-md);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
-.matrixHead,
-.matrixRow {
-  display: grid;
-  grid-template-columns: 2.4fr 1fr 1fr 1fr;
-  align-items: center;
-  gap: var(--space-2);
+.galleryCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-brand);
 }
-.matrixHead {
-  padding: 0 var(--space-3) var(--space-3);
+/* Card edge spine — the signature bench motif. */
+.galleryCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--brand), transparent);
+  z-index: 2;
+}
+.galleryShotWrap {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--bg-surface-2);
   border-bottom: 1px solid var(--border-strong);
+  overflow: hidden;
 }
-.matrixCorner {
+.galleryShot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
+}
+/* Dark/light shot swap (mirrors the demo poster idiom). */
+.galleryShotLight {
+  display: none;
+}
+:global([data-theme='light']) .galleryShotDark {
+  display: none;
+}
+:global([data-theme='light']) .galleryShotLight {
+  display: block;
+}
+.gallerySlot {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-3);
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-}
-.matrixCol {
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: var(--text-sm);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
   color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
+  z-index: 1;
+}
+.galleryBody {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
-.matrixColFm {
-  color: var(--brand);
-}
-.matrixUnit {
+.galleryTitle {
+  font-family: var(--font-display);
   font-size: var(--text-md);
   font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 0;
 }
-.matrixTag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.52rem;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
-.matrixRow {
-  padding: var(--space-3);
-  border-bottom: 1px dotted var(--border-strong);
-}
-.matrix .matrixRow:last-child {
-  border-bottom: none;
-}
-.matrixLabel {
+.galleryFault,
+.galleryFix {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.45;
 }
-.sigTag {
-  font-family: var(--font-mono);
-  font-size: 0.52rem;
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  border: 1px solid var(--border-brand);
-  border-radius: var(--radius-xs);
-  padding: 1px 5px;
+.galleryFault {
+  color: var(--text-secondary);
+}
+.galleryFix {
+  color: var(--text-primary);
+}
+.galleryFault .led,
+.galleryFix .led {
+  margin-top: 5px;
   flex-shrink: 0;
 }
-.matrixCell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.galleryTag {
   font-family: var(--font-mono);
-}
-/* FixMaster column subtly highlighted as the focused unit. */
-.matrixCellFm {
-  background: var(--brand-soft);
-  border-radius: var(--radius-xs);
-  align-self: stretch;
-}
-.cmpYes {
-  display: inline-flex;
-  color: var(--success);
-  font-size: 1rem;
-}
-.cmpNo {
-  color: var(--text-muted);
-  opacity: 0.5;
-}
-.cmpNa {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--warning-soft);
-  color: var(--warning);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
   font-weight: var(--fw-bold);
-  font-size: var(--text-xs);
+  flex-shrink: 0;
+  width: 64px;
+}
+.galleryTagFault {
+  color: var(--danger);
+}
+.galleryTagFix {
+  color: var(--success);
 }
 
 /* ---------- Responsive ---------- */
@@ -1249,6 +1249,9 @@
      stage and steer visitors to the full-screen /demo route instead (A10). */
   .demoStageWrap {
     display: none;
+  }
+  .galleryGrid {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 600px) {

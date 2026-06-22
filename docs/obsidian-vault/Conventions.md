@@ -42,14 +42,14 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 - **Ikon**: hanya lewat komponen `Icon`. Lihat [[Iconography]].
 - **Form/modal**: bangun isi form dengan primitif bersama `FormFields` / `FormRow` / `FormError` (`src/components/ui/Form.tsx`) — jangan inline style. `FormRow` otomatis collapse ke 1 kolom di mobile; `FormError` = fault-readout LED. Komponen `Modal` dasar sudah membawa faceplate aksen + judul ber-LED, jadi modal baru otomatis senada.
 - **i18n**: teks UI lewat `useT()` + key terjemahan, jangan string literal.
-- **Input teks**: komponen `Input` (`components/ui/Input.tsx`) **otomatis mengkapitalkan huruf pertama** untuk field teks bebas. Dilewati untuk `type` email/tel/number/password dan saat prop `noAutoCap`. Wizard onboarding memakai wrapper `noAutoCap` (casing tergantung data pendaftar).
+- **Input teks**: helper kapitalisasi tinggal di `src/lib/text.ts` (`capitalizeFirst`, `capitalizeLines`; teruji unit). Komponen `Input` (`components/ui/Input.tsx`) memakai `capitalizeFirst` (huruf pertama); komponen `Textarea` (`components/ui/Textarea.tsx`) memakai `capitalizeLines` (huruf pertama tiap baris non-kosong, cocok untuk keluhan/catatan/alamat). Dilewati untuk `type` email/tel/number/password dan saat prop `noAutoCap` (mis. wizard onboarding, no servis). Gunakan `Textarea` untuk field teks bebas multi-baris, jangan `<textarea>` mentah.
 
 ## Perintah
 | Perintah | Fungsi |
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (250 test) |
+| `npm run test` | Vitest (378 test) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 

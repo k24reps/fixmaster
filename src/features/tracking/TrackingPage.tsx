@@ -13,7 +13,18 @@ import styles from './TrackingPage.module.css';
 /** Normalized tracking result shared by both the cloud-RPC and local paths. */
 interface TrackResult {
   orgName: string;
-  service: { serviceNo: string; device: string; category: string; status: string } | null;
+  /** Store contact so the customer knows who/where to reach. No pricing. */
+  orgPhone: string;
+  orgAddress: string;
+  service: {
+    serviceNo: string;
+    device: string;
+    category: string;
+    status: string;
+    warrantyServiceUntil: string | null;
+    warrantyPartsUntil: string | null;
+    pickedUp: boolean;
+  } | null;
   publicHistory: { status: string; at: string; note?: string }[];
 }
 
@@ -75,8 +86,18 @@ export function TrackingPage() {
         const r = await trackService(orgId, searchNo.trim());
         return {
           orgName: r?.orgName ?? 'FixMaster',
+          orgPhone: r?.orgPhone ?? '',
+          orgAddress: r?.orgAddress ?? '',
           service: r
-            ? { serviceNo: r.serviceNo, device: r.device, category: r.category, status: r.status }
+            ? {
+                serviceNo: r.serviceNo,
+                device: r.device,
+                category: r.category,
+                status: r.status,
+                warrantyServiceUntil: r.warrantyServiceUntil,
+                warrantyPartsUntil: r.warrantyPartsUntil,
+                pickedUp: r.pickedUp,
+              }
             : null,
           publicHistory: (r?.publicHistory ?? []).filter((h) => !h.internal),
         };
@@ -89,10 +110,21 @@ export function TrackingPage() {
       ]);
       const svc =
         services.find((s) => s.serviceNo.toLowerCase() === searchNo.trim().toLowerCase()) ?? null;
+      const orgRec = org as { name?: string; phone?: string; address?: string } | null;
       return {
-        orgName: (org as { name?: string } | null)?.name ?? 'FixMaster',
+        orgName: orgRec?.name ?? 'FixMaster',
+        orgPhone: orgRec?.phone ?? '',
+        orgAddress: orgRec?.address ?? '',
         service: svc
-          ? { serviceNo: svc.serviceNo, device: svc.device, category: svc.category, status: svc.status }
+          ? {
+              serviceNo: svc.serviceNo,
+              device: svc.device,
+              category: svc.category,
+              status: svc.status,
+              warrantyServiceUntil: svc.warrantyServiceUntil,
+              warrantyPartsUntil: svc.warrantyPartsUntil,
+              pickedUp: svc.pickedUp,
+            }
           : null,
         publicHistory: (svc?.history ?? []).filter((h) => !h.internal),
       };
@@ -100,6 +132,8 @@ export function TrackingPage() {
   });
 
   const orgName = data?.orgName ?? 'FixMaster';
+  const orgPhone = data?.orgPhone ?? '';
+  const orgAddress = data?.orgAddress ?? '';
   const service = data?.service ?? null;
   const publicHistory = data?.publicHistory ?? [];
   const notFound = isFetched && !isFetching && !service;
@@ -166,6 +200,51 @@ export function TrackingPage() {
                 </li>
               ))}
             </ul>
+
+            {(service.warrantyServiceUntil || service.warrantyPartsUntil) && (
+              <div className={styles.warranty}>
+                <span className={styles.blockLabel}>
+                  <Icon name="shield-halved" aria-hidden /> Garansi
+                </span>
+                <div className={styles.warrantyRows}>
+                  {service.warrantyServiceUntil && (
+                    <div className={styles.warrantyRow}>
+                      <span>Jasa</span>
+                      <strong>s/d {fmtDate(service.warrantyServiceUntil.slice(0, 10))}</strong>
+                    </div>
+                  )}
+                  {service.warrantyPartsUntil && (
+                    <div className={styles.warrantyRow}>
+                      <span>Sparepart</span>
+                      <strong>s/d {fmtDate(service.warrantyPartsUntil.slice(0, 10))}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(orgPhone || orgAddress) && (
+              <div className={styles.contact}>
+                <span className={styles.blockLabel}>
+                  <Icon name="store" aria-hidden /> Kontak Toko
+                </span>
+                {orgPhone && (
+                  <a
+                    className={styles.contactRow}
+                    href={`https://wa.me/${orgPhone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Icon name="whatsapp" aria-hidden /> {orgPhone}
+                  </a>
+                )}
+                {orgAddress && (
+                  <p className={styles.contactRow}>
+                    <Icon name="map-pin" aria-hidden /> {orgAddress}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

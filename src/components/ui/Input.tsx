@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { InputHTMLAttributes, ReactNode, ChangeEvent } from 'react';
+import { capitalizeFirst } from '@/lib/text';
 import styles from './Input.module.css';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -27,10 +28,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (autoCap) {
-      const v = e.target.value;
-      if (v && v[0] !== v[0].toUpperCase()) {
-        e.target.value = v[0].toUpperCase() + v.slice(1);
-      }
+      const capped = capitalizeFirst(e.target.value);
+      if (capped !== e.target.value) e.target.value = capped;
     }
     onChange?.(e);
   };

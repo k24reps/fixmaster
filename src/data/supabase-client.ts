@@ -170,6 +170,14 @@ export interface TrackServiceResult {
   category: string;
   status: string;
   orgName: string;
+  /** Store contact, so customers know who/where to reach. No pricing exposed. */
+  orgPhone: string;
+  orgAddress: string;
+  orgLogoUrl: string | null;
+  /** Warranty validity for a finished job (date strings, or null if unset). */
+  warrantyServiceUntil: string | null;
+  warrantyPartsUntil: string | null;
+  pickedUp: boolean;
   /** History entries already filtered server-side to non-internal only. */
   publicHistory: { status: string; at: string; note?: string; internal?: boolean }[];
 }
@@ -179,8 +187,9 @@ export interface TrackServiceResult {
  * `security definer` and granted to `anon`, so it works for customers opening
  * the link on any device/browser — UNLIKE a direct `services` table read,
  * which RLS (`services_select` = is_org_member) blocks for anonymous visitors.
- * The RPC also returns only safe fields + internal-filtered history, and is
- * throttled server-side (60/min per org). Returns null when not found.
+ * The RPC also returns only safe fields + internal-filtered history, store
+ * contact, and warranty info (NO pricing), and is throttled server-side
+ * (60/min per org). Returns null when not found.
  */
 export async function trackService(
   orgId: string,
@@ -201,6 +210,12 @@ export async function trackService(
     category: row.category,
     status: row.status,
     orgName: row.org_name,
+    orgPhone: row.org_phone ?? '',
+    orgAddress: row.org_address ?? '',
+    orgLogoUrl: row.org_logo_url ?? null,
+    warrantyServiceUntil: row.warranty_service_until ?? null,
+    warrantyPartsUntil: row.warranty_parts_until ?? null,
+    pickedUp: row.picked_up ?? false,
     publicHistory: (row.public_history ?? []) as TrackServiceResult['publicHistory'],
   };
 }

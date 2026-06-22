@@ -660,7 +660,7 @@ function MemberOutletsEditor({
     <div className={styles.outletEditor}>
       <div className={styles.outletEditorHead}>
         <strong>Cabang yang dapat diakses</strong>
-        <small className={styles.hint}>Karyawan hanya melihat &amp; mengelola data cabang terpilih.</small>
+        <small className={styles.hint}>Anggota ini hanya melihat &amp; mengelola data cabang terpilih.</small>
       </div>
       {loading ? (
         <small className={styles.hint}>Memuat…</small>
@@ -867,7 +867,7 @@ function TeamTab({
                 </Button>
               </div>
             )}
-            {canInvite && role === 'karyawan' && outlets.length > 0 && (
+            {canInvite && role !== 'owner' && outlets.length > 0 && (
               <div className={styles.outletPick}>
                 <span className={styles.tplLabel}>Tugaskan cabang (opsional)</span>
                 <div className={styles.tplChips}>
@@ -930,7 +930,7 @@ function TeamTab({
                   <div className={styles.itemInfo}>
                     <strong>{e.name}</strong>
                     <small>{ROLE_LABEL[e.role]}</small>
-                    {isSupabaseConfigured && e.role === 'karyawan' && outlets.length > 0 && (
+                    {isSupabaseConfigured && e.role !== 'owner' && outlets.length > 0 && (
                       <small className={styles.memberOutlets}>
                         <Icon name="shop" aria-hidden />{' '}
                         {(memberOutlets[e.id] ?? []).length === 0
@@ -954,7 +954,7 @@ function TeamTab({
                         <option value="admin">Admin</option>
                         <option value="karyawan">Karyawan</option>
                       </select>
-                      {e.role === 'karyawan' && outlets.length > 0 ? (
+                      {e.role !== 'owner' && outlets.length > 0 ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -965,11 +965,10 @@ function TeamTab({
                         </Button>
                       ) : (
                         outlets.length > 0 && (
-                          // Model A: owner/admin (manager) selalu mencakup semua
-                          // cabang (RLS is_org_manager), jadi penugasan outlet
-                          // tak berlaku. Tampilkan label eksplisit, bukan tombol
-                          // kosong, agar tak terkesan ada opsi yang hilang.
-                          <span title="Owner & admin mencakup semua cabang">
+                          // Owner selalu mencakup semua cabang (RLS is_org_owner),
+                          // jadi penugasan outlet tak berlaku untuknya. Admin kini
+                          // di-scope per-cabang (0036) lewat tombol "Cabang" di atas.
+                          <span title="Owner mencakup semua cabang">
                             <Badge tone="info">
                               <Icon name="boxes-stacked" aria-hidden /> Semua cabang
                             </Badge>

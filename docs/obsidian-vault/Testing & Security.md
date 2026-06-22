@@ -12,7 +12,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
 - **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Per 13 Jun 2026 **disinkronkan ke migrasi 0031** (split-settle + cancel-refund-parsial + DP RPC + transfer_wallet).
-- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per 12 Jun 2026 **disinkronkan ke migrasi 0030** (Level 2 outlet/RLS lock + split-settle/cancel/DP RPC, applied via `db push`) + 4 edge function ter-deploy. **`0031` (transfer_wallet + cancel refund parsial) BELUM di produksi** — menunggu lampu hijau user. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
+- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per **22 Jun 2026 disinkronkan ke migrasi `0035`** (`0031` transfer_wallet/refund parsial, `0032` org_settings, `0033` satu-toko-per-email, `0034` PO→Keuangan, `0035` tracking kontak+garansi — semua via `db push`, push bersih + tracker sinkron). **`0036` (admin outlet-scope) DITAHAN dari produksi** — menunggu owner menetapkan outlet tiap admin di app prod dulu (jika tidak, admin lama hanya melihat record `outlet_id IS NULL`); file ada di repo, prod tracker masih kosong untuk `0036`. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Edge functions ter-deploy di staging**: `create-invoice`, `delete-account`, `fersaku-webhook`, `health` (4 fungsi). Jadi Tier 2 bisa diuji langsung di staging.
@@ -100,7 +100,8 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - **Hasil**: `npm run test:integration` **56/56 hijau** (36 lama + 6 Tier 3 + 10 Tier 3B + 4 Tier 3C) — tidak ada regresi, tidak ada lockout, penguncian cabang + billing kasir (POS/lunas/batal/DP) + refund parsial + transfer wallet + satu-email-satu-toko terbukti bekerja. Unit `npm run test` **346 hijau** (321 + 15 `realtime-timing` + 9 `orgConfig` + 1 `isAwaitingPickup`), lint bersih, build hijau.
 
 > [!NOTE]
-> Model A: admin = manager (`is_org_manager`), menembus semua cabang. Penugasan outlet hanya berlaku untuk peran `karyawan`. UI menampilkan badge "Semua cabang" untuk owner/admin + ringkasan cabang per karyawan di daftar Tim.
+> **Model role (revisi 22 Jun 2026, migrasi `0036`).** Owner = akses semua cabang (`is_org_owner`). **Admin kini di-scope per-cabang** (`auth_outlet_ids` + record org-wide), seperti karyawan untuk **cakupan data** — namun **kewenangan** manager-level (delete, settle, kelola tim, tulis keuangan) tetap via `is_org_manager`. Keuangan baca: owner semua / admin per-cabang / karyawan nol. UI Tim: pemilih outlet untuk semua role non-owner; badge "Semua cabang" hanya untuk owner.
+> _Model A lama (admin = manager menembus semua cabang, outlet hanya untuk karyawan) **usang** sejak `0036`._ **Gate**: `0036` belum di-apply cloud — owner WAJIB tetapkan outlet tiap admin sebelum apply, lalu `npm run test:integration` staging + konfirmasi sebelum produksi.
 
 ## Status
 

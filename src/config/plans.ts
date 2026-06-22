@@ -61,7 +61,7 @@ export const PLANS: Record<PlanType, PlanDef> = {
   enterprise: {
     id: 'enterprise',
     name: 'Pro',
-    priceLabel: 'Rp 149.000/bln',
+    priceLabel: 'Rp 199.000/bln',
     features: ENTERPRISE_FEATURES,
     maxWallets: 99,
     maxOutlets: -1, // unlimited; 2 included, extras priced via priceForOutlets
@@ -113,10 +113,10 @@ export function withinUserQuota(plan: PlanType, userCount: number): boolean {
 // adds OUTLET_ADDON_PRICE, capped at PRO_PRICE_CEILING (beyond which outlets
 // are effectively unlimited at a flat ceiling). Keeps multi-outlet pricing
 // from ballooning while still capturing value as a chain grows.
-export const PRO_BASE_PRICE = 149000;
+export const PRO_BASE_PRICE = 199000;
 export const PRO_INCLUDED_OUTLETS = 2;
 export const OUTLET_ADDON_PRICE = 50000;
-export const PRO_PRICE_CEILING = 299000;
+export const PRO_PRICE_CEILING = 349000;
 
 /** Monthly Pro price (rupiah) for running `outletCount` outlets. */
 export function priceForOutlets(outletCount: number): number {

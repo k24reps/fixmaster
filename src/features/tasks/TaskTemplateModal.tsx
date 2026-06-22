@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Input, Select, Button } from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
+import { capitalizeLines } from '@/lib/text';
 import { localDateStr } from '@/lib/time';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
@@ -167,7 +168,7 @@ export function TaskTemplateModal({
               id="task-titles"
               className={styles.titlesArea}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => setTitle(capitalizeLines(e.target.value))}
               placeholder={'Satu tugas per baris, contoh:\nBersih-bersih area kerja\nCek stok sparepart\nBackup data kasir'}
               rows={4}
               autoFocus
