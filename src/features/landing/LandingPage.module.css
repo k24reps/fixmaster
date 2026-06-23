@@ -429,75 +429,159 @@
   margin: 0;
 }
 
-/* ---------- Module rack ---------- */
-.rack {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: var(--space-3);
-}
-.rackUnit {
-  position: relative;
+/* ---------- Comparison: manual vs FixMaster vs naik kelas ---------- */
+.compare {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.compareGroup {
+  position: relative;
+  overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  transition: border-left-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
 }
-.rackUnit:hover {
-  border-left-color: var(--brand);
-  transform: translateX(3px);
-}
-.rackSlot {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  align-self: stretch;
+.compareHead {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px dotted var(--border-strong);
 }
-.rackIcon {
+.compareIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   background: var(--brand-soft);
   color: var(--brand);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
 }
-.rackBody {
+.compareTitle {
   flex: 1;
   min-width: 0;
-}
-.rackTitle {
-  font-size: var(--text-md);
-  font-weight: var(--fw-semibold);
-  margin: 0 0 3px;
-}
-.rackDesc {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.5;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
   margin: 0;
 }
-.rackStamp {
+.compareNo {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  padding: 2px 8px;
+}
+.compareCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.compareCol {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+/* MODE MANUAL — recessed/dim, the painful status quo. */
+.colManual {
+  background: var(--bg-base);
+}
+/* MODE FIXMASTER — brand-bordered, the powered-on fix. */
+.colFix {
+  background: var(--bg-surface);
+  border-color: var(--border-brand);
+}
+.modeTag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  align-self: flex-start;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+.compareList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.manualItem,
+.fixItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.manualItem {
   color: var(--text-muted);
+}
+.manualItem svg {
+  color: var(--danger);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.fixItem {
+  color: var(--text-primary);
+}
+.fixItem svg {
+  color: var(--success);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+/* NAIK KELAS — the payoff band, brand-tinted with a brand spine. */
+.upgrade {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  padding-left: calc(var(--space-4) + 4px);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-brand);
+  background: var(--brand-soft);
+}
+.upgrade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--gradient-brand);
+}
+.upgradeTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  font-weight: var(--fw-bold);
+  color: var(--brand);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.upgradeText {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-primary);
 }
 
 /* ---------- Spec plates (pricing) ---------- */
@@ -734,80 +818,6 @@
   background: var(--bg-base);
   border: 1px solid var(--border-strong);
   color: var(--text-secondary);
-}
-
-/* ---------- Fault panel (pain points) ---------- */
-.faultGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--space-4);
-}
-.faultCard {
-  position: relative;
-  overflow: hidden;
-  padding: var(--space-5);
-  padding-left: calc(var(--space-5) + 4px);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.faultCard:hover {
-  transform: translateY(-3px);
-}
-.faultSpine {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--warning);
-}
-.faultTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-}
-.faultIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: 1.15rem;
-}
-.faultBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  color: var(--danger);
-}
-.faultText {
-  font-size: var(--text-md);
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-  line-height: 1.5;
-}
-.faultFix {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px dotted var(--border-strong);
-}
-.faultFix .led {
-  margin-top: 4px;
 }
 
 /* ---------- Viewport preview ---------- */
@@ -1122,162 +1132,6 @@
   line-height: 1.6;
 }
 
-/* ---------- Menu gallery (real product shots + fault→fix) ---------- */
-/* ---------- Menu showcase: real shots framed as instrument screens ---------- */
-.showcase {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-.showRow {
-  display: grid;
-  grid-template-columns: 1.32fr 1fr;
-  gap: var(--space-10);
-  align-items: center;
-}
-/* Alternate the screen side for rhythm; the info panel fills the other column. */
-.showRow[data-flip='true'] .showScreen {
-  order: 2;
-}
-
-/* Instrument screen: screwed-down bezel wrapping the real screenshot. */
-.showScreen {
-  position: relative;
-  margin: 0;
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-.showBezel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 2px var(--space-3) var(--space-2);
-}
-.showScreenLabel {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-.showStamp {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.14em;
-  font-weight: var(--fw-bold);
-  color: var(--success);
-}
-.showShotWrap {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-surface-2);
-}
-.showShot {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top left;
-  display: block;
-  transition: transform var(--dur-normal) var(--ease-out);
-}
-.showRow:hover .showShot {
-  transform: scale(1.02);
-}
-/* Faint screen sheen — reads as a powered instrument display. */
-.showScan {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.04) 50%,
-    transparent 100%
-  );
-}
-/* Dark/light shot swap (mirrors the demo poster idiom). */
-.galleryShotLight {
-  display: none;
-}
-:global([data-theme='light']) .galleryShotDark {
-  display: none;
-}
-:global([data-theme='light']) .galleryShotLight {
-  display: block;
-}
-
-/* Info panel */
-.showInfo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-.showSlot {
-  align-self: flex-start;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xs);
-  padding: 2px 8px;
-}
-.showTitle {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  margin: 0;
-}
-.showRows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  border-top: 1px dotted var(--border);
-  padding-top: var(--space-5);
-}
-.showFault,
-.showFix {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  margin: 0;
-}
-.showFault {
-  color: var(--text-secondary);
-}
-.showFix {
-  color: var(--text-primary);
-}
-.showFault .led,
-.showFix .led {
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-
-.galleryTag {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  font-weight: var(--fw-bold);
-  margin-bottom: 3px;
-}
-.galleryTagFault {
-  color: var(--danger);
-}
-.galleryTagFix {
-  color: var(--success);
-}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
@@ -1290,21 +1144,10 @@
   .demoStageWrap {
     display: none;
   }
-  /* Stack showcase rows: instrument screen on top, info below. Reset the
-     flip so every row reads top-to-bottom the same way on mobile. */
-  .showcase {
-    gap: var(--space-10);
-  }
-  .showRow,
-  .showRow[data-flip='true'] {
+  /* Stack the manual|fixmaster columns on small screens. */
+  .compareCols {
     grid-template-columns: 1fr;
-    gap: var(--space-5);
-  }
-  .showRow[data-flip='true'] .showScreen {
-    order: 0;
-  }
-  .showTitle {
-    font-size: var(--text-xl);
+    gap: var(--space-3);
   }
 }
 @media (max-width: 600px) {

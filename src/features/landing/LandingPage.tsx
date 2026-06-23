@@ -11,32 +11,106 @@ interface LandingPageProps {
   onStart: () => void;
 }
 
-interface ModuleDef {
-  slot: string;
+// Operational comparison: running the shop the OLD way (manual pains) vs WITH
+// FixMaster (the fix) vs the GROWTH it unlocks ("naik kelas"). The 5 lines map
+// ALL 14 modules + assurance facts into honest, code-backed claims. Rendered as
+// dual-readout bench panels (MODE MANUAL ↔ MODE FIXMASTER) + a brand-LED upgrade
+// row. Replaces the old fault panel + module rack + screenshot gallery.
+interface CompareGroup {
+  no: string;
   icon: IconName;
   title: string;
-  desc: string;
-  /** Marked when the module is a Pro-tier capability (locked on Solo). */
-  pro?: boolean;
+  /** Pains of doing this area by hand (MODE MANUAL). */
+  manual: string[];
+  /** What FixMaster does instead (MODE FIXMASTER). */
+  fixmaster: string[];
+  /** The growth this unlocks beyond just "being tidy" (NAIK KELAS). */
+  upgrade: string;
 }
-
-// The module rack, presented as slot-numbered rack-mounted units. Pro-only
-// units carry a brand-LED "PRO" tag (same show-locked idiom as the sidebar).
-const MODULES: ModuleDef[] = [
-  { slot: 'M01', icon: 'screwdriver-wrench', title: 'Tiket Servis', desc: 'Lacak tiap perbaikan dari masuk sampai diambil, lengkap status & riwayat.' },
-  { slot: 'M02', icon: 'cash-register', title: 'Kasir (POS)', desc: 'Jual sparepart & jasa, cetak struk, catat pembayaran dalam detik.' },
-  { slot: 'M03', icon: 'users', title: 'Pelanggan', desc: 'Database pelanggan & perangkat, plus pelacakan servis publik.' },
-  { slot: 'M04', icon: 'boxes-stacked', title: 'Inventori', desc: 'Pantau stok sparepart, harga modal, peringatan stok menipis.' },
-  { slot: 'M05', icon: 'truck-field', title: 'Supplier & PO', desc: 'Kelola pemasok & pesanan pembelian agar restok tak pernah telat.', pro: true },
-  { slot: 'M06', icon: 'wallet', title: 'Keuangan', desc: 'Kas masuk-keluar, laba per servis, ringkasan harian yang jelas.' },
-  { slot: 'M07', icon: 'list-check', title: 'Tugas Internal', desc: 'SOP harian jadi checklist — buat banyak sekaligus, tugaskan per peran.', pro: true },
-  { slot: 'M08', icon: 'calendar-check', title: 'Absensi', desc: 'Jam masuk-pulang karyawan dengan rekap kehadiran otomatis.', pro: true },
-  { slot: 'M09', icon: 'chart-line', title: 'Laporan', desc: 'Tren omzet, servis, dan performa toko dalam grafik mudah dibaca.' },
-  { slot: 'M10', icon: 'qrcode', title: 'Lacak Publik', desc: 'Pelanggan cek status servis sendiri lewat tautan — kurangi telepon.' },
-  { slot: 'M11', icon: 'clock-rotate-left', title: 'Jejak Audit', desc: 'Setiap tindakan tercatat — tahu siapa mengubah apa dan kapan.' },
-  { slot: 'M12', icon: 'shield-halved', title: 'Multi-Peran', desc: 'Owner, admin, dan karyawan punya akses sesuai perannya.' },
-  { slot: 'M13', icon: 'download', title: 'Backup & Pulihkan', desc: 'Cadangkan seluruh data jadi satu berkas, pulihkan utuh kapan saja.' },
-  { slot: 'M14', icon: 'moon', title: 'Mode Gelap', desc: 'Tema terang & gelap, nyaman dari pagi sampai tutup toko.' },
+const COMPARISON: CompareGroup[] = [
+  {
+    no: 'B01',
+    icon: 'screwdriver-wrench',
+    title: 'Servis & Garansi',
+    manual: [
+      'Catatan servis tercecer di buku & chat WhatsApp.',
+      'Garansi cuma janji lisan, gampang jadi sengketa.',
+      'Pelanggan bolak-balik telepon "sudah jadi belum?".',
+    ],
+    fixmaster: [
+      'Tiket digital — status & riwayat tiap unit di satu tempat.',
+      'Garansi otomatis tercetak di nota, lengkap alur klaim.',
+      'Tautan lacak publik — pelanggan cek status sendiri.',
+    ],
+    upgrade:
+      'Tahu margin tiap servis & rata-rata waktu pengerjaan — fokuskan tenaga ke perbaikan paling menguntungkan.',
+  },
+  {
+    no: 'B02',
+    icon: 'users',
+    title: 'Pelanggan & Loyalitas',
+    manual: [
+      'Pelanggan datang sekali lalu hilang tak berjejak.',
+      'Data kontak & perangkat berserak di banyak tempat.',
+    ],
+    fixmaster: [
+      'Database pelanggan + riwayat & total belanja.',
+      'Saring per jenis perangkat, sapa langsung lewat WhatsApp.',
+      'Pindah dari Excel mulus lewat impor data.',
+    ],
+    upgrade:
+      'Ingatkan pelanggan rawat berkala & tawarkan promo terarah — ubah sekali servis jadi langganan.',
+  },
+  {
+    no: 'B03',
+    icon: 'cash-register',
+    title: 'Penjualan & Stok',
+    manual: [
+      'Jual sparepart dicatat manual, struk & stok tak cocok.',
+      'Stok hilang tanpa jejak, tahu-tahu habis saat dibutuhkan.',
+      'Restok telat karena tak ada yang memantau.',
+    ],
+    fixmaster: [
+      'Kasir (POS) + struk, stok berkurang otomatis.',
+      'Inventori dengan harga modal & peringatan stok menipis.',
+      'Supplier & pesanan pembelian — terima barang sebagian pun tercatat.',
+    ],
+    upgrade:
+      'Lihat sparepart paling laris — belanja stok yang tepat, modal tak mengendap di rak.',
+  },
+  {
+    no: 'B04',
+    icon: 'chart-line',
+    title: 'Keuangan & Laporan',
+    manual: [
+      'Laba cuma dikira-kira, bercampur uang pribadi.',
+      'Utang-piutang tak terlacak, ada yang lupa ditagih.',
+      'Tutup buku akhir bulan selalu bikin pusing.',
+    ],
+    fixmaster: [
+      'Kas multi-dompet + laba per servis yang jelas.',
+      'Laporan omzet & performa toko terbentuk otomatis.',
+    ],
+    upgrade:
+      'Banding bulan ini vs lalu, antar-cabang, dan umur piutang — ambil keputusan seperti pengusaha, bukan tukang.',
+  },
+  {
+    no: 'B05',
+    icon: 'shield-halved',
+    title: 'Tim, Kontrol & Data',
+    manual: [
+      'Tak ada jejak siapa mengubah apa dan kapan.',
+      'Karyawan baru susah diawasi, SOP gampang terlewat.',
+      'Data rawan hilang; internet mati berarti berhenti.',
+    ],
+    fixmaster: [
+      'Multi-peran + jejak audit tiap tindakan.',
+      'Tugas internal berulang & absensi otomatis.',
+      'Backup/pulihkan utuh, jalan tanpa internet, mode gelap.',
+    ],
+    upgrade:
+      'Delegasi tanpa cemas dan SOP tetap jalan walau kamu tak di tempat — siap buka cabang berikutnya.',
+  },
 ];
 
 // Live diagnostic readout rows (mirrors the auth page rail + sidebar).
@@ -47,21 +121,6 @@ const READOUT: { k: string; v: string; led: 'ledOk' | 'ledLive' }[] = [
   { k: 'DATA', v: 'TERISOLASI', led: 'ledOk' },
 ];
 
-// "Symptoms of a shop without a system" — pain points reframed as fault
-// diagnostics. Each fault (amber/red) pairs with the module that clears it.
-interface FaultDef {
-  icon: IconName;
-  fault: string;
-  fix: string;
-}
-const FAULTS: FaultDef[] = [
-  { icon: 'clipboard-list', fault: 'Catatan servis tercecer di buku & chat WhatsApp.', fix: 'Tiket servis digital — status & riwayat tiap unit di satu tempat.' },
-  { icon: 'boxes-stacked', fault: 'Stok sparepart hilang tanpa jejak, tahu-tahu habis.', fix: 'Inventori dengan harga modal & peringatan stok menipis.' },
-  { icon: 'coins', fault: 'Bingung laba tipis ke mana, utang-piutang tak terlacak.', fix: 'Keuangan multi-dompet + laba per servis yang jelas.' },
-  { icon: 'phone', fault: 'Pelanggan bolak-balik telepon "sudah jadi belum?".', fix: 'Tautan lacak publik — mereka cek status sendiri.' },
-  { icon: 'user-clock', fault: 'Karyawan baru susah diawasi, tak tahu siapa salah.', fix: 'Peran, absensi, dan jejak audit tiap tindakan.' },
-  { icon: 'chart-pie', fault: 'Tutup buku akhir bulan selalu bikin pusing.', fix: 'Laporan omzet & performa toko terbentuk otomatis.' },
-];
 
 // Honest assurance strip — verifiable product facts, NOT fabricated
 // testimonials/customer counts. Keeps the page truthful (see matrix "?" idiom).
@@ -90,75 +149,6 @@ const FAQS: FaqDef[] = [
   { q: 'Bagaimana cara bayarnya?', a: 'Lewat QRIS, diperpanjang tiap bulan. Tanpa kontrak — berhenti kapan saja.' },
 ];
 
-// Menu gallery. Each entry pairs a real product screenshot with the pain of
-// running that area WITHOUT a system (fault) and the gain WITH FixMaster (fix).
-// Screenshots live in /public/screenshots (generated by scripts/shoot-menus.mjs);
-// dark/light variants are swapped via CSS like the demo poster.
-interface GalleryItem {
-  slot: string;
-  shot: string;
-  title: string;
-  fault: string;
-  fix: string;
-}
-const MENU_GALLERY: GalleryItem[] = [
-  {
-    slot: 'G01',
-    shot: 'dashboard',
-    title: 'Dashboard',
-    fault: 'Tak ada gambaran utuh — omzet, antrian servis, dan kas hanya tebakan.',
-    fix: 'Satu layar ringkas: pemasukan, unit aktif, dan sinyal penting hari ini.',
-  },
-  {
-    slot: 'G02',
-    shot: 'services',
-    title: 'Servis',
-    fault: 'Tiket tercecer di buku & chat — status unit gampang terlewat.',
-    fix: 'Tiap perbaikan terlacak dari masuk sampai diambil, lengkap riwayat.',
-  },
-  {
-    slot: 'G03',
-    shot: 'pos',
-    title: 'Kasir (POS)',
-    fault: 'Jual sparepart dicatat manual, struk & stok sering tak cocok.',
-    fix: 'Jual jasa & part, cetak struk, stok berkurang otomatis dalam detik.',
-  },
-  {
-    slot: 'G04',
-    shot: 'inventory',
-    title: 'Inventori',
-    fault: 'Stok hilang tanpa jejak, tahu-tahu part habis saat dibutuhkan.',
-    fix: 'Pantau stok, harga modal, dan peringatan saat menipis.',
-  },
-  {
-    slot: 'G05',
-    shot: 'customers',
-    title: 'Pelanggan',
-    fault: 'Data pelanggan & perangkat berserak, sulit dilacak ulang.',
-    fix: 'Database pelanggan + perangkat, plus tautan lacak servis publik.',
-  },
-  {
-    slot: 'G06',
-    shot: 'finance',
-    title: 'Keuangan',
-    fault: 'Bingung laba ke mana, utang-piutang & kas tak terpantau.',
-    fix: 'Kas masuk-keluar multi-dompet + laba per servis yang jelas.',
-  },
-  {
-    slot: 'G07',
-    shot: 'reports',
-    title: 'Laporan',
-    fault: 'Tutup buku akhir bulan selalu bikin pusing dan lama.',
-    fix: 'Tren omzet, laba kategori, dan performa toko terbentuk otomatis.',
-  },
-  {
-    slot: 'G08',
-    shot: 'settings',
-    title: 'Pengaturan',
-    fault: 'Aturan toko, peran, dan template tersebar tanpa kendali.',
-    fix: 'Atur identitas toko, peran tim, garansi default, dan template di satu tempat.',
-  },
-];
 
 /** Approx daily price ("± Rp x/hari") from a monthly plan, rounded to Rp 100. */
 function perDayLabel(plan: { priceLabel: string }): string {
@@ -174,10 +164,10 @@ function perDayLabel(plan: { priceLabel: string }): string {
  * Signature treatment ("Precision Electronics Bench"): the page is built as a
  * piece of diagnostic bench equipment, NOT a generic SaaS page. Hero is an
  * instrument faceplate (engraved model plate, power LED, corner screws, live
- * readout); a fault panel diagnoses "shop without a system" pains; a viewport
- * previews real workflows; features are a slot-numbered module rack; pricing
- * are stamped spec plates; a manual plate answers FAQs; the footer is a
- * compliance/serial plate. Same instrument family as the auth screen.
+ * readout); a three-mode comparison (MANUAL → FIXMASTER → NAIK KELAS) turns
+ * "shop without a system" pains into upgrades; a viewport previews the live
+ * demo; pricing are stamped spec plates; a manual plate answers FAQs; the
+ * footer is a compliance/serial plate. Same instrument family as the auth screen.
  * Token-only → dark/light auto.
  */
 export function LandingPage({ onStart }: LandingPageProps) {
@@ -217,9 +207,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </span>
         </div>
         <nav className={styles.topNav}>
-          <a href="#fault" className={[styles.topNavLink, styles.navLink].join(' ')}>Masalah</a>
-          <a href="#rack" className={[styles.topNavLink, styles.navLink].join(' ')}>Modul</a>
-          <a href="#galeri" className={[styles.topNavLink, styles.navLink].join(' ')}>Galeri</a>
+          <a href="#banding" className={[styles.topNavLink, styles.navLink].join(' ')}>Perbandingan</a>
+          <a href="#demo" className={[styles.topNavLink, styles.navLink].join(' ')}>Demo</a>
           <a href="#spec" className={[styles.topNavLink, styles.navLink].join(' ')}>Paket</a>
           <button
             className={styles.themeBtn}
@@ -265,7 +254,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <button className={styles.btnPower} onClick={onStart}>
                 <Icon name="lightning" aria-hidden /> Mulai Gratis 14 Hari
               </button>
-              <a href="#rack" className={styles.btnPlate}>Lihat Modul</a>
+              <a href="#banding" className={styles.btnPlate}>Lihat Perbandingan</a>
             </div>
             <p className={styles.fineprint}>GRATIS 14 HARI · TANPA KARTU KREDIT · BERHENTI KAPAN SAJA</p>
           </div>
@@ -309,28 +298,59 @@ export function LandingPage({ onStart }: LandingPageProps) {
         ))}
       </section>
 
-      {/* ===== Fault panel (pain points) ===== */}
-      <section id="fault" className={styles.section}>
+      {/* ===== Comparison: manual vs FixMaster vs naik kelas ===== */}
+      <section id="banding" className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>DIAGNOSTIK AWAL · 6 GEJALA</span>
-          <h2 className={styles.sectionTitle}>Gejala toko yang belum punya sistem</h2>
+          <span className={styles.sectionNo}>CARA LAMA vs FIXMASTER · {COMPARISON.length} LINI</span>
+          <h2 className={styles.sectionTitle}>Dari kerja manual yang melelahkan jadi usaha yang naik kelas</h2>
         </div>
-        <div className={styles.faultGrid}>
-          {FAULTS.map((f) => (
-            <article key={f.fault} className={styles.faultCard}>
-              <span className={styles.faultSpine} aria-hidden />
-              <div className={styles.faultTop}>
-                <span className={styles.faultIcon}>
-                  <Icon name={f.icon} aria-hidden />
+        <div className={styles.compare}>
+          {COMPARISON.map((g) => (
+            <article key={g.no} className={styles.compareGroup}>
+              <header className={styles.compareHead}>
+                <span className={styles.compareIcon}>
+                  <Icon name={g.icon} aria-hidden />
                 </span>
-                <span className={styles.faultBadge}>
-                  <span className={[styles.led, styles.ledCrit].join(' ')} /> FAULT
-                </span>
+                <h3 className={styles.compareTitle}>{g.title}</h3>
+                <span className={styles.compareNo}>{g.no}</span>
+              </header>
+              <div className={styles.compareCols}>
+                {/* MODE MANUAL — the pain */}
+                <div className={[styles.compareCol, styles.colManual].join(' ')}>
+                  <span className={styles.modeTag}>
+                    <span className={[styles.led, styles.ledCrit].join(' ')} aria-hidden /> MODE MANUAL
+                  </span>
+                  <ul className={styles.compareList}>
+                    {g.manual.map((m) => (
+                      <li key={m} className={styles.manualItem}>
+                        <Icon name="times" aria-hidden />
+                        <span>{m}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* MODE FIXMASTER — the fix */}
+                <div className={[styles.compareCol, styles.colFix].join(' ')}>
+                  <span className={styles.modeTag}>
+                    <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden /> MODE FIXMASTER
+                  </span>
+                  <ul className={styles.compareList}>
+                    {g.fixmaster.map((f) => (
+                      <li key={f} className={styles.fixItem}>
+                        <Icon name="check" aria-hidden />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <p className={styles.faultText}>{f.fault}</p>
-              <p className={styles.faultFix}>
-                <span className={[styles.led, styles.ledOk].join(' ')} /> {f.fix}
-              </p>
+              {/* NAIK KELAS — the growth it unlocks */}
+              <div className={styles.upgrade}>
+                <span className={styles.upgradeTag}>
+                  <span className={[styles.led, styles.ledLive].join(' ')} aria-hidden /> NAIK KELAS
+                </span>
+                <p className={styles.upgradeText}>{g.upgrade}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -394,106 +414,6 @@ export function LandingPage({ onStart }: LandingPageProps) {
       </section>
 
 
-      {/* ===== Module rack ===== */}
-      <section id="rack" className={styles.section}>
-        <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>RAK MODUL · {MODULES.length} UNIT</span>
-          <h2 className={styles.sectionTitle}>Terpasang lengkap, bekerja sebagai satu</h2>
-        </div>
-        <div className={styles.rack}>
-          {MODULES.map((m) => (
-            <article key={m.slot} className={styles.rackUnit}>
-              <span className={styles.rackSlot}>{m.slot}</span>
-              <span className={styles.rackIcon}>
-                <Icon name={m.icon} aria-hidden />
-              </span>
-              <div className={styles.rackBody}>
-                <h3 className={styles.rackTitle}>{m.title}</h3>
-                <p className={styles.rackDesc}>{m.desc}</p>
-              </div>
-              {m.pro ? (
-                <span className={styles.rackPro}>
-                  <span className={[styles.led, styles.ledLive].join(' ')} /> PRO
-                </span>
-              ) : (
-                <span className={styles.rackStamp}>OK</span>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== Menu showcase (real shots framed as instrument screens) ===== */}
-      <section id="galeri" className={[styles.section, styles.sectionAlt].join(' ')}>
-        <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>GALERI MODUL · {MENU_GALLERY.length} TAMPILAN</span>
-          <h2 className={styles.sectionTitle}>Lihat tiap menu — sebelum &amp; sesudah pakai sistem</h2>
-        </div>
-        <div className={styles.showcase}>
-          {MENU_GALLERY.map((m, i) => (
-            <article
-              key={m.slot}
-              className={styles.showRow}
-              data-flip={i % 2 === 1 ? 'true' : undefined}
-            >
-              {/* Instrument screen: real screenshot behind a screwed-down bezel. */}
-              <figure className={styles.showScreen}>
-                <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
-                <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
-                <span className={[styles.screw, styles.screwBL].join(' ')} aria-hidden />
-                <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
-                <div className={styles.showBezel}>
-                  <span className={[styles.led, styles.ledLive].join(' ')} aria-hidden />
-                  <span className={styles.showScreenLabel}>{m.title}</span>
-                  <span className={styles.showStamp}>LIVE</span>
-                </div>
-                <div className={styles.showShotWrap}>
-                  <img
-                    src={`/screenshots/menu-${m.shot}-dark.png`}
-                    alt={`Tampilan menu ${m.title} di FixMaster`}
-                    className={[styles.showShot, styles.galleryShotDark].join(' ')}
-                    loading="lazy"
-                  />
-                  <img
-                    src={`/screenshots/menu-${m.shot}-light.png`}
-                    alt=""
-                    aria-hidden
-                    className={[styles.showShot, styles.galleryShotLight].join(' ')}
-                    loading="lazy"
-                  />
-                  <span className={styles.showScan} aria-hidden />
-                </div>
-              </figure>
-
-              {/* Info panel: slot readout, title, fault → fix. */}
-              <div className={styles.showInfo}>
-                <span className={styles.showSlot}>{m.slot}</span>
-                <h3 className={styles.showTitle}>{m.title}</h3>
-                <div className={styles.showRows}>
-                  <p className={styles.showFault}>
-                    <span className={[styles.led, styles.ledCrit].join(' ')} aria-hidden />
-                    <span>
-                      <span className={[styles.galleryTag, styles.galleryTagFault].join(' ')}>
-                        TANPA SISTEM
-                      </span>
-                      {m.fault}
-                    </span>
-                  </p>
-                  <p className={styles.showFix}>
-                    <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden />
-                    <span>
-                      <span className={[styles.galleryTag, styles.galleryTagFix].join(' ')}>
-                        FIXMASTER
-                      </span>
-                      {m.fix}
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
 
 
       {/* ===== Spec plates (pricing) ===== */}
