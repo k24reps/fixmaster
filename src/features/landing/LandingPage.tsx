@@ -177,7 +177,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = 'FixMaster — Aplikasi Manajemen Usaha Servis Reparasi';
+    document.title = 'FixMaster — Aplikasi Kasir & Manajemen Servis HP, Laptop, Elektronik';
     return () => {
       document.title = prev;
     };
@@ -203,7 +203,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </span>
           <span className={styles.modelText}>
             <span className={styles.brandWord}>FixMaster</span>
-            <span className={styles.modelNo}>FX · BENCH OS</span>
+            <span className={styles.modelNo}>Manajemen Konter Reparasi</span>
           </span>
         </div>
         <nav className={styles.topNav}>
@@ -235,15 +235,15 @@ export function LandingPage({ onStart }: LandingPageProps) {
         <div className={styles.faceInner}>
           <div className={styles.faceLeft}>
             <span className={styles.unitTag}>
-              <span className={[styles.led, styles.ledOk].join(' ')} /> UNIT AKTIF · v1.0
+              <span className={[styles.led, styles.ledOk].join(' ')} /> UNIT AKTIF · SERVIS REPARASI
             </span>
+            <p className={styles.eyebrow}>Software Manajemen Konter HP &amp; Elektronik</p>
             <h1 className={styles.headline}>
               Satu meja kerja untuk <span className={styles.engrave}>seluruh usaha reparasimu</span>.
             </h1>
             <p className={styles.subhead}>
-              Tiket servis, kasir, stok sparepart, pelanggan, keuangan, dan tim — terpasang rapi
-              dalam satu instrumen. Untuk semua gadget &amp; elektronik, bukan cuma satu jenis.
-              Berhenti mencatat di buku dan WhatsApp.
+              Tiket servis, kasir, stok sparepart, pelanggan, keuangan, dan tim —
+              terpasang rapi dalam satu instrumen. Untuk semua gadget &amp; elektronik.
             </p>
             <ul className={styles.coverage} aria-label="Cakupan perangkat">
               {['HP', 'Laptop', 'Tablet', 'Printer', 'Konsol', 'Elektronik'].map((d) => (
@@ -256,7 +256,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
               </button>
               <a href="#banding" className={styles.btnPlate}>Lihat Perbandingan</a>
             </div>
-            <p className={styles.fineprint}>GRATIS 14 HARI · TANPA KARTU KREDIT · BERHENTI KAPAN SAJA</p>
+            <p className={styles.fineprint}>Gratis 14 hari · Tanpa kartu kredit · Berhenti kapan saja</p>
           </div>
 
           {/* Live diagnostic readout panel */}
@@ -301,19 +301,20 @@ export function LandingPage({ onStart }: LandingPageProps) {
       {/* ===== Comparison: manual vs FixMaster vs naik kelas ===== */}
       <section id="banding" className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>CARA LAMA vs FIXMASTER · {COMPARISON.length} LINI</span>
+          <span className={styles.sectionNo}>CARA LAMA vs FIXMASTER · 5 AREA</span>
           <h2 className={styles.sectionTitle}>Dari kerja manual yang melelahkan jadi usaha yang naik kelas</h2>
         </div>
         <div className={styles.compare}>
           {COMPARISON.map((g) => (
-            <article key={g.no} className={styles.compareGroup}>
-              <header className={styles.compareHead}>
+            <details key={g.no} className={styles.compareGroup} open>
+              <summary className={styles.compareHead}>
                 <span className={styles.compareIcon}>
                   <Icon name={g.icon} aria-hidden />
                 </span>
                 <h3 className={styles.compareTitle}>{g.title}</h3>
                 <span className={styles.compareNo}>{g.no}</span>
-              </header>
+                <span className={styles.compareChevron} aria-hidden />
+              </summary>
               <div className={styles.compareCols}>
                 {/* MODE MANUAL — the pain */}
                 <div className={[styles.compareCol, styles.colManual].join(' ')}>
@@ -351,7 +352,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </span>
                 <p className={styles.upgradeText}>{g.upgrade}</p>
               </div>
-            </article>
+            </details>
           ))}
         </div>
       </section>
@@ -377,7 +378,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <a href="/demo" className={styles.demoPoster}>
               <img
                 src="/screenshots/demo-dashboard-dark.png"
-                alt="Pratinjau dashboard FixMaster"
+                alt="Dashboard FixMaster — tiket servis, kasir, dan inventori sparepart"
                 className={styles.posterShotDark}
                 loading="lazy"
               />
@@ -419,7 +420,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       {/* ===== Spec plates (pricing) ===== */}
       <section id="spec" className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>LEMBAR SPESIFIKASI</span>
+          <span className={styles.sectionNo}>PAKET &amp; HARGA</span>
           <h2 className={styles.sectionTitle}>Coba gratis, pasang paket saat siap</h2>
         </div>
         <div className={styles.specGrid}>
@@ -472,7 +473,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       {/* ===== Manual plate (FAQ) ===== */}
       <section id="manual" className={[styles.section, styles.sectionAlt].join(' ')}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionNo}>LEMBAR MANUAL · Q&amp;A</span>
+          <span className={styles.sectionNo}>PERTANYAAN UMUM · Q&amp;A</span>
           <h2 className={styles.sectionTitle}>Pertanyaan yang sering muncul</h2>
         </div>
         <div className={styles.faqList}>
@@ -495,8 +496,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
         <div className={styles.ctaInner}>
           <span className={[styles.led, styles.ledLive].join(' ')} />
           <div>
-            <h2 className={styles.ctaTitle}>Siap merapikan tokomu?</h2>
-            <p className={styles.ctaSub}>Pasang dalam beberapa menit. Tanpa kartu kredit.</p>
+            <h2 className={styles.ctaTitle}>Kontermu rapi, uangmu jelas, pelangganmu kembali.</h2>
+            <p className={styles.ctaSub}>Pasang dalam beberapa menit. Gratis 14 hari, tanpa kartu kredit.</p>
           </div>
           <button className={styles.btnPower} onClick={onStart}>
             <Icon name="lightning" aria-hidden /> Mulai Gratis 14 Hari

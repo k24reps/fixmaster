@@ -207,6 +207,16 @@
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
+/* Eyebrow: visible keyword anchor above H1 for SEO + quick context. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  font-weight: var(--fw-semibold);
+  color: var(--brand);
+  text-transform: uppercase;
+  margin: var(--space-1) 0 var(--space-3);
+}
 .headline {
   font-family: var(--font-display);
   font-size: clamp(2rem, 4.5vw, 3rem);
@@ -435,21 +445,33 @@
   flex-direction: column;
   gap: var(--space-5);
 }
+/* Accordion panel: details/summary behaviour.
+   Desktop: all panels stay open (pointer-events only on summary chevron area).
+   Mobile (≤860px): panels collapsed by default, tap to expand. */
 .compareGroup {
   position: relative;
   overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  padding: 0;
+}
+/* Remove default details/summary triangle. */
+.compareGroup > summary {
+  list-style: none;
+}
+.compareGroup > summary::-webkit-details-marker {
+  display: none;
 }
 .compareHead {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-5);
   padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
   border-bottom: 1px dotted var(--border-strong);
+  cursor: default;
 }
 .compareIcon {
   display: inline-flex;
@@ -463,6 +485,30 @@
   font-size: 1.2rem;
   flex-shrink: 0;
 }
+/* Chevron indicator for accordion — hidden on desktop, shown on mobile. */
+.compareChevron {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: none;
+  position: relative;
+  margin-left: auto;
+}
+.compareChevron::before,
+.compareChevron::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 1.5px;
+  background: var(--text-muted);
+  border-radius: 2px;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.compareChevron::before { left: 3px; transform: translateY(-50%) rotate(-45deg); }
+.compareChevron::after  { right: 3px; transform: translateY(-50%) rotate(45deg); }
+.compareGroup[open] .compareChevron::before { transform: translateY(-50%) rotate(45deg); }
+.compareGroup[open] .compareChevron::after  { transform: translateY(-50%) rotate(-45deg); }
 .compareTitle {
   flex: 1;
   min-width: 0;
@@ -480,10 +526,12 @@
   border-radius: var(--radius-xs);
   padding: 2px 8px;
 }
+/* Content area padding now applied to compareCols and upgrade (not compareHead). */
 .compareCols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) 0;
 }
 .compareCol {
   border: 1px solid var(--border);
@@ -551,6 +599,9 @@
   margin-top: var(--space-4);
   padding: var(--space-4);
   padding-left: calc(var(--space-4) + 4px);
+  margin-left: var(--space-5);
+  margin-right: var(--space-5);
+  margin-bottom: var(--space-5);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-brand);
   background: var(--brand-soft);
@@ -952,8 +1003,8 @@
   background: var(--brand);
   color: var(--on-brand);
   font-size: 1.5rem;
-  box-shadow: var(--shadow-brand);
-  transition: transform var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-brand), 0 0 0 4px rgba(255,255,255,0.18);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .demoPoster:hover .demoPlay {
   transform: scale(1.08);
@@ -1149,6 +1200,20 @@
     grid-template-columns: 1fr;
     gap: var(--space-3);
   }
+  /* Accordion: on mobile, show the chevron and allow collapse. */
+  .compareChevron {
+    display: block;
+  }
+  .compareHead {
+    cursor: pointer;
+  }
+  /* Closed state on mobile: tighter look. */
+  .compareGroup:not([open]) .compareHead {
+    border-bottom-color: transparent;
+    margin-bottom: 0;
+  }
+  /* Desktop: force all panels open regardless of accordion state. */
+  /* (desktop-only rule added at the end to override) */
 }
 @media (max-width: 600px) {
   .faceplate,
@@ -1175,5 +1240,13 @@
   }
   .ctaInner .btnPower {
     margin-left: 0;
+  }
+}
+
+@media (min-width: 861px) {
+  /* Desktop: panels always open — disable click-to-close on summary. */
+  .compareHead {
+    pointer-events: none;
+    cursor: default;
   }
 }
