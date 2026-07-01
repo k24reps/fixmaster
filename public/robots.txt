@@ -6,4 +6,4 @@ Disallow: /demo
 # /track is a per-ticket public lookup; no canonical content to index.
 Disallow: /track
 
-Sitemap: https://getfixmaster.vercel.app/sitemap.xml
+Sitemap: https://fixmaster.app/sitemap.xml

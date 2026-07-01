@@ -15,7 +15,7 @@
 |---|---|---|---|
 | **Lokal** | `npm run dev` | IndexedDB (tanpa cloud) | Pengembangan harian, mayoritas fitur |
 | **Preview** | URL preview Vercel (otomatis per branch/PR) | **Supabase staging** | Uji integrasi cloud, demo, review |
-| **Production** | `getfixmaster.vercel.app` | **Supabase produksi** | User asli |
+| **Production** | `fixmaster.app` (domain kustom, di-alias dari Vercel) | **Supabase produksi** | User asli |
 
 > [!WARNING]
 > Secara default, Preview Vercel memakai env var yang sama dengan Production → **menunjuk DB produksi**. Ini berbahaya untuk fitur yang menulis data. Wajib dipisah (lihat di bawah).
