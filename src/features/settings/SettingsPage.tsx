@@ -212,7 +212,7 @@ function BusinessTab() {
     e.target.value = ''; // allow re-picking the same file
     if (!file || !org) return;
     if (!file.type.startsWith('image/')) return toast.error('File harus berupa gambar');
-    if (file.size > 2 * 1024 * 1024) return toast.error('Ukuran logo maksimal 2MB');
+    if (file.size > 500 * 1024) return toast.error('Ukuran logo maksimal 500KB');
     try {
       // Downscale to PNG Blob via canvas (no fetch(data:URL) — CSP blocks it).
       // Cloud mode: uploads to `org-logos` bucket, returns public CDN URL.
