@@ -217,8 +217,10 @@ function BusinessTab() {
       await repository.setSingleton('organization', updated);
       setOrg(updated);
       toast.success('Logo diperbarui');
-    } catch {
-      toast.error('Gagal memproses gambar');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Gagal upload logo: ${msg}`);
+      console.error('[logo upload]', err);
     }
   };
 
