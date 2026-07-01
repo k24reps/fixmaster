@@ -20,13 +20,13 @@ import { getSupabase, isSupabaseConfigured } from './supabase-client';
 
 const BUCKET = 'org-logos';
 
-/** Read a File as a data URL (used for the local fallback). */
-function fileToDataUrl(file: File): Promise<string> {
+/** Read a Blob/File as a data URL (used for the local fallback). */
+function fileToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -39,7 +39,7 @@ export async function uploadOrgLogo(orgId: string, file: Blob): Promise<string> 
 
   // Local mode (or client init failed): keep the legacy data-URL behaviour.
   if (!client) {
-    return fileToDataUrl(file as File);
+    return fileToDataUrl(file);
   }
 
   // Stable-ish path with a cache-busting timestamp; old files are cleaned up

@@ -68,10 +68,11 @@ import { type BackupFrequency } from '@/lib/business/backup';
 import styles from './SettingsPage.module.css';
 
 /**
- * Downscale a picked image to a square-ish data URL (max 256px) so the
- * logo stays small in storage and renders crisply in the sidebar.
+ * Downscale a picked image to a PNG Blob (max 256 px) without using
+ * fetch(data:URL) — that call is blocked by CSP connect-src in production.
+ * Uses canvas.toBlob() directly instead.
  */
-async function fileToLogoDataUrl(file: File): Promise<string> {
+async function fileToLogoBlob(file: File): Promise<Blob> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -92,9 +93,15 @@ async function fileToLogoDataUrl(file: File): Promise<string> {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return dataUrl;
+  // Fallback: if canvas context unavailable, upload original file as-is.
+  if (!ctx) return file;
   ctx.drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL('image/png');
+  return new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob returned null'))),
+      'image/png',
+    ),
+  );
 }
 
 type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'sistem';
@@ -207,11 +214,10 @@ function BusinessTab() {
     if (!file.type.startsWith('image/')) return toast.error('File harus berupa gambar');
     if (file.size > 2 * 1024 * 1024) return toast.error('Ukuran logo maksimal 2MB');
     try {
-      // Downscale first (keeps both the upload and any local data URL small),
-      // then hand the blob to storage: cloud uploads to the bucket and returns
-      // a public URL; local mode returns a data URL (legacy behaviour).
-      const downscaled = await fileToLogoDataUrl(file);
-      const blob = await (await fetch(downscaled)).blob();
+      // Downscale to PNG Blob via canvas (no fetch(data:URL) — CSP blocks it).
+      // Cloud mode: uploads to `org-logos` bucket, returns public CDN URL.
+      // Local mode: falls back to a data URL stored in the org row.
+      const blob = await fileToLogoBlob(file);
       const logoDataUrl = await uploadOrgLogo(org.id, blob);
       const updated = { ...org, logoDataUrl };
       await repository.setSingleton('organization', updated);
