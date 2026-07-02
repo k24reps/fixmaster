@@ -66,41 +66,11 @@
   width: 38px;
   height: 38px;
   border-radius: var(--radius-sm);
-  background: var(--gradient-brand-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-brand);
   flex-shrink: 0;
-  box-shadow: var(--shadow-brand);
   overflow: hidden;
-}
-/* engraved diagonal sheen on the unit */
-.brandMark::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--gradient-sheen);
-  pointer-events: none;
-}
-.brandMono {
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  font-weight: var(--fw-extra);
-  letter-spacing: 0.02em;
-}
-/* power LED on the unit */
-.powerLed {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--green-400);
-  box-shadow: 0 0 6px var(--green-400);
-  animation: fm-pulse 2.4s var(--ease-in-out) infinite;
-  z-index: 1;
 }
 .brandText {
   display: flex;

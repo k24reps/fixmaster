@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Icon } from '@/components/ui';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
 import { repository } from '@/data';
@@ -69,7 +68,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <div className={styles.splash}>
         <div className={styles.logoMark}>
-          <Icon name="screwdriver-wrench" aria-hidden />
+          <img src="/logo.svg" alt="FixMaster" width="64" height="64" />
         </div>
         <div className={styles.spinner} aria-label="Memuat" />
       </div>

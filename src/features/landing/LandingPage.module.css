@@ -67,14 +67,11 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
-  background: var(--gradient-brand);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-brand);
-  font-size: 1.1rem;
-  box-shadow: var(--shadow-brand);
   flex-shrink: 0;
+  overflow: hidden;
 }
 .brandWord {
   font-family: var(--font-display);

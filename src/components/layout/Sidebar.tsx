@@ -83,8 +83,7 @@ export function Sidebar({
         <div className={styles.header}>
           <div className={styles.brand}>
             <span className={styles.brandMark} aria-hidden>
-              <span className={styles.brandMono}>FM</span>
-              <span className={styles.powerLed} />
+              <img src="/logo.svg" alt="" width="38" height="38" />
             </span>
             <span className={styles.brandText}>
               <strong>

@@ -114,7 +114,7 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
           <span className={styles.grid} />
           <div className={styles.brandTop}>
             <span className={styles.brandLogo}>
-              <Icon name="screwdriver-wrench" aria-hidden />
+              <img src="/logo.svg" alt="" width="44" height="44" />
             </span>
             <span className={styles.brandWord}>FixMaster</span>
           </div>
@@ -151,7 +151,7 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
 
           <div className={styles.mobileBrand}>
             <span className={styles.brandLogo}>
-              <Icon name="screwdriver-wrench" aria-hidden />
+              <img src="/logo.svg" alt="" width="44" height="44" />
             </span>
             FixMaster
           </div>

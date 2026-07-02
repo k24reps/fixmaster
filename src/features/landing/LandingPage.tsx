@@ -199,7 +199,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       <header className={styles.topRail}>
         <div className={styles.modelPlate}>
           <span className={styles.logoMark}>
-            <Icon name="screwdriver-wrench" aria-hidden />
+            <img src="/logo.svg" alt="" width="40" height="40" />
           </span>
           <span className={styles.modelText}>
             <span className={styles.brandWord}>FixMaster</span>
