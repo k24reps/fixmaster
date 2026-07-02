@@ -216,7 +216,11 @@ export class SupabaseAdapter implements Repository {
   }
 
   async list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]> {
-    let query = this.client.from(TABLE[collection]).select('*').eq('org_id', this.orgId);
+    let query = this.client
+      .from(TABLE[collection])
+      .select('*')
+      .eq('org_id', this.orgId)
+      .is('deleted_at', null); // mirror LocalAdapter: hide soft-deleted rows
     // Outlet scoping (mirrors the local adapter): when a specific outlet is
     // active, return that outlet's rows PLUS org-wide rows (outlet_id null).
     // Only applied to tables that actually have an outlet_id column.

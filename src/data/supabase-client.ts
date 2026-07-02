@@ -568,6 +568,21 @@ export async function deactivateMember(memberId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Owner soft-deletes an inactive member (sets deleted_at).
+ * Guards (enforced server-side):
+ * - Caller must be org owner.
+ * - Target member must already be inactive (active = false).
+ * - Cannot delete self.
+ * Historical data (activity logs, services, etc.) remains intact.
+ */
+export async function deleteMember(memberId: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('delete_member', { p_member_id: memberId });
+  if (error) throw new Error(error.message);
+}
+
 // ============================================================
 // Billing (Fase 1B). QRIS is one-shot, so subscriptions generate an
 // invoice per cycle. start_subscription creates a pending invoice;

@@ -47,6 +47,7 @@ import {
   getMemberOutlets,
   getOrgMemberOutlets,
   deactivateMember,
+  deleteMember,
   startSubscription,
   applyPayment,
   cancelInvoice,
@@ -713,8 +714,11 @@ function TeamTab({
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
   const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
+
   const { refetch } = useCollection('employees');
 
+  const [confirmOff, setConfirmOff] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -722,7 +726,6 @@ function TeamTab({
   // Outlets to assign on invite (empty = all, decided at claim time).
   const [inviteOutlets, setInviteOutlets] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [confirmOff, setConfirmOff] = useState<string | null>(null);
   // Per-member outlet assignment editor (memberId being edited).
   const [editOutletsFor, setEditOutletsFor] = useState<string | null>(null);
   // membership_id -> assigned outlet ids, for the at-a-glance summary per row.
@@ -835,6 +838,17 @@ function TeamTab({
       refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal menonaktifkan');
+    }
+  };
+
+  const deleteMemberAction = async (memberId: string) => {
+    setConfirmDelete(null);
+    try {
+      await deleteMember(memberId);
+      toast.success('Anggota dihapus permanen');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus anggota');
     }
   };
 
@@ -993,9 +1007,21 @@ function TeamTab({
                       </Button>
                     </>
                   ) : (
-                    <Badge tone={e.active ? 'success' : 'neutral'}>
-                      {e.active ? 'Aktif' : 'Nonaktif'}
-                    </Badge>
+                    <>
+                      <Badge tone={e.active ? 'success' : 'neutral'}>
+                        {e.active ? 'Aktif' : 'Nonaktif'}
+                      </Badge>
+                      {isSupabaseConfigured && !isSelf && !e.active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmDelete(e.id)}
+                          iconLeft={<Icon name="trash" aria-hidden />}
+                        >
+                          Hapus
+                        </Button>
+                      )}
+                    </>
                   )}
                 </li>
               );
@@ -1023,6 +1049,15 @@ function TeamTab({
         danger
         onConfirm={() => confirmOff && void deactivate(confirmOff)}
         onCancel={() => setConfirmOff(null)}
+      />
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Hapus anggota permanen?"
+        message="Anggota akan dihapus dari tim ini. History aktivitas, servis, dan transaksi yang dibuat anggota ini tetap tersimpan. Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus Permanen"
+        danger
+        onConfirm={() => confirmDelete && void deleteMemberAction(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
       />
     </>
   );
