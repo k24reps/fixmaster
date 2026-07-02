@@ -443,18 +443,22 @@
 .compare {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 /* Accordion panel: details/summary behaviour.
    Desktop: all panels stay open (pointer-events only on summary chevron area).
    Mobile (≤860px): panels collapsed by default, tap to expand. */
 .compareGroup {
   position: relative;
-  overflow: hidden;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
   padding: 0;
+}
+/* Areas share one box: separate consecutive areas with a dotted bench
+   divider instead of individual card borders. */
+.compareGroup + .compareGroup {
+  border-top: 1px dotted var(--border-strong);
 }
 /* Remove default details/summary triangle. */
 .compareGroup > summary {
