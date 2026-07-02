@@ -606,6 +606,8 @@ Verifikasi kode: build ✓, **394 unit test** ✓ (dari 378, +16), lint ✓. Aut
 
 ---
 
+---
+
 ## Pelajaran utama
 
 > [!tip]
@@ -614,4 +616,39 @@ Verifikasi kode: build ✓, **394 unit test** ✓ (dari 378, +16), lint ✓. Aut
 > [!warning] Jangan campur warna hardcode dengan token semantic
 > Background **hardcode** (mis. `#0b0d11`) + teks **token semantic** (`--text-primary`, yang membalik per tema) = resep teks hilang di salah satu tema. Pilih salah satu konsisten: kalau permukaan sengaja gelap di kedua tema, warna teksnya juga harus **nilai tetap / scale token cerah**. Lihat [[Conventions]].
 
-#decision #bugfix
+---
+
+## Bug: Logo upload gagal di produksi — "Failed to fetch" (2 Jul 2026)
+
+**Gejala:** Upload logo di Settings → Usaha selalu gagal dengan pesan "Gagal memproses gambar" (sebelum fix error message) / "Failed to fetch" (sesudah).
+
+**Root cause:** Kode lama melakukan `fetch("data:image/png;base64,…").blob()` untuk mengkonversi canvas data URL ke Blob sebelum upload ke Supabase Storage. Browser memblokir `fetch()` ke skema `data:` karena CSP `connect-src` di `vercel.json` tidak mengizinkan skema tersebut (hanya `'self'` dan `https://*.supabase.co`).
+
+**Fix:** Ganti `fileToLogoDataUrl()` (yang return data URL) dengan `fileToLogoBlob()` yang menggunakan `canvas.toBlob()` langsung — tidak ada `fetch()` sama sekali.
+
+**File:** `src/features/settings/SettingsPage.tsx` — commit `33146aa`
+
+**Pelajaran:** Hindari `fetch(data:URL)` di produksi dengan CSP ketat. `canvas.toBlob()` adalah cara idiomatik yang tidak memerlukan network request.
+
+---
+
+## Fitur: Soft delete anggota nonaktif — Migration 0037 (2 Jul 2026)
+
+**Konteks:** Anggota yang sudah dinonaktifkan sebelumnya tidak bisa dihapus permanen dari UI. Ini gap desain — hanya ada badge "Nonaktif", tidak ada aksi lebih lanjut.
+
+**Keputusan: Soft delete, bukan hard delete.**
+Alasan: history aktivitas, servis, dan transaksi yang dibuat anggota tetap intact karena foreign key ke `memberships.id` masih valid. Hard delete akan memutus referensi tersebut.
+
+**Implementasi:**
+- `supabase/migrations/0037_delete_member.sql` — RPC `delete_member()` dengan 4 guard server-side (security definer):
+  1. Caller harus org owner
+  2. Target harus sudah nonaktif (`active = false`)
+  3. Tidak bisa hapus diri sendiri
+  4. Member tidak ditemukan / sudah di-soft-delete
+- `src/data/supabase-client.ts` — fungsi `deleteMember()`
+- `src/data/supabase-adapter.ts` — tambah `.is('deleted_at', null)` di `list()` agar soft-deleted rows tidak tampil (sebelumnya hanya LocalAdapter yang sudah filter ini, SupabaseAdapter belum)
+- `src/features/settings/SettingsPage.tsx` — tombol **Hapus** + ConfirmDialog untuk anggota nonaktif
+
+**Migration dijalankan di:** staging (`fpwwswngqpftaixdlozo`) dan production (`vmitplpvncfvyimgyxrn`) via `supabase db query --linked`.
+
+#bugfix #decision #feature
