@@ -20,8 +20,6 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,8 +31,6 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
     setLastId(currentKey);
     setName(editing?.name ?? '');
     setPhone(editing?.phone ?? '');
-    setEmail(editing?.email ?? '');
-    setAddress(editing?.address ?? '');
     setNote(editing?.note ?? '');
     setError('');
   }
@@ -54,8 +50,10 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
       outletId: editing?.outletId ?? null,
       name: name.trim(),
       phone: phone.trim(),
-      email: email.trim(),
-      address: address.trim(),
+      // Email/address are no longer collected in the UI, but existing records
+      // keep their stored values so historical data isn't wiped.
+      email: editing?.email ?? '',
+      address: editing?.address ?? '',
       note: note.trim(),
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
@@ -120,17 +118,6 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
           value={phone}
           inputMode="tel"
           onChange={(e) => setPhone(e.target.value)}
-        />
-        <Input
-          label="Email (opsional)"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          label="Alamat (opsional)"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
         />
         <Input label="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} />
       </FormFields>

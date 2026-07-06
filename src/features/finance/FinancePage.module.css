@@ -260,3 +260,33 @@
     justify-self: end;
   }
 }
+
+/* ---------- Ledger tab bar (Semua / Pemasukan / Pengeluaran) ---------- */
+.tabBar {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-2);
+}
+.tab {
+  padding: 8px var(--space-4);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.tab:hover {
+  color: var(--text-primary);
+}
+.tabActive {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+  font-weight: 600;
+}

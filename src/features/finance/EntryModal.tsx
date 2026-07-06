@@ -9,15 +9,15 @@ import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
-import type { Wallet, IncomeCategory, ExpenseCategory, Expense } from '@/data/types';
+import type { Wallet, IncomeCategory, ExpenseCategory, Expense, Income } from '@/data/types';
 
 interface EntryModalProps {
   open: boolean;
   onClose: () => void;
   kind: 'income' | 'expense';
   wallets: Wallet[];
-  /** When set, the modal edits this expense instead of creating a new entry. */
-  editing?: Expense | null;
+  /** When set, the modal edits this record instead of creating a new entry. */
+  editing?: Income | Expense | null;
 }
 
 const INCOME_CATEGORIES: IncomeCategory[] = ['Servis', 'Penjualan', 'Lainnya'];
@@ -74,34 +74,62 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     const txOutletId = resolveCreateOutlet(outlets);
     try {
       if (editing) {
-        // ----- Edit expense: update record + reconcile wallet balance(s). -----
-        await repository.put('expenses', {
-          ...editing,
-          date,
-          category: category as ExpenseCategory,
-          amount: value,
-          walletId,
-          description: description.trim(),
-          updatedAt: now,
-        });
-        // Reconcile wallets. The wallets prop already reflects the OLD expense,
-        // so we reverse the old amount and apply the new one.
-        if (editing.walletId === walletId) {
-          // Same wallet: net adjustment = oldAmount - newValue.
-          if (wallet) await repository.put('wallets', applyBalance(wallet, editing.amount - value));
+        // ----- Edit existing record (income or expense) + reconcile wallet. -----
+        const isIncomeEdit = (editing as Income).serviceId !== undefined;
+        if (isIncomeEdit) {
+          const inc = editing as Income;
+          await repository.put('incomes', {
+            ...inc,
+            date,
+            category: category as IncomeCategory,
+            amount: value,
+            walletId,
+            description: description.trim(),
+            updatedAt: now,
+          });
+          // Reconcile wallets.
+          if (inc.walletId === walletId) {
+            if (wallet) await repository.put('wallets', applyBalance(wallet, value - inc.amount));
+          } else {
+            const oldWallet = wallets.find((w) => w.id === inc.walletId);
+            if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, -inc.amount));
+            if (wallet) await repository.put('wallets', applyBalance(wallet, value));
+          }
+          logActivity({
+            action: 'income.update',
+            entityType: 'income',
+            entityId: inc.id,
+            entityLabel: description.trim() || (category as string),
+            meta: { amount: value, prevAmount: inc.amount, category },
+          });
+          toast.success('Pemasukan diperbarui');
         } else {
-          const oldWallet = wallets.find((w) => w.id === editing.walletId);
-          if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, editing.amount));
-          if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
+          const exp = editing as Expense;
+          await repository.put('expenses', {
+            ...exp,
+            date,
+            category: category as ExpenseCategory,
+            amount: value,
+            walletId,
+            description: description.trim(),
+            updatedAt: now,
+          });
+          if (exp.walletId === walletId) {
+            if (wallet) await repository.put('wallets', applyBalance(wallet, exp.amount - value));
+          } else {
+            const oldWallet = wallets.find((w) => w.id === exp.walletId);
+            if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, exp.amount));
+            if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
+          }
+          logActivity({
+            action: 'expense.update',
+            entityType: 'expense',
+            entityId: exp.id,
+            entityLabel: description.trim() || (category as string),
+            meta: { amount: value, prevAmount: exp.amount, category },
+          });
+          toast.success('Pengeluaran diperbarui');
         }
-        logActivity({
-          action: 'expense.update',
-          entityType: 'expense',
-          entityId: editing.id,
-          entityLabel: description.trim() || (category as string),
-          meta: { amount: value, prevAmount: editing.amount, category },
-        });
-        toast.success('Pengeluaran diperbarui');
         onClose();
         return;
       }
@@ -168,7 +196,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Pengeluaran' : kind === 'income' ? 'Catat Pemasukan' : 'Catat Pengeluaran'}
+      title={editing ? (kind === 'income' ? 'Edit Pemasukan' : 'Edit Pengeluaran') : kind === 'income' ? 'Catat Pemasukan' : 'Catat Pengeluaran'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

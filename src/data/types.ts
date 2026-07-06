@@ -360,6 +360,7 @@ export type ActivityAction =
   | 'sale.create'
   | 'sale.void'
   | 'income.create'
+  | 'income.update'
   | 'income.delete'
   | 'expense.create'
   | 'expense.update'

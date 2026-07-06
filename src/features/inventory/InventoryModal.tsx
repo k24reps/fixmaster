@@ -30,6 +30,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const currentKey = editing?.id ?? 'new';
   if (open && lastKey !== currentKey) {
     setLastKey(currentKey);
+    // New item always starts blank; editing reflects the record.
     setName(editing?.name ?? '');
     setCategory(editing?.category ?? '');
     setStock(editing ? String(editing.stock) : '');

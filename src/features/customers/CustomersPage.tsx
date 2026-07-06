@@ -16,6 +16,7 @@ import type { Customer } from '@/data/types';
 import styles from './CustomersPage.module.css';
 
 type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
+type ViewMode = 'grid' | 'list';
 
 export function CustomersPage() {
   const { data: customers } = useCollection('customers');
@@ -25,6 +26,7 @@ export function CustomersPage() {
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('svc_desc');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [category, setCategory] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -156,6 +158,28 @@ export function CustomersPage() {
             <option value="trx_desc">Transaksi Tertinggi</option>
             <option value="name_asc">Nama A-Z</option>
           </select>
+          <div className={styles.viewToggle} role="group" aria-label="Ubah tampilan">
+            <button
+              type="button"
+              className={[styles.viewBtn, viewMode === 'grid' ? styles.viewActive : ''].join(' ')}
+              onClick={() => setViewMode('grid')}
+              aria-label="Tampilan kartu"
+              aria-pressed={viewMode === 'grid'}
+              title="Tampilan kartu"
+            >
+              <Icon name="boxes-stacked" aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={[styles.viewBtn, viewMode === 'list' ? styles.viewActive : ''].join(' ')}
+              onClick={() => setViewMode('list')}
+              aria-label="Tampilan daftar"
+              aria-pressed={viewMode === 'list'}
+              title="Tampilan daftar"
+            >
+              <Icon name="list-check" aria-hidden />
+            </button>
+          </div>
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
             Pelanggan Baru
           </Button>
@@ -186,7 +210,7 @@ export function CustomersPage() {
           />
         </Card>
       ) : (
-        <div className={styles.grid}>
+        <div className={[styles.grid, viewMode === 'list' ? styles.listView : ''].join(' ')}>
           {rows.map((c) => {
             const st = stats.get(c.id) ?? { count: 0, total: 0 };
             return (
@@ -216,14 +240,6 @@ export function CustomersPage() {
                   <div className={styles.contactRow}>
                     <Icon name="phone" aria-hidden />
                     <span>{c.phone || <em className={styles.contactMuted}>tanpa nomor</em>}</span>
-                  </div>
-                  <div className={styles.contactRow}>
-                    <Icon name="envelope" aria-hidden />
-                    <span>{c.email || <em className={styles.contactMuted}>tanpa email</em>}</span>
-                  </div>
-                  <div className={styles.contactRow}>
-                    <Icon name="map-pin" aria-hidden />
-                    <span>{c.address || <em className={styles.contactMuted}>tanpa alamat</em>}</span>
                   </div>
                 </div>
 

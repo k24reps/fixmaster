@@ -57,6 +57,7 @@ export function ServiceModal({
   const currentKey = editing?.id ?? 'new';
   if (open && lastKey !== currentKey) {
     setLastKey(currentKey);
+    // New service always starts blank; editing reflects the record.
     setCustomerName(editing?.customerName ?? '');
     setCustomerPhone(editing?.customerPhone ?? '');
     setCategory(editing?.category ?? categories[0] ?? '');

@@ -19,6 +19,7 @@ const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: 'sale.create', label: 'Penjualan baru' },
   { value: 'sale.void', label: 'Batalkan penjualan' },
   { value: 'income.create', label: 'Tambah pemasukan' },
+  { value: 'income.update', label: 'Ubah pemasukan' },
   { value: 'income.delete', label: 'Hapus pemasukan' },
   { value: 'expense.create', label: 'Tambah pengeluaran' },
   { value: 'expense.delete', label: 'Hapus pengeluaran' },

@@ -19,6 +19,7 @@ const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'sale.create': { label: 'Penjualan baru', icon: 'cash-register', tone: 'success' },
   'sale.void': { label: 'Batalkan penjualan', icon: 'circle-xmark', tone: 'danger' },
   'income.create': { label: 'Tambah pemasukan', icon: 'arrow-trend-up', tone: 'success' },
+  'income.update': { label: 'Ubah pemasukan', icon: 'pen', tone: 'neutral' },
   'income.delete': { label: 'Hapus pemasukan', icon: 'trash', tone: 'danger' },
   'expense.create': { label: 'Tambah pengeluaran', icon: 'arrow-trend-down', tone: 'warning' },
   'expense.update': { label: 'Ubah pengeluaran', icon: 'pen', tone: 'neutral' },

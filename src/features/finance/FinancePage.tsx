@@ -44,6 +44,8 @@ export function FinancePage() {
   const { data: expenses } = useCollection('expenses');
   const [modalKind, setModalKind] = useState<'income' | 'expense' | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [ledgerTab, setLedgerTab] = useState<'all' | 'income' | 'expense'>('all');
   const [transferOpen, setTransferOpen] = useState(false);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
 
@@ -80,6 +82,13 @@ export function FinancePage() {
       )
       .slice(0, 100);
   }, [incomes, expenses]);
+
+  // Filter ledger by the active tab so the user can focus on income or
+  // expense history independently.
+  const visibleLedger = useMemo(
+    () => (ledgerTab === 'all' ? ledger : ledger.filter((r) => r.kind === ledgerTab)),
+    [ledger, ledgerTab],
+  );
 
   const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
 
@@ -190,8 +199,28 @@ export function FinancePage() {
 
       <Card glass>
         <CardHeader icon={<Icon name="receipt" aria-hidden />} title="Buku Kas" />
+        <div className={styles.tabBar}>
+          <button
+            className={[styles.tab, ledgerTab === 'all' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setLedgerTab('all')}
+          >
+            Semua
+          </button>
+          <button
+            className={[styles.tab, ledgerTab === 'income' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setLedgerTab('income')}
+          >
+            Pemasukan
+          </button>
+          <button
+            className={[styles.tab, ledgerTab === 'expense' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setLedgerTab('expense')}
+          >
+            Pengeluaran
+          </button>
+        </div>
         <CardBody className={styles.noPad}>
-          {ledger.length === 0 ? (
+          {visibleLedger.length === 0 ? (
             <EmptyState
               icon={<Icon name="receipt" aria-hidden />}
               title="Belum ada transaksi"
@@ -199,7 +228,7 @@ export function FinancePage() {
             />
           ) : (
             <div className={styles.tape}>
-              {ledger.map((r) => {
+              {visibleLedger.map((r) => {
                 const inc = r.kind === 'income';
                 return (
                   <div key={`${r.kind}-${r.id}`} className={[styles.tapeRow, styles[r.kind]].join(' ')}>
@@ -223,7 +252,23 @@ export function FinancePage() {
                         className={styles.iconBtn}
                         onClick={() => {
                           setEditingExpense(r.record as Expense);
+                          setEditingIncome(null);
                           setModalKind('expense');
+                        }}
+                        aria-label="Edit"
+                      >
+                        <Icon name="pen" aria-hidden />
+                      </button>
+                    )}
+                    {/* Manual income (not from service settlement) can be edited.
+                        Income linked to a service (serviceId != null) is locked. */}
+                    {r.kind === 'income' && !(r.record as Income).serviceId && (
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => {
+                          setEditingIncome(r.record as Income);
+                          setEditingExpense(null);
+                          setModalKind('income');
                         }}
                         aria-label="Edit"
                       >
@@ -250,10 +295,11 @@ export function FinancePage() {
         onClose={() => {
           setModalKind(null);
           setEditingExpense(null);
+          setEditingIncome(null);
         }}
         kind={modalKind ?? 'income'}
         wallets={wallets}
-        editing={editingExpense}
+        editing={editingExpense ?? editingIncome}
       />
       <TransferModal open={transferOpen} onClose={() => setTransferOpen(false)} wallets={wallets} />
       <ConfirmDialog

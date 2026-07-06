@@ -158,6 +158,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // ---- Sub-action: change status ----
   const applyStatus = async () => {
     if (!target) return toast.warning('Pilih status tujuan');
+    if (!note.trim()) return toast.warning('Catatan wajib diisi');
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
     const partsDays = Math.max(0, Math.round(Number(warrantyParts) || 0));
     if (needsWarranty && svcDays <= 0 && partsDays <= 0) {
@@ -676,7 +677,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 </p>
               </div>
             )}
-            <Input label="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Input
+              label="Catatan (wajib)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Contoh: unit sudah dicek, menunggu sparepart"
+            />
             {service.downPayment > 0 && (
               <p className={styles.dp}>
                 DP diterima: {fmtRp(service.downPayment)} · Sisa:{' '}
