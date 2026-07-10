@@ -695,7 +695,7 @@ Audit menyeluruh kedua (frontend + data layer + backend Supabase). Sebagian temu
 
 Verifikasi: `tsc` + `eslint` bersih, **402 unit** hijau (395 → +7 `pin.test.ts`), build produksi sukses.
 
-> [!IMPORTANT] Status deploy 0038 + 0039
-> Belum di-apply saat entri ini ditulis (environment kerja tak punya akses jaringan ke Supabase + `SUPABASE_DB_PASSWORD`). **Runbook:** `supabase db push` ke staging (linked `fpwwswngqpftaixdlozo`) → `npm run test:integration` → `supabase link --project-ref vmitplpvncfvyimgyxrn` → `supabase db push` ke produksi. Frontend tak wajib 0039 untuk jalan (perbaikan independen), tapi urutan ideal tetap **migrasi dulu, baru deploy frontend**.
+> [!IMPORTANT] Status deploy 0038 + 0039 — SUDAH DI-APPLY (10 Jul 2026)
+> Frontend live di Vercel staging + production (commit `97fe4bb`). Migrasi `0038` + `0039` **ter-apply ke staging DAN production** via `supabase db push` (skrip `deploy-migrations.bat`: push staging → `npm run test:integration` sebagai gate → push production). Terverifikasi lewat `supabase migration list` — 0038 & 0039 muncul di kolom `Remote` untuk project production `vmitplpvncfvyimgyxrn`.
 
 #bugfix #decision #security
