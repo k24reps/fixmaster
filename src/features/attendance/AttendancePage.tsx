@@ -8,7 +8,7 @@ import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
 import { hasGeofence } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
-import { localDateStr, localTimeStr, calcHours, fmtDate } from '@/lib/time';
+import { localDateStr, localTimeStr, localTimeSec, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import type { Attendance } from '@/data/types';
@@ -104,7 +104,7 @@ export function AttendancePage() {
     const id = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  const hhmmss = clock.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const hhmmss = localTimeSec(clock);
 
   // The current user's open shift today (checked in, not out).
   const myToday = useMemo(
@@ -205,6 +205,8 @@ export function AttendancePage() {
         entityLabel: myToday.employeeName,
         meta: { time: out, totalHours: calcHours(myToday.checkIn ?? '00:00', out) },
       });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal check-out');
     } finally {
       setBusy(false);
     }

@@ -46,14 +46,23 @@ const ALL_COLLECTIONS: CollectionName[] = [
 
 /** Read every collection + the org singleton into a backup object. */
 export async function createBackup(orgId: string | null): Promise<BackupFile> {
-  const collections: Record<string, unknown[]> = {};
-  await Promise.all(
-    ALL_COLLECTIONS.map(async (name) => {
-      collections[name] = await repository.list(name);
-    }),
-  );
-  const organization = await repository.getSingleton('organization');
-  return buildBackup(collections, organization, orgId);
+  // Force org-wide scope so the backup captures EVERY outlet's data, not just
+  // the active branch. Without this, listing under an active-outlet scope
+  // silently omits other branches — and a later full-restore would delete them.
+  const prevOutlet = useSessionStore.getState().activeOutletId;
+  if (orgId) repository.setScope(orgId, null);
+  try {
+    const collections: Record<string, unknown[]> = {};
+    await Promise.all(
+      ALL_COLLECTIONS.map(async (name) => {
+        collections[name] = await repository.list(name);
+      }),
+    );
+    const organization = await repository.getSingleton('organization');
+    return buildBackup(collections, organization, orgId);
+  } finally {
+    if (orgId) repository.setScope(orgId, prevOutlet);
+  }
 }
 
 /** Trigger a client-side download of the backup JSON. */
@@ -101,22 +110,53 @@ export async function restoreBackup(text: string): Promise<RestoreResult> {
 
     // Local mode: wipe everything, then bulk-insert each collection + the org
     // singleton. Records keep ids/timestamps so relations stay intact.
-    await repository.clearAll();
+    // Snapshot the current data org-wide first so a mid-restore failure (quota,
+    // a bad record) can roll back instead of leaving the DB wiped/partial.
+    const orgId = useSessionStore.getState().org?.id ?? null;
+    const prevOutlet = useSessionStore.getState().activeOutletId;
+    if (orgId) repository.setScope(orgId, null);
 
-    let restored = 0;
+    const snapshot: Record<string, unknown[]> = {};
     for (const name of ALL_COLLECTIONS) {
-      const rows = backup.collections[name];
-      if (Array.isArray(rows) && rows.length > 0) {
-        await repository.putMany(name, rows as never);
-        restored += rows.length;
+      snapshot[name] = await repository.list(name);
+    }
+    const prevOrg = await repository.getSingleton('organization');
+
+    try {
+      await repository.clearAll();
+
+      let restored = 0;
+      for (const name of ALL_COLLECTIONS) {
+        const rows = backup.collections[name];
+        if (Array.isArray(rows) && rows.length > 0) {
+          await repository.putMany(name, rows as never);
+          restored += rows.length;
+        }
       }
-    }
 
-    if (backup.organization) {
-      await repository.setSingleton('organization', backup.organization as never);
-    }
+      if (backup.organization) {
+        await repository.setSingleton('organization', backup.organization as never);
+      }
 
-    return { ok: true, restored };
+      return { ok: true, restored };
+    } catch (writeErr) {
+      // ponytail: best-effort rollback from the in-memory snapshot. Not a true
+      // transaction (the local adapter has no cross-store txn), but it prevents
+      // total data loss on a partial write.
+      await repository.clearAll().catch(() => {});
+      for (const name of ALL_COLLECTIONS) {
+        const rows = snapshot[name];
+        if (Array.isArray(rows) && rows.length > 0) {
+          await repository.putMany(name, rows as never).catch(() => {});
+        }
+      }
+      if (prevOrg) {
+        await repository.setSingleton('organization', prevOrg as never).catch(() => {});
+      }
+      throw writeErr;
+    } finally {
+      if (orgId) repository.setScope(orgId, prevOutlet);
+    }
   } catch (e) {
     return {
       ok: false,

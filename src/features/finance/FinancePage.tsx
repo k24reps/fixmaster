@@ -8,10 +8,10 @@ import { fmtDate, localDateStr } from '@/lib/time';
 import {
   summarize,
   applyBalance,
-  reverseIncomeDelta,
   reverseExpenseDelta,
   shouldRevertServiceOnIncomeDelete,
 } from '@/lib/business/finance';
+import { dpIncomeDescription, settlementIncomeDescription } from '@/lib/business/services';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
@@ -74,19 +74,18 @@ export function FinancePage() {
     // Sort by ledger date desc, then by actual creation time desc. Using the
     // record's createdAt (not the random UUID id) ensures the newest entry on a
     // given day — e.g. a just-recorded DP — surfaces at the top of that day.
-    return rows
-      .sort(
-        (a, b) =>
-          b.date.localeCompare(a.date) ||
-          (b.record.createdAt ?? '').localeCompare(a.record.createdAt ?? ''),
-      )
-      .slice(0, 100);
+    return rows.sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) ||
+        (b.record.createdAt ?? '').localeCompare(a.record.createdAt ?? ''),
+    );
   }, [incomes, expenses]);
 
-  // Filter ledger by the active tab so the user can focus on income or
-  // expense history independently.
+  // Filter by tab FIRST, then cap at 100 — slicing first starved the income/
+  // expense tabs whenever the newest 100 rows were dominated by one kind.
   const visibleLedger = useMemo(
-    () => (ledgerTab === 'all' ? ledger : ledger.filter((r) => r.kind === ledgerTab)),
+    () =>
+      (ledgerTab === 'all' ? ledger : ledger.filter((r) => r.kind === ledgerTab)).slice(0, 100),
     [ledger, ledgerTab],
   );
 
@@ -98,29 +97,57 @@ export function FinancePage() {
     try {
       if (toDelete.kind === 'income') {
         const inc = toDelete.record as Income;
-        if (wallet) await repository.put('wallets', applyBalance(wallet, reverseIncomeDelta(inc)));
-        // Reverse-cascade: revert linked service from lunas → selesai.
-        if (shouldRevertServiceOnIncomeDelete(inc) && inc.serviceId) {
-          const svc = await repository.get('services', inc.serviceId);
-          if (svc && svc.status === 'lunas') {
+        // Service-linked income needs type-aware reversal: a DP delete must
+        // also shrink the ticket's downPayment (else the next settlement
+        // under-collects), and a settlement delete must reverse EVERY split
+        // leg at once (else re-settling double-books the remaining legs).
+        const svc =
+          shouldRevertServiceOnIncomeDelete(inc) && inc.serviceId
+            ? await repository.get('services', inc.serviceId)
+            : null;
+        const isDp = svc ? inc.description === dpIncomeDescription(svc.serviceNo) : false;
+        const isSettle = svc
+          ? inc.description === settlementIncomeDescription(svc.serviceNo)
+          : false;
+        const legs = isSettle
+          ? incomes.filter(
+              (i) => i.serviceId === inc.serviceId && !i.deletedAt && i.description === inc.description,
+            )
+          : [inc];
+        // Net per wallet first — two legs on the same wallet must not both
+        // apply against the same stale cached balance.
+        const deltas = new Map<string, number>();
+        for (const leg of legs) deltas.set(leg.walletId, (deltas.get(leg.walletId) ?? 0) - leg.amount);
+        for (const [wid, d] of deltas) {
+          const w = wallets.find((x) => x.id === wid);
+          if (w) await repository.put('wallets', applyBalance(w, d));
+        }
+        for (const leg of legs) await repository.remove('incomes', leg.id);
+
+        if (svc) {
+          const nextDp = isDp ? Math.max(0, svc.downPayment - inc.amount) : svc.downPayment;
+          const revert = svc.status === 'lunas' && !isDp;
+          if (revert || nextDp !== svc.downPayment) {
             await repository.put('services', {
               ...svc,
-              status: 'selesai',
+              status: revert ? 'selesai' : svc.status,
+              downPayment: nextDp,
               history: [
                 ...svc.history,
                 {
                   at: new Date().toISOString(),
-                  status: 'selesai',
+                  status: revert ? 'selesai' : 'edit',
                   by: '',
                   byName: 'Sistem',
-                  note: 'Pelunasan dibatalkan (pemasukan dihapus)',
-                  internal: false,
+                  note: revert
+                    ? 'Pelunasan dibatalkan (pemasukan dihapus)'
+                    : `DP ${fmtRp(inc.amount)} dihapus dari keuangan`,
+                  internal: !revert,
                 },
               ],
             });
           }
         }
-        await repository.remove('incomes', toDelete.id);
         logActivity({
           action: 'income.delete',
           entityType: 'income',
@@ -142,8 +169,12 @@ export function FinancePage() {
       }
       toast.success('Transaksi dihapus & saldo dikembalikan');
       setToDelete(null);
-    } catch {
-      toast.error('Gagal menghapus transaksi');
+    } catch (e) {
+      // Surface the failing step — this flow is multi-write (wallets → incomes
+      // → services) and a generic message hides which one needs manual fixing.
+      // ponytail: true atomicity needs a server RPC (delete_finance_entry);
+      // add one if partial failures show up in the field.
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus transaksi');
     }
   };
 
@@ -230,6 +261,12 @@ export function FinancePage() {
             <div className={styles.tape}>
               {visibleLedger.map((r) => {
                 const inc = r.kind === 'income';
+                // Expense tied to a PO or a service "modal dadakan" line must be
+                // removed from its owning page (PO / service detail) so the
+                // linked record is reversed too — deleting here would orphan it.
+                const lockedExpense =
+                  r.kind === 'expense' &&
+                  (!!(r.record as Expense).poId || r.description.startsWith('Modal servis '));
                 return (
                   <div key={`${r.kind}-${r.id}`} className={[styles.tapeRow, styles[r.kind]].join(' ')}>
                     <span className={styles.tapeDate}>{fmtDate(r.date)}</span>
@@ -260,9 +297,10 @@ export function FinancePage() {
                         <Icon name="pen" aria-hidden />
                       </button>
                     )}
-                    {/* Manual income (not from service settlement) can be edited.
-                        Income linked to a service (serviceId != null) is locked. */}
-                    {r.kind === 'income' && !(r.record as Income).serviceId && (
+                    {/* Manual income can be edited. Income linked to a service
+                        OR a POS sale is locked — editing it would desync the
+                        source record (settlement legs / sale total). */}
+                    {r.kind === 'income' && !(r.record as Income).serviceId && !(r.record as Income).saleId && (
                       <button
                         className={styles.iconBtn}
                         onClick={() => {
@@ -275,13 +313,15 @@ export function FinancePage() {
                         <Icon name="pen" aria-hidden />
                       </button>
                     )}
-                    <button
-                      className={[styles.iconBtn, styles.danger].join(' ')}
-                      onClick={() => setToDelete(r)}
-                      aria-label="Hapus"
-                    >
-                      <Icon name="trash" aria-hidden />
-                    </button>
+                    {!lockedExpense && (
+                      <button
+                        className={[styles.iconBtn, styles.danger].join(' ')}
+                        onClick={() => setToDelete(r)}
+                        aria-label="Hapus"
+                      >
+                        <Icon name="trash" aria-hidden />
+                      </button>
+                    )}
                   </div>
                 );
               })}

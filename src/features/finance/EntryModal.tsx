@@ -7,7 +7,7 @@ import { localDateStr } from '@/lib/time';
 import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
-import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import type { Wallet, IncomeCategory, ExpenseCategory, Expense, Income } from '@/data/types';
 
@@ -67,6 +67,13 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     const value = parseRpInput(amount);
     if (value <= 0) return setError('Nominal harus lebih dari 0');
     if (!walletId) return setError('Pilih wallet');
+    // OQ-C (same guard as PosPage.checkout): a user who can reach multiple
+    // outlets must pick a branch first so the entry isn't silently stamped to
+    // the primary outlet. Edits keep the record's original outlet, so only
+    // creation needs the guard.
+    if (!editing && mustPickOutlet(outlets.length)) {
+      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum mencatat');
+    }
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -75,8 +82,10 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     try {
       if (editing) {
         // ----- Edit existing record (income or expense) + reconcile wallet. -----
-        const isIncomeEdit = (editing as Income).serviceId !== undefined;
-        if (isIncomeEdit) {
+        // The caller (FinancePage) always sets `kind` to match the record being
+        // edited — don't sniff fields like serviceId to tell them apart (a
+        // legacy income without that field would be written into `expenses`).
+        if (kind === 'income') {
           const inc = editing as Income;
           await repository.put('incomes', {
             ...inc,
@@ -183,8 +192,8 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
       }
       toast.success(kind === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat');
       onClose();
-    } catch {
-      toast.error('Gagal menyimpan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan');
     } finally {
       setBusy(false);
     }

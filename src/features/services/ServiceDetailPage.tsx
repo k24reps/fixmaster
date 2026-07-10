@@ -89,6 +89,26 @@ export function ServiceDetailPage() {
     );
   }
 
+  /**
+   * Write the sparepart list after RE-READING the service, so a rapid second
+   * cost-line mutation can't overwrite a line whose cash/stock side-effect
+   * already committed. The closure's `service.spareparts` can be stale between
+   * refetches; deriving from the fresh copy avoids the lost update.
+   * ponytail: re-read closes the realistic single-user rapid-click gap; a true
+   * concurrent interleave would still need an in-flight mutex — add if it bites.
+   */
+  const putServiceSpareparts = async (
+    mutate: (current: ServiceSparepart[]) => ServiceSparepart[],
+  ) => {
+    const list = await repository.list('services');
+    const fresh = list.find((s) => s.id === service.id) ?? service;
+    await repository.put('services', {
+      ...fresh,
+      spareparts: mutate(fresh.spareparts),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
   const cancelled = service.status === 'batal';
   const currentIndex = TRAVELER.indexOf(service.status);
   const outstanding = outstandingBalance(service);
@@ -113,7 +133,6 @@ export function ServiceDetailPage() {
    * the ticket gives the stock back (see computeStockRestore).
    */
   const addSparepartLine = async (line: ServiceSparepart) => {
-    const now = new Date().toISOString();
     if (line.itemId) {
       const inventory = await repository.list('inventory');
       const item = inventory.find((i) => i.id === line.itemId);
@@ -123,11 +142,10 @@ export function ServiceDetailPage() {
       }
       await repository.put('inventory', { ...item, stock: item.stock - line.qty });
     }
-    await repository.put('services', {
-      ...service,
-      spareparts: [...service.spareparts, { ...line, deducted: line.itemId ? true : line.deducted }],
-      updatedAt: now,
-    });
+    await putServiceSpareparts((sp) => [
+      ...sp,
+      { ...line, deducted: line.itemId ? true : line.deducted },
+    ]);
     toast.success('Sparepart ditambahkan & stok dipotong');
   };
 
@@ -201,11 +219,7 @@ export function ServiceDetailPage() {
         expenseId,
         walletId: modalWalletId,
       };
-      await repository.put('services', {
-        ...service,
-        spareparts: [...service.spareparts, line],
-        updatedAt: now,
-      });
+      await putServiceSpareparts((sp) => [...sp, line]);
       setLastExpenseWallet(modalWalletId);
       logActivity({
         action: 'expense.create',
@@ -276,11 +290,9 @@ export function ServiceDetailPage() {
         expenseId,
         walletId: modalWalletId,
       };
-      await repository.put('services', {
-        ...service,
-        spareparts: service.spareparts.map((sp, i) => (i === editIndex ? updatedLine : sp)),
-        updatedAt: now,
-      });
+      await putServiceSpareparts((list) =>
+        list.map((sp, i) => (i === editIndex ? updatedLine : sp)),
+      );
       setLastExpenseWallet(modalWalletId);
       logActivity({
         action: 'expense.update',
@@ -306,7 +318,6 @@ export function ServiceDetailPage() {
   const removeCostLine = async (index: number) => {
     const line = service.spareparts[index];
     if (!line) return;
-    const now = new Date().toISOString();
     try {
       if (line.kind === 'manual') {
         if (line.expenseId) {
@@ -324,11 +335,7 @@ export function ServiceDetailPage() {
         const item = inventory.find((i) => i.id === line.itemId);
         if (item) await repository.put('inventory', { ...item, stock: item.stock + line.qty });
       }
-      await repository.put('services', {
-        ...service,
-        spareparts: service.spareparts.filter((_, i) => i !== index),
-        updatedAt: now,
-      });
+      await putServiceSpareparts((sp) => sp.filter((_, i) => i !== index));
       toast.success('Baris dihapus');
     } catch {
       toast.error('Gagal menghapus baris');

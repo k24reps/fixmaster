@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button, Icon } from '@/components/ui';
-import { verifyPin } from '@/lib/pin';
+import { verifyPin, needsRehash, hashPin } from '@/lib/pin';
+import { repository } from '@/data';
 import {
   initialAttemptState,
   registerFailure,
@@ -77,6 +78,17 @@ export function PinLogin() {
     const ok = await verifyPin(code, selected.id, selected.pinHash);
     if (ok) {
       setAttempts(registerSuccess());
+      // Best-effort upgrade of a legacy (weaker) PIN hash to the current format.
+      // Guarded: a cloud RLS denial (staff can't write their own record) must
+      // not block a valid login — the hash just stays legacy until next change.
+      if (needsRehash(selected.pinHash)) {
+        try {
+          const pinHash = await hashPin(code, selected.id);
+          await repository.put('employees', { ...(selected as Employee), pinHash });
+        } catch {
+          /* keep legacy hash; login proceeds */
+        }
+      }
       toast.success(`Selamat datang, ${selected.name}!`);
       signInEmployee(selected as Employee);
       logActivity({ action: 'auth.login', entityType: 'session', entityLabel: selected.name });

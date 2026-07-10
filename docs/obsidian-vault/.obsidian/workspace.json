@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "d73b009e0c68a0b4",
+        "id": "7f0282a42c18e90a",
         "type": "tabs",
         "children": [
           {
-            "id": "47f3c0cb44b8f54d",
+            "id": "68078ca806570ad5",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "empty",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -179,8 +179,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "47f3c0cb44b8f54d",
+  "active": "f5de02a065fb723d",
   "lastOpenFiles": [
+    "Untitled",
     "Signature Pages.md",
     "attachments/demo-dashboard-dark.png",
     "Sidebar - Live Diagnostic Rail.md",

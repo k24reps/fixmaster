@@ -42,7 +42,10 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
 
   const save = async () => {
     if (!name.trim()) return setError('Nama barang wajib diisi');
-    const stockNum = Number(stock) || 0;
+    // Stock/minStock are integer counts (inventoryItemSchema requires int); this
+    // modal writes straight via repository.put, so round here — a type=number
+    // input otherwise lets "2.5" through and corrupts the count.
+    const stockNum = Math.round(Number(stock) || 0);
     if (stockNum < 0) return setError('Stok tidak boleh negatif');
 
     setBusy(true);
@@ -55,7 +58,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
       category: category.trim(),
       sku: editing?.sku ?? '',
       stock: stockNum,
-      minStock: Number(minStock) || 0,
+      minStock: Math.max(0, Math.round(Number(minStock) || 0)),
       costPrice: parseRpInput(costPrice),
       sellPrice: parseRpInput(sellPrice),
       supplierId: editing?.supplierId ?? null,

@@ -652,3 +652,50 @@ Alasan: history aktivitas, servis, dan transaksi yang dibuat anggota tetap intac
 **Migration dijalankan di:** staging (`fpwwswngqpftaixdlozo`) dan production (`vmitplpvncfvyimgyxrn`) via `supabase db query --linked`.
 
 #bugfix #decision #feature
+
+## Paket audit: 6 perbaikan konsistensi Buku Kas (7 Jul 2026)
+
+Hasil audit kode menyeluruh (laporan: `bug_audit.md` di artifacts). Semua di sisi klien, tanpa migrasi. Keputusan kunci:
+
+- **B1 — Hapus income DP kini mengurangi `service.downPayment`.** Sebelumnya reverse-cascade hanya revert `lunas → selesai`; DP yang dihapus dari Buku Kas meninggalkan `downPayment` basi → pelunasan berikutnya kurang tagih. Deteksi jenis income via string kanonik `dpIncomeDescription()` (alasan string itu wajib satu sumber — lihat `services.ts`). History tiket dapat entri internal `DP <nominal> dihapus dari keuangan`.
+- **B3 — Hapus satu leg pelunasan split me-reverse SEMUA leg.** Pelunasan split = beberapa income berdeskripsi sama; hapus satu leg lalu settle ulang = dobel-book sisa leg. Kini semua leg (match `settlementIncomeDescription()` + `serviceId`) dihapus + saldo di-net **per wallet dulu** (dua leg di wallet sama tidak boleh apply ke balance cache basi yang sama) — pola sama dengan `applyKoreksi`.
+- **B2 — Income POS (`saleId`) dikunci dari edit.** Lock lama hanya cek `serviceId`; income penjualan lolos → edit nominal memutus audit vs record `Sale` dan void sesudahnya me-reverse angka salah. Fix: `!serviceId && !saleId`.
+- **B4 — Expense tertaut PO/modal servis tak bisa dihapus dari Buku Kas.** Tombol hapus disembunyikan bila `expense.poId` terisi atau deskripsi berawalan `Modal servis ` — hapus di sini akan meninggalkan referensi yatim (baris modal di tiket tetap dihitung profit). Hapus lewat halaman pemiliknya (detail servis me-reverse expense+wallet dengan benar).
+- **B5 — Filter tab Buku Kas dijalankan SEBELUM `slice(0,100)`.** Urutan lama membuat tab Pemasukan/Pengeluaran kelaparan saat 100 baris terbaru didominasi satu jenis.
+- **B6 — Toast error tidak lagi menelan pesan server.** `catch {}` generik di StatusModal (3 tempat) + EntryModal diganti `e instanceof Error ? e.message : fallback` (pola PosPage). Error RLS/network kini terlihat operator.
+
+> [!WARNING]
+> Path hapus-income ini **client-side berurutan** (tanpa transaksi) — sama seperti path lokal lain. Untuk cloud, kandidat RPC atomik `delete_service_income` menyusul bila terbukti perlu (lihat improvement I1 di audit).
+
+Verifikasi: build + lint + **394 unit** hijau. Improvement yang SENGAJA ditunda (ada di `bug_audit.md`): RPC koreksi atomik, nomor dokumen anti-tabrakan multi-device, riwayat void POS >8, `max` tanggal entri, try/catch `togglePickup`.
+
+#bugfix
+
+## Paket audit lanjutan: hardening RPC uang + keamanan + integritas klien (10 Jul 2026)
+
+Audit menyeluruh kedua (frontend + data layer + backend Supabase). Sebagian temuan awal ternyata **sudah** diperbaiki di working tree (lihat "sudah ada di working tree" di bawah) — sisanya dikerjakan di batch ini. Keputusan & perbaikan kunci:
+
+### Backend — `0039_harden_money_rpcs.sql` (baru)
+- **`is_org_active` ditambahkan ke SEMUA RPC uang** (`process_sale`, `settle_service`, `record_down_payment`, `cancel_service`). Temuan: RPC `SECURITY DEFINER` mem-bypass RLS, jadi guard `is_org_active` yang ada di semua RLS write (0010/0017/0028) TIDAK berlaku di dalam RPC → org yang langganannya habis tetap bisa transaksi tanpa batas, membatalkan enforcement billing 0010. Kini konsisten.
+- **Tolak nominal pembayaran negatif** di `process_sale`/`settle_service`. Sebelumnya amount negatif dari klien akan **mendebit** wallet (exploit skimming). `record_down_payment`/`transfer_wallet` sudah menolak `<= 0` — dua RPC ini tadinya inkonsisten.
+- **Refund `cancel_service` diamankan**: dibatasi `<= down_payment`, wallet refund di-**`FOR UPDATE` lock** + cek saldo cukup (fail-safe non-negatif). Sebelumnya kasir (`is_org_member`) bisa membukukan expense "Refund DP" sembarang / buat saldo minus — celah penggelapan. (Komentar 0036 keliru menyebut ini manager-level.)
+- **Penomoran sale server-side (menutup deferral "nomor dokumen anti-tabrakan multi-device").** `nextDocNumber` klien menghitung `INV-0001` dari daftar sales **ter-scope per-outlet**, sehingga kasir kedua / outlet kedua menabrak `unique(org_id, sale_no)` org-wide tanpa retry. `process_sale` kini menetapkan nomor sendiri: **advisory lock per (org, prefix)** (auto-release saat commit) → `max+1` lintas outlet. Return tetap `uuid` (ponytail); toast klien bisa jarang beda dari nomor tersimpan saat balapan — struk/laporan selalu benar. Upgrade ke return `(id, sale_no)` bila perlu nomor final seketika. `service_no`/`po_number` punya pola laten sama (jalur insert langsung) — ditunda.
+- **`check_rate_limit` di-revoke dari `anon/authenticated`.** Hanya dipanggil internal oleh `track_service` (security-definer, jalan sebagai owner fungsi) → aman dicabut; mencegah flood `rate_events` (key acak) & throttle-DoS kuota `track:<orgId>` korban.
+
+> [!WARNING] Ditunda SENGAJA (keputusan produk, belum diubah)
+> **Bypass harga langganan** (`start_subscription`/`apply_payment` 0022): harga plan dari klien + cabang "owner mock-confirm" mengizinkan owner mengaktifkan plan tanpa pembayaran webhook. Perlu peta plan→harga server-side + batasi penandaan "lunas" ke `service_role`. **Kuota** `max_outlets`/`max_users` (0001) juga belum di-enforce server-side (helper `withinUserQuota`/`withinOutletQuota` klien bukan batas sebenarnya).
+
+### Frontend & data layer
+- **Lost-update cost line servis** ([ServiceDetailPage.tsx](src/features/services/ServiceDetailPage.tsx)): 4 mutator (tambah sparepart/modal, edit, hapus) menulis `{...service, spareparts}` dari closure basi → bisa menghapus baris yang kas/stoknya sudah bergerak. Kini lewat helper `putServiceSpareparts` yang **re-read service** dulu. (Mutex penuh ditunda — cukup untuk klik-cepat single-user.)
+- **Resync realtime pasca-outage** ([supabase-adapter.ts](src/data/supabase-adapter.ts)): cek `offline→live` adalah dead code (urutan nyata `offline→connecting→live`), jadi data stale setelah koneksi putus. Diganti flag `wasOffline` (latch di `offline`, resync di `live` berikutnya; skip connect awal). Lihat [[Data Layer]].
+- **Keamanan PIN** ([pin.ts](src/lib/pin.ts)): SHA-256 tunggal (10rb kombinasi, brute-force milidetik dari dump) → **PBKDF2-HMAC-SHA256, 210k iterasi, salt acak** (format `s3:`). `verifyPin` tetap kompat hash lama `s2:`; `needsRehash()` + **rehash best-effort saat login** (try/catch agar penolakan RLS staff tak blokir login). Test baru `pin.test.ts`. Lihat [[Testing & Security]].
+- **EntryModal**: (a) tambah guard `mustPickOutlet` saat *membuat* entri (samakan dg POS) — cegah salah-stempel outlet; (b) diskriminator income/expense pakai prop `kind`, bukan sniff `serviceId !== undefined` (income legacy bisa salah tertulis ke `expenses`).
+- **InventoryModal**: stok/minStock dibulatkan ke integer (`inventoryItemSchema` wajib int, tapi modal tulis langsung via `repository.put` → `type=number` tadinya loloskan "2.5").
+- **Sudah ada di working tree (dikirim sepaket):** `0038` (`receive_goods_v2`/`void_po` → `inventory_items`, bukan tabel `inventory` yang tak ada — jika tak di-apply, terima-barang+void PO mati di cloud), backup paksa scope org-wide + restore rollback snapshot ([backupRestore.ts](src/features/settings/backupRestore.ts)), `checkOut` absensi punya `catch`, jam LCD pakai `localTimeSec`.
+
+Verifikasi: `tsc` + `eslint` bersih, **402 unit** hijau (395 → +7 `pin.test.ts`), build produksi sukses.
+
+> [!IMPORTANT] Status deploy 0038 + 0039
+> Belum di-apply saat entri ini ditulis (environment kerja tak punya akses jaringan ke Supabase + `SUPABASE_DB_PASSWORD`). **Runbook:** `supabase db push` ke staging (linked `fpwwswngqpftaixdlozo`) → `npm run test:integration` → `supabase link --project-ref vmitplpvncfvyimgyxrn` → `supabase db push` ke produksi. Frontend tak wajib 0039 untuk jalan (perbaikan independen), tapi urutan ideal tetap **migrasi dulu, baru deploy frontend**.
+
+#bugfix #decision #security

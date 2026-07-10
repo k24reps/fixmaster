@@ -3,6 +3,7 @@ import {
   calcHours,
   localDateStr,
   localTimeStr,
+  localTimeSec,
   fmtDate,
   parseISODate,
   isInRange,
@@ -38,6 +39,13 @@ describe('localTimeStr', () => {
   it('formats time as HH:MM (no platform bug)', () => {
     expect(localTimeStr(new Date(2026, 5, 2, 11, 5))).toBe('11:05');
     expect(localTimeStr(new Date(2026, 5, 2, 23, 0))).toBe('23:00');
+  });
+});
+
+describe('localTimeSec', () => {
+  it('formats time as HH:MM:SS (no platform bug)', () => {
+    expect(localTimeSec(new Date(2026, 5, 2, 11, 5, 9))).toBe('11:05:09');
+    expect(localTimeSec(new Date(2026, 5, 2, 23, 0, 0))).toBe('23:00:00');
   });
 });
 

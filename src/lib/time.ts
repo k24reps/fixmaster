@@ -25,6 +25,12 @@ export function localTimeStr(d: Date = new Date()): string {
   return `${h}:${m}`;
 }
 
+/** Local time as "HH:MM:SS" for live clocks (same platform-bug avoidance). */
+export function localTimeSec(d: Date = new Date()): string {
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${localTimeStr(d)}:${s}`;
+}
+
 /**
  * Hours worked between two "HH:MM" times. If checkOut is earlier than
  * checkIn, assumes an overnight shift and adds 24h. Returns rounded to

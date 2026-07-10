@@ -322,8 +322,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       toast.success(`Status → ${STATUS_LABELS[target]}`);
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal memperbarui status');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui status');
     } finally {
       setBusy(false);
     }
@@ -383,8 +383,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       toast.success('DP diterima & masuk keuangan');
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal mencatat DP');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mencatat DP');
     } finally {
       setBusy(false);
     }
@@ -463,8 +463,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       toast.success('Biaya final dikoreksi');
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal mengoreksi biaya final');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengoreksi biaya final');
     } finally {
       setBusy(false);
     }

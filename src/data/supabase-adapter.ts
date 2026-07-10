@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabase, subscribeOrgTables, type RealtimeStatus } from './supabase-client';
+import { getSupabase, subscribeOrgTables } from './supabase-client';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useSessionStore } from '@/stores/session';
 import type {
@@ -114,8 +114,15 @@ export class SupabaseAdapter implements Repository {
   private unsubscribeRealtime: (() => void) | null = null;
   /** Per-collection debounce timers, to coalesce bursts of realtime events. */
   private debounceTimers = new Map<CollectionName, ReturnType<typeof setTimeout>>();
-  /** Last realtime status seen, to detect offline→live reconnects (resync). */
-  private lastStatus: RealtimeStatus | null = null;
+  /**
+   * True once the channel has gone offline, until the next successful resync.
+   * The status sequence after an outage is offline→connecting→live (not a
+   * direct offline→live), so we can't detect a reconnect by the previous
+   * status alone — we latch this flag on 'offline' and resync on the next
+   * 'live'. Starts false so the initial connect (connecting→live) doesn't
+   * trigger a redundant refetch.
+   */
+  private wasOffline = false;
 
   constructor() {
     const c = getSupabase();
@@ -133,7 +140,7 @@ export class SupabaseAdapter implements Repository {
     // refetch the affected collection here. Tear down any previous channel.
     this.unsubscribeRealtime?.();
     this.unsubscribeRealtime = null;
-    this.lastStatus = null;
+    this.wasOffline = false;
     if (orgId) {
       this.unsubscribeRealtime = subscribeOrgTables(
         orgId,
@@ -153,12 +160,15 @@ export class SupabaseAdapter implements Repository {
           // Reconnect after an outage: events may have been missed while the
           // channel was down, so refetch every collection (full resync) plus
           // the org singleton. The server stays the source of truth — we never
-          // merge on the client.
-          if (status === 'live' && this.lastStatus === 'offline') {
+          // merge on the client. The sequence is offline→connecting→live, so we
+          // latch `wasOffline` and fire on the next 'live'.
+          if (status === 'offline') {
+            this.wasOffline = true;
+          } else if (status === 'live' && this.wasOffline) {
+            this.wasOffline = false;
             this.notifyAll();
             void this.refreshOrganization();
           }
-          this.lastStatus = status;
         },
       );
     }
@@ -209,7 +219,7 @@ export class SupabaseAdapter implements Repository {
   dispose(): void {
     this.unsubscribeRealtime?.();
     this.unsubscribeRealtime = null;
-    this.lastStatus = null;
+    this.wasOffline = false;
     for (const t of this.debounceTimers.values()) clearTimeout(t);
     this.debounceTimers.clear();
     useRealtimeStore.getState().reset();
