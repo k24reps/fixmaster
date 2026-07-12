@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { fmtRp } from '@/lib/format';
-import { localDateStr, fmtDate } from '@/lib/time';
+import { localDateStr, localDateOf, fmtDate } from '@/lib/time';
 import {
   computeKpis,
   technicianLeaderboard,
@@ -196,7 +196,7 @@ export function DashboardPage() {
                     <span className={styles.recentDetail}>
                       <strong>{s.device}</strong>
                       <small>
-                        {s.customerName} · {fmtDate(s.createdAt.slice(0, 10))}
+                        {s.customerName} · {fmtDate(localDateOf(s.createdAt))}
                       </small>
                     </span>
                     <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>

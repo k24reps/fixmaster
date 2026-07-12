@@ -364,6 +364,9 @@
   max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--space-12) var(--space-6);
+  /* Offset anchor jumps (#banding/#demo/#spec/#manual) so the section heading
+     isn't hidden behind the sticky .topRail. */
+  scroll-margin-top: 80px;
 }
 /* Alternating section: a subtly inset panel to break the uniform pelat rhythm. */
 .sectionAlt {

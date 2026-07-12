@@ -64,6 +64,7 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
   };
 
   const submit = async () => {
+    if (busy) return; // Enter bypasses the disabled button → guard double-submit.
     const v = validate();
     if (v) {
       setError(v);

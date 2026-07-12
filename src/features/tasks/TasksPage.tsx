@@ -73,76 +73,97 @@ export function TasksPage() {
   );
 
   const complete = async (inst: TaskInstance) => {
-    await repository.put('taskInstances', {
-      ...inst,
-      status: 'done',
-      completedAt: new Date().toISOString(),
-      completedById: me?.id ?? '',
-      completedByName: me?.name ?? '',
-    });
-    logActivity({
-      action: 'task.complete',
-      entityType: 'task',
-      entityId: inst.id,
-      entityLabel: inst.title,
-    });
-    toast.success('Tugas selesai');
+    try {
+      await repository.put('taskInstances', {
+        ...inst,
+        status: 'done',
+        completedAt: new Date().toISOString(),
+        completedById: me?.id ?? '',
+        completedByName: me?.name ?? '',
+      });
+      logActivity({
+        action: 'task.complete',
+        entityType: 'task',
+        entityId: inst.id,
+        entityLabel: inst.title,
+      });
+      toast.success('Tugas selesai');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menandai tugas selesai');
+    }
   };
 
   const uncomplete = async (inst: TaskInstance) => {
-    await repository.put('taskInstances', {
-      ...inst,
-      status: 'pending',
-      completedAt: null,
-      completedById: null,
-      completedByName: '',
-    });
+    try {
+      await repository.put('taskInstances', {
+        ...inst,
+        status: 'pending',
+        completedAt: null,
+        completedById: null,
+        completedByName: '',
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan tanda selesai');
+    }
   };
 
   const addQuickTask = async () => {
     const title = quickTitle.trim();
     if (!title) return;
     const now = new Date().toISOString();
-    // Ad-hoc "quick task" for today: a TaskInstance with no template
-    // (templateId null), so it never collides with template generation and
-    // is a valid NULL UUID in cloud Postgres (empty string '' would throw).
-    await repository.put('taskInstances', {
-      id: newId(),
-      orgId,
-      outletId: null,
-      templateId: null,
-      title,
-      description: '',
-      dueDate: today,
-      status: 'pending',
-      completedAt: null,
-      completedById: null,
-      completedByName: '',
-      note: '',
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    });
-    setQuickTitle('');
-    logActivity({
-      action: 'task.create',
-      entityType: 'task',
-      entityLabel: title,
-    });
-    toast.success('Tugas cepat ditambahkan');
+    try {
+      // Ad-hoc "quick task" for today: a TaskInstance with no template
+      // (templateId null), so it never collides with template generation and
+      // is a valid NULL UUID in cloud Postgres (empty string '' would throw).
+      await repository.put('taskInstances', {
+        id: newId(),
+        orgId,
+        outletId: null,
+        templateId: null,
+        title,
+        description: '',
+        dueDate: today,
+        status: 'pending',
+        completedAt: null,
+        completedById: null,
+        completedByName: '',
+        note: '',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+      setQuickTitle('');
+      logActivity({
+        action: 'task.create',
+        entityType: 'task',
+        entityLabel: title,
+      });
+      toast.success('Tugas cepat ditambahkan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menambah tugas');
+    }
   };
 
   // Ad-hoc tasks have no managing template, so allow direct removal.
   const deleteAdhoc = async (inst: TaskInstance) => {
-    await repository.remove('taskInstances', inst.id);
-    toast.success('Tugas dihapus');
+    try {
+      await repository.remove('taskInstances', inst.id);
+      toast.success('Tugas dihapus');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus tugas');
+    }
   };
 
   const confirmDeleteTemplate = async () => {
     if (!toDelete) return;
-    await repository.remove('taskTemplates', toDelete.id);
-    toast.success('Template dihapus');
-    setToDelete(null);
+    try {
+      await repository.remove('taskTemplates', toDelete.id);
+      toast.success('Template dihapus');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus template');
+    } finally {
+      setToDelete(null);
+    }
   };
 
   const assigneeLabel = (t: TaskTemplate): string => {

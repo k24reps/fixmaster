@@ -230,8 +230,8 @@ export function ServiceDetailPage() {
       });
       toast.success('Modal dadakan dicatat & masuk keuangan');
       closeModalForm();
-    } catch {
-      toast.error('Gagal mencatat modal');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mencatat modal');
     } finally {
       setSavingCost(false);
     }
@@ -303,8 +303,8 @@ export function ServiceDetailPage() {
       });
       toast.success('Modal dadakan diperbarui');
       closeModalForm();
-    } catch {
-      toast.error('Gagal memperbarui modal');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui modal');
     } finally {
       setSavingCost(false);
     }
@@ -337,8 +337,8 @@ export function ServiceDetailPage() {
       }
       await putServiceSpareparts((sp) => sp.filter((_, i) => i !== index));
       toast.success('Baris dihapus');
-    } catch {
-      toast.error('Gagal menghapus baris');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus baris');
     }
   };
 
@@ -383,24 +383,28 @@ export function ServiceDetailPage() {
   const togglePickup = async () => {
     const now = new Date().toISOString();
     const nowPicked = !service.pickedUp;
-    await repository.put('services', {
-      ...service,
-      pickedUp: nowPicked,
-      pickedUpAt: nowPicked ? now : null,
-      updatedAt: now,
-      history: [
-        ...service.history,
-        {
-          at: now,
-          status: 'edit',
-          by: me?.id ?? '',
-          byName: me?.name ?? '',
-          note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
-          internal: false,
-        },
-      ],
-    });
-    toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+    try {
+      await repository.put('services', {
+        ...service,
+        pickedUp: nowPicked,
+        pickedUpAt: nowPicked ? now : null,
+        updatedAt: now,
+        history: [
+          ...service.history,
+          {
+            at: now,
+            status: 'edit',
+            by: me?.id ?? '',
+            byName: me?.name ?? '',
+            note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
+            internal: false,
+          },
+        ],
+      });
+      toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui tanda ambil');
+    }
   };
 
   return (

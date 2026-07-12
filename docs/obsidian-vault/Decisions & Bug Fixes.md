@@ -699,3 +699,32 @@ Verifikasi: `tsc` + `eslint` bersih, **402 unit** hijau (395 → +7 `pin.test.ts
 > Frontend live di Vercel staging + production (commit `97fe4bb`). Migrasi `0038` + `0039` **ter-apply ke staging DAN production** via `supabase db push` (skrip `deploy-migrations.bat`: push staging → `npm run test:integration` sebagai gate → push production). Terverifikasi lewat `supabase migration list` — 0038 & 0039 muncul di kolom `Remote` untuk project production `vmitplpvncfvyimgyxrn`.
 
 #bugfix #decision #security
+
+## Audit UI menyeluruh per-menu: auth, landing, pengaturan, servis, POS/supplier/tugas, log aktivitas (12 Jul 2026)
+
+Sapuan audit halaman-per-halaman (bukan migrasi, kecuali edge function `delete-account`). Semua terverifikasi: `tsc` + `eslint` bersih, **408 unit** (+6: `authError` ×3, `localDateOf` ×3), build produksi sukses. Temuan besar & keputusan:
+
+### Keamanan & privasi
+- **Hapus Akun kini benar-benar menghapus data usaha** ([delete-account/index.ts](supabase/functions/delete-account/index.ts)). Sebelumnya `clearAll()` no-op di cloud + fungsi hanya hapus kredensial → row `organizations` + data (PII, keuangan) jadi **orphan** meski UI klaim "dihapus permanen". Kini edge function cari org tempat caller **owner aktif** (diverifikasi server-side) → `delete organizations` (cascade ke semua tabel) → baru `deleteUser`. **Fail-closed**: gagal hapus data → kredensial TIDAK dihapus (akun utuh, bisa retry). Handler klien jujur — tak klaim sukses saat gagal. ⚠️ **Perlu `supabase functions deploy delete-account`** agar aktif.
+- **Terjemahan error auth** ([authError.ts](src/lib/business/authError.ts) + dipasang di wrapper `supabase-client`): pesan Supabase (Inggris) → Indonesia untuk semua jalur (login/signup/reset/update). Signup email terdaftar (`identities.length === 0`) → pesan "sudah terdaftar", bukan "akun dibuat" palsu.
+- **PIN hashing** sudah PBKDF2 (sesi 10 Jul); di sini + guard double-submit auth (Enter mem-bypass tombol disabled) & listener `onAuthStateChange` sekali-bind (StrictMode).
+- **Login cloud kini masuk jejak audit** (`auth.login`): flag sekali-pakai `consumeLoginAudit` di [auth.ts](src/stores/auth.ts), ditulis di [AuthGate](src/app/AuthGate.tsx) setelah bootstrap (butuh konteks org/employee; reload halaman TIDAK nge-spam karena hanya `signIn` eksplisit yang set flag). Paritas dengan `PinLogin` lokal.
+- **Konfirmasi visibilitas audit**: RLS 0019 = INSERT semua member, SELECT **owner-only**, tanpa UPDATE/DELETE (immutable). `activity` bukan `OUTLET_SCOPED` → owner lihat log semua cabang. Lihat [[Testing & Security]].
+
+### Integritas data
+- **Bug timezone sistemik (14 titik)**: `createdAt.slice(0,10)` = tanggal **UTC** → sebelum 07:00 WIB tampil tanggal kemarin (tgl masuk servis, filter laporan, ekspor CSV, umur piutang, durasi). Helper baru **`localDateOf`** di [time.ts](src/lib/time.ts). Yang terparah: **bug TULIS** di [StatusModal](src/features/services/StatusModal.tsx) — income pelunasan & expense refund DP tersimpan tanggal UTC. Juga menutup deferral lama `revenueSeries` (key hari UTC).
+- **Enforcement kuota outlet** ([SettingsPage](src/features/settings/SettingsPage.tsx) OutletTab) — Solo tak bisa tambah cabang tanpa upgrade (sebelumnya tak dicek).
+- **Blokir hapus supplier ber-PO aktif** ([SuppliersPage](src/features/suppliers/SuppliersPage.tsx)) — dulu cuma warning lalu tetap hapus → PO yatim. Kini ditolak.
+- **Cap 1000-baris PostgREST**: `list()` kini selalu `.order('created_at', desc)` ([supabase-adapter.ts](src/data/supabase-adapter.ts)) → yang terpotong dijamin data terlama, bukan subset acak (kritis untuk `activity_logs` append-only).
+
+### Ketahanan (pola B6 dituntaskan seluruh app)
+- **~20 handler mutasi** yang tadinya `await repository.*` telanjang atau `catch {}` generik kini **try/catch + surface `e.message`**: absensi checkOut (10 Jul), togglePickup ×2, EntryModal/FinancePage, BusinessTab/WalletTab/OutletTab/OutletRow, Inventory/Customers delete, Tasks ×5, 4 modal (Customer/Supplier/PO/TaskTemplate), ServiceModal, WarrantyClaim, ServiceDetail ×3.
+- **Guard `mustPickOutlet` di SEMUA jalur transaksi ber-outlet**: EntryModal, ServiceModal, ReceiveModal, void PO (paritas dgn PosPage yang sudah ada) — cegah stempel outlet salah diam-diam.
+
+### UX & konsistensi
+- Landing: `scroll-margin-top` anchor tak tertutup sticky header. Settings: teks logo "maks 500KB" (sesuai validasi), dialog Reset tak nyangkut, garansi non-negatif, InventoryModal integer. Jam LCD (attendance + activity) pakai `localTimeStr`/`localTimeSec` (hindari bug `toLocaleTimeString` Chrome/Edge Windows). Filter aksi Log derive dari `ACTION_META` (6 verb tadinya tak terfilter) + cap render 300.
+
+### Ditunda SENGAJA (tercatat, belum dikerjakan)
+Nomor `service_no`/`po_number` anti-tabrakan server-side (pola `process_sale` 0039 siap ditiru; intake/PO jarang konkuren) · kerugian garansi tak muncul di profit per-tiket (agregat di Laporan benar) · retensi/arsip `activity_logs` · auto-generate batch tugas gagal senyap (realtime menyembuhkan) · kuota `max_users`/`max_outlets` + bypass harga langganan server-side (dari audit backend 10 Jul).
+
+#bugfix #decision #security

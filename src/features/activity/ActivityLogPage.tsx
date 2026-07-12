@@ -1,39 +1,28 @@
 import { useMemo, useState } from 'react';
 import { Card, CardBody, Button, EmptyState, Icon, Input, Select, Badge } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
-import { actionMeta, roleLabel, filterActivity } from '@/lib/business/activity';
-import { fmtDate } from '@/lib/time';
+import { actionMeta, roleLabel, filterActivity, ACTION_META } from '@/lib/business/activity';
+import { fmtDate, localDateOf, localTimeStr } from '@/lib/time';
 import type { Role } from '@/data/types';
 import styles from './ActivityLogPage.module.css';
 
-/** Format an ISO datetime to "HH:MM" local time for the log row. */
+/** "HH:MM" local time via localTimeStr — NOT toLocaleTimeString (see time.ts:
+ * known Chrome/Edge Windows bug rendering 11AM as 23). */
 function fmtClock(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  return localTimeStr(d);
 }
 
+// Derived from ACTION_META (single source of truth) so every recorded verb is
+// filterable — a hand-copied list here kept falling behind new verbs.
 const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'Semua aksi' },
-  { value: 'auth.login', label: 'Masuk' },
-  { value: 'sale.create', label: 'Penjualan baru' },
-  { value: 'sale.void', label: 'Batalkan penjualan' },
-  { value: 'income.create', label: 'Tambah pemasukan' },
-  { value: 'income.update', label: 'Ubah pemasukan' },
-  { value: 'income.delete', label: 'Hapus pemasukan' },
-  { value: 'expense.create', label: 'Tambah pengeluaran' },
-  { value: 'expense.delete', label: 'Hapus pengeluaran' },
-  { value: 'inventory.create', label: 'Tambah barang' },
-  { value: 'inventory.update', label: 'Ubah barang' },
-  { value: 'inventory.delete', label: 'Hapus barang' },
-  { value: 'customer.create', label: 'Tambah pelanggan' },
-  { value: 'customer.update', label: 'Ubah pelanggan' },
-  { value: 'customer.delete', label: 'Hapus pelanggan' },
-  { value: 'attendance.update', label: 'Koreksi absensi' },
-  { value: 'attendance.delete', label: 'Hapus absensi' },
-  { value: 'service.create', label: 'Servis baru' },
-  { value: 'service.status', label: 'Ubah status servis' },
+  ...Object.entries(ACTION_META).map(([value, meta]) => ({ value, label: meta.label })),
 ];
+
+/** DOM cap: only the newest rows are rendered (matches FinancePage's cap). */
+const MAX_RENDERED = 300;
 
 const ROLE_OPTIONS: { value: Role | 'all'; label: string }[] = [
   { value: 'all', label: 'Semua peran' },
@@ -66,17 +55,20 @@ export function ActivityLogPage() {
     [filtered],
   );
 
+  // Cap the DOM at the newest rows — filterActivity already sorts newest-first.
+  const visible = useMemo(() => filtered.slice(0, MAX_RENDERED), [filtered]);
+
   // Group rows by calendar day (date label) for the recorder tape segments.
   const groups = useMemo(() => {
-    const map = new Map<string, typeof filtered>();
-    for (const l of filtered) {
-      const day = (l.createdAt ?? '').slice(0, 10);
+    const map = new Map<string, typeof visible>();
+    for (const l of visible) {
+      const day = l.createdAt ? localDateOf(l.createdAt) : '';
       const list = map.get(day) ?? [];
       list.push(l);
       map.set(day, list);
     }
     return [...map.entries()];
-  }, [filtered]);
+  }, [visible]);
 
   const hasFilter = query !== '' || role !== 'all' || action !== 'all';
 
@@ -164,6 +156,12 @@ export function ActivityLogPage() {
             />
           ) : (
             <div className={styles.trace}>
+              {filtered.length > MAX_RENDERED && (
+                <p className={styles.loading} role="note">
+                  Menampilkan {MAX_RENDERED} event terbaru dari {filtered.length}. Persempit
+                  filter untuk melihat event lama.
+                </p>
+              )}
               {groups.map(([day, rows]) => (
                 <section key={day} className={styles.segment}>
                   <div className={styles.segHead}>

@@ -4,7 +4,7 @@ import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
 import { settleService, cancelService, recordDownPayment, isSupabaseConfigured } from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { fmtDate, addDays, localDateStr } from '@/lib/time';
+import { fmtDate, addDays, localDateStr, localDateOf } from '@/lib/time';
 import { newId } from '@/lib/id';
 import {
   nextStatuses,
@@ -238,7 +238,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               id: newId(),
               orgId: service.orgId,
               outletId: service.outletId,
-              date: now.slice(0, 10),
+              date: localDateStr(),
               category: 'Servis',
               amount: leg.amount,
               walletId: wallet.id,
@@ -291,7 +291,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 id: newId(),
                 orgId: service.orgId,
                 outletId: service.outletId,
-                date: now.slice(0, 10),
+                date: localDateStr(),
                 category: 'Lainnya',
                 amount: refund,
                 walletId: wallet.id,
@@ -746,7 +746,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 <div>
                   <strong>{h.status === 'edit' ? 'Edit' : STATUS_LABELS[h.status as ServiceStatus]}</strong>
                   <small>
-                    {fmtDate(h.at.slice(0, 10))} · {h.byName || '—'}
+                    {fmtDate(localDateOf(h.at))} · {h.byName || '—'}
                     {h.note ? ` · ${h.note}` : ''}
                   </small>
                 </div>

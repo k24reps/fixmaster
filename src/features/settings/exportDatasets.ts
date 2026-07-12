@@ -1,4 +1,5 @@
 import { repository } from '@/data';
+import { localDateOf } from '@/lib/time';
 import { buildCsv, csvFilename, type CsvColumn } from '@/lib/business/export';
 import type {
   Service,
@@ -26,7 +27,7 @@ export interface DatasetDef {
 
 const serviceCols: CsvColumn<Service>[] = [
   { label: 'No. Servis', value: (s) => s.serviceNo },
-  { label: 'Tanggal Masuk', value: (s) => s.createdAt.slice(0, 10) },
+  { label: 'Tanggal Masuk', value: (s) => localDateOf(s.createdAt) },
   { label: 'Pelanggan', value: (s) => s.customerName },
   { label: 'Telepon', value: (s) => s.customerPhone },
   { label: 'Perangkat', value: (s) => `${s.category} ${s.device}`.trim() },

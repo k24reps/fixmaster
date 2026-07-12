@@ -10,7 +10,7 @@ import { poTotal, PO_STATUS_LABELS, PO_STATUS_TONE } from '@/lib/business/purcha
 import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
-import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseOrderModal } from './PurchaseOrderModal';
 import { ReceiveModal } from './ReceiveModal';
@@ -60,11 +60,20 @@ export function SuppliersPage() {
       (p) => p.supplierId === deleteSupplier.id && p.status !== 'received' && p.status !== 'cancelled',
     ).length;
     if (openPo > 0) {
-      toast.warning(`Supplier punya ${openPo} PO aktif — periksa dulu.`);
+      // BLOCK, don't just warn — deleting now would orphan the active POs.
+      // Finish (terima) or void the POs first, then delete the supplier.
+      toast.error(`Supplier punya ${openPo} PO aktif. Selesaikan atau batalkan PO-nya dulu.`);
+      setDeleteSupplier(null);
+      return;
     }
-    await repository.remove('suppliers', deleteSupplier.id);
-    toast.success('Supplier dihapus');
-    setDeleteSupplier(null);
+    try {
+      await repository.remove('suppliers', deleteSupplier.id);
+      toast.success('Supplier dihapus');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus supplier');
+    } finally {
+      setDeleteSupplier(null);
+    }
   };
 
   // Automatic void: reverse received stock, refund wallets for linked expenses,
@@ -72,6 +81,12 @@ export function SuppliersPage() {
   // cloud; sequential reversal in local/dev mode.
   const confirmVoid = async () => {
     if (!voidTarget) return;
+    // OQ-C (same guard as PosPage): the refund expense reversal is stamped to
+    // an outlet — a multi-outlet user must pick a branch first, not guess.
+    if (mustPickOutlet(outlets.length)) {
+      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum membatalkan PO');
+      return;
+    }
     setVoiding(true);
     const now = new Date().toISOString();
     try {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSessionStore } from '@/stores/session';
-import { useAuthStore } from '@/stores/auth';
+import { useAuthStore, consumeLoginAudit } from '@/stores/auth';
+import { logActivity } from '@/lib/activity';
 import { repository } from '@/data';
 import { Wizard } from '@/features/onboarding/Wizard';
 import { PinLogin } from '@/features/auth/PinLogin';
@@ -53,6 +54,17 @@ export function AuthGate({ children }: AuthGateProps) {
       void bootstrap();
     }
   }, [authStatus, bootstrap]);
+
+  // Audit cloud sign-ins (parity with PinLogin's local 'auth.login' entry).
+  // consumeLoginAudit is true only after an explicit signIn — a page reload
+  // restoring the session must NOT spam the trail. Runs once the workspace is
+  // ready because logActivity needs the org/employee context bootstrap resolves.
+  const currentEmployee = useSessionStore((s) => s.currentEmployee);
+  useEffect(() => {
+    if (authStatus === 'signed-in' && boot === 'ready' && currentEmployee && consumeLoginAudit()) {
+      logActivity({ action: 'auth.login', entityType: 'session', entityLabel: currentEmployee.name });
+    }
+  }, [authStatus, boot, currentEmployee]);
 
   const handleSetupComplete = async (orgId: string, ownerId: string) => {
     repository.setScope(orgId, null);

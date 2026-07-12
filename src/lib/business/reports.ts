@@ -5,7 +5,7 @@
  * comparison, per-outlet comparison, and receivables aging.
  */
 import type { Service, Income, Expense, InventoryItem, Outlet, ServiceStatus } from '@/data/types';
-import { addDays, daysBetween, parseISODate, isInRange } from '@/lib/time';
+import { addDays, daysBetween, parseISODate, isInRange, localDateOf, localDateStr } from '@/lib/time';
 import { summarize, type FinanceSummary } from './finance';
 import { outstandingBalance, serviceProfit, sparepartCost, STATUS_LABELS } from './services';
 
@@ -202,10 +202,10 @@ export function serviceFunnel(services: Service[]): FunnelStage[] {
     .map((st) => ({ status: st, label: STATUS_LABELS[st], count: counts.get(st) ?? 0 }));
 }
 
-/** The date a service first reached "selesai" (from history), else null. */
+/** The LOCAL date a service first reached "selesai" (from history), else null. */
 export function completionDate(service: Service): string | null {
   const entry = service.history.find((h) => h.status === 'selesai');
-  return entry ? entry.at.slice(0, 10) : null;
+  return entry ? localDateOf(entry.at) : null;
 }
 
 /**
@@ -217,7 +217,7 @@ export function avgTurnaroundDays(services: Service[]): number {
   for (const s of services) {
     const done = completionDate(s);
     if (!done) continue;
-    const span = daysBetween(s.createdAt.slice(0, 10), done);
+    const span = daysBetween(localDateOf(s.createdAt), done);
     if (span >= 0) spans.push(span);
   }
   if (spans.length === 0) return 0;
@@ -334,13 +334,13 @@ function agingBucket(ageDays: number): AgingBucket {
  * (finalCost > downPayment). Aged from completion date (fallback intake).
  */
 export function receivablesAging(services: Service[], today: Date = new Date()): Receivable[] {
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localDateStr(today);
   const out: Receivable[] = [];
   for (const s of services) {
     if (s.status !== 'selesai') continue;
     const outstanding = outstandingBalance(s);
     if (outstanding <= 0) continue;
-    const since = completionDate(s) ?? s.createdAt.slice(0, 10);
+    const since = completionDate(s) ?? localDateOf(s.createdAt);
     const ageDays = Math.max(0, daysBetween(since, todayStr));
     out.push({
       serviceId: s.id,

@@ -111,15 +111,20 @@ export function CustomersPage() {
 
   const confirmDelete = async () => {
     if (!toDelete) return;
-    await repository.remove('customers', toDelete.id);
-    toast.success('Pelanggan dihapus');
-    logActivity({
-      action: 'customer.delete',
-      entityType: 'customer',
-      entityId: toDelete.id,
-      entityLabel: toDelete.name,
-    });
-    setToDelete(null);
+    try {
+      await repository.remove('customers', toDelete.id);
+      toast.success('Pelanggan dihapus');
+      logActivity({
+        action: 'customer.delete',
+        entityType: 'customer',
+        entityId: toDelete.id,
+        entityLabel: toDelete.name,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus pelanggan');
+    } finally {
+      setToDelete(null);
+    }
   };
 
   return (

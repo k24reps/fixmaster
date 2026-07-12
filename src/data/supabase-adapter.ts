@@ -237,6 +237,11 @@ export class SupabaseAdapter implements Repository {
     if (this.outletId && OUTLET_SCOPED.has(collection)) {
       query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
     }
+    // Newest-first, ALWAYS ordered: PostgREST caps responses (max_rows, default
+    // 1000) and without ORDER BY the truncated subset is unspecified — an
+    // append-only table like activity_logs would show an arbitrary slice,
+    // possibly missing the NEWEST events. Ordered, the cap drops oldest rows.
+    query = query.order('created_at', { ascending: false });
     const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));

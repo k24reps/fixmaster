@@ -1,20 +1,23 @@
 // ============================================================
 // FixMaster — Edge Function: delete-account
-// Permanently deletes the CALLER'S OWN auth credential (the
-// auth.users record: email + password). This is the one action the
-// browser cannot do itself — it requires the service_role key, which
-// must never ship to the client.
+// Permanently deletes the CALLER'S OWN business data AND auth credential.
+// This requires the service_role key (RLS/admin), which must never ship
+// to the client.
 //
-// Security model (defence against deleting someone else's account):
+// Security model (defence against deleting someone else's account/data):
 //   1. The caller proves identity with their own JWT (Authorization
 //      header). getUser() validates it and yields THEIR user id.
-//   2. We delete ONLY that id with the service-role admin client. The
-//      client never names a target id, so a user can only ever delete
-//      themselves.
+//   2. We delete organizations where THIS user is an active OWNER (role
+//      checked server-side — never trusted from the client), which
+//      cascades to every business table. Then we delete ONLY this user's
+//      auth id. A caller can therefore only ever erase their own shop
+//      and their own credential.
 //
-// Tenant DATA is erased separately by the client (repository.clearAll)
-// BEFORE calling this — see SettingsPage. This function is intentionally
-// scoped to the credential only (single responsibility).
+// Why data is erased here (not the client): repository.clearAll() is a
+// deliberate no-op in cloud mode (multi-tenant safety), so the client
+// cannot wipe tenant data — it must happen server-side with the org
+// cascade. Fail-closed: if the data delete fails we do NOT delete the
+// credential, leaving the account intact for a retry.
 //
 // Public (verify_jwt = false in config.toml) because we verify the token
 // INSIDE the function via getUser(); the platform gate can reject some
@@ -65,15 +68,44 @@ Deno.serve(async (req) => {
       return json({ error: 'Unauthorized' }, 401);
     }
 
-    // 2. Delete that user with the privileged admin client.
     const admin = createClient(supabaseUrl, serviceKey);
+
+    // 2. Erase the tenant DATA the caller OWNS. Look up orgs where this user is
+    //    an ACTIVE OWNER (verified server-side — never trust the client) and
+    //    delete those organizations. Every business table FK-references
+    //    organizations(id) ON DELETE CASCADE, so this wipes services, sales,
+    //    customers, finance, wallets, memberships, invoices, etc. Non-owner
+    //    accounts own no org → only their membership is removed in step 3's
+    //    auth-user cascade.
+    const { data: ownedOrgs, error: mErr } = await admin
+      .from('memberships')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .eq('role', 'owner')
+      .eq('active', true);
+    if (mErr) {
+      console.error('delete-account: owner lookup failed', mErr.message);
+      return json({ error: mErr.message }, 500);
+    }
+    const orgIds = [...new Set((ownedOrgs ?? []).map((m) => m.org_id))];
+    if (orgIds.length > 0) {
+      const { error: orgErr } = await admin.from('organizations').delete().in('id', orgIds);
+      if (orgErr) {
+        // Fail closed: data NOT erased → keep the credential so the user can
+        // retry with the account still fully intact.
+        console.error('delete-account: org delete failed', orgErr.message);
+        return json({ error: orgErr.message }, 500);
+      }
+    }
+
+    // 3. Delete the caller's own auth credential (email + password).
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) {
       console.error('delete-account: deleteUser failed', delErr.message);
       return json({ error: delErr.message }, 500);
     }
 
-    console.log('delete-account: credential deleted', { userId: user.id });
+    console.log('delete-account: account + data deleted', { userId: user.id, orgs: orgIds.length });
     return json({ ok: true });
   } catch (err) {
     console.error('delete-account: unhandled error', err instanceof Error ? err.stack : err);

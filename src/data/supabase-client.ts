@@ -5,6 +5,7 @@ import {
   isHealthDue,
   HEALTH_IDLE_MS,
 } from '@/lib/business/realtime-timing';
+import { mapAuthError } from '@/lib/business/authError';
 
 /**
  * Supabase client singleton. Reads credentials from Vite env vars:
@@ -43,8 +44,16 @@ export interface AuthResult {
 export async function authSignUp(email: string, password: string): Promise<AuthResult> {
   const c = getSupabase();
   if (!c) return { error: 'Supabase tidak terkonfigurasi' };
-  const { error } = await c.auth.signUp({ email, password });
-  return { error: error?.message ?? null };
+  const { data, error } = await c.auth.signUp({ email, password });
+  if (error) return { error: mapAuthError(error.message) };
+  // With email confirmation disabled, signing up an ALREADY-registered email
+  // succeeds but returns a user whose `identities` array is empty (Supabase's
+  // enumeration guard). Surface it as "already registered" instead of the
+  // misleading "account created, please log in".
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    return { error: 'Email ini sudah terdaftar. Silakan masuk.' };
+  }
+  return { error: null };
 }
 
 /** Sign in with email + password. */
@@ -52,7 +61,7 @@ export async function authSignIn(email: string, password: string): Promise<AuthR
   const c = getSupabase();
   if (!c) return { error: 'Supabase tidak terkonfigurasi' };
   const { error } = await c.auth.signInWithPassword({ email, password });
-  return { error: error?.message ?? null };
+  return { error: error ? mapAuthError(error.message) : null };
 }
 
 /** Sign out the current account. */
@@ -75,7 +84,7 @@ export async function authResetPassword(email: string): Promise<AuthResult> {
   const redirectTo =
     typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
   const { error } = await c.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
-  return { error: error?.message ?? null };
+  return { error: error ? mapAuthError(error.message) : null };
 }
 
 /**
@@ -88,7 +97,7 @@ export async function authUpdatePassword(newPassword: string): Promise<AuthResul
   const c = getSupabase();
   if (!c) return { error: 'Supabase tidak terkonfigurasi' };
   const { error } = await c.auth.updateUser({ password: newPassword });
-  return { error: error?.message ?? null };
+  return { error: error ? mapAuthError(error.message) : null };
 }
 
 /**

@@ -149,8 +149,8 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
       toast.success(`Klaim garansi ${serviceNo} dibuat`);
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal membuat klaim garansi');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membuat klaim garansi');
     } finally {
       setBusy(false);
     }

@@ -91,8 +91,8 @@ export function PurchaseOrderModal({
       await repository.put('purchaseOrders', record);
       toast.success(`PO ${poNumber} dibuat`);
       onClose();
-    } catch {
-      toast.error('Gagal membuat PO');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membuat PO');
     } finally {
       setBusy(false);
     }

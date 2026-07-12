@@ -10,6 +10,21 @@ import {
 } from '@/data/supabase-client';
 import { useSessionStore } from '@/stores/session';
 
+// Bind the auth listener at most once — AuthGate's effect can run twice under
+// React StrictMode (dev), which would otherwise attach duplicate listeners.
+let listenerBound = false;
+
+// Set ONLY by an explicit, successful signIn (not by session restore on page
+// load), then consumed once by the session bootstrap to write an 'auth.login'
+// audit entry. logActivity can't run at sign-in time — the org/employee
+// context it stamps is only resolved later, inside bootstrap.
+let pendingLoginAudit = false;
+export function consumeLoginAudit(): boolean {
+  const v = pendingLoginAudit;
+  pendingLoginAudit = false;
+  return v;
+}
+
 /**
  * Cloud account session (Supabase Auth). This is SEPARATE from the
  * employee/workspace session (see stores/session.ts):
@@ -53,14 +68,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
 
-    // Keep store in sync with Supabase's auth lifecycle.
-    client.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        set({ status: 'signed-in', userId: session.user.id, email: session.user.email ?? null });
-      } else {
-        set({ status: 'signed-out', userId: null, email: null });
-      }
-    });
+    // Keep store in sync with Supabase's auth lifecycle (once — see flag above).
+    if (!listenerBound) {
+      listenerBound = true;
+      client.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          set({ status: 'signed-in', userId: session.user.id, email: session.user.email ?? null });
+        } else {
+          set({ status: 'signed-out', userId: null, email: null });
+        }
+      });
+    }
 
     const { data } = await client.auth.getSession();
     if (data.session?.user) {
@@ -74,7 +92,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signIn: (email, password) => authSignIn(email, password),
+  signIn: async (email, password) => {
+    const result = await authSignIn(email, password);
+    if (!result.error) pendingLoginAudit = true;
+    return result;
+  },
   signUp: (email, password) => authSignUp(email, password),
   signOut: async () => {
     await authSignOut();

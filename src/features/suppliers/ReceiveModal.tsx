@@ -9,7 +9,7 @@ import { localDateStr } from '@/lib/time';
 import { fmtRp } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
-import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import type { PurchaseOrder, Supplier } from '@/data/types';
 import styles from './ReceiveModal.module.css';
@@ -52,6 +52,12 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
   const apply = async () => {
     if (payFromWallet && amount > 0 && !walletId) {
       toast.error('Pilih wallet pembayaran');
+      return;
+    }
+    // OQ-C (same guard as PosPage): the stock-purchase expense is stamped to an
+    // outlet — a multi-outlet user must pick a branch first, not guess.
+    if (mustPickOutlet(outlets.length)) {
+      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum menerima barang');
       return;
     }
     setBusy(true);

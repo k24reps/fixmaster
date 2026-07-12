@@ -18,6 +18,17 @@ export function localDateStr(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * LOCAL calendar date ("YYYY-MM-DD") of a full ISO timestamp (createdAt etc.).
+ * `iso.slice(0, 10)` is WRONG for this: it yields the UTC date, so in Jakarta
+ * (UTC+7) any timestamp before 07:00 local shows as the previous day — wrong
+ * intake dates, report ranges, and CSV exports. Always convert via Date first.
+ */
+export function localDateOf(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : localDateStr(d);
+}
+
 /** Local time as "HH:MM" using getHours/getMinutes (avoids platform bug). */
 export function localTimeStr(d: Date = new Date()): string {
   const h = String(d.getHours()).padStart(2, '0');

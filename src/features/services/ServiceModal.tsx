@@ -7,7 +7,7 @@ import { findByPhone, searchCustomers } from '@/lib/business/customers';
 import { logActivity } from '@/lib/activity';
 import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
-import { useSessionStore, resolveCreateOutlet } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import type { Service, Customer, Employee } from '@/data/types';
 import styles from './ServiceModal.module.css';
@@ -124,6 +124,11 @@ export function ServiceModal({
     if (!customerName.trim()) return setError('Nama pelanggan wajib diisi');
     if (!customerPhone.trim()) return setError('No. HP pelanggan wajib diisi');
     if (!device.trim()) return setError('Nama perangkat wajib diisi');
+    // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
+    // branch first so the ticket isn't silently stamped to the primary outlet.
+    if (!editing && mustPickOutlet(outlets.length)) {
+      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum membuat servis');
+    }
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -235,8 +240,8 @@ export function ServiceModal({
       }
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal menyimpan servis');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan servis');
     } finally {
       setBusy(false);
     }

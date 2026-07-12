@@ -14,7 +14,7 @@ export interface ActionMeta {
   tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 }
 
-const ACTION_META: Record<ActivityAction, ActionMeta> = {
+export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'auth.login': { label: 'Masuk', icon: 'right-to-bracket', tone: 'info' },
   'sale.create': { label: 'Penjualan baru', icon: 'cash-register', tone: 'success' },
   'sale.void': { label: 'Batalkan penjualan', icon: 'circle-xmark', tone: 'danger' },

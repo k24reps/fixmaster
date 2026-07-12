@@ -55,8 +55,8 @@ export function SupplierModal({ open, onClose, editing }: SupplierModalProps) {
       await repository.put('suppliers', record);
       toast.success(editing ? 'Supplier diperbarui' : 'Supplier ditambahkan');
       onClose();
-    } catch {
-      toast.error('Gagal menyimpan supplier');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan supplier');
     } finally {
       setBusy(false);
     }

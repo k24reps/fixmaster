@@ -5,7 +5,7 @@ import { repository, isSupabaseConfigured } from '@/data';
 import { trackService } from '@/data/supabase-client';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
 import { slidingWindowAllow } from '@/lib/rate-limit';
-import { fmtDate } from '@/lib/time';
+import { fmtDate, localDateOf } from '@/lib/time';
 import { Badge, Icon } from '@/components/ui';
 import { useSessionStore } from '@/stores/session';
 import styles from './TrackingPage.module.css';
@@ -195,7 +195,7 @@ export function TrackingPage() {
                   <span className={styles.dot} data-tone={STATUS_TONE[h.status as keyof typeof STATUS_TONE]} />
                   <div>
                     <strong>{STATUS_LABELS[h.status as keyof typeof STATUS_LABELS] ?? h.status}</strong>
-                    <small>{fmtDate(h.at.slice(0, 10))}{h.note ? ` · ${h.note}` : ''}</small>
+                    <small>{fmtDate(localDateOf(h.at))}{h.note ? ` · ${h.note}` : ''}</small>
                   </div>
                 </li>
               ))}

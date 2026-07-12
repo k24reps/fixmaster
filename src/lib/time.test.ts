@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calcHours,
   localDateStr,
+  localDateOf,
   localTimeStr,
   localTimeSec,
   fmtDate,
@@ -10,6 +11,26 @@ import {
   addDays,
   daysBetween,
 } from './time';
+
+describe('localDateOf', () => {
+  it('returns the LOCAL calendar date of an ISO timestamp', () => {
+    const d = new Date(2026, 6, 10, 1, 0, 0); // 10 Jul 2026 01:00 local
+    expect(localDateOf(d.toISOString())).toBe(localDateStr(d));
+  });
+  it('differs from a naive UTC slice for early-morning times in UTC+ zones', () => {
+    const d = new Date(2026, 6, 10, 1, 0, 0);
+    const utcSlice = d.toISOString().slice(0, 10);
+    // In Jakarta (UTC+7) the naive slice yields the PREVIOUS day; localDateOf
+    // must not. (In UTC itself both agree — the main assertion still holds.)
+    if (d.getTimezoneOffset() < 0) {
+      expect(utcSlice).not.toBe(localDateStr(d));
+    }
+    expect(localDateOf(d.toISOString())).toBe(localDateStr(d));
+  });
+  it('falls back to the raw slice for unparseable input', () => {
+    expect(localDateOf('not-a-date')).toBe('not-a-date'.slice(0, 10));
+  });
+});
 
 describe('calcHours', () => {
   it('computes a normal same-day shift', () => {

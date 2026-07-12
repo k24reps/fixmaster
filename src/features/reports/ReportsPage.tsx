@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { fmtRp, fmtPercent } from '@/lib/format';
-import { localDateStr, fmtDate, isInRange } from '@/lib/time';
+import { localDateStr, localDateOf, fmtDate, isInRange } from '@/lib/time';
 import { summarize } from '@/lib/business/finance';
 import { technicianLeaderboard } from '@/lib/business/dashboard';
 import {
@@ -52,7 +52,7 @@ export function ReportsPage() {
   const fIncomes = useMemo(() => incomes.filter((i) => isInRange(i.date, from, to)), [incomes, from, to]);
   const fExpenses = useMemo(() => expenses.filter((e) => isInRange(e.date, from, to)), [expenses, from, to]);
   const fServices = useMemo(
-    () => services.filter((s) => isInRange(s.createdAt.slice(0, 10), from, to)),
+    () => services.filter((s) => isInRange(localDateOf(s.createdAt), from, to)),
     [services, from, to],
   );
   const fSales = useMemo(() => sales.filter((s) => isInRange(s.date, from, to) && !s.voided), [sales, from, to]);

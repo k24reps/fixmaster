@@ -4,7 +4,7 @@
  * No DOM/repository dependencies → unit-testable.
  */
 import type { Service, Income, Expense, Wallet, InventoryItem } from '@/data/types';
-import { isInRange } from '@/lib/time';
+import { isInRange, localDateOf, localDateStr } from '@/lib/time';
 import { isActive, isAwaitingPickup } from './services';
 
 export interface DashboardKpis {
@@ -24,7 +24,7 @@ export function computeKpis(
   from: string,
   to: string,
 ): DashboardKpis {
-  const inRange = services.filter((s) => isInRange(s.createdAt.slice(0, 10), from, to));
+  const inRange = services.filter((s) => isInRange(localDateOf(s.createdAt), from, to));
   const revenue = incomes
     .filter((i) => isInRange(i.date, from, to))
     .reduce((sum, i) => sum + i.amount, 0);
@@ -113,7 +113,9 @@ export function revenueSeries(incomes: Income[], days: number, today: Date = new
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
+    // Local date key — inc.date is localDateStr; a UTC key would shift the
+    // whole series back a day before 07:00 WIB.
+    const iso = localDateStr(d);
     labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
     values.push(
       incomes.filter((inc) => inc.date === iso).reduce((sum, inc) => sum + inc.amount, 0),

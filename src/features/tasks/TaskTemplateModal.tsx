@@ -131,8 +131,8 @@ export function TaskTemplateModal({
             : 'Template tugas dibuat',
       );
       onClose();
-    } catch {
-      toast.error('Gagal menyimpan template');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan template');
     } finally {
       setBusy(false);
     }

@@ -6,7 +6,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
 import { fmtRp } from '@/lib/format';
-import { fmtDate } from '@/lib/time';
+import { fmtDate, localDateOf } from '@/lib/time';
 import {
   STATUS_LABELS,
   STATUS_TONE,
@@ -94,24 +94,28 @@ export function ServicesPage() {
   const togglePickup = async (s: Service) => {
     const now = new Date().toISOString();
     const nowPicked = !s.pickedUp;
-    await repository.put('services', {
-      ...s,
-      pickedUp: nowPicked,
-      pickedUpAt: nowPicked ? now : null,
-      updatedAt: now,
-      history: [
-        ...s.history,
-        {
-          at: now,
-          status: 'edit',
-          by: me?.id ?? '',
-          byName: me?.name ?? '',
-          note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
-          internal: false,
-        },
-      ],
-    });
-    toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+    try {
+      await repository.put('services', {
+        ...s,
+        pickedUp: nowPicked,
+        pickedUpAt: nowPicked ? now : null,
+        updatedAt: now,
+        history: [
+          ...s.history,
+          {
+            at: now,
+            status: 'edit',
+            by: me?.id ?? '',
+            byName: me?.name ?? '',
+            note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
+            internal: false,
+          },
+        ],
+      });
+      toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui tanda ambil');
+    }
   };
 
   // Pickup indicator: prominent "Belum diambil" for closed-but-uncollected
@@ -299,7 +303,7 @@ export function ServicesPage() {
                           {s.serviceNo}
                         </Link>
                       </td>
-                      <td>{fmtDate(s.createdAt.slice(0, 10))}</td>
+                      <td>{fmtDate(localDateOf(s.createdAt))}</td>
                       <td>
                         <strong className={styles.customerName}>{s.customerName}</strong>
                         <small className={styles.sub}>{s.customerPhone}</small>
@@ -392,7 +396,7 @@ export function ServicesPage() {
                       <Icon name="user" aria-hidden /> {s.customerName}
                     </span>
                     <span>
-                      <Icon name="calendar" aria-hidden /> {fmtDate(s.createdAt.slice(0, 10))}
+                      <Icon name="calendar" aria-hidden /> {fmtDate(localDateOf(s.createdAt))}
                     </span>
                     {s.technicianName && (
                       <span>

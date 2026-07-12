@@ -65,15 +65,20 @@ export function InventoryPage() {
 
   const confirmDelete = async () => {
     if (!toDelete) return;
-    await repository.remove('inventory', toDelete.id);
-    toast.success('Sparepart dihapus');
-    logActivity({
-      action: 'inventory.delete',
-      entityType: 'inventory',
-      entityId: toDelete.id,
-      entityLabel: toDelete.name,
-    });
-    setToDelete(null);
+    try {
+      await repository.remove('inventory', toDelete.id);
+      toast.success('Sparepart dihapus');
+      logActivity({
+        action: 'inventory.delete',
+        entityType: 'inventory',
+        entityId: toDelete.id,
+        entityLabel: toDelete.name,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus sparepart');
+    } finally {
+      setToDelete(null);
+    }
   };
 
   const requestDelete = (item: InventoryItem) => {

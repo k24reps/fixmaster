@@ -180,8 +180,16 @@ export function SettingsPage() {
         confirmLabel="Ya, Reset Semua"
         danger
         onConfirm={async () => {
-          await resetWorkspace();
-          toast.success('Workspace direset');
+          try {
+            await resetWorkspace();
+            toast.success('Workspace direset');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Gagal mereset workspace');
+          } finally {
+            // In cloud the workspace stays mounted (empty), so the dialog must
+            // be closed explicitly — it isn't unmounted like the local wizard path.
+            setConfirmReset(false);
+          }
         }}
         onCancel={() => setConfirmReset(false)}
       />
@@ -202,10 +210,15 @@ function BusinessTab() {
     if (!org) return;
     setBusy(true);
     const updated = { ...org, name: name.trim(), address: address.trim(), phone: phone.trim() };
-    await repository.setSingleton('organization', updated);
-    setOrg(updated);
-    toast.success('Profil usaha disimpan');
-    setBusy(false);
+    try {
+      await repository.setSingleton('organization', updated);
+      setOrg(updated);
+      toast.success('Profil usaha disimpan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan profil');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,7 +274,7 @@ function BusinessTab() {
             </span>
             <div className={styles.logoMeta}>
               <strong>Logo Toko</strong>
-              <small>PNG/JPG, maks 2MB. Tampil di sidebar &amp; struk.</small>
+              <small>PNG/JPG, maks 500KB. Tampil di sidebar &amp; struk.</small>
               <div className={styles.logoActions}>
                 <Button
                   variant="secondary"
@@ -476,8 +489,9 @@ function WarrantyCard() {
   const [presetInput, setPresetInput] = useState('');
 
   const saveDefaults = () => {
-    setWarrantyServiceDays(Number(svcDays) || 0);
-    setWarrantyPartsDays(Number(partsDays) || 0);
+    // Clamp to non-negative: a "number" input still accepts "-5".
+    setWarrantyServiceDays(Math.max(0, Math.round(Number(svcDays) || 0)));
+    setWarrantyPartsDays(Math.max(0, Math.round(Number(partsDays) || 0)));
     toast.success('Default garansi disimpan');
   };
 
@@ -1424,22 +1438,31 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
   const [toId, setToId] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferring, setTransferring] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const outletName = (id: string | null) =>
     id ? (outlets.find((o) => o.id === id)?.name ?? 'Cabang') : 'Bersama';
 
   const add = async () => {
     if (!name.trim()) return toast.error('Nama wallet wajib diisi');
+    if (adding) return;
+    setAdding(true);
     const now = new Date().toISOString();
-    await repository.put('wallets', {
-      id: newId(), orgId, outletId: outletId || null, name: name.trim(),
-      balance: parseRpInput(balance), sortOrder: wallets.length,
-      createdAt: now, updatedAt: now, deletedAt: null,
-    });
-    toast.success('Wallet ditambahkan');
-    setName('');
-    setBalance('');
-    setOutletId('');
+    try {
+      await repository.put('wallets', {
+        id: newId(), orgId, outletId: outletId || null, name: name.trim(),
+        balance: parseRpInput(balance), sortOrder: wallets.length,
+        createdAt: now, updatedAt: now, deletedAt: null,
+      });
+      toast.success('Wallet ditambahkan');
+      setName('');
+      setBalance('');
+      setOutletId('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menambah wallet');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const doTransfer = async () => {
@@ -1509,7 +1532,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
               ]}
             />
           )}
-          <Button onClick={add} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+          <Button onClick={add} loading={adding} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
         </div>
 
         {wallets.length >= 2 && (
@@ -1551,19 +1574,37 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
 
 function OutletTab({ outlets }: { outlets: Outlet[] }) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const add = async () => {
     if (!name.trim()) return toast.error('Nama outlet wajib diisi');
+    // Enforce the plan's outlet limit client-side (mirrors TeamTab's seat check).
+    // `outlets` already includes the primary row, so the count after adding is
+    // outlets.length + 1.
+    if (!withinOutletQuota(plan, outlets.length + 1)) {
+      return toast.error(
+        `Paket ${PLANS[plan].name} maksimal ${PLANS[plan].maxOutlets} outlet. Upgrade ke Pro untuk menambah cabang.`,
+      );
+    }
+    if (adding) return;
+    setAdding(true);
     const now = new Date().toISOString();
-    await repository.put('outlets', {
-      id: newId(), orgId, outletId: null, name: name.trim(), address: address.trim(),
-      isPrimary: outlets.length === 0, createdAt: now, updatedAt: now, deletedAt: null,
-    });
-    toast.success('Outlet ditambahkan');
-    setName('');
-    setAddress('');
+    try {
+      await repository.put('outlets', {
+        id: newId(), orgId, outletId: null, name: name.trim(), address: address.trim(),
+        isPrimary: outlets.length === 0, createdAt: now, updatedAt: now, deletedAt: null,
+      });
+      toast.success('Outlet ditambahkan');
+      setName('');
+      setAddress('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menambah outlet');
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -1586,7 +1627,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         <div className={styles.addRow}>
           <Input placeholder="Nama outlet" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Alamat" value={address} onChange={(e) => setAddress(e.target.value)} />
-          <Button onClick={add} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+          <Button onClick={add} loading={adding} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
         </div>
       </CardBody>
     </Card>
@@ -1649,6 +1690,8 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       });
       toast.success('Geofence outlet disimpan');
       setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan geofence');
     } finally {
       setBusy(false);
     }
@@ -1668,6 +1711,8 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       setLng('');
       setRadius('100');
       toast.success('Geofence dimatikan (absensi bebas lokasi)');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mematikan geofence');
     } finally {
       setBusy(false);
     }
@@ -1934,28 +1979,22 @@ function SystemTab({
     if (demoGuard('Hapus akun dinonaktifkan di demo.')) return;
     setDeleting(true);
     try {
-      // 1. Erase all tenant data reachable from the client.
+      // 1. Local mode: wipe the local DB. In cloud this is a deliberate no-op
+      //    (multi-tenant safety) — the org data is erased server-side in step 2.
       await repository.clearAll();
 
-      // 2. Delete the auth credential itself (email + password) via the
-      //    privileged Edge Function. If it isn't deployed/reachable, fall back
-      //    honestly: data is already gone, so still sign out and tell the user
-      //    the login credential needs support to remove.
-      let credentialDeleted = true;
-      try {
-        await deleteAccountCredential();
-      } catch {
-        credentialDeleted = false;
-      }
+      // 2. Delete the owner's business data AND auth credential via the
+      //    privileged Edge Function (org cascade + deleteUser). It fails CLOSED:
+      //    on any error nothing is deleted, so we must NOT claim success or sign
+      //    out — keep the account intact and let the user retry.
+      await deleteAccountCredential();
 
       await signOut();
-      if (credentialDeleted) {
-        toast.success('Akun & seluruh data dihapus permanen');
-      } else {
-        toast.success('Data dihapus & keluar. Kredensial login perlu dihapus via dukungan.');
-      }
-    } catch {
-      toast.error('Gagal menghapus data');
+      toast.success('Akun & seluruh data dihapus permanen');
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'Gagal menghapus akun. Data Anda tetap aman — coba lagi atau hubungi dukungan.',
+      );
     } finally {
       setDeleting(false);
       setConfirmDelete(false);

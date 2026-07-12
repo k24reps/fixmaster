@@ -87,8 +87,8 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
       });
       onSaved();
       onClose();
-    } catch {
-      toast.error('Gagal menyimpan pelanggan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan pelanggan');
     } finally {
       setBusy(false);
     }
