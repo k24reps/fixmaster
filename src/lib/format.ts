@@ -12,6 +12,24 @@ export function fmtRp(value: number): string {
   return `${sign}Rp ${digits}`;
 }
 
+/**
+ * Compact Rupiah for tight spaces (chart axes, badges): 2450000 → "2,45 jt",
+ * 612500 → "612 rb", 900 → "900". One decimal max, no trailing zero.
+ */
+export function fmtRpCompact(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const abs = Math.abs(Math.round(value));
+  const sign = value < 0 ? '-' : '';
+  const compact = (n: number, unit: string) => {
+    const s = (Math.round(n * 100) / 100).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+    return `${sign}${s} ${unit}`;
+  };
+  if (abs >= 1_000_000_000) return compact(abs / 1_000_000_000, 'M');
+  if (abs >= 1_000_000) return compact(abs / 1_000_000, 'jt');
+  if (abs >= 1_000) return compact(abs / 1_000, 'rb');
+  return `${sign}${abs}`;
+}
+
 /** Format a number with thousand separators (no currency), e.g. 1500000 → "1.500.000". */
 export function fmtNumber(value: number): string {
   if (!Number.isFinite(value)) return '0';

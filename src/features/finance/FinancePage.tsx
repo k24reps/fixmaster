@@ -284,44 +284,49 @@ export function FinancePage() {
                     <span className={[styles.tapeAmount, inc ? styles.inc : styles.exp].join(' ')}>
                       {inc ? '+' : '−'}{fmtRp(r.amount)}
                     </span>
-                    {r.kind === 'expense' && (
-                      <button
-                        className={styles.iconBtn}
-                        onClick={() => {
-                          setEditingExpense(r.record as Expense);
-                          setEditingIncome(null);
-                          setModalKind('expense');
-                        }}
-                        aria-label="Edit"
-                      >
-                        <Icon name="pen" aria-hidden />
-                      </button>
-                    )}
-                    {/* Manual income can be edited. Income linked to a service
-                        OR a POS sale is locked — editing it would desync the
-                        source record (settlement legs / sale total). */}
-                    {r.kind === 'income' && !(r.record as Income).serviceId && !(r.record as Income).saleId && (
-                      <button
-                        className={styles.iconBtn}
-                        onClick={() => {
-                          setEditingIncome(r.record as Income);
-                          setEditingExpense(null);
-                          setModalKind('income');
-                        }}
-                        aria-label="Edit"
-                      >
-                        <Icon name="pen" aria-hidden />
-                      </button>
-                    )}
-                    {!lockedExpense && (
-                      <button
-                        className={[styles.iconBtn, styles.danger].join(' ')}
-                        onClick={() => setToDelete(r)}
-                        aria-label="Hapus"
-                      >
-                        <Icon name="trash" aria-hidden />
-                      </button>
-                    )}
+                    {/* One grid cell for ALL action buttons — loose siblings
+                        overflowed the single `auto` column and wrapped to a new
+                        implicit grid row (trash icon stranded bottom-left). */}
+                    <span className={styles.tapeBtns}>
+                      {r.kind === 'expense' && (
+                        <button
+                          className={styles.iconBtn}
+                          onClick={() => {
+                            setEditingExpense(r.record as Expense);
+                            setEditingIncome(null);
+                            setModalKind('expense');
+                          }}
+                          aria-label="Edit"
+                        >
+                          <Icon name="pen" aria-hidden />
+                        </button>
+                      )}
+                      {/* Manual income can be edited. Income linked to a service
+                          OR a POS sale is locked — editing it would desync the
+                          source record (settlement legs / sale total). */}
+                      {r.kind === 'income' && !(r.record as Income).serviceId && !(r.record as Income).saleId && (
+                        <button
+                          className={styles.iconBtn}
+                          onClick={() => {
+                            setEditingIncome(r.record as Income);
+                            setEditingExpense(null);
+                            setModalKind('income');
+                          }}
+                          aria-label="Edit"
+                        >
+                          <Icon name="pen" aria-hidden />
+                        </button>
+                      )}
+                      {!lockedExpense && (
+                        <button
+                          className={[styles.iconBtn, styles.danger].join(' ')}
+                          onClick={() => setToDelete(r)}
+                          aria-label="Hapus"
+                        >
+                          <Icon name="trash" aria-hidden />
+                        </button>
+                      )}
+                    </span>
                   </div>
                 );
               })}

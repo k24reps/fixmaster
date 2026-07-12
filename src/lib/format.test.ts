@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtRp, fmtNumber, fmtRpInput, parseRpInput, fmtPercent } from './format';
+import { fmtRp, fmtRpCompact, fmtNumber, fmtRpInput, parseRpInput, fmtPercent } from './format';
 
 describe('fmtRp', () => {
   it('formats positive amounts with thousand separators', () => {
@@ -44,5 +44,20 @@ describe('fmtPercent', () => {
   });
   it('handles non-finite', () => {
     expect(fmtPercent(NaN)).toBe('0%');
+  });
+});
+
+describe('fmtRpCompact', () => {
+  it('compacts millions/thousands with Indonesian comma', () => {
+    expect(fmtRpCompact(2450000)).toBe('2,45 jt');
+    expect(fmtRpCompact(612500)).toBe('612,5 rb');
+    expect(fmtRpCompact(5000000)).toBe('5 jt');
+    expect(fmtRpCompact(1500000000)).toBe('1,5 M');
+  });
+  it('keeps small values and handles zero/negative/non-finite', () => {
+    expect(fmtRpCompact(900)).toBe('900');
+    expect(fmtRpCompact(0)).toBe('0');
+    expect(fmtRpCompact(-2450000)).toBe('-2,45 jt');
+    expect(fmtRpCompact(NaN)).toBe('0');
   });
 });

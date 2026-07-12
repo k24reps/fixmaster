@@ -245,21 +245,6 @@
   color: var(--text-muted);
 }
 
-@media (max-width: 768px) {
-  .ledgerHead {
-    display: none;
-  }
-  .ledgerRow {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 4px;
-  }
-  .ledgerRow.withActions {
-    grid-template-columns: 1fr 1fr;
-  }
-  .hours {
-    text-align: left;
-  }
-}
 
 /* manager correction column */
 .ledgerHead.withActions,
@@ -291,4 +276,22 @@
   color: var(--danger);
   border-color: var(--danger);
   background: var(--warning-soft);
+}
+
+/* Mobile: collapse the 6-column ledger into a 2-column stack. MUST come after
+   the .withActions 6-col rule above — same specificity, so source order
+   decides; when this lived earlier in the file the desktop rule silently won
+   and manager rows stayed 6 cramped columns on phones. */
+@media (max-width: 768px) {
+  .ledgerHead {
+    display: none;
+  }
+  .ledgerRow,
+  .ledgerRow.withActions {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+  .hours {
+    text-align: left;
+  }
 }

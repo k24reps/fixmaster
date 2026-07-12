@@ -236,7 +236,9 @@
   font-size: var(--text-sm);
 }
 .table thead th {
-  padding: 12px 16px;
+  /* 12px sides (not 16): with 10 owner columns the AKSI cluster was pushed
+     past the right edge at 1440px, hiding the most-used buttons. */
+  padding: 12px 12px;
   text-align: left;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -258,7 +260,7 @@
   background: var(--bg-hover);
 }
 .table tbody td {
-  padding: 12px 16px;
+  padding: 12px 12px;
   vertical-align: middle;
 }
 .table tbody td strong {

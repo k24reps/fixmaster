@@ -28,6 +28,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  /* Mobile: without wrapping, this row (2 selects + view toggle + primary
+     button) forces ~566px and drags the whole page into horizontal scroll. */
+  flex-wrap: wrap;
 }
 .sortSelect {
   padding: 9px 14px;

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, fmtRpCompact } from '@/lib/format';
 import type { TrendPoint } from '@/lib/business/reports';
 import styles from './TrendChart.module.css';
 
@@ -43,10 +43,11 @@ export function TrendChart({ points }: TrendChartProps) {
 
   if (points.length === 0) return null;
 
-  // Horizontal gridlines at 0/25/50/75/100% of max.
+  // Horizontal gridlines at 0/25/50/75/100% of max. Compact labels ("2,45 jt")
+  // — full "Rp 2.450.000" overflows PAD.left and rendered clipped.
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
     y: PAD.top + plotH - f * plotH,
-    label: fmtRp(Math.round(max * f)),
+    label: fmtRpCompact(Math.round(max * f)),
   }));
 
   // Show at most ~8 x-axis labels to avoid crowding.
