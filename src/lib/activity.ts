@@ -44,8 +44,12 @@ export function logActivity(input: LogInput): void {
       updatedAt: now,
       deletedAt: null,
     };
-    // Fire-and-forget: ignore rejection (best-effort audit).
-    void repository.put('activity', record).catch(() => {});
+    // Fire-and-forget: never block/break the user action. But WARN on failure —
+    // a fully silent catch hid a weeks-long RLS bug that dropped every staff
+    // audit entry (INSERT..RETURNING vs owner-only SELECT policy).
+    void repository.put('activity', record).catch((e) => {
+      console.warn('[activity] gagal mencatat log:', input.action, e);
+    });
   } catch {
     // Never let logging throw into the caller.
   }

@@ -259,6 +259,18 @@ export class SupabaseAdapter implements Repository {
 
   async put<K extends CollectionName>(collection: K, record: EntityMap[K]): Promise<EntityMap[K]> {
     const row = toRow({ ...record, orgId: (record as { orgId?: string }).orgId || this.orgId });
+    // activity_logs is the ONLY table whose SELECT policy is owner-only (RLS
+    // 0019). INSERT ... RETURNING must pass the SELECT policy, so a staff
+    // (admin/karyawan) insert with .select() gets the WHOLE statement rolled
+    // back — silently, since logActivity is fire-and-forget. That erased every
+    // non-owner audit entry. Append-only audit doesn't need the row back:
+    // insert with return=minimal and echo the input record instead.
+    if (collection === 'activity') {
+      const { error } = await this.client.from(TABLE.activity).insert(row);
+      if (error) rethrowWrite(error);
+      this.notify(collection);
+      return record;
+    }
     const { data, error } = await this.client
       .from(TABLE[collection])
       .upsert(row)
