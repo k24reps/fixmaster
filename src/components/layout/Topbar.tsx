@@ -1,6 +1,5 @@
 import { useThemeStore } from '@/stores/theme';
 import { Icon } from '@/components/ui';
-import { useSettingsStore } from '@/stores/settings';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useT } from '@/i18n';
 import { GlobalSearch } from './GlobalSearch';
@@ -48,8 +47,6 @@ function SyncBadge() {
 export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
-  const language = useSettingsStore((s) => s.language);
-  const setLanguage = useSettingsStore((s) => s.setLanguage);
   const t = useT();
 
   return (
@@ -67,14 +64,9 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
         <SyncBadge />
         <GlobalSearch />
 
-        <button
-          className={styles.langBtn}
-          onClick={() => setLanguage(language === 'id' ? 'en' : 'id')}
-          aria-label={t('settings.language')}
-          title={language === 'id' ? 'Switch to English' : 'Ganti ke Bahasa Indonesia'}
-        >
-          {language === 'id' ? 'ID' : 'EN'}
-        </button>
+        {/* Language toggle removed: only ~5% of UI text is wired to i18n, so
+            switching to English produced a jarring mixed-language UI. Re-add
+            when the app is actually translated (see [[i18n coverage]]). */}
 
         <button
           className={styles.iconBtn}

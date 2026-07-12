@@ -16,10 +16,11 @@ const LANG_KEY = 'fixmaster-lang';
 const CURRENCY_KEY = 'fixmaster-currency';
 
 function getInitialLang(): Language {
-  if (typeof window === 'undefined') return 'id';
-  const stored = window.localStorage.getItem(LANG_KEY) as Language | null;
-  if (stored === 'id' || stored === 'en') return stored;
-  // Default UI language is Indonesian (auth screens are English, handled separately).
+  // Locked to Indonesian for now: only ~5% of UI text is wired to i18n, so
+  // exposing 'en' produced a mixed-language UI. The toggle is hidden (Topbar);
+  // any previously-stored 'en' is intentionally ignored here so users aren't
+  // stuck in the broken state. Restore the stored-preference logic once the
+  // app is actually translated.
   return 'id';
 }
 
