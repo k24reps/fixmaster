@@ -306,7 +306,10 @@ export function LandingPage({ onStart }: LandingPageProps) {
         </div>
         <div className={styles.compare}>
           {COMPARISON.map((g) => (
-            <details key={g.no} className={styles.compareGroup} open>
+            // Only the first area starts open — all five expanded was a wall
+            // of text (scannability feedback vs competitor). Others are one
+            // click/tap away on every screen size.
+            <details key={g.no} className={styles.compareGroup} open={g.no === 'B01'}>
               <summary className={styles.compareHead}>
                 <span className={styles.compareIcon}>
                   <Icon name={g.icon} aria-hidden />
@@ -547,6 +550,18 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </div>
         </dl>
       </footer>
+
+      {/* Floating WhatsApp CTA — the channel this market actually uses. */}
+      <a
+        className={styles.waFloat}
+        href="https://wa.me/628995318638?text=Halo%20FixMaster%2C%20saya%20mau%20tanya%20soal%20aplikasinya"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Tanya via WhatsApp"
+      >
+        <Icon name="whatsapp" aria-hidden />
+        <span>Tanya via WA</span>
+      </a>
     </div>
   );
 }
