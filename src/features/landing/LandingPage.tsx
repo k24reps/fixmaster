@@ -526,6 +526,22 @@ export function LandingPage({ onStart }: LandingPageProps) {
             </dd>
           </div>
           <div className={styles.serialRow}>
+            <dt>EMAIL</dt>
+            <dd>
+              <a href="mailto:fixmaster.cs@gmail.com" className={styles.serialLink}>fixmaster.cs@gmail.com</a>
+            </dd>
+          </div>
+          <div className={styles.serialRow}>
+            <dt>TELP</dt>
+            <dd>
+              <a href="tel:+628995318638" className={styles.serialLink}>0899-5318-638</a>
+            </dd>
+          </div>
+          <div className={styles.serialRow}>
+            <dt>ALAMAT</dt>
+            <dd>Jln. Sindang Sari Barat, Cimahi Selatan, Kota Cimahi 40534</dd>
+          </div>
+          <div className={styles.serialRow}>
             <dt>SN</dt>
             <dd>FX-{new Date().getFullYear()} · © {new Date().getFullYear()} FixMaster</dd>
           </div>

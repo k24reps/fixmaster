@@ -673,11 +673,10 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
 }
 
 /**
- * Create a real QRIS payment invoice via the `create-invoice` Edge Function
- * (Fersaku). Returns the hosted checkout link. The payment provider's secret
- * key lives only in the Edge Function — never in the browser. Throws if the
- * function is not deployed/configured, so callers can fall back to the mock
- * flow.
+ * Create a real payment via the `create-invoice` Edge Function (Duitku).
+ * Returns the hosted payment-page link. The provider's secret key lives only
+ * in the Edge Function — never in the browser. Throws if the function is not
+ * deployed/configured, so callers can fall back to the mock flow.
  */
 export async function createPaymentInvoice(
   plan: string,

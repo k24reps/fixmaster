@@ -11,10 +11,16 @@ project_id = "fixmaster"
 # getUser() (it rejects missing/invalid tokens), keeping auth intact.
 verify_jwt = false
 
+[functions.duitku-webhook]
+# Called by Duitku's servers (no Supabase session) → must be public.
+# Authenticity is enforced inside the function via an MD5 signature check
+# (md5(merchantCode + amount + merchantOrderId + DUITKU_API_KEY)).
+verify_jwt = false
+
 [functions.fersaku-webhook]
-# Called by Fersaku's servers (no Supabase session) → must be public.
-# Authenticity is enforced inside the function via an SHA-256 signature
-# check against FERSAKU_WEBHOOK_SECRET.
+# DEPRECATED — replaced by Duitku (duitku-webhook). Kept public for any
+# in-flight Fersaku callbacks during cutover; safe to remove once no pending
+# Fersaku invoices remain.
 verify_jwt = false
 
 [functions.health]

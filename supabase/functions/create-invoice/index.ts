@@ -1,33 +1,36 @@
 // ============================================================
 // FixMaster — Edge Function: create-invoice
-// Server-side bridge to Fersaku. The Fersaku secret key MUST stay
+// Server-side bridge to Duitku (v2 / MD5). The Duitku API key MUST stay
 // here (never in the browser). Flow:
 //   1. Verify the caller (JWT via getUser) and reuse start_subscription
 //      RPC to create a PENDING invoice row (RPC checks manager).
-//   2. Create a Fersaku payment (POST /payments) carrying external_id =
-//      our invoice id. Fersaku returns a checkout_url + provider id.
-//   3. Store provider_ref (= Fersaku payment id) + checkout link on our
-//      invoice row. The webhook correlates back via provider_ref because
-//      Fersaku webhooks carry payment_id (not external_id).
-//   4. Return the hosted checkout link for the client to open.
+//   2. Create a Duitku transaction (POST /inquiry) carrying merchantOrderId
+//      = our invoice id. Duitku returns a paymentUrl + reference.
+//   3. Store provider_ref (= Duitku reference) + checkout link on our invoice.
+//   4. Return the hosted paymentUrl for the client to open.
 //
 // Env (set via `supabase secrets set`):
-//   FERSAKU_API_KEY   — Fersaku secret key. sk_test_* = sandbox,
-//                       sk_live_* = production (the key's prefix selects
-//                       the environment; the base URL is the same).
-//   FERSAKU_API_BASE  — optional, default https://fersaku.com/api/v1
+//   DUITKU_MERCHANT_CODE — sandbox/prod merchant code (e.g. DSxxxx).
+//   DUITKU_API_KEY       — merchant API key (the "merchantKey" in the docs).
+//   DUITKU_API_BASE      — optional. Default SANDBOX
+//                          https://sandbox.duitku.com/webapi/api/merchant/v2
+//                          Production: https://passport.duitku.com/webapi/api/merchant/v2
+//                          (the BASE URL selects the environment, not the key.)
 // Auto-injected by Supabase: SUPABASE_URL, SUPABASE_ANON_KEY,
 //   SUPABASE_SERVICE_ROLE_KEY
+//
+// Signature (Duitku v2 inquiry):
+//   md5(merchantCode + merchantOrderId + paymentAmount + apiKey)
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import md5 from 'https://esm.sh/js-md5@0.8.3';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   // supabase-js functions.invoke sends apikey + x-client-info in addition to
   // authorization/content-type. All must be allowed or the browser blocks the
-  // POST after the OPTIONS preflight (symptom: OPTIONS 200 in logs, no POST,
-  // client silently falls back to mock).
+  // POST after the OPTIONS preflight.
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -43,14 +46,18 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    const apiKey = Deno.env.get('FERSAKU_API_KEY');
-    const apiBase = Deno.env.get('FERSAKU_API_BASE') ?? 'https://fersaku.com/api/v1';
+    const merchantCode = Deno.env.get('DUITKU_MERCHANT_CODE');
+    const apiKey = Deno.env.get('DUITKU_API_KEY');
+    const apiBase =
+      Deno.env.get('DUITKU_API_BASE') ?? 'https://sandbox.duitku.com/webapi/api/merchant/v2';
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    console.log('create-invoice: start', { apiBase, hasApiKey: !!apiKey });
+    console.log('create-invoice: start', { apiBase, hasMerchant: !!merchantCode, hasKey: !!apiKey });
 
-    if (!apiKey) return json({ error: 'FERSAKU_API_KEY belum diset' }, 500);
+    if (!merchantCode || !apiKey) {
+      return json({ error: 'DUITKU_MERCHANT_CODE / DUITKU_API_KEY belum diset' }, 500);
+    }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
@@ -105,64 +112,72 @@ Deno.serve(async (req) => {
       .eq('id', invoice?.org_id)
       .single();
 
-    // 2. Create the Fersaku payment. external_id ties it to our invoice; the
-    //    webhook only sends payment_id back, so we also persist provider_ref
-    //    (= Fersaku id) below for correlation.
-    const fersakuBody = {
-      amount,
-      customer_name: org?.name ?? 'FixMaster',
-      customer_email: user.email,
-      description: `Langganan FixMaster ${plan} (1 bulan)`,
-      external_id: invoiceId,
-      expired_minutes: 30, // 30-min QRIS window (matches Fersaku dashboard default)
-      finish_url: redirectUrl ?? supabaseUrl,
+    // 2. Create the Duitku transaction. merchantOrderId = our invoice id so the
+    //    callback correlates back directly (it echoes merchantOrderId).
+    const paymentAmount = Math.round(amount);
+    const merchantOrderId = String(invoiceId);
+    const signature = md5(merchantCode + merchantOrderId + String(paymentAmount) + apiKey);
+    // customerVaName: alphanumeric/space, kept short (Duitku VA name limit).
+    const vaName = (org?.name ?? 'FixMaster').replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 20) || 'FixMaster';
+
+    const duitkuBody = {
+      merchantCode,
+      paymentAmount,
+      merchantOrderId,
+      productDetails: `Langganan FixMaster ${plan} (1 bulan)`,
+      email: user.email,
+      customerVaName: vaName,
+      callbackUrl: `${supabaseUrl}/functions/v1/duitku-webhook`,
+      returnUrl: redirectUrl ?? supabaseUrl,
+      signature,
+      expiryPeriod: 30, // minutes
     };
 
-    console.log('create-invoice: calling Fersaku', `${apiBase}/payments`);
-    const fersakuRes = await fetch(`${apiBase}/payments`, {
+    console.log('create-invoice: calling Duitku', `${apiBase}/inquiry`);
+    const duitkuRes = await fetch(`${apiBase}/inquiry`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fersakuBody),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(duitkuBody),
     });
-    const fersakuText = await fersakuRes.text();
-    console.log('create-invoice: Fersaku response', {
-      status: fersakuRes.status,
-      body: fersakuText.slice(0, 500),
+    const duitkuText = await duitkuRes.text();
+    console.log('create-invoice: Duitku response', {
+      status: duitkuRes.status,
+      body: duitkuText.slice(0, 500),
     });
-    let fersakuJson:
-      | { id?: string; checkout_url?: string; qr_image_url?: string; error?: string }
+    let duitkuJson:
+      | { statusCode?: string; statusMessage?: string; reference?: string; paymentUrl?: string }
       | null = null;
     try {
-      fersakuJson = JSON.parse(fersakuText);
+      duitkuJson = JSON.parse(duitkuText);
     } catch {
-      fersakuJson = null;
+      duitkuJson = null;
     }
-    if (!fersakuRes.ok || !fersakuJson?.checkout_url) {
+    // Duitku signals success with statusCode "00" AND a paymentUrl.
+    if (!duitkuRes.ok || duitkuJson?.statusCode !== '00' || !duitkuJson?.paymentUrl) {
       // Roll the invoice back to canceled so it doesn't linger as pending.
       await admin.from('invoices').update({ status: 'canceled' }).eq('id', invoiceId);
       return json(
         {
           error:
-            fersakuJson?.error ??
-            `Fersaku error (${fersakuRes.status}): ${fersakuText.slice(0, 300)}`,
+            duitkuJson?.statusMessage ??
+            `Duitku error (${duitkuRes.status}): ${duitkuText.slice(0, 300)}`,
         },
         502,
       );
     }
 
-    // 3. Persist provider details. provider_ref = Fersaku payment id (the
-    //    correlation key the webhook will send back).
+    // 3. Persist provider details. provider_ref = Duitku reference.
     await admin
       .from('invoices')
       .update({
-        provider: 'fersaku',
-        provider_ref: fersakuJson.id ?? null,
-        qris_url: fersakuJson.checkout_url,
+        provider: 'duitku',
+        provider_ref: duitkuJson.reference ?? null,
+        qris_url: duitkuJson.paymentUrl,
       })
       .eq('id', invoiceId);
 
-    // 4. Return the hosted checkout link.
-    return json({ invoiceId, link: fersakuJson.checkout_url });
+    // 4. Return the hosted payment page link.
+    return json({ invoiceId, link: duitkuJson.paymentUrl });
   } catch (err) {
     console.error('create-invoice: unhandled error', err instanceof Error ? err.stack : err);
     return json({ error: err instanceof Error ? err.message : 'Internal error' }, 500);
