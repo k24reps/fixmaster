@@ -329,6 +329,8 @@ export interface TaskTemplate extends BaseEntity {
   active: boolean;
   startDate: ISODate;
   endDate: ISODate | null;
+  /** Manual SOP order (asc). Seeds each generated instance's sortOrder. */
+  sortOrder: number;
 }
 
 export type TaskInstanceStatus = 'pending' | 'done' | 'skipped';
@@ -344,6 +346,12 @@ export interface TaskInstance extends BaseEntity {
   completedById: ID | null;
   completedByName: string;
   note: string;
+  /**
+   * Order within the day (asc). Copied from the template at generation, then
+   * freely overridable — an override only affects THIS day, since tomorrow's
+   * instance is a fresh row seeded from the template again.
+   */
+  sortOrder: number;
 }
 
 // ---------- Targets ----------

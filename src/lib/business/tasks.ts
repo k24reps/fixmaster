@@ -83,6 +83,9 @@ export function generateInstances(
         completedById: null,
         completedByName: '',
         note: '',
+        // Seed the day's order from the template's SOP order. The instance
+        // then owns it, so reordering today never touches the template.
+        sortOrder: tpl.sortOrder ?? 0,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -91,6 +94,41 @@ export function generateInstances(
     cursor.setDate(cursor.getDate() + 1);
   }
   return result;
+}
+
+/**
+ * Move the item at `index` one slot up (dir -1) or down (dir +1) by swapping
+ * its sortOrder with its neighbour's. `items` MUST already be sorted ascending
+ * by sortOrder (i.e. as rendered).
+ *
+ * Returns ONLY the (max 2) records whose sortOrder changed, so callers persist
+ * a minimal write. Out-of-range moves return [] — a no-op, not an error.
+ *
+ * Ties are handled by falling back to positional order: sortOrder is rewritten
+ * from the swapped positions, so a list where every row is 0 (fresh column,
+ * un-backfilled) still reorders correctly instead of silently doing nothing.
+ */
+export function reorder<T extends { sortOrder: number }>(
+  items: T[],
+  index: number,
+  dir: -1 | 1,
+): T[] {
+  const target = index + dir;
+  if (index < 0 || index >= items.length || target < 0 || target >= items.length) return [];
+  const a = items[index];
+  const b = items[target];
+  // Ties (e.g. all zeros) would make a naive swap a no-op — use positions.
+  const aOrder = a.sortOrder === b.sortOrder ? target : b.sortOrder;
+  const bOrder = a.sortOrder === b.sortOrder ? index : a.sortOrder;
+  return [
+    { ...a, sortOrder: aOrder },
+    { ...b, sortOrder: bOrder },
+  ];
+}
+
+/** Sort by manual order, with a stable tiebreak so ties never jitter. */
+export function bySortOrder<T extends { sortOrder: number; createdAt: string }>(a: T, b: T): number {
+  return a.sortOrder - b.sortOrder || (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
 }
 
 /** Human-readable description of a template's schedule (Indonesian). */

@@ -5,6 +5,8 @@ import {
   generateInstances,
   describeRecurrence,
   isOverdue,
+  reorder,
+  bySortOrder,
 } from './tasks';
 import type { TaskTemplate, TaskInstance } from '@/data/types';
 
@@ -25,6 +27,7 @@ const tpl = (over: Partial<TaskTemplate>): TaskTemplate => ({
   active: over.active ?? true,
   startDate: over.startDate ?? '2026-06-01',
   endDate: over.endDate ?? null,
+  sortOrder: over.sortOrder ?? 0,
   createdAt: '',
   updatedAt: '',
   deletedAt: null,
@@ -82,7 +85,7 @@ describe('generateInstances', () => {
       {
         id: 'x', orgId: 'o1', outletId: null, templateId: 't1', title: 'Bersih-bersih',
         description: '', dueDate: '2026-06-02', status: 'pending', completedAt: null,
-        completedById: null, completedByName: '', note: '', createdAt: '', updatedAt: '', deletedAt: null,
+        completedById: null, completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
       },
     ];
     const created = generateInstances([daily], existing, '2026-06-01', '2026-06-03', 'o1');
@@ -112,7 +115,7 @@ describe('instanceKey', () => {
     const adhoc: TaskInstance = {
       id: 'a', orgId: 'o1', outletId: null, templateId: null, title: 'Telepon supplier',
       description: '', dueDate: '2026-06-02', status: 'pending', completedAt: null,
-      completedById: null, completedByName: '', note: '', createdAt: '', updatedAt: '', deletedAt: null,
+      completedById: null, completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
     };
     const created = generateInstances([daily], [adhoc], '2026-06-01', '2026-06-03', 'o1');
     // The ad-hoc task keys to 'adhoc::2026-06-02', so the template instance
@@ -134,6 +137,7 @@ describe('isOverdue', () => {
   const inst = (status: 'pending' | 'done', dueDate: string): TaskInstance => ({
     id: 'i', orgId: 'o1', outletId: null, templateId: 't1', title: '', description: '',
     dueDate, status, completedAt: null, completedById: null, completedByName: '', note: '',
+    sortOrder: 0,
     createdAt: '', updatedAt: '', deletedAt: null,
   });
   it('flags pending past-due instances', () => {
@@ -144,5 +148,72 @@ describe('isOverdue', () => {
   });
   it('does not flag today or future', () => {
     expect(isOverdue(inst('pending', '2026-06-05'), '2026-06-05')).toBe(false);
+  });
+});
+
+// ---- Manual ordering (sortOrder) ----
+const row = (id: string, sortOrder: number, createdAt = '') => ({ id, sortOrder, createdAt });
+
+describe('reorder', () => {
+  it('swaps sortOrder with the neighbour above and returns only changed rows', () => {
+    const items = [row('a', 0), row('b', 1), row('c', 2)];
+    const changed = reorder(items, 1, -1);
+    expect(changed).toHaveLength(2);
+    expect(changed.find((r) => r.id === 'b')!.sortOrder).toBe(0);
+    expect(changed.find((r) => r.id === 'a')!.sortOrder).toBe(1);
+  });
+
+  it('swaps with the neighbour below', () => {
+    const items = [row('a', 0), row('b', 1)];
+    const changed = reorder(items, 0, 1);
+    expect(changed.find((r) => r.id === 'a')!.sortOrder).toBe(1);
+    expect(changed.find((r) => r.id === 'b')!.sortOrder).toBe(0);
+  });
+
+  it('is a no-op past either edge', () => {
+    const items = [row('a', 0), row('b', 1)];
+    expect(reorder(items, 0, -1)).toEqual([]);
+    expect(reorder(items, 1, 1)).toEqual([]);
+    expect(reorder(items, 5, 1)).toEqual([]);
+  });
+
+  it('still reorders when every sortOrder ties (un-backfilled column)', () => {
+    const items = [row('a', 0), row('b', 0), row('c', 0)];
+    const changed = reorder(items, 2, -1);
+    // Falls back to positions so the move is not silently swallowed.
+    expect(changed.find((r) => r.id === 'c')!.sortOrder).toBe(1);
+    expect(changed.find((r) => r.id === 'b')!.sortOrder).toBe(2);
+  });
+
+  it('does not mutate the input', () => {
+    const items = [row('a', 0), row('b', 1)];
+    reorder(items, 0, 1);
+    expect(items[0].sortOrder).toBe(0);
+    expect(items[1].sortOrder).toBe(1);
+  });
+});
+
+describe('bySortOrder', () => {
+  it('sorts ascending by sortOrder', () => {
+    const items = [row('c', 2), row('a', 0), row('b', 1)];
+    expect([...items].sort(bySortOrder).map((r) => r.id)).toEqual(['a', 'b', 'c']);
+  });
+  it('breaks ties by createdAt so equal orders never jitter', () => {
+    const items = [row('y', 0, '2026-06-02'), row('x', 0, '2026-06-01')];
+    expect([...items].sort(bySortOrder).map((r) => r.id)).toEqual(['x', 'y']);
+  });
+});
+
+describe('generateInstances — sortOrder', () => {
+  it('seeds each instance from its template sortOrder', () => {
+    const out = generateInstances(
+      [tpl({ id: 't1', sortOrder: 5 }), tpl({ id: 't2', sortOrder: 2 })],
+      [],
+      '2026-06-15',
+      '2026-06-15',
+      'o1',
+    );
+    expect(out.find((i) => i.templateId === 't1')!.sortOrder).toBe(5);
+    expect(out.find((i) => i.templateId === 't2')!.sortOrder).toBe(2);
   });
 });

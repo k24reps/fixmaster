@@ -9,6 +9,8 @@ import {
   generateInstances,
   describeRecurrence,
   isOverdue,
+  reorder,
+  bySortOrder,
 } from '@/lib/business/tasks';
 import { roleAllows } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
@@ -39,6 +41,8 @@ export function TasksPage() {
   const [quickTitle, setQuickTitle] = useState('');
 
   const today = localDateStr();
+  // Templates render in manual SOP order — this is what seeds each new day.
+  const orderedTemplates = useMemo(() => [...templates].sort(bySortOrder), [templates]);
 
   // Auto-generate due instances for a rolling window [today-7, today+1].
   useEffect(() => {
@@ -59,12 +63,15 @@ export function TasksPage() {
     }
   }, [templates, instances, orgId]);
 
+  // Manual order only (user choice (a)): ↑↓ must behave predictably across the
+  // WHOLE list, so overdue items no longer jump the queue by date — their
+  // urgency is carried by the red "Telat" badge + highlighted row instead.
   const todayTasks = useMemo(
     () =>
       instances
         .filter((i) => i.dueDate <= today)
         .filter((i) => i.status === 'pending')
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+        .sort(bySortOrder),
     [instances, today],
   );
   const doneToday = useMemo(
@@ -128,6 +135,10 @@ export function TasksPage() {
         completedById: null,
         completedByName: '',
         note: '',
+        // Land at the bottom of today's list, not in the middle of the SOP.
+        sortOrder: todayTasks.length
+          ? Math.max(...todayTasks.map((t) => t.sortOrder ?? 0)) + 1
+          : 0,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -142,6 +153,30 @@ export function TasksPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menambah tugas');
     }
+  };
+
+  /** Persist a ↑↓ move. `reorder` returns only the rows that actually changed. */
+  const move = async (
+    collection: 'taskInstances' | 'taskTemplates',
+    list: (TaskInstance | TaskTemplate)[],
+    index: number,
+    dir: -1 | 1,
+  ) => {
+    const changed = reorder(list, index, dir);
+    if (!changed.length) return;
+    try {
+      await repository.putMany(collection as 'taskInstances', changed as TaskInstance[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengubah urutan');
+    }
+  };
+
+  /** B1: editing a task from the daily list opens its TEMPLATE editor. */
+  const editTemplateOf = (inst: TaskInstance) => {
+    const tpl = templates.find((t) => t.id === inst.templateId);
+    if (!tpl) return toast.warning('Template tugas ini tidak ditemukan');
+    setEditing(tpl);
+    setModalOpen(true);
   };
 
   // Ad-hoc tasks have no managing template, so allow direct removal.
@@ -227,7 +262,7 @@ export function TasksPage() {
                 />
               ) : (
                 <ul className={styles.taskList}>
-                  {todayTasks.map((t) => {
+                  {todayTasks.map((t, i) => {
                     const overdue = isOverdue(t, today);
                     return (
                       <li key={t.id} className={[styles.taskItem, overdue ? styles.overdue : ''].join(' ')}>
@@ -240,6 +275,39 @@ export function TasksPage() {
                           <span className={[styles.dueTag, styles.late].join(' ')}>Telat · {fmtDate(t.dueDate)}</span>
                         ) : (
                           <span className={styles.dueTag}>{fmtDate(t.dueDate)}</span>
+                        )}
+                        {canManage && (
+                          <span className={styles.orderBtns}>
+                            <button
+                              className={styles.iconBtn}
+                              onClick={() => move('taskInstances', todayTasks, i, -1)}
+                              disabled={i === 0}
+                              aria-label="Naikkan urutan"
+                              title="Naikkan (hanya hari ini)"
+                            >
+                              <Icon name="arrow-up" aria-hidden />
+                            </button>
+                            <button
+                              className={styles.iconBtn}
+                              onClick={() => move('taskInstances', todayTasks, i, 1)}
+                              disabled={i === todayTasks.length - 1}
+                              aria-label="Turunkan urutan"
+                              title="Turunkan (hanya hari ini)"
+                            >
+                              <Icon name="arrow-down" aria-hidden />
+                            </button>
+                          </span>
+                        )}
+                        {/* B1: template-derived task → edit its TEMPLATE. */}
+                        {t.templateId && canManage && (
+                          <button
+                            className={styles.iconBtn}
+                            onClick={() => editTemplateOf(t)}
+                            aria-label="Edit template tugas"
+                            title="Edit template (berlaku untuk hari berikutnya)"
+                          >
+                            <Icon name="pen" aria-hidden />
+                          </button>
                         )}
                         {!t.templateId && canManage && (
                           <button
@@ -296,7 +364,7 @@ export function TasksPage() {
               />
             ) : (
               <ul className={styles.templateList}>
-                {templates.map((t) => (
+                {orderedTemplates.map((t, i) => (
                   <li key={t.id} className={styles.templateItem}>
                     <div className={styles.templateInfo}>
                       <strong>{t.title}</strong>
@@ -311,6 +379,25 @@ export function TasksPage() {
                     </div>
                     {!t.active && <Badge tone="neutral">Nonaktif</Badge>}
                     <div className={styles.templateActions}>
+                      {/* SOP order — seeds every new day's task list. */}
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => move('taskTemplates', orderedTemplates, i, -1)}
+                        disabled={i === 0}
+                        aria-label="Naikkan urutan template"
+                        title="Naikkan (urutan default tiap hari)"
+                      >
+                        <Icon name="arrow-up" aria-hidden />
+                      </button>
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => move('taskTemplates', orderedTemplates, i, 1)}
+                        disabled={i === orderedTemplates.length - 1}
+                        aria-label="Turunkan urutan template"
+                        title="Turunkan (urutan default tiap hari)"
+                      >
+                        <Icon name="arrow-down" aria-hidden />
+                      </button>
                       <button className={styles.iconBtn} onClick={() => { setEditing(t); setModalOpen(true); }} aria-label="Edit">
                         <Icon name="pen" aria-hidden />
                       </button>
@@ -332,6 +419,7 @@ export function TasksPage() {
         editing={editing}
         employees={employees}
         outlets={outlets}
+        nextSortOrder={orderedTemplates.length}
       />
       <ConfirmDialog
         open={!!toDelete}

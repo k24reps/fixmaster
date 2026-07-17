@@ -276,12 +276,13 @@ export async function seedDemoWorkspace(): Promise<void> {
     active: true,
     startDate: today,
     endDate: null,
+    sortOrder: 0,
   };
   await repository.putMany('taskTemplates', [tmplDaily]);
 
   const taskInstances: TaskInstance[] = [
-    { ...orgBase, id: newId(), templateId: tmplDaily.id, title: tmplDaily.title, description: tmplDaily.description, dueDate: today, status: 'pending', completedAt: null, completedById: null, completedByName: '', note: '' },
-    { ...at(oDago), id: newId(), templateId: tmplDaily.id, title: 'Cek antrian unit Cabang Dago', description: '', dueDate: today, status: 'done', completedAt: now, completedById: owner.id, completedByName: owner.name, note: '' },
+    { ...orgBase, id: newId(), templateId: tmplDaily.id, title: tmplDaily.title, description: tmplDaily.description, dueDate: today, status: 'pending', completedAt: null, completedById: null, completedByName: '', note: '', sortOrder: 0 },
+    { ...at(oDago), id: newId(), templateId: tmplDaily.id, title: 'Cek antrian unit Cabang Dago', description: '', dueDate: today, status: 'done', completedAt: now, completedById: owner.id, completedByName: owner.name, note: '', sortOrder: 1 },
   ];
   await repository.putMany('taskInstances', taskInstances);
 

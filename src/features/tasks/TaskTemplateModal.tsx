@@ -22,6 +22,8 @@ interface TaskTemplateModalProps {
   editing: TaskTemplate | null;
   employees: Employee[];
   outlets: Outlet[];
+  /** Manual SOP order for a NEW template (= current template count). */
+  nextSortOrder: number;
 }
 
 const WEEKDAYS = [
@@ -40,6 +42,7 @@ export function TaskTemplateModal({
   editing,
   employees,
   outlets,
+  nextSortOrder,
 }: TaskTemplateModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [title, setTitle] = useState('');
@@ -100,7 +103,7 @@ export function TaskTemplateModal({
     const now = new Date().toISOString();
     // One template per title; all bulk titles share the same recurrence +
     // assignee settings. Editing keeps the original id/createdAt/active.
-    const records: TaskTemplate[] = parsedTitles.map((taskTitle) => ({
+    const records: TaskTemplate[] = parsedTitles.map((taskTitle, idx) => ({
       id: editing?.id ?? newId(),
       orgId,
       outletId: null,
@@ -117,12 +120,37 @@ export function TaskTemplateModal({
       active: editing?.active ?? true,
       startDate: editing?.startDate ?? localDateStr(),
       endDate: editing?.endDate ?? null,
+      // Editing keeps its slot; bulk-created ones append in listed order.
+      sortOrder: editing?.sortOrder ?? nextSortOrder + idx,
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
     }));
     try {
       await repository.putMany('taskTemplates', records);
+
+      // B1: the daily list shows a COPY of the template's title/description
+      // (generateInstances snapshots them), so editing the template would
+      // otherwise leave today's task showing the OLD text. Push the new text
+      // to this template's still-PENDING instances. `done` ones are historical
+      // records of what was actually worked on — never rewrite those.
+      if (editing) {
+        const [tpl] = records;
+        const instances = await repository.list('taskInstances');
+        const stale = instances.filter(
+          (i) =>
+            i.templateId === editing.id &&
+            i.status === 'pending' &&
+            (i.title !== tpl.title || i.description !== tpl.description),
+        );
+        if (stale.length) {
+          await repository.putMany(
+            'taskInstances',
+            stale.map((i) => ({ ...i, title: tpl.title, description: tpl.description, updatedAt: now })),
+          );
+        }
+      }
+
       toast.success(
         editing
           ? 'Template tugas diperbarui'

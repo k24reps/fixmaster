@@ -247,6 +247,24 @@
   background: var(--bg-hover);
   color: var(--text-primary);
 }
+/* Disabled at the list edges — must not look clickable. */
+.iconBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.iconBtn:disabled:hover {
+  background: none;
+  color: var(--text-muted);
+}
+/* Up/down pair: tight so it reads as ONE control, not two loose buttons. */
+.orderBtns {
+  display: inline-flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+.orderBtns .iconBtn {
+  width: 26px;
+}
 .iconBtn.danger:hover {
   background: var(--danger-soft);
   color: var(--danger);
