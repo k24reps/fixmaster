@@ -12,3 +12,4 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { EmptyState } from './EmptyState';
 export { ToastContainer } from './ToastContainer';
 export { Icon, type IconName, type IconProps } from './Icon';
+export { Mascot } from './Mascot';

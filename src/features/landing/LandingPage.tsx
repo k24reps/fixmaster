@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon, type IconName } from '@/components/ui';
+import { Icon, Mascot, type IconName } from '@/components/ui';
 import { PLANS, OUTLET_ADDON_PRICE, PRO_INCLUDED_OUTLETS } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { useThemeStore } from '@/stores/theme';
@@ -259,25 +259,28 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <p className={styles.fineprint}>Gratis 14 hari · Tanpa kartu kredit · Berhenti kapan saja</p>
           </div>
 
-          {/* Live diagnostic readout panel */}
-          <div className={styles.readout} aria-hidden>
-            <div className={styles.readoutHead}>
-              <span className={styles.readoutTitle}>DIAGNOSTIK</span>
-              <span className={styles.readoutDot} />
-            </div>
-            <ul className={styles.readoutList}>
-              {READOUT.map((r) => (
-                <li key={r.k} className={styles.readoutRow}>
-                  <span className={[styles.led, styles[r.led]].join(' ')} />
-                  <span className={styles.readoutKey}>{r.k}</span>
-                  <span className={styles.readoutDots} />
-                  <span className={styles.readoutVal}>{r.v}</span>
-                </li>
-              ))}
-            </ul>
-            <div className={styles.uptime}>
-              <span className={styles.uptimeKey}>UPTIME SESI</span>
-              <span className={styles.uptimeVal}>{hhmmss}</span>
+          {/* Volt (maskot) menjaga panel diagnostik — bikin hero terasa hidup */}
+          <div className={styles.heroRight} aria-hidden>
+            <Mascot variant="full" size={150} className={styles.heroMascot} />
+            <div className={styles.readout}>
+              <div className={styles.readoutHead}>
+                <span className={styles.readoutTitle}>DIAGNOSTIK</span>
+                <span className={styles.readoutDot} />
+              </div>
+              <ul className={styles.readoutList}>
+                {READOUT.map((r) => (
+                  <li key={r.k} className={styles.readoutRow}>
+                    <span className={[styles.led, styles[r.led]].join(' ')} />
+                    <span className={styles.readoutKey}>{r.k}</span>
+                    <span className={styles.readoutDots} />
+                    <span className={styles.readoutVal}>{r.v}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className={styles.uptime}>
+                <span className={styles.uptimeKey}>UPTIME SESI</span>
+                <span className={styles.uptimeVal}>{hhmmss}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -497,7 +500,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       <section className={styles.ctaBar}>
         <span className={styles.grid} aria-hidden />
         <div className={styles.ctaInner}>
-          <span className={[styles.led, styles.ledLive].join(' ')} />
+          <Mascot variant="face" size={64} className={styles.ctaMascot} />
           <div>
             <h2 className={styles.ctaTitle}>Kontermu rapi, uangmu jelas, pelangganmu kembali.</h2>
             <p className={styles.ctaSub}>Pasang dalam beberapa menit. Gratis 14 hari, tanpa kartu kredit.</p>

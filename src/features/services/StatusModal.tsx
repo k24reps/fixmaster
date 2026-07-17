@@ -119,6 +119,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
   const needsCost = target === 'konfirmasi' || target === 'selesai' || target === 'lunas';
   const needsWarranty = target === 'selesai';
+  // Note is mandatory only for the two outcomes that MUST be documented:
+  // completion (what was done) and cancellation (why). Optional elsewhere.
+  const noteRequired = target === 'selesai' || target === 'batal';
   const warrantyPresets = getWarrantyPresets();
   const walletOptions = wallets.map((w) => ({ value: w.id, label: w.name }));
 
@@ -158,7 +161,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // ---- Sub-action: change status ----
   const applyStatus = async () => {
     if (!target) return toast.warning('Pilih status tujuan');
-    if (!note.trim()) return toast.warning('Catatan wajib diisi');
+    if (noteRequired && !note.trim()) {
+      return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS[target]}`);
+    }
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
     const partsDays = Math.max(0, Math.round(Number(warrantyParts) || 0));
     if (needsWarranty && svcDays <= 0 && partsDays <= 0) {
@@ -678,10 +683,16 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               </div>
             )}
             <Input
-              label="Catatan (wajib)"
+              label={noteRequired ? 'Catatan (wajib)' : 'Catatan (opsional)'}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Contoh: unit sudah dicek, menunggu sparepart"
+              placeholder={
+                target === 'batal'
+                  ? 'Contoh: pelanggan menolak biaya, unit tidak bisa diperbaiki'
+                  : target === 'selesai'
+                    ? 'Contoh: ganti LCD, unit sudah dites normal'
+                    : 'Contoh: unit sudah dicek, menunggu sparepart'
+              }
             />
             {service.downPayment > 0 && (
               <p className={styles.dp}>

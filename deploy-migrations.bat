@@ -1,0 +1,42 @@
+@echo off
+setlocal EnableExtensions
+cd /d "C:\Users\Administrator\Documents\FixMaster"
+if not exist "supabase\config.toml" (
+  echo [X] Tidak menemukan supabase\config.toml - jalankan dari folder fixmaster.
+  exit /b 1
+)
+
+echo == 1/4  Login akun Supabase (browser terbuka; lewati bila sudah login) ==
+supabase login
+if errorlevel 1 goto :err
+
+echo.
+echo == 2/4  STAGING (fpwwswngqpftaixdlozo) ==
+set /p "SUPABASE_DB_PASSWORD=Masukkan DB password STAGING: "
+supabase link --project-ref fpwwswngqpftaixdlozo || goto :err
+REM tampilkan migrasi yang pending sebelum apply (opsional)
+supabase migration list
+supabase db push || goto :err
+
+echo.
+echo == 3/4  Integration test ke staging (gate sebelum produksi) ==
+call npm run test:integration
+if errorlevel 1 (
+  echo [X] Integration test GAGAL - PRODUKSI TIDAK dilanjutkan.
+  goto :err
+)
+
+echo.
+echo == 4/4  PRODUCTION (vmitplpvncfvyimgyxrn) ==
+set /p "CONFIRM=Ketik YA untuk apply ke PRODUCTION: "
+if /i not "%CONFIRM%"=="YA" ( echo Dibatalkan; staging sudah ter-apply. & goto :eof )
+set /p "SUPABASE_DB_PASSWORD=Masukkan DB password PRODUCTION: "
+supabase link --project-ref vmitplpvncfvyimgyxrn || goto :err
+supabase db push || goto :err
+
+echo.
+echo == SELESAI: 0038 + 0039 ter-apply ke staging + production ==
+goto :eof
+:err
+echo. & echo *** GAGAL - periksa error di atas. Produksi mungkin belum ter-update. ***
+exit /b 1

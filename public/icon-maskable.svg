@@ -1,10 +1,12 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Maskable app icon = "Volt" mascot face, full-bleed square background
+       (safe zone: all face elements stay within the central 80%). -->
   <defs>
     <linearGradient id="g-brand" x1="40" y1="40" x2="472" y2="472" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#f5a623"/>
       <stop offset="100%" stop-color="#3dd9c4"/>
     </linearGradient>
-    <filter id="f-glow" x="-10%" y="-10%" width="120%" height="120%">
+    <filter id="f-glow" x="-60%" y="-60%" width="220%" height="220%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
@@ -18,9 +20,21 @@
   </defs>
   <rect width="512" height="512" fill="url(#g-brand)"/>
   <rect width="512" height="512" fill="url(#g-sheen)"/>
-  <path d="M310 85 L192 267 H278 L203 427 L331 224 H245 Z" fill="#0b0d11" opacity="0.85" filter="url(#f-glow)"/>
-  <circle cx="363" cy="341" r="27" fill="#0b0d11" opacity="0.7"/>
-  <line x1="278" y1="341" x2="336" y2="341" stroke="#0b0d11" stroke-width="16" stroke-linecap="round" opacity="0.7"/>
-  <line x1="363" y1="368" x2="363" y2="427" stroke="#0b0d11" stroke-width="16" stroke-linecap="round" opacity="0.7"/>
-  <circle cx="416" cy="96" r="30" fill="#3dd9c4" opacity="0.95"/>
+  <rect x="243" y="120" width="26" height="60" rx="13" fill="#0b0d11" opacity="0.6"/>
+  <circle cx="256" cy="106" r="26" fill="#3dd9c4" filter="url(#f-glow)"/>
+  <g opacity="0.5">
+    <circle cx="122" cy="146" r="16" fill="#0b0d11"/>
+    <line x1="112" y1="136" x2="132" y2="156" stroke="#f5a623" stroke-width="7"/>
+    <circle cx="390" cy="146" r="16" fill="#0b0d11"/>
+    <line x1="380" y1="136" x2="400" y2="156" stroke="#f5a623" stroke-width="7"/>
+  </g>
+  <rect x="126" y="196" width="260" height="180" rx="52" fill="#0b0d11" opacity="0.92"/>
+  <circle cx="208" cy="272" r="27" fill="#3dd9c4" filter="url(#f-glow)"/>
+  <circle cx="304" cy="272" r="27" fill="#3dd9c4" filter="url(#f-glow)"/>
+  <path d="M208 322 Q256 360 304 322" stroke="#f5a623" stroke-width="19" stroke-linecap="round"/>
+  <g stroke="#0b0d11" stroke-width="11" stroke-linecap="round" opacity="0.55">
+    <line x1="212" y1="402" x2="212" y2="424"/>
+    <line x1="256" y1="402" x2="256" y2="424"/>
+    <line x1="300" y1="402" x2="300" y2="424"/>
+  </g>
 </svg>

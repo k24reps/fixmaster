@@ -1284,3 +1284,22 @@
     padding: 13px;
   }
 }
+
+/* ---------- Maskot "Volt" ---------- */
+.heroRight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+.heroMascot {
+  filter: drop-shadow(0 10px 24px color-mix(in srgb, var(--brand) 30%, transparent));
+}
+.ctaMascot {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .ctaMascot {
+    display: none;
+  }
+}

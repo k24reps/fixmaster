@@ -40,6 +40,25 @@ Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
 > [!tip] Prinsip
 > "Bahasa visual bersama, bukan asal beda." Tiap halaman punya alat sendiri, tapi semua memakai token + motif yang sama. Lihat [[Signature Pages]].
 
+## Maskot: "Volt" (17 Jul 2026)
+
+Robot bengkel mungil yang **seluruh anatominya lahir dari idiom bench** (bukan clipart):
+kepala = pelat instrumen amber + sekrup sudut + knob dial; wajah = **layar readout gelap**
+dengan mata LED teal menyala (berkedip, SMIL); antena = status LED berdenyut (idiom
+`.ledLive`); dada = layar mini berisi **bolt brand** (kontinuitas logo lama); senyum arc
+amber; dagu tick-gauge; lengan kanan melambai. Warna = konstanta brand (#f5a623/#3dd9c4/
+#0b0d11), identik di dua tema — layar wajah memang gelap seperti LCD asli.
+
+- **Komponen**: `Mascot` di `src/components/ui/Mascot.tsx` — props `variant` (`face` |
+  `full`), `size`, `animated` (SMIL kedip/denyut/lambai). Ekspor via barrel `ui`.
+- **Penempatan**: landing hero (full, di atas panel DIAGNOSTIK) + CTA bar (face);
+  dashboard strip BENCH CONSOLE (face 26px); `public/logo.svg` + `favicon.svg` +
+  `icon-maskable.svg` = badge wajah Volt (shell gradien rounded-square dipertahankan
+  agar tiap spot logo 40px tetap terbaca sebagai merek).
+- **Kenapa**: perbandingan vs FixMate — FixMaster unggul craft tapi terasa dingin;
+  maskot menambah kehangatan TANPA meninggalkan identitas (aturan: elemen visual baru
+  wajib otentik bench, bukan pola SaaS generik).
+
 ## Terkait
 - [[Iconography]] — set ikon Phosphor
 - [[Sidebar - Live Diagnostic Rail]] — penerapan token pada navigasi

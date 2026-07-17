@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { fmtRp } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate } from '@/lib/time';
@@ -89,6 +89,7 @@ export function DashboardPage() {
     <div className={styles.wrap}>
       <section className={styles.console} aria-label="Konsol status">
         <div className={styles.consoleBrand}>
+          <Mascot variant="face" size={26} />
           <span className={styles.consolePulse} aria-hidden />
           <span className={styles.consoleTitle}>BENCH CONSOLE</span>
         </div>
