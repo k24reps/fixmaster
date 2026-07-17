@@ -89,9 +89,13 @@ export function DashboardPage() {
     <div className={styles.wrap}>
       <section className={styles.console} aria-label="Konsol status">
         <div className={styles.consoleBrand}>
-          <Mascot variant="face" size={26} />
-          <span className={styles.consolePulse} aria-hidden />
-          <span className={styles.consoleTitle}>BENCH CONSOLE</span>
+          <div className={styles.consoleMascot}>
+            <Mascot variant="face" size={26} className={styles.consoleMascotImg} />
+          </div>
+          <div className={styles.consoleBrandText}>
+            <span className={styles.consolePulse} aria-hidden />
+            <span className={styles.consoleTitle}>BENCH CONSOLE</span>
+          </div>
         </div>
         <div className={styles.consoleReadouts}>
           <div className={styles.consoleItem}>
