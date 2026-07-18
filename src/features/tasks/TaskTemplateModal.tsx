@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Modal, Input, Select, Button } from '@/components/ui';
+import { Modal, Input, Select, Button, Icon } from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { capitalizeLines } from '@/lib/text';
 import { localDateStr } from '@/lib/time';
+import { reorder, templateItems } from '@/lib/business/tasks';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import type {
   TaskTemplate,
+  TaskTemplateItem,
   RecurrenceType,
   AssigneeType,
   Role,
@@ -36,6 +38,12 @@ const WEEKDAYS = [
   { d: 0, label: 'Min' },
 ];
 
+/**
+ * Create/edit one task TEMPLATE — a named group (e.g. "SOP Buka Toko") that
+ * holds many task items sharing one schedule + assignee (migration 0041).
+ * The item list here is the ONLY place a template's contents can be reordered
+ * or removed; the daily tab just renders them.
+ */
 export function TaskTemplateModal({
   open,
   onClose,
@@ -45,7 +53,10 @@ export function TaskTemplateModal({
   nextSortOrder,
 }: TaskTemplateModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
-  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
+  const [items, setItems] = useState<TaskTemplateItem[]>([]);
+  /** New template only: one item per line, entered in bulk. */
+  const [bulkTitles, setBulkTitles] = useState('');
   const [description, setDescription] = useState('');
   const [recurrence, setRecurrence] = useState<RecurrenceType>('daily');
   const [weekdays, setWeekdays] = useState<number[]>([1]);
@@ -62,7 +73,9 @@ export function TaskTemplateModal({
   const currentKey = editing?.id ?? 'new';
   if (open && lastKey !== currentKey) {
     setLastKey(currentKey);
-    setTitle(editing?.title ?? '');
+    setName(editing?.name ?? '');
+    setItems(editing ? templateItems(editing) : []);
+    setBulkTitles('');
     setDescription(editing?.description ?? '');
     setRecurrence(editing?.recurrence ?? 'daily');
     setWeekdays(editing?.weekdays ?? [1]);
@@ -78,19 +91,41 @@ export function TaskTemplateModal({
   const toggleWeekday = (d: number) =>
     setWeekdays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
 
-  // When creating new, the title field accepts one task per line (bulk).
-  // When editing, exactly one template is updated, so only the first line is used.
-  const parsedTitles = editing
-    ? [title.trim()].filter(Boolean)
-    : title
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean);
+  // NEW template: each line becomes an ITEM inside this one template.
+  // (Pre-0041 each line became a separate template.)
+  const parsedBulk = bulkTitles
+    .split('\n')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  // ---- item editing (edit mode) ----
+  const setItemTitle = (id: string, v: string) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, title: v } : it)));
+  const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  const addItem = () =>
+    setItems((prev) => [...prev, { id: newId(), title: '', description: '', sortOrder: prev.length }]);
+  /** Reuse the shared pure helper so items order exactly like every other list. */
+  const moveItem = (index: number, dir: -1 | 1) =>
+    setItems((prev) => {
+      const changed = reorder(prev, index, dir);
+      if (!changed.length) return prev;
+      const byId = new Map(changed.map((c) => [c.id, c]));
+      return prev.map((it) => byId.get(it.id) ?? it).sort((a, b) => a.sortOrder - b.sortOrder);
+    });
 
   const save = async () => {
-    if (parsedTitles.length === 0) return setError('Judul tugas wajib diisi');
-    if (recurrence === 'weekly' && weekdays.length === 0)
-      return setError('Pilih minimal satu hari');
+    if (!name.trim()) return setError('Nama template wajib diisi');
+
+    // Resolve the final item list: edit mode uses the editor, create mode the
+    // bulk textarea. Blank titles are dropped so an empty row can't sneak in.
+    const finalItems: TaskTemplateItem[] = editing
+      ? items
+          .filter((it) => it.title.trim())
+          .map((it, idx) => ({ ...it, title: it.title.trim(), sortOrder: idx }))
+      : parsedBulk.map((t, idx) => ({ id: newId(), title: t, description: '', sortOrder: idx }));
+
+    if (finalItems.length === 0) return setError('Isi minimal satu tugas di dalam template');
+    if (recurrence === 'weekly' && weekdays.length === 0) return setError('Pilih minimal satu hari');
 
     const parsedMonthDays = monthDays
       .split(',')
@@ -101,13 +136,15 @@ export function TaskTemplateModal({
 
     setBusy(true);
     const now = new Date().toISOString();
-    // One template per title; all bulk titles share the same recurrence +
-    // assignee settings. Editing keeps the original id/createdAt/active.
-    const records: TaskTemplate[] = parsedTitles.map((taskTitle, idx) => ({
+    const record: TaskTemplate = {
       id: editing?.id ?? newId(),
       orgId,
       outletId: null,
-      title: taskTitle,
+      name: name.trim(),
+      items: finalItems,
+      // Legacy single-task column (pre-0041). Mirror the first item so any
+      // un-migrated reader still shows something sane.
+      title: finalItems[0].title,
       description: description.trim(),
       recurrence,
       weekdays: recurrence === 'weekly' ? weekdays : [],
@@ -120,44 +157,46 @@ export function TaskTemplateModal({
       active: editing?.active ?? true,
       startDate: editing?.startDate ?? localDateStr(),
       endDate: editing?.endDate ?? null,
-      // Editing keeps its slot; bulk-created ones append in listed order.
-      sortOrder: editing?.sortOrder ?? nextSortOrder + idx,
+      sortOrder: editing?.sortOrder ?? nextSortOrder,
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
-    }));
-    try {
-      await repository.putMany('taskTemplates', records);
+    };
 
-      // B1: the daily list shows a COPY of the template's title/description
-      // (generateInstances snapshots them), so editing the template would
-      // otherwise leave today's task showing the OLD text. Push the new text
-      // to this template's still-PENDING instances. `done` ones are historical
-      // records of what was actually worked on — never rewrite those.
+    try {
+      await repository.put('taskTemplates', record);
+
+      // Reconcile TODAY's already-generated tasks with the edited template.
+      // The daily list holds a COPY of each item's text, so without this an
+      // edit would leave today showing the OLD wording. Only PENDING rows are
+      // touched — `done` ones record what was actually worked on.
       if (editing) {
-        const [tpl] = records;
         const instances = await repository.list('taskInstances');
-        const stale = instances.filter(
-          (i) =>
-            i.templateId === editing.id &&
-            i.status === 'pending' &&
-            (i.title !== tpl.title || i.description !== tpl.description),
-        );
+        const mine = instances.filter((i) => i.templateId === editing.id && i.status === 'pending');
+        const byItem = new Map(finalItems.map((it) => [it.id, it]));
+
+        // (a) text drifted → refresh title/description
+        const stale = mine.filter((i) => {
+          const it = i.itemId ? byItem.get(i.itemId) : undefined;
+          return it && (i.title !== it.title || i.description !== it.description);
+        });
         if (stale.length) {
           await repository.putMany(
             'taskInstances',
-            stale.map((i) => ({ ...i, title: tpl.title, description: tpl.description, updatedAt: now })),
+            stale.map((i) => {
+              const it = byItem.get(i.itemId!)!;
+              return { ...i, title: it.title, description: it.description, updatedAt: now };
+            }),
           );
         }
+
+        // (b) item removed from the template → its pending task is orphaned
+        //     (nothing in the UI could ever complete or delete it), so drop it.
+        const orphans = mine.filter((i) => i.itemId && !byItem.has(i.itemId));
+        for (const o of orphans) await repository.remove('taskInstances', o.id);
       }
 
-      toast.success(
-        editing
-          ? 'Template tugas diperbarui'
-          : records.length > 1
-            ? `${records.length} template tugas dibuat`
-            : 'Template tugas dibuat',
-      );
+      toast.success(editing ? 'Template tugas diperbarui' : 'Template tugas dibuat');
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan template');
@@ -185,33 +224,102 @@ export function TaskTemplateModal({
     >
       <div className={styles.body}>
         {error && <p className={styles.error}>{error}</p>}
+
+        <Input
+          label="Nama Template"
+          name="template-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Contoh: SOP Buka Toko"
+          hint="Judul grup yang tampil di atas daftar tugas hari ini."
+          autoFocus
+        />
+
         {editing ? (
-          <Input label="Judul Tugas" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Bersih-bersih area kerja" autoFocus />
+          /* Item editor — the ONLY place a template's contents can be
+             reordered or removed (daily tab is read-only for these). */
+          <div className={styles.titlesField}>
+            <label className={styles.label}>Tugas di dalam template</label>
+            <ul className={styles.itemList}>
+              {items.map((it, i) => (
+                <li key={it.id} className={styles.itemRow}>
+                  <span className={styles.itemNo}>{i + 1}</span>
+                  <Input
+                    name={`item-${it.id}`}
+                    className={styles.itemInput}
+                    value={it.title}
+                    onChange={(e) => setItemTitle(it.id, e.target.value)}
+                    placeholder="Judul tugas"
+                  />
+                  <span className={styles.itemBtns}>
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      onClick={() => moveItem(i, -1)}
+                      disabled={i === 0}
+                      aria-label="Naikkan urutan tugas"
+                      title="Naikkan"
+                    >
+                      <Icon name="arrow-up" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      onClick={() => moveItem(i, 1)}
+                      disabled={i === items.length - 1}
+                      aria-label="Turunkan urutan tugas"
+                      title="Turunkan"
+                    >
+                      <Icon name="arrow-down" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={[styles.iconBtn, styles.danger].join(' ')}
+                      onClick={() => removeItem(it.id)}
+                      aria-label="Hapus tugas dari template"
+                      title="Hapus dari template"
+                    >
+                      <Icon name="trash" aria-hidden />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className={styles.addItem} onClick={addItem}>
+              <Icon name="plus" aria-hidden /> Tambah tugas
+            </button>
+          </div>
         ) : (
           <div className={styles.titlesField}>
             <label className={styles.label} htmlFor="task-titles">
-              Judul Tugas
+              Tugas di dalam template
             </label>
             <textarea
               id="task-titles"
               className={styles.titlesArea}
-              value={title}
-              onChange={(e) => setTitle(capitalizeLines(e.target.value))}
+              value={bulkTitles}
+              onChange={(e) => setBulkTitles(capitalizeLines(e.target.value))}
               placeholder={'Satu tugas per baris, contoh:\nBersih-bersih area kerja\nCek stok sparepart\nBackup data kasir'}
               rows={4}
-              autoFocus
             />
             <div className={styles.titlesFoot}>
               <span className={styles.hint}>
-                Satu judul per baris — semua dibuat dengan setelan pengulangan &amp; penerima yang sama.
+                Satu tugas per baris — semuanya masuk ke template ini dengan jadwal &amp;
+                penerima yang sama. Urutannya bisa diatur setelah disimpan.
               </span>
-              {parsedTitles.length > 1 && (
-                <span className={styles.bulkCount}>{parsedTitles.length} tugas akan dibuat</span>
+              {parsedBulk.length > 0 && (
+                <span className={styles.bulkCount}>{parsedBulk.length} tugas</span>
               )}
             </div>
           </div>
         )}
-        <Input label="Deskripsi (opsional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <Input
+          label="Deskripsi (opsional)"
+          name="template-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
 
         <Select
           label="Pengulangan"
@@ -246,6 +354,7 @@ export function TaskTemplateModal({
         {recurrence === 'monthly' && (
           <Input
             label="Tanggal dalam Bulan"
+            name="month-days"
             value={monthDays}
             onChange={(e) => setMonthDays(e.target.value)}
             placeholder="Contoh: 1, 15, 28"
@@ -254,7 +363,13 @@ export function TaskTemplateModal({
         )}
 
         {recurrence === 'once' && (
-          <Input label="Tanggal" type="date" value={onceDate} onChange={(e) => setOnceDate(e.target.value)} />
+          <Input
+            label="Tanggal"
+            name="once-date"
+            type="date"
+            value={onceDate}
+            onChange={(e) => setOnceDate(e.target.value)}
+          />
         )}
 
         <Select

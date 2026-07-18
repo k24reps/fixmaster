@@ -11,6 +11,7 @@ import {
   isOverdue,
   reorder,
   bySortOrder,
+  templateItems,
 } from '@/lib/business/tasks';
 import { roleAllows } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
@@ -66,14 +67,37 @@ export function TasksPage() {
   // Manual order only (user choice (a)): ↑↓ must behave predictably across the
   // WHOLE list, so overdue items no longer jump the queue by date — their
   // urgency is carried by the red "Telat" badge + highlighted row instead.
-  const todayTasks = useMemo(
-    () =>
-      instances
-        .filter((i) => i.dueDate <= today)
-        .filter((i) => i.status === 'pending')
-        .sort(bySortOrder),
+  /** Every pending task due today or earlier (overdue carries a red badge). */
+  const pending = useMemo(
+    () => instances.filter((i) => i.dueDate <= today && i.status === 'pending'),
     [instances, today],
   );
+
+  /**
+   * Template groups, in template order. Items INSIDE a group follow the
+   * template's current item order — read live, so reordering in the Template
+   * tab shows up here instantly with no propagation write.
+   */
+  const groups = useMemo(
+    () =>
+      orderedTemplates
+        .map((tpl) => {
+          const order = new Map(templateItems(tpl).map((it, idx) => [it.id, idx]));
+          const tasks = pending
+            .filter((i) => i.templateId === tpl.id)
+            .sort((a, b) => (order.get(a.itemId ?? '') ?? 0) - (order.get(b.itemId ?? '') ?? 0));
+          return { tpl, tasks };
+        })
+        .filter((g) => g.tasks.length > 0),
+    [orderedTemplates, pending],
+  );
+
+  /** Ad-hoc quick tasks — their own zone below the groups, own ordering. */
+  const adhocTasks = useMemo(
+    () => pending.filter((i) => !i.templateId).sort(bySortOrder),
+    [pending],
+  );
+  const todayTasks = pending;
   const doneToday = useMemo(
     () => instances.filter((i) => i.status === 'done' && i.dueDate === today),
     [instances, today],
@@ -127,6 +151,7 @@ export function TasksPage() {
         orgId,
         outletId: null,
         templateId: null,
+        itemId: null,
         title,
         description: '',
         dueDate: today,
@@ -171,12 +196,11 @@ export function TasksPage() {
     }
   };
 
-  /** B1: editing a task from the daily list opens its TEMPLATE editor. */
-  const editTemplateOf = (inst: TaskInstance) => {
-    const tpl = templates.find((t) => t.id === inst.templateId);
-    if (!tpl) return toast.warning('Template tugas ini tidak ditemukan');
-    setEditing(tpl);
-    setModalOpen(true);
+  /** Move a template group. Index is resolved against the FULL ordered list —
+   *  groups with no pending task are hidden, so group index != template index. */
+  const moveTemplate = (tpl: TaskTemplate, dir: -1 | 1) => {
+    const idx = orderedTemplates.findIndex((x) => x.id === tpl.id);
+    return move('taskTemplates', orderedTemplates, idx, dir);
   };
 
   // Ad-hoc tasks have no managing template, so allow direct removal.
@@ -261,68 +285,133 @@ export function TasksPage() {
                   description={templates.length === 0 ? 'Belum ada template tugas.' : 'Kerja bagus! Tidak ada tugas tertunda.'}
                 />
               ) : (
-                <ul className={styles.taskList}>
-                  {todayTasks.map((t, i) => {
-                    const overdue = isOverdue(t, today);
-                    return (
-                      <li key={t.id} className={[styles.taskItem, overdue ? styles.overdue : ''].join(' ')}>
-                        <button className={styles.checkbox} onClick={() => complete(t)} aria-label="Tandai selesai" />
-                        <div className={styles.taskInfo}>
-                          <strong>{t.title}</strong>
-                          {t.description && <small>{t.description}</small>}
-                        </div>
-                        {overdue ? (
-                          <span className={[styles.dueTag, styles.late].join(' ')}>Telat · {fmtDate(t.dueDate)}</span>
-                        ) : (
-                          <span className={styles.dueTag}>{fmtDate(t.dueDate)}</span>
-                        )}
+                <div className={styles.groups}>
+                  {/* Template groups first: one header per template, its items
+                      below. Items are read-only here — a template's contents are
+                      managed in the Template tab (reorder/delete live only there). */}
+                  {groups.map(({ tpl, tasks }, gi) => (
+                    <section key={tpl.id} className={styles.group}>
+                      <header className={styles.groupHead}>
+                        <Icon name="repeat" className={styles.groupIcon} aria-hidden />
+                        <strong className={styles.groupName}>{tpl.name || tpl.title}</strong>
+                        <span className={styles.groupCount}>{tasks.length} tugas</span>
                         {canManage && (
-                          <span className={styles.orderBtns}>
+                          <>
+                            <span className={styles.orderBtns}>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={() => moveTemplate(tpl, -1)}
+                                disabled={gi === 0}
+                                aria-label="Naikkan urutan template"
+                                title="Naikkan template"
+                              >
+                                <Icon name="arrow-up" aria-hidden />
+                              </button>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={() => moveTemplate(tpl, 1)}
+                                disabled={gi === groups.length - 1}
+                                aria-label="Turunkan urutan template"
+                                title="Turunkan template"
+                              >
+                                <Icon name="arrow-down" aria-hidden />
+                              </button>
+                            </span>
                             <button
                               className={styles.iconBtn}
-                              onClick={() => move('taskInstances', todayTasks, i, -1)}
-                              disabled={i === 0}
-                              aria-label="Naikkan urutan"
-                              title="Naikkan (hanya hari ini)"
+                              onClick={() => { setEditing(tpl); setModalOpen(true); }}
+                              aria-label="Edit template"
+                              title="Atur isi & urutan tugas template"
                             >
-                              <Icon name="arrow-up" aria-hidden />
+                              <Icon name="pen" aria-hidden />
                             </button>
-                            <button
-                              className={styles.iconBtn}
-                              onClick={() => move('taskInstances', todayTasks, i, 1)}
-                              disabled={i === todayTasks.length - 1}
-                              aria-label="Turunkan urutan"
-                              title="Turunkan (hanya hari ini)"
-                            >
-                              <Icon name="arrow-down" aria-hidden />
-                            </button>
-                          </span>
+                          </>
                         )}
-                        {/* B1: template-derived task → edit its TEMPLATE. */}
-                        {t.templateId && canManage && (
-                          <button
-                            className={styles.iconBtn}
-                            onClick={() => editTemplateOf(t)}
-                            aria-label="Edit template tugas"
-                            title="Edit template (berlaku untuk hari berikutnya)"
-                          >
-                            <Icon name="pen" aria-hidden />
-                          </button>
-                        )}
-                        {!t.templateId && canManage && (
-                          <button
-                            className={[styles.iconBtn, styles.danger].join(' ')}
-                            onClick={() => deleteAdhoc(t)}
-                            aria-label="Hapus tugas cepat"
-                            title="Hapus tugas cepat"
-                          >
-                            <Icon name="trash" aria-hidden />
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                      </header>
+                      <ul className={styles.taskList}>
+                        {tasks.map((t) => {
+                          const overdue = isOverdue(t, today);
+                          return (
+                            <li key={t.id} className={[styles.taskItem, overdue ? styles.overdue : ''].join(' ')}>
+                              <button className={styles.checkbox} onClick={() => complete(t)} aria-label="Tandai selesai" />
+                              <div className={styles.taskInfo}>
+                                <strong>{t.title}</strong>
+                                {t.description && <small>{t.description}</small>}
+                              </div>
+                              {overdue ? (
+                                <span className={[styles.dueTag, styles.late].join(' ')}>Telat · {fmtDate(t.dueDate)}</span>
+                              ) : (
+                                <span className={styles.dueTag}>{fmtDate(t.dueDate)}</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+
+                  {/* Ad-hoc quick tasks: their own zone below the groups. */}
+                  {adhocTasks.length > 0 && (
+                    <section className={styles.group}>
+                      <header className={styles.groupHead}>
+                        <Icon name="list-check" className={styles.groupIcon} aria-hidden />
+                        <strong className={styles.groupName}>Tugas Lain</strong>
+                        <span className={styles.groupCount}>{adhocTasks.length} tugas</span>
+                      </header>
+                      <ul className={styles.taskList}>
+                        {adhocTasks.map((t, i) => {
+                          const overdue = isOverdue(t, today);
+                          return (
+                            <li key={t.id} className={[styles.taskItem, overdue ? styles.overdue : ''].join(' ')}>
+                              <button className={styles.checkbox} onClick={() => complete(t)} aria-label="Tandai selesai" />
+                              <div className={styles.taskInfo}>
+                                <strong>{t.title}</strong>
+                                {t.description && <small>{t.description}</small>}
+                              </div>
+                              {overdue ? (
+                                <span className={[styles.dueTag, styles.late].join(' ')}>Telat · {fmtDate(t.dueDate)}</span>
+                              ) : (
+                                <span className={styles.dueTag}>{fmtDate(t.dueDate)}</span>
+                              )}
+                              {canManage && (
+                                <>
+                                  <span className={styles.orderBtns}>
+                                    <button
+                                      className={styles.iconBtn}
+                                      onClick={() => move('taskInstances', adhocTasks, i, -1)}
+                                      disabled={i === 0}
+                                      aria-label="Naikkan urutan"
+                                      title="Naikkan"
+                                    >
+                                      <Icon name="arrow-up" aria-hidden />
+                                    </button>
+                                    <button
+                                      className={styles.iconBtn}
+                                      onClick={() => move('taskInstances', adhocTasks, i, 1)}
+                                      disabled={i === adhocTasks.length - 1}
+                                      aria-label="Turunkan urutan"
+                                      title="Turunkan"
+                                    >
+                                      <Icon name="arrow-down" aria-hidden />
+                                    </button>
+                                  </span>
+                                  <button
+                                    className={[styles.iconBtn, styles.danger].join(' ')}
+                                    onClick={() => deleteAdhoc(t)}
+                                    aria-label="Hapus tugas cepat"
+                                    title="Hapus tugas cepat"
+                                  >
+                                    <Icon name="trash" aria-hidden />
+                                  </button>
+                                </>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  )}
+                </div>
               )}
             </CardBody>
           </Card>
@@ -367,8 +456,11 @@ export function TasksPage() {
                 {orderedTemplates.map((t, i) => (
                   <li key={t.id} className={styles.templateItem}>
                     <div className={styles.templateInfo}>
-                      <strong>{t.title}</strong>
+                      <strong>{t.name || t.title}</strong>
                       <div className={styles.templateMeta}>
+                        <span className={styles.metaChip}>
+                          <Icon name="list-check" aria-hidden /> {t.items?.length ?? 0} tugas
+                        </span>
                         <span className={styles.metaChip}>
                           <Icon name="repeat" aria-hidden /> {describeRecurrence(t)}
                         </span>
@@ -376,6 +468,13 @@ export function TasksPage() {
                           <Icon name="user" aria-hidden /> {assigneeLabel(t)}
                         </span>
                       </div>
+                      {/* Preview the contents so the tab is scannable without
+                          opening each template. */}
+                      {(t.items?.length ?? 0) > 0 && (
+                        <small className={styles.templateItems}>
+                          {templateItems(t).map((it) => it.title).join(' · ')}
+                        </small>
+                      )}
                     </div>
                     {!t.active && <Badge tone="neutral">Nonaktif</Badge>}
                     <div className={styles.templateActions}>
@@ -424,7 +523,7 @@ export function TasksPage() {
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Template?"
-        message={`"${toDelete?.title}" akan dihapus. Instance tugas yang sudah dibuat tetap ada.`}
+        message={`Template "${toDelete?.name || toDelete?.title}" beserta ${toDelete?.items?.length ?? 0} tugas di dalamnya akan dihapus. Instance tugas yang sudah dibuat tetap ada.`}
         confirmLabel="Hapus"
         danger
         onConfirm={confirmDeleteTemplate}

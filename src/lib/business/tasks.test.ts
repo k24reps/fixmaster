@@ -14,6 +14,10 @@ const tpl = (over: Partial<TaskTemplate>): TaskTemplate => ({
   id: over.id ?? 't1',
   orgId: 'o1',
   outletId: null,
+  name: over.name ?? 'SOP Harian',
+  items: over.items ?? [
+    { id: `${over.id ?? 't1'}-i1`, title: over.title ?? 'Bersih-bersih', description: '', sortOrder: 0 },
+  ],
   title: over.title ?? 'Bersih-bersih',
   description: '',
   recurrence: over.recurrence ?? 'daily',
@@ -83,7 +87,7 @@ describe('generateInstances', () => {
     const daily = tpl({ recurrence: 'daily' });
     const existing: TaskInstance[] = [
       {
-        id: 'x', orgId: 'o1', outletId: null, templateId: 't1', title: 'Bersih-bersih',
+        id: 'x', orgId: 'o1', outletId: null, templateId: 't1', itemId: 't1-i1', title: 'Bersih-bersih',
         description: '', dueDate: '2026-06-02', status: 'pending', completedAt: null,
         completedById: null, completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
       },
@@ -105,15 +109,15 @@ describe('generateInstances', () => {
 
 describe('instanceKey', () => {
   it('combines template id and due date', () => {
-    expect(instanceKey('t1', '2026-06-01')).toBe('t1::2026-06-01');
+    expect(instanceKey('t1', 'i1', '2026-06-01')).toBe('t1::i1::2026-06-01');
   });
   it('maps an ad-hoc (null) template to a stable adhoc key', () => {
-    expect(instanceKey(null, '2026-06-01')).toBe('adhoc::2026-06-01');
+    expect(instanceKey(null, null, '2026-06-01')).toBe('adhoc::-::2026-06-01');
   });
   it('an ad-hoc instance does not block template generation on the same date', () => {
     const daily = tpl({ recurrence: 'daily' });
     const adhoc: TaskInstance = {
-      id: 'a', orgId: 'o1', outletId: null, templateId: null, title: 'Telepon supplier',
+      id: 'a', orgId: 'o1', outletId: null, templateId: null, itemId: null, title: 'Telepon supplier',
       description: '', dueDate: '2026-06-02', status: 'pending', completedAt: null,
       completedById: null, completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
     };
@@ -135,7 +139,7 @@ describe('describeRecurrence', () => {
 
 describe('isOverdue', () => {
   const inst = (status: 'pending' | 'done', dueDate: string): TaskInstance => ({
-    id: 'i', orgId: 'o1', outletId: null, templateId: 't1', title: '', description: '',
+    id: 'i', orgId: 'o1', outletId: null, templateId: 't1', itemId: 't1-i1', title: '', description: '',
     dueDate, status, completedAt: null, completedById: null, completedByName: '', note: '',
     sortOrder: 0,
     createdAt: '', updatedAt: '', deletedAt: null,
@@ -204,16 +208,53 @@ describe('bySortOrder', () => {
   });
 });
 
-describe('generateInstances — sortOrder', () => {
-  it('seeds each instance from its template sortOrder', () => {
-    const out = generateInstances(
-      [tpl({ id: 't1', sortOrder: 5 }), tpl({ id: 't2', sortOrder: 2 })],
-      [],
-      '2026-06-15',
-      '2026-06-15',
-      'o1',
-    );
-    expect(out.find((i) => i.templateId === 't1')!.sortOrder).toBe(5);
-    expect(out.find((i) => i.templateId === 't2')!.sortOrder).toBe(2);
+describe('generateInstances — items (0041)', () => {
+  it('creates ONE instance per item, seeded from the item order', () => {
+    const multi = tpl({
+      id: 't1',
+      items: [
+        { id: 'a', title: 'Sapu lantai', description: '', sortOrder: 0 },
+        { id: 'b', title: 'Cek stok', description: '', sortOrder: 1 },
+      ],
+    });
+    const out = generateInstances([multi], [], '2026-06-15', '2026-06-15', 'o1');
+    expect(out).toHaveLength(2);
+    expect(out.map((i) => i.itemId)).toEqual(['a', 'b']);
+    expect(out.map((i) => i.title)).toEqual(['Sapu lantai', 'Cek stok']);
+    expect(out.map((i) => i.sortOrder)).toEqual([0, 1]);
+  });
+
+  it('skips only the item+date pairs that already exist', () => {
+    const multi = tpl({
+      id: 't1',
+      items: [
+        { id: 'a', title: 'Sapu lantai', description: '', sortOrder: 0 },
+        { id: 'b', title: 'Cek stok', description: '', sortOrder: 1 },
+      ],
+    });
+    const existing: TaskInstance[] = [
+      {
+        id: 'x', orgId: 'o1', outletId: null, templateId: 't1', itemId: 'a', title: 'Sapu lantai',
+        description: '', dueDate: '2026-06-15', status: 'pending', completedAt: null,
+        completedById: null, completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
+      },
+    ];
+    const out = generateInstances([multi], existing, '2026-06-15', '2026-06-15', 'o1');
+    // Item "a" already exists → only "b" is created. Pre-0041 the whole
+    // template would have been skipped, losing item b entirely.
+    expect(out).toHaveLength(1);
+    expect(out[0].itemId).toBe('b');
+  });
+
+  it('orders items by sortOrder regardless of array order', () => {
+    const multi = tpl({
+      id: 't1',
+      items: [
+        { id: 'b', title: 'Kedua', description: '', sortOrder: 1 },
+        { id: 'a', title: 'Pertama', description: '', sortOrder: 0 },
+      ],
+    });
+    const out = generateInstances([multi], [], '2026-06-15', '2026-06-15', 'o1');
+    expect(out.map((i) => i.title)).toEqual(['Pertama', 'Kedua']);
   });
 });

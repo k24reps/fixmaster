@@ -5,7 +5,7 @@
  * fully unit-testable. This is the core differentiator vs FixNova, which
  * has no internal task management at all.
  */
-import type { TaskTemplate, TaskInstance } from '@/data/types';
+import type { TaskTemplate, TaskInstance, TaskTemplateItem } from '@/data/types';
 import { parseISODate, localDateStr } from '@/lib/time';
 import { newId } from '@/lib/id';
 
@@ -38,9 +38,22 @@ export function isDueOn(template: TaskTemplate, isoDate: string): boolean {
   }
 }
 
-/** Stable key to detect whether an instance already exists for a template+date. */
-export function instanceKey(templateId: string | null, dueDate: string): string {
-  return `${templateId ?? 'adhoc'}::${dueDate}`;
+/**
+ * Stable key for "does this instance already exist?". Mirrors the DB uniqueness
+ * key since 0041: (template_id, item_id, due_date) — a template holds MANY
+ * items, so the template alone no longer identifies a day's task.
+ */
+export function instanceKey(
+  templateId: string | null,
+  itemId: string | null,
+  dueDate: string,
+): string {
+  return `${templateId ?? 'adhoc'}::${itemId ?? '-'}::${dueDate}`;
+}
+
+/** Items of a template in their manual order. Safe on legacy/empty rows. */
+export function templateItems(template: TaskTemplate): TaskTemplateItem[] {
+  return [...(template.items ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 /**
@@ -56,7 +69,7 @@ export function generateInstances(
   orgId: string,
   now: string = new Date().toISOString(),
 ): TaskInstance[] {
-  const seen = new Set(existing.map((i) => instanceKey(i.templateId, i.dueDate)));
+  const seen = new Set(existing.map((i) => instanceKey(i.templateId, i.itemId, i.dueDate)));
   const fromDate = parseISODate(from);
   const toDate = parseISODate(to);
   if (!fromDate || !toDate || fromDate.getTime() > toDate.getTime()) return [];
@@ -67,29 +80,33 @@ export function generateInstances(
     const iso = localDateStr(cursor);
     for (const tpl of templates) {
       if (!isDueOn(tpl, iso)) continue;
-      const key = instanceKey(tpl.id, iso);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({
-        id: newId(),
-        orgId,
-        outletId: tpl.assigneeOutletId,
-        templateId: tpl.id,
-        title: tpl.title,
-        description: tpl.description,
-        dueDate: iso,
-        status: 'pending',
-        completedAt: null,
-        completedById: null,
-        completedByName: '',
-        note: '',
-        // Seed the day's order from the template's SOP order. The instance
-        // then owns it, so reordering today never touches the template.
-        sortOrder: tpl.sortOrder ?? 0,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      });
+      // A template holds MANY items → one instance per item, per date (0041).
+      for (const item of templateItems(tpl)) {
+        const key = instanceKey(tpl.id, item.id, iso);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({
+          id: newId(),
+          orgId,
+          outletId: tpl.assigneeOutletId,
+          templateId: tpl.id,
+          itemId: item.id,
+          title: item.title,
+          description: item.description,
+          dueDate: iso,
+          status: 'pending',
+          completedAt: null,
+          completedById: null,
+          completedByName: '',
+          note: '',
+          // Item order is read from the template at render time, so this is
+          // only a sensible seed (and the sole ordering key for ad-hoc tasks).
+          sortOrder: item.sortOrder,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+      }
     }
     cursor.setDate(cursor.getDate() + 1);
   }

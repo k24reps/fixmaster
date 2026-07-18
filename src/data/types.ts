@@ -312,7 +312,22 @@ export type RecurrenceType = 'once' | 'daily' | 'weekly' | 'monthly';
 
 export type AssigneeType = 'role' | 'employee' | 'outlet';
 
+/** One task inside a template. Stored in the template's `items` JSONB array. */
+export interface TaskTemplateItem {
+  /** Stable id — correlates generated instances back to this item. */
+  id: ID;
+  title: string;
+  description: string;
+  /** Order within the template (asc). Edited only in the Template tab. */
+  sortOrder: number;
+}
+
 export interface TaskTemplate extends BaseEntity {
+  /** Group name, e.g. "SOP Buka Toko". Shown as the header in the daily tab. */
+  name: string;
+  /** The tasks this template produces each due date. */
+  items: TaskTemplateItem[];
+  /** @deprecated Pre-0041 single-task title. Kept only for backfill safety. */
   title: string;
   description: string;
   recurrence: RecurrenceType;
@@ -338,6 +353,12 @@ export type TaskInstanceStatus = 'pending' | 'done' | 'skipped';
 export interface TaskInstance extends BaseEntity {
   /** Owning template, or null for an ad-hoc quick task (no template). */
   templateId: ID | null;
+  /**
+   * Which TaskTemplateItem produced this instance (null for ad-hoc). Together
+   * with templateId + dueDate this is the uniqueness key (migration 0041), and
+   * it's how the daily list looks up the item's current order.
+   */
+  itemId: ID | null;
   title: string;
   description: string;
   dueDate: ISODate;

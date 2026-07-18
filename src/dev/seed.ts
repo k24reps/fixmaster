@@ -260,9 +260,17 @@ export async function seedDemoWorkspace(): Promise<void> {
   await repository.putMany('attendance', attendance);
 
   // 10) One task template + instances (pending + done) for the job board.
+  const tmplDailyId = newId();
+  const tmplItemA = newId();
+  const tmplItemB = newId();
   const tmplDaily: TaskTemplate = {
     ...orgBase,
-    id: newId(),
+    id: tmplDailyId,
+    name: 'SOP Buka Toko',
+    items: [
+      { id: tmplItemA, title: 'Buka toko & cek kebersihan', description: 'Pastikan area kerja rapi sebelum buka.', sortOrder: 0 },
+      { id: tmplItemB, title: 'Cek antrian unit masuk', description: '', sortOrder: 1 },
+    ],
     title: 'Buka toko & cek kebersihan',
     description: 'Pastikan area kerja rapi sebelum buka.',
     recurrence: 'daily',
@@ -281,8 +289,9 @@ export async function seedDemoWorkspace(): Promise<void> {
   await repository.putMany('taskTemplates', [tmplDaily]);
 
   const taskInstances: TaskInstance[] = [
-    { ...orgBase, id: newId(), templateId: tmplDaily.id, title: tmplDaily.title, description: tmplDaily.description, dueDate: today, status: 'pending', completedAt: null, completedById: null, completedByName: '', note: '', sortOrder: 0 },
-    { ...at(oDago), id: newId(), templateId: tmplDaily.id, title: 'Cek antrian unit Cabang Dago', description: '', dueDate: today, status: 'done', completedAt: now, completedById: owner.id, completedByName: owner.name, note: '', sortOrder: 1 },
+    { ...orgBase, id: newId(), templateId: tmplDailyId, itemId: tmplItemA, title: 'Buka toko & cek kebersihan', description: 'Pastikan area kerja rapi sebelum buka.', dueDate: today, status: 'pending', completedAt: null, completedById: null, completedByName: '', note: '', sortOrder: 0 },
+    { ...orgBase, id: newId(), templateId: tmplDailyId, itemId: tmplItemB, title: 'Cek antrian unit masuk', description: '', dueDate: today, status: 'pending', completedAt: null, completedById: null, completedByName: '', note: '', sortOrder: 1 },
+    { ...at(oDago), id: newId(), templateId: null, itemId: null, title: 'Cek antrian unit Cabang Dago', description: '', dueDate: today, status: 'done', completedAt: now, completedById: owner.id, completedByName: owner.name, note: '', sortOrder: 2 },
   ];
   await repository.putMany('taskInstances', taskInstances);
 

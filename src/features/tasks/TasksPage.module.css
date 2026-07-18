@@ -269,3 +269,55 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
+
+/* ---------- Template groups (daily tab) ---------- */
+.groups {
+  display: flex;
+  flex-direction: column;
+}
+.group + .group {
+  border-top: 1px solid var(--border);
+}
+/* Group header = the template's name. Reads as a bench sub-plate, matching
+   the mono/LED idiom used elsewhere. */
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-surface-2);
+}
+.groupIcon {
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+.groupName {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+.groupCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-right: auto;
+}
+@media (max-width: 600px) {
+  .groupHead {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+  }
+}
+
+/* Contents preview in the Template tab — one line, truncated. */
+.templateItems {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
