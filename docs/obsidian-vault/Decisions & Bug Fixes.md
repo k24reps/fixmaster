@@ -728,3 +728,24 @@ Sapuan audit halaman-per-halaman (bukan migrasi, kecuali edge function `delete-a
 Nomor `service_no`/`po_number` anti-tabrakan server-side (pola `process_sale` 0039 siap ditiru; intake/PO jarang konkuren) · kerugian garansi tak muncul di profit per-tiket (agregat di Laporan benar) · retensi/arsip `activity_logs` · auto-generate batch tugas gagal senyap (realtime menyembuhkan) · kuota `max_users`/`max_outlets` + bypass harga langganan server-side (dari audit backend 10 Jul).
 
 #bugfix #decision #security
+
+## Skalabilitas: cap baris PostgREST + filter tanggal server-side (Plan B) (13 Jul 2026)
+
+**Konteks**: pertanyaan "layak untuk berapa user / makin banyak data makin lemot/error?". Audit kode menemukan risiko nyata bukan di jumlah user, tapi di **jumlah data satu toko**.
+
+**Temuan (terbukti empiris di staging)**: `useCollection` → `repository.list()` menarik **seluruh riwayat** koleksi tiap render (Dashboard/Laporan/Keuangan/Servis pakai penuh, filter di client). `SupabaseAdapter.list()` hanya dibatasi **cap baris PostgREST (default 1000)** — setelah itu baris terpotong **senyap** (tanpa error). Uji beban: insert 2000 `incomes` ke org buang → REST balikkan 1000 (bug), setelah cap dinaikkan → balikkan 2000. Toko sibuk mencapai 1000 baris `incomes` dalam 1–3 bulan → Dashboard/Laporan/Keuangan mulai tampil **angka salah** (transaksi hilang) tanpa peringatan.
+
+**Plester (dilakukan user)**: naikkan **Max rows → 50000** di dashboard Supabase, staging **dan** production. Menutup kehilangan-data, tapi memunculkan trade-off "benar-tapi-berat": halaman berat kini menarik semua baris sepanjang riwayat.
+
+**Obat sebenarnya — Plan B (commit `f88b3f3`)**: filter tanggal di **query**, bukan client.
+- `repository.listByDateRange(collection, dateField, from, to)` di ketiga adapter (Supabase `gte/lte`, Local & InMemory filter string lexicographic). Lihat [[Data Layer]].
+- Hook `useCollectionRange` + `rangeForTimestamp` (di `src/hooks/`). **Kenapa `rangeForTimestamp`**: kolom `date` (incomes/expenses/sales) di-filter apa adanya, TAPI `services.createdAt` adalah timestamp **UTC** sementara app mengelompokkan per tanggal **LOKAL** (WIB) — filter `>= from 00:00 UTC` akan membuang baris dini-hari WIB. Solusi: lebarkan bound ±1 hari, lalu filter presisi tetap di client via `localDateOf` (sama seperti bug timezone 12 Jul).
+- **Yang di-range**: incomes/expenses/sales (kolom `date`), services (`createdAt`, widened). **Yang tetap FULL** (sengaja): `wallets` (total saldo), `services`/`inventory` di Dashboard (leaderboard teknisi, alert stok, daftar servis terbaru butuh data lintas-periode). Realtime tetap otomatis (invalidasi by prefix `['collection', name]` mencakup key ranged).
+- Dashboard & Keuangan punya tombol **muat bulan lampau** (default bulan berjalan). Laporan ikut rentang date-picker-nya.
+
+**Tanpa migrasi DB** — index `(org_id, date)` yang sudah ada (0001) langsung dipakai; `EXPLAIN` tak diperlukan untuk membuktikan itu.
+
+> [!WARNING] Verifikasi tertunda
+> Plan B lolos tsc/eslint/**420 unit**/build, tapi **belum di-drive di browser** pada window terakhir (logika murni `summarize`/`computeKpis`/`trendSeries` sudah bertest & tak berubah — yang baru hanya *cakupan baris* yang di-fetch). **Langkah lanjut**: smoke-test Dashboard/Laporan/Keuangan dengan data >1 bulan, bandingkan angka vs SQL, cek tombol "muat bulan lampau".
+
+#decision #perf
