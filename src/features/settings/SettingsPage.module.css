@@ -121,6 +121,29 @@
   gap: var(--space-2);
   margin-left: auto;
 }
+/* Mobile: the member row can't fit avatar + name + select + 2 buttons on one
+   390px line — controls wrap to their own full-width line, right-aligned,
+   and the row itself is allowed to wrap. */
+@media (max-width: 640px) {
+  .listItem {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+  .itemActions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  /* Invite form: stack the select + button full-width under the text fields. */
+  .inviteRow .roleSelect {
+    flex: 1;
+    min-width: 120px;
+  }
+  .inviteRow > button {
+    width: 100%;
+    justify-content: center;
+  }
+}
 .avatar {
   width: 38px;
   height: 38px;

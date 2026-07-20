@@ -938,14 +938,16 @@ function TeamTab({
                       <strong>{inv.email}</strong>
                       <small>{ROLE_LABEL[inv.role]} · menunggu pendaftaran</small>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void revoke(inv.id)}
-                      iconLeft={<Icon name="x" aria-hidden />}
-                    >
-                      Batalkan
-                    </Button>
+                    <span className={styles.itemActions}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void revoke(inv.id)}
+                        iconLeft={<Icon name="x" aria-hidden />}
+                      >
+                        Batalkan
+                      </Button>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -978,8 +980,11 @@ function TeamTab({
                       </small>
                     )}
                   </div>
+                  {/* All controls live in ONE flex cell so the mobile rule can
+                      drop them to their own full-width line (they used to be
+                      loose siblings squeezed into the 390px row). */}
                   {isSupabaseConfigured && !isSelf && e.active ? (
-                    <>
+                    <span className={styles.itemActions}>
                       <select
                         className={styles.roleSelect}
                         value={e.role}
@@ -1019,9 +1024,9 @@ function TeamTab({
                       >
                         Nonaktifkan
                       </Button>
-                    </>
+                    </span>
                   ) : (
-                    <>
+                    <span className={styles.itemActions}>
                       <Badge tone={e.active ? 'success' : 'neutral'}>
                         {e.active ? 'Aktif' : 'Nonaktif'}
                       </Badge>
@@ -1035,7 +1040,7 @@ function TeamTab({
                           Hapus
                         </Button>
                       )}
-                    </>
+                    </span>
                   )}
                 </li>
               );
