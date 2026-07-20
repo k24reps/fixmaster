@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
+import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { fmtRp, fmtPercent } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, isInRange } from '@/lib/time';
 import { summarize } from '@/lib/business/finance';
@@ -33,19 +34,24 @@ function monthRange() {
 }
 
 export function ReportsPage() {
-  const { data: incomes } = useCollection('incomes');
-  const { data: expenses } = useCollection('expenses');
-  const { data: services } = useCollection('services');
-  const { data: sales } = useCollection('sales');
+  const [from, setFrom] = useState(monthRange().from);
+  const [to, setTo] = useState(monthRange().to);
+
+  // Server-side date filter (plan B): only the selected period is fetched, so
+  // the report never pulls the whole history (which truncated at the row cap).
+  const { data: incomes } = useCollectionRange('incomes', 'date', from, to);
+  const { data: expenses } = useCollectionRange('expenses', 'date', from, to);
+  const { data: sales } = useCollectionRange('sales', 'date', from, to);
+  // services filters on createdAt (a UTC timestamp) but groups by LOCAL date,
+  // so widen the query ±1 day; the exact localDateOf filter below trims edges.
+  const [svcFrom, svcTo] = rangeForTimestamp(from, to);
+  const { data: services } = useCollectionRange('services', 'createdAt', svcFrom, svcTo);
   const { data: outlets } = useCollection('outlets');
   const { data: inventory } = useCollection('inventory');
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const scopeLabel = activeOutletId
     ? (outlets.find((o) => o.id === activeOutletId)?.name ?? 'Cabang')
     : 'Semua Outlet';
-
-  const [from, setFrom] = useState(monthRange().from);
-  const [to, setTo] = useState(monthRange().to);
 
   const target = getTarget();
 

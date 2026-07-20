@@ -307,3 +307,18 @@
   border-bottom-color: var(--brand);
   font-weight: 600;
 }
+
+/* "Muat bulan sebelumnya" footer under the ledger tape. */
+.loadMore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px dotted var(--border);
+  flex-wrap: wrap;
+}
+.loadMoreHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

@@ -96,6 +96,19 @@ export class InMemoryAdapter implements Repository {
     });
   }
 
+  async listByDateRange<K extends CollectionName>(
+    collection: K,
+    dateField: keyof EntityMap[K] & string,
+    from: string,
+    to: string,
+  ): Promise<EntityMap[K][]> {
+    const all = await this.list(collection);
+    return all.filter((r) => {
+      const v = (r as unknown as Record<string, unknown>)[dateField];
+      return typeof v === 'string' && v >= from && v <= to;
+    });
+  }
+
   async get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null> {
     const rec = this.store(collection).get(id) as EntityMap[K] | undefined;
     if (!rec || (rec as BaseEntity).deletedAt) return null;

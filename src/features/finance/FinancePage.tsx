@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
+import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateStr } from '@/lib/time';
@@ -39,17 +40,25 @@ function monthRange() {
 }
 
 export function FinancePage() {
-  const { data: wallets } = useCollection('wallets');
-  const { data: incomes } = useCollection('incomes');
-  const { data: expenses } = useCollection('expenses');
   const [modalKind, setModalKind] = useState<'income' | 'expense' | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [ledgerTab, setLedgerTab] = useState<'all' | 'income' | 'expense'>('all');
   const [transferOpen, setTransferOpen] = useState(false);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
+  // How many past months of ledger to also load. 0 = current month only.
+  const [monthsBack, setMonthsBack] = useState(0);
 
   const { from, to } = monthRange();
+  // Fetch window: from the start of (current month − monthsBack) up to the end
+  // of this month. Only this slice is pulled — never the whole history (plan B).
+  const fetchFrom = useMemo(() => {
+    const d = new Date();
+    return localDateStr(new Date(d.getFullYear(), d.getMonth() - monthsBack, 1));
+  }, [monthsBack]);
+  const { data: wallets } = useCollection('wallets');
+  const { data: incomes } = useCollectionRange('incomes', 'date', fetchFrom, to);
+  const { data: expenses } = useCollectionRange('expenses', 'date', fetchFrom, to);
 
   const summary = useMemo(
     () =>
@@ -330,6 +339,20 @@ export function FinancePage() {
                   </div>
                 );
               })}
+              <div className={styles.loadMore}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setMonthsBack((m) => m + 1)}
+                  iconLeft={<Icon name="clock-rotate-left" aria-hidden />}
+                >
+                  Muat bulan sebelumnya
+                </Button>
+                <span className={styles.loadMoreHint}>
+                  Menampilkan {monthsBack === 0 ? 'bulan ini' : `${monthsBack + 1} bulan terakhir`}
+                  {visibleLedger.length >= 100 ? ' · maks 100 baris teratas' : ''}
+                </span>
+              </div>
             </div>
           )}
         </CardBody>

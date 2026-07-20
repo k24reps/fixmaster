@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
+import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { fmtRp } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate } from '@/lib/time';
 import {
@@ -27,9 +28,13 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
+  // Only incomes/expenses (the fastest-growing collections) are date-ranged to
+  // the current month here (plan B). services/wallets/inventory stay full: the
+  // leaderboard, alerts, recent list, and wallet totals need cross-period data.
+  const { from, to } = monthRange();
   const { data: services } = useCollection('services');
-  const { data: incomes } = useCollection('incomes');
-  const { data: expenses } = useCollection('expenses');
+  const { data: incomes } = useCollectionRange('incomes', 'date', from, to);
+  const { data: expenses } = useCollectionRange('expenses', 'date', from, to);
   const { data: wallets } = useCollection('wallets');
   const { data: inventory } = useCollection('inventory');
   const { data: attendance } = useCollection('attendance');
@@ -41,7 +46,6 @@ export function DashboardPage() {
     return () => clearInterval(t);
   }, []);
 
-  const { from, to } = monthRange();
   const target = getTarget();
 
   const kpis = useMemo(

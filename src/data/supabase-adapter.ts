@@ -247,6 +247,29 @@ export class SupabaseAdapter implements Repository {
     return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
   }
 
+  async listByDateRange<K extends CollectionName>(
+    collection: K,
+    dateField: keyof EntityMap[K] & string,
+    from: string,
+    to: string,
+  ): Promise<EntityMap[K][]> {
+    const column = camelToSnake(dateField);
+    let query = this.client
+      .from(TABLE[collection])
+      .select('*')
+      .eq('org_id', this.orgId)
+      .is('deleted_at', null)
+      .gte(column, from)
+      .lte(column, to);
+    if (this.outletId && OUTLET_SCOPED.has(collection)) {
+      query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
+    }
+    query = query.order(column, { ascending: false });
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
+  }
+
   async get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null> {
     const { data, error } = await this.client
       .from(TABLE[collection])

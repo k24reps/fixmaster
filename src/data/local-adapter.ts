@@ -102,6 +102,24 @@ export class LocalAdapter implements Repository {
     });
   }
 
+  async listByDateRange<K extends CollectionName>(
+    collection: K,
+    dateField: keyof EntityMap[K] & string,
+    from: string,
+    to: string,
+  ): Promise<EntityMap[K][]> {
+    const all = await this.list(collection);
+    // String compare matches the Supabase gte/lte semantics: ISO date and
+    // timestamp strings both sort lexicographically. `to` for a `date` field
+    // is 'YYYY-MM-DD'; a 'createdAt' timestamp like '...T09:00Z' would sort
+    // AFTER 'YYYY-MM-DD', so callers widen `to` to an end-of-day timestamp —
+    // same rule the cloud path needs.
+    return all.filter((r) => {
+      const v = (r as unknown as Record<string, unknown>)[dateField];
+      return typeof v === 'string' && v >= from && v <= to;
+    });
+  }
+
   async get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null> {
     const db = await this.db();
     const rec = (await db.get(collection, id)) as EntityMap[K] | undefined;

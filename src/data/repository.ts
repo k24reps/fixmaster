@@ -70,6 +70,21 @@ export interface Repository {
 
   // ---- Collections ----
   list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]>;
+  /**
+   * Like `list`, but only rows whose `dateField` falls within [from, to]
+   * (inclusive). Pushes the date filter to the QUERY so time-series pages
+   * (Dashboard/Laporan/Keuangan) never fetch the whole history — the thing
+   * that silently truncated at the PostgREST row cap. `dateField` is the
+   * camelCase entity field ('date' for incomes/expenses/sales, 'createdAt'
+   * for services); `from`/`to` are the matching literal bounds (a plain
+   * 'YYYY-MM-DD' for `date` columns; widen to timestamps for `createdAt`).
+   */
+  listByDateRange<K extends CollectionName>(
+    collection: K,
+    dateField: keyof EntityMap[K] & string,
+    from: string,
+    to: string,
+  ): Promise<EntityMap[K][]>;
   get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null>;
   /** Insert or update a record (sets audit fields automatically). */
   put<K extends CollectionName>(collection: K, record: EntityMap[K]): Promise<EntityMap[K]>;
