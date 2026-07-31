@@ -749,3 +749,24 @@ Nomor `service_no`/`po_number` anti-tabrakan server-side (pola `process_sale` 00
 > Plan B lolos tsc/eslint/**420 unit**/build, tapi **belum di-drive di browser** pada window terakhir (logika murni `summarize`/`computeKpis`/`trendSeries` sudah bertest & tak berubah — yang baru hanya *cakupan baris* yang di-fetch). **Langkah lanjut**: smoke-test Dashboard/Laporan/Keuangan dengan data >1 bulan, bandingkan angka vs SQL, cek tombol "muat bulan lampau".
 
 #decision #perf
+
+## Paket UX: template WA/nota + konfirmasi password + Buku Kas (31 Jul 2026)
+
+Lima permintaan user dalam satu batch, dikerjakan dari yang paling ringan. (Dua item lain — **forgot password** & **weekly backup** — sengaja **di-skip user**, belum dikerjakan.)
+
+**1. Default template WhatsApp & nota dirapikan.** Default lama satu paragraf datar ("Halo {nama}, unit {perangkat} Anda telah kami terima…") — terbaca seperti notifikasi robot. Sekarang **multi-baris berstruktur**: sapaan → blok data (`*bold*` WhatsApp untuk no servis/nominal/status) → satu ajakan aksi → penutup. Perbaikan substansi: template `konfirmasi` dulu menyebut "estimasi biaya adalah **{biaya}**" padahal `{biaya}` = `finalCost` (0 saat tiket belum selesai) → diganti `{estimasi}`. Template `diterima` menambahkan estimasi + link tracking di baris sendiri.
+- **Nota** (`serviceReceiptLines` + `printReceipt.ts`): tambah baris **Tanggal** (tanggal masuk = pertanyaan nomor satu saat klaim), **Keluhan**, dan **Kelengkapan** (kondisional). Kepala nota dapat label `NOTA SERVIS`, kaki dapat catatan simpan-nota-untuk-klaim-garansi + penutup ramah. Kolom label dibatasi 38% agar nilai panjang tak mendorong layout thermal.
+- Textarea editor Settings `rows=3 → 10`, preview NotifyModal `rows=6 → 12` (default multi-baris jadi tak terpotong).
+- **Unit test penjaga**: tiap placeholder di `DEFAULT_WA_TEMPLATES` wajib ada di `WA_TEMPLATE_VARS` — typo seperti `{no_service}` akan terkirim **mentah** ke pelanggan.
+
+**2. Konfirmasi password tanpa umpan balik langsung.** Lapor user "tidak ada matching password di wizard register". Field + validasi `password !== confirm` **sudah ada** (sejak `c35ef2a`); yang tak ada adalah **umpan balik live** — cocok/tidak baru ketahuan setelah klik Daftar. Perbaikan: `Input` konfirmasi kini menerima `error` ("Belum cocok dengan password di atas") / `hint` ("✓ Password cocok") berdasarkan state, muncul **hanya setelah user mulai mengetik** konfirmasi (field kosong tak langsung tampak salah). Dipasang di **AuthPage** *dan* **ResetPasswordPage** — form kembar, kalau cuma satu yang diperbaiki yang lain langsung basi. Nol CSS baru (pakai `hint`/`error` bawaan `Input`).
+
+**3–5. Buku Kas: cap baris, riwayat transfer, filter per-wallet.** Detail implementasi di [[Signature Pages#Keuangan — Cashbook Tape]]. Inti keputusan:
+- **Cap 100 keras → paging.** Kombinasi yang bikin user kesal: Plan B (13 Jul) memberi tombol "muat bulan sebelumnya", tapi `slice(0,100)` membuat baris bulan lama **tak pernah kebagian slot** — fitur baru itu praktis mati. Diganti `limit` state + tombol **Tampilkan lebih banyak**, hint `X dari Y baris`.
+- **Bug ikutan yang ketemu saat memperbaikinya**: footer (termasuk "muat bulan sebelumnya") berada di dalam cabang non-`EmptyState`, jadi begitu filter menghasilkan 0 baris user **terjebak** tanpa jalan keluar. Footer dipindah keluar.
+- **Riwayat transfer dari activity log, bukan tabel baru.** Transfer sengaja tak membukukan income/expense (19 Jun) → tak ada baris ledger untuk dibaca. Ketimbang migrasi `wallet_transfers`, baris dibaca dari `activity` (`action = 'wallet.transfer'`, `meta.amount` + `meta.toWalletId` sudah dicatat sejak awal). **Trade-off yang diterima sadar**: RLS `activity_select` = owner-only (0019) → **admin melihat tab Transfer kosong**. Ditandai `ponytail:` di kode; bikin tabel hanya kalau admin benar-benar butuh.
+- Pemetaan log→baris diekstrak ke `transferEntries()` murni di `lib/business/finance.ts` (4 unit test) — di dalam komponen ia tak teruji, dan bagian yang mudah salah justru ada di situ: `meta` opsional, tepi ±1 hari dari `rangeForTimestamp`, dua sisi wallet.
+
+**Verifikasi**: build + eslint + **425 unit test** hijau; di-drive di browser (demo `/demo`) — konfirmasi password live (cocok & tak cocok), filter per-wallet (Bank BCA → 2 baris), tab Transfer + footer saat kosong, dan ketiga template WA ter-render dengan data asli. Baris transfer sendiri **tak bisa** di-drive di demo (RPC `transfer_wallet` balas `Forbidden` untuk org demo) → itulah alasan unit test `transferEntries`.
+
+#decision #bugfix #ux
