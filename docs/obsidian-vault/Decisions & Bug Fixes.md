@@ -787,7 +787,7 @@ Lima permintaan user dalam satu batch, dikerjakan dari yang paling ringan. (Dua 
 
 **Akar masalah**: satu-satunya cara menambah saldo wallet adalah mencatat Pemasukan. Tak ada konsep "uang bergerak tapi bukan hasil dagang" untuk **satu** wallet (yang ada cuma Transfer, dan itu butuh **dua** wallet). Siklusnya berulang tiap bulan: awal bulan saldo ditarik habis oleh pemilik, tengah bulan disuntik lagi untuk beli sparepart.
 
-**Yang SALAH didiagnosis di awal (dicatat supaya tak terulang)**: permintaan awal user adalah "fitur kalibrasi saldo awal tiap wallet". Kalibrasi **tidak** menyelesaikan ini — saat itu saldonya sudah benar (suntikan tercatat sebagai income → saldo naik sesuai), yang rusak cuma klasifikasinya. Ketahuan setelah alurnya **disimulasikan lebih dulu** sebelum sebaris kode ditulis. Pelajaran: keluhan "cashflow tidak sesuai" bisa berarti saldo salah **atau** klasifikasi salah — pastikan dulu yang mana. (Belakangan user melaporkan saldo BCA juga melenceng dari mutasi bank → kalibrasi tetap relevan sebagai fitur **terpisah**, belum dikerjakan.)
+**Yang SALAH didiagnosis di awal (dicatat supaya tak terulang)**: permintaan awal user adalah "fitur kalibrasi saldo awal tiap wallet". Kalibrasi **tidak** menyelesaikan ini — saat itu saldonya sudah benar (suntikan tercatat sebagai income → saldo naik sesuai), yang rusak cuma klasifikasinya. Ketahuan setelah alurnya **disimulasikan lebih dulu** sebelum sebaris kode ditulis. Pelajaran: keluhan "cashflow tidak sesuai" bisa berarti saldo salah **atau** klasifikasi salah — pastikan dulu yang mana. (Belakangan user melaporkan saldo BCA juga melenceng dari mutasi bank — lihat keputusan di bawah soal kenapa kalibrasi akhirnya **tidak dibangun**.)
 
 **Perbaikan** (detail di [[Signature Pages#Keuangan — Cashbook Tape]]):
 - `IncomeCategory` += `'Modal'` (setoran modal pemilik), `ExpenseCategory` += `'Prive'` (penarikan pemilik). Uangnya tetap menggerakkan saldo & tetap tampil di Buku Kas dengan gaya **netral** (bukan hijau/merah — bukan untung/rugi, sama alasannya dengan baris Transfer).
@@ -801,3 +801,14 @@ Lima permintaan user dalam satu batch, dikerjakan dari yang paling ringan. (Dua 
 **Verifikasi di browser** (demo, data seed): catat Modal Rp 13.500.000 ke Bank BCA → saldo **Rp 14.750.000 → Rp 28.250.000**, sementara Pemasukan **tetap** Rp 6.450.000 dan Laba Bersih **tetap** Rp 5.100.000. Dashboard: margin tetap 79,1%, total saldo naik Rp 13,5 jt. Lalu Prive Rp 5.000.000 → saldo turun ke Rp 23.250.000, Pengeluaran **tetap** Rp 1.350.000. Spine baris modal terbaca `rgb(95,107,122)` (netral) vs baris servis `rgb(16,185,129)` (hijau).
 
 #bugfix #decision #finance
+
+### Keputusan: fitur kalibrasi saldo TIDAK dibangun (31 Jul 2026)
+
+Dirancang lengkap dan **disimulasikan** (panel SISTEM/AKTUAL/SELISIH, selisih dibukukan sebagai baris nyata, pilih kategori penyebab), lalu **dibatalkan atas keputusan user** setelah `Modal`/`Prive` jadi: "2 kategori tsb secara tidak langsung bisa dipakai kalibrasi untuk yang sekarang".
+
+**Kenapa itu keputusan yang benar, bukan sekadar hemat kerja**: kalibrasi bekerja dengan membuang seluruh selisih ke satu baris "Kalibrasi saldo" — jejak *kenapa* selisihnya ada hilang selamanya. Mencatat transaksi dengan kategori yang sesuai penyebabnya memperbaiki saldo **dan** menamai penyebabnya. Setiap penyebab sudah punya kategori: suntikan lupa dicatat → `Modal`, tarikan → `Prive`, pelunasan → `Servis`, belanja part → `Sparepart`, biaya → `Operasional`, dan **selisih yang benar-benar tak terlacak → `Lainnya`** (masuk laba, sebagaimana mestinya untuk cash over/short). Kategori terakhir itulah yang membuat panel kalibrasi jadi mubazir — yang hilang cuma kenyamanan menghitung selisih otomatis, bukan kemampuan.
+
+> [!warning] Jebakan yang harus dijaga kalau fitur ini pernah dibahas lagi
+> `Modal`/`Prive` terasa "aman" karena tak menyentuh laba, jadi ada godaan menambal SEMUA selisih dengan `Modal`. Itu menghasilkan **cermin terbalik** dari bug yang baru diperbaiki: kalau selisihnya sebenarnya pelunasan servis yang lupa dicatat, omzet jadi terlalu KECIL — dan arah ini jauh lebih sulit ketahuan karena tak ada yang curiga saat laba turun. Aturannya: kategori mengikuti penyebab sebenarnya, bukan mengikuti mana yang paling nyaman untuk laporan.
+
+#decision #finance
