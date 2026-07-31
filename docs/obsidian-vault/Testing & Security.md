@@ -117,3 +117,7 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - [[Data Layer]] (model peran 3-lapis, RLS, migrations 0016/0017) · [[Decisions & Bug Fixes]] · [[Conventions]]
 
 #testing #security #rls
+
+## Tier 3D — anggota hantu (0042)
+
+`tests/integration/tier3d-ghost-member.integration.test.ts` menjaga aturan **anggota ter-soft-delete tidak punya akses apa pun**. Tiga tes: (1) akses dicabut begitu `deleted_at` terisi — memakai baris pelanggan nyata milik org, bukan tabel kosong yang bisa lolos palsu; (2) `claim_invite` membersihkan `deleted_at` dan mengadopsi peran dari undangan saat rejoin, bukan meninggalkan hantu baru; (3) anggota yang **masih aktif** tak bisa diturunkan perannya lewat klaim (guard lockout owner terakhir). Tes ini terbukti **mereproduksi bug**: sebelum 0042 di-apply, 2 dari 3 gagal di staging.

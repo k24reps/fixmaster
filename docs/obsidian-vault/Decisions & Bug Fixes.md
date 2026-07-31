@@ -812,3 +812,44 @@ Dirancang lengkap dan **disimulasikan** (panel SISTEM/AKTUAL/SELISIH, selisih di
 > `Modal`/`Prive` terasa "aman" karena tak menyentuh laba, jadi ada godaan menambal SEMUA selisih dengan `Modal`. Itu menghasilkan **cermin terbalik** dari bug yang baru diperbaiki: kalau selisihnya sebenarnya pelunasan servis yang lupa dicatat, omzet jadi terlalu KECIL — dan arah ini jauh lebih sulit ketahuan karena tak ada yang curiga saat laba turun. Aturannya: kategori mengikuti penyebab sebenarnya, bukan mengikuti mana yang paling nyaman untuk laporan.
 
 #decision #finance
+
+## Anggota "hantu": ter-soft-delete tapi akses hidup (produksi, 31 Jul 2026)
+
+**Gejala (lapor user)**: undangan untuk seorang admin tetap "menunggu pendaftaran" padahal orangnya sudah bisa login. Saat mendaftar dia dapat "sudah terdaftar", jadi langsung login dan masuk. Di daftar Anggota Tim dia tak muncul.
+
+**Fakta dari DB produksi** (query read-only ke `memberships` Nuara Service):
+
+| email | name | role | active | deleted_at |
+|---|---|---|---|---|
+| nuaraservice@ | Rifan Nurdiansyah | owner | true | NULL |
+| chpygstmn@ | Chepy | admin | true | NULL |
+| bangunnovandaramadhani@ | Bangun | admin | true | NULL |
+| **dimasjatiardiansyah@** | **Dimas** | **owner** | **true** | **2026-07-12 22:35** |
+| testk24@ | Testk24 | admin | false | 2026-07-12 11:49 |
+
+Baris Dimas ada di keadaan yang seharusnya **mustahil**: `active = true` **dan** `deleted_at` terisi (bandingkan Testk24 yang benar: `active = false` + `deleted_at`). Emailnya cocok persis — dugaan awal "salah ketik email" **salah**, dan baru terbantah setelah query dijalankan.
+
+**Akar masalah — dua definisi "anggota" yang tak sepakat**:
+- `list()`/UI: `deleted_at is null` (`supabase-adapter.ts`)
+- RLS/auth: `active = true` saja (`auth_org_ids`, `auth_role_in`, `is_org_member`, `is_org_manager`, `is_org_owner`, `auth_outlet_ids`) — **semuanya mengabaikan `deleted_at`**
+
+Biasanya konsisten karena `delete_member` (0037) mewajibkan `active = false` dulu. Yang merusaknya: **`claim_invite` (0008/0024/0033) punya `on conflict ... do update set active = true` yang menghidupkan ulang baris terhapus TANPA membersihkan `deleted_at`**.
+
+**Dampak berlapis, semuanya senyap**:
+1. **Keamanan** — akun berperan `owner` punya akses penuh ke seluruh data toko sambil **tak terlihat** di layar pemilik. Pemilik tak punya cara tahu, apalagi mencabutnya, lewat UI mana pun.
+2. **Undangan macet** — `getMyMembership()` menemukan baris hantu (ia juga hanya cek `active`), jadi bootstrap berhenti di situ dan `claim_invite()` **tak pernah dipanggil lagi**. Undangan menggantung selamanya.
+3. **Tak terdeteksi** — `create_invite` tak memblokir karena membership-nya di org yang **sama** (guard 0033 hanya melihat `org_id <> p_org_id`), jadi pemilik bisa terus mengundang ulang tanpa hasil.
+
+**Perbaikan (`0042_membership_deleted_at_guard.sql`)**:
+- **A.** Semua helper RLS ikut menyaring `deleted_at is null`. Diperbaiki di **satu tempat**: setiap policy di DB memanggil helper ini, jadi akses tertutup untuk semua tabel sekaligus tanpa menyentuh satu policy pun.
+- **B.** `claim_invite` **membersihkan `deleted_at`** saat klaim, dan saat baris lama memang terhapus (rejoin) ia mengadopsi **peran + nama dari undangan**. Anggota yang masih aktif **tak** diubah perannya — mencegah undangan berperan rendah menurunkan owner terakhir dan mengunci toko.
+- **Klien**: `getMyMembership()` menambah `.is('deleted_at', null)` agar baris hantu jatuh ke jalur klaim, bukan menghentikannya.
+
+**Sifat menyembuhkan diri**: setelah di-apply, akun hantu langsung kehilangan akses; begitu ia login ulang, `claim_invite` berjalan, `deleted_at` dibersihkan, perannya mengikuti undangan (owner → admin), dan undangan hilang dari daftar tertunda. **Tanpa SQL manual.** Migrasi sengaja TIDAK mengubah data lama — menutup akses sudah cukup, dan keputusan siapa boleh kembali ada di pemilik.
+
+**Tes**: `tests/integration/tier3d-ghost-member.integration.test.ts` (3 tes) — akses dicabut saat di-soft-delete (memakai baris pelanggan nyata, bukan tabel kosong yang lolos palsu), klaim membersihkan hantu + mengadopsi peran undangan, dan anggota aktif tak bisa diturunkan perannya lewat klaim. **Diverifikasi mereproduksi bug**: sebelum 0042 di-apply, 2 dari 3 tes gagal di staging.
+
+> [!warning] Pelajaran proses
+> Tiga hipotesis pertama (salah ketik email, user bikin toko sendiri, bug refresh UI) semuanya **salah**, dan semuanya terdengar masuk akal. Yang menyelesaikan ini adalah **satu query read-only ke DB**, bukan penalaran lebih lanjut atas kode. Untuk bug yang bergantung pada keadaan data, ambil datanya dulu — menulis perbaikan di atas tebakan akan menambah bug kedua.
+
+#bugfix #decision #security
