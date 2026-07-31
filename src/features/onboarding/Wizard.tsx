@@ -4,6 +4,7 @@ import { Button, Input as BaseInput, Icon } from '@/components/ui';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { derivePrefix } from '@/lib/id';
 import { isSupabaseConfigured } from '@/data/supabase-client';
+import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
 import {
   emptyWizardData,
@@ -52,6 +53,10 @@ export function Wizard({ onComplete }: WizardProps) {
   // Cloud onboarding skips the Tim/PIN step (owner = signed-in account).
   const isCloud = isSupabaseConfigured;
   const steps = isCloud ? STEP_DEFS.filter((s) => s.n !== 4) : STEP_DEFS;
+  // Kenapa akun ini sampai di layar setup, kalau bukan karena memang mendaftar
+  // toko baru. Wajib terlihat: menyelesaikan wizard di sini membuat toko
+  // TANDINGAN yang tak bisa lagi diundang ke toko pengundang.
+  const setupNotice = useSessionStore((st) => st.setupNotice);
 
   const [idx, setIdx] = useState(0);
   const [data, setData] = useState<WizardData>(emptyWizardData());
@@ -147,6 +152,27 @@ export function Wizard({ onComplete }: WizardProps) {
               {seeding ? 'Memuat data demo…' : 'Isi data demo & masuk'}
             </button>
             <span className={styles.devHint}>Mode dev · login sebagai Owner (PIN 1234)</span>
+          </div>
+        )}
+
+        {isCloud && (
+          <div className={styles.inviteWarn} role="status">
+            <Icon name="info-circle" aria-hidden />
+            <span>
+              {setupNotice ? (
+                <>
+                  <strong>{setupNotice}</strong> Jangan lanjutkan setup ini — buat toko
+                  baru justru mengunci akunmu dari toko yang mengundang. Hubungi pemilik
+                  tokonya dulu.
+                </>
+              ) : (
+                <>
+                  Diundang bergabung ke toko yang sudah ada? <strong>Jangan isi form ini.</strong>{' '}
+                  Keluar, lalu masuk memakai email yang persis diundang — kalau meleset satu
+                  huruf pun kamu akan berakhir membuat toko sendiri.
+                </>
+              )}
+            </span>
           </div>
         )}
 

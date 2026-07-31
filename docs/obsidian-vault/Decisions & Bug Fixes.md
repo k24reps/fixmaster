@@ -853,3 +853,14 @@ Biasanya konsisten karena `delete_member` (0037) mewajibkan `active = false` dul
 > Tiga hipotesis pertama (salah ketik email, user bikin toko sendiri, bug refresh UI) semuanya **salah**, dan semuanya terdengar masuk akal. Yang menyelesaikan ini adalah **satu query read-only ke DB**, bukan penalaran lebih lanjut atas kode. Untuk bug yang bergantung pada keadaan data, ambil datanya dulu — menulis perbaikan di atas tebakan akan menambah bug kedua.
 
 #bugfix #decision #security
+
+### Lanjutan: layar setup tak lagi jadi jebakan senyap (31 Jul 2026)
+
+Sisa lubang dari bug anggota hantu: `bootstrap()` menelan error klaim (`claimInvite().catch(() => null)`) lalu **diam-diam** menawari orangnya membuat toko baru. Menyelesaikan wizard di situ = toko **tandingan**, dan setelah itu `create_invite` menolak undangan ulang ("sudah anggota toko lain") — buntu tanpa jalan mundur di UI.
+
+Perbaikan: `setupNotice` di session store menampung pesan server saat klaim gagal, dan Wizard **mode cloud** selalu menampilkan pita peringatan di atas form. Dua isi: pesan error bila ada, atau peringatan statis "diundang? jangan isi form ini, masuk pakai email yang persis diundang".
+
+> [!note] Yang menahan beban di sini adalah peringatan STATIS, bukan cabang errornya
+> Setelah 0042, cabang error praktis **tak terjangkau dari alur boot**: klaim hanya dipanggil bila `getMyMembership()` null (tak ada membership aktif & tak terhapus), sedangkan guard lintas-toko justru mensyaratkan ADA membership aktif & tak terhapus di org lain. Dua syarat itu tak bisa benar bersamaan. Kegagalan yang realistis adalah yang **senyap** — undangan tak cocok karena email meleset → `claim_invite` mengembalikan null tanpa error. Itu yang ditangkap peringatan statis. Cabang error tetap dipertahankan sebagai jaring pengaman untuk error tak terduga (jaringan, auth, guard baru di masa depan); menelannya kembali ke `catch(() => null)` berarti mengulang kesalahan yang sama.
+
+**Verifikasi**: akun sekali-pakai dibuat di **staging** (bukan produksi), login lewat UI asli sampai mendarat di wizard cloud, pita peringatan terbukti tampil; akun lalu dihapus.

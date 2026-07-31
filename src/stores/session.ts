@@ -22,6 +22,13 @@ interface SessionState {
    * transaction outlet resolution.
    */
   allowedOutletIds: ID[];
+  /**
+   * Kenapa akun ini berakhir di layar setup, bila sebabnya bukan "memang
+   * pendaftar toko baru". Diisi saat klaim undangan GAGAL — dulu errornya
+   * ditelan diam-diam lalu orangnya ditawari membuat toko sendiri, dan itu
+   * buntu: undangan macet selamanya dan create_invite menolak undangan ulang.
+   */
+  setupNotice: string | null;
 
   bootstrap: () => Promise<void>;
   setOrg: (org: Organization) => void;
@@ -41,6 +48,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   currentEmployee: null,
   activeOutletId: null,
   allowedOutletIds: [],
+  setupNotice: null,
 
   bootstrap: async () => {
     // Cloud mode: the signed-in account drives identity. Resolve the org +
@@ -48,12 +56,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (isSupabaseConfigured) {
       // Defensive: ensure splash during (re)resolution. On account switch the
       // auth store also calls reset() so boot is already 'loading' here.
-      set({ boot: 'loading' });
+      set({ boot: 'loading', setupNotice: null });
       let membership = await getMyMembership();
       if (!membership) {
         // New account may have been invited to an org — claim it before
         // falling back to onboarding (joins as a member, skips the wizard).
-        const claimedOrgId = await claimInvite().catch(() => null);
+        // Errornya TIDAK boleh ditelan: pesan server ("akun sudah tergabung di
+        // toko lain") adalah satu-satunya petunjuk kenapa orang ini tak masuk
+        // ke toko pengundang. Tanpa itu ia akan membuat toko tandingan.
+        const claimedOrgId = await claimInvite().catch((e: unknown) => {
+          set({ setupNotice: e instanceof Error ? e.message : 'Gagal memproses undangan.' });
+          return null;
+        });
         if (claimedOrgId) {
           membership = await getMyMembership();
         }
