@@ -102,7 +102,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
           className={styles.textarea}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={6}
+          rows={12}
         />
 
         <button className={styles.copyLink} onClick={copyTracking}>

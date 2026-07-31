@@ -615,7 +615,8 @@ function WhatsAppTemplatesCard() {
             </div>
             <textarea
               className={styles.waTextarea}
-              rows={3}
+              // Default kini multi-baris — 3 baris memotongnya jadi tak terbaca.
+              rows={10}
               value={drafts[k]}
               onChange={(e) => setDrafts((d) => ({ ...d, [k]: e.target.value }))}
             />

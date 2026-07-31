@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { toWaNumber, waLink, interpolate, trackingUrl, serviceReceiptLines, serviceVars } from './notify';
+import {
+  toWaNumber,
+  waLink,
+  interpolate,
+  trackingUrl,
+  serviceReceiptLines,
+  serviceVars,
+  DEFAULT_WA_TEMPLATES,
+  WA_TEMPLATE_VARS,
+} from './notify';
 import type { Service, Organization } from '@/data/types';
 
 describe('toWaNumber', () => {
@@ -37,6 +46,17 @@ describe('trackingUrl', () => {
   it('builds an encoded tracking URL', () => {
     const url = trackingUrl('https://app.test', 'org 1', 'FM-1');
     expect(url).toBe('https://app.test/track?org=org%201&no=FM-1');
+  });
+});
+
+describe('DEFAULT_WA_TEMPLATES', () => {
+  // Placeholder salah ketik = pesan ke pelanggan bocor "{no_service}" mentah.
+  it('only uses known placeholders', () => {
+    for (const [key, tpl] of Object.entries(DEFAULT_WA_TEMPLATES)) {
+      const used = [...tpl.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+      const unknown = used.filter((v) => !(WA_TEMPLATE_VARS as readonly string[]).includes(v));
+      expect(unknown, `template "${key}"`).toEqual([]);
+    }
   });
 });
 

@@ -4,6 +4,7 @@
  * No DOM/repository dependencies → fully unit-testable.
  */
 import type { Wallet, Income, Expense } from '@/data/types';
+import { localDateOf } from '@/lib/time';
 
 /** Apply a signed delta to a wallet balance, returning a new wallet. */
 export function applyBalance(wallet: Wallet, delta: number): Wallet {
@@ -77,6 +78,50 @@ export function summarize(
  * Whether deleting a service-linked income should revert the service
  * from "lunas" back to "selesai" (reverse-cascade rule).
  */
-export function shouldRevertServiceOnIncomeDelete(income: Pick<Income, 'serviceId' | 'category'>): boolean {
+export function shouldRevertServiceOnIncomeDelete(
+  income: Pick<Income, 'serviceId' | 'category'>,
+): boolean {
   return income.category === 'Servis' && !!income.serviceId;
+}
+
+export interface TransferEntry {
+  id: string;
+  /** Local date (YYYY-MM-DD) the transfer was recorded. */
+  date: string;
+  /** "Kas A → Kas B" label as recorded in the audit log. */
+  label: string;
+  amount: number;
+  fromWalletId: string;
+  toWalletId: string;
+}
+
+/**
+ * Wallet-to-wallet transfers, read back from the activity log (they book no
+ * ledger row, so the audit trail is the only record). `from`/`to` are local
+ * date bounds — the caller fetches a widened timestamp window, so edge rows
+ * outside the real range are trimmed here.
+ */
+export function transferEntries(
+  logs: {
+    id: string;
+    action: string;
+    entityId: string | null;
+    entityLabel: string;
+    createdAt: string;
+    meta?: Record<string, unknown>;
+  }[],
+  from: string,
+  to: string,
+): TransferEntry[] {
+  return logs
+    .filter((l) => l.action === 'wallet.transfer')
+    .map((l) => ({
+      id: l.id,
+      date: localDateOf(l.createdAt),
+      label: l.entityLabel || 'Transfer antar wallet',
+      amount: Number(l.meta?.amount ?? 0),
+      fromWalletId: l.entityId ?? '',
+      toWalletId: String(l.meta?.toWalletId ?? ''),
+    }))
+    .filter((t) => t.date >= from && t.date <= to);
 }

@@ -36,19 +36,31 @@ export function printServiceReceipt(service: Service, org: Organization): void {
     <style>
       * { font-family: 'Courier New', monospace; font-size: 12px; }
       body { padding: 12px; max-width: 280px; }
-      h2 { text-align: center; margin: 0 0 4px; font-size: 14px; }
+      h2 { text-align: center; margin: 0 0 4px; font-size: 14px; letter-spacing: 1px; }
       .sub { text-align: center; color: #555; margin-bottom: 10px; font-size: 11px; }
+      .kind { text-align: center; font-size: 11px; letter-spacing: 2px; margin-bottom: 8px; }
       table { width: 100%; border-collapse: collapse; }
-      td { padding: 3px 0; }
+      td { padding: 3px 0; vertical-align: top; }
+      td:first-child { width: 38%; color: #555; }
       hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-      .foot { text-align: center; margin-top: 12px; font-size: 11px; }
+      .foot { text-align: center; margin-top: 12px; font-size: 11px; line-height: 1.5; }
+      .note { font-size: 10px; color: #555; line-height: 1.5; }
     </style></head><body>
       <h2>${escapeHtml(org.name)}</h2>
       <div class="sub">${escapeHtml(org.address || '')}${org.phone ? ' · ' + escapeHtml(org.phone) : ''}</div>
+      <div class="kind">NOTA SERVIS</div>
       <hr/>
       <table>${rows}</table>
       <hr/>
-      <div class="foot">Terima kasih atas kepercayaan Anda</div>
+      <div class="note">
+        Mohon simpan nota ini sebagai bukti pengambilan unit dan klaim garansi.
+        Pengambilan unit di luar jam operasional harap dikonfirmasi terlebih dahulu.
+      </div>
+      <hr/>
+      <div class="foot">
+        Terima kasih atas kepercayaan Anda.<br/>
+        Senang bisa membantu — sampai jumpa kembali!
+      </div>
       <script>window.onload = function(){ window.print(); }</script>
     </body></html>
   `);

@@ -51,6 +51,10 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
 
   const t = TITLES[mode];
 
+  // Live match readout: hanya setelah user mulai mengetik konfirmasi, supaya
+  // field kosong tidak langsung tampak "salah".
+  const confirmMatch = confirm ? password === confirm : null;
+
   const validate = (): string | null => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email tidak valid';
     if (mode === 'reset') return null;
@@ -220,6 +224,8 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 autoComplete="new-password"
+                error={confirmMatch === false ? 'Belum cocok dengan password di atas' : undefined}
+                hint={confirmMatch === true ? '✓ Password cocok' : undefined}
               />
             )}
 

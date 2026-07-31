@@ -26,7 +26,9 @@ export function waLink(phone: string, message: string): string {
  * left as-is so authors can spot typos.
  */
 export function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? vars[key] : match));
+  return template.replace(/\{(\w+)\}/g, (match, key) =>
+    key in vars ? vars[key] : match,
+  );
 }
 
 /** Variables available to service-related WA templates. */
@@ -42,13 +44,38 @@ export function serviceVars(service: Service, org: Organization): Record<string,
   };
 }
 
+/**
+ * Default WA messages: multi-line, sapaan sopan, satu ajakan aksi yang jelas.
+ * `*bold*` adalah markup WhatsApp (bukan markdown) — dipakai untuk data yang
+ * dicari pelanggan sekilas (no servis, nominal, status).
+ */
 export const DEFAULT_WA_TEMPLATES = {
-  diterima:
-    'Halo {nama}, unit {perangkat} Anda telah kami terima dengan no servis {no_servis}. Cek status: {tautan}. Terima kasih — {toko}',
-  selesai:
-    'Halo {nama}, kabar baik! Servis {perangkat} (no {no_servis}) sudah *selesai*. Total biaya {biaya}. Silakan ambil di {toko}. Terima kasih!',
-  konfirmasi:
-    'Halo {nama}, estimasi biaya servis {perangkat} (no {no_servis}) adalah {biaya}. Mohon konfirmasi untuk kami lanjutkan. — {toko}',
+  diterima: `Halo {nama}, terima kasih sudah mempercayakan perangkat Anda kepada kami.
+
+Unit *{perangkat}* sudah kami terima dan masuk antrean pengerjaan.
+No. Servis: *{no_servis}*
+Estimasi biaya: {estimasi}
+
+Status pengerjaan bisa dipantau kapan saja di:
+{tautan}
+
+Kami kabari lagi begitu ada perkembangan. Salam, {toko}`,
+  selesai: `Halo {nama}, kabar baik — servis Anda sudah *SELESAI*.
+
+Perangkat: *{perangkat}*
+No. Servis: *{no_servis}*
+Total biaya: *{biaya}*
+
+Unit siap diambil di {toko} pada jam operasional. Mohon tunjukkan pesan ini saat pengambilan.
+
+Terima kasih atas kepercayaan Anda.`,
+  konfirmasi: `Halo {nama}, hasil pemeriksaan unit *{perangkat}* (No. Servis *{no_servis}*) sudah keluar.
+
+Estimasi biaya perbaikan: *{estimasi}*
+
+Mohon konfirmasinya apakah pengerjaan kami lanjutkan. Bila ada yang ingin ditanyakan lebih dulu, silakan balas pesan ini — dengan senang hati kami jelaskan.
+
+Terima kasih, {toko}`,
 };
 
 export type WaTemplateKey = keyof typeof DEFAULT_WA_TEMPLATES;
@@ -101,22 +128,37 @@ export interface ReceiptLine {
 
 /** Build structured receipt lines for a service (used by the print view). */
 export function serviceReceiptLines(service: Service): ReceiptLine[] {
-  const lines: ReceiptLine[] = [
+  const lines: ReceiptLine[] = [];
+  // Tanggal masuk: bukti kapan unit diterima — pertanyaan nomor satu saat klaim.
+  if (service.createdAt)
+    lines.push({ label: 'Tanggal', value: fmtDate(service.createdAt) });
+  lines.push(
     { label: 'No. Servis', value: service.serviceNo },
     { label: 'Pelanggan', value: service.customerName },
     { label: 'Perangkat', value: service.device },
-    { label: 'Status', value: STATUS_LABELS[service.status] },
-  ];
-  if (service.estimateCost > 0) lines.push({ label: 'Estimasi', value: fmtRp(service.estimateCost) });
-  if (service.finalCost > 0) lines.push({ label: 'Biaya', value: fmtRp(service.finalCost) });
+  );
+  if (service.complaint) lines.push({ label: 'Keluhan', value: service.complaint });
+  if (service.accessories)
+    lines.push({ label: 'Kelengkapan', value: service.accessories });
+  lines.push({ label: 'Status', value: STATUS_LABELS[service.status] });
+  if (service.estimateCost > 0)
+    lines.push({ label: 'Estimasi', value: fmtRp(service.estimateCost) });
+  if (service.finalCost > 0)
+    lines.push({ label: 'Biaya', value: fmtRp(service.finalCost) });
   if (service.downPayment > 0) {
     lines.push({ label: 'DP', value: fmtRp(service.downPayment) });
-    lines.push({ label: 'Sisa', value: fmtRp(Math.max(0, service.finalCost - service.downPayment)) });
+    lines.push({
+      label: 'Sisa',
+      value: fmtRp(Math.max(0, service.finalCost - service.downPayment)),
+    });
   }
   // Warranty (auto-filled from the shop's default when a service is marked
   // 'selesai'). Printed so the customer has proof of coverage on the nota.
   if (service.warrantyServiceUntil) {
-    lines.push({ label: 'Garansi Jasa s/d', value: fmtDate(service.warrantyServiceUntil) });
+    lines.push({
+      label: 'Garansi Jasa s/d',
+      value: fmtDate(service.warrantyServiceUntil),
+    });
   }
   if (service.warrantyPartsUntil) {
     lines.push({ label: 'Garansi Part s/d', value: fmtDate(service.warrantyPartsUntil) });

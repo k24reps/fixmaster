@@ -192,6 +192,8 @@ export function ResetPasswordPage() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
+                  error={confirm && password !== confirm ? 'Belum cocok dengan password di atas' : undefined}
+                  hint={confirm && password === confirm ? '✓ Password cocok' : undefined}
                 />
                 <FormError>{error}</FormError>
                 <Button fullWidth onClick={() => void submit()} disabled={busy}>

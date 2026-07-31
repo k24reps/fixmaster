@@ -7,6 +7,7 @@ import {
   transfer,
   summarize,
   shouldRevertServiceOnIncomeDelete,
+  transferEntries,
 } from './finance';
 import type { Wallet } from '@/data/types';
 
@@ -34,7 +35,10 @@ describe('applyBalance', () => {
 describe('netWalletDeltas', () => {
   it('nets income (+) and expense (-) per wallet', () => {
     const deltas = netWalletDeltas(
-      [{ walletId: 'w1', amount: 500 }, { walletId: 'w2', amount: 200 }],
+      [
+        { walletId: 'w1', amount: 500 },
+        { walletId: 'w2', amount: 200 },
+      ],
       [{ walletId: 'w1', amount: 300 }],
     );
     expect(deltas.get('w1')).toBe(200);
@@ -53,7 +57,11 @@ describe('reverse deltas', () => {
 
 describe('transfer', () => {
   it('moves funds between wallets', () => {
-    const r = transfer(wallet({ id: 'a', balance: 1000 }), wallet({ id: 'b', balance: 0 }), 400);
+    const r = transfer(
+      wallet({ id: 'a', balance: 1000 }),
+      wallet({ id: 'b', balance: 0 }),
+      400,
+    );
     expect(r.ok).toBe(true);
     expect(r.fromWallet?.balance).toBe(600);
     expect(r.toWallet?.balance).toBe(400);
@@ -68,7 +76,9 @@ describe('transfer', () => {
     expect(r.error).toContain('cukup');
   });
   it('rejects non-positive amount', () => {
-    expect(transfer(wallet({ id: 'a', balance: 100 }), wallet({ id: 'b' }), 0).ok).toBe(false);
+    expect(transfer(wallet({ id: 'a', balance: 100 }), wallet({ id: 'b' }), 0).ok).toBe(
+      false,
+    );
   });
 });
 
@@ -81,10 +91,65 @@ describe('summarize', () => {
 
 describe('shouldRevertServiceOnIncomeDelete', () => {
   it('reverts for service-linked service income', () => {
-    expect(shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: 's1' })).toBe(true);
+    expect(
+      shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: 's1' }),
+    ).toBe(true);
   });
   it('does not revert for non-service income', () => {
-    expect(shouldRevertServiceOnIncomeDelete({ category: 'Penjualan', serviceId: null })).toBe(false);
-    expect(shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: null })).toBe(false);
+    expect(
+      shouldRevertServiceOnIncomeDelete({ category: 'Penjualan', serviceId: null }),
+    ).toBe(false);
+    expect(
+      shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: null }),
+    ).toBe(false);
+  });
+});
+
+describe('transferEntries', () => {
+  const log = (over: Record<string, unknown> = {}) => ({
+    id: 't1',
+    action: 'wallet.transfer',
+    entityId: 'w-from',
+    entityLabel: 'Tunai → Bank BCA',
+    createdAt: '2026-07-15T03:00:00.000Z',
+    meta: { amount: 500000, toWalletId: 'w-to' },
+    ...over,
+  });
+
+  it('maps a transfer log to both wallet sides', () => {
+    const [t] = transferEntries([log()], '2026-07-01', '2026-07-31');
+    expect(t).toMatchObject({
+      amount: 500000,
+      fromWalletId: 'w-from',
+      toWalletId: 'w-to',
+      label: 'Tunai → Bank BCA',
+    });
+  });
+
+  it('ignores non-transfer actions', () => {
+    expect(
+      transferEntries([log({ action: 'income.create' })], '2026-07-01', '2026-07-31'),
+    ).toEqual([]);
+  });
+
+  it('trims rows outside the local date range (widened timestamp window)', () => {
+    const outside = log({ id: 't2', createdAt: '2026-06-30T03:00:00.000Z' });
+    const ids = transferEntries([log(), outside], '2026-07-01', '2026-07-31').map(
+      (t) => t.id,
+    );
+    expect(ids).toEqual(['t1']);
+  });
+
+  it('survives a log written without meta', () => {
+    const [t] = transferEntries(
+      [log({ meta: undefined, entityLabel: '' })],
+      '2026-07-01',
+      '2026-07-31',
+    );
+    expect(t).toMatchObject({
+      amount: 0,
+      toWalletId: '',
+      label: 'Transfer antar wallet',
+    });
   });
 });
