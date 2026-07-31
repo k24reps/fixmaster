@@ -116,6 +116,11 @@ export async function getMyMembership(): Promise<{ orgId: string; membershipId: 
     .select('id, org_id')
     .eq('user_id', u.user.id)
     .eq('active', true)
+    // Anggota yang sudah dihapus TIDAK dihitung punya toko — kalau dihitung,
+    // baris hantu (active=true + deleted_at terisi) membuat bootstrap berhenti
+    // di sini dan claim_invite tak pernah dipanggil, sehingga undangan macet
+    // di "menunggu pendaftaran" selamanya. Cocokkan dengan filter list().
+    .is('deleted_at', null)
     .limit(1);
   if (error || !data || data.length === 0) return null;
   const membershipId = data[0].id as string;

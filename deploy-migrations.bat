@@ -35,7 +35,11 @@ supabase link --project-ref vmitplpvncfvyimgyxrn || goto :err
 supabase db push || goto :err
 
 echo.
-echo == SELESAI: 0038 + 0039 ter-apply ke staging + production ==
+echo == Relink balik ke STAGING (supaya push berikutnya tak nyasar ke produksi) ==
+supabase link --project-ref fpwwswngqpftaixdlozo
+
+echo.
+echo == SELESAI: migrasi pending ter-apply ke staging + production ==
 goto :eof
 :err
 echo. & echo *** GAGAL - periksa error di atas. Produksi mungkin belum ter-update. ***
