@@ -770,3 +770,34 @@ Lima permintaan user dalam satu batch, dikerjakan dari yang paling ringan. (Dua 
 **Verifikasi**: build + eslint + **425 unit test** hijau; di-drive di browser (demo `/demo`) — konfirmasi password live (cocok & tak cocok), filter per-wallet (Bank BCA → 2 baris), tab Transfer + footer saat kosong, dan ketiga template WA ter-render dengan data asli. Baris transfer sendiri **tak bisa** di-drive di demo (RPC `transfer_wallet` balas `Forbidden` untuk org demo) → itulah alasan unit test `transferEntries`.
 
 #decision #bugfix #ux
+
+## Suntikan modal pemilik terhitung sebagai omzet — laba menggelembung 43% (31 Jul 2026)
+
+**Gejala (lapor user, data produksi asli)**: "saya sempat tambah saldo ke wallet untuk modal pembelian sparepart, tapi jadi akhirnya itu dihitung jadi pemasukan, alhasil cashflow tidak sesuai". Bulan Juli: **6 kali suntikan, total Rp 13.500.000** ke wallet BCA. Bulan-bulan sebelumnya berpola sama.
+
+**Dampak terukur** (angka layar user):
+
+| | Tercatat | Sebenarnya |
+|---|---|---|
+| Pemasukan | Rp 47.697.000 | Rp 34.197.000 |
+| Laba bersih | Rp 31.609.528 | **Rp 18.109.528** |
+| Margin | 66,3% | 53,0% |
+
+**42,7% dari "laba" yang dilaporkan adalah uang pemilik sendiri** — dan tak ada satu pun error/warning. Tren & perbandingan periode ikut bohong: grafiknya lebih mencerminkan kapan pemilik menyuntik dana daripada kapan bengkel ramai.
+
+**Akar masalah**: satu-satunya cara menambah saldo wallet adalah mencatat Pemasukan. Tak ada konsep "uang bergerak tapi bukan hasil dagang" untuk **satu** wallet (yang ada cuma Transfer, dan itu butuh **dua** wallet). Siklusnya berulang tiap bulan: awal bulan saldo ditarik habis oleh pemilik, tengah bulan disuntik lagi untuk beli sparepart.
+
+**Yang SALAH didiagnosis di awal (dicatat supaya tak terulang)**: permintaan awal user adalah "fitur kalibrasi saldo awal tiap wallet". Kalibrasi **tidak** menyelesaikan ini — saat itu saldonya sudah benar (suntikan tercatat sebagai income → saldo naik sesuai), yang rusak cuma klasifikasinya. Ketahuan setelah alurnya **disimulasikan lebih dulu** sebelum sebaris kode ditulis. Pelajaran: keluhan "cashflow tidak sesuai" bisa berarti saldo salah **atau** klasifikasi salah — pastikan dulu yang mana. (Belakangan user melaporkan saldo BCA juga melenceng dari mutasi bank → kalibrasi tetap relevan sebagai fitur **terpisah**, belum dikerjakan.)
+
+**Perbaikan** (detail di [[Signature Pages#Keuangan — Cashbook Tape]]):
+- `IncomeCategory` += `'Modal'` (setoran modal pemilik), `ExpenseCategory` += `'Prive'` (penarikan pemilik). Uangnya tetap menggerakkan saldo & tetap tampil di Buku Kas dengan gaya **netral** (bukan hijau/merah — bukan untung/rugi, sama alasannya dengan baris Transfer).
+- Sumber kebenaran tunggal `isCapitalFlow`/`operatingIncomes`/`operatingExpenses` di `lib/business/finance.ts`, disaring **di dalam** tiap fungsi agregasi, bukan di pemanggil. Ada **7** titik yang menjumlah income secara buta; menyaring di pemanggil berarti halaman baru bisa lupa dan berbohong diam-diam — persis penyakit yang sedang diobati.
+- `transactionRows` (Laporan) sengaja **tetap** menampilkan baris Modal/Prive — itu daftar transaksi mentah, bukan ringkasan laba; menyembunyikannya bikin saldo tak ada penjelasnya.
+- Signature `trendSeries`/`outletComparison`/`periodComparison` dilebarkan membawa `category`; tsc langsung menandai pemanggil yang belum ikut.
+- **8 unit test baru** khusus menjaga pengecualian ini (summarize ×2, computeKpis, revenueSeries, trendSeries, periodComparison, outletComparison, + satu yang memastikan `transactionRows` justru TIDAK menyembunyikannya). 433 test total.
+
+**Nol migrasi & data lama swalayan**: kolom `category` bertipe `text` tanpa `CHECK` (0001). Pemilik memperbaiki riwayat sendiri — edit baris lama, ganti kategorinya. Karena nominal & wallet tak berubah, rekonsiliasi `EntryModal` menghitung delta **nol** → **saldo tidak bergerak sedikit pun**. Pengecualian berbasis kategori (bukan tanggal), jadi semua bulan ikut terkoreksi sekaligus.
+
+**Verifikasi di browser** (demo, data seed): catat Modal Rp 13.500.000 ke Bank BCA → saldo **Rp 14.750.000 → Rp 28.250.000**, sementara Pemasukan **tetap** Rp 6.450.000 dan Laba Bersih **tetap** Rp 5.100.000. Dashboard: margin tetap 79,1%, total saldo naik Rp 13,5 jt. Lalu Prive Rp 5.000.000 → saldo turun ke Rp 23.250.000, Pengeluaran **tetap** Rp 1.350.000. Spine baris modal terbaca `rgb(95,107,122)` (netral) vs baris servis `rgb(16,185,129)` (hijau).
+
+#bugfix #decision #finance
