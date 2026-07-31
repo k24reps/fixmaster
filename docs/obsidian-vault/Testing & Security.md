@@ -121,3 +121,7 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 ## Tier 3D — anggota hantu (0042)
 
 `tests/integration/tier3d-ghost-member.integration.test.ts` menjaga aturan **anggota ter-soft-delete tidak punya akses apa pun**. Tiga tes: (1) akses dicabut begitu `deleted_at` terisi — memakai baris pelanggan nyata milik org, bukan tabel kosong yang bisa lolos palsu; (2) `claim_invite` membersihkan `deleted_at` dan mengadopsi peran dari undangan saat rejoin, bukan meninggalkan hantu baru; (3) anggota yang **masih aktif** tak bisa diturunkan perannya lewat klaim (guard lockout owner terakhir). Tes ini terbukti **mereproduksi bug**: sebelum 0042 di-apply, 2 dari 3 gagal di staging.
+
+### Skrip deploy tak boleh meng-echo password (31 Jul 2026)
+
+`deploy-migrations.bat` dulu memakai `set /p` untuk meminta password DB — dan `set /p` **menampilkan ketikan apa adanya**. Insiden nyata: password DB **produksi** tampil di layar, ikut ter-screenshot, lalu terkirim ke percakapan; password harus dirotasi. Kini pakai helper `:askpw` yang membungkus `Read-Host -AsSecureString` (PowerShell) sehingga ketikan tertutup. Aturan umum: input rahasia di skrip mana pun tidak boleh muncul di stdout — layar terminal itu permukaan yang bocor (screenshot, screen-share, scrollback).

@@ -6,13 +6,24 @@ if not exist "supabase\config.toml" (
   exit /b 1
 )
 
+goto :main
+
+REM Baca password TANPA menampilkannya di layar. `set /p` meng-echo
+REM ketikan apa adanya -- pernah membuat password produksi ikut
+REM ter-screenshot. PowerShell Read-Host -AsSecureString menutupinya.
+:askpw
+set "SUPABASE_DB_PASSWORD="
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "$s=Read-Host -AsSecureString '%~1'; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "SUPABASE_DB_PASSWORD=%%p"
+exit /b 0
+
+:main
 echo == 1/4  Login akun Supabase (browser terbuka; lewati bila sudah login) ==
 supabase login
 if errorlevel 1 goto :err
 
 echo.
 echo == 2/4  STAGING (fpwwswngqpftaixdlozo) ==
-set /p "SUPABASE_DB_PASSWORD=Masukkan DB password STAGING: "
+call :askpw "Masukkan DB password STAGING"
 supabase link --project-ref fpwwswngqpftaixdlozo || goto :err
 REM tampilkan migrasi yang pending sebelum apply (opsional)
 supabase migration list
@@ -30,7 +41,7 @@ echo.
 echo == 4/4  PRODUCTION (vmitplpvncfvyimgyxrn) ==
 set /p "CONFIRM=Ketik YA untuk apply ke PRODUCTION: "
 if /i not "%CONFIRM%"=="YA" ( echo Dibatalkan; staging sudah ter-apply. & goto :eof )
-set /p "SUPABASE_DB_PASSWORD=Masukkan DB password PRODUCTION: "
+call :askpw "Masukkan DB password PRODUCTION"
 supabase link --project-ref vmitplpvncfvyimgyxrn || goto :err
 supabase db push || goto :err
 
