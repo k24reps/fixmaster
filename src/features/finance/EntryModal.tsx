@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Modal, Input, Select, Button, FormFields, FormRow, FormError } from '@/components/ui';
+import {
+  Modal,
+  Input,
+  Select,
+  Button,
+  FormFields,
+  FormRow,
+  FormError,
+} from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
@@ -9,7 +17,13 @@ import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
-import type { Wallet, IncomeCategory, ExpenseCategory, Expense, Income } from '@/data/types';
+import type {
+  Wallet,
+  IncomeCategory,
+  ExpenseCategory,
+  Expense,
+  Income,
+} from '@/data/types';
 
 interface EntryModalProps {
   open: boolean;
@@ -20,7 +34,7 @@ interface EntryModalProps {
   editing?: Income | Expense | null;
 }
 
-const INCOME_CATEGORIES: IncomeCategory[] = ['Servis', 'Penjualan', 'Lainnya'];
+const INCOME_CATEGORIES: IncomeCategory[] = ['Servis', 'Penjualan', 'Modal', 'Lainnya'];
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Sparepart',
   'Operasional',
@@ -28,8 +42,17 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Sewa',
   'Garansi',
   'Refund Penjualan',
+  'Prive',
   'Lainnya',
 ];
+
+/** Penjelasan kategori arus kas pemilik — dua-duanya gampang disalahpahami. */
+const CATEGORY_HINT: Record<string, string> = {
+  Modal:
+    'Uang pribadi disuntik ke kas usaha. Saldo bertambah, tapi TIDAK dihitung sebagai omzet atau laba.',
+  Prive:
+    'Uang usaha ditarik untuk pemilik. Saldo berkurang, tapi TIDAK dihitung sebagai biaya usaha.',
+};
 
 export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
@@ -98,10 +121,12 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
           });
           // Reconcile wallets.
           if (inc.walletId === walletId) {
-            if (wallet) await repository.put('wallets', applyBalance(wallet, value - inc.amount));
+            if (wallet)
+              await repository.put('wallets', applyBalance(wallet, value - inc.amount));
           } else {
             const oldWallet = wallets.find((w) => w.id === inc.walletId);
-            if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, -inc.amount));
+            if (oldWallet)
+              await repository.put('wallets', applyBalance(oldWallet, -inc.amount));
             if (wallet) await repository.put('wallets', applyBalance(wallet, value));
           }
           logActivity({
@@ -124,10 +149,12 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
             updatedAt: now,
           });
           if (exp.walletId === walletId) {
-            if (wallet) await repository.put('wallets', applyBalance(wallet, exp.amount - value));
+            if (wallet)
+              await repository.put('wallets', applyBalance(wallet, exp.amount - value));
           } else {
             const oldWallet = wallets.find((w) => w.id === exp.walletId);
-            if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, exp.amount));
+            if (oldWallet)
+              await repository.put('wallets', applyBalance(oldWallet, exp.amount));
             if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
           }
           logActivity({
@@ -205,7 +232,15 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? (kind === 'income' ? 'Edit Pemasukan' : 'Edit Pengeluaran') : kind === 'income' ? 'Catat Pemasukan' : 'Catat Pengeluaran'}
+      title={
+        editing
+          ? kind === 'income'
+            ? 'Edit Pemasukan'
+            : 'Edit Pengeluaran'
+          : kind === 'income'
+            ? 'Catat Pemasukan'
+            : 'Catat Pengeluaran'
+      }
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -220,7 +255,12 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
       <FormFields>
         <FormError>{error}</FormError>
         <FormRow>
-          <Input label="Tanggal" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input
+            label="Tanggal"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
           <Select
             label="Kategori"
             value={category}
@@ -228,8 +268,21 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
             options={categories.map((c) => ({ value: c, label: c }))}
           />
         </FormRow>
+        {CATEGORY_HINT[category] && (
+          <p
+            style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
+          >
+            {CATEGORY_HINT[category]}
+          </p>
+        )}
         <FormRow>
-          <Input label="Nominal" value={amount} onChange={(e) => setAmount(fmtRpInput(e.target.value))} placeholder="100.000" autoFocus />
+          <Input
+            label="Nominal"
+            value={amount}
+            onChange={(e) => setAmount(fmtRpInput(e.target.value))}
+            placeholder="100.000"
+            autoFocus
+          />
           <Select
             label="Wallet"
             value={walletId}
@@ -237,7 +290,11 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
             options={wallets.map((w) => ({ value: w.id, label: w.name }))}
           />
         </FormRow>
-        <Input label="Keterangan (opsional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Input
+          label="Keterangan (opsional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </FormFields>
     </Modal>
   );

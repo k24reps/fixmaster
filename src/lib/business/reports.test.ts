@@ -14,12 +14,22 @@ import {
   outletComparison,
   receivablesAging,
 } from './reports';
-import type { Service, InventoryItem, ServiceSparepart, IncomeCategory, ExpenseCategory } from '@/data/types';
+import type {
+  Service,
+  InventoryItem,
+  ServiceSparepart,
+  IncomeCategory,
+  ExpenseCategory,
+} from '@/data/types';
 
 const inc = (
   date: string,
   amount: number,
-  over: Partial<{ category: IncomeCategory; description: string; outletId: string | null }> = {},
+  over: Partial<{
+    category: IncomeCategory;
+    description: string;
+    outletId: string | null;
+  }> = {},
 ) => ({
   date,
   amount,
@@ -31,7 +41,11 @@ const inc = (
 const exp = (
   date: string,
   amount: number,
-  over: Partial<{ category: ExpenseCategory; description: string; outletId: string | null }> = {},
+  over: Partial<{
+    category: ExpenseCategory;
+    description: string;
+    outletId: string | null;
+  }> = {},
 ) => ({
   date,
   amount,
@@ -139,11 +153,12 @@ describe('trendSeries', () => {
 
 describe('transactionRows', () => {
   it('signs amounts and sorts newest first', () => {
-    const rows = transactionRows(
-      [inc('2026-06-01', 100)],
-      [exp('2026-06-05', 40)],
-    );
-    expect(rows[0]).toMatchObject({ date: '2026-06-05', type: 'Pengeluaran', amount: -40 });
+    const rows = transactionRows([inc('2026-06-01', 100)], [exp('2026-06-05', 40)]);
+    expect(rows[0]).toMatchObject({
+      date: '2026-06-05',
+      type: 'Pengeluaran',
+      amount: -40,
+    });
     expect(rows[1]).toMatchObject({ date: '2026-06-01', type: 'Pemasukan', amount: 100 });
   });
 });
@@ -151,7 +166,11 @@ describe('transactionRows', () => {
 describe('profitByDeviceCategory', () => {
   it('groups realized services by category with profit', () => {
     const result = profitByDeviceCategory([
-      svc({ category: 'HP', finalCost: 200000, spareparts: [part({ qty: 1, costPrice: 50000 })] }),
+      svc({
+        category: 'HP',
+        finalCost: 200000,
+        spareparts: [part({ qty: 1, costPrice: 50000 })],
+      }),
       svc({ id: 's2', category: 'HP', status: 'lunas', finalCost: 100000 }),
       svc({ id: 's3', category: 'Laptop', finalCost: 300000 }),
       svc({ id: 's4', category: 'HP', status: 'pengerjaan', finalCost: 999999 }), // excluded
@@ -167,7 +186,13 @@ describe('sparepartUsage', () => {
   it('aggregates qty and cost per part name', () => {
     const result = sparepartUsage([
       svc({ spareparts: [part({ name: 'LCD', qty: 2, costPrice: 50000 })] }),
-      svc({ id: 's2', spareparts: [part({ name: 'LCD', qty: 1, costPrice: 50000 }), part({ name: 'Baterai', qty: 4, costPrice: 30000 })] }),
+      svc({
+        id: 's2',
+        spareparts: [
+          part({ name: 'LCD', qty: 1, costPrice: 50000 }),
+          part({ name: 'Baterai', qty: 4, costPrice: 30000 }),
+        ],
+      }),
     ]);
     expect(result[0]).toMatchObject({ name: 'Baterai', qty: 4 });
     expect(result.find((r) => r.name === 'LCD')).toMatchObject({ qty: 3, cost: 150000 });
@@ -201,7 +226,14 @@ describe('completionDate / avgTurnaroundDays', () => {
   const withHistory = svc({
     createdAt: '2026-06-01T00:00:00.000Z',
     history: [
-      { at: '2026-06-05T10:00:00.000Z', status: 'selesai', by: 'e1', byName: 'A', note: '', internal: false },
+      {
+        at: '2026-06-05T10:00:00.000Z',
+        status: 'selesai',
+        by: 'e1',
+        byName: 'A',
+        note: '',
+        internal: false,
+      },
     ],
   });
   it('reads completion date from history', () => {
@@ -211,7 +243,16 @@ describe('completionDate / avgTurnaroundDays', () => {
     const other = svc({
       id: 's2',
       createdAt: '2026-06-01T00:00:00.000Z',
-      history: [{ at: '2026-06-03T00:00:00.000Z', status: 'selesai', by: 'e', byName: 'A', note: '', internal: false }],
+      history: [
+        {
+          at: '2026-06-03T00:00:00.000Z',
+          status: 'selesai',
+          by: 'e',
+          byName: 'A',
+          note: '',
+          internal: false,
+        },
+      ],
     });
     expect(avgTurnaroundDays([withHistory, other])).toBe(3); // (4 + 2) / 2
   });
@@ -245,14 +286,22 @@ describe('periodComparison', () => {
 describe('outletComparison', () => {
   it('groups by outlet and labels null as Tanpa Cabang', () => {
     const result = outletComparison(
-      [inc('2026-06-01', 100, { outletId: 'A' }), inc('2026-06-01', 50, { outletId: null })],
+      [
+        inc('2026-06-01', 100, { outletId: 'A' }),
+        inc('2026-06-01', 50, { outletId: null }),
+      ],
       [exp('2026-06-01', 20, { outletId: 'A' })],
       [{ id: 'A', name: 'Cabang Pusat' }],
       '2026-06-01',
       '2026-06-30',
     );
     const pusat = result.find((r) => r.outletId === 'A')!;
-    expect(pusat).toMatchObject({ name: 'Cabang Pusat', income: 100, expense: 20, net: 80 });
+    expect(pusat).toMatchObject({
+      name: 'Cabang Pusat',
+      income: 100,
+      expense: 20,
+      net: 80,
+    });
     expect(result.find((r) => r.name === 'Tanpa Cabang')).toMatchObject({ income: 50 });
   });
 });
@@ -260,24 +309,109 @@ describe('outletComparison', () => {
 describe('receivablesAging', () => {
   it('lists completed services with outstanding balance, aged', () => {
     const today = new Date('2026-06-20T00:00:00.000Z');
-    const result = receivablesAging([
-      svc({
-        status: 'selesai',
-        finalCost: 200000,
-        downPayment: 50000,
-        history: [{ at: '2026-06-18T00:00:00.000Z', status: 'selesai', by: 'e', byName: 'A', note: '', internal: false }],
-      }),
-      svc({ id: 's2', status: 'selesai', finalCost: 100000, downPayment: 100000 }), // paid → excluded
-      svc({ id: 's3', status: 'pengerjaan', finalCost: 100000, downPayment: 0 }), // not done → excluded
-    ], today);
+    const result = receivablesAging(
+      [
+        svc({
+          status: 'selesai',
+          finalCost: 200000,
+          downPayment: 50000,
+          history: [
+            {
+              at: '2026-06-18T00:00:00.000Z',
+              status: 'selesai',
+              by: 'e',
+              byName: 'A',
+              note: '',
+              internal: false,
+            },
+          ],
+        }),
+        svc({ id: 's2', status: 'selesai', finalCost: 100000, downPayment: 100000 }), // paid → excluded
+        svc({ id: 's3', status: 'pengerjaan', finalCost: 100000, downPayment: 0 }), // not done → excluded
+      ],
+      today,
+    );
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ outstanding: 150000, bucket: '0-7' });
   });
   it('buckets older debts as 31+', () => {
     const today = new Date('2026-06-20T00:00:00.000Z');
-    const result = receivablesAging([
-      svc({ status: 'selesai', finalCost: 100000, downPayment: 0, createdAt: '2026-04-01T00:00:00.000Z', history: [] }),
-    ], today);
+    const result = receivablesAging(
+      [
+        svc({
+          status: 'selesai',
+          finalCost: 100000,
+          downPayment: 0,
+          createdAt: '2026-04-01T00:00:00.000Z',
+          history: [],
+        }),
+      ],
+      today,
+    );
     expect(result[0].bucket).toBe('31+');
+  });
+});
+
+describe('capital flows are excluded from every reporting aggregate', () => {
+  const modal = inc('2026-06-10', 13500000, { category: 'Modal' });
+  const prive = exp('2026-06-10', 9000000, { category: 'Prive' });
+
+  it('trendSeries: owner money never enters the trend', () => {
+    const clean = trendSeries(
+      [inc('2026-06-10', 100)],
+      [exp('2026-06-10', 40)],
+      '2026-06-01',
+      '2026-06-30',
+    );
+    const withCapital = trendSeries(
+      [inc('2026-06-10', 100), modal],
+      [exp('2026-06-10', 40), prive],
+      '2026-06-01',
+      '2026-06-30',
+    );
+    expect(withCapital).toEqual(clean);
+  });
+
+  it('periodComparison: deltas unaffected by an injection', () => {
+    const clean = periodComparison(
+      [inc('2026-06-10', 200)],
+      [],
+      '2026-06-08',
+      '2026-06-14',
+    );
+    const withCapital = periodComparison(
+      [inc('2026-06-10', 200), modal],
+      [],
+      '2026-06-08',
+      '2026-06-14',
+    );
+    expect(withCapital).toEqual(clean);
+  });
+
+  it('outletComparison: injection into a branch does not inflate its net', () => {
+    const result = outletComparison(
+      [
+        inc('2026-06-01', 100, { outletId: 'A' }),
+        inc('2026-06-01', 13500000, { outletId: 'A', category: 'Modal' }),
+      ],
+      [exp('2026-06-01', 20, { outletId: 'A' })],
+      [{ id: 'A', name: 'Cabang Pusat' }],
+      '2026-06-01',
+      '2026-06-30',
+    );
+    expect(result.find((r) => r.outletId === 'A')).toMatchObject({
+      income: 100,
+      expense: 20,
+      net: 80,
+    });
+  });
+
+  // Daftar transaksi mentah HARUS tetap menampilkannya — itu bukan ringkasan
+  // laba, dan menyembunyikannya bikin saldo tak ada penjelasnya.
+  it('transactionRows: still lists capital rows', () => {
+    const rows = transactionRows([inc('2026-06-10', 100), modal], [prive]);
+    expect(rows).toHaveLength(3);
+    expect(rows.some((r) => r.category === 'Modal')).toBe(true);
+    expect(rows.some((r) => r.category === 'Prive')).toBe(true);
   });
 });

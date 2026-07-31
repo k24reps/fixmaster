@@ -4,12 +4,49 @@
  * category, sparepart usage + restock, service funnel + turnaround, period
  * comparison, per-outlet comparison, and receivables aging.
  */
-import type { Service, Income, Expense, InventoryItem, Outlet, ServiceStatus } from '@/data/types';
-import { addDays, daysBetween, parseISODate, isInRange, localDateOf, localDateStr } from '@/lib/time';
-import { summarize, type FinanceSummary } from './finance';
-import { outstandingBalance, serviceProfit, sparepartCost, STATUS_LABELS } from './services';
+import type {
+  Service,
+  Income,
+  Expense,
+  InventoryItem,
+  Outlet,
+  ServiceStatus,
+} from '@/data/types';
+import {
+  addDays,
+  daysBetween,
+  parseISODate,
+  isInRange,
+  localDateOf,
+  localDateStr,
+} from '@/lib/time';
+import {
+  summarize,
+  operatingIncomes,
+  operatingExpenses,
+  type FinanceSummary,
+} from './finance';
+import {
+  outstandingBalance,
+  serviceProfit,
+  sparepartCost,
+  STATUS_LABELS,
+} from './services';
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
 
 // ---------- 1. Income vs expense trend series ----------
 export interface TrendPoint {
@@ -34,8 +71,8 @@ export function trendMode(from: string, to: string): TrendMode {
  * weekly for medium, monthly for long — keeps the line chart readable.
  */
 export function trendSeries(
-  incomes: Pick<Income, 'date' | 'amount'>[],
-  expenses: Pick<Expense, 'date' | 'amount'>[],
+  incomes: Pick<Income, 'date' | 'amount' | 'category'>[],
+  expenses: Pick<Expense, 'date' | 'amount' | 'category'>[],
   from: string,
   to: string,
 ): TrendPoint[] {
@@ -56,7 +93,10 @@ export function trendSeries(
       keys.push(key);
       labels.push(`${MONTH_LABELS[m]} ${String(y).slice(2)}`);
       m += 1;
-      if (m > 11) { m = 0; y += 1; }
+      if (m > 11) {
+        m = 0;
+        y += 1;
+      }
     }
   } else {
     const step = mode === 'week' ? 7 : 1;
@@ -71,7 +111,12 @@ export function trendSeries(
     }
   }
 
-  const points: TrendPoint[] = labels.map((label) => ({ label, income: 0, expense: 0, net: 0 }));
+  const points: TrendPoint[] = labels.map((label) => ({
+    label,
+    income: 0,
+    expense: 0,
+    net: 0,
+  }));
   const bucketIndex = (date: string): number => {
     if (mode === 'month') return indexOf.get(date.slice(0, 7)) ?? -1;
     const step = mode === 'week' ? 7 : 1;
@@ -80,12 +125,14 @@ export function trendSeries(
     return Math.min(keys.length - 1, Math.floor(offset / step));
   };
 
-  for (const i of incomes) {
+  // Modal/prive pemilik tak masuk tren usaha — kalau ikut, grafiknya lebih
+  // mencerminkan kapan pemilik menyuntik dana daripada kapan bengkel ramai.
+  for (const i of operatingIncomes(incomes)) {
     if (!isInRange(i.date, from, to)) continue;
     const idx = bucketIndex(i.date);
     if (idx >= 0) points[idx].income += i.amount;
   }
-  for (const e of expenses) {
+  for (const e of operatingExpenses(expenses)) {
     if (!isInRange(e.date, from, to)) continue;
     const idx = bucketIndex(e.date);
     if (idx >= 0) points[idx].expense += e.amount;
@@ -177,9 +224,7 @@ export function sparepartUsage(services: Service[]): PartUsage[] {
 
 /** Items at or below their minimum stock threshold, neediest first. */
 export function restockSuggestions(inventory: InventoryItem[]): InventoryItem[] {
-  return inventory
-    .filter((i) => i.stock <= i.minStock)
-    .sort((a, b) => a.stock - b.stock);
+  return inventory.filter((i) => i.stock <= i.minStock).sort((a, b) => a.stock - b.stock);
 }
 
 // ---------- 5. Service funnel + turnaround ----------
@@ -190,16 +235,25 @@ export interface FunnelStage {
 }
 
 const FUNNEL_ORDER: ServiceStatus[] = [
-  'diterima', 'diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan', 'selesai', 'lunas', 'batal',
+  'diterima',
+  'diagnosa',
+  'konfirmasi',
+  'tunggu',
+  'pengerjaan',
+  'selesai',
+  'lunas',
+  'batal',
 ];
 
 /** Count of services per status, in workflow order (zero stages dropped). */
 export function serviceFunnel(services: Service[]): FunnelStage[] {
   const counts = new Map<ServiceStatus, number>();
   for (const s of services) counts.set(s.status, (counts.get(s.status) ?? 0) + 1);
-  return FUNNEL_ORDER
-    .filter((st) => (counts.get(st) ?? 0) > 0)
-    .map((st) => ({ status: st, label: STATUS_LABELS[st], count: counts.get(st) ?? 0 }));
+  return FUNNEL_ORDER.filter((st) => (counts.get(st) ?? 0) > 0).map((st) => ({
+    status: st,
+    label: STATUS_LABELS[st],
+    count: counts.get(st) ?? 0,
+  }));
 }
 
 /** The LOCAL date a service first reached "selesai" (from history), else null. */
@@ -244,8 +298,8 @@ export function ratioDelta(current: number, previous: number): number {
  * same length (ending the day before `from`).
  */
 export function periodComparison(
-  incomes: Pick<Income, 'date' | 'amount'>[],
-  expenses: Pick<Expense, 'date' | 'amount'>[],
+  incomes: Pick<Income, 'date' | 'amount' | 'category'>[],
+  expenses: Pick<Expense, 'date' | 'amount' | 'category'>[],
   from: string,
   to: string,
 ): PeriodComparison {
@@ -281,8 +335,10 @@ export interface OutletStat {
  * null outlet_id (shared/legacy) are grouped under "Tanpa Cabang".
  */
 export function outletComparison(
-  incomes: (Pick<Income, 'date' | 'amount'> & { outletId: string | null })[],
-  expenses: (Pick<Expense, 'date' | 'amount'> & { outletId: string | null })[],
+  incomes: (Pick<Income, 'date' | 'amount' | 'category'> & { outletId: string | null })[],
+  expenses: (Pick<Expense, 'date' | 'amount' | 'category'> & {
+    outletId: string | null;
+  })[],
   outlets: Pick<Outlet, 'id' | 'name'>[],
   from: string,
   to: string,
@@ -299,11 +355,11 @@ export function outletComparison(
     }
     return cur;
   };
-  for (const i of incomes) {
+  for (const i of operatingIncomes(incomes)) {
     if (!isInRange(i.date, from, to)) continue;
     bucket(i.outletId).income += i.amount;
   }
-  for (const e of expenses) {
+  for (const e of operatingExpenses(expenses)) {
     if (!isInRange(e.date, from, to)) continue;
     bucket(e.outletId).expense += e.amount;
   }
@@ -333,7 +389,10 @@ function agingBucket(ageDays: number): AgingBucket {
  * Services where work is done ("selesai") but a balance is still owed
  * (finalCost > downPayment). Aged from completion date (fallback intake).
  */
-export function receivablesAging(services: Service[], today: Date = new Date()): Receivable[] {
+export function receivablesAging(
+  services: Service[],
+  today: Date = new Date(),
+): Receivable[] {
   const todayStr = localDateStr(today);
   const out: Receivable[] = [];
   for (const s of services) {

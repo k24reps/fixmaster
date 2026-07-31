@@ -12,6 +12,9 @@ import {
   reverseExpenseDelta,
   shouldRevertServiceOnIncomeDelete,
   transferEntries,
+  isCapitalFlow,
+  CAPITAL_INCOME_CATEGORY,
+  CAPITAL_EXPENSE_CATEGORY,
 } from '@/lib/business/finance';
 import {
   dpIncomeDescription,
@@ -92,6 +95,24 @@ export function FinancePage() {
       ),
     [incomes, expenses, from, to],
   );
+
+  // Arus kas pemilik bulan ini, dihitung TERPISAH dari laba. Ditampilkan supaya
+  // turunnya Pemasukan setelah re-kategorisasi ada penjelasannya — bukan angka
+  // yang hilang diam-diam.
+  const capital = useMemo(() => {
+    const inRange = (d: string) => d >= from && d <= to;
+    const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
+    return {
+      modal: sum(
+        incomes.filter((i) => inRange(i.date) && i.category === CAPITAL_INCOME_CATEGORY),
+      ),
+      prive: sum(
+        expenses.filter(
+          (e) => inRange(e.date) && e.category === CAPITAL_EXPENSE_CATEGORY,
+        ),
+      ),
+    };
+  }, [incomes, expenses, from, to]);
 
   const transfers = useMemo<LedgerRow[]>(() => {
     const byId = new Map(activity.map((a) => [a.id, a]));
@@ -301,6 +322,27 @@ export function FinancePage() {
         </div>
       </div>
 
+      {(capital.modal > 0 || capital.prive > 0) && (
+        <p className={styles.capitalNote}>
+          <Icon name="wallet" aria-hidden /> Arus kas pemilik bulan ini —
+          {capital.modal > 0 && (
+            <>
+              {' '}
+              setoran modal <strong>{fmtRp(capital.modal)}</strong>
+            </>
+          )}
+          {capital.modal > 0 && capital.prive > 0 && ' ·'}
+          {capital.prive > 0 && (
+            <>
+              {' '}
+              prive <strong>{fmtRp(capital.prive)}</strong>
+            </>
+          )}
+          . Saldo wallet sudah termasuk ini, tapi tidak dihitung sebagai omzet maupun
+          laba.
+        </p>
+      )}
+
       <div className={styles.actions}>
         <Button
           onClick={() => setModalKind('income')}
@@ -406,6 +448,11 @@ export function FinancePage() {
                   );
                 }
                 const inc = r.kind === 'income';
+                // Modal/prive pemilik: uangnya nyata bergerak (tanda +/− tetap),
+                // tapi diwarnai netral supaya tak terbaca sebagai untung/rugi —
+                // sama seperti baris transfer.
+                const capital = isCapitalFlow(r);
+                const tone = capital ? styles.trf : inc ? styles.inc : styles.exp;
                 // Expense tied to a PO or a service "modal dadakan" line must be
                 // removed from its owning page (PO / service detail) so the
                 // linked record is reversed too — deleting here would orphan it.
@@ -416,7 +463,10 @@ export function FinancePage() {
                 return (
                   <div
                     key={`${r.kind}-${r.id}`}
-                    className={[styles.tapeRow, styles[r.kind]].join(' ')}
+                    className={[
+                      styles.tapeRow,
+                      capital ? styles.transfer : styles[r.kind],
+                    ].join(' ')}
                   >
                     <span className={styles.tapeDate}>{fmtDate(r.date)}</span>
                     <div className={styles.tapeBody}>
@@ -426,21 +476,13 @@ export function FinancePage() {
                         )}
                       </span>
                       <span className={styles.tapeMeta}>
-                        <span
-                          className={[styles.tapeCat, inc ? styles.inc : styles.exp].join(
-                            ' ',
-                          )}
-                        >
+                        <span className={[styles.tapeCat, tone].join(' ')}>
                           {r.category}
                         </span>
                         · {walletName(r.walletId)}
                       </span>
                     </div>
-                    <span
-                      className={[styles.tapeAmount, inc ? styles.inc : styles.exp].join(
-                        ' ',
-                      )}
-                    >
+                    <span className={[styles.tapeAmount, tone].join(' ')}>
                       {inc ? '+' : '−'}
                       {fmtRp(r.amount)}
                     </span>

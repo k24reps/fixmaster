@@ -123,7 +123,12 @@ export interface Supplier extends BaseEntity {
   note: string;
 }
 
-export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partial' | 'received' | 'cancelled';
+export type PurchaseOrderStatus =
+  | 'draft'
+  | 'ordered'
+  | 'partial'
+  | 'received'
+  | 'cancelled';
 
 export interface PurchaseOrderLine {
   itemId: ID;
@@ -150,7 +155,17 @@ export interface Wallet extends BaseEntity {
   sortOrder: number;
 }
 
-export type IncomeCategory = 'Servis' | 'Penjualan' | 'Lainnya';
+/**
+ * `Modal` = setoran modal pemilik (uang pribadi disuntik ke kas usaha).
+ * Uangnya nyata dan menambah saldo, TAPI bukan pendapatan — dikecualikan
+ * dari semua perhitungan omzet/laba lewat `operatingIncomes` (finance.ts).
+ */
+export type IncomeCategory = 'Servis' | 'Penjualan' | 'Modal' | 'Lainnya';
+/**
+ * `Prive` = penarikan modal/untung oleh pemilik. Uangnya benar-benar keluar
+ * dan mengurangi saldo, TAPI bukan biaya usaha — dikecualikan dari laba
+ * lewat `operatingExpenses` (finance.ts). Cermin dari `Modal`.
+ */
 export type ExpenseCategory =
   | 'Sparepart'
   | 'Operasional'
@@ -158,6 +173,7 @@ export type ExpenseCategory =
   | 'Sewa'
   | 'Garansi'
   | 'Refund Penjualan'
+  | 'Prive'
   | 'Lainnya';
 
 export interface Income extends BaseEntity {
@@ -425,4 +441,3 @@ export interface ActivityLog extends BaseEntity {
   /** Free-form structured context (amounts, before/after, reason). */
   meta: Record<string, unknown>;
 }
-

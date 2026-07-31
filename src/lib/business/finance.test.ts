@@ -84,8 +84,38 @@ describe('transfer', () => {
 
 describe('summarize', () => {
   it('computes income, expense, and net', () => {
-    const s = summarize([{ amount: 500 }, { amount: 300 }], [{ amount: 200 }]);
+    const s = summarize(
+      [
+        { amount: 500, category: 'Servis' },
+        { amount: 300, category: 'Penjualan' },
+      ],
+      [{ amount: 200, category: 'Sparepart' }],
+    );
     expect(s).toEqual({ income: 800, expense: 200, net: 600 });
+  });
+
+  // Bug asli: suntikan modal pemilik terhitung sebagai omzet -> laba
+  // menggelembung 43% tanpa satu pun error.
+  it('excludes owner capital (Modal) from income and profit', () => {
+    const s = summarize(
+      [
+        { amount: 500, category: 'Servis' },
+        { amount: 13500000, category: 'Modal' },
+      ],
+      [{ amount: 200, category: 'Sparepart' }],
+    );
+    expect(s).toEqual({ income: 500, expense: 200, net: 300 });
+  });
+
+  it('excludes owner drawings (Prive) from expense and profit', () => {
+    const s = summarize(
+      [{ amount: 500, category: 'Servis' }],
+      [
+        { amount: 200, category: 'Sparepart' },
+        { amount: 9000, category: 'Prive' },
+      ],
+    );
+    expect(s).toEqual({ income: 500, expense: 200, net: 300 });
   });
 });
 

@@ -38,19 +38,56 @@ const baseSvc = (over: Partial<Service>): Service => ({
   deletedAt: null,
 });
 
-const income = (date: string, amount: number): Income => ({
-  id: 'i' + date + amount, orgId: 'o1', outletId: null, date, category: 'Servis', amount,
-  walletId: 'w1', description: '', serviceId: null, createdAt: '', updatedAt: '', deletedAt: null,
+const income = (
+  date: string,
+  amount: number,
+  category: Income['category'] = 'Servis',
+): Income => ({
+  id: 'i' + date + amount,
+  orgId: 'o1',
+  outletId: null,
+  date,
+  category,
+  amount,
+  walletId: 'w1',
+  description: '',
+  serviceId: null,
+  createdAt: '',
+  updatedAt: '',
+  deletedAt: null,
 });
-const expense = (date: string, amount: number): Expense => ({
-  id: 'e' + date + amount, orgId: 'o1', outletId: null, date, category: 'Operasional', amount,
-  walletId: 'w1', description: '', createdAt: '', updatedAt: '', deletedAt: null,
+const expense = (
+  date: string,
+  amount: number,
+  category: Expense['category'] = 'Operasional',
+): Expense => ({
+  id: 'e' + date + amount,
+  orgId: 'o1',
+  outletId: null,
+  date,
+  category,
+  amount,
+  walletId: 'w1',
+  description: '',
+  createdAt: '',
+  updatedAt: '',
+  deletedAt: null,
 });
 
 describe('computeKpis', () => {
   it('aggregates revenue, expense, profit, and wallet totals', () => {
     const wallets: Wallet[] = [
-      { id: 'w1', orgId: 'o1', outletId: null, name: 'Tunai', balance: 1000, sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null },
+      {
+        id: 'w1',
+        orgId: 'o1',
+        outletId: null,
+        name: 'Tunai',
+        balance: 1000,
+        sortOrder: 0,
+        createdAt: '',
+        updatedAt: '',
+        deletedAt: null,
+      },
     ];
     const kpis = computeKpis(
       [baseSvc({ status: 'pengerjaan' })],
@@ -68,7 +105,14 @@ describe('computeKpis', () => {
   });
 
   it('excludes out-of-range income', () => {
-    const kpis = computeKpis([], [income('2026-05-01', 999)], [], [], '2026-06-01', '2026-06-30');
+    const kpis = computeKpis(
+      [],
+      [income('2026-05-01', 999)],
+      [],
+      [],
+      '2026-06-01',
+      '2026-06-30',
+    );
     expect(kpis.revenue).toBe(0);
   });
 });
@@ -89,8 +133,38 @@ describe('technicianLeaderboard', () => {
 describe('computeAlerts', () => {
   it('flags confirmation, stock, and ready units', () => {
     const inv: InventoryItem[] = [
-      { id: 'a', orgId: 'o1', outletId: null, name: 'X', category: '', sku: '', stock: 0, minStock: 2, costPrice: 0, sellPrice: 0, supplierId: null, createdAt: '', updatedAt: '', deletedAt: null },
-      { id: 'b', orgId: 'o1', outletId: null, name: 'Y', category: '', sku: '', stock: 1, minStock: 3, costPrice: 0, sellPrice: 0, supplierId: null, createdAt: '', updatedAt: '', deletedAt: null },
+      {
+        id: 'a',
+        orgId: 'o1',
+        outletId: null,
+        name: 'X',
+        category: '',
+        sku: '',
+        stock: 0,
+        minStock: 2,
+        costPrice: 0,
+        sellPrice: 0,
+        supplierId: null,
+        createdAt: '',
+        updatedAt: '',
+        deletedAt: null,
+      },
+      {
+        id: 'b',
+        orgId: 'o1',
+        outletId: null,
+        name: 'Y',
+        category: '',
+        sku: '',
+        stock: 1,
+        minStock: 3,
+        costPrice: 0,
+        sellPrice: 0,
+        supplierId: null,
+        createdAt: '',
+        updatedAt: '',
+        deletedAt: null,
+      },
     ];
     const alerts = computeAlerts(
       [
@@ -113,9 +187,38 @@ describe('computeAlerts', () => {
   });
 });
 
+describe('capital flows are never counted as business performance', () => {
+  it('computeKpis ignores Modal and Prive', () => {
+    const kpis = computeKpis(
+      [],
+      [income('2026-06-02', 500000), income('2026-06-03', 13500000, 'Modal')],
+      [expense('2026-06-02', 200000), expense('2026-06-04', 9000000, 'Prive')],
+      [],
+      '2026-06-01',
+      '2026-06-30',
+    );
+    expect(kpis.revenue).toBe(500000);
+    expect(kpis.expense).toBe(200000);
+    expect(kpis.netProfit).toBe(300000);
+  });
+
+  it('revenueSeries ignores Modal', () => {
+    const series = revenueSeries(
+      [income('2026-06-02', 100), income('2026-06-02', 13500000, 'Modal')],
+      7,
+      new Date('2026-06-02T12:00:00'),
+    );
+    expect(series.values[series.values.length - 1]).toBe(100);
+  });
+});
+
 describe('revenueSeries', () => {
   it('builds a series of the requested length', () => {
-    const series = revenueSeries([income('2026-06-02', 100)], 7, new Date('2026-06-02T12:00:00'));
+    const series = revenueSeries(
+      [income('2026-06-02', 100)],
+      7,
+      new Date('2026-06-02T12:00:00'),
+    );
     expect(series.labels).toHaveLength(7);
     expect(series.values).toHaveLength(7);
     expect(series.values[6]).toBe(100); // today is last

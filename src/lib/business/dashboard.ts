@@ -6,6 +6,7 @@
 import type { Service, Income, Expense, Wallet, InventoryItem } from '@/data/types';
 import { isInRange, localDateOf, localDateStr } from '@/lib/time';
 import { isActive, isAwaitingPickup } from './services';
+import { operatingIncomes, operatingExpenses } from './finance';
 
 export interface DashboardKpis {
   unitsIn: number;
@@ -25,10 +26,12 @@ export function computeKpis(
   to: string,
 ): DashboardKpis {
   const inRange = services.filter((s) => isInRange(localDateOf(s.createdAt), from, to));
-  const revenue = incomes
+  // Setoran modal / prive pemilik disaring dulu — uangnya nyata tapi bukan
+  // omzet, dan dulu ikut terhitung sehingga laba tampak jauh lebih besar.
+  const revenue = operatingIncomes(incomes)
     .filter((i) => isInRange(i.date, from, to))
     .reduce((sum, i) => sum + i.amount, 0);
-  const expense = expenses
+  const expense = operatingExpenses(expenses)
     .filter((e) => isInRange(e.date, from, to))
     .reduce((sum, e) => sum + e.amount, 0);
   return {
@@ -52,7 +55,11 @@ export function technicianLeaderboard(services: Service[]): TechStat[] {
   for (const s of services) {
     if (!s.technicianName) continue;
     if (s.status !== 'selesai' && s.status !== 'lunas') continue;
-    const cur = map.get(s.technicianName) ?? { name: s.technicianName, completed: 0, revenue: 0 };
+    const cur = map.get(s.technicianName) ?? {
+      name: s.technicianName,
+      completed: 0,
+      revenue: 0,
+    };
     cur.completed += 1;
     cur.revenue += s.finalCost;
     map.set(s.technicianName, cur);
@@ -80,7 +87,11 @@ export function computeAlerts(services: Service[], inventory: InventoryItem[]): 
 
   const outOfStock = inventory.filter((i) => i.stock <= 0).length;
   if (outOfStock > 0) {
-    alerts.push({ tone: 'danger', icon: 'fa-box-open', message: `${outOfStock} sparepart habis` });
+    alerts.push({
+      tone: 'danger',
+      icon: 'fa-box-open',
+      message: `${outOfStock} sparepart habis`,
+    });
   }
   const lowStock = inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
   if (lowStock > 0) {
@@ -104,12 +115,17 @@ export function computeAlerts(services: Service[], inventory: InventoryItem[]): 
 }
 
 /** Revenue series for the last N days (for the trend chart). */
-export function revenueSeries(incomes: Income[], days: number, today: Date = new Date()): {
+export function revenueSeries(
+  incomes: Income[],
+  days: number,
+  today: Date = new Date(),
+): {
   labels: string[];
   values: number[];
 } {
   const labels: string[] = [];
   const values: number[] = [];
+  const operating = operatingIncomes(incomes);
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -118,7 +134,9 @@ export function revenueSeries(incomes: Income[], days: number, today: Date = new
     const iso = localDateStr(d);
     labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
     values.push(
-      incomes.filter((inc) => inc.date === iso).reduce((sum, inc) => sum + inc.amount, 0),
+      operating
+        .filter((inc) => inc.date === iso)
+        .reduce((sum, inc) => sum + inc.amount, 0),
     );
   }
   return { labels, values };

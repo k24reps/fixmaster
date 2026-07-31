@@ -364,3 +364,23 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Catatan arus kas pemilik (modal/prive) di bawah panel ringkasan. Sengaja
+   satu baris redup, bukan kartu keempat — dia konteks, bukan KPI. */
+.capitalNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: calc(-1 * var(--space-2)) 0 0;
+  padding: 10px var(--space-4);
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.capitalNote strong {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}

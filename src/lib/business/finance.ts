@@ -58,19 +58,54 @@ export function transfer(from: Wallet, to: Wallet, amount: number): TransferResu
   };
 }
 
+// ---------- Modal pemilik vs uang operasional ----------
+/**
+ * Arus kas pemilik: uangnya BENAR-BENAR bergerak (saldo wallet berubah, baris
+ * tetap tampil di Buku Kas), tapi bukan hasil/ongkos berdagang — jadi tak
+ * boleh ikut dihitung sebagai omzet maupun laba.
+ *
+ * Ini satu-satunya sumber kebenarannya. Setiap agregasi uang WAJIB menyaring
+ * lewat `operatingIncomes`/`operatingExpenses`, bukan menjumlah mentah — bug
+ * yang melahirkan aturan ini: suntikan modal pemilik terhitung sebagai
+ * pemasukan, menggelembungkan laba 43% tanpa satu pun error.
+ */
+export const CAPITAL_INCOME_CATEGORY = 'Modal';
+export const CAPITAL_EXPENSE_CATEGORY = 'Prive';
+
+/** True bila baris ini arus kas pemilik, bukan pendapatan/biaya usaha. */
+export function isCapitalFlow(row: { category: string }): boolean {
+  return (
+    row.category === CAPITAL_INCOME_CATEGORY || row.category === CAPITAL_EXPENSE_CATEGORY
+  );
+}
+
+/** Buang setoran modal dari deret pemasukan sebelum dijumlahkan. */
+export function operatingIncomes<T extends { category: string }>(incomes: T[]): T[] {
+  return incomes.filter((i) => !isCapitalFlow(i));
+}
+
+/** Buang prive dari deret pengeluaran sebelum dijumlahkan. */
+export function operatingExpenses<T extends { category: string }>(expenses: T[]): T[] {
+  return expenses.filter((e) => !isCapitalFlow(e));
+}
+
 export interface FinanceSummary {
   income: number;
   expense: number;
   net: number;
 }
 
-/** Summarize income/expense totals over a pre-filtered set. */
+/**
+ * Summarize income/expense totals over a pre-filtered set. Setoran modal
+ * (`Modal`) dan penarikan pemilik (`Prive`) disaring DI SINI, bukan di
+ * pemanggil — supaya pemanggil baru tak bisa lupa dan diam-diam berbohong.
+ */
 export function summarize(
-  incomes: Pick<Income, 'amount'>[],
-  expenses: Pick<Expense, 'amount'>[],
+  incomes: Pick<Income, 'amount' | 'category'>[],
+  expenses: Pick<Expense, 'amount' | 'category'>[],
 ): FinanceSummary {
-  const income = incomes.reduce((s, i) => s + i.amount, 0);
-  const expense = expenses.reduce((s, e) => s + e.amount, 0);
+  const income = operatingIncomes(incomes).reduce((s, i) => s + i.amount, 0);
+  const expense = operatingExpenses(expenses).reduce((s, e) => s + e.amount, 0);
   return { income, expense, net: income - expense };
 }
 
