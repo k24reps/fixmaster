@@ -3,7 +3,7 @@
  * unit-testable. The same distance check runs client-side (UX hint) and is
  * re-validated server-side in the clock_in RPC (the real security boundary).
  */
-import type { Outlet } from '@/data/types';
+import type { Attendance, Outlet } from '@/data/types';
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -36,6 +36,43 @@ export function hasGeofence(outlet: Pick<Outlet, 'lat' | 'lng' | 'geofenceRadius
     typeof outlet.geofenceRadiusM === 'number' &&
     outlet.geofenceRadiusM > 0
   );
+}
+
+export interface EmployeeMonthHours {
+  employeeId: string;
+  employeeName: string;
+  /** Days with a recorded check-in (open shifts included). */
+  days: number;
+  totalHours: number;
+}
+
+/**
+ * Total work hours per employee for one month ("YYYY-MM"), highest first.
+ * Sums the stored `totalHours`, so an open shift (no check-out yet) counts as
+ * a present day with zero hours — exactly what the ledger shows.
+ * ponytail: employees with no row that month are absent from the result.
+ */
+export function monthlyHoursByEmployee(
+  rows: Pick<Attendance, 'employeeId' | 'employeeName' | 'date' | 'checkIn' | 'totalHours'>[],
+  month: string,
+): EmployeeMonthHours[] {
+  const acc = new Map<string, EmployeeMonthHours>();
+  for (const r of rows) {
+    if (!r.date?.startsWith(month)) continue;
+    const cur = acc.get(r.employeeId) ?? {
+      employeeId: r.employeeId,
+      employeeName: r.employeeName,
+      days: 0,
+      totalHours: 0,
+    };
+    cur.employeeName = r.employeeName; // newest row wins on rename
+    if (r.checkIn) cur.days += 1;
+    cur.totalHours += r.totalHours || 0;
+    acc.set(r.employeeId, cur);
+  }
+  return [...acc.values()]
+    .map((e) => ({ ...e, totalHours: Math.round(e.totalHours * 100) / 100 }))
+    .sort((a, b) => b.totalHours - a.totalHours || a.employeeName.localeCompare(b.employeeName));
 }
 
 export interface GeofenceCheck {

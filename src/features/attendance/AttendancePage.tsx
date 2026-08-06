@@ -3,10 +3,10 @@ import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Sel
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isSupabaseConfigured, clockIn } from '@/data/supabase-client';
-import { isManager } from '@/config/plans';
+import { isManager, isOwner } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
-import { hasGeofence } from '@/lib/business/attendance';
+import { hasGeofence, monthlyHoursByEmployee } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
 import { localDateStr, localTimeStr, localTimeSec, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
@@ -17,14 +17,20 @@ import styles from './AttendancePage.module.css';
 export function AttendancePage() {
   const { data: attendance, refetch } = useCollection('attendance');
   const { data: outlets } = useCollection('outlets');
+  const { data: employees } = useCollection('employees');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const today = localDateStr();
   const isMgr = me ? isManager(me.role) : false;
+  const owner = me ? isOwner(me.role) : false;
 
   // Manager correction: edit jam / status, or delete a row.
+  // Owner also gets manual entry (absenkan karyawan) — same modal, `creating`.
   const [editRow, setEditRow] = useState<Attendance | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editEmp, setEditEmp] = useState('');
+  const [editDate, setEditDate] = useState(today);
   const [editIn, setEditIn] = useState('');
   const [editOut, setEditOut] = useState('');
   const [editStatus, setEditStatus] = useState('hadir');
@@ -32,38 +38,109 @@ export function AttendancePage() {
   const [editBusy, setEditBusy] = useState(false);
   const [toDelete, setToDelete] = useState<Attendance | null>(null);
 
+  // Owner recap: total work hours per employee for the selected month.
+  const [month, setMonth] = useState(() => today.slice(0, 7));
+  const monthly = useMemo(
+    () => (owner ? monthlyHoursByEmployee(attendance, month) : []),
+    [attendance, month, owner],
+  );
+
+  // Outlet whose geofence applies to this check-in: the active branch if one is
+  // selected, otherwise the primary (or first) outlet.
+  const targetOutlet = useMemo(() => {
+    if (outlets.length === 0) return null;
+    if (activeOutletId) return outlets.find((o) => o.id === activeOutletId) ?? null;
+    return outlets.find((o) => o.isPrimary) ?? outlets[0];
+  }, [outlets, activeOutletId]);
+
   const openEdit = (a: Attendance) => {
     setEditRow(a);
+    setCreating(false);
     setEditIn(a.checkIn ?? '');
     setEditOut(a.checkOut ?? '');
     setEditStatus(a.status);
     setEditNote(a.note ?? '');
   };
 
+  const openCreate = () => {
+    setEditRow(null);
+    setCreating(true);
+    setEditEmp('');
+    setEditDate(today);
+    setEditIn(localTimeStr());
+    setEditOut('');
+    setEditStatus('hadir');
+    setEditNote('');
+  };
+
+  const closeModal = () => {
+    setEditRow(null);
+    setCreating(false);
+  };
+
   const saveEdit = async () => {
-    if (!editRow) return;
+    if (!editRow && !creating) return;
+    const checkIn = editIn.trim() || null;
+    const checkOut = editOut.trim() || null;
+    const totalHours = checkIn && checkOut ? calcHours(checkIn, checkOut) : 0;
     setEditBusy(true);
     try {
-      const checkOut = editOut.trim() || null;
-      await repository.put('attendance', {
-        ...editRow,
-        checkIn: editIn.trim() || null,
-        checkOut,
-        status: editStatus as Attendance['status'],
-        note: editNote.trim(),
-        totalHours: checkOut ? calcHours(editIn.trim() || '00:00', checkOut) : 0,
-      });
-      toast.success('Absensi diperbarui');
-      logActivity({
-        action: 'attendance.update',
-        entityType: 'attendance',
-        entityId: editRow.id,
-        entityLabel: editRow.employeeName,
-        meta: { date: editRow.date, checkIn: editIn.trim(), checkOut: editOut.trim(), status: editStatus },
-      });
-      setEditRow(null);
+      if (creating) {
+        const emp = employees.find((e) => e.id === editEmp);
+        if (!emp) {
+          toast.error('Pilih karyawan dulu');
+          return;
+        }
+        // One row per employee per day — a second one would double-count hours.
+        if (attendance.some((a) => a.employeeId === emp.id && a.date === editDate)) {
+          toast.error(`${emp.name} sudah punya absensi ${fmtDate(editDate)}`);
+          return;
+        }
+        const now = new Date().toISOString();
+        await repository.put('attendance', {
+          id: newId(),
+          orgId,
+          outletId: targetOutlet?.id ?? null,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          date: editDate,
+          status: editStatus as Attendance['status'],
+          checkIn,
+          checkOut,
+          totalHours,
+          note: editNote.trim(),
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        toast.success(`${emp.name} diabsenkan ${fmtDate(editDate)}`);
+        logActivity({
+          action: 'attendance.checkin',
+          entityType: 'attendance',
+          entityLabel: emp.name,
+          meta: { date: editDate, checkIn, checkOut, status: editStatus, manual: true },
+        });
+      } else {
+        await repository.put('attendance', {
+          ...editRow!,
+          checkIn,
+          checkOut,
+          status: editStatus as Attendance['status'],
+          note: editNote.trim(),
+          totalHours,
+        });
+        toast.success('Absensi diperbarui');
+        logActivity({
+          action: 'attendance.update',
+          entityType: 'attendance',
+          entityId: editRow!.id,
+          entityLabel: editRow!.employeeName,
+          meta: { date: editRow!.date, checkIn, checkOut, status: editStatus },
+        });
+      }
+      closeModal();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui absensi');
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan absensi');
     } finally {
       setEditBusy(false);
     }
@@ -87,14 +164,6 @@ export function AttendancePage() {
       setToDelete(null);
     }
   };
-
-  // Outlet whose geofence applies to this check-in: the active branch if one is
-  // selected, otherwise the primary (or first) outlet.
-  const targetOutlet = useMemo(() => {
-    if (outlets.length === 0) return null;
-    if (activeOutletId) return outlets.find((o) => o.id === activeOutletId) ?? null;
-    return outlets.find((o) => o.isPrimary) ?? outlets[0];
-  }, [outlets, activeOutletId]);
 
   const [busy, setBusy] = useState(false);
 
@@ -252,7 +321,17 @@ export function AttendancePage() {
       </div>
 
       <Card glass>
-        <CardHeader icon={<Icon name="users" aria-hidden />} title="Kehadiran Hari Ini" />
+        <CardHeader
+          icon={<Icon name="users" aria-hidden />}
+          title="Kehadiran Hari Ini"
+          action={
+            owner && (
+              <Button size="sm" variant="secondary" onClick={openCreate} iconLeft={<Icon name="plus" aria-hidden />}>
+                Absenkan
+              </Button>
+            )
+          }
+        />
         <CardBody className={styles.noPad}>
           {todayRecords.length === 0 ? (
             <EmptyState
@@ -282,6 +361,44 @@ export function AttendancePage() {
           )}
         </CardBody>
       </Card>
+
+      {owner && (
+        <Card glass>
+          <CardHeader
+            icon={<Icon name="clock" aria-hidden />}
+            title="Total Jam Kerja per Karyawan"
+            action={
+              <input
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className={styles.monthInput}
+                aria-label="Bulan rekap"
+              />
+            }
+          />
+          <CardBody className={styles.noPad}>
+            {monthly.length === 0 ? (
+              <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi bulan ini" />
+            ) : (
+              <div className={styles.ledger}>
+                <div className={styles.recapHead}>
+                  <span>Karyawan</span>
+                  <span className={styles.hours}>Hari</span>
+                  <span className={styles.hours}>Total Jam</span>
+                </div>
+                {monthly.map((r) => (
+                  <div key={r.employeeId} className={styles.recapRow}>
+                    <span className={styles.ledgerName}>{r.employeeName}</span>
+                    <span className={styles.hours}>{r.days}</span>
+                    <span className={styles.hours}>{r.totalHours} jam</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
       <Card glass>
         <CardHeader icon={<Icon name="clock-rotate-left" aria-hidden />} title="Riwayat Absensi" />
@@ -323,18 +440,38 @@ export function AttendancePage() {
       </Card>
 
       <Modal
-        open={editRow !== null}
-        onClose={() => setEditRow(null)}
-        title={`Koreksi Absensi · ${editRow?.employeeName ?? ''}`}
+        open={editRow !== null || creating}
+        onClose={closeModal}
+        title={creating ? 'Absenkan Karyawan' : `Koreksi Absensi · ${editRow?.employeeName ?? ''}`}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditRow(null)}>Batal</Button>
+            <Button variant="secondary" onClick={closeModal}>Batal</Button>
             <Button onClick={saveEdit} loading={editBusy}>Simpan</Button>
           </>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {creating && (
+            <>
+              <Select
+                label="Karyawan"
+                value={editEmp}
+                onChange={(e) => setEditEmp(e.target.value)}
+                placeholder="Pilih karyawan"
+                options={employees
+                  .filter((e) => e.active)
+                  .map((e) => ({ value: e.id, label: e.name }))}
+              />
+              <Input
+                label="Tanggal"
+                type="date"
+                max={today}
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
+            </>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
             <Input label="Jam Masuk" placeholder="HH:MM" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
             <Input label="Jam Keluar" placeholder="HH:MM" value={editOut} onChange={(e) => setEditOut(e.target.value)} />

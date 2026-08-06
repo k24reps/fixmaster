@@ -246,6 +246,43 @@
 }
 
 
+/* ---------- Monthly recap (owner) ---------- */
+.monthInput {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+.recapHead,
+.recapRow {
+  display: grid;
+  grid-template-columns: 2fr 0.7fr 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 11px var(--space-5);
+}
+.recapHead {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.recapRow {
+  border-bottom: 1px dotted var(--border);
+  font-size: var(--text-sm);
+}
+.recapRow:last-child {
+  border-bottom: none;
+}
+.recapRow:hover {
+  background: var(--bg-hover);
+}
+
 /* manager correction column */
 .ledgerHead.withActions,
 .ledgerRow.withActions {

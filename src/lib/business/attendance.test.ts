@@ -3,6 +3,7 @@ import {
   distanceMeters,
   hasGeofence,
   checkWithinGeofence,
+  monthlyHoursByEmployee,
 } from './attendance';
 import type { Outlet } from '@/data/types';
 
@@ -52,6 +53,30 @@ describe('hasGeofence', () => {
 
   it('true when fully configured', () => {
     expect(hasGeofence(mkOutlet({ lat: -6.1, lng: 106.8, geofenceRadiusM: 100 }))).toBe(true);
+  });
+});
+
+describe('monthlyHoursByEmployee', () => {
+  const rows = [
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-01', checkIn: '08:00', totalHours: 8 },
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-02', checkIn: '08:00', totalHours: 7.5 },
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-03', checkIn: '08:00', totalHours: 0 }, // open shift
+    { employeeId: 'e2', employeeName: 'Ani', date: '2026-08-01', checkIn: '09:00', totalHours: 6 },
+    { employeeId: 'e2', employeeName: 'Ani', date: '2026-07-31', checkIn: '09:00', totalHours: 9 }, // other month
+    { employeeId: 'e3', employeeName: 'Cici', date: '2026-08-04', checkIn: null, totalHours: 0 }, // izin
+  ];
+
+  it('sums hours per employee within the month only', () => {
+    const res = monthlyHoursByEmployee(rows, '2026-08');
+    expect(res.map((r) => [r.employeeName, r.totalHours, r.days])).toEqual([
+      ['Budi', 15.5, 3],
+      ['Ani', 6, 1],
+      ['Cici', 0, 0],
+    ]);
+  });
+
+  it('returns nothing for a month with no rows', () => {
+    expect(monthlyHoursByEmployee(rows, '2026-01')).toEqual([]);
   });
 });
 
