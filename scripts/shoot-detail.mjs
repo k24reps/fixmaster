@@ -4,7 +4,7 @@
  * Why this shape: Playwright isolates storage per context, and full page
  * reloads re-bootstrap the app (losing the seeded in-memory session). So we:
  *   1) load the app once,
- *   2) seed (the store reactively flips to "ready" — no reload needed),
+ *   2) wait for the self-seeded demo shell,
  *   3) navigate CLIENT-SIDE by clicking nav/links (React Router, no reload),
  *   4) resize to mobile AFTER navigating (page state stays alive).
  *
@@ -28,30 +28,27 @@ async function capture({ name, theme, mobile }) {
   await page.setViewportSize({ width: 1440, height: 1100 });
 
   // 1) Load app, set theme.
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
 
-  // 2) Seed — store flips to "ready" reactively (no reload).
-  await page.waitForFunction(() => typeof window.__fixmasterSeed === 'function', { timeout: 10000 });
-  await page.evaluate(async () => { await window.__fixmasterSeed(); });
-
-  // 3) Wait for the authenticated shell (sidebar nav appears only when ready).
+  // 2) Wait for the self-seeded demo shell.
   await page.waitForSelector('a[href="/services"]', { timeout: 10000 });
 
-  // 4) Client-side navigate to the services list.
+  // 3) Client-side navigate to the services list.
   await page.click('a[href="/services"]');
   await page.waitForSelector('a[href^="/services/"]', { timeout: 10000 });
 
-  // 5) Open the first ticket (client-side).
+  // 4) Open the first ticket (client-side).
   const first = page.locator('a[href^="/services/"]').first();
   await first.click();
   await page.waitForSelector('text=REPAIR TICKET', { timeout: 10000 });
   await page.waitForTimeout(600);
 
-  // 6) Mobile: resize after navigating; page state persists.
+  // 5) Mobile: resize after navigating; page state persists.
   if (mobile) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(500);

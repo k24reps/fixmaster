@@ -6,7 +6,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -30,6 +30,7 @@
   max-width: 360px;
 }
 .select {
+  min-height: var(--control-h);
   padding: 9px 14px;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
@@ -195,37 +196,6 @@
   opacity: 1;
   color: var(--brand-hover);
 }
-/* ---------- Prominent "Update Status" action ---------- */
-.updateBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-sm);
-  background: var(--brand-soft);
-  border: 1px solid var(--border-brand);
-  color: var(--brand-hover);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-semibold);
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
-}
-.updateBtn:hover {
-  background: var(--brand);
-  color: var(--on-brand);
-  box-shadow: var(--shadow-brand);
-}
-.updateBtn:active {
-  transform: translateY(1px);
-}
-.updateBtn svg {
-  font-size: 0.9em;
-}
 .jobActions {
   display: flex;
   gap: var(--space-1);
@@ -347,13 +317,22 @@
 .actionsCol {
   text-align: right;
   white-space: nowrap;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--bg-surface);
+  box-shadow: -10px 0 18px color-mix(in srgb, var(--bg-base) 12%, transparent);
+}
+.table thead .actionsCol {
+  z-index: 2;
+  background: var(--bg-surface-2);
 }
 .iconBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition:
@@ -366,11 +345,47 @@
 }
 
 /* ---------- Responsive: table → cards ---------- */
-@media (max-width: 720px) {
+@media (max-width: 1100px) {
   .tableWrap {
     display: none;
   }
   .cardList {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .stats {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: minmax(230px, 82vw);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    padding-bottom: var(--space-1);
+  }
+  .stats > * {
+    scroll-snap-align: start;
+  }
+  .toolbar,
+  .filters {
+    align-items: stretch;
+  }
+  .search,
+  .select {
+    width: 100%;
+    max-width: none;
+  }
+  .iconBtn {
+    min-width: var(--control-h);
+    min-height: var(--control-h);
+  }
+  .tableWrap {
+    display: none;
+  }
+  .cardList {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

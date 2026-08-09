@@ -1,5 +1,5 @@
 /**
- * Batch page verification shots — seeds once per context, navigates to each
+ * Batch page verification shots — opens the self-seeded demo, navigates to each
  * route via the sidebar (client-side, keeps session + cache), captures
  * dark/light/mobile for every page in PAGES. One dev server session.
  *
@@ -31,15 +31,12 @@ async function capture({ route, name, ready, theme, width = 1440, height = 1100 
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1440, height: 1100 });
 
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
-
-  await page.waitForFunction(() => typeof window.__fixmasterSeed === 'function', { timeout: 10000 });
-  await page.evaluate(async () => { await window.__fixmasterSeed(); });
-
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
   await page.waitForSelector('a[href="/services"]', { timeout: 10000 });
   await page.click(`a[href="${route}"]`);
   try {

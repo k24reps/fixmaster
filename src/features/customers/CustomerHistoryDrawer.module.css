@@ -9,7 +9,7 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
-  background: rgba(5, 7, 12, 0.62);
+  background: color-mix(in srgb, var(--bg-base) 76%, transparent);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   display: flex;
@@ -54,7 +54,7 @@
 }
 .headLabel {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.14em;
   color: var(--text-muted);
 }
@@ -71,8 +71,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: var(--control-h);
+  height: var(--control-h);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   flex-shrink: 0;
@@ -196,7 +196,7 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .ticketCost {

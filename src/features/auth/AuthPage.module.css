@@ -132,7 +132,7 @@
 .brandFoot {
   position: relative;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.18em;
   color: var(--text-muted);
 }
@@ -234,7 +234,7 @@
 .modeTag {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: 2px 8px;

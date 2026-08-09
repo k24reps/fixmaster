@@ -1,9 +1,9 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 12, 0.62);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: color-mix(in srgb, var(--bg-base) 76%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
@@ -19,7 +19,7 @@
   flex-direction: column;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   animation: fm-scale-in var(--dur-normal) var(--ease-spring);
   position: relative;
@@ -32,7 +32,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: var(--gradient-brand-accent);
   z-index: 1;
 }
@@ -55,7 +55,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   position: relative;
@@ -80,7 +80,7 @@
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: var(--fw-bold);
 }
 /* small status LED on the faceplate */
@@ -94,8 +94,8 @@
   flex-shrink: 0;
 }
 .close {
-  width: 30px;
-  height: 30px;
+  width: var(--control-h);
+  height: var(--control-h);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -104,7 +104,7 @@
   color: var(--text-muted);
   background: var(--bg-surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   transition:
     color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
@@ -119,7 +119,7 @@
 }
 
 .body {
-  padding: var(--space-5);
+  padding: var(--space-6);
   overflow-y: auto;
   flex: 1;
 }
@@ -128,24 +128,26 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 @media (max-width: 600px) {
+  .overlay {
+    align-items: flex-end;
+    padding: var(--space-2);
+  }
   .modal {
     max-width: 100% !important;
+    max-height: calc(100dvh - var(--space-4));
+    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
   }
 }
 
 @media (max-width: 520px) {
-  .overlay {
-    padding: var(--space-2);
-  }
   .modal {
-    max-height: 96vh;
-    border-radius: var(--radius-md);
+    max-height: calc(100dvh - var(--space-4));
   }
   .header {
     padding: var(--space-3) var(--space-3);
@@ -159,6 +161,9 @@
   }
   .footer {
     padding: var(--space-3) var(--space-3);
+    flex-wrap: wrap;
+  }
+  .footer > button {
+    flex: 1;
   }
 }
-

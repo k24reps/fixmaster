@@ -5,11 +5,16 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  min-height: 58px;
+  margin: var(--space-3) var(--space-3) 0;
   padding: var(--space-2) var(--space-5);
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-sm);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(18px);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Corner screws — bench-instrument idiom. */
@@ -57,7 +62,7 @@
 }
 .statusSub {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
@@ -73,14 +78,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  min-height: var(--control-h);
+  padding: 7px 13px;
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
   color: var(--text-secondary);
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -92,13 +98,14 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 16px;
+  min-height: var(--control-h);
+  padding: 8px 17px;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   color: var(--on-brand);
   background: var(--brand);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: filter 0.15s, transform 0.15s;
 }
@@ -117,6 +124,8 @@
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .bar {
+    min-height: 52px;
+    margin: var(--space-2) var(--space-2) 0;
     padding: var(--space-2) var(--space-3);
   }
   .statusSub {

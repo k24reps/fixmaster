@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -46,8 +46,23 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const contentRef = useRef<HTMLElement>(null);
   const t = useT();
   useBackupReminder();
+
+  useEffect(() => {
+    // React Router does not reset custom scroll containers. The demo runs the
+    // real app inside one, so reset both it and the document on every route.
+    let parent = contentRef.current?.parentElement;
+    while (parent) {
+      const overflowY = window.getComputedStyle(parent).overflowY;
+      if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight) {
+        parent.scrollTo({ top: 0, behavior: 'auto' });
+      }
+      parent = parent.parentElement;
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   const current = NAV_ITEMS.find((n) =>
     n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to),
@@ -70,7 +85,7 @@ export function AppLayout() {
           subtitle={subtitle}
           onToggleMobile={() => setMobileOpen((o) => !o)}
         />
-        <main className={styles.content}>
+        <main ref={contentRef} className={styles.content}>
           <ErrorBoundary resetKey={location.pathname}>
             <Suspense
               fallback={

@@ -6,7 +6,7 @@ import { repository } from '@/data';
 import { Wizard } from '@/features/onboarding/Wizard';
 import { PinLogin } from '@/features/auth/PinLogin';
 import { AuthPage } from '@/features/auth/AuthPage';
-import { LandingPage } from '@/features/landing/LandingPage';
+import { LandingPageV2 } from '@/features/landing/LandingPageV2';
 import styles from './AuthGate.module.css';
 
 interface AuthGateProps {
@@ -92,7 +92,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return showAuth ? (
       <AuthPage onBack={() => setShowAuth(false)} />
     ) : (
-      <LandingPage onStart={() => setShowAuth(true)} />
+      <LandingPageV2 onStart={() => setShowAuth(true)} />
     );
   }
 

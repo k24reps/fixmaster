@@ -346,7 +346,7 @@ export function PosPage() {
         )}
       </div>
 
-      <Card glass className={styles.cartPanel}>
+      <Card id="pos-cart" glass className={styles.cartPanel}>
         <div className={styles.register}>
           <div className={styles.registerTop}>
             <span className={styles.live}>LIVE</span>
@@ -469,6 +469,21 @@ export function PosPage() {
         )}
       </Card>
       </div>
+      )}
+
+      {tab === 'pos' && cart.length > 0 && (
+        <button
+          type="button"
+          className={styles.mobileCartDock}
+          onClick={() => document.getElementById('pos-cart')?.scrollIntoView({ behavior: 'smooth' })}
+          aria-label={`Buka keranjang, ${totalQty} unit, total ${totalText}`}
+        >
+          <span>
+            <Icon name="cart-shopping" aria-hidden /> {totalQty} unit
+          </span>
+          <strong>{totalText}</strong>
+          <Icon name="arrow-right" aria-hidden />
+        </button>
       )}
 
       {tab === 'history' && isMgr && (

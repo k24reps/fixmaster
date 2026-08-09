@@ -1,8 +1,10 @@
 .card {
   position: relative;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--text-primary) 2.5%, transparent), transparent 38%),
+    var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   transition:
     transform var(--dur-normal) var(--ease-out),
@@ -21,7 +23,7 @@
   cursor: pointer;
 }
 .interactive:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-brand);
 }
@@ -30,7 +32,7 @@
   padding: var(--space-5);
 }
 
-/* ---------- Accent top bar ---------- */
+/* ---------- Diagnostic spine ---------- */
 .accent_brand::before,
 .accent_success::before,
 .accent_warning::before,
@@ -38,25 +40,26 @@
 .accent_info::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 14px;
   left: 0;
-  right: 0;
-  height: 3px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 .accent_brand::before {
   background: var(--gradient-brand);
 }
 .accent_success::before {
-  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  background: linear-gradient(180deg, var(--green-500), var(--green-400));
 }
 .accent_warning::before {
-  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+  background: linear-gradient(180deg, var(--amber-500), var(--amber-400));
 }
 .accent_danger::before {
-  background: linear-gradient(90deg, var(--red-500), var(--red-400));
+  background: linear-gradient(180deg, var(--red-500), var(--red-400));
 }
 .accent_info::before {
-  background: linear-gradient(90deg, var(--blue-500), var(--blue-400));
+  background: linear-gradient(180deg, var(--blue-500), var(--blue-400));
 }
 
 /* ---------- Header ---------- */
@@ -65,18 +68,25 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border);
+  padding: 18px var(--space-5);
+  border-bottom: 1px dotted var(--border-strong);
 }
 .title {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-md);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
 }
 .headerIcon {
-  color: var(--brand-hover);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid var(--border-brand);
+  border-radius: var(--radius-sm);
   font-size: 0.9em;
 }
 .action {
@@ -86,5 +96,10 @@
 }
 
 .body {
-  padding: var(--space-5);
+  padding: var(--space-6);
+}
+
+@media (max-width: 640px) {
+  .header { padding: var(--space-4); }
+  .body { padding: var(--space-4); }
 }

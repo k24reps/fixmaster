@@ -1,5 +1,5 @@
 /**
- * Dashboard redesign verification shots. Seeds data, then captures the
+ * Dashboard redesign verification shots. Opens the self-seeded demo, then captures the
  * full dashboard in dark + light (desktop) and dark (mobile).
  *
  * Run:  BASE_URL=http://localhost:5173 node scripts/shoot-dashboard.mjs
@@ -17,13 +17,12 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const browser = await chromium.launch();
 
 async function ready(page, theme) {
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
-  await page.waitForFunction(() => typeof window.__fixmasterSeed === 'function', { timeout: 10000 });
-  await page.evaluate(async () => { await window.__fixmasterSeed(); });
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
   await page.waitForSelector('a[href="/services"]', { timeout: 10000 });
   await page.waitForTimeout(700);
 }

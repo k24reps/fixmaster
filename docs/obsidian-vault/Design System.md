@@ -40,6 +40,40 @@ Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
 > [!tip] Prinsip
 > "Bahasa visual bersama, bukan asal beda." Tiap halaman punya alat sendiri, tapi semua memakai token + motif yang sama. Lihat [[Signature Pages]].
 
+## Bench OS V2 — fondasi lintas aplikasi (9 Agu 2026)
+
+Landing `Repair Flow Console` kini menjadi acuan visual seluruh produk. Konsistensi
+tidak ditempel satu per satu di setiap halaman, tetapi dikunci lewat fondasi bersama:
+
+- **Chassis**: sidebar dan topbar menjadi panel instrumen mengambang dengan border
+  tegas, radius besar, bayangan dalam, dan ruang napas yang sama dengan landing.
+- **Primitive**: `Button`, `Card`, `StatCard`, field form, badge, modal, toast, dan empty
+  state memakai ukuran sentuh, radius, label mono, diagnostic spine, serta dotted seam
+  yang seragam. Halaman fitur otomatis mewarisi bahasa ini tanpa wrapper baru.
+- **Token**: radius (`5/8/12/16/24`), tinggi kontrol (`44/54`), lebar rail (`278/78`),
+  tinggi topbar (`76`), readout LCD, warna kertas, WhatsApp, dan warna teks di atas
+  bidang solid semuanya memiliki token; CSS fitur tidak mengulang hex/rgba.
+- **Mobile**: topbar tetap berupa faceplate ringkas; sidebar berubah menjadi drawer
+  mengambang dengan inset 8 px; modal berubah seperti bottom sheet; kontrol utama
+  minimal 44 px dan footer modal menjadi tombol selebar panel.
+- **Kontrak ergonomi operasional**: teks daun yang membawa informasi/aksi tidak boleh
+  lebih kecil dari 12 px; kontrol pada viewport mobile, perangkat sentuh, atau pointer
+  kasar memiliki area minimal 44×44 px. Ornamen non-interaktif boleh lebih kecil bila
+  tidak membawa informasi penting.
+- **KPI rail**: deret metrik yang panjang tetap satu baris pada mobile dan digeser
+  horizontal. Konten kerja utama (filter, daftar, grafik, buku kas) harus sudah terlihat
+  di viewport pertama, bukan terdorong oleh dinding kartu ringkasan.
+- **Responsive by task**: tabel servis hanya dipakai saat seluruh kolom penting dapat
+  terbaca; tablet memakai dua kolom job card dan mobile satu kolom. Aksi kritis tidak
+  boleh tersembunyi oleh overflow atau sticky column yang terlalu lebar.
+- **Navigasi**: pergantian route selalu mereset semua ancestor yang bisa di-scroll,
+  bukan hanya `window`, karena shell desktop menggulirkan elemen `<main>` sendiri.
+
+Render asli setelah reset fondasi:
+
+![[bench-os-v2-desktop-dark.png]]
+![[bench-os-v2-mobile-dark.png]]
+
 ## Maskot: "Volt" (17 Jul 2026)
 
 Robot bengkel mungil yang **seluruh anatominya lahir dari idiom bench** (bukan clipart):

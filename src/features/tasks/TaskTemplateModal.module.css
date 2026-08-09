@@ -85,7 +85,7 @@
 .dayActive {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--on-solid);
 }
 
 /* ---------- Item editor (the template's contents) ---------- */
@@ -123,8 +123,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);

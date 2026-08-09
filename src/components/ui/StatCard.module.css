@@ -1,14 +1,16 @@
 .card {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
-  background: var(--surface-glass);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--text-primary) 2.5%, transparent), transparent 42%),
+    var(--surface-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   overflow: hidden;
   transition:
     transform var(--dur-normal) var(--ease-out),
@@ -18,20 +20,21 @@
 .card::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: var(--space-4);
   left: 0;
-  right: 0;
-  height: 3px;
+  bottom: var(--space-4);
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 .card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-strong);
 }
 
 .iconWrap {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -42,20 +45,24 @@
 
 .info {
   flex: 1;
+  width: 100%;
   min-width: 0;
 }
 .label {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 3px;
   font-weight: var(--fw-medium);
 }
 .value {
-  font-size: var(--text-xl);
+  font-size: clamp(1.05rem, 1.7vw, var(--text-xl));
   font-weight: var(--fw-bold);
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   line-height: 1.2;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .trend {
   display: inline-flex;
@@ -81,35 +88,35 @@
   color: var(--brand-hover);
 }
 .success::before {
-  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  background: linear-gradient(180deg, var(--green-500), var(--green-400));
 }
 .success .iconWrap {
   background: var(--success-soft);
   color: var(--green-400);
 }
 .warning::before {
-  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+  background: linear-gradient(180deg, var(--amber-500), var(--amber-400));
 }
 .warning .iconWrap {
   background: var(--warning-soft);
   color: var(--amber-400);
 }
 .danger::before {
-  background: linear-gradient(90deg, var(--red-500), var(--red-400));
+  background: linear-gradient(180deg, var(--red-500), var(--red-400));
 }
 .danger .iconWrap {
   background: var(--danger-soft);
   color: var(--red-400);
 }
 .info::before {
-  background: linear-gradient(90deg, var(--blue-500), var(--blue-400));
+  background: linear-gradient(180deg, var(--blue-500), var(--blue-400));
 }
 .info .iconWrap {
   background: var(--info-soft);
   color: var(--blue-400);
 }
 .accent::before {
-  background: linear-gradient(90deg, var(--accent-500), var(--accent-400));
+  background: linear-gradient(180deg, var(--accent-500), var(--accent-400));
 }
 .accent .iconWrap {
   background: var(--accent-soft);

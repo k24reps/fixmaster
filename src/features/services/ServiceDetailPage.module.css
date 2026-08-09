@@ -68,7 +68,7 @@
 }
 .codeMeta {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.22em;
   color: var(--text-muted);
   border: 1px solid var(--border-strong);
@@ -209,7 +209,7 @@
 }
 .stageAt {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .stageDone .stageNode {
@@ -248,7 +248,7 @@
 }
 .panelLabel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.18em;
   color: var(--text-muted);
   margin-bottom: var(--space-4);
@@ -299,8 +299,8 @@
   transition: all var(--dur-fast) var(--ease-out);
 }
 .waBtn {
-  background: #25d366;
-  color: #06351a;
+  background: var(--whatsapp);
+  color: var(--whatsapp-ink);
   border: none;
 }
 .waBtn:hover {
@@ -476,7 +476,7 @@
   text-align: right;
 }
 .bomState {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -499,8 +499,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-xs);
   border: 1px solid transparent;
   background: transparent;
@@ -516,8 +516,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-xs);
   border: 1px solid transparent;
   background: transparent;
@@ -638,7 +638,7 @@
 }
 .internalTag {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -708,6 +708,7 @@
   font-size: var(--text-base);
   font-weight: var(--fw-semibold);
   padding: 11px 18px;
+  min-height: var(--control-h);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);

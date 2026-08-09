@@ -15,6 +15,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: 8px 16px;
+  min-height: var(--control-h);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
@@ -36,10 +37,18 @@
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
-  max-width: 460px;
+  max-width: 960px;
+  align-items: start;
+}
+.form .logoRow {
+  grid-column: 1 / -1;
+}
+.form > button {
+  justify-self: start;
+  min-width: 220px;
 }
 
 /* ---------- Logo uploader ---------- */
@@ -125,6 +134,23 @@
    390px line — controls wrap to their own full-width line, right-aligned,
    and the row itself is allowed to wrap. */
 @media (max-width: 640px) {
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: var(--space-1);
+  }
+  .tab {
+    flex: 0 0 auto;
+  }
+  .form {
+    grid-template-columns: 1fr;
+  }
+  .form .logoRow,
+  .form > button {
+    grid-column: auto;
+    width: 100%;
+  }
   .listItem {
     flex-wrap: wrap;
     row-gap: var(--space-2);
@@ -177,7 +203,7 @@
   gap: 5px;
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.02em;
   color: var(--brand-hover);
   max-width: 100%;
@@ -395,7 +421,7 @@
   object-fit: contain;
   margin: var(--space-3) 0;
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
   padding: var(--space-2);
 }
 
@@ -485,7 +511,7 @@
   top: var(--space-3);
   right: var(--space-3);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 2px 7px;

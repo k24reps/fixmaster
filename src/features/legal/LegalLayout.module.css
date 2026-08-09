@@ -58,7 +58,7 @@
 }
 .brandModel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.16em;
   color: var(--text-muted);
 }

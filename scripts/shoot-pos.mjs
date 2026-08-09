@@ -1,5 +1,5 @@
 /**
- * POS "Register Readout" verification — seeds data, opens POS, fills the cart
+ * POS "Register Readout" verification — opens the self-seeded demo, fills the cart
  * by clicking product cards, then screenshots the register/receipt so we can
  * confirm the LCD total, perforated receipt, and mechanical keys render.
  *
@@ -23,14 +23,12 @@ async function capture({ name, theme, width = 1440, height = 1100, fill = true }
   // Always start at desktop width so the sidebar nav link is reachable.
   await page.setViewportSize({ width: 1440, height: 1100 });
 
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
-
-  await page.waitForFunction(() => typeof window.__fixmasterSeed === 'function', { timeout: 10000 });
-  await page.evaluate(async () => { await window.__fixmasterSeed(); });
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
 
   // Navigate to POS via the sidebar (client-side, keeps the session alive).
   await page.waitForSelector('a[href="/pos"]', { timeout: 10000 });

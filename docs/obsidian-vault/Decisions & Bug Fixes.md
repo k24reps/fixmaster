@@ -864,3 +864,50 @@ Perbaikan: `setupNotice` di session store menampung pesan server saat klaim gaga
 > Setelah 0042, cabang error praktis **tak terjangkau dari alur boot**: klaim hanya dipanggil bila `getMyMembership()` null (tak ada membership aktif & tak terhapus), sedangkan guard lintas-toko justru mensyaratkan ADA membership aktif & tak terhapus di org lain. Dua syarat itu tak bisa benar bersamaan. Kegagalan yang realistis adalah yang **senyap** — undangan tak cocok karena email meleset → `claim_invite` mengembalikan null tanpa error. Itu yang ditangkap peringatan statis. Cabang error tetap dipertahankan sebagai jaring pengaman untuk error tak terduga (jaringan, auth, guard baru di masa depan); menelannya kembali ke `catch(() => null)` berarti mengulang kesalahan yang sama.
 
 **Verifikasi**: akun sekali-pakai dibuat di **staging** (bukan produksi), login lewat UI asli sampai mendarat di wizard cloud, pita peringatan terbukti tampil; akun lalu dihapus.
+
+## Audit UI + UX menyeluruh — ergonomi, hierarki tugas, dan kejujuran data (9 Agu 2026)
+
+Audit mencakup render visual **dan** heuristic UX pada 12 route operasional, dark/light,
+desktop 1440 px, tablet 1024 px, dan mobile 390×844. Pemeriksaan terukur: overflow
+horizontal, teks informasi di bawah 12 px, target sentuh di bawah 44×44 px, posisi
+konten utama pada viewport pertama, state kosong, hierarki aksi, dan konsistensi data.
+
+**Akar masalah dan perbaikan lintas-app:**
+
+- Font root 14 px + micro-copy 0.5–0.7 rem membuat label operasional terlalu kecil.
+  Root kembali 16 px, token `xs/sm/base` dinaikkan, dan teks daun operasional memiliki
+  floor 12 px. Kontrol mobile/touch dipagari 44×44 px melalui fondasi global.
+- Deret KPI yang wrap mendorong pekerjaan nyata jauh ke bawah. Dashboard, Servis,
+  Keuangan, Laporan, dan Inventori memakai horizontal rail di mobile sehingga filter,
+  daftar, grafik, atau buku kas terlihat pada viewport pertama.
+- Tabel Servis tablet menyembunyikan kolom aksi. Breakpoint ≤1100 px kini memakai job
+  card dua kolom; desktop mempertahankan tabel dan action column sticky yang lebih
+  ringkas.
+- Shell menggulirkan `<main>`, tetapi perpindahan route hanya mengubah lokasi sehingga
+  detail tiket terbuka pada posisi scroll halaman lama. `AppLayout` sekarang mereset
+  `window` dan semua ancestor scrollable setiap `location.pathname` berubah.
+
+**Temuan UX/data trust:**
+
+- Tiket `lunas` salah menyebut total biaya sebagai “sisa tagihan”; tiket tanpa biaya
+  final menampilkan Rp0 seolah pasti. Readout kini membedakan `Lunas`, `Belum
+  ditetapkan`, dan `Menunggu biaya final`.
+- Aksi `Tandai Diambil` dapat muncul saat unit masih `pengerjaan`. Syarat kini memakai
+  `isAwaitingPickup(service)` atau state yang memang sudah diambil.
+- POS mobile tidak memberi jalan cepat kembali ke keranjang. Dock persisten baru
+  menampilkan jumlah + total dan melakukan scroll ke register.
+- Month input Absensi menampilkan nama bulan berdasarkan locale OS/browser, bukan
+  locale aplikasi. Native picker tetap dipakai sebagai overlay, tetapi readout terlihat
+  diformat melalui `useFormat`.
+
+Halaman publik/legacy ikut diselaraskan: Tracking menjadi customer status terminal,
+404 menjadi route diagnostic, PIN login dan onboarding menjadi access faceplate, serta
+Prototype diperbaiki kontras + overflow mobile. Landing V2 yang sudah disetujui tetap
+dipertahankan; hanya floating WhatsApp mobile diringkas menjadi target 52×52 px.
+
+**Verifikasi:** 12/12 route pada mobile dan desktop memiliki nol overflow horizontal;
+mobile memiliki nol teks daun <12 px dan nol kontrol <44×44 px. Tablet Servis memakai
+job card dua kolom. Build, lint, dan 435 unit test hijau; interaksi cart dock serta reset
+scroll diverifikasi melalui browser asli.
+
+#decision #bugfix #ux #ui

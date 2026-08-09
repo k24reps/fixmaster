@@ -4,19 +4,28 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+  min-height: 240px;
   padding: var(--space-12) var(--space-6);
   color: var(--text-muted);
 }
 .icon {
-  font-size: 2.6rem;
-  margin-bottom: var(--space-3);
-  opacity: 0.35;
-  color: var(--brand-hover);
+  position: relative;
+  width: 68px;
+  height: 68px;
+  margin-bottom: var(--space-4);
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px dotted var(--border-brand);
+  border-radius: var(--radius-full);
+  font-size: 1.7rem;
 }
 .title {
-  font-size: var(--text-md);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
   margin-bottom: var(--space-1);
 }
 .desc {

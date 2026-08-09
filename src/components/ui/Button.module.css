@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  min-height: var(--control-h);
   border-radius: var(--radius-sm);
   font-family: var(--font-sans);
   font-weight: var(--fw-semibold);
@@ -30,15 +31,18 @@
 
 /* ---------- Sizes ---------- */
 .sm {
-  padding: 6px 12px;
+  min-height: 40px;
+  padding: 6px 13px;
   font-size: var(--text-xs);
 }
 .md {
+  min-height: var(--control-h);
   padding: 9px 18px;
   font-size: var(--text-sm);
 }
 .lg {
-  padding: 12px 24px;
+  min-height: 50px;
+  padding: 12px 22px;
   font-size: var(--text-base);
 }
 
@@ -53,13 +57,13 @@
   box-shadow: var(--shadow-brand);
 }
 .primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(245, 166, 35, 0.42);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-brand);
 }
 
 .secondary {
-  background: var(--bg-surface-2);
-  color: var(--text-secondary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   border-color: var(--border-strong);
 }
 .secondary:hover:not(:disabled) {
@@ -79,22 +83,22 @@
 
 .danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-solid);
 }
 .danger:hover:not(:disabled) {
   background: var(--red-600);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 .success {
   background: var(--success);
-  color: #fff;
+  color: var(--on-solid);
 }
 .success:hover:not(:disabled) {
   background: var(--green-600);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 .spin {

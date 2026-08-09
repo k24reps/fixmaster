@@ -33,9 +33,15 @@ Tombol bergaya channel-switch dengan LED status (cyan = Semua Outlet, amber = ca
 
 ## Responsif
 
-- **Expanded (desktop)** — rail penuh dengan label + readout
-- **Collapsed** — menara LED; status pindah ke pojok ikon, item idle disembunyikan
-- **Mobile** — drawer selalu tampil penuh (bukan menara)
+- **Expanded (desktop)** — rail penuh dengan label + readout, kini berupa chassis
+  mengambang (inset 14 px, radius 16 px, full border + shadow) agar sefamili dengan
+  landing `Repair Flow Console`.
+- **Collapsed** — menara LED 78 px; status pindah ke pojok ikon, item idle disembunyikan.
+- **Mobile** — drawer selalu tampil penuh (bukan menara), mengambang dengan inset 8 px.
+  Posisi tertutup memakai translasi melebihi lebar panel supaya tidak meninggalkan
+  garis 8 px di tepi layar.
+- **Pasangan shell** — topbar juga menjadi faceplate sticky mengambang; pada mobile
+  judul, pencarian, tema, dan notifikasi tetap berada dalam panel 60 px yang ringkas.
 
 ![[rail-expanded-dark.png]]
 ![[rail-collapsed-dark.png]]

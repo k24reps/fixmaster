@@ -43,6 +43,34 @@
   flex: 1;
 }
 
+.poSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.poSummary > span {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass);
+}
+.poSummary small {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.poSummary strong {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+}
+
 /* ---------- PO docket list ---------- */
 .docketList {
   display: flex;
@@ -130,19 +158,20 @@
   align-items: center;
   gap: 6px;
   padding: 7px 13px;
+  min-height: 40px;
   border-radius: var(--radius-sm);
   background: var(--success-soft);
   color: var(--green-400);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
   border-bottom-width: 3px;
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
 }
 .receiveBtn:hover {
   background: var(--success);
-  color: #fff;
+  color: var(--on-solid);
 }
 .receiveBtn:active {
   transform: translateY(2px);
@@ -153,8 +182,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
@@ -164,7 +193,7 @@
 .voidBtn:hover {
   background: var(--danger-soft);
   color: var(--red-400);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 /* ---------- Vendor cards ---------- */
@@ -223,7 +252,7 @@
 }
 .vendorId {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -270,7 +299,7 @@
 }
 .vendorStatLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -290,8 +319,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
@@ -309,6 +338,19 @@
 }
 
 @media (max-width: 640px) {
+  .tabs {
+    flex-wrap: wrap;
+  }
+  .spacer {
+    display: none;
+  }
+  .tabs > button:last-child {
+    width: 100%;
+  }
+  .poSummary {
+    grid-template-columns: repeat(3, minmax(100px, 1fr));
+    overflow-x: auto;
+  }
   .docket {
     grid-template-columns: 92px 1fr;
     row-gap: var(--space-2);

@@ -119,7 +119,6 @@ export function Sidebar({
                   <Icon
                     name={item.icon}
                     className={styles.navIcon}
-                    style={{ color: item.color }}
                     aria-hidden
                   />
                   <span className={styles.navLabel}>{t(item.labelKey)}</span>
@@ -145,7 +144,6 @@ export function Sidebar({
                 <Icon
                   name={item.icon}
                   className={styles.navIcon}
-                  style={{ color: item.color }}
                   aria-hidden
                 />
                 <span className={styles.navLabel}>{t(item.labelKey)}</span>

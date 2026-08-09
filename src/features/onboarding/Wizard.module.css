@@ -8,6 +8,10 @@
   justify-content: center;
   padding: var(--space-6);
   overflow-y: auto;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 30px 30px;
 }
 
 .container {
@@ -18,8 +22,10 @@
 }
 
 .header {
-  text-align: center;
+  text-align: left;
   margin-bottom: var(--space-6);
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--brand);
 }
 .logo {
   display: inline-flex;
@@ -38,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-brand);
   font-size: 1.2rem;
   box-shadow: var(--shadow-brand);
 }
@@ -87,7 +93,7 @@
 }
 .devHint {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -107,7 +113,7 @@
 .dot {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,13 +129,13 @@
 .dot.active {
   border-color: var(--brand);
   background: var(--brand);
-  color: #fff;
-  box-shadow: 0 0 16px rgba(108, 92, 231, 0.45);
+  color: var(--on-brand);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .dot.done {
   border-color: var(--success);
   background: var(--success);
-  color: #fff;
+  color: var(--on-solid);
 }
 .dotLabel {
   font-size: var(--text-xs);
@@ -139,19 +145,35 @@
 .line {
   width: 28px;
   height: 2px;
-  background: var(--border-strong);
+  background: repeating-linear-gradient(90deg, var(--border-strong) 0 4px, transparent 4px 8px);
 }
 
 /* ---------- Card ---------- */
 .card {
+  position: relative;
   background: var(--surface-glass);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
+  border-top: 3px solid var(--brand);
   padding: var(--space-8);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
 }
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.45;
+}
+.card::before { left: 12px; }
+.card::after { right: 12px; }
 .step {
   animation: fm-slide-up var(--dur-normal) var(--ease-out);
 }
@@ -194,6 +216,7 @@
   align-items: start;
 }
 .roleSelect {
+  min-height: var(--control-h);
   padding: 10px 12px;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
@@ -207,7 +230,7 @@
   border-color: var(--brand);
 }
 .removeBtn {
-  height: 40px;
+  min-height: var(--control-h);
   color: var(--text-muted);
   border-radius: var(--radius-sm);
   transition: all var(--dur-fast) var(--ease-out);
@@ -274,6 +297,9 @@
 }
 
 @media (max-width: 640px) {
+  .overlay {
+    padding: var(--space-4);
+  }
   .card {
     padding: var(--space-5);
   }

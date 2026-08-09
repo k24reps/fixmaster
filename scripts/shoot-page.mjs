@@ -1,5 +1,5 @@
 /**
- * Generic page verification shots — seeds, navigates to a route via the
+ * Generic page verification shots — opens the self-seeded demo and navigates via the
  * sidebar (client-side, keeps the session + cache), captures dark/light/mobile.
  *
  * Run:  ROUTE=/inventory NAME=inv node scripts/shoot-page.mjs
@@ -26,15 +26,12 @@ async function capture({ name, theme, width = 1440, height = 1100 }) {
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1440, height: 1100 });
 
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
-
-  await page.waitForFunction(() => typeof window.__fixmasterSeed === 'function', { timeout: 10000 });
-  await page.evaluate(async () => { await window.__fixmasterSeed(); });
-
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
   await page.waitForSelector('a[href="/services"]', { timeout: 10000 });
   if (ROUTE !== '/') {
     await page.click(`a[href="${ROUTE}"]`);

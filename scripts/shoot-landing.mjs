@@ -32,9 +32,9 @@ for (const theme of ['dark', 'light']) {
   // Above-the-fold (hero)
   await page.screenshot({ path: join(OUT, `landing-hero-${theme}.png`) });
   console.log('shot:', `landing-${theme}`);
-  // The demo section specifically (now poster-only, no iframe)
+  // The product/demo section specifically (poster-only, no iframe).
   try {
-    const demo = page.locator('#demo');
+    const demo = page.locator('#product');
     await demo.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await demo.screenshot({ path: join(OUT, `landing-demo-${theme}.png`) });

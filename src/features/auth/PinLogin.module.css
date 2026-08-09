@@ -7,20 +7,67 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 30px 30px;
 }
 
 .card {
+  position: relative;
   width: 100%;
   max-width: 440px;
   background: var(--surface-glass);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
+  border-top: 3px solid var(--brand);
   padding: var(--space-8);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--shadow-lg);
   text-align: center;
   animation: fm-scale-in var(--dur-normal) var(--ease-spring);
+  overflow: hidden;
+}
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.45;
+}
+.card::before { left: 12px; }
+.card::after { right: 12px; }
+
+.terminalLabel {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-3)) 0 var(--space-5);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--readout-base);
+  color: var(--readout-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.09em;
+  text-align: left;
+}
+.terminalLabel > span:last-child {
+  color: var(--accent-400);
+}
+.statusLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .logo {
@@ -36,7 +83,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-brand);
   font-size: 1.5rem;
   box-shadow: var(--shadow-brand);
 }
@@ -62,6 +109,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-height: 56px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -79,9 +127,10 @@
 .userAvatar {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  background: var(--gradient-brand);
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+  border: 1px solid var(--border-brand);
+  color: var(--brand-hover);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,6 +167,31 @@
   border-radius: var(--radius-md);
   color: var(--text-primary);
   transition: all var(--dur-fast) var(--ease-out);
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 520px) {
+  .overlay {
+    align-items: flex-start;
+    padding: var(--space-4);
+    overflow-y: auto;
+  }
+  .card {
+    padding: var(--space-6) var(--space-4);
+  }
+  .terminalLabel {
+    grid-template-columns: auto 1fr;
+  }
+  .terminalLabel > span:last-child {
+    grid-column: 2;
+  }
+  .pinGroup {
+    gap: var(--space-2);
+  }
+  .pinInput {
+    width: 50px;
+    height: 58px;
+  }
 }
 .pinInput:focus {
   outline: none;

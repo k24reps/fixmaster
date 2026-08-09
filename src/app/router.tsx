@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { LandingPageV2 } from '@/features/landing/LandingPageV2';
 import { AuthGate } from './AuthGate';
 import { appChildRoutes } from './appChildRoutes';
 
@@ -26,8 +27,13 @@ const TermsPage = lazy(() =>
 const ResetPasswordPage = lazy(() =>
   import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 );
-
 export const router = createBrowserRouter([
+  {
+    // Stable preview alias for the live signed-out landing page. Keeping this
+    // route makes design review links durable while AuthGate serves V2 at `/`.
+    path: '/landing-preview',
+    element: <LandingPageV2 />,
+  },
   {
     // Public design prototype (no auth) — for visual evaluation only.
     path: '/prototype/ticket',

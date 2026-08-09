@@ -15,7 +15,7 @@
 }
 
 html {
-  font-size: 15px;
+  font-size: 16px;
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
@@ -43,8 +43,8 @@ body::before {
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-    radial-gradient(60rem 60rem at 12% -10%, rgba(245, 166, 35, 0.07), transparent 60%),
-    radial-gradient(50rem 50rem at 100% 0%, rgba(61, 217, 196, 0.05), transparent 55%);
+    radial-gradient(60rem 60rem at 12% -10%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 60%),
+    radial-gradient(50rem 50rem at 100% 0%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 55%);
   background-size: 30px 30px, 30px 30px, 100% 100%, 100% 100%;
 }
 
@@ -70,6 +70,36 @@ input, select, textarea, button {
 }
 
 button { cursor: pointer; background: none; border: none; }
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+/* Coarse pointers need a dependable hit area even for legacy raw controls. */
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+  button,
+  input,
+  select,
+  textarea,
+  summary {
+    min-height: var(--control-h) !important;
+  }
+  button {
+    min-width: var(--control-h) !important;
+  }
+}
 
 ul, ol { list-style: none; }
 

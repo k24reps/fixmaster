@@ -83,8 +83,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--control-h);
+  height: var(--control-h);
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -97,7 +97,7 @@
 }
 .viewActive {
   background: var(--gradient-brand);
-  color: var(--text-on-brand, #fff);
+  color: var(--on-brand);
 }
 
 /* ---------- Registry grid ---------- */
@@ -177,7 +177,7 @@
 }
 .idTag {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -229,7 +229,7 @@
 }
 .activityLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -260,7 +260,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent);
@@ -275,7 +275,7 @@
 }
 .newcomer {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -288,8 +288,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
@@ -344,7 +344,7 @@
   font-size: var(--text-md);
 }
 .listView .idTag {
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
 }
 .listView .contacts {
   flex: 1;
@@ -369,7 +369,7 @@
 }
 .listView .repeat,
 .listView .newcomer {
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
 }
 @media (max-width: 768px) {
   .listView .contacts {

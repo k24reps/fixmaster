@@ -35,7 +35,7 @@
 }
 
 .chip svg {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   opacity: 0.7;
 }
 
@@ -56,7 +56,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-surface-1, var(--bg-input));
-  box-shadow: var(--shadow-lg, 0 12px 28px rgba(0, 0, 0, 0.32));
+  box-shadow: var(--shadow-lg);
 }
 
 .suggestHint {

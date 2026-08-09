@@ -141,26 +141,58 @@ export function TrackingPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        <div className={styles.kicker}>
+          <span className={styles.liveLed} aria-hidden />
+          CUSTOMER STATUS TERMINAL
+          <span>FM / PUBLIC</span>
+        </div>
         <header className={styles.header}>
           <span className={styles.logoMark}>
             <Icon name="screwdriver-wrench" aria-hidden />
           </span>
-          <h1 className={styles.title}>{orgName}</h1>
-          <p className={styles.subtitle}>Lacak Status Servis Anda</p>
+          <div className={styles.headerText}>
+            <h1 className={styles.title}>{orgName}</h1>
+            <p className={styles.subtitle}>Pantau progres perbaikan perangkat Anda secara langsung.</p>
+          </div>
         </header>
 
-        <div className={styles.searchBox}>
-          <input
-            className={styles.input}
-            placeholder="Masukkan no. servis (mis. FM-0001)"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-          />
-          <button className={styles.searchBtn} onClick={runSearch} disabled={isFetching}>
-            {isFetching ? <Icon name="circle-notch" className="spin" aria-hidden /> : 'Lacak'}
-          </button>
-        </div>
+        <section className={styles.searchPanel}>
+          <label className={styles.searchLabel} htmlFor="tracking-number">
+            <span>Nomor servis</span>
+            <span>INPUT CHANNEL 01</span>
+          </label>
+          <div className={styles.searchBox}>
+            <input
+              id="tracking-number"
+              className={styles.input}
+              placeholder="Contoh: FM-0001"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+            />
+            <button className={styles.searchBtn} onClick={runSearch} disabled={isFetching}>
+              {isFetching ? <Icon name="circle-notch" className="spin" aria-hidden /> : <><Icon name="magnifying-glass" aria-hidden /> Lacak</>}
+            </button>
+          </div>
+          <p className={styles.searchHint}>Nomor tercetak pada tiket penerimaan atau pesan WhatsApp dari toko.</p>
+        </section>
+
+        {!service && !notFound && !throttleMsg && !isFetching && (
+          <div className={styles.guide} aria-label="Cara menggunakan pelacakan">
+            <div className={styles.guideItem}>
+              <Icon name="file-invoice" aria-hidden />
+              <span><b>01</b><strong>Siapkan tiket</strong><small>Cari kode FM pada nota.</small></span>
+            </div>
+            <div className={styles.guideItem}>
+              <Icon name="magnifying-glass" aria-hidden />
+              <span><b>02</b><strong>Masukkan kode</strong><small>Ketik persis seperti di tiket.</small></span>
+            </div>
+            <div className={styles.guideItem}>
+              <Icon name="circle-check" aria-hidden />
+              <span><b>03</b><strong>Lihat progres</strong><small>Status dan garansi tampil aman.</small></span>
+            </div>
+          </div>
+        )}
 
         {throttleMsg && (
           <div className={styles.notFound}>

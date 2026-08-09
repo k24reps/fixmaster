@@ -108,6 +108,11 @@ export function PinLogin() {
   return (
     <div className={styles.overlay}>
       <div className={styles.card}>
+        <div className={styles.terminalLabel}>
+          <span className={styles.statusLed} aria-hidden />
+          EMPLOYEE ACCESS TERMINAL
+          <span>PIN / 4 DIGIT</span>
+        </div>
         <div className={styles.logo}>
           <span className={styles.logoMark}>
             <Icon name="screwdriver-wrench" aria-hidden />

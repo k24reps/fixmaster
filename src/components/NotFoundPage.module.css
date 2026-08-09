@@ -6,14 +6,65 @@
   padding: var(--space-6);
 }
 .content {
+  position: relative;
+  width: min(100%, 560px);
+  padding: var(--space-8);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-top: 3px solid var(--brand);
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.screw {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+.screwRight {
+  left: auto;
+  right: 12px;
+}
+.readout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--readout-muted);
+  background: var(--readout-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.readout strong {
+  grid-column: 2;
+  color: var(--amber-400);
+}
+.led {
+  grid-row: 1 / 3;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
 }
 .code {
-  font-size: 6rem;
+  font-size: clamp(4rem, 18vw, 7rem);
   font-weight: var(--fw-extra);
   font-family: var(--font-display);
   background: var(--gradient-brand);
@@ -35,15 +86,25 @@
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-3);
+  min-height: var(--control-h);
   padding: 10px 20px;
   border-radius: var(--radius-sm);
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--on-brand);
   font-weight: var(--fw-semibold);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-brand);
 }
 .btn:hover {
-  color: #fff;
+  color: var(--on-brand);
   transform: translateY(-1px);
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: var(--space-4);
+  }
+  .content {
+    padding: var(--space-6) var(--space-4);
+  }
 }

@@ -1,13 +1,16 @@
 .group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .label {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .wrap {
@@ -25,11 +28,12 @@
 }
 
 .input {
+  min-height: 46px;
   width: 100%;
   padding: 10px 14px;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-base);
   transition:
@@ -44,6 +48,7 @@
   outline: none;
   border-color: var(--brand);
   box-shadow: var(--ring);
+  background: var(--bg-surface);
 }
 .withIcon {
   padding-left: 38px;
@@ -58,8 +63,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -83,7 +88,7 @@
   border-color: var(--danger);
 }
 .hasError .input:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
 }
 
 .hint {

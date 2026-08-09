@@ -16,6 +16,7 @@ import {
   nextStatuses,
   canSetStatus,
   canClaimWarranty,
+  isAwaitingPickup,
 } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
@@ -111,7 +112,13 @@ export function ServiceDetailPage() {
 
   const cancelled = service.status === 'batal';
   const currentIndex = TRAVELER.indexOf(service.status);
-  const outstanding = outstandingBalance(service);
+  const outstanding = service.status === 'lunas' ? 0 : outstandingBalance(service);
+  const billingReadout =
+    service.status === 'lunas'
+      ? { label: 'Pembayaran', value: 'Lunas' }
+      : service.finalCost <= 0
+        ? { label: 'Tagihan', value: 'Menunggu biaya final' }
+        : { label: 'Sisa tagihan', value: fmtMoney(outstanding) };
   const profit = serviceProfit(service);
   const modalTotal = serviceModalTotal(service.spareparts);
   const claimable = canClaimWarranty(service, localDateStr());
@@ -674,7 +681,7 @@ export function ServiceDetailPage() {
               </div>
               <div>
                 <dt>Biaya final</dt>
-                <dd>{fmtMoney(service.finalCost)}</dd>
+                <dd>{service.finalCost > 0 ? fmtMoney(service.finalCost) : 'Belum ditetapkan'}</dd>
               </div>
               {service.downPayment > 0 && (
                 <div>
@@ -683,8 +690,8 @@ export function ServiceDetailPage() {
                 </div>
               )}
               <div className={styles.costTotal}>
-                <dt>Sisa tagihan</dt>
-                <dd>{fmtMoney(outstanding)}</dd>
+                <dt>{billingReadout.label}</dt>
+                <dd>{billingReadout.value}</dd>
               </div>
               {isOwner && (
                 <>
@@ -727,8 +734,8 @@ export function ServiceDetailPage() {
       {/* ---------- Sticky action bar ---------- */}
       <div className={styles.actionBar}>
         <div className={styles.actionInfo}>
-          <span className={styles.actionLabel}>Sisa tagihan</span>
-          <span className={styles.actionValue}>{fmtMoney(outstanding)}</span>
+          <span className={styles.actionLabel}>{billingReadout.label}</span>
+          <span className={styles.actionValue}>{billingReadout.value}</span>
         </div>
         <div className={styles.actionBtns}>
           <button className={styles.secondaryBtn} onClick={() => setEditOpen(true)}>
@@ -739,9 +746,12 @@ export function ServiceDetailPage() {
               <Icon name="print" aria-hidden /> Cetak Nota
             </button>
           )}
-          {isManager && (
+          {isManager && (isAwaitingPickup(service) || service.pickedUp) && (
             <button
-              className={[styles.secondaryBtn, service.pickedUp ? styles.pickedActive : ''].join(' ')}
+              className={[
+                service.status === 'lunas' && !service.pickedUp ? styles.primaryBtn : styles.secondaryBtn,
+                service.pickedUp ? styles.pickedActive : '',
+              ].join(' ')}
               onClick={togglePickup}
             >
               <Icon name={service.pickedUp ? 'circle-check' : 'box'} aria-hidden />{' '}
@@ -749,7 +759,10 @@ export function ServiceDetailPage() {
             </button>
           )}
           {claimable && (
-            <button className={styles.primaryBtn} onClick={() => setClaimOpen(true)}>
+            <button
+              className={service.pickedUp ? styles.primaryBtn : styles.secondaryBtn}
+              onClick={() => setClaimOpen(true)}
+            >
               <Icon name="shield-halved" aria-hidden /> Klaim Garansi
             </button>
           )}
@@ -767,7 +780,7 @@ export function ServiceDetailPage() {
             </button>
           )}
           {service.status === 'lunas' && (me?.role === 'owner' || me?.role === 'admin') && (
-            <button className={styles.primaryBtn} onClick={() => setStatusOpen(true)}>
+            <button className={styles.secondaryBtn} onClick={() => setStatusOpen(true)}>
               <Icon name="pen" aria-hidden /> Koreksi Biaya
             </button>
           )}

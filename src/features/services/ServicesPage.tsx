@@ -150,17 +150,6 @@ export function ServicesPage() {
         <Icon name="up-right-from-square" aria-hidden />
       </Link>
       <button
-        className={styles.updateBtn}
-        onClick={() => {
-          setStatusTarget(s);
-          setStatusOpen(true);
-        }}
-        title="Update status servis"
-        aria-label="Update status servis"
-      >
-        <Icon name="arrow-right-arrow-left" aria-hidden /> Status
-      </button>
-      <button
         className={styles.iconBtn}
         onClick={() => {
           setNotifyTarget(s);

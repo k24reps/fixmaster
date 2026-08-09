@@ -16,7 +16,7 @@
 .xLabel {
   fill: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 .incLine {
   stroke: var(--green-400);

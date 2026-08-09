@@ -21,7 +21,7 @@
   gap: var(--space-5);
   flex-wrap: wrap;
   padding: var(--space-5) var(--space-6);
-  background: linear-gradient(180deg, #0b0d11, #12151b);
+  background: linear-gradient(180deg, var(--readout-base), var(--readout-surface));
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -30,7 +30,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--readout-text) 2%, transparent) 0 1px, transparent 1px 3px);
   pointer-events: none;
 }
 .clockInfo {
@@ -42,7 +42,7 @@
 }
 .clockGreet {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent);
@@ -52,10 +52,10 @@
   font-size: clamp(2.4rem, 7vw, 3.6rem);
   font-weight: var(--fw-bold);
   line-height: 1;
-  color: #f4f7fb;
+  color: var(--readout-text);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 18px rgba(108, 92, 231, 0.35);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .clockDate {
   font-family: var(--font-mono);
@@ -69,7 +69,7 @@
   margin-top: 2px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: rgba(244, 247, 251, 0.8);
+  color: color-mix(in srgb, var(--readout-text) 80%, transparent);
 }
 .statusLed {
   width: 9px;
@@ -206,7 +206,7 @@
   padding: 11px var(--space-5);
 }
 .ledgerHead {
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -247,14 +247,36 @@
 
 
 /* ---------- Monthly recap (owner) ---------- */
-.monthInput {
+.monthPicker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 170px;
+  min-height: var(--control-h);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   background: var(--bg-surface-2);
   color: var(--text-primary);
+}
+.monthPicker > svg {
+  color: var(--brand);
+}
+.monthInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.monthPicker:focus-within {
+  border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 .recapHead,
 .recapRow {
@@ -265,7 +287,7 @@
   padding: 11px var(--space-5);
 }
 .recapHead {
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -298,8 +320,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-xs);
   color: var(--text-muted);
   border: 1px solid var(--border);
@@ -330,5 +352,9 @@
   }
   .hours {
     text-align: left;
+  }
+  .rowBtn {
+    width: var(--control-h);
+    height: var(--control-h);
   }
 }

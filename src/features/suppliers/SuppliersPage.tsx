@@ -168,6 +168,14 @@ export function SuppliersPage() {
         )}
       </div>
 
+      {tab === 'po' && (
+        <div className={styles.poSummary} aria-label="Ringkasan purchase order">
+          <span><small>TOTAL PO</small><strong>{purchaseOrders.length}</strong></span>
+          <span><small>PO AKTIF</small><strong>{purchaseOrders.filter((po) => po.status === 'ordered' || po.status === 'partial').length}</strong></span>
+          <span><small>SUPPLIER</small><strong>{suppliers.length}</strong></span>
+        </div>
+      )}
+
       {tab === 'po' ? (
         sortedPOs.length === 0 ? (
           <Card glass>

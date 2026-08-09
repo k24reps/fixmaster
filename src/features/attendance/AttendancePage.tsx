@@ -10,6 +10,7 @@ import { hasGeofence, monthlyHoursByEmployee } from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
 import { localDateStr, localTimeStr, localTimeSec, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
+import { useFormat } from '@/lib/useFormat';
 import { useSessionStore } from '@/stores/session';
 import type { Attendance } from '@/data/types';
 import styles from './AttendancePage.module.css';
@@ -24,6 +25,7 @@ export function AttendancePage() {
   const today = localDateStr();
   const isMgr = me ? isManager(me.role) : false;
   const owner = me ? isOwner(me.role) : false;
+  const { fmtDate: fmtLocaleDate } = useFormat();
 
   // Manager correction: edit jam / status, or delete a row.
   // Owner also gets manual entry (absenkan karyawan) — same modal, `creating`.
@@ -308,7 +310,7 @@ export function AttendancePage() {
             </Button>
           )}
           {myToday && (
-            <Button size="lg" variant="danger" onClick={checkOut} loading={busy} iconLeft={<Icon name="right-from-bracket" aria-hidden />}>
+            <Button size="lg" variant="secondary" onClick={checkOut} loading={busy} iconLeft={<Icon name="right-from-bracket" aria-hidden />}>
               Check Out
             </Button>
           )}
@@ -368,13 +370,17 @@ export function AttendancePage() {
             icon={<Icon name="clock" aria-hidden />}
             title="Total Jam Kerja per Karyawan"
             action={
-              <input
-                type="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className={styles.monthInput}
-                aria-label="Bulan rekap"
-              />
+              <label className={styles.monthPicker}>
+                <span>{fmtLocaleDate(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</span>
+                <Icon name="calendar" aria-hidden />
+                <input
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className={styles.monthInput}
+                  aria-label="Bulan rekap"
+                />
+              </label>
             }
           />
           <CardBody className={styles.noPad}>
