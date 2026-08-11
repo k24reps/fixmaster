@@ -1,6 +1,7 @@
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
 import type { MonthlyTarget } from '@/data/types';
+import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
 
 /**
  * Org-scoped config. Most keys are persisted locally (per-device localStorage),
@@ -67,6 +68,25 @@ export async function setCategories(categories: string[]): Promise<void> {
     settings: { ...(org.settings ?? {}), deviceCategories: categories },
   });
   // setOrg() would reset the outlet scope; update the org slice directly.
+  useSessionStore.setState({ org: saved });
+}
+
+/** Mobile primary navigation shared by every device in this organization. */
+export function getMobileNavigation(): string[] {
+  return sanitizeMobileNavPaths(useSessionStore.getState().org?.settings?.mobileNavigation);
+}
+
+/** Persist the owner's four-slot mobile navigation layout to the org row. */
+export async function setMobileNavigation(paths: string[]): Promise<void> {
+  const org = useSessionStore.getState().org;
+  if (!org) return;
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: {
+      ...(org.settings ?? {}),
+      mobileNavigation: sanitizeMobileNavPaths(paths),
+    },
+  });
   useSessionStore.setState({ org: saved });
 }
 

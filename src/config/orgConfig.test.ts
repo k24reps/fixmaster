@@ -25,7 +25,13 @@ vi.mock('@/data', () => ({
   },
 }));
 
-import { getCategories, setCategories, seedCategoriesFromLocal } from './orgConfig';
+import {
+  getCategories,
+  getMobileNavigation,
+  setCategories,
+  setMobileNavigation,
+  seedCategoriesFromLocal,
+} from './orgConfig';
 
 function makeOrg(overrides: Partial<Organization> = {}): Organization {
   return {
@@ -111,6 +117,23 @@ describe('orgConfig device categories (cloud-backed, 0032)', () => {
       const seeded = await seedCategoriesFromLocal();
       expect(seeded).toBe(false);
       expect(setSingletonMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('mobile navigation', () => {
+    it('reads the shared layout and normalizes missing slots', () => {
+      state.org = makeOrg({ settings: { mobileNavigation: ['/finance', '/services'] } });
+      expect(getMobileNavigation()).toEqual(['/finance', '/services', '/', '/pos']);
+    });
+
+    it('persists a clean layout without replacing other org settings', async () => {
+      state.org = makeOrg({ settings: { deviceCategories: ['Laptop'] } });
+      await setMobileNavigation(['/services', '/services', '/pos', '/inventory']);
+
+      const [, value] = setSingletonMock.mock.calls[0];
+      expect(value.settings?.deviceCategories).toEqual(['Laptop']);
+      expect(value.settings?.mobileNavigation).toEqual(['/services', '/pos', '/inventory', '/']);
+      expect(setStateMock).toHaveBeenCalledTimes(1);
     });
   });
 });

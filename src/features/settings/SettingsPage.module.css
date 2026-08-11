@@ -109,6 +109,164 @@
   padding: 0;
 }
 
+/* ---------- Owner: shared mobile navigation ---------- */
+.mobileNavIntro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.mobileNavIntro p {
+  max-width: 720px;
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.mobileNavKicker,
+.mobileNavSync,
+.mobileNavPreviewLabel,
+.mobileNavSlotNumber {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.mobileNavKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--brand-hover);
+}
+.mobileNavKicker > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 7px var(--brand);
+}
+.mobileNavSync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 7px 9px;
+  border: 1px solid var(--success-soft);
+  border-radius: var(--radius-sm);
+  color: var(--success);
+  background: var(--success-soft);
+}
+.mobileNavEditor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+.mobileNavSlots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.mobileNavSlot {
+  position: relative;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+}
+.mobileNavSlot::before {
+  content: '';
+  position: absolute;
+  top: var(--space-3);
+  bottom: var(--space-3);
+  left: 0;
+  width: 2px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--gradient-brand);
+}
+.mobileNavSlotNumber {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+}
+.mobileNavPreviewWrap {
+  padding: var(--space-4);
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+}
+.mobileNavPreviewLabel {
+  color: var(--text-muted);
+}
+.mobileNavPreview {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: var(--space-3) 0;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+.mobileNavPreview > span {
+  position: relative;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+}
+.mobileNavPreview > span::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 30%;
+  right: 30%;
+  height: 2px;
+  background: transparent;
+}
+.mobileNavPreview small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: var(--fw-semibold);
+}
+.mobileNavPreview .mobileNavPreviewActive {
+  color: var(--brand-hover);
+  background: var(--brand-soft);
+}
+.mobileNavPreview .mobileNavPreviewActive::before {
+  background: var(--brand);
+  box-shadow: 0 0 8px var(--brand);
+}
+.mobileNavHint {
+  display: block;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.mobileNavActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border-strong);
+}
+
+@media (max-width: 900px) {
+  .mobileNavEditor {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Lists ---------- */
 .list {
   display: flex;
@@ -159,6 +317,19 @@
     flex-basis: 100%;
     justify-content: flex-end;
     flex-wrap: wrap;
+  }
+  .mobileNavIntro {
+    flex-direction: column;
+  }
+  .mobileNavSlots {
+    grid-template-columns: 1fr;
+  }
+  .mobileNavActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .mobileNavActions button {
+    width: 100%;
   }
   /* Invite form: stack the select + button full-width under the text fields. */
   .inviteRow .roleSelect {

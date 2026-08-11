@@ -129,8 +129,9 @@ Panel keranjang jadi **mesin kasir**: layar LCD total bergaya segment-display (d
 
 **Mobile cart dock (9 Agu 2026).** Setelah produk ditambahkan, dock ringkas tetap
 terlihat di dasar layar dengan jumlah item + total. Tap membawa pengguna langsung ke
-register `#pos-cart`; grid produk tetap dua kolom. Ini mencegah status keranjang dan aksi
-bayar hilang beberapa layar di bawah katalog.
+register `#pos-cart`; grid produk tetap dua kolom. Sejak bottom navigation 11 Agu,
+dock otomatis duduk di atas bar + safe-area sehingga kedua aksi tetap dapat disentuh.
+Ini mencegah status keranjang dan aksi bayar hilang beberapa layar di bawah katalog.
 
 ![[pos-dark.png]]
 
@@ -320,7 +321,8 @@ Fitur tambahan (profit per unit — revisi 11 Jun 2026):
 
 ## Pengaturan — Operasional
 
-Halaman `/settings` punya enam tab. Tab **Operasional** (revisi lanjutan) mengelompokkan konfigurasi alur kerja:
+Halaman `/settings` punya delapan tab untuk owner cloud (tab yang tak relevan tetap
+difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alur kerja:
 - **Layout profil** — dua kolom sampai 960 px agar ruang desktop terpakai, lalu satu
   kolom di mobile. Tab mobile tetap satu baris dan dapat digeser horizontal.
 - **Template Servis** — quick-pick keluhan & kelengkapan (dipindah dari tab Usaha).
@@ -330,6 +332,27 @@ Halaman `/settings` punya enam tab. Tab **Operasional** (revisi lanjutan) mengel
 > Kartu **Tampilan** (pemilih skala Kecil/Normal/Besar) **dihapus**. Ukuran UI kini satu baseline tetap (`html { font-size: 16px }`) yang konsisten di semua device; responsivitas ditangani lewat media query, bukan skala font global. Lihat [[Decisions & Bug Fixes]].
 
 ![[settings-operasional-dark.png]]
+
+---
+
+## Pengaturan — Navigasi Mobile
+
+Tab owner-only **Navigasi** mengatur empat slot utama bottom navigation ponsel.
+Setiap posisi berupa selector eksplisit; memilih menu yang sudah dipakai menukar kedua
+posisi agar tak menghasilkan duplikat. Preview lima slot selalu memperlihatkan
+`Lainnya` sebagai jalur tetap ke menu sekunder, cabang, unit usaha, dan akun.
+
+Konfigurasi disimpan di `Organization.settings.mobileNavigation` melalui `orgConfig`,
+sehingga sinkron realtime ke seluruh perangkat. Saat konfigurasi owner memuat route
+yang tidak boleh dibuka suatu peran, resolver membuangnya dan mengisi fallback aman.
+Default: **Beranda · Servis · Kasir · Inventori · Lainnya**. Bottom bar hanya tampil
+≤720 px; tablet memakai drawer dan desktop mempertahankan rail. Detail servis sengaja
+menyembunyikan bottom bar karena memiliki action bar kritis sendiri.
+
+Verifikasi render asli: 360/390/700 px tanpa overflow; pada 721 px berpindah tepat ke
+hamburger/drawer; desktop 1440 px tidak berubah. Dock Kasir berada di atas bottom bar.
+
+![[settings-navigation-dark.png]]
 
 ---
 

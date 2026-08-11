@@ -70,6 +70,8 @@ export interface Organization {
 export interface OrgSettings {
   /** Device categories offered in the "new service" dropdown. */
   deviceCategories?: string[];
+  /** Owner-defined paths for the four primary slots in mobile navigation. */
+  mobileNavigation?: string[];
 }
 
 export interface Employee extends BaseEntity {

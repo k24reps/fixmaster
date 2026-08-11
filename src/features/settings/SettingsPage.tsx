@@ -24,7 +24,11 @@ import {
   getCategories,
   setCategories,
   seedCategoriesFromLocal,
+  setMobileNavigation as saveMobileNavigation,
 } from '@/config/orgConfig';
+import { NAV_ITEMS } from '@/config/navigation';
+import { DEFAULT_MOBILE_NAV_PATHS, sanitizeMobileNavPaths } from '@/lib/business/navigation';
+import { useT } from '@/i18n';
 import {
   DEFAULT_WA_TEMPLATES,
   WA_TEMPLATE_LABELS,
@@ -105,12 +109,13 @@ async function fileToLogoBlob(file: File): Promise<Blob> {
   );
 }
 
-type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'sistem';
+type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'navigasi' | 'sistem';
 
 export function SettingsPage() {
   const me = useSessionStore((s) => s.currentEmployee);
   const resetWorkspace = useSessionStore((s) => s.resetWorkspace);
   const isOwner = me ? roleAllows(me.role, '*') : false;
+  const t = useT();
 
   const { data: wallets } = useCollection('wallets');
   const { data: outlets } = useCollection('outlets');
@@ -126,6 +131,7 @@ export function SettingsPage() {
     { id: 'keuangan', label: 'Wallet', icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: 'Outlet', icon: 'fa-shop', ownerOnly: true },
     { id: 'langganan', label: 'Langganan', icon: 'fa-crown', ownerOnly: true, cloudOnly: true },
+    { id: 'navigasi', label: t('settings.mobileNav.tab'), icon: 'fa-bars', ownerOnly: true },
     { id: 'sistem', label: 'Sistem', icon: 'fa-gear' },
   ];
   const visibleTabs = TABS.filter(
@@ -159,6 +165,7 @@ export function SettingsPage() {
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} outlets={outlets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
       {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
+      {tab === 'navigasi' && isOwner && <MobileNavigationCard />}
       {tab === 'sistem' && (
         <SystemTab
           onReset={() => {
@@ -194,6 +201,116 @@ export function SettingsPage() {
         onCancel={() => setConfirmReset(false)}
       />
     </div>
+  );
+}
+
+function MobileNavigationCard() {
+  const configured = useSessionStore((state) => state.org?.settings?.mobileNavigation);
+  const initial = sanitizeMobileNavPaths(configured);
+  return <MobileNavigationEditor key={initial.join('|')} initial={initial} />;
+}
+
+function MobileNavigationEditor({ initial }: { initial: string[] }) {
+  const t = useT();
+  const [draft, setDraft] = useState<string[]>(initial);
+  const [busy, setBusy] = useState(false);
+
+  const options = NAV_ITEMS.map((item) => ({ value: item.to, label: t(item.labelKey) }));
+
+  const setSlot = (slot: number, path: string) => {
+    setDraft((current) => {
+      const next = [...current];
+      const duplicateAt = next.indexOf(path);
+      if (duplicateAt >= 0 && duplicateAt !== slot) {
+        next[duplicateAt] = next[slot];
+      }
+      next[slot] = path;
+      return sanitizeMobileNavPaths(next);
+    });
+  };
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveMobileNavigation(draft);
+      toast.success(t('settings.mobileNav.saved'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('settings.mobileNav.error'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card glass accent="brand">
+      <CardHeader
+        icon={<Icon name="bars" aria-hidden />}
+        title={t('settings.mobileNav.title')}
+      />
+      <CardBody>
+        <div className={styles.mobileNavIntro}>
+          <div>
+            <span className={styles.mobileNavKicker}>
+              <span aria-hidden />{t('settings.mobileNav.ownerControl')}
+            </span>
+            <p>{t('settings.mobileNav.description')}</p>
+          </div>
+          <span className={styles.mobileNavSync}>
+            <Icon name="check-double" aria-hidden /> {t('settings.mobileNav.synced')}
+          </span>
+        </div>
+
+        <div className={styles.mobileNavEditor}>
+          <div className={styles.mobileNavSlots}>
+            {draft.map((path, index) => (
+              <div className={styles.mobileNavSlot} key={index}>
+                <span className={styles.mobileNavSlotNumber}>{String(index + 1).padStart(2, '0')}</span>
+                <Select
+                  id={`mobile-navigation-slot-${index + 1}`}
+                  label={`${t('settings.mobileNav.slot')} ${index + 1}`}
+                  value={path}
+                  options={options}
+                  onChange={(event) => setSlot(index, event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.mobileNavPreviewWrap}>
+            <span className={styles.mobileNavPreviewLabel}>{t('settings.mobileNav.preview')}</span>
+            <div className={styles.mobileNavPreview}>
+              {draft.map((path, index) => {
+                const item = NAV_ITEMS.find((entry) => entry.to === path) ?? NAV_ITEMS[0];
+                return (
+                  <span className={index === 0 ? styles.mobileNavPreviewActive : ''} key={path}>
+                    <Icon name={item.icon} weight={index === 0 ? 'fill' : 'regular'} aria-hidden />
+                    <small>{item.to === '/' ? t('nav.home') : t(item.labelKey)}</small>
+                  </span>
+                );
+              })}
+              <span>
+                <Icon name="bars" aria-hidden />
+                <small>{t('nav.more')}</small>
+              </span>
+            </div>
+            <small className={styles.mobileNavHint}>{t('settings.mobileNav.hint')}</small>
+          </div>
+        </div>
+
+        <div className={styles.mobileNavActions}>
+          <Button
+            variant="secondary"
+            onClick={() => setDraft([...DEFAULT_MOBILE_NAV_PATHS])}
+            iconLeft={<Icon name="repeat" aria-hidden />}
+          >
+            {t('settings.mobileNav.reset')}
+          </Button>
+          <Button onClick={save} loading={busy} iconLeft={<Icon name="check" aria-hidden />}>
+            {t('common.save')}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 

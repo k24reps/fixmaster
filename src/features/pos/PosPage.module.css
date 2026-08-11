@@ -545,7 +545,7 @@
 
 @media (max-width: 720px) {
   .page {
-    padding-bottom: 72px;
+    padding-bottom: calc(var(--mobile-nav-height) + 76px + env(safe-area-inset-bottom));
   }
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -557,7 +557,7 @@
     position: fixed;
     left: var(--space-4);
     right: var(--space-4);
-    bottom: var(--space-3);
+    bottom: calc(var(--mobile-nav-height) + var(--space-4) + env(safe-area-inset-bottom));
     z-index: var(--z-sticky);
     display: grid;
     grid-template-columns: 1fr auto auto;

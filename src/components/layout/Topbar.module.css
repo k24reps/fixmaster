@@ -164,6 +164,11 @@
     font-size: var(--text-md);
   }
 }
+@media (max-width: 720px) {
+  .mobileToggle {
+    display: none;
+  }
+}
 @media (max-width: 640px) {
   .search {
     display: none;

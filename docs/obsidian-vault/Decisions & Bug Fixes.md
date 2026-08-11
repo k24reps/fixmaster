@@ -911,3 +911,34 @@ job card dua kolom. Build, lint, dan 435 unit test hijau; interaksi cart dock se
 scroll diverifikasi melalui browser asli.
 
 #decision #bugfix #ux #ui
+
+## Bottom navigation ponsel yang dikendalikan owner (11 Agu 2026)
+
+**Keputusan:** ponsel ≤720 px memakai empat route utama + satu tombol tetap `Lainnya`.
+Default-nya **Beranda, Servis, Kasir, Inventori**. Owner dapat memilih sekaligus
+mengurutkan empat slot dari Pengaturan → Navigasi; hasil disimpan org-wide di
+`Organization.settings.mobileNavigation`, bukan localStorage per perangkat.
+
+**Alasan UX:** sidebar drawer memerlukan buka → cari → pilih untuk setiap perpindahan
+modul, padahal alur konter berulang di empat tujuan yang sama. Bottom navigation
+menurunkan perpindahan utama menjadi satu tap. Hamburger disembunyikan pada breakpoint
+yang sama agar user tidak perlu memahami dua struktur navigasi. `Lainnya` tetap
+menyediakan semua menu tersisa, sinyal operasional, cabang, identitas usaha, dan keluar.
+
+**Pagar keamanan dan konsistensi:** pilihan owner bukan izin akses. Helper murni
+`getVisibleNavigation` tetap memfilter `managerOnly`/`ownerOnly`; resolver membuang
+route tak valid/duplikat lalu mengisi slot kosong dengan fallback yang boleh dibuka
+peran aktif. Feature plan-locked tetap tampil memakai LED PRO seperti sidebar.
+
+**Konflik aksi mobile:** dock keranjang POS dinaikkan di atas bottom bar + safe-area.
+Pada detail servis bottom bar tidak dirender karena halaman sudah memiliki action bar
+kritikal (`Tandai Diambil`, status pembayaran). Tablet 721–1024 px tetap memakai drawer;
+desktop tetap memakai diagnostic rail.
+
+**Verifikasi:** build/lint hijau, 441 unit + 59 integration hijau. Browser asli:
+360/390/700 px bottom bar tanpa overflow dan tanpa hamburger; 721 px berpindah tepat ke
+hamburger/drawer; 1440 px tidak menampilkan bottom bar; pemilihan slot menukar duplikat,
+simpan merambat langsung ke bar, reset mengembalikan default, dan More sheet tetap
+memperlihatkan bottom bar sebagai jalur tutup yang konsisten.
+
+#decision #navigation #mobile #ux

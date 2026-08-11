@@ -2,6 +2,7 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NAV_ITEMS } from '@/config/navigation';
 import { useT, type TranslationKey } from '@/i18n';
@@ -70,9 +71,10 @@ export function AppLayout() {
   const title = current ? t(current.labelKey) : 'FixMaster';
   const subtitleKey = current ? PAGE_SUBTITLE_KEY[current.to] : undefined;
   const subtitle = subtitleKey ? t(subtitleKey) : '';
+  const hasMobileNav = !/^\/services\/[^/]+/.test(location.pathname);
 
   return (
-    <div className={[styles.layout, collapsed ? styles.collapsed : ''].join(' ')}>
+    <div className={[styles.layout, collapsed ? styles.collapsed : '', hasMobileNav ? styles.hasMobileNav : ''].join(' ')}>
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -99,6 +101,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </div>
+      {hasMobileNav && <MobileBottomNav key={location.pathname} />}
     </div>
   );
 }

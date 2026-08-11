@@ -30,7 +30,7 @@ Bagian dari [[00 - FixMaster MOC]].
 - Vanilla CSS Modules + token global (lihat [[Design System]])
 
 ## Tooling & Kualitas
-- **Vitest** + Testing Library — unit/komponen (**250 test** lulus)
+- **Vitest** + Testing Library — unit/komponen (**441 test** lulus, 11 Agu 2026)
 - **Playwright** — screenshot & verifikasi UI fungsional
 - **ESLint** + **Prettier** — lint & format
 

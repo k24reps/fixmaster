@@ -53,9 +53,12 @@ tidak ditempel satu per satu di setiap halaman, tetapi dikunci lewat fondasi ber
 - **Token**: radius (`5/8/12/16/24`), tinggi kontrol (`44/54`), lebar rail (`278/78`),
   tinggi topbar (`76`), readout LCD, warna kertas, WhatsApp, dan warna teks di atas
   bidang solid semuanya memiliki token; CSS fitur tidak mengulang hex/rgba.
-- **Mobile**: topbar tetap berupa faceplate ringkas; sidebar berubah menjadi drawer
-  mengambang dengan inset 8 px; modal berubah seperti bottom sheet; kontrol utama
-  minimal 44 px dan footer modal menjadi tombol selebar panel.
+- **Mobile**: pada ponsel ≤720 px, empat tujuan utama + tombol **Lainnya** tinggal di
+  bottom navigation yang aman terhadap safe-area; hamburger disembunyikan agar tidak
+  ada dua model navigasi. `Lainnya` membuka control deck bottom-sheet (menu sekunder,
+  cabang, identitas usaha, operator/keluar). Pada tablet 721–1024 px sidebar tetap
+  menjadi drawer mengambang dengan inset 8 px. Modal lain tetap berubah seperti
+  bottom sheet; kontrol utama minimal 44 px dan footer modal menjadi tombol selebar panel.
 - **Kontrak ergonomi operasional**: teks daun yang membawa informasi/aksi tidak boleh
   lebih kecil dari 12 px; kontrol pada viewport mobile, perangkat sentuh, atau pointer
   kasar memiliki area minimal 44×44 px. Ornamen non-interaktif boleh lebih kecil bila

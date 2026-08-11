@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui';
-import { NAV_ITEMS } from '@/config/navigation';
-import { planAllows, PLANS, isManager, isOwner } from '@/config/plans';
+import { PLANS } from '@/config/plans';
+import { getVisibleNavigation } from '@/lib/business/navigation';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
 import { demoGuard } from '@/stores/demo';
@@ -53,18 +53,11 @@ export function Sidebar({
   };
 
   const plan = org?.planType ?? 'trial';
-  const isMgr = employee ? isManager(employee.role) : false;
-  const isOwn = employee ? isOwner(employee.role) : false;
   // Role-gating (managerOnly/ownerOnly) HIDES items — it mirrors server RLS,
   // so showing them would just lead to failures. Feature-gating (plan lacks
   // the feature) instead SHOWS the item locked with a "Pro" badge, so Solo
   // users see what upgrading unlocks (the upgrade "itch").
-  const visibleNav = NAV_ITEMS.filter(
-    (item) => (!item.managerOnly || isMgr) && (!item.ownerOnly || isOwn),
-  ).map((item) => ({
-    item,
-    locked: !!item.feature && !planAllows(plan, item.feature),
-  }));
+  const visibleNav = employee ? getVisibleNavigation(employee.role, plan) : [];
 
   return (
     <>

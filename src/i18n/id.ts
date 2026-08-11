@@ -45,6 +45,14 @@ export const id = {
   'nav.reports': 'Laporan',
   'nav.activity': 'Log Aktivitas',
   'nav.settings': 'Pengaturan',
+  'nav.home': 'Beranda',
+  'nav.more': 'Lainnya',
+  'nav.mobile.primary': 'Navigasi utama seluler',
+  'nav.mobile.panel': 'Panel navigasi',
+  'nav.mobile.moreTitle': 'Menu lainnya',
+  'nav.mobile.businessUnit': 'Unit usaha',
+  'nav.mobile.activeOutlet': 'Cabang aktif',
+  'nav.mobile.allOutlets': 'Semua Outlet',
 
   // ---------- Page subtitles ----------
   'subtitle.dashboard': 'Ringkasan performa bisnis Anda hari ini',
@@ -76,6 +84,17 @@ export const id = {
   'settings.theme': 'Tema',
   'settings.theme.dark': 'Gelap',
   'settings.theme.light': 'Terang',
+  'settings.mobileNav.tab': 'Navigasi',
+  'settings.mobileNav.title': 'Navigasi Mobile',
+  'settings.mobileNav.ownerControl': 'Kontrol owner',
+  'settings.mobileNav.description': 'Pilih dan urutkan empat menu utama yang tampil di bawah layar ponsel. Susunan ini berlaku untuk seluruh tim dan otomatis mengikuti hak akses tiap peran.',
+  'settings.mobileNav.synced': 'Sinkron semua perangkat',
+  'settings.mobileNav.slot': 'Posisi',
+  'settings.mobileNav.preview': 'Pratinjau bar',
+  'settings.mobileNav.hint': 'Lainnya selalu tersedia sebagai jalur ke menu lain, pilihan cabang, dan akun.',
+  'settings.mobileNav.reset': 'Kembalikan Default',
+  'settings.mobileNav.saved': 'Navigasi mobile disimpan',
+  'settings.mobileNav.error': 'Gagal menyimpan navigasi mobile',
 
   // ---------- Landing candidate V2 ----------
   'landingV2.metaTitle': 'FixMaster — Operasional Konter Reparasi dalam Satu Sistem',

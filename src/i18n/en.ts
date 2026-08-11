@@ -42,6 +42,14 @@ export const en: Dictionary = {
   'nav.reports': 'Reports',
   'nav.activity': 'Activity Log',
   'nav.settings': 'Settings',
+  'nav.home': 'Home',
+  'nav.more': 'More',
+  'nav.mobile.primary': 'Primary mobile navigation',
+  'nav.mobile.panel': 'Navigation panel',
+  'nav.mobile.moreTitle': 'More menus',
+  'nav.mobile.businessUnit': 'Business unit',
+  'nav.mobile.activeOutlet': 'Active outlet',
+  'nav.mobile.allOutlets': 'All Outlets',
 
   // ---------- Page subtitles ----------
   'subtitle.dashboard': "Today's snapshot of your business performance",
@@ -73,6 +81,17 @@ export const en: Dictionary = {
   'settings.theme': 'Theme',
   'settings.theme.dark': 'Dark',
   'settings.theme.light': 'Light',
+  'settings.mobileNav.tab': 'Navigation',
+  'settings.mobileNav.title': 'Mobile Navigation',
+  'settings.mobileNav.ownerControl': 'Owner control',
+  'settings.mobileNav.description': 'Choose and order the four primary menus shown at the bottom of phones. This layout applies to the whole team and automatically respects each role\'s access.',
+  'settings.mobileNav.synced': 'Synced across devices',
+  'settings.mobileNav.slot': 'Position',
+  'settings.mobileNav.preview': 'Bar preview',
+  'settings.mobileNav.hint': 'More always remains available for other menus, outlet selection, and account controls.',
+  'settings.mobileNav.reset': 'Restore Defaults',
+  'settings.mobileNav.saved': 'Mobile navigation saved',
+  'settings.mobileNav.error': 'Failed to save mobile navigation',
 
   // ---------- Landing candidate V2 ----------
   'landingV2.metaTitle': 'FixMaster — Repair Shop Operations in One System',

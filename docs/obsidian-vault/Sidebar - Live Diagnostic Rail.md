@@ -37,15 +37,22 @@ Tombol bergaya channel-switch dengan LED status (cyan = Semua Outlet, amber = ca
   mengambang (inset 14 px, radius 16 px, full border + shadow) agar sefamili dengan
   landing `Repair Flow Console`.
 - **Collapsed** — menara LED 78 px; status pindah ke pojok ikon, item idle disembunyikan.
-- **Mobile** — drawer selalu tampil penuh (bukan menara), mengambang dengan inset 8 px.
-  Posisi tertutup memakai translasi melebihi lebar panel supaya tidak meninggalkan
-  garis 8 px di tepi layar.
+- **Tablet (721–1024 px)** — drawer selalu tampil penuh (bukan menara), mengambang
+  dengan inset 8 px. Posisi tertutup memakai translasi melebihi lebar panel supaya
+  tidak meninggalkan garis 8 px di tepi layar.
+- **Ponsel (≤720 px)** — drawer/hamburger diganti bottom navigation lima slot:
+  **Beranda · Servis · Kasir · Inventori · Lainnya** secara default. Empat slot utama
+  mengikuti konfigurasi owner; `Lainnya` membuka control deck berisi menu tersisa,
+  selector cabang, unit usaha, dan operator/keluar. Bar memakai safe-area dan
+  diagnostic channel aktif (spine + glow + sinyal angka), bukan pola app generik.
 - **Pasangan shell** — topbar juga menjadi faceplate sticky mengambang; pada mobile
   judul, pencarian, tema, dan notifikasi tetap berada dalam panel 60 px yang ringkas.
 
 ![[rail-expanded-dark.png]]
 ![[rail-collapsed-dark.png]]
 ![[rail-mobile-dark.png]]
+![[mobile-bottom-nav-dark.png]]
+![[mobile-more-dark.png]]
 
 ## Revisi dari feedback (sudah diperbaiki & diverifikasi)
 
@@ -66,7 +73,11 @@ Item yang **digerbang fitur** (mis. Supplier, Tugas, Absensi) tidak lagi *disemb
 > [!important] Otentik "Precision Electronics Bench"
 > Badge terkunci memakai **LED status brand** + readout **mono**, **BUKAN ikon gembok** generik SaaS. Aturan visual ini dikunci di `AGENTS.md` (§3) & [[Design System]]: tiap elemen baru wajib pakai motif bench (LED, mono, spine, tick-gauge), bukan komponen library polos.
 
-Logika: `Sidebar.tsx` memetakan `NAV_ITEMS` → `{ item, locked }` (locked = punya `feature` tapi `!planAllows(plan, feature)`). Diverifikasi dengan plan Solo (`standard`): **4 channel terkunci** muncul, dark + light.
+Logika peran/plan kini dipusatkan di `lib/business/navigation.ts` melalui
+`getVisibleNavigation()`, lalu dipakai bersama oleh `Sidebar` dan `MobileBottomNav`.
+`resolveMobileNavigation()` membuang rute yang tak sah/terlarang bagi peran aktif dan
+mengisi slot kosong dengan fallback aman; item plan-locked tetap memakai pola PRO.
+Diverifikasi dengan plan Solo (`standard`): **4 channel terkunci** muncul, dark + light.
 
 ![[locked-nav-dark.png]]
 ![[locked-nav-light.png]]
