@@ -254,29 +254,53 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               {t('landingV2.openDemo')} <Icon name="arrow-right" aria-hidden />
             </a>
           </div>
-          <a className={styles.productFrame} href="/demo" aria-label={t('landingV2.openDemo')}>
-            <span className={styles.frameBar}>
-              <i /><i /><i />
-              <b>fixmaster.app/demo</b>
-              <em>{t('landingV2.online')}</em>
-            </span>
-            <img
-              className={styles.productShotDark}
-              src="/screenshots/demo-dashboard-dark.png"
-              alt={t('landingV2.productAlt')}
-              loading="lazy"
-            />
-            <img
-              className={styles.productShotLight}
-              src="/screenshots/demo-dashboard-light.png"
-              alt=""
-              aria-hidden
-              loading="lazy"
-            />
-            <span className={styles.frameLaunch}>
-              <Icon name="arrow-square-out" aria-hidden /> {t('landingV2.tryNow')}
-            </span>
-          </a>
+          <div className={styles.productVisuals}>
+            <a className={styles.productFrame} href="/demo" aria-label={t('landingV2.openDemoDesktop')}>
+              <span className={styles.frameBar}>
+                <i /><i /><i />
+                <b>{t('landingV2.productDesktop')} // fixmaster.app/demo</b>
+                <em>{t('landingV2.online')}</em>
+              </span>
+              <img
+                className={styles.productShotDark}
+                src="/screenshots/demo-dashboard-dark.png"
+                alt={t('landingV2.productAlt')}
+                loading="lazy"
+              />
+              <img
+                className={styles.productShotLight}
+                src="/screenshots/demo-dashboard-light.png"
+                alt=""
+                aria-hidden
+                loading="lazy"
+              />
+              <span className={styles.frameLaunch}>
+                <Icon name="arrow-square-out" aria-hidden /> {t('landingV2.tryNow')}
+              </span>
+            </a>
+
+            <a className={styles.mobileFrame} href="/demo" aria-label={t('landingV2.openDemoMobile')}>
+              <span className={styles.mobileFrameBar}>
+                <span className={styles.liveLed} aria-hidden />
+                <b>{t('landingV2.productMobile')}</b>
+                <em>{t('landingV2.online')}</em>
+              </span>
+              <img
+                className={styles.mobileShotDark}
+                src="/screenshots/demo-mobile-dark.png"
+                alt={t('landingV2.productMobileAlt')}
+                loading="lazy"
+              />
+              <img
+                className={styles.mobileShotLight}
+                src="/screenshots/demo-mobile-light.png"
+                alt=""
+                aria-hidden
+                loading="lazy"
+              />
+              <span className={styles.mobileFrameFooter}>{t('landingV2.productMobileNote')}</span>
+            </a>
+          </div>
         </section>
 
         <section id="pricing" className={styles.pricingSection}>

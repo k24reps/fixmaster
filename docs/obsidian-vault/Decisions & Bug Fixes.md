@@ -942,3 +942,31 @@ simpan merambat langsung ke bar, reset mengembalikan default, dan More sheet tet
 memperlihatkan bottom bar sebagai jalur tutup yang konsisten.
 
 #decision #navigation #mobile #ux
+
+## Landing V2: satu narasi, bukti desktop + mobile (11 Agu 2026)
+
+**Masalah:** cerita landing sudah responsif secara layout, tetapi belum setara secara
+pengalaman. Di desktop hero copy dan konsol terbaca berdampingan; di 390 px hero
+mencapai sekitar 1.375 px dan screenshot desktop pada section produk mengecil sampai
+detail operasional sulit dibaca. Landing juga belum membuktikan bahwa pengalaman app
+mobile benar-benar dirancang, bukan sekadar desktop yang dipaksa mengecil.
+
+**Keputusan:** pertahankan urutan narasi dan CTA yang sama, tetapi ubah prioritas
+visualnya sesuai perangkat. Copy hero secara eksplisit menghubungkan meja penerimaan
+dan ponsel. Judul/gap hero mobile dipadatkan tanpa menghapus informasi. Section produk
+menjadi satu panggung dua perangkat: desktop memakai screenshot dashboard besar dengan
+ponsel bertumpuk sebagai instrumen pendamping; pada ≤760 px screenshot mobile tampil
+lebih dahulu lalu screenshot desktop sebagai konteks. Dua frame sama-sama menuju
+`/demo` dan punya label aksesibel yang spesifik.
+
+**Sumber bukti:** `public/screenshots/demo-mobile-{dark,light}.png` adalah render asli
+dashboard `/demo` pada 390×844, bukan aset ilustrasi. `scripts/shoot-demo.mjs` menjaga
+kedua tema dapat diregenerasi dan menyalinnya ke `scripts/shots/` agar sinkron dengan
+attachment vault.
+
+**Verifikasi:** build, lint, 441 unit test, dan 59 integration test hijau. Kedua aset
+mobile diperiksa pada resolusi asli; bottom navigation, KPI utama, dan tema dark/light
+terbaca. Pemeriksaan komposisi browser akhir tidak diulang setelah browser lokal
+menolak navigasi dari halaman error, sehingga tidak dicoba melalui surface alternatif.
+
+#decision #landing #responsive #ux

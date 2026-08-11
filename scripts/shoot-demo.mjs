@@ -5,13 +5,15 @@
  * Run with the dev server up:  node scripts/shoot-demo.mjs
  */
 import { chromium } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, 'shots');
+const PUBLIC_OUT = join(__dirname, '..', 'public', 'screenshots');
 mkdirSync(OUT, { recursive: true });
+mkdirSync(PUBLIC_OUT, { recursive: true });
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
 
@@ -61,15 +63,21 @@ for (const theme of ['dark', 'light']) {
   await page.close();
 }
 
-// Mobile full-screen demo (dark)
-const m = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-await m.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
-await setTheme(m, 'dark');
-await m.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
-await waitForDemo(m);
-await m.screenshot({ path: join(OUT, 'demo-mobile.png'), fullPage: true });
-console.log('shot:', 'demo-mobile');
-await m.close();
+// Landing product proof: real mobile viewport in both themes. Keep this to one
+// viewport (not full-page) so the bottom navigation remains clearly visible.
+for (const theme of ['dark', 'light']) {
+  const m = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  await m.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
+  await setTheme(m, theme);
+  await m.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
+  await waitForDemo(m);
+  const mobileFile = `demo-mobile-${theme}.png`;
+  const publicPath = join(PUBLIC_OUT, mobileFile);
+  await m.screenshot({ path: publicPath });
+  copyFileSync(publicPath, join(OUT, mobileFile));
+  console.log('shot:', `demo-mobile-${theme}`);
+  await m.close();
+}
 
 await browser.close();
 console.log('done →', OUT);

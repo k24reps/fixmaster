@@ -38,6 +38,16 @@ kembali bila diperlukan.
   bukan klaim performa pelanggan.
 - **Ritme**: trust rail → alur empat tahap → pandangan owner/tiket digital → screenshot
   produk asli → dua paket → FAQ → CTA. Lebih pendek dan lebih visual dari V1.
+- **Narasi lintas layar (11 Agu 2026)**: hero kini menyebut alur yang sama di meja dan
+  ponsel, ukuran judul + jarak hero dipadatkan khusus layar kecil, dan section produk
+  tidak lagi mengecilkan screenshot desktop menjadi bukti yang sulit dibaca. Desktop
+  menampilkan dashboard besar dengan ponsel sebagai instrumen pendamping; mobile
+  menampilkan screenshot ponsel lebih dahulu, kemudian konteks desktop. Pesan, CTA,
+  dan urutan cerita tetap sama—hanya prioritas visualnya yang mengikuti perangkat.
+- **Bukti produk mobile**: `demo-mobile-dark.png` / `demo-mobile-light.png` di
+  `public/screenshots/` adalah viewport 390×844 dari `/demo` asli, lengkap dengan
+  dashboard dan bottom navigation; bukan mockup. Regenerasi dilakukan oleh
+  `scripts/shoot-demo.mjs`, yang juga menyalin hasil ke `scripts/shots/` untuk vault.
 - **Identitas**: tetap memakai token dark/light, mono readout, LED cyan, spine tiket,
   divider titik, dan maskot Volt. Tidak memakai aset/komponen eksternal baru.
 - **Teknis**: `AuthGate` merender V2 untuk sesi signed-out dan `app/router.tsx`
@@ -45,6 +55,8 @@ kembali bila diperlukan.
   `landingV2.*`, CTA auth membuka panel auth, dan demo tetap memakai `/demo`.
 - **Verifikasi**: render asli desktop 1280×720, mobile 390×844, serta tema terang;
   tidak ada overflow horizontal dan header sticky tetap bekerja.
+
+![[demo-mobile-dark.png]]
 
 ## Landing V1 — Instrument Bench (legacy, dipertahankan)
 
