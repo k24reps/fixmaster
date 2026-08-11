@@ -168,7 +168,6 @@ export const id = {
   'landingV2.productLead': 'Gunakan dashboard luas di meja penerimaan, lalu lanjutkan dari ponsel tanpa mencari ulang menu penting. Keduanya berasal dari demo FixMaster yang sama dan aman diutak-atik.',
   'landingV2.productDesktop': 'Desktop',
   'landingV2.productMobile': 'Mobile',
-  'landingV2.productMobileNote': 'Aksi cepat dalam genggaman',
   'landingV2.productAlt': 'Dashboard FixMaster dengan tiket servis, keuangan, inventori, dan aktivitas konter',
   'landingV2.productMobileAlt': 'Dashboard mobile FixMaster dengan ringkasan usaha dan navigasi bawah',
   'landingV2.openDemoDesktop': 'Buka demo FixMaster versi desktop',

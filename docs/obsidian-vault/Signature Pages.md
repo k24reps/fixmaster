@@ -48,6 +48,8 @@ kembali bila diperlukan.
   `public/screenshots/` adalah viewport 390×844 dari `/demo` asli, lengkap dengan
   dashboard dan bottom navigation; bukan mockup. Regenerasi dilakukan oleh
   `scripts/shoot-demo.mjs`, yang juga menyalin hasil ke `scripts/shots/` untuk vault.
+  Frame landing memakai bezel ponsel (speaker, kamera, tombol samping, home indicator)
+  dan tidak menaruh label di atas layar, sehingga bottom navigation tetap terlihat utuh.
 - **Identitas**: tetap memakai token dark/light, mono readout, LED cyan, spine tiket,
   divider titik, dan maskot Volt. Tidak memakai aset/komponen eksternal baru.
 - **Teknis**: `AuthGate` merender V2 untuk sesi signed-out dan `app/router.tsx`
@@ -56,7 +58,9 @@ kembali bila diperlukan.
 - **Verifikasi**: render asli desktop 1280×720, mobile 390×844, serta tema terang;
   tidak ada overflow horizontal dan header sticky tetap bekerja.
 
-![[demo-mobile-dark.png]]
+![[landing-phone-frame-desktop.png]]
+
+![[landing-phone-frame-mobile.png]]
 
 ## Landing V1 — Instrument Bench (legacy, dipertahankan)
 

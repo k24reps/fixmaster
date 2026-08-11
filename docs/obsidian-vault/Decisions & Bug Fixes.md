@@ -966,7 +966,12 @@ attachment vault.
 
 **Verifikasi:** build, lint, 441 unit test, dan 59 integration test hijau. Kedua aset
 mobile diperiksa pada resolusi asli; bottom navigation, KPI utama, dan tema dark/light
-terbaca. Pemeriksaan komposisi browser akhir tidak diulang setelah browser lokal
-menolak navigasi dari halaman error, sehingga tidak dicoba melalui surface alternatif.
+terbaca. Render browser akhir diverifikasi pada 1440×960 dan 390×844 tanpa overflow
+horizontal; frame ponsel menampilkan kelima item bottom navigation secara utuh.
+
+**Koreksi frame (11 Agu 2026):** label manfaat yang semula ditempel di dasar frame
+menutupi bottom navigation pada screenshot. Overlay dihapus; screenshot kini duduk di
+dalam bezel ponsel dengan speaker, kamera, tombol samping, dan home indicator. Seluruh
+viewport 390×844 tetap terlihat, termasuk lima item bottom navigation.
 
 #decision #landing #responsive #ux

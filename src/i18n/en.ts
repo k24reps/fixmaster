@@ -165,7 +165,6 @@ export const en: Dictionary = {
   'landingV2.productLead': 'Use the full dashboard at the intake desk, then continue from your phone without hunting for key menus. Both views come from the same FixMaster demo and are safe to explore.',
   'landingV2.productDesktop': 'Desktop',
   'landingV2.productMobile': 'Mobile',
-  'landingV2.productMobileNote': 'Quick actions in your hand',
   'landingV2.productAlt': 'FixMaster dashboard with service tickets, finance, inventory, and repair shop activity',
   'landingV2.productMobileAlt': 'FixMaster mobile dashboard with business summary and bottom navigation',
   'landingV2.openDemoDesktop': 'Open the FixMaster desktop demo',
