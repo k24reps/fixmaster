@@ -140,22 +140,60 @@ supabase functions deploy gopay-listener --project-ref fpwwswngqpftaixdlozo
 
 ### Gerbang Fase 1
 
-Fungsi harus **menolak** request tanpa secret:
+**Uji 1 — tanpa secret, harus ditolak.**
+
+Git Bash:
 
 ```bash
+curl -i -X POST "https://fpwwswngqpftaixdlozo.supabase.co/functions/v1/gopay-listener" -H "Content-Type: application/json" -d '{"text":"Kamu menerima Rp1 dari Test","postedAt":0}'
+```
+
+cmd.exe (kutip tunggal tidak berlaku di cmd — inner quote harus di-escape `\"`):
+
+```
 curl -i -X POST "https://fpwwswngqpftaixdlozo.supabase.co/functions/v1/gopay-listener" -H "Content-Type: application/json" -d "{\"text\":\"Kamu menerima Rp1 dari Test\",\"postedAt\":0}"
 ```
 
 Harus `401` (secret terpasang) atau `503` (secret belum terbaca). **Kalau balasannya 2xx, berhenti**
 — artinya pembayaran bisa dipalsukan tanpa kredensial apa pun.
 
-Lalu dengan secret yang benar, dan `postedAt` waktu sekarang:
+> `401` juga kabar baik lain: ia hanya muncul kalau `GOPAY_LISTENER_SECRET` **sudah** terbaca
+> fungsi. Kalau belum diset, balasannya `503`.
+
+**Uji 2 — dengan secret yang benar, harus diterima.**
+
+Git Bash (timestamp diisi shell):
 
 ```bash
 curl -i -X POST "https://fpwwswngqpftaixdlozo.supabase.co/functions/v1/gopay-listener" -H "Content-Type: application/json" -H "X-Listener-Secret: <nilai>" -d "{\"text\":\"Kamu menerima Rp1 dari Test\",\"postedAt\":$(date +%s000)}"
 ```
 
-Harus `200` dengan `{"matched":false,...}` — pipeline hidup, cuma belum ada invoice bernominal Rp1.
+cmd.exe — `$(...)` tidak ada di cmd, jadi ambil timestamp lebih dulu:
+
+```
+powershell -Command "[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()"
+```
+
+lalu tempel angkanya menggantikan `TIMESTAMP`:
+
+```
+curl -i -X POST "https://fpwwswngqpftaixdlozo.supabase.co/functions/v1/gopay-listener" -H "Content-Type: application/json" -H "X-Listener-Secret: <nilai>" -d "{\"text\":\"Kamu menerima Rp1 dari Test\",\"postedAt\":TIMESTAMP}"
+```
+
+Harus `200` dengan `{"matched":false,"amount":1}` — pipeline hidup, cuma belum ada invoice
+bernominal Rp1.
+
+Timestamp wajib waktu sekarang: fungsi menolak notifikasi lebih tua dari 15 menit (`stale
+notification`) sebagai penangkal replay. Itulah kenapa Uji 1 memakai `postedAt: 0` — ia gugur di
+gerbang secret jauh sebelum umur diperiksa.
+
+### Kalau curl-mu berantakan
+
+| Pesan curl | Sebab |
+|---|---|
+| `Could not resolve host: menerima` / `Rp1` / `dari` | Kutip tunggal dipakai di cmd — JSON pecah per spasi. Pakai bentuk `\"` di atas. |
+| `unmatched close brace/bracket in URL position 8: +%s000)}` | `$(date +%s000)` tidak diperluas cmd. Pakai timestamp dari PowerShell. |
+| `{"error":"unauthorized"}` padahal secret diisi | Placeholder `<nilai>` ikut tertempel, atau nilainya beda dari yang di server. |
 
 ---
 
