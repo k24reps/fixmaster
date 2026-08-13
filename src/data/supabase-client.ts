@@ -664,6 +664,32 @@ export async function cancelInvoice(invoiceId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Start/renew a subscription paid via the GoPay merchant QR (listener flow).
+ * Returns the EXACT amount the customer must transfer — the amount carries a
+ * random rupiah suffix because it is the only thing correlating an incoming
+ * GoPay notification back to this invoice. Paying a rounded figure instead
+ * will not be matched automatically.
+ */
+export async function startGopayInvoice(
+  plan: string,
+  amount: number,
+): Promise<{ invoiceId: string; exactAmount: number }> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('start_gopay_invoice', {
+    p_plan: plan,
+    p_amount: amount,
+  });
+  if (error) throw new Error(error.message);
+  // The RPC returns a single-row table.
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { invoice_id: string; exact_amount: number }
+    | undefined;
+  if (!row) throw new Error('Gagal membuat invoice GoPay');
+  return { invoiceId: row.invoice_id, exactAmount: Number(row.exact_amount) };
+}
+
 /** List an org's invoices, newest first. */
 export async function listInvoices(orgId: string): Promise<Invoice[]> {
   const c = getSupabase();
@@ -675,27 +701,6 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(toInvoice);
-}
-
-/**
- * Create a real payment via the `create-invoice` Edge Function (Duitku).
- * Returns the hosted payment-page link. The provider's secret key lives only
- * in the Edge Function — never in the browser. Throws if the function is not
- * deployed/configured, so callers can fall back to the mock flow.
- */
-export async function createPaymentInvoice(
-  plan: string,
-  amount: number,
-  redirectUrl?: string,
-): Promise<{ invoiceId: string; link: string }> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.functions.invoke('create-invoice', {
-    body: { plan, amount, redirectUrl },
-  });
-  if (error) throw new Error(error.message);
-  if (!data?.link) throw new Error(data?.error ?? 'Gagal membuat invoice pembayaran');
-  return { invoiceId: data.invoiceId as string, link: data.link as string };
 }
 
 /**

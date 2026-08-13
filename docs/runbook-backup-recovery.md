@@ -63,4 +63,4 @@ Hanya untuk pemulihan data tabular tertentu (bukan relasi penuh):
 
 - **Supabase**: dashboard project `fixmaster`. Status: status.supabase.com.
 - **Vercel**: status.vercel.com.
-- **Pembayaran (Fersaku)**: webhook idempotent (`apply_payment`), aman terhadap retry.
+- **Pembayaran (listener GoPay)**: `claim_gopay_payment` → `apply_payment` idempoten, dan `for update skip locked` membuat notifikasi ganda aman. **Tapi tidak ada retry** — notifikasi GoPay fire-and-forget, jadi bila `gopay-listener` down saat pembayaran masuk, invoice tetap pending dan butuh konfirmasi manual. Setelah insiden, cek log fungsi + invoice pending yang nominalnya sudah dibayar.

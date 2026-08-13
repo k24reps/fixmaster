@@ -23,9 +23,18 @@ async function callNoAuth(fn: string, body: unknown) {
 }
 
 d('Tier 2b — Edge function menolak tanpa JWT', () => {
-  it('create-invoice tanpa Authorization → 401', async () => {
-    const res = await callNoAuth('create-invoice', { plan: 'enterprise', amount: 0 });
-    expect(res.status).toBe(401);
+  // Menggantikan uji `create-invoice` (Duitku dicabut). gopay-listener kini
+  // satu-satunya jalur uang, dan gerbangnya adalah shared secret di header —
+  // bukan JWT. Tanpa header itu ia HARUS menolak: 401 (secret terpasang,
+  // header salah/absen) atau 503 (fail-closed, secret belum diset di env).
+  // Yang penting: tidak pernah 2xx, karena 2xx berarti pembayaran bisa
+  // dipalsukan tanpa kredensial apa pun.
+  it('gopay-listener tanpa X-Listener-Secret → ditolak', async () => {
+    const res = await callNoAuth('gopay-listener', {
+      text: 'Kamu menerima Rp1 dari Test',
+      postedAt: Date.now(),
+    });
+    expect([401, 503]).toContain(res.status);
   });
 
   it('delete-account tanpa Authorization → 401', async () => {

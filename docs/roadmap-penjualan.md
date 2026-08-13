@@ -22,7 +22,7 @@ Ada dua jenis "siap" yang sering ketuker:
 ### Kenapa posisimu kuat (aset yang langka dimiliki bersamaan)
 - **Full-time** → bisa mendampingi pilot secara intens.
 - **Kenal beberapa pemilik toko servis** → pintu masuk hangat (kebanyakan orang harus cari dari nol).
-- **QRIS sudah jalan** (fersaku.com) → hambatan pembayaran sudah hilang.
+- **QRIS sudah jalan** (listener GoPay, bebas MDR) → hambatan pembayaran sudah hilang.
 
 Kamu sudah siap menjalankan langkah validasi terpenting. Tidak perlu menunggu apa-apa lagi.
 
@@ -111,7 +111,7 @@ Ukur ini per toko, tiap minggu, selama 3–4 minggu:
 Pemilik toko sudah punya catatan di buku/Excel. Kalau pindah ke FixMaster berarti mulai dari nol, itu hambatan terbesar pindah sistem. Pilot akan menunjukkan seberapa parah. Minimal sediakan jalur impor pelanggan & stok.
 
 ### 2. Aktivasi setelah bayar
-QRIS via fersaku.com sudah jalan. Yang perlu diperjelas: setelah pelanggan bayar, akun aktif **otomatis** atau kamu **aktifkan manual**?
+QRIS via listener GoPay sudah jalan. Yang perlu diperjelas: setelah pelanggan bayar, akun aktif **otomatis** atau kamu **aktifkan manual**? Jawaban sekarang: otomatis **bila** pelanggan membayar nominal persis dan listener sedang hidup; kalau tidak, jatuh ke konfirmasi manual.
 - Manual = oke untuk pilot (volume kecil).
 - Jadi penghambat saat skala → otomasi sebelum Fase 2.
 

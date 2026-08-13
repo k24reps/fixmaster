@@ -45,7 +45,13 @@ export default defineConfig({
     // The offline unit suite lives under src/. Network-bound integration
     // tests (tests/integration/**) run separately via test:integration so a
     // plain `npm run test` stays fast and hermetic.
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // Edge Functions are Deno, but their PURE helpers (e.g. the GoPay
+    // notification parser) are plain TS and belong in the offline suite —
+    // that parser guards a money path and must not ship untested.
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'supabase/functions/**/*.{test,spec}.ts',
+    ],
     exclude: ['tests/integration/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',

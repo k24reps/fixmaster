@@ -975,3 +975,93 @@ dalam bezel ponsel dengan speaker, kamera, tombol samping, dan home indicator. S
 viewport 390×844 tetap terlihat, termasuk lima item bottom navigation.
 
 #decision #landing #responsive #ux
+
+---
+
+### Billing lewat listener notifikasi GoPay (migration `0043`)
+
+**Keputusan user, diambil sadar setelah trade-off dijelaskan.** Billing langganan bisa memakai
+akun GoPay merchant sendiri (bebas MDR) sebagai ganti checkout Duitku, dengan konsekuensi yang
+diterima di muka.
+
+**Masalah inti:** notifikasi GoPay hanya membawa nominal + waktu, **tanpa order id**. Jadi nominal
+dipakai sebagai korelator: tiap invoice diberi sufiks acak 0–999 rupiah (Rp49.000 → Rp49.037).
+Keunikannya ditegakkan **partial unique index** di Postgres, bukan kode aplikasi — insert yang
+bentrok ditolak database, jadi tidak ada race check-then-insert. Bentrok cuma berbiaya satu retry.
+
+**Kenapa `claim_gopay_payment` service_role-only.** Fungsi ini menandai invoice lunas dengan bukti
+tunggal berupa nominal, sedangkan user tahu nominal invoice-nya sendiri. Kalau di-grant ke
+`authenticated`, itu mengulang persis celah F5 yang ditutup `0022`. Di-`revoke ... from public`
+secara eksplisit karena Postgres meng-grant EXECUTE ke PUBLIC secara default.
+
+**Kenapa parser teks di server, bukan di APK.** Kalimat notifikasi adalah bagian paling rapuh dan
+bisa berubah tiap update aplikasi GoPay. Dengan parser di Edge Function, perbaikan = redeploy
+fungsi; aplikasi Android tetap penerus bodoh yang tak perlu dirilis ulang. Parser menolak kata
+outgoing (`mengirim`, `refund`, `pembayaran ke`) — false negative hanya berbiaya konfirmasi
+manual, false positive memberi langganan gratis.
+
+**Bug tertangkap sebelum deploy.** Draf pertama `start_gopay_invoice` menyalin `start_subscription`
+versi `0009` (`role in ('owner','admin')`, tanpa supersede). Itu regresi terhadap `0016` yang sudah
+mengetatkan billing jadi owner-only. Lebih parah: tanpa supersede, invoice pending menumpuk dan
+**tiap invoice terbuka menahan satu nominal yang bisa diklaim** — beberapa nominal hidup sekaligus.
+Diperbaiki mengikuti `0016`.
+
+**Batas yang diterima (bukan bug — konsekuensi jalur ini):**
+- Notifikasi *fire-and-forget*: fungsi down saat pembayaran masuk → tidak ada retry, invoice
+  tetap pending sampai dikonfirmasi manual. Webhook gateway punya retry justru karena ini.
+- Butuh HP Android nyala 24/7; Doze/baterai habis = pipeline mati diam-diam.
+- Bayar nominal berbeda → tidak terkorelasi, perlu rekonsiliasi manual. Log
+  `incoming payment with no matching invoice` adalah antrian kerja manusia.
+- Secret di-hardcode dalam APK → APK tidak boleh disebar.
+
+Rollback: kosongkan `VITE_GOPAY_QRIS_URL`, billing kembali ke Duitku tanpa perubahan kode.
+
+**Sisa giliran user:** set `GOPAY_LISTENER_SECRET`, `supabase db push`, deploy fungsi, upload gambar
+QRIS ke bucket publik, pasang APK listener, lalu uji 1 transaksi nominal kecil. Screenshot Playwright
+pay dock varian `gopay` belum diregenerasi (butuh env + invoice pending nyata).
+
+#decision #billing #gopay #security #keputusan-user
+
+### Gateway hosted (Duitku) dicabut — GoPay listener jadi satu-satunya jalur
+
+Lanjutan keputusan di atas: setelah listener GoPay jalan, Duitku dicabut atas permintaan user.
+Dihapus: Edge Function `create-invoice` & `duitku-webhook`, entri `config.toml`, dan
+`createPaymentInvoice()` di data layer. `fersaku-webhook` dibiarkan (sudah deprecated sejak
+cutover Duitku) hanya untuk callback yang mungkin masih melayang.
+
+**Yang TIDAK dihapus:** kolom `provider`, `provider_ref`, `qris_url` di `invoices`. Baris invoice
+historis harus tetap terbaca; membuang kolomnya cuma menghemat beberapa byte tapi merusak riwayat
+dan laporan.
+
+**Jebakan yang ditutup.** Invoice pending milik provider lama dulu menampilkan link checkout
+tersimpan. Setelah webhook-nya dihapus, link itu berbahaya: halaman Duitku masih bisa menerima
+uang, tapi tak ada lagi yang menandai invoice lunas — pelanggan bayar, invoice tetap pending.
+Pay dock kini menolak menampilkan link untuk provider non-`gopay`/non-`mock` dan menyuruh
+membatalkan lalu membuat ulang.
+
+**Uji integrasi disesuaikan.** `tier2b-edge` dulu menguji `create-invoice` menolak tanpa JWT.
+Diganti menguji `gopay-listener` menolak tanpa `X-Listener-Secret` — gerbangnya kini shared secret,
+bukan JWT. Assert `[401, 503]`: 401 bila secret terpasang, 503 bila belum diset (fail-closed).
+Yang dijaga: **tidak pernah 2xx**, karena 2xx berarti pembayaran bisa dipalsukan tanpa kredensial.
+
+**Konsekuensi yang berubah dari catatan sebelumnya:** rollback dengan mengosongkan
+`VITE_GOPAY_QRIS_URL` **tidak lagi** mengembalikan ke Duitku — sekarang jatuh ke invoice `mock`
+(konfirmasi manual). Env itu jadi wajib di produksi.
+
+#decision #billing #gopay #cleanup #keputusan-user
+
+### Fersaku ikut dicabut — tinggal 3 Edge Function
+
+Menyusul pencabutan Duitku, `fersaku-webhook` dihapus juga. Sisa Edge Function: `gopay-listener`,
+`delete-account`, `health`.
+
+**Temuan F1 jadi usang, tapi pelajarannya diwariskan.** F1 (webhook fail-open saat secret kosong:
+`signatureOk = !secret`) hidup di `fersaku-webhook`. Fungsinya sudah tidak ada, jadi entri temuan
+ditandai usang — bukan dihapus, karena riwayat audit tetap berguna. Polanya sudah diterapkan sejak
+baris pertama di `gopay-listener`: secret kosong → `503`, tidak pernah lolos.
+
+**Migrasi lama tidak disentuh.** `0015` dan `0022` menyebut Fersaku di komentarnya. Migration yang
+sudah ter-apply adalah catatan sejarah — menulis ulang komentarnya hanya bikin file dan database
+tidak sinkron tanpa manfaat.
+
+#decision #billing #cleanup #keputusan-user

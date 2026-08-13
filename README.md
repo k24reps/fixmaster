@@ -45,7 +45,7 @@ npm run test:coverage  # cakupan test
 ### 1. Setup Supabase
 1. Buat project di [supabase.com](https://supabase.com).
 2. Buka **SQL Editor**, jalankan **semua** migrasi di `supabase/migrations/` secara berurutan (`0001_*` → `0015_*`). Termasuk schema, RLS, RPC atomik, geofence, tim, billing, **Storage logo** (`0014`), dan **rate limiting** (`0015`).
-3. (Opsional) Deploy Edge Functions: `supabase functions deploy create-invoice`, `fersaku-webhook`, dan `health` (probe uptime). Konfigurasi `verify_jwt` sudah di `supabase/config.toml`.
+3. (Opsional) Deploy Edge Functions: `supabase functions deploy gopay-listener` (pembayaran langganan), `delete-account`, dan `health` (probe uptime). Konfigurasi `verify_jwt` sudah di `supabase/config.toml`.
 4. Di **Project Settings → API**, salin **Project URL** dan **anon public key**.
 
 ### 2. Konfigurasi Environment

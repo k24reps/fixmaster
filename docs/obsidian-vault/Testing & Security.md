@@ -15,7 +15,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 - **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per **22 Jun 2026 disinkronkan ke migrasi `0036`** (`0031` transfer_wallet/refund parsial, `0032` org_settings, `0033` satu-toko-per-email, `0034` PO→Keuangan, `0035` tracking kontak+garansi, `0036` admin outlet-scope — semua via `db push`, tracker sinkron). **`0036` di-apply 22 Jun setelah gerbang keamanan terpenuhi**: admin toko testing sudah di-set outlet; toko pilot owner-only (tanpa admin/karyawan) → nol risiko lockout. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging** (relink balik setelah tiap push prod).
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Edge functions ter-deploy di staging**: `create-invoice`, `delete-account`, `fersaku-webhook`, `health` (4 fungsi). Jadi Tier 2 bisa diuji langsung di staging.
+- **Edge functions ter-deploy di staging**: `gopay-listener`, `delete-account`, `health` (3 fungsi). Gateway hosted (`create-invoice`, `duitku-webhook`, `fersaku-webhook`) sudah dicabut — lihat [[Decisions & Bug Fixes]]. Jadi Tier 2 bisa diuji langsung di staging.
 - **Tooling lokal**: Node v24 ✅, Supabase CLI 2.101.0 ✅, **Docker ❌ (tidak terpasang)**. Maka `supabase start` (DB lokal) tidak dipakai — kita pakai **staging cloud**.
 
 > [!CAUTION]
@@ -36,7 +36,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 | # | Temuan | Lokasi | Keparahan |
 |---|--------|--------|:---------:|
-| F1 | **Webhook fail-open**: bila `FERSAKU_WEBHOOK_SECRET` kosong, `signatureOk = !secret` → semua request lolos | [fersaku-webhook](supabase/functions/fersaku-webhook/index.ts) (~L66) | 🔴 Tinggi → ✅ **DIPERBAIKI** (fail-closed; perlu deploy) |
+| F1 | **Webhook fail-open**: bila `FERSAKU_WEBHOOK_SECRET` kosong, `signatureOk = !secret` → semua request lolos | `fersaku-webhook` (fungsi sudah dihapus) | 🔴 Tinggi → ✅ **DIPERBAIKI**, lalu **usang** (gateway dicabut). Polanya diwariskan: [gopay-listener](supabase/functions/gopay-listener/index.ts) fail-closed sejak awal |
 | F2 | **Validasi No. HP lemah**: `phone: z.string().trim().min(1)` terima teks/simbol apa pun | [validators.ts](src/lib/validators.ts) | 🟡 Sedang → ✅ **DIPERBAIKI** (digit 8–15, regex pemisah) |
 | F3 | **Password tanpa kompleksitas**: hanya `length < 8` | [AuthPage.tsx](src/features/auth/AuthPage.tsx) | 🟡 Sedang → ✅ **DIPERBAIKI** (wajib huruf+angka saat signup) |
 | F4 | **Gap struktural**: 280 test menguji cermin klien, bukan penegak server (RLS/RPC) | `supabase/migrations/` | 🔴 Tinggi → **TERBUKTI AMAN** (27/28 lolos) |
@@ -46,8 +46,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 - Link WhatsApp: `encodeURIComponent` + strip non-digit ([notify.ts](src/lib/business/notify.ts) L19-20) → tak ada injeksi.
 - Tidak ada sink XSS (`dangerouslySetInnerHTML`/`innerHTML`/`eval` nihil di `src`).
 - `delete-account`: self-only (hapus `user.id` dari JWT sendiri).
-- `create-invoice`: JWT + RPC `start_subscription` (manager check) sebelum sentuh Fersaku.
-- `fersaku-webhook`: HMAC SHA-256 + `timingSafeEqual` + idempoten + race-safe (selain isu F1).
+- `gopay-listener`: shared secret `X-Listener-Secret` + `timingSafeEqual` + **fail-closed** (secret kosong → 503, bukan lolos) + replay guard 15 menit. Klaim lewat `claim_gopay_payment` (service_role-only, `for update skip locked`) → `apply_payment` idempoten. Pelajaran F1 diterapkan sejak awal di sini.
 
 ## Rencana 5-tier (urut prioritas)
 
@@ -84,7 +83,7 @@ Setelah find-first, keempat temuan diperbaiki + diverifikasi:
 
 - **F5** — [0022_apply_payment_guard.sql](supabase/migrations/0022_apply_payment_guard.sql): guard `apply_payment` (hanya service_role / owner pemilik invoice). **Applied ke staging** (repair history 0005–0021 dulu, lalu `db push` 0022). Test tier2 jadi regresi 2-arah: non-owner ditolak (invoice tetap `pending`), owner sukses (invoice `paid`).
 - **F2** — `customerSchema.phone` diperkuat (digit 8–15 + regex pemisah). Audit test kini hijau.
-- **F1** — webhook **fail-closed** saat secret kosong. **Sudah di-deploy & aktif di staging** (`functions deploy fersaku-webhook`; secret ter-set; smoke test unsigned POST → `200 ok` no-op). Untuk produksi: deploy + set secret di project produksi.
+- **F1** — webhook **fail-closed** saat secret kosong. Temuan ini kini **usang** (fungsi Fersaku dihapus bersama pencabutan gateway), tapi pelajarannya tetap berlaku dan sudah diterapkan di `gopay-listener`: secret kosong → `503`, tidak pernah lolos.
 - **F3** — password wajib huruf+angka (min 8), **hanya saat signup** (login akun lama tak terkunci).
 
 **Verifikasi**: `npm run test` 288 hijau · `npm run test:integration` **36/36 hijau** · build + lint bersih.
@@ -110,7 +109,8 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - `[x]` Tier 1 (isolasi tenant & peran) — 13 test, semua lolos.
 - `[x]` Tier 2 (RPC/billing/restore/track) + 2b (edge auth) + Tier 4 E2E + Tier 3 + Tier 5.
 - `[x]` **Perbaikan F5/F2/F1/F3 — SELESAI & terverifikasi** (36/36 integration hijau).
-- `[ ]` Deploy edge function `fersaku-webhook` agar F1 aktif (aksi user/devops).
+- `[x]` ~~Deploy edge function `fersaku-webhook` agar F1 aktif~~ — usang, gateway dicabut.
+- `[ ]` Set `GOPAY_LISTENER_SECRET` + deploy `gopay-listener` di produksi (aksi user/devops).
 - `[ ]` (Opsional) F3 lebih ketat via Supabase Auth password policy.
 
 ## Terkait

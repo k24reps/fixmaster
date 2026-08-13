@@ -24,7 +24,7 @@
 
 1. Buat project Supabase **kedua**, mis. `fixmaster-staging` (free tier cukup).
 2. Jalankan **semua** migrasi `supabase/migrations/` (`0001` → terbaru) di SQL Editor staging, urut.
-3. Deploy Edge Functions ke staging: `create-invoice`, `fersaku-webhook`, `health`, `delete-account`.
+3. Deploy Edge Functions ke staging: `gopay-listener`, `health`, `delete-account`.
 4. Isi dengan **data dummy** (jangan salin data user asli — itu PII).
 5. Catat **Project URL** + **anon key** staging.
 

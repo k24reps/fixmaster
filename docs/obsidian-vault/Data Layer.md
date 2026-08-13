@@ -89,6 +89,21 @@ Selain koleksi yang dipetakan ke repository, mode cloud punya tabel & RPC khusus
 
 **Enforcement tulis (migration `0010`)** — semua RLS `*_write` policy (operasional, finansial, config) diperketat agar `using`+`with check` wajib `is_org_active(org_id)`. Jadi saat langganan kedaluwarsa (lewat grace), **insert/update/delete diblokir di level DB** untuk semua jalur tulis (termasuk input pemasukan via adapter yang tak lewat RPC) — sementara `*_select` tak disentuh (baca tetap jalan) dan `invoices`/`memberships` tak digerbang (bayar + kelola tim tetap bisa). `supabase-adapter` menerjemahkan error RLS `42501` jadi pesan Indonesia yang ramah.
 
+### Billing via listener GoPay (migration `0043`)
+
+Jalur billing alternatif yang **memakai akun GoPay merchant sendiri**, bukan gateway berlisensi. Notifikasi GoPay tidak membawa order id — hanya nominal — jadi **nominal itulah korelatornya**. Konsekuensinya nominal wajib unik di antara invoice yang terbuka, dan itu ditegakkan **partial unique index** `uq_invoices_gopay_open_amount` (`on invoices(amount) where status='pending' and provider='gopay'`), bukan cek di kode aplikasi — sehingga tidak ada celah check-then-insert.
+
+RPC:
+- `start_gopay_invoice(plan, amount)` → `(invoice_id, exact_amount)`. OWNER-only + supersede pending lama (aturan `0016`); nominal = `floor(amount) + random(0..999)`, di-retry sampai unique index menerima (maks 50x). Mengembalikan nominal persis yang harus dibayar.
+- `claim_gopay_payment(amount)` → `uuid | null`. **`service_role` saja** — sengaja TIDAK di-grant ke `authenticated`, karena fungsi ini menandai lunas tanpa bukti selain nominal, dan user tahu nominal invoice-nya sendiri (kalau di-grant, itu jadi celah bypass persis seperti F5 di `0022`). Pakai `for update skip locked` agar dua notifikasi bersamaan tak bisa sama-sama mengklaim. Memanggil `apply_payment` — lolos guard `0022` karena `auth.role()` membaca klaim JWT dan tidak berubah oleh nesting RPC.
+- `expire_stale_gopay_invoices()` — pending gopay > 30 menit jadi `expired` sehingga nominalnya kembali ke pool. Dipanggil on-demand oleh kedua entry point, **tanpa cron**.
+
+Edge Function `gopay-listener` (public, `verify_jwt=false`, gated `X-Listener-Secret` timing-safe + fail-closed) menerima teks notifikasi mentah dari HP Android. **Parser teks ada di server** (`parse.ts`, 10 unit test) — bagian paling rapuh, jadi perubahan format GoPay cukup redeploy fungsi tanpa rilis ulang APK. Ada replay guard 15 menit.
+
+Aktivasi lewat env `VITE_GOPAY_QRIS_URL`. **Sejak gateway lama dicabut, ini satu-satunya jalur pembayaran** — bila env kosong, billing turun ke invoice `mock` (konfirmasi manual owner), jadi di produksi env ini wajib. Detail perangkat + batasannya di `docs/gopay-listener-android.md` dan [[Decisions & Bug Fixes]].
+
+**Gateway hosted dicabut seluruhnya.** Edge Function `create-invoice`, `duitku-webhook`, dan `fersaku-webhook` dihapus, entri `config.toml`-nya dibuang, dan `createPaymentInvoice()` dihapus dari data layer. Sisa Edge Function: `gopay-listener`, `delete-account`, `health`. Kolom `provider`/`provider_ref`/`qris_url` **tetap** — baris invoice lama tetap terbaca. Di pay dock, invoice pending milik provider lama sengaja **tidak** lagi menampilkan link bayar: checkout-nya mungkin masih menerima uang padahal webhook konfirmasinya sudah tiada, jadi UI menyuruh membatalkan dan membuat ulang.
+
 ### Model akses peran (migration `0016`) — TIGA lapis
 
 Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` = owner/admin), sehingga ada dua celah yang hanya tertutup UI (bisa di-bypass via API):

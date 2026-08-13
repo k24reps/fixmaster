@@ -53,11 +53,11 @@ import {
   deactivateMember,
   deleteMember,
   startSubscription,
+  startGopayInvoice,
   applyPayment,
   cancelInvoice,
   listInvoices,
   subscribeOrgBilling,
-  createPaymentInvoice,
   deleteAccountCredential,
   transferWallet,
   type PendingInvite,
@@ -1200,6 +1200,13 @@ function TeamTab({
   );
 }
 
+/**
+ * Public URL of our GoPay merchant QR image. This is the only real payment
+ * path since the hosted gateways were dropped — leaving it empty degrades
+ * billing to mock invoices that an owner must confirm by hand.
+ */
+const GOPAY_QRIS_URL = (import.meta.env.VITE_GOPAY_QRIS_URL as string | undefined) ?? '';
+
 function BillingTab({ outlets }: { outlets: Outlet[] }) {
   const org = useSessionStore((s) => s.org);
   const orgId = org?.id ?? '';
@@ -1267,17 +1274,17 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         tier === 'enterprise'
           ? priceForOutlets(outletCount)
           : parseAmount(PLANS[tier].priceLabel);
-      try {
-        // Real provider: create a Fersaku payment and open the hosted checkout
-        // page (QRIS). Confirmation arrives via the webhook.
-        const { link } = await createPaymentInvoice(tier, amount, window.location.href);
-        window.open(link, '_blank', 'noopener');
-        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran di tab baru`);
-      } catch {
-        // Fallback (Edge Function not deployed yet): mock pending invoice,
-        // confirmable manually via "Saya sudah bayar".
+      // GoPay listener is the only payment path. Without a configured merchant
+      // QR we fall back to a mock invoice (confirmable by hand) so the renewal
+      // flow stays testable on a machine with no GoPay account.
+      if (GOPAY_QRIS_URL) {
+        const { exactAmount } = await startGopayInvoice(tier, amount);
+        toast.success(
+          `Invoice ${PLANS[tier].name} dibuat — bayar TEPAT Rp${exactAmount.toLocaleString('id-ID')}`,
+        );
+      } else {
         await startSubscription(tier, amount);
-        toast.success(`Invoice ${PLANS[tier].name} dibuat — selesaikan pembayaran`);
+        toast.success(`Invoice ${PLANS[tier].name} dibuat — konfirmasi manual`);
       }
       await reload();
     } catch (err) {
@@ -1434,23 +1441,35 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   Saya sudah bayar
                 </Button>
               </>
-            ) : (
+            ) : pendingInvoice.provider === 'gopay' ? (
               <>
-                {pendingInvoice.qrisUrl && (
-                  <a
-                    className={styles.payLink}
-                    href={pendingInvoice.qrisUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name="up-right-from-square" aria-hidden /> Buka Halaman Pembayaran QRIS
-                  </a>
-                )}
+                <a
+                  className={styles.payLink}
+                  href={GOPAY_QRIS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="up-right-from-square" aria-hidden /> Buka QRIS GoPay
+                </a>
+                {/* The amount is the ONLY thing tying the incoming payment to
+                    this invoice, so paying a rounded figure breaks matching.
+                    This warning is load-bearing, not decoration. */}
                 <p className={styles.hint}>
-                  Langganan diperpanjang otomatis setelah pembayaran diterima. Halaman ini akan
-                  diperbarui sendiri — tidak perlu konfirmasi manual.
+                  Bayar <strong>tepat Rp{pendingInvoice.amount.toLocaleString('id-ID')}</strong> —
+                  angka di belakang bukan salah ketik, itu penanda invoice ini. Nominal berbeda
+                  tidak akan terdeteksi otomatis. Invoice berlaku 30 menit.
                 </p>
               </>
+            ) : (
+              // Legacy invoice from a hosted gateway we no longer run. Its
+              // checkout page may still accept money, but the webhook that
+              // confirmed it is gone — so we deliberately do NOT show a pay
+              // link. Paying it would leave the invoice pending forever.
+              <p className={styles.hint}>
+                Invoice ini dibuat lewat provider lama ({pendingInvoice.provider}) yang sudah tidak
+                dipakai. <strong>Jangan dibayar</strong> — pembayarannya tidak akan terdeteksi.
+                Batalkan invoice ini, lalu buat ulang.
+              </p>
             )}
           </CardBody>
         </Card>
