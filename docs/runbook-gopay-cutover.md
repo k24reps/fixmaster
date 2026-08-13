@@ -18,9 +18,50 @@ Referensi kode perangkat: [`gopay-listener-android.md`](gopay-listener-android.m
 
 ---
 
-## Fase 0 — Pasang Supabase CLI
+## Fase 0 — Terminal, folder kerja, CLI
 
-CLI belum terpasang di mesin ini. Pilih salah satu:
+### 0.1 Pakai Git Bash, bukan cmd.exe
+
+Seluruh runbook ini mengasumsikan **Git Bash**. Di sana sudah tersedia `openssl` dan `date`
+yang dipakai beberapa perintah, plus quoting yang benar untuk `curl`. Di `cmd.exe` perintah
+tersebut gagal (`'openssl' is not recognized`).
+
+Kalau terpaksa di cmd/PowerShell, pengganti `openssl rand -hex 32` yang setara dan aman:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### 0.2 Wajib: pindah ke folder proyek dulu
+
+```bash
+cd "C:/Users/Rif/Documents/FixMaster"
+```
+
+**Ini penyebab kegagalan paling umum.** Supabase CLI membaca `supabase/migrations` **relatif
+terhadap folder tempat kamu berdiri**. Dijalankan dari home directory, CLI melihat nol migrasi
+lokal padahal remote punya puluhan, lalu memuntahkan:
+
+```
+Remote migration versions not found in local migrations directory.
+```
+
+Ia kemudian menyarankan `supabase migration repair --status reverted 0001 … 0042`.
+
+> **JANGAN jalankan saran itu.** Perintah tersebut menandai seluruh migrasi yang sudah ter-apply
+> sebagai belum dijalankan. Push berikutnya akan mencoba menerapkan ulang semuanya ke database
+> yang objeknya sudah ada — error beruntun, dan sebagian migrasi bisa merusak data yang hidup.
+> Saran itu benar hanya untuk riwayat yang memang rusak. Kalau pesannya muncul, **cek dulu kamu
+> berdiri di folder mana** — 99% kasusnya cuma salah folder.
+
+Kalau kamu sempat menjalankan CLI dari folder lain, ia meninggalkan folder `supabase/.temp` liar
+di sana. Hapus supaya tidak membingungkan nanti:
+
+```bash
+rm -rf "C:/Users/Rif/supabase"
+```
+
+### 0.3 Pasang CLI
 
 ```bash
 npm install -g supabase
@@ -32,13 +73,13 @@ atau lewat Scoop (Windows):
 scoop install supabase
 ```
 
-Verifikasi:
+### Gerbang Fase 0
 
 ```bash
 supabase --version
 ```
 
-**Gerbang:** perintah di atas mencetak nomor versi.
+mencetak nomor versi, **dan** `pwd` menunjukkan kamu berada di folder FixMaster.
 
 ---
 
@@ -64,7 +105,10 @@ Akan diminta **password database staging**. Ini kredensialmu — jangan tempel k
 supabase migration list
 ```
 
-Pastikan `0043_gopay_listener` muncul sebagai pending, dan **tidak ada migrasi lain yang tak kamu kenali**.
+Pastikan `0043_gopay_listener` muncul sebagai pending, `0001`–`0042` terisi di kolom Local **dan**
+Remote, dan tidak ada migrasi lain yang tak kamu kenali.
+
+Kolom Local kosong sementara Remote terisi = kamu berdiri di folder yang salah. Kembali ke 0.2.
 
 ### 1.3 Apply
 
@@ -79,6 +123,8 @@ Generate dulu, dan **catat nilainya** — angka yang sama harus masuk ke APK nan
 ```bash
 openssl rand -hex 32
 ```
+
+(di cmd/PowerShell: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
 
 Simpan ke staging (ganti `<nilai>` dengan hasil di atas):
 
@@ -215,6 +261,8 @@ Baru setelah Fase 4 terbukti. Urutannya dirancang agar tidak ada celah pemasukan
 
 ### 5.1 Cek invoice pending provider lama
 
+Pastikan lagi kamu berdiri di folder proyek (`pwd`), lalu:
+
 ```bash
 supabase link --project-ref vmitplpvncfvyimgyxrn
 ```
@@ -237,6 +285,8 @@ Generate secret **baru** untuk produksi — jangan pakai ulang punya staging:
 ```bash
 openssl rand -hex 32
 ```
+
+(di cmd/PowerShell: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
 
 ```bash
 supabase secrets set GOPAY_LISTENER_SECRET=<nilai-produksi> --project-ref vmitplpvncfvyimgyxrn
