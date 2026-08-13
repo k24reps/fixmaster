@@ -1,6 +1,9 @@
 @echo off
 setlocal EnableExtensions
-cd /d "C:\Users\Administrator\Documents\FixMaster"
+REM Pindah ke folder tempat script ini berada, bukan path absolut milik satu
+REM mesin. Sebelumnya di-hardcode ke C:\Users\Administrator\... sehingga script
+REM gagal di akun/mesin lain.
+cd /d "%~dp0"
 if not exist "supabase\config.toml" (
   echo [X] Tidak menemukan supabase\config.toml - jalankan dari folder fixmaster.
   exit /b 1
