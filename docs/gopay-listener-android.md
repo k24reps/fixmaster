@@ -6,6 +6,10 @@ meneruskan notifikasi GoPay ke Edge Function `gopay-listener`, dan langganan dip
 Dokumen ini hanya bagian perangkatnya. Sisi server ada di
 `supabase/functions/gopay-listener/` + migration `0043_gopay_listener.sql`.
 
+> **Mau mengerjakan cutover-nya?** Ikuti [`runbook-gopay-cutover.md`](runbook-gopay-cutover.md) —
+> urutan lengkap staging → produksi beserta gerbang verifikasi tiap fase. Dokumen ini dirujuk
+> dari sana sebagai referensi kode perangkat.
+
 ## Cara kerja korelasi
 
 Notifikasi GoPay **tidak membawa order id** — cuma nominal dan waktu. Maka nominal dipakai sebagai
@@ -63,19 +67,63 @@ supabase db push --project-ref vmitplpvncfvyimgyxrn
 Sengaja dibuat bodoh: hanya meneruskan teks mentah. Semua parsing ada di server supaya perubahan
 format GoPay tidak memaksa rilis APK baru.
 
-`AndroidManifest.xml`:
+`AndroidManifest.xml` — lengkap, di dalam `<manifest>`:
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 
-<service
-    android:name=".GopayListenerService"
-    android:exported="true"
-    android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-    <intent-filter>
-        <action android:name="android.service.notification.NotificationListenerService" />
-    </intent-filter>
-</service>
+<application
+    android:allowBackup="false"
+    android:label="FixMaster Listener"
+    android:icon="@mipmap/ic_launcher"
+    android:theme="@style/Theme.AppCompat.Light">
+
+    <activity android:name=".MainActivity" android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+    </activity>
+
+    <service
+        android:name=".GopayListenerService"
+        android:exported="true"
+        android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+        <intent-filter>
+            <action android:name="android.service.notification.NotificationListenerService" />
+        </intent-filter>
+    </service>
+</application>
+```
+
+`MainActivity.kt` — satu tombol untuk membuka layar izin. Tanpa ini kamu tidak punya cara
+mudah memberi Notification access dan memastikan aplikasi terpasang benar.
+
+```kotlin
+package com.fixmaster.gopaylistener
+
+import android.app.Activity
+import android.content.Intent
+import android.os.Bundle
+import android.provider.Settings
+import android.widget.Button
+import android.widget.LinearLayout
+
+class MainActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val button = Button(this).apply {
+            text = "Buka pengaturan Notification access"
+            setOnClickListener {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
+        }
+        setContentView(LinearLayout(this).apply {
+            setPadding(48, 96, 48, 48)
+            addView(button)
+        })
+    }
+}
 ```
 
 `GopayListenerService.kt`:
@@ -93,13 +141,32 @@ import kotlin.concurrent.thread
 private const val ENDPOINT = "https://<project-ref>.supabase.co/functions/v1/gopay-listener"
 private const val SECRET = "<GOPAY_LISTENER_SECRET yang sama dengan di server>"
 
-// Paket resmi Gojek/GoPay. Notifikasi dari paket lain diabaikan supaya
-// aplikasi lain tidak bisa memicu pembayaran palsu.
-private val ALLOWED = setOf("com.gojek.app", "com.gojek.gopay")
+// Paket yang boleh memicu pembayaran. Aplikasi lain diabaikan supaya tidak
+// ada yang bisa memalsukan notifikasi.
+//
+// PENTING: daftar ini TEBAKAN. Notifikasi pembayaranmu bisa datang dari
+// aplikasi Gojek, GoPay, atau GoBiz tergantung akun merchant yang dipakai —
+// dan kalau nama paketnya salah, listener diam total tanpa error. Verifikasi
+// dulu lewat DISCOVERY_MODE di bawah, baru kunci daftarnya.
+private val ALLOWED = setOf("com.gojek.app", "com.gojek.gopay", "com.gojek.gobiz")
+
+// Set true SEMENTARA untuk menemukan nama paket yang benar: setiap notifikasi
+// yang masuk dicatat ke logcat tanpa dikirim ke server. Kembalikan ke false
+// setelah selesai — mode ini mencatat isi notifikasi apa pun ke log.
+private const val DISCOVERY_MODE = false
 
 class GopayListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (DISCOVERY_MODE) {
+            val e = sbn.notification.extras
+            android.util.Log.d(
+                "GopayDiscovery",
+                "pkg=${sbn.packageName} title=${e.getCharSequence("android.title")} " +
+                    "text=${e.getCharSequence("android.text")}",
+            )
+            return
+        }
         if (sbn.packageName !in ALLOWED) return
 
         val extras = sbn.notification.extras
