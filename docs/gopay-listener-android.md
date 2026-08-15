@@ -83,6 +83,26 @@ supabase db push --project-ref vmitplpvncfvyimgyxrn
    lalu **matikan optimasi baterai** untuk aplikasi itu — kalau tidak, Doze akan membunuhnya
    dalam hitungan jam dan pembayaran berhenti terdeteksi tanpa peringatan.
 
+### Bertahan hidup di Xiaomi/MIUI (WAJIB — service mati diam tanpa ini)
+
+`NotificationListenerService` jalan sebagai service latar; aplikasi **tidak perlu terbuka** di
+layar, HP boleh terkunci. Yang harus terus hidup adalah HP + service latarnya. MIUI paling agresif
+membunuh service latar, jadi selain "Battery → Unrestricted":
+
+1. **Autostart** — `Keamanan (Security) → Izin → Autostart` → aktifkan *FixMaster Listener*.
+   Tanpa ini, sekali HP restart service **tidak bangun sendiri** sampai app dibuka manual. Ini yang
+   paling sering terlewat.
+2. **Kunci di Recent** — buka recent apps, tahan kartu *FixMaster Listener* → ikon **gembok**.
+   MIUI tidak membunuh app yang terkunci.
+3. **HP tetap tercolok listrik + terhubung internet.** Forwarding butuh internet tepat saat
+   notifikasi masuk; Doze paling galak saat layar mati **dan** tidak dicas.
+4. **Setelah tiap reinstall APK**, ulangi toggle Notification access (off→on). Reinstall memutus
+   binding service.
+
+> **Pakai HP KHUSUS untuk produksi**, bukan HP harian. HP harian sering dibersihkan, di-restart,
+> dan kehabisan baterai — tiap kejadian itu adalah jendela di mana pembayaran masuk tapi tidak
+> terdeteksi. Plafon ini melekat pada jalur listener; tidak ada retry seperti webhook gateway.
+
 ## Aplikasi listener (Kotlin)
 
 Sengaja dibuat bodoh: hanya meneruskan teks mentah. Semua parsing ada di server supaya perubahan
