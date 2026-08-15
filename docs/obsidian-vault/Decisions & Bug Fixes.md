@@ -1101,3 +1101,21 @@ fungsi) tetapi **tidak** mengganti `auth.role()` yang membaca klaim JWT. Untuk f
 pencabutan grant sudah cukup — panggilan internal aman, panggilan langsung dari luar ditolak.
 
 #decision #security #billing #gopay #postgres
+
+### Verifikasi end-to-end listener GoPay di staging — LULUS (15 Agu 2026)
+
+Seluruh rantai terbukti di infrastruktur nyata (Xiaomi + GoPay Merchant + staging
+`fpwwswngqpftaixdlozo`), bukan hanya unit test:
+
+- **HP baca notifikasi** — logcat `pkg=com.gojek.gopaymerchant`, teks `Pembayaran QRIS statis diterima Rp … di K24 Service, CMH SLTN.`
+- **HP → fungsi** — log `GopayListener: HTTP 200` setelah transfer QRIS asli. Kode 200 = secret cocok + fungsi menerima.
+- **auth listener** — POST tanpa/`salah` secret → `401` (fail-closed terbukti).
+- **korelasi + apply** — `claim_gopay_payment(199860)` (via service_role) mengembalikan UUID invoice; status invoice → `paid`, plan diperpanjang.
+- **idempotensi** — klaim kedua nominal sama → `null` (invoice bukan pending lagi). Notifikasi ganda tidak dobel-kredit.
+
+Jebakan operasional yang tercatat saat verifikasi (jangan diulang):
+1. **APK diedit ≠ APK terpasang.** File Kotlin benar, tapi HP masih menjalankan build lama `DISCOVERY_MODE=true` → notifikasi cuma dicatat, tak diteruskan. Wajib build **dan** install ulang.
+2. **Reinstall memutus notification listener.** Setelah `adb install -r`, toggle Notification access harus dimatikan-hidupkan agar service versi baru ter-bind.
+3. **Buffer logcat Xiaomi cepat berputar.** Nyalakan `logcat` sebelum memicu notifikasi, jangan sesudah.
+
+#decision #billing #gopay #verifikasi #staging
