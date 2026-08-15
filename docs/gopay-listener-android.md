@@ -20,6 +20,27 @@ Postgres. Invoice kedaluwarsa 30 menit, lalu nominalnya kembali ke pool.
 Konsekuensi yang tidak bisa dihindari: **pelanggan harus membayar nominal persis.** UI sudah
 memperingatkan ini di pay dock.
 
+## Format notifikasi yang sebenarnya (terverifikasi)
+
+Ditangkap dari perangkat nyata, 15 Agu 2026:
+
+| | |
+|---|---|
+| Paket | `com.gojek.gopaymerchant` |
+| Channel | **`promotional_notifications`** ("Promotions and Marketing") |
+| `android.title` | `Pembayaran QRIS statis diterima` |
+| `android.text` | `Rp 1.000 di K24 Service, CMH SLTN.` |
+
+Parser server sudah cocok dengan format ini tanpa perubahan (`diterima` lolos filter incoming,
+`Rp 1.000` terbaca 1000). Ada test regresi memakai teks asli ini di `parse.test.ts` — kalau GoPay
+mengubah kalimatnya, test itu yang gagal lebih dulu.
+
+> [!WARNING]
+> **GoPay menaruh notifikasi pembayaran di channel iklan.** Kalau notifikasi "Promotions and
+> Marketing" untuk GoPay Merchant dimatikan — hal yang sangat wajar dilakukan orang — seluruh
+> deteksi pembayaran berhenti **tanpa pesan error apa pun**. Jangan matikan channel itu, dan
+> masukkan ini ke daftar periksa bila suatu saat listener mendadak sunyi.
+
 ## Batas yang kamu terima dengan memilih jalur ini
 
 | | Dampak |
@@ -144,11 +165,11 @@ private const val SECRET = "<GOPAY_LISTENER_SECRET yang sama dengan di server>"
 // Paket yang boleh memicu pembayaran. Aplikasi lain diabaikan supaya tidak
 // ada yang bisa memalsukan notifikasi.
 //
-// PENTING: daftar ini TEBAKAN. Notifikasi pembayaranmu bisa datang dari
-// aplikasi Gojek, GoPay, atau GoBiz tergantung akun merchant yang dipakai —
-// dan kalau nama paketnya salah, listener diam total tanpa error. Verifikasi
-// dulu lewat DISCOVERY_MODE di bawah, baru kunci daftarnya.
-private val ALLOWED = setOf("com.gojek.app", "com.gojek.gopay", "com.gojek.gobiz")
+// TERVERIFIKASI 15 Agu 2026 di perangkat nyata: notifikasi pembayaran QRIS
+// merchant datang dari `com.gojek.gopaymerchant` (aplikasi GoPay Merchant).
+// Tebakan awal `com.gojek.gobiz` SALAH. Kalau perangkatmu berbeda, cari
+// sendiri lewat DISCOVERY_MODE di bawah — jangan menebak.
+private val ALLOWED = setOf("com.gojek.gopaymerchant")
 
 // Set true SEMENTARA untuk menemukan nama paket yang benar: setiap notifikasi
 // yang masuk dicatat ke logcat tanpa dikirim ke server. Kembalikan ke false
