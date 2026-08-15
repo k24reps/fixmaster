@@ -1065,3 +1065,39 @@ sudah ter-apply adalah catatan sejarah — menulis ulang komentarnya hanya bikin
 tidak sinkron tanpa manfaat.
 
 #decision #billing #cleanup #keputusan-user
+
+### Bug keamanan: `revoke from public` tidak menutup anon/authenticated di Supabase (`0044`)
+
+**Ditemukan lewat probe langsung ke staging**, bukan lewat review kode — dan itu poinnya.
+`claim_gopay_payment` dipanggil tanpa Authorization apa pun membalas `null` (jalur "tidak ada
+invoice cocok"), artinya **fungsi benar-benar dieksekusi oleh role `anon`**. Padahal `0043`
+mendokumentasikannya sebagai service_role-only.
+
+**Akar masalah.** Supabase memasang default privileges yang meng-grant EXECUTE **eksplisit ke
+`anon` dan `authenticated`** untuk tiap fungsi baru di schema `public`. `revoke execute ... from
+public` hanya mencabut grant ke pseudo-role PUBLIC, tidak menyentuh grant eksplisit ke dua role
+itu. Asumsi "revoke from public = tertutup" salah di Supabase, dan diam-diam salah.
+
+**Kenapa tidak jadi bencana.** Guard pemanggil di `apply_payment` (`0022`) menolak siapa pun yang
+bukan service_role atau owner, jadi klaim anon gugur sebelum invoice ditandai lunas — tidak ada
+langganan gratis. Sisa dampaknya tetap nyata: anon bisa memicu `expire_stale_gopay_invoices`, dan
+bisa membedakan nominal invoice yang terbuka (`null`) dari yang tidak (error).
+
+**Pelajaran yang lebih besar dari bug-nya:** seluruh pertahanan bergantung pada guard di fungsi
+**lain**. Siapa pun yang melonggarkan `apply_payment` setahun lagi membuka celah langganan gratis
+tanpa menyadarinya, karena `0043` mengklaim dirinya sudah aman. Pertahanan harus berdiri di fungsi
+yang bersangkutan.
+
+**Perbaikan dua lapis (`0044`):** revoke ke `anon`/`authenticated`, **dan** guard
+`auth.role() <> 'service_role'` di dalam `claim_gopay_payment`. Lapis kedua yang menentukan —
+grant bisa muncul lagi sendiri saat fungsi dibuat **pertama kali** di environment baru (produksi),
+karena default privileges berlaku saat CREATE, bukan saat CREATE OR REPLACE.
+
+**Jebakan turunan yang hampir saya buat.** Draf pertama memberi guard `auth.role()` juga pada
+`expire_stale_gopay_invoices()`. Itu akan mematikan pembuatan invoice: fungsi tersebut dipanggil
+dari dalam `start_gopay_invoice`, yang pemanggilnya owner ber-JWT `authenticated`.
+`SECURITY DEFINER` mengganti `current_user` (sehingga pemeriksaan hak EXECUTE lolos sebagai pemilik
+fungsi) tetapi **tidak** mengganti `auth.role()` yang membaca klaim JWT. Untuk fungsi itu
+pencabutan grant sudah cukup — panggilan internal aman, panggilan langsung dari luar ditolak.
+
+#decision #security #billing #gopay #postgres
