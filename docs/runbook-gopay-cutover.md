@@ -399,8 +399,20 @@ supabase functions logs gopay-listener --project-ref vmitplpvncfvyimgyxrn
 - **Tidak ada log sama sekali selama berhari-hari** → kemungkinan besar HP listener mati, bukan
   berarti tidak ada yang berlangganan. Periksa HP-nya.
 
-Cek juga invoice yang menggantung:
+Cek invoice GoPay yang menggantung dengan alat operator (bukan SQL mentah):
 
 ```bash
-supabase db query "select id, org_id, amount, created_at from invoices where status='pending' and provider='gopay' and created_at < now() - interval '1 hour'"
+node scripts/reconcile-gopay.mjs
 ```
+
+Kalau ada baris pending/expired yang nominalnya cocok dengan riwayat GoPay Merchant-mu tapi belum
+lunas (pembayaran meleset karena sinyal/HP), terima manual:
+
+```bash
+node scripts/reconcile-gopay.mjs apply <id> --confirm
+```
+
+Default menargetkan **staging**. Untuk produksi, set env dulu:
+`SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/reconcile-gopay.mjs` — skrip selalu
+mencetak ref project sebelum apply, jadi kamu tidak salah environment. Alat ini adalah cikal-bakal
+panel rekonsiliasi di dashboard operator (lihat [[Data Layer]] / catatan dashboard bila sudah dibangun).
