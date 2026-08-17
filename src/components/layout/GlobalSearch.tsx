@@ -12,13 +12,22 @@ import styles from './GlobalSearch.module.css';
  */
 export function GlobalSearch() {
   const navigate = useNavigate();
-  const { data: services } = useCollection('services');
-  const { data: customers } = useCollection('customers');
-  const { data: inventory } = useCollection('inventory');
 
   const [raw, setRaw] = useState('');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+
+  // EGRESS: this component sits in the Topbar, so it is mounted on EVERY page.
+  // Fetching these three collections unconditionally meant pulling whole tables
+  // (services carries an append-only `history` jsonb) on every page load, and
+  // re-pulling them on every realtime change from any device — even for users
+  // who never touch the search box. It was the single largest source of
+  // PostgREST egress. Now the data is fetched only once the box is armed.
+  const armed = open || raw.length > 0;
+  const { data: services, loading: lServices } = useCollection('services', { enabled: armed });
+  const { data: customers, loading: lCustomers } = useCollection('customers', { enabled: armed });
+  const { data: inventory, loading: lInventory } = useCollection('inventory', { enabled: armed });
+  const loadingData = lServices || lCustomers || lInventory;
   const [active, setActive] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -119,8 +128,15 @@ export function GlobalSearch() {
         <div className={styles.dropdown} id="global-search-listbox" role="listbox">
           {results.length === 0 ? (
             <div className={styles.empty}>
-              <Icon name="magnifying-glass" aria-hidden />
-              <span>Tidak ada hasil untuk "{query}"</span>
+              {/* Data kini dimuat saat kolom diaktifkan, jadi bedakan "masih
+                  memuat" dari "benar-benar tidak ada" — kalau tidak, hasil
+                  sesaat terlihat kosong padahal fetch belum selesai. */}
+              <Icon
+                name={loadingData ? 'circle-notch' : 'magnifying-glass'}
+                className={loadingData ? 'spin' : undefined}
+                aria-hidden
+              />
+              <span>{loadingData ? 'Memuat data…' : `Tidak ada hasil untuk "${query}"`}</span>
             </div>
           ) : (
             groups.map((group) => (

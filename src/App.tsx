@@ -12,7 +12,13 @@ const queryClient = new QueryClient({
     // the realtime channel died silently while offline/asleep — see
     // subscribeOrgTables auto-reconnect. 'always' refetches even if data is
     // still within staleTime, since "we were offline" implies possibly-stale.
-    queries: { staleTime: 30_000, refetchOnWindowFocus: false, refetchOnReconnect: 'always' },
+    //
+    // staleTime 5 min (was 30 s): freshness here does NOT depend on this timer
+    // — useCollection invalidates on realtime change events, and realtime
+    // egress is negligible (KB) next to PostgREST (MB). A 30 s timer just made
+    // navigating back to a page re-pull whole tables for data that had not
+    // changed. refetchOnReconnect stays the safety net for a dead channel.
+    queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false, refetchOnReconnect: 'always' },
   },
 });
 

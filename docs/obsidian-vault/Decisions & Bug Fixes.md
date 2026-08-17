@@ -1162,3 +1162,47 @@ menambah beban. Preseden: BillingTab & FinancePage 100% literal. Disetujui user 
 edit data tenant, akses isi bisnis klien.
 
 #decision #security #operator #lintas-tenant #keputusan-user
+
+### Egress Supabase lewat kuota: GlobalSearch menarik tabel penuh di setiap halaman
+
+**Gejala.** Org Supabase melewati kuota egress Free Plan (5 GB) di siklus sebelumnya; masa tenggang
+berakhir 7 Sep 2026, setelahnya request dibalas **402**. Produksi ada di org yang sama, jadi 402
+berarti aplikasi klien **dan** `gopay-listener` mati bersamaan.
+
+**Diagnosis dari data, bukan tebakan.** Breakdown dashboard: **PostgREST 99,9%**, Auth 46 KB,
+Realtime **16 KB**, Functions 72 byte. Per project: produksi ≈3,5 GB, staging ≈40 MB. Jadi bukan
+Storage, bukan Realtime, dan bukan pekerjaan pengembangan — murni query database dari pengguna
+produksi. (Dugaan awal bahwa lonjakan 14–15 Agu berasal dari sesi dev kami **salah**: staging hanya
+~1 MB di hari itu.)
+
+**Akar masalah.** `GlobalSearch` hidup di `Topbar` → `AppLayout`, jadi **ter-mount di setiap halaman
+terautentikasi**, dan memanggil `useCollection` untuk `services`, `customers`, `inventory` tanpa
+syarat. Karena `list()` = `select('*')` tanpa limit eksplisit, tiap halaman menarik tiga tabel
+penuh — `services` membawa `history jsonb` yang append-only dan tumbuh selamanya. Lebih buruk:
+`useCollection` meng-invalidate cache pada tiap event realtime, jadi **satu perubahan tiket oleh
+siapa pun memicu tarikan tabel penuh di setiap device yang online**, di halaman apa pun, bahkan bila
+pengguna tak pernah menyentuh kolom pencarian.
+
+**Perbaikan.** `useCollection(collection, { enabled })` — `enabled: false` melewati fetch **dan**
+langganan perubahan. GlobalSearch kini `enabled: open || raw.length > 0`, jadi datanya dimuat hanya
+setelah kolom pencarian diaktifkan. Dropdown membedakan "Memuat data…" dari "Tidak ada hasil" supaya
+hasil tidak terlihat kosong sesaat. Dijaga `src/hooks/useCollection.test.tsx` (4 tes) agar opsi itu
+tak hilang tanpa sengaja.
+
+`staleTime` 30 s → 5 menit. Aman karena kesegaran di aplikasi ini **tidak** bergantung pada timer:
+`useCollection` invalidate lewat event realtime, dan realtime egress-nya KB melawan PostgREST MB.
+`refetchOnReconnect: 'always'` tetap jadi jaring pengaman bila channel realtime mati diam-diam.
+
+**Yang SENGAJA tidak dilakukan.** Rencana awal "buang `history` dari query daftar" **ditarik setelah
+membaca kode**: `StatusModal.tsx:210`, `ServiceDetailPage.tsx:400`, `ServicesPage.tsx:104`, dan
+`ServiceModal.tsx:174` melakukan `[...service.history, entriBaru]` — read-modify-write dari koleksi.
+Menghapus kolom itu dari daftar akan **menghapus seluruh jejak audit tiket** pada perubahan status
+berikutnya. Kehilangan data permanen, bukan sekadar tampilan kosong. Perbaikan yang benar (append
+history di sisi server via RPC) adalah refactor tersendiri dan tidak boleh dikerjakan di bawah
+tenggat kuota.
+
+**Sisa yang masih layak, urut leverage:** paginasi `activity_logs` (satu konsumen saja,
+`ActivityLogPage`, display-only, punya `meta jsonb`), perluas pemakaian `useCollectionRange` untuk
+`sales`/`incomes`/`expenses`, lalu baru pindahkan append `history` ke server.
+
+#decision #performance #egress #supabase #biaya
