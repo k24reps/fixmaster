@@ -108,6 +108,28 @@ Aktivasi lewat env `VITE_GOPAY_QRIS_URL`. **Sejak gateway lama dicabut, ini satu
 
 **Gateway hosted dicabut seluruhnya.** Edge Function `create-invoice`, `duitku-webhook`, dan `fersaku-webhook` dihapus, entri `config.toml`-nya dibuang, dan `createPaymentInvoice()` dihapus dari data layer. Sisa Edge Function: `gopay-listener`, `delete-account`, `health`. Kolom `provider`/`provider_ref`/`qris_url` **tetap** — baris invoice lama tetap terbaca. Di pay dock, invoice pending milik provider lama sengaja **tidak** lagi menampilkan link bayar: checkout-nya mungkin masih menerima uang padahal webhook konfirmasinya sudah tiada, jadi UI menyuruh membatalkan dan membuat ulang.
 
+### Admin platform & dashboard operator (migration `0045`) — SATU-SATUNYA permukaan lintas-tenant
+
+> [!WARNING]
+> Seluruh keamanan FixMaster berdiri di atas satu prinsip: tiap org hanya melihat datanya sendiri, dipagari RLS. **`0045` sengaja mendobrak pagar itu di satu tempat.** Ini satu-satunya permukaan lintas-tenant di sistem — satu bug gating = data seluruh klien bocor sekaligus. Perlakukan tiap perubahan di sini sebagai perubahan keamanan.
+
+Sebelum `0045` tak ada konsep peran global sama sekali: tidak ada tabel `profiles`, `auth.jwt()`/`raw_app_meta_data` nol dipakai, dan satu-satunya identitas di atas keanggotaan org adalah `service_role`.
+
+**Tabel `platform_admins`** — `user_id` (PK, FK `auth.users`), `email`, `note`, `created_at`. RLS aktif dengan **nol policy**: tidak terbaca lewat REST oleh siapa pun, hanya fungsi `security definer`. Pola yang sama dipakai `rate_events` (`0015`). **Bootstrap admin pertama sengaja di luar band** (insert manual via SQL Editor/service_role) — tidak boleh ada jalur self-promote dari aplikasi.
+
+RPC (semua `security definer` + `set search_path = public, pg_temp`, gate `is_platform_admin()` di baris pertama):
+- `is_platform_admin()` → boolean. Aman di-grant `authenticated`: hanya membocorkan status diri sendiri, bukan daftar admin.
+- `admin_list_orgs()` → satu baris per org: `org_id, org_name, org_plan, expires_at, registered_at, demo, outlet_count, user_count, service_count, sale_count, last_activity_at, pending_invoices, last_paid_at`. Urut `plan_expired_at asc nulls last`. `last_activity_at` ditopang index `idx_activity_org_created` (`0019`).
+- `admin_unpaid_gopay()` → invoice `provider='gopay'` berstatus `pending|expired` lintas org, untuk panel rekonsiliasi. Logika yang sama dengan `scripts/reconcile-gopay.mjs`, dipindah ke server supaya service key tak perlu dibawa ke klien.
+
+**Batas privasi ditegakkan di level skema query, bukan di UI:** yang diekspos hanya metadata + **jumlah agregat**. Tidak ada nama pelanggan klien, detail tiket, atau angka keuangan mereka. Vendor perlu tahu klien X jatuh tempo, bukan mengintip pelanggan klien X — sekaligus memperkecil ledakan bila surface ini bocor. Ada tes yang mengasersikan tidak ada kolom bocoran.
+
+**`apply_payment` diperluas, bukan dibungkus.** Guard `0022` ditambah satu klausa `and not is_platform_admin()`. Alternatif yang ditolak: `admin_apply_payment` yang memalsukan `request.jwt.claims` menjadi service_role — itu menyamarkan siapa pemanggil sebenarnya dan bikin audit menyesatkan. Konsekuensi yang diterima sadar: admin platform bisa menandai invoice lunas tanpa bukti otomatis (itu memang tujuannya untuk pemulihan manual), karena itu UI **wajib** konfirmasi dua langkah yang menampilkan nama org + nominal persis.
+
+Grant mengikuti pelajaran `0044`: `revoke ... from public, anon` lalu `grant ... to authenticated` (fungsi self-gated). Klien memakainya lewat free function di [supabase-client.ts](src/data/supabase-client.ts) (`isPlatformAdmin`, `adminListOrgs`, `adminUnpaidGopay`) — **bukan** lewat `repository`/`useCollection`, karena `SupabaseAdapter` single-tenant secara konstruksi. Tidak ada service key di browser.
+
+UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), route sibling top-level **di luar `AuthGate`**. Lihat [[Decisions & Bug Fixes]] untuk alasannya.
+
 ### Model akses peran (migration `0016`) — TIGA lapis
 
 Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` = owner/admin), sehingga ada dua celah yang hanya tertutup UI (bisa di-bypass via API):

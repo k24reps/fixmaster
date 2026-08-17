@@ -47,6 +47,8 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 - Tidak ada sink XSS (`dangerouslySetInnerHTML`/`innerHTML`/`eval` nihil di `src`).
 - `delete-account`: self-only (hapus `user.id` dari JWT sendiri).
 - `gopay-listener`: shared secret `X-Listener-Secret` + `timingSafeEqual` + **fail-closed** (secret kosong → 503, bukan lolos) + replay guard 15 menit. Klaim lewat `claim_gopay_payment` (service_role-only, `for update skip locked`) → `apply_payment` idempoten. Pelajaran F1 diterapkan sejak awal di sini.
+- **`/operator` (dashboard operator, `0045`) — SATU-SATUNYA permukaan lintas-tenant.** Route di luar `AuthGate`; pertahanan sebenarnya di server: gate `is_platform_admin()` di baris pertama tiap RPC admin, `set search_path = public, pg_temp`, `revoke ... from public, anon`, dan tabel `platform_admins` ber-RLS nol policy. Klien tidak pernah memegang service key. Batas data: metadata + jumlah agregat, tanpa isi bisnis klien. Dijaga `tests/integration/tier2c-platform-admin.integration.test.ts` — asersi terpentingnya: **owner sebuah org BUKAN admin platform**.
+- **Regresi `0044` kini terjaga suite.** Sebelumnya nol tes untuk `claim_gopay_payment`/`start_gopay_invoice`; lubang anon-execute ditemukan lewat probe manual. `tier2c` sekarang mengasersikan anon **dan** user login biasa ditolak `claim_gopay_payment` + `expire_stale_gopay_invoices`.
 
 ## Rencana 5-tier (urut prioritas)
 

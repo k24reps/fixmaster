@@ -27,12 +27,28 @@ const TermsPage = lazy(() =>
 const ResetPasswordPage = lazy(() =>
   import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 );
+const OperatorPage = lazy(() =>
+  import('@/features/operator/OperatorPage').then((m) => ({ default: m.OperatorPage })),
+);
 export const router = createBrowserRouter([
   {
     // Stable preview alias for the live signed-out landing page. Keeping this
     // route makes design review links durable while AuthGate serves V2 at `/`.
     path: '/landing-preview',
     element: <LandingPageV2 />,
+  },
+  {
+    // Operator dashboard (vendor-only, CROSS-TENANT). Deliberately OUTSIDE
+    // AuthGate: AuthGate runs getMyMembership() and pushes an account with no
+    // membership into the setup Wizard — and the operator account has none by
+    // design. The page handles its own auth init, sign-in, and admin gate.
+    // Real enforcement is server-side (is_platform_admin() in every RPC, 0045).
+    path: '/operator',
+    element: (
+      <Suspense fallback={null}>
+        <OperatorPage />
+      </Suspense>
+    ),
   },
   {
     // Public design prototype (no auth) — for visual evaluation only.

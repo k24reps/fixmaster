@@ -1119,3 +1119,46 @@ Jebakan operasional yang tercatat saat verifikasi (jangan diulang):
 3. **Buffer logcat Xiaomi cepat berputar.** Nyalakan `logcat` sebelum memicu notifikasi, jangan sesudah.
 
 #decision #billing #gopay #verifikasi #staging
+
+### Dashboard operator: kenapa di luar AuthGate, dan kenapa guard diperluas (`0045`)
+
+Vendor FixMaster tidak punya cara melihat kondisi klien sama sekali — semua akses org-scoped, dan
+satu-satunya alat pemulihan pembayaran GoPay yang meleset adalah skrip manual bersenjata service
+key. `0045` + `/operator` menutup itu.
+
+**Di luar `AuthGate` — keharusan, bukan preferensi gaya.** `AuthGate` menjalankan
+`getMyMembership()`; akun tanpa membership dilempar ke Wizard setup. Akun operator **memang** tidak
+punya membership (justru bagus: kalau RLS salah pun ia bukan tenant siapa pun). Menaruhnya di dalam
+AuthGate akan menjebak operator di wizard pembuatan toko. Jadi route-nya sibling top-level, dan
+halaman mengurus sendiri init auth + login + gerbang admin. Preseden persis: `/reset-password`.
+
+Turunannya: saat bukan admin, halaman menampilkan panel "akses ditolak" dan **tidak**
+`<Navigate to="/">` seperti `OwnerRoute` — redirect itu justru melempar akun tanpa membership ke
+Wizard tenant, gejala membingungkan untuk sebab yang sederhana.
+
+**Guard `apply_payment` diperluas, bukan dibungkus.** Pilihan lain adalah `admin_apply_payment`
+yang memalsukan `request.jwt.claims` jadi `service_role` sebelum memanggil `apply_payment`. Ditolak:
+pemalsuan klaim menyamarkan siapa pemanggil sebenarnya dan membuat audit menyesatkan. Menambah
+`and not is_platform_admin()` di guard itu satu baris, eksplisit, dan bisa dibaca setahun kemudian.
+
+**Metadata + jumlah agregat saja.** Keputusan produk sekaligus keamanan: vendor perlu tahu klien X
+jatuh tempo atau dormant, bukan membuka daftar pelanggan klien X. God-view atas data bisnis privat
+semua klien adalah risiko kepercayaan yang tak sepadan, dan bikin satu kebocoran jadi fatal. Ada
+tes yang mengasersikan tidak ada kolom bocoran di hasil RPC.
+
+**Bug yang tertangkap linter, dan ternyata bug nyata.** Draf pertama me-reset `admin` lewat
+`setAdmin(null)` sinkron di dalam `useEffect`. `react-hooks/set-state-in-effect` menolaknya, dan
+setelah dilihat lagi itu memang cacat: nilai `admin` dari akun **sebelumnya** bisa terbaca sesaat
+saat berganti akun — di permukaan lintas-tenant. Diperbaiki dengan menyimpan `{ userId, ok }` lalu
+**menurunkan** `admin` dari perbandingan dengan `userId` aktif, sehingga ganti akun otomatis
+mengembalikan status ke "belum diketahui" tanpa effect apa pun.
+
+**Penyimpangan i18n yang disengaja.** Halaman ini memakai string literal Indonesia, bukan `useT()`
+(AGENTS.md §3). Alasan: surface internal vendor-only, tak pernah dilihat klien, takkan
+diterjemahkan; menambah ~30 kunci di `id.ts` **dan** `en.ts` (paritas dijaga `i18n.test.ts`) hanya
+menambah beban. Preseden: BillingTab & FinancePage 100% literal. Disetujui user saat perencanaan.
+
+**Sengaja belum dibangun:** analitik/kohort, drill-down per-org, impersonasi login sebagai klien,
+edit data tenant, akses isi bisnis klien.
+
+#decision #security #operator #lintas-tenant #keputusan-user

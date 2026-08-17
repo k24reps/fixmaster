@@ -703,6 +703,108 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
   return (data ?? []).map(toInvoice);
 }
 
+// ============================================================
+// Dashboard operator (LINTAS-TENANT — migration 0045).
+//
+// Ini satu-satunya jalur di klien yang membaca data di luar org sendiri.
+// Semuanya lewat RPC `security definer` yang di-gate `is_platform_admin()` di
+// server; TIDAK ADA service key di browser, dan repository/useCollection tidak
+// dipakai karena SupabaseAdapter single-tenant secara konstruksi.
+//
+// Yang diekspos hanya METADATA + JUMLAH AGREGAT, bukan isi bisnis klien.
+// ============================================================
+
+/** Apakah user yang login adalah admin platform (vendor FixMaster). */
+export async function isPlatformAdmin(): Promise<boolean> {
+  const c = getSupabase();
+  if (!c) return false;
+  const { data, error } = await c.rpc('is_platform_admin');
+  // Bukan admin / RPC belum ter-deploy → perlakukan sebagai bukan admin.
+  // Fail-closed: jangan pernah membuka dashboard karena error.
+  if (error) return false;
+  return data === true;
+}
+
+/** Satu baris ringkasan per org klien. Jumlah saja, tanpa isi bisnis. */
+export interface AdminOrgRow {
+  orgId: string;
+  name: string;
+  plan: string;
+  expiresAt: string | null;
+  registeredAt: string;
+  isDemo: boolean;
+  outletCount: number;
+  userCount: number;
+  serviceCount: number;
+  saleCount: number;
+  lastActivityAt: string | null;
+  pendingInvoices: number;
+  lastPaidAt: string | null;
+}
+
+function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
+  return {
+    orgId: d.org_id as string,
+    name: (d.org_name as string) ?? '',
+    plan: d.org_plan as string,
+    expiresAt: (d.expires_at as string | null) ?? null,
+    registeredAt: d.registered_at as string,
+    isDemo: Boolean(d.demo),
+    outletCount: Number(d.outlet_count ?? 0),
+    userCount: Number(d.user_count ?? 0),
+    serviceCount: Number(d.service_count ?? 0),
+    saleCount: Number(d.sale_count ?? 0),
+    lastActivityAt: (d.last_activity_at as string | null) ?? null,
+    pendingInvoices: Number(d.pending_invoices ?? 0),
+    lastPaidAt: (d.last_paid_at as string | null) ?? null,
+  };
+}
+
+/** Daftar semua org klien, paling dekat jatuh tempo di atas. Admin-only. */
+export async function adminListOrgs(): Promise<AdminOrgRow[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_list_orgs');
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toAdminOrg);
+}
+
+/** Invoice GoPay yang menggantung (pending/expired) di semua org. */
+export interface AdminUnpaidInvoice {
+  invoiceId: string;
+  orgId: string;
+  orgName: string;
+  plan: string;
+  amount: number;
+  status: string;
+  openedAt: string;
+}
+
+function toAdminUnpaid(d: Record<string, unknown>): AdminUnpaidInvoice {
+  return {
+    invoiceId: d.invoice_id as string,
+    orgId: d.org_id as string,
+    orgName: (d.org_name as string) ?? '',
+    plan: d.invoice_plan as string,
+    amount: Number(d.invoice_amount ?? 0),
+    status: d.inv_status as string,
+    openedAt: d.opened_at as string,
+  };
+}
+
+/**
+ * Invoice GoPay belum-lunas lintas-tenant, untuk panel rekonsiliasi. Terima
+ * pembayarannya lewat `applyPayment(invoiceId)` yang sudah ada — guard-nya
+ * mengizinkan admin platform sejak 0045.
+ */
+export async function adminUnpaidGopay(): Promise<AdminUnpaidInvoice[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_unpaid_gopay');
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toAdminUnpaid);
+}
+
 /**
  * Permanently delete the signed-in account's auth credential (email +
  * password record) via the `delete-account` Edge Function. The function

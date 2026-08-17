@@ -11,6 +11,13 @@
 // di browser atau APK. Di sini ia tetap di mesinmu — tidak pernah ke jaringan
 // selain ke Supabase-mu sendiri. Lihat docs/gopay-listener-android.md.
 //
+// STATUS: sejak migration 0045 jalur utama rekonsiliasi adalah dashboard
+// operator di `/operator` (panel "Rekonsiliasi GoPay"), yang memakai RPC
+// ber-gate `is_platform_admin()` sehingga TIDAK perlu service key sama sekali.
+// Skrip ini tetap dipertahankan sebagai BREAK-GLASS: dipakai saat dashboard
+// tak bisa diakses (frontend rusak, deploy gagal, atau kamu belum jadi admin
+// platform). Untuk pemakaian harian, pakai dashboard.
+//
 // Cara pakai (jalankan dari root repo):
 //   node scripts/reconcile-gopay.mjs                     # daftar invoice belum-lunas
 //   node scripts/reconcile-gopay.mjs apply <invoiceId>   # PRATINJAU (tidak mengubah)
