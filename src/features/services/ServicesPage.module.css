@@ -389,3 +389,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Footer paginasi — bahasa visual sama dengan Keuangan (FinancePage), supaya
+   "Tampilkan lebih banyak" terasa satu produk di kedua halaman. */
+.loadMore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px dotted var(--border);
+  flex-wrap: wrap;
+}
+
+.loadMoreHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
