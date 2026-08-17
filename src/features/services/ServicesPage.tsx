@@ -22,6 +22,15 @@ import { NotifyModal } from './NotifyModal';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
 
+/**
+ * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
+ * tiket sejak toko berdiri — untuk bengkel yang sudah lama jalan itu ribuan
+ * baris (dua kali: tabel desktop + kartu mobile), dan browser-nya tersendat.
+ * Angka & pola tombol "Tampilkan lebih banyak" sama dengan Keuangan
+ * (FinancePage) supaya perilakunya konsisten.
+ */
+const PAGE_SIZE = 100;
+
 export function ServicesPage() {
   const { data: services, loading } = useCollection('services');
   const { data: customers } = useCollection('customers');
@@ -43,6 +52,7 @@ export function ServicesPage() {
   const [statusTarget, setStatusTarget] = useState<Service | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   // Subscribe to the org slice so the category filter reflects cloud-synced
   // edits (and updates from other devices) without a manual reload.
@@ -83,6 +93,12 @@ export function ServicesPage() {
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [visible, query, statusFilter, categoryFilter, pickupFilter]);
+
+  // Hanya potongan ini yang dirender. `stats` di atas SENGAJA tetap dihitung
+  // dari `visible` (seluruh tiket), bukan dari sini — kalau tidak, angka
+  // "Total Servis"/"Pendapatan Aktual" akan berubah mengikuti seberapa banyak
+  // baris yang kebetulan sudah dimuat, dan itu laporan yang menyesatkan.
+  const shownRows = useMemo(() => rows.slice(0, limit), [rows, limit]);
 
   const openNew = () => {
     setEditing(null);
@@ -200,14 +216,20 @@ export function ServicesPage() {
             <Input
               placeholder="Cari no servis, pelanggan, perangkat…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLimit(PAGE_SIZE);
+              }}
               iconLeft={<Icon name="magnifying-glass" aria-hidden />}
             />
           </div>
           <select
             className={styles.select}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ServiceStatus | 'all')}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as ServiceStatus | 'all');
+              setLimit(PAGE_SIZE);
+            }}
           >
             <option value="all">Semua Status</option>
             {(Object.keys(STATUS_LABELS) as ServiceStatus[]).map((s) => (
@@ -219,7 +241,10 @@ export function ServicesPage() {
           <select
             className={styles.select}
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setLimit(PAGE_SIZE);
+            }}
           >
             <option value="all">Semua Perangkat</option>
             {categories.map((c) => (
@@ -231,7 +256,10 @@ export function ServicesPage() {
           <select
             className={styles.select}
             value={pickupFilter}
-            onChange={(e) => setPickupFilter(e.target.value as 'all' | 'awaiting' | 'collected')}
+            onChange={(e) => {
+              setPickupFilter(e.target.value as 'all' | 'awaiting' | 'collected');
+              setLimit(PAGE_SIZE);
+            }}
             title="Filter status pengambilan barang"
           >
             <option value="all">Semua Pengambilan</option>
@@ -285,7 +313,7 @@ export function ServicesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((s) => (
+                  {shownRows.map((s) => (
                     <tr key={s.id}>
                       <td className={styles.mono}>
                         <Link to={`/services/${s.id}`} className={styles.noLink}>
@@ -354,7 +382,7 @@ export function ServicesPage() {
             </div>
 
             <ul className={styles.cardList}>
-              {rows.map((s) => (
+              {shownRows.map((s) => (
                 <li key={s.id} className={styles.jobCard} data-tone={STATUS_TONE[s.status]}>
                   <div className={styles.jobTop}>
                     <Link to={`/services/${s.id}`} className={styles.jobNo}>
@@ -410,6 +438,25 @@ export function ServicesPage() {
                 </li>
               ))}
             </ul>
+
+            {/* Satu footer untuk kedua tampilan (tabel desktop + kartu mobile),
+                karena keduanya memakai `shownRows` yang sama. */}
+            <div className={styles.loadMore}>
+              {rows.length > shownRows.length && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                  iconLeft={<Icon name="arrow-down" aria-hidden />}
+                >
+                  Tampilkan lebih banyak
+                </Button>
+              )}
+              <span className={styles.loadMoreHint}>
+                {shownRows.length} dari {rows.length} tiket
+                {rows.length !== stats.total && ` · ${stats.total} total`}
+              </span>
+            </div>
           </>
         )}
       </Card>
