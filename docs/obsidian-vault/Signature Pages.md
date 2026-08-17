@@ -275,6 +275,12 @@ menjadi satu kolom), sehingga profit, status, dan aksi tidak terpotong di tablet
 status sendiri menjadi pemicu edit; tombol “Status” duplikat dihapus untuk mengurangi
 kepadatan aksi.
 
+**Paginasi 100 baris (17 Agu 2026).** Sebelumnya halaman ini menggambar **seluruh tiket sejak toko berdiri**, dua kali (tabel desktop + kartu mobile) — untuk bengkel lama itu ribuan baris dan browser tersendat. Kini `shownRows = rows.slice(0, limit)` dengan `PAGE_SIZE = 100` + footer **"Tampilkan lebih banyak"**, pola & class (`.loadMore`, `.loadMoreHint`) dipakai ulang dari Keuangan agar terasa satu produk. `limit` di-reset ke `PAGE_SIZE` saat salah satu dari empat filter berubah (query, status, perangkat, pengambilan).
+
+> Yang **wajib dijaga**: lima KPI (`stats`) tetap dihitung dari `visible` — **seluruh** tiket — bukan dari `shownRows`. Kalau tidak, "Total Servis" dan "Pendapatan Aktual" berubah mengikuti seberapa banyak baris yang kebetulan sudah dimuat, dan itu laporan yang menyesatkan di halaman yang menampilkan uang. Terverifikasi di render asli: filter ke "Lunas" → 3 baris, footer `3 dari 3 tiket · 6 total`, sementara KPI tetap `6` dan `Rp 3.550.000`.
+
+Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih menarik koleksi penuh (dibatasi cap `max_rows` PostgREST). Untuk memangkas egress dibutuhkan limit sisi server + RPC agregat untuk KPI; lihat [[Decisions & Bug Fixes]].
+
 **Kolom Modal & Profit (owner-only).** Di desktop, tabel menambah kolom **Modal** (total HPP sparepart + modal dadakan) & **Profit** (`finalCost − modal`, tone hijau untung / merah rugi); kartu mobile menambah baris Profit. Keduanya **hanya tampil untuk owner** (`role === 'owner'` via session) — admin & karyawan tak lihat margin. Profit hanya muncul saat `finalCost > 0` (sebelum biaya final pasti → em-dash, agar tak menyesatkan).
 
 **Tiga kolom uang dibedakan warna (11 Jun 2026).** Untuk scan cepat: **Biaya** = amber (`--brand-hover`), **Modal** = biru info (`--info`), **Profit** = hijau/merah (untung/rugi). Semua mono tabular, lewat token (otomatis benar dark/light).

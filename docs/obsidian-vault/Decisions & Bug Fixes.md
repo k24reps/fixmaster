@@ -1206,3 +1206,31 @@ tenggat kuota.
 `sales`/`incomes`/`expenses`, lalu baru pindahkan append `history` ke server.
 
 #decision #performance #egress #supabase #biaya
+
+### Paginasi Daftar Servis, dan kenapa KPI tetap dihitung dari data penuh
+
+Halaman `/services` menggambar **seluruh tiket sejak toko berdiri** tanpa batas — dua kali, karena
+tabel desktop dan kartu mobile keduanya memetakan array yang sama. Untuk bengkel yang sudah lama
+jalan itu ribuan node DOM per render.
+
+**Perbaikan:** `shownRows = rows.slice(0, limit)`, `PAGE_SIZE = 100`, footer "Tampilkan lebih
+banyak". Pola dan nama class (`.loadMore`, `.loadMoreHint`) **dipakai ulang** dari `FinancePage`
+yang sudah punya solusi identik — bukan bikin baru. `limit` di-reset saat filter berubah, mengikuti
+preseden yang sama.
+
+**Keputusan yang menentukan: `stats` TIDAK ikut dipotong.** Lima KPI tetap dihitung dari `visible`
+(seluruh tiket non-arsip). Godaannya besar untuk memakai `shownRows` supaya "konsisten dengan yang
+terlihat" — itu salah. "Total Servis" dan "Pendapatan Aktual" akan berubah mengikuti seberapa
+banyak baris yang kebetulan sudah dimuat, menghasilkan laporan uang yang menyesatkan tanpa satu
+pun error. Sama jenisnya dengan jebakan yang membuat kami menolak memangkas baris demi egress:
+angka salah yang sunyi lebih berbahaya daripada halaman lambat.
+
+Terverifikasi di render asli (demo, komponen sama): filter "Lunas" → 3 baris, footer
+`3 dari 3 tiket · 6 total`, KPI tetap `6` dan `Rp 3.550.000`.
+
+**Batas yang jujur:** ini paginasi **render**, bukan query. Egress belum berkurang karena
+`useCollection` masih menarik koleksi penuh. Memangkas egress butuh limit sisi server **plus** RPC
+agregat untuk KPI — tanpa RPC itu, KPI-nya pasti salah. Itu pekerjaan tersendiri, bukan tambahan
+satu baris.
+
+#decision #ux #performance #servis
