@@ -1234,3 +1234,34 @@ agregat untuk KPI — tanpa RPC itu, KPI-nya pasti salah. Itu pekerjaan tersendi
 satu baris.
 
 #decision #ux #performance #servis
+
+### Log Aktivitas: jendela waktu di query — pemangkasan egress yang benar-benar memangkas
+
+Lanjutan pekerjaan egress. Berbeda dari Daftar Servis (yang hanya bisa dipaginasi di sisi render),
+`activity_logs` bisa dipangkas **di query** dengan aman, dan alasannya spesifik:
+
+- konsumennya **tepat satu** halaman (`ActivityLogPage`) — tak ada agregat lain yang bergantung padanya
+- sifatnya **display-only**: tak ada KPI uang yang dihitung dari keseluruhan tabel
+- `useCollectionRange` + `rangeForTimestamp` **sudah ada** dan sudah dipakai FinancePage untuk
+  koleksi `activity` yang sama — jadi ini menerapkan pola terbukti, bukan menciptakan yang baru
+
+Sebelumnya `useCollection('activity')` menarik seluruh tabel. Karena tabel ini append-only, tumbuh
+selamanya, dan tiap baris membawa `meta jsonb`, ia penyumbang egress besar. **Ironisnya halaman itu
+juga tidak benar-benar berfungsi**: hasilnya dipotong diam-diam oleh cap `max_rows` PostgREST (1000),
+jadi event lama tak pernah terjangkau meski pengguna mempersempit filter — nasihat di UI
+("Persempit filter untuk melihat event lama") menjanjikan sesuatu yang tak bisa ditepati.
+
+Kini jendela = bulan ini, dengan tombol **"Muat bulan sebelumnya"**. Jadi ini memperbaiki egress
+**dan** keterjangkauan data sekaligus.
+
+Dua detail yang menentukan benar/salahnya:
+1. Readout dilabeli **`TERMUAT`**, bukan `TOTAL`. Angkanya kini jumlah event dalam jendela. Label
+   `TOTAL` akan membuat owner menyimpulkan timnya lebih sepi dari kenyataan — angka salah yang
+   sunyi, kelas kesalahan yang sama yang kami hindari di KPI Daftar Servis.
+2. Tombol muat-bulan-lama dirender **di luar** cabang loading/empty/isi. Kalau tidak, bulan sepi
+   jadi jalan buntu: "Belum ada aktivitas" tanpa cara memuat bulan sebelumnya.
+
+Terverifikasi di render asli: `TERMUAT` tampil (`TOTAL` hilang), hint `Bulan ini · 19 event termuat`,
+klik tombol → `2 bulan terakhir · 19 event termuat`, nol error console.
+
+#decision #performance #egress #activity

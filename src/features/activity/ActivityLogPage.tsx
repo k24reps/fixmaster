@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Card, CardBody, Button, EmptyState, Icon, Input, Select, Badge } from '@/components/ui';
-import { useCollection } from '@/hooks/useCollection';
+import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { actionMeta, roleLabel, filterActivity, ACTION_META } from '@/lib/business/activity';
-import { fmtDate, localDateOf, localTimeStr } from '@/lib/time';
+import { fmtDate, localDateOf, localDateStr, localTimeStr } from '@/lib/time';
 import type { Role } from '@/data/types';
 import styles from './ActivityLogPage.module.css';
 
@@ -39,10 +39,27 @@ const ROLE_OPTIONS: { value: Role | 'all'; label: string }[] = [
  * this page is also guarded by OwnerRoute.
  */
 export function ActivityLogPage() {
-  const { data: logs, loading } = useCollection('activity');
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<Role | 'all'>('all');
   const [action, setAction] = useState<string>('all');
+  // Berapa bulan ke belakang yang ikut dimuat. 0 = bulan ini saja.
+  const [monthsBack, setMonthsBack] = useState(0);
+
+  // EGRESS: `activity_logs` bersifat append-only, tumbuh selamanya, dan tiap
+  // baris membawa `meta jsonb`. Sebelumnya halaman ini memakai useCollection
+  // yang menarik SELURUH tabel (dibatasi diam-diam oleh cap max_rows PostgREST
+  // 1000 baris — artinya event lama pun tak pernah benar-benar terjangkau).
+  // Kini jendelanya difilter DI QUERY, jadi egress ikut turun, bukan cuma DOM.
+  // Pola sama dengan FinancePage yang sudah memakai jalur ini untuk `activity`.
+  const fetchFrom = useMemo(() => {
+    const d = new Date();
+    return localDateStr(new Date(d.getFullYear(), d.getMonth() - monthsBack, 1));
+  }, [monthsBack]);
+  const [actFrom, actTo] = useMemo(
+    () => rangeForTimestamp(fetchFrom, localDateStr(new Date())),
+    [fetchFrom],
+  );
+  const { data: logs, loading } = useCollectionRange('activity', 'createdAt', actFrom, actTo);
 
   const filtered = useMemo(
     () => filterActivity(logs, { query, role, action }),
@@ -84,8 +101,12 @@ export function ActivityLogPage() {
           </div>
         </div>
         <div className={styles.readout}>
+          {/* "TERMUAT", bukan "TOTAL": angkanya kini jumlah event dalam jendela
+              waktu yang dimuat, bukan seluruh riwayat. Melabelinya TOTAL akan
+              menyesatkan — pemilik bisa menyimpulkan timnya lebih sepi dari
+              kenyataan hanya karena jendelanya sempit. */}
           <div className={styles.readItem}>
-            <span className={styles.readLabel}>TOTAL</span>
+            <span className={styles.readLabel}>TERMUAT</span>
             <strong className={styles.readValue}>{String(logs.length).padStart(3, '0')}</strong>
           </div>
           <div className={styles.readSep} aria-hidden />
@@ -199,6 +220,26 @@ export function ActivityLogPage() {
                   </ul>
                 </section>
               ))}
+            </div>
+          )}
+
+          {/* DI LUAR cabang loading/empty/isi — sengaja. Kalau tombol ini hanya
+              muncul saat ada isi, bulan yang sepi jadi jalan buntu: pengguna
+              melihat "Belum ada aktivitas" tanpa cara memuat bulan lama. */}
+          {!loading && (
+            <div className={styles.loadMore}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setMonthsBack((m) => m + 1)}
+                iconLeft={<Icon name="clock-rotate-left" aria-hidden />}
+              >
+                Muat bulan sebelumnya
+              </Button>
+              <span className={styles.loadMoreHint}>
+                {monthsBack === 0 ? 'Bulan ini' : `${monthsBack + 1} bulan terakhir`} ·{' '}
+                {logs.length} event termuat
+              </span>
             </div>
           )}
         </CardBody>
