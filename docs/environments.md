@@ -9,6 +9,27 @@
 - **Berisiko saat user banyak:** apa pun yang menyentuh Supabase — **migrasi DB, RLS, Edge Function**. Ini wajib diuji di staging dulu.
 - **Lini pertama selalu mode lokal** (IndexedDB) — mayoritas fitur bisa dikembangkan tanpa backend sama sekali.
 
+## Status branch vs produksi (per 17 Agu 2026)
+
+`main` dan `staging` **sengaja berbeda isi**. Jangan asumsikan staging = produksi + sedikit.
+
+| | `main` (= produksi) | `staging` |
+|---|---|---|
+| Migrasi terakhir | `0042` | `0045` |
+| Edge Function | `create-invoice`, `duitku-webhook`, `fersaku-webhook`, `health`, `delete-account` | `gopay-listener`, `health`, `delete-account` |
+| Billing | **Duitku** (tidak berubah) | listener GoPay |
+| Dashboard operator | tidak ada | `/operator` |
+| Perbaikan egress | ✅ sudah | ✅ sudah |
+
+> [!CAUTION]
+> **Jangan merge `staging` → `main` tanpa menyelesaikan Fase 5 lebih dulu.** Selama
+> `VITE_GOPAY_QRIS_URL` kosong di Vercel Production, invoice jatuh ke `provider: mock` dan pay
+> dock menampilkan tombol "Saya sudah bayar" yang bisa diklik pemilik toko untuk memperpanjang
+> langganan **tanpa membayar**. Urutan wajibnya ada di
+> [`runbook-gopay-cutover.md`](runbook-gopay-cutover.md) Fase 5.
+
+---
+
 ## Peta lingkungan
 
 | Lingkungan | Frontend | Backend (Supabase) | Untuk apa |

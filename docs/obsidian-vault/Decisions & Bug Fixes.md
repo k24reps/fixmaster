@@ -1265,3 +1265,42 @@ Terverifikasi di render asli: `TERMUAT` tampil (`TOTAL` hilang), hint `Bulan ini
 klik tombol → `2 bulan terakhir · 19 event termuat`, nol error console.
 
 #decision #performance #egress #activity
+
+### Pemisahan rilis: egress ke produksi, cutover GoPay ditahan (17 Agu 2026)
+
+Permintaannya "push sampai ke production". Merge `staging` → `main` **ditolak** setelah menelusuri
+isinya, dan yang ditemukan lebih buruk dari dugaan awal.
+
+**Jebakannya.** `staging` membawa commit yang mencabut jalur Duitku dari frontend
+(`createPaymentInvoice` dihapus). Di produksi `VITE_GOPAY_QRIS_URL` masih kosong, jadi `subscribe()`
+jatuh ke `startSubscription()` → invoice `provider: 'mock'`. Dan cabang mock di pay dock
+menampilkan tombol **"Saya sudah bayar"** → `applyPayment()` → guard `0022` mengizinkan
+`is_org_owner`.
+
+Jadi konsekuensinya bukan "produksi berhenti menagih", melainkan **setiap pemilik toko mendapat
+tombol perpanjang-langganan gratis**. Hari ini tombol itu praktis tak pernah muncul karena invoice
+produksi ber-provider `duitku`; setelah merge, `mock` jadi jalur default. Runbook Fase 5.4 sebelumnya
+hanya menulis "tidak menagih apa pun" — **meremehkan**, dan sudah dikoreksi jadi CAUTION.
+
+**Yang dikerjakan sebagai gantinya.** Branch `perf/egress-hotfix` dari `origin/main`, lalu
+`git checkout staging -- <8 file sumber>` — bukan cherry-pick commit, karena commit-commit itu juga
+menyentuh `AGENTS.md` dan vault sehingga pasti konflik. Mengambil file sumbernya saja menghasilkan
+diff bersih tanpa resolusi konflik.
+
+Verifikasi bahwa pemisahannya benar (bukan sekadar percaya daftar file):
+- `git diff --name-only origin/main` → tepat 8 file, semuanya UI/hooks
+- `ls supabase/migrations/ | tail` → berhenti di `0042` (0043/0044/0045 tidak ikut)
+- `ls supabase/functions/` → `create-invoice` & `duitku-webhook` **masih ada** → billing produksi tak berubah
+- jumlah test **445** = 441 (baseline main) + 4 (useCollection). Kalau ada yang menyusup, angkanya
+  tidak akan pas. Aritmetika ini dipakai sebagai gerbang, bukan basa-basi.
+
+**Konsekuensi yang diterima:** `AGENTS.md` di `main` menyebut 445 test, di `staging` 457 → konflik
+sepele saat Fase 5 di-merge nanti. Dokumentasi vault untuk perubahan egress sengaja **tidak**
+diduplikasi ke branch hotfix; ia menyusul bersama merge `staging`.
+
+**Pelajaran yang berlaku umum:** branch panjang-umur yang mencampur *perbaikan mendesak* dengan
+*fitur setengah jadi* memaksa pilihan antara menunda yang mendesak atau merilis yang belum siap.
+Kalau ada perbaikan mendesak lagi sementara `staging` masih memuat cutover, pakai pola yang sama:
+branch dari `main`, ambil file sumbernya saja, verifikasi dengan tiga cek di atas.
+
+#decision #rilis #deploy #billing #keputusan-user

@@ -343,7 +343,15 @@ Uji dengan Rp1.000 sungguhan sebelum lanjut.
 
 Set `VITE_GOPAY_QRIS_URL` di **environment variable Vercel (Production)**, lalu merge `staging` → `main`.
 
-> Selama variabel ini kosong, produksi turun ke invoice mock dan **tidak menagih apa pun**.
+> [!CAUTION]
+> **URUTANNYA WAJIB: set env var DULU, merge BELAKANGAN.** Kalau merge duluan, produksi berada
+> di jendela waktu dengan `VITE_GOPAY_QRIS_URL` kosong — dan itu bukan sekadar "tidak menagih".
+> Invoice jatuh ke `provider: mock`, dan cabang mock di pay dock menampilkan tombol
+> **"Saya sudah bayar"** yang dilewatkan guard `apply_payment` untuk pemilik org. Artinya
+> **setiap pemilik toko mendapat tombol perpanjang-langganan gratis** selama jendela itu.
+>
+> Ini ditemukan 17 Agu 2026 saat hendak merge; lihat [[Decisions & Bug Fixes]] (pemisahan rilis).
+> Kalau kamu tidak siap menyelesaikan 5.1–5.3 dalam satu duduk, JANGAN merge dulu.
 
 ### 5.5 Relink balik ke staging
 
