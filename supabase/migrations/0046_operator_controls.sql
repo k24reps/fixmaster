@@ -206,6 +206,12 @@ $fn$;
 -- Aktivasi (daftar -> transaksi pertama), Retensi mingguan, Kedalaman pakai.
 -- Semuanya dihitung dari data yang SUDAH ada — tak ada isi bisnis klien baru
 -- yang diekspos, hanya hitungan.
+-- CREATE OR REPLACE TIDAK BISA mengubah tipe kembalian sebuah fungsi
+-- (SQLSTATE 42P13). `0045` membuat admin_list_orgs() dengan 13 kolom OUT;
+-- di sini jadi 17, jadi harus DROP dulu. Wajib diingat untuk migrasi
+-- berikutnya yang menambah kolom ke RPC ber-RETURNS TABLE.
+drop function if exists admin_list_orgs();
+
 create or replace function admin_list_orgs()
 returns table (
   org_id uuid,
@@ -325,6 +331,12 @@ $fn$;
 -- ---------- Grants ----------
 -- Pelajaran 0044: Supabase meng-grant EXECUTE eksplisit ke anon + authenticated
 -- untuk fungsi baru, jadi `revoke from public` saja tidak cukup.
+-- admin_list_orgs baru saja di-DROP + CREATE, jadi DEFAULT PRIVILEGES Supabase
+-- memasang ulang EXECUTE untuk anon + authenticated. Tanpa revoke ulang di
+-- sini, lubang 0044 kembali terbuka pada fungsi ini secara diam-diam.
+revoke execute on function admin_list_orgs() from public, anon;
+grant execute on function admin_list_orgs() to authenticated;
+
 revoke execute on function log_operator_action(uuid, text, text, jsonb) from public, anon, authenticated;
 revoke execute on function admin_suspend_org(uuid, text) from public, anon;
 revoke execute on function admin_reactivate_org(uuid, plan_type, text) from public, anon;
