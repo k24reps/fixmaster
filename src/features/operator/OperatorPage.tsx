@@ -47,6 +47,21 @@ const PHASE_LED: Record<string, string> = {
   expired: styles.ledCrit,
 };
 
+type Tab = 'klien' | 'rekonsiliasi' | 'jejak';
+
+/**
+ * Ringkas `detail` jsonb jadi satu kalimat pendek untuk kolom tabel jejak.
+ * Sengaja tidak menampilkan JSON mentah — kolom audit yang tak terbaca sama
+ * saja dengan tidak ada.
+ */
+function summarizeDetail(d: Record<string, unknown>): string {
+  if (d.promo) return `${String(d.promo)} · ${String(d.hari ?? '?')} hari`;
+  if (d.nominal != null) return fmtRp(Number(d.nominal));
+  if (d.plan_sesudah) return `${String(d.plan_sebelum ?? '?')} → ${String(d.plan_sesudah)}`;
+  if (d.plan_sebelum) return `dari ${String(d.plan_sebelum)}`;
+  return '—';
+}
+
 /** Ringkas "kapan terakhir ada aktivitas" jadi sinyal dormant yang cepat dibaca. */
 function idleLabel(iso: string | null): { text: string; stale: boolean } {
   if (!iso) return { text: 'belum pernah', stale: true };
@@ -76,6 +91,7 @@ export function OperatorPage() {
   const [actions, setActions] = useState<OperatorAction[]>([]);
   const [actMode, setActMode] = useState<ActionMode | null>(null);
   const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
+  const [tab, setTab] = useState<Tab>('klien');
 
   // AuthGate biasanya yang memanggil ini; route ini di luarnya.
   useEffect(() => {
@@ -169,6 +185,19 @@ export function OperatorPage() {
     );
   }
 
+  const suspendedCount = orgs.filter((o) => o.plan === 'suspended').length;
+  const dueSoon = orgs.filter((o) => {
+    const d = o.expiresAt ? daysUntil(o.expiresAt) : null;
+    return d !== null && d <= 7 && o.plan !== 'suspended';
+  }).length;
+  const dormant = orgs.filter((o) => idleLabel(o.lastActivityAt).stale).length;
+
+  const TABS: { id: Tab; label: string; icon: string; count: number }[] = [
+    { id: 'klien', label: 'Klien', icon: 'buildings', count: orgs.length },
+    { id: 'rekonsiliasi', label: 'Rekonsiliasi', icon: 'qr-code', count: unpaid.length },
+    { id: 'jejak', label: 'Jejak aksi', icon: 'clock-rotate-left', count: actions.length },
+  ];
+
   return (
     <div className={styles.wrap}>
       <header className={styles.masthead}>
@@ -192,165 +221,306 @@ export function OperatorPage() {
         </div>
       </header>
 
-      {/* ---------- Rekonsiliasi: paling atas karena ini yang butuh tindakan ---------- */}
-      <Card glass accent={unpaid.length > 0 ? 'warning' : 'none'}>
-        <CardHeader
-          icon={<Icon name="qr-code" aria-hidden />}
-          title="Rekonsiliasi GoPay"
-          action={<span className={styles.count}>{unpaid.length}</span>}
-        />
-        <CardBody className={unpaid.length ? styles.noPad : undefined}>
-          {unpaid.length === 0 ? (
-            <EmptyState
-              icon={<Icon name="check" aria-hidden />}
-              title="Tidak ada invoice menggantung"
-              description="Semua pembayaran GoPay sudah terkorelasi otomatis."
-            />
-          ) : (
-            <>
-              <p className={styles.warn}>
-                Cocokkan nominal dengan riwayat GoPay Merchant sebelum menerima. Menerima tanpa
-                uangnya benar-benar masuk = memberi langganan gratis.
-              </p>
-              <div className={styles.tape}>
-                {unpaid.map((inv) => (
-                  <div key={inv.invoiceId} className={styles.tapeRow}>
-                    <div className={styles.tapeBody}>
-                      <span className={styles.tapeOrg}>{inv.orgName}</span>
-                      <span className={styles.tapeMeta}>
-                        {inv.plan} · {inv.status} · dibuat {fmtDate(inv.openedAt)}
-                      </span>
-                    </div>
-                    <span className={styles.tapeAmount}>{fmtRp(inv.amount)}</span>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => setConfirm(inv)}
-                    >
-                      Terima
-                    </Button>
-                  </div>
-                ))}
+      {/* Readout tetap terlihat di SEMUA tab: ini angka yang menentukan apakah
+          hari ini ada yang perlu dikerjakan. Menyembunyikannya di dalam tab
+          berarti operator harus berpindah-pindah untuk tahu keadaan. */}
+      <div className={styles.readout}>
+        <div className={styles.readItem}>
+          <span className={styles.readLabel}>KLIEN</span>
+          <strong className={styles.readValue}>{orgs.length}</strong>
+        </div>
+        <div className={styles.readItem}>
+          <span className={styles.readLabel}>JATUH TEMPO ≤7H</span>
+          <strong className={[styles.readValue, dueSoon > 0 ? styles.readWarn : ''].join(' ')}>
+            {dueSoon}
+          </strong>
+        </div>
+        <div className={styles.readItem}>
+          <span className={styles.readLabel}>DORMANT</span>
+          <strong className={[styles.readValue, dormant > 0 ? styles.readWarn : ''].join(' ')}>
+            {dormant}
+          </strong>
+        </div>
+        <div className={styles.readItem}>
+          <span className={styles.readLabel}>DITANGGUHKAN</span>
+          <strong
+            className={[styles.readValue, suspendedCount > 0 ? styles.readCrit : ''].join(' ')}
+          >
+            {suspendedCount}
+          </strong>
+        </div>
+        <div className={styles.readItem}>
+          <span className={styles.readLabel}>INVOICE MENGGANTUNG</span>
+          <strong className={[styles.readValue, unpaid.length > 0 ? styles.readWarn : ''].join(' ')}>
+            {unpaid.length}
+          </strong>
+        </div>
+      </div>
+
+      <div className={styles.tabs} role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            className={[styles.tab, tab === t.id ? styles.tabActive : ''].join(' ')}
+            onClick={() => setTab(t.id)}
+          >
+            <Icon name={t.icon} aria-hidden /> {t.label}
+            <span className={styles.tabCount}>{t.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab === 'klien' && (
+        <Card glass>
+          <CardBody className={orgs.length ? styles.noPad : undefined}>
+            {orgs.length === 0 ? (
+              <EmptyState title="Belum ada organisasi" />
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Organisasi</th>
+                      <th>Paket</th>
+                      <th className={styles.num}>Sisa</th>
+                      <th className={styles.num} title="Jam dari daftar sampai tiket pertama">
+                        Aktivasi
+                      </th>
+                      <th title="Minggu dengan aktivitas dari 3 minggu terakhir">Retensi</th>
+                      <th title="Modul inti dipakai: servis, kasir, stok, keuangan">Modul</th>
+                      <th className={styles.num}>Outlet</th>
+                      <th className={styles.num}>User</th>
+                      <th className={styles.num}>Tiket</th>
+                      <th>Aktivitas</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgs.map((o) => {
+                      const phase = subscriptionPhase(o.expiresAt);
+                      const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
+                      const idle = idleLabel(o.lastActivityAt);
+                      const suspended = o.plan === 'suspended';
+                      return (
+                        <tr key={o.orgId}>
+                          <td>
+                            <span className={styles.orgCell2}>
+                              <span
+                                className={[
+                                  styles.led,
+                                  suspended ? styles.ledCrit : (PHASE_LED[phase] ?? ''),
+                                ].join(' ')}
+                                title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
+                              />
+                              <span className={styles.orgName}>{o.name}</span>
+                              {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
+                            </span>
+                            {o.note && <span className={styles.noteInline}>{o.note}</span>}
+                          </td>
+                          <td>
+                            <span
+                              className={[
+                                styles.plan,
+                                suspended ? styles.planSuspended : '',
+                              ].join(' ')}
+                            >
+                              {o.plan}
+                            </span>
+                          </td>
+                          <td
+                            className={[
+                              styles.num,
+                              days !== null && days <= 7 ? styles.daysWarn : '',
+                            ].join(' ')}
+                          >
+                            {days === null ? '∞' : `${days}h`}
+                          </td>
+                          <td className={styles.num}>
+                            {o.activationHours === null ? '—' : `${o.activationHours}j`}
+                          </td>
+                          <td className={styles.pips}>
+                            {'●'.repeat(o.weeksActive)}
+                            {'○'.repeat(Math.max(0, 3 - o.weeksActive))}
+                          </td>
+                          <td className={styles.pips}>
+                            {'●'.repeat(o.modulesUsed)}
+                            {'○'.repeat(Math.max(0, 4 - o.modulesUsed))}
+                          </td>
+                          <td className={styles.num}>{o.outletCount}</td>
+                          <td className={styles.num}>{o.userCount}</td>
+                          <td className={styles.num}>{o.serviceCount}</td>
+                          <td className={idle.stale ? styles.idleStale : styles.idle}>
+                            {idle.text}
+                          </td>
+                          <td>
+                            <div className={styles.rowActions}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setActOrg(o);
+                                  setActMode('note');
+                                }}
+                              >
+                                Catatan
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setActOrg(o);
+                                  setActMode('promo');
+                                }}
+                              >
+                                Promo
+                              </Button>
+                              {suspended ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setActOrg(o);
+                                    setActMode('reactivate');
+                                  }}
+                                >
+                                  Aktifkan
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setActOrg(o);
+                                    setActMode('suspend');
+                                  }}
+                                >
+                                  Suspend
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </>
-          )}
-        </CardBody>
-      </Card>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
-      {/* ---------- Daftar klien ---------- */}
-      <Card glass>
-        <CardHeader
-          icon={<Icon name="buildings" aria-hidden />}
-          title="Klien"
-          action={<span className={styles.count}>{orgs.length}</span>}
-        />
-        <CardBody className={orgs.length ? styles.noPad : undefined}>
-          {orgs.length === 0 ? (
-            <EmptyState title="Belum ada organisasi" />
-          ) : (
-            <div className={styles.ledger}>
-              {orgs.map((o) => {
-                const phase = subscriptionPhase(o.expiresAt);
-                const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
-                const idle = idleLabel(o.lastActivityAt);
-                const suspended = o.plan === 'suspended';
-                return (
-                  <div key={o.orgId} className={styles.clientRow}>
-                    <div className={styles.clientTop}>
-                      <span
-                        className={[styles.led, suspended ? styles.ledCrit : (PHASE_LED[phase] ?? '')].join(' ')}
-                        title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
-                      />
-                      <span className={styles.orgName}>{o.name}</span>
-                      {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
-                      <span className={[styles.plan, suspended ? styles.planSuspended : ''].join(' ')}>
-                        {o.plan}
-                      </span>
-                      <span className={[styles.days, days !== null && days <= 7 ? styles.daysWarn : ''].join(' ')}>
-                        {days === null ? '∞' : `${days} hari`}
-                      </span>
-                    </div>
-
-                    {/* Tiga metrik pertama memetakan Scorecard Pilot di
-                        docs/roadmap-penjualan.md — aktivasi, retensi, kedalaman. */}
-                    <div className={styles.clientMeta}>
-                      <span title="Jam dari daftar sampai tiket pertama">
-                        aktivasi {o.activationHours === null ? 'belum' : `${o.activationHours} jam`}
-                      </span>
-                      <span title="Minggu dengan aktivitas dari 3 minggu terakhir">
-                        retensi {'●'.repeat(o.weeksActive)}{'○'.repeat(Math.max(0, 3 - o.weeksActive))}
-                      </span>
-                      <span title="Modul inti yang dipakai: servis, kasir, stok, keuangan">
-                        modul {'●'.repeat(o.modulesUsed)}{'○'.repeat(Math.max(0, 4 - o.modulesUsed))}
-                      </span>
-                      <span>{o.outletCount} outlet · {o.userCount} user · {o.serviceCount} tiket</span>
-                      <span className={idle.stale ? styles.idleStale : undefined}>{idle.text}</span>
-                      {o.pendingInvoices > 0 && <span>{o.pendingInvoices} invoice pending</span>}
-                    </div>
-
-                    {o.note && <p className={styles.noteLine}>{o.note}</p>}
-
-                    <div className={styles.rowActions}>
-                      <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('note'); }}>
-                        Catatan
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('promo'); }}>
-                        Promo
-                      </Button>
-                      {suspended ? (
-                        <Button size="sm" variant="secondary" onClick={() => { setActOrg(o); setActMode('reactivate'); }}>
-                          Aktifkan kembali
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('suspend'); }}>
-                          Suspend
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* ---------- Jejak aksi operator ---------- */}
-      <Card glass>
-        <CardHeader
-          icon={<Icon name="clock-rotate-left" aria-hidden />}
-          title="Jejak aksi operator"
-          action={<span className={styles.count}>{actions.length}</span>}
-        />
-        <CardBody className={actions.length ? styles.noPad : undefined}>
-          {actions.length === 0 ? (
-            <EmptyState title="Belum ada aksi tercatat" />
-          ) : (
-            <div className={styles.trail}>
-              {actions.map((a) => (
-                <div key={a.id} className={styles.trailRow}>
-                  <span className={styles.trailWhen}>{fmtDate(a.actedAt)}</span>
-                  <span className={styles.trailBody}>
-                    <strong className={styles.trailAction}>{a.action}</strong> {a.orgName}
-                    {a.reason && <span className={styles.trailReason}> — {a.reason}</span>}
-                  </span>
-                  <span className={styles.trailWho}>{a.actorEmail}</span>
+      {tab === 'rekonsiliasi' && (
+        <Card glass accent={unpaid.length > 0 ? 'warning' : 'none'}>
+          <CardBody className={unpaid.length ? styles.noPad : undefined}>
+            {unpaid.length === 0 ? (
+              <EmptyState
+                icon={<Icon name="check" aria-hidden />}
+                title="Tidak ada invoice menggantung"
+                description="Semua pembayaran GoPay sudah terkorelasi otomatis."
+              />
+            ) : (
+              <>
+                <p className={styles.warn}>
+                  Cocokkan nominal dengan riwayat GoPay Merchant sebelum menerima. Menerima tanpa
+                  uangnya benar-benar masuk = memberi langganan gratis.
+                </p>
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Organisasi</th>
+                        <th>Paket</th>
+                        <th className={styles.num}>Nominal</th>
+                        <th>Status</th>
+                        <th>Dibuat</th>
+                        <th>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unpaid.map((inv) => (
+                        <tr key={inv.invoiceId}>
+                          <td className={styles.orgName}>{inv.orgName}</td>
+                          <td className={styles.plan}>{inv.plan}</td>
+                          <td className={[styles.num, styles.amount].join(' ')}>
+                            {fmtRp(inv.amount)}
+                          </td>
+                          <td className={styles.plan}>{inv.status}</td>
+                          <td className={styles.idle}>{fmtDate(inv.openedAt)}</td>
+                          <td>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={busy}
+                              onClick={() => setConfirm(inv)}
+                            >
+                              Terima
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+              </>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {tab === 'jejak' && (
+        <Card glass>
+          <CardBody className={actions.length ? styles.noPad : undefined}>
+            {actions.length === 0 ? (
+              <EmptyState title="Belum ada aksi tercatat" />
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>Aksi</th>
+                      <th>Organisasi</th>
+                      <th>Alasan</th>
+                      <th>Rincian</th>
+                      <th>Operator</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actions.map((a) => (
+                      <tr key={a.id}>
+                        <td className={styles.idle}>{fmtDate(a.actedAt)}</td>
+                        <td>
+                          <span className={styles.trailAction}>{a.action}</span>
+                        </td>
+                        <td className={styles.orgName}>{a.orgName}</td>
+                        <td className={styles.reasonCell}>{a.reason || '—'}</td>
+                        <td className={styles.detailCell}>{summarizeDetail(a.detail)}</td>
+                        <td className={styles.idle}>{a.actorEmail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
       {/* Remount per (mode, org) supaya field modal selalu mulai bersih. */}
       <OperatorActionModal
         key={`${actMode ?? 'none'}-${actOrg?.orgId ?? 'none'}`}
         mode={actMode}
         org={actOrg}
-        onClose={() => { setActMode(null); setActOrg(null); }}
+        onClose={() => {
+          setActMode(null);
+          setActOrg(null);
+        }}
         onDone={reload}
       />
+
       <ConfirmDialog
         open={confirm !== null}
         title="Terima pembayaran ini?"

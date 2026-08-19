@@ -416,3 +416,15 @@ Logika auth tak berubah (Supabase Auth: signIn/signUp/resetPassword). Copy toast
 - [[Design System]] · [[Sidebar - Live Diagnostic Rail]] · [[Data Layer]] · [[Decisions & Bug Fixes]]
 
 #signature-page #design-system
+
+## Dashboard Operator — Bench Console (vendor-only, lintas-tenant)
+
+Halaman `/operator` ([`OperatorPage`](src/features/operator/OperatorPage.tsx)), **di luar `AuthGate`** (lihat [[Decisions & Bug Fixes]]). Bukan halaman tenant — tidak memakai `AppLayout`, tidak ada sidebar, dan mengurus auth-nya sendiri.
+
+- **Readout ringkasan** (mono, zero-pad tabular): `KLIEN` / `JATUH TEMPO ≤7H` / `DORMANT` / `DITANGGUHKAN` / `INVOICE MENGGANTUNG`. Sengaja **di luar tab** dan selalu terlihat — ini angka yang menentukan apakah hari ini ada yang perlu dikerjakan; menyembunyikannya di dalam tab memaksa operator berpindah-pindah hanya untuk tahu keadaan. Nilai non-nol menyala warning/danger.
+- **Tiga tab** dengan badge jumlah, memakai pola & class yang sama dengan `SettingsPage` (`.tabs`/`.tab`/`.tabActive`) supaya terasa satu produk: **Klien**, **Rekonsiliasi**, **Jejak aksi**.
+- **Tabel, bukan kartu.** Ketiga tab memakai `<table>` dalam `.tableWrap` (`overflow-x: auto`), header sticky mono uppercase, baris hover, kolom angka rata kanan + `tabular-nums`. Daftar padat dengan banyak dimensi lebih terbaca sebagai tabel; kartu memaksa mata melompat.
+  - **Klien** — LED status + nama + badge DEMO, paket, sisa hari (warning ≤7), **Aktivasi/Retensi/Modul** (Scorecard Pilot, pip `●○`), jumlah outlet/user/tiket, aktivitas terakhir (warning bila ≥14 hari), dan tombol aksi per baris. Catatan klien tampil sebagai baris kecil di bawah nama.
+  - **Rekonsiliasi** — org, paket, nominal (mono amber), status, tanggal, tombol Terima. Peringatan cocokkan-dulu di atas tabel.
+  - **Jejak aksi** — waktu, aksi (chip mono amber), org, alasan, rincian, operator. `detail` jsonb diringkas jadi kalimat pendek (`summarizeDetail`) — kolom audit yang tak terbaca sama saja dengan tidak ada.
+- **Satu modal untuk empat aksi** ([`OperatorActionModal`](src/features/operator/OperatorActionModal.tsx)): suspend, aktifkan, promo, catatan. Digabung karena bentuknya sama (pilih org → isi alasan → konfirmasi); empat modal hanya menduplikasi validasi yang sama. Promo dipilih dari daftar bernama, bukan kotak hari kosong.
