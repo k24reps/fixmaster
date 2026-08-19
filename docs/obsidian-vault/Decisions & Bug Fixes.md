@@ -1304,3 +1304,38 @@ Kalau ada perbaikan mendesak lagi sementara `staging` masih memuat cutover, paka
 branch dari `main`, ambil file sumbernya saja, verifikasi dengan tiga cek di atas.
 
 #decision #rilis #deploy #billing #keputusan-user
+
+### Promo tidak boleh tanpa jejak — dan kenapa ia dipisah dari pembayaran (`0046`)
+
+Pertanyaan user: kalau ada promo penambahan masa aktif, apakah kemampuan mengubah masa aktif
+**tanpa rekam jejak** tetap perlu diadakan? Jawabannya tidak, dan alasannya bukan kepatuhan.
+
+**Promo adalah satu-satunya perubahan masa aktif yang tak punya bukti pendamping.** Pembayaran
+meninggalkan mutasi di GoPay Merchant — log yang hilang masih bisa direkonstruksi dari sana. Promo
+tidak: tak ada uang, tak ada notifikasi, tak ada sumber kedua. Sekali tidak dicatat, hilang permanen.
+
+**Yang ikut hilang bukan cuma jejak audit.** Tanpa membedakan bulan yang DIBAYAR dari bulan yang
+DIBERIKAN, angka retensi jadi fiksi: "klien X aktif 5 bulan berturut-turut" bisa berarti 3 bulan
+bayar + 2 bulan promo yang sudah dilupakan. Itu persis merusak satu-satunya hal yang harus
+dibuktikan Fase 0 di `docs/roadmap-penjualan.md` — bahwa orang mau **membayar**, bukan sekadar
+memakai. Scorecard-nya punya baris "Niat bayar"; tanpa pemisahan ini baris itu tak bisa dijawab
+jujur. Saat mulai menjual, "berapa MRR saya?" jadi pertanyaan tanpa jawaban.
+
+**Karena itu `admin_apply_promo` DIPISAH dari `apply_payment`,** bukan digabung sebagai "extend
+dengan flag". `apply_payment` tetap berarti uang sungguhan masuk, sehingga pertanyaan "bulan ini
+berapa yang dibayar, berapa yang digratiskan" bisa dijawab satu query.
+
+**Kekhawatiran wajar "pencatatan bikin lambat" dijawab dengan desain, bukan pengecualian:** RPC yang
+menulis log, bukan operator; dan promo dipilih dari **daftar bernama** (Founding member, Kompensasi
+gangguan, Perpanjang trial pilot), bukan kotak hari kosong. Nol beban tambahan, dan hasil sampingnya
+lebih berharga daripada audit — jadi bisa dijawab "promo mana yang menghasilkan klien bertahan".
+
+**Alasan wajib untuk suspend & promo** ditegakkan di RPC (menolak string kosong), bukan cuma di form.
+Suspend mematikan operasional sebuah usaha; jejak tanpa alasan tidak menjawab pertanyaan yang pasti
+ditanyakan berbulan-bulan kemudian.
+
+**`suspended` ternyata sudah ada dan sudah ditegakkan** sejak `0009` — `is_org_active()` false → RLS
+memblokir semua operasi tulis org itu. Yang hilang selama ini cuma tuasnya. Jadi fitur "suspend"
+bukan menambah kemampuan baru ke sistem keamanan, hanya memberi pegangan pada yang sudah dibangun.
+
+#decision #operator #audit #billing #promo

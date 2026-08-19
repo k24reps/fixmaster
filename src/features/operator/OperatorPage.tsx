@@ -23,13 +23,16 @@ import { Button, Card, CardBody, CardHeader, EmptyState, Icon } from '@/componen
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   adminListOrgs,
+  adminListOperatorActions,
   adminUnpaidGopay,
   applyPayment,
   isPlatformAdmin,
   type AdminOrgRow,
   type AdminUnpaidInvoice,
+  type OperatorAction,
 } from '@/data/supabase-client';
 import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
+import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { useAuthStore } from '@/stores/auth';
@@ -70,6 +73,9 @@ export function OperatorPage() {
   const [unpaid, setUnpaid] = useState<AdminUnpaidInvoice[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<AdminUnpaidInvoice | null>(null);
+  const [actions, setActions] = useState<OperatorAction[]>([]);
+  const [actMode, setActMode] = useState<ActionMode | null>(null);
+  const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
 
   // AuthGate biasanya yang memanggil ini; route ini di luarnya.
   useEffect(() => {
@@ -77,9 +83,14 @@ export function OperatorPage() {
   }, [initAuth]);
 
   const reload = useCallback(async () => {
-    const [o, u] = await Promise.all([adminListOrgs(), adminUnpaidGopay()]);
+    const [o, u, a] = await Promise.all([
+      adminListOrgs(),
+      adminUnpaidGopay(),
+      adminListOperatorActions(20),
+    ]);
     setOrgs(o);
     setUnpaid(u);
+    setActions(a);
   }, []);
 
   // Cek keanggotaan admin, lalu muat data. Fail-closed: error apa pun →
@@ -239,47 +250,64 @@ export function OperatorPage() {
             <EmptyState title="Belum ada organisasi" />
           ) : (
             <div className={styles.ledger}>
-              <div className={styles.ledgerHead}>
-                <span>Organisasi</span>
-                <span>Plan</span>
-                <span className={styles.num}>Sisa</span>
-                <span className={styles.num}>Outlet</span>
-                <span className={styles.num}>User</span>
-                <span className={styles.num}>Tiket</span>
-                <span className={styles.num}>Jual</span>
-                <span>Aktivitas</span>
-              </div>
               {orgs.map((o) => {
                 const phase = subscriptionPhase(o.expiresAt);
                 const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
                 const idle = idleLabel(o.lastActivityAt);
+                const suspended = o.plan === 'suspended';
                 return (
-                  <div key={o.orgId} className={styles.ledgerRow}>
-                    <span className={styles.orgCell}>
+                  <div key={o.orgId} className={styles.clientRow}>
+                    <div className={styles.clientTop}>
                       <span
-                        className={[styles.led, PHASE_LED[phase] ?? ''].join(' ')}
-                        title={phaseLabel(phase)}
+                        className={[styles.led, suspended ? styles.ledCrit : (PHASE_LED[phase] ?? '')].join(' ')}
+                        title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
                       />
-                      <span className={styles.orgName}>
-                        {o.name}
-                        {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
+                      <span className={styles.orgName}>{o.name}</span>
+                      {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
+                      <span className={[styles.plan, suspended ? styles.planSuspended : ''].join(' ')}>
+                        {o.plan}
                       </span>
-                      <span className={styles.orgSub}>
-                        daftar {fmtDate(o.registeredAt)}
-                        {o.pendingInvoices > 0 && ` · ${o.pendingInvoices} invoice pending`}
+                      <span className={[styles.days, days !== null && days <= 7 ? styles.daysWarn : ''].join(' ')}>
+                        {days === null ? '∞' : `${days} hari`}
                       </span>
-                    </span>
-                    <span className={styles.plan}>{o.plan}</span>
-                    <span className={[styles.num, styles.days].join(' ')}>
-                      {days === null ? '∞' : `${days}h`}
-                    </span>
-                    <span className={styles.num}>{o.outletCount}</span>
-                    <span className={styles.num}>{o.userCount}</span>
-                    <span className={styles.num}>{o.serviceCount}</span>
-                    <span className={styles.num}>{o.saleCount}</span>
-                    <span className={[styles.idle, idle.stale ? styles.idleStale : ''].join(' ')}>
-                      {idle.text}
-                    </span>
+                    </div>
+
+                    {/* Tiga metrik pertama memetakan Scorecard Pilot di
+                        docs/roadmap-penjualan.md — aktivasi, retensi, kedalaman. */}
+                    <div className={styles.clientMeta}>
+                      <span title="Jam dari daftar sampai tiket pertama">
+                        aktivasi {o.activationHours === null ? 'belum' : `${o.activationHours} jam`}
+                      </span>
+                      <span title="Minggu dengan aktivitas dari 3 minggu terakhir">
+                        retensi {'●'.repeat(o.weeksActive)}{'○'.repeat(Math.max(0, 3 - o.weeksActive))}
+                      </span>
+                      <span title="Modul inti yang dipakai: servis, kasir, stok, keuangan">
+                        modul {'●'.repeat(o.modulesUsed)}{'○'.repeat(Math.max(0, 4 - o.modulesUsed))}
+                      </span>
+                      <span>{o.outletCount} outlet · {o.userCount} user · {o.serviceCount} tiket</span>
+                      <span className={idle.stale ? styles.idleStale : undefined}>{idle.text}</span>
+                      {o.pendingInvoices > 0 && <span>{o.pendingInvoices} invoice pending</span>}
+                    </div>
+
+                    {o.note && <p className={styles.noteLine}>{o.note}</p>}
+
+                    <div className={styles.rowActions}>
+                      <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('note'); }}>
+                        Catatan
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('promo'); }}>
+                        Promo
+                      </Button>
+                      {suspended ? (
+                        <Button size="sm" variant="secondary" onClick={() => { setActOrg(o); setActMode('reactivate'); }}>
+                          Aktifkan kembali
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => { setActOrg(o); setActMode('suspend'); }}>
+                          Suspend
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -288,6 +316,41 @@ export function OperatorPage() {
         </CardBody>
       </Card>
 
+      {/* ---------- Jejak aksi operator ---------- */}
+      <Card glass>
+        <CardHeader
+          icon={<Icon name="clock-rotate-left" aria-hidden />}
+          title="Jejak aksi operator"
+          action={<span className={styles.count}>{actions.length}</span>}
+        />
+        <CardBody className={actions.length ? styles.noPad : undefined}>
+          {actions.length === 0 ? (
+            <EmptyState title="Belum ada aksi tercatat" />
+          ) : (
+            <div className={styles.trail}>
+              {actions.map((a) => (
+                <div key={a.id} className={styles.trailRow}>
+                  <span className={styles.trailWhen}>{fmtDate(a.actedAt)}</span>
+                  <span className={styles.trailBody}>
+                    <strong className={styles.trailAction}>{a.action}</strong> {a.orgName}
+                    {a.reason && <span className={styles.trailReason}> — {a.reason}</span>}
+                  </span>
+                  <span className={styles.trailWho}>{a.actorEmail}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Remount per (mode, org) supaya field modal selalu mulai bersih. */}
+      <OperatorActionModal
+        key={`${actMode ?? 'none'}-${actOrg?.orgId ?? 'none'}`}
+        mode={actMode}
+        org={actOrg}
+        onClose={() => { setActMode(null); setActOrg(null); }}
+        onDone={reload}
+      />
       <ConfirmDialog
         open={confirm !== null}
         title="Terima pembayaran ini?"

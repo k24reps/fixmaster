@@ -137,3 +137,4 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
   `Organization.settings.mobileNavigation`; verifikasi browser asli mencakup breakpoint
   360/390/700/721/1440 px, pertukaran slot, simpan/reset, More sheet, POS cart dock,
   dan pengecualian bottom bar pada detail servis.
+- **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`). Dua asersi paling menentukan: owner org LAIN ditolak men-suspend (gerbang lintas-tenant), dan **setiap aksi tulis meninggalkan jejak** di `operator_actions` lengkap dengan alasan + pelakunya. Juga menguji: suspend tanpa alasan ditolak, promo ke org suspended ditolak, durasi promo di luar 1–365 ditolak, `operator_actions` tak terbaca lewat REST.

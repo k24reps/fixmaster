@@ -130,6 +130,28 @@ Grant mengikuti pelajaran `0044`: `revoke ... from public, anon` lalu `grant ...
 
 UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), route sibling top-level **di luar `AuthGate`**. Lihat [[Decisions & Bug Fixes]] untuk alasannya.
 
+### Kontrol operator & jejak aksi (migration `0046`)
+
+`0045` memberi vendor kemampuan **melihat** semua klien; `0046` memberi kemampuan **mengubah**. Karena itu ia dimulai dari tabel jejaknya, bukan dari fiturnya.
+
+> [!IMPORTANT]
+> **Aturan yang mengikat migrasi berikutnya:** setiap RPC admin yang MENULIS wajib memanggil `log_operator_action()`. Kalau sebuah RPC tulis tidak mencatat, jangan di-merge.
+
+**Tabel:**
+- `operator_actions` — `org_id` (FK `on delete set null`, agar jejak tak ikut hilang saat org dihapus), `org_name` disalin, `actor_id/actor_email`, `action`, `reason`, `detail jsonb`, `created_at`. RLS nol policy.
+- `client_notes` — catatan internal vendor per klien. **Tabel terpisah, bukan kolom di `organizations`**: RLS mengizinkan anggota org membaca barisnya sendiri, jadi kolom di sana akan terbaca klien. Catatan "bingung di alur DP" bukan konsumsi klien. RLS nol policy.
+
+**RPC (semua gate `is_platform_admin()` + `set search_path`):**
+- `admin_suspend_org(org, reason)` — set `plan_type='suspended'`. **Alasan wajib** (RPC menolak string kosong). Memakai `set_config('fixmaster.bypass_plan_lock')` seperti `apply_payment`, karena trigger `guard_plan_type_change` (`0016`) mengunci kolom itu.
+- `admin_reactivate_org(org, plan, reason)` — menolak `plan='suspended'` (pakai suspend untuk itu).
+- `admin_apply_promo(org, promo, days, reason)` — menambah masa aktif **tanpa uang**. Menolak org yang sedang `suspended` (menambah hari ke akses yang mati itu menyesatkan) dan durasi di luar 1–365.
+- `admin_set_client_note(org, note)` — upsert. **Sengaja tidak menulis `operator_actions`**: `client_notes` sudah punya `updated_by`/`updated_at`, jadi ia jejaknya sendiri; mencatat tiap penyuntingan hanya menenggelamkan aksi yang benar-benar mengubah akses/masa aktif.
+- `admin_list_operator_actions(limit)` — baca jejak, dibatasi 200.
+
+**`admin_list_orgs` diperluas** dengan `activation_hours`, `weeks_active` (0–3), `modules_used` (0–4), dan `note`. Tiga yang pertama memetakan Scorecard Pilot di `docs/roadmap-penjualan.md` — dihitung dari data yang sudah ada, tanpa mengekspos isi bisnis klien baru.
+
+**`apply_payment` mencatat bila pemanggilnya admin platform.** Webhook (service_role) tidak dicatat di sini karena sudah punya log Edge Function; owner mock-confirm bukan aksi lintas-tenant. Yang dicatat khusus jalur operator — rekonsiliasi manual, yang dari luar tampak sama dengan promo: "masa aktif bertambah tanpa webhook".
+
 ### Model akses peran (migration `0016`) — TIGA lapis
 
 Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` = owner/admin), sehingga ada dua celah yang hanya tertutup UI (bisa di-bypass via API):

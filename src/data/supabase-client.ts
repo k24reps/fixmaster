@@ -740,6 +740,14 @@ export interface AdminOrgRow {
   lastActivityAt: string | null;
   pendingInvoices: number;
   lastPaidAt: string | null;
+  /** Jam dari daftar sampai tiket pertama. null = belum pernah bertransaksi. */
+  activationHours: number | null;
+  /** Berapa dari 3 minggu terakhir yang ada aktivitasnya (0-3). */
+  weeksActive: number;
+  /** Berapa dari 4 modul inti yang dipakai (servis, kasir, stok, keuangan). */
+  modulesUsed: number;
+  /** Catatan internal vendor. Tidak pernah terlihat klien. */
+  note: string;
 }
 
 function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
@@ -757,6 +765,10 @@ function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
     lastActivityAt: (d.last_activity_at as string | null) ?? null,
     pendingInvoices: Number(d.pending_invoices ?? 0),
     lastPaidAt: (d.last_paid_at as string | null) ?? null,
+    activationHours: d.activation_hours == null ? null : Number(d.activation_hours),
+    weeksActive: Number(d.weeks_active ?? 0),
+    modulesUsed: Number(d.modules_used ?? 0),
+    note: (d.note as string) ?? '',
   };
 }
 
@@ -803,6 +815,94 @@ export async function adminUnpaidGopay(): Promise<AdminUnpaidInvoice[]> {
   const { data, error } = await c.rpc('admin_unpaid_gopay');
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toAdminUnpaid);
+}
+
+/**
+ * Kontrol operator (migration 0046). SETIAP fungsi tulis di bawah dicatat ke
+ * `operator_actions` oleh RPC-nya sendiri — pencatatan bukan tanggung jawab
+ * pemanggil, supaya tidak bisa lupa. Lihat header 0046.
+ */
+
+/** Tangguhkan org: RLS memblokir seluruh operasi tulis mereka. Alasan wajib. */
+export async function adminSuspendOrg(orgId: string, reason: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_suspend_org', { p_org_id: orgId, p_reason: reason });
+  if (error) throw new Error(error.message);
+}
+
+/** Aktifkan kembali org yang ditangguhkan, ke paket tertentu. */
+export async function adminReactivateOrg(
+  orgId: string,
+  plan: string,
+  reason: string,
+): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_reactivate_org', {
+    p_org_id: orgId,
+    p_plan: plan,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Tambah masa aktif TANPA pembayaran. Sengaja terpisah dari `applyPayment`
+ * supaya bulan yang dibayar bisa dibedakan dari bulan yang diberikan.
+ * Mengembalikan expiry baru.
+ */
+export async function adminApplyPromo(
+  orgId: string,
+  promo: string,
+  days: number,
+  reason: string,
+): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_apply_promo', {
+    p_org_id: orgId,
+    p_promo: promo,
+    p_days: days,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/** Simpan catatan internal vendor tentang sebuah klien. */
+export async function adminSetClientNote(orgId: string, note: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_set_client_note', { p_org_id: orgId, p_note: note });
+  if (error) throw new Error(error.message);
+}
+
+/** Satu baris jejak aksi operator. */
+export interface OperatorAction {
+  id: string;
+  orgName: string;
+  actorEmail: string;
+  action: string;
+  reason: string;
+  detail: Record<string, unknown>;
+  actedAt: string;
+}
+
+export async function adminListOperatorActions(limit = 50): Promise<OperatorAction[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_list_operator_actions', { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((d) => ({
+    id: d.action_id as string,
+    orgName: (d.org_name as string) ?? '',
+    actorEmail: (d.actor_email as string) ?? '',
+    action: d.action as string,
+    reason: (d.reason as string) ?? '',
+    detail: (d.detail as Record<string, unknown>) ?? {},
+    actedAt: d.acted_at as string,
+  }));
 }
 
 /**
