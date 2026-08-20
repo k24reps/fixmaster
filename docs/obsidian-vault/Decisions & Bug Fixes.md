@@ -975,3 +975,86 @@ dalam bezel ponsel dengan speaker, kamera, tombol samping, dan home indicator. S
 viewport 390×844 tetap terlihat, termasuk lima item bottom navigation.
 
 #decision #landing #responsive #ux
+
+### Audit UI menyeluruh (desktop + mobile, 2 tema) — 5 bug layout ditemukan & diperbaiki
+
+Audit visual sistematis: 12 menu × 2 breakpoint (1440px / 390px) × 2 tema, via
+`scripts/audit-ui.mjs` (dijalankan terhadap server mode-lokal terisolasi, `THEME` env baru
+ditambahkan) + verifikasi DOM langsung (bounding rect, bukan cuma baca screenshot) untuk tiap
+temuan yang meragukan. Tiga dugaan awal **dibuang** setelah diverifikasi salah — nav mengambang
+di tengah konten ternyata artefak `fullPage` screenshot pada `position:fixed` (bukan bug), jarak
+antar tab Keuangan yang terlihat menempel di gambar terkompresi ternyata konsisten 4px di DOM
+sungguhan, dan proporsi bar grafik Laporan yang terlihat janggal ternyata matematisnya benar
+(100% vs 81,69%, sesuai rasio Rp 3.550.000/Rp 2.900.000). Disiplin ini penting — jangan laporkan
+apa yang "terlihat aneh" di gambar tanpa mengonfirmasi lewat kode/DOM.
+
+**Lima bug nyata, semua terverifikasi lewat pengukuran DOM sebelum DAN sesudah fix:**
+
+1. **Badge status tertimpa kolom AKSI sticky — tabel Servis desktop 1440px, kedua tema.**
+   `KONFIRMASI BIAYA`→`KONFIRMA`, `DITERIMA`→`DITERIM`. Root cause SEBENARNYA bukan "terpotong
+   tepi viewport" seperti dugaan awal, melainkan **kolom AKSI (`position:sticky; right:0`,
+   background solid) menimpa ekor badge STATUS** karena tabel 10-kolom (owner view) 103px lebih
+   lebar dari wrapper-nya — dibuktikan lewat bounding rect: badge "Konfirmasi Biaya" (1139–1312px)
+   vs AKSI mulai di 1215px, overlap 97px, PERSIS menjelaskan sisa teks yang hilang.
+   [ServicesPage.module.css:208-243](src/features/services/ServicesPage.module.css:208): padding
+   sel 12px→6px menutup gap 103px itu tepat (diverifikasi: overflow 0px, overlap 0px pada keenam
+   baris termasuk label terpanjang). Ditolak: fade-gradient di tepi tabel — `Card glass` di
+   baliknya transparan/blur, patch background solid untuk masking akan merusak efek glass.
+
+2. **Kartu wallet/ringkasan Keuangan + KPI Dashboard mobile — kartu ke-3+ tersembunyi total.**
+   `grid-auto-columns: minmax(230px, 82vw)` pada breakpoint mobile ternyata **tidak** resolve ke
+   82vw seperti niatnya — `minmax()` pada non-`fr` auto-column bersifat sizing intrinsik (tumbuh
+   mengikuti KONTEN, dibatasi max), jadi kartu pendek settle di ~230px (nilai MIN), menyisakan
+   ~1,5 kartu terlihat dengan peek besar-tapi-terpotong-di-tengah-angka. Untuk Dashboard (5 kartu),
+   3 kartu berisi Rp (Pemasukan/Pengeluaran/Total Saldo) **100% tak terlihat, nol indikasi**.
+   Fix: ganti `minmax()` dengan `clamp(230px, 76vw, 300px)` — `clamp()` SELALU resolve ke satu
+   nilai pasti terlepas dari konten, memaksa tiap kartu lebar sama sehingga peek kartu berikutnya
+   jadi sliver kecil konsisten (~40-46px, diverifikasi), bukan potongan besar yang terlihat rusak.
+   [FinancePage.module.css:297-311](src/features/finance/FinancePage.module.css:297),
+   [DashboardPage.module.css:572-583](src/features/dashboard/DashboardPage.module.css:572) (pola
+   sama, ditemukan & diperbaiki sekalian saat mengerjakan #2 — bukan di daftar temuan awal).
+
+3. **Angka nilai stok terpotong tengah digit — strip ringkasan Inventori mobile.**
+   `Rp 14.145.000`→`Rp 14.145.00` (nol terakhir hilang, tanpa ellipsis) — pola `overflow-x:auto`
+   serupa #2 tapi pada 4 chip inline, bukan kartu. Fix: hapus override `flex-wrap:nowrap` di
+   breakpoint mobile, biarkan fallback ke `flex-wrap:wrap` dasar. Dengan hanya 4 chip pendek,
+   wrap 2-baris lebih robust daripada scroll — Rp figure SELALU utuh, diverifikasi 0px overflow.
+   [InventoryPage.module.css:316-333](src/features/inventory/InventoryPage.module.css:316).
+
+4. **Tombol edit template melompat sendiri ke baris baru — Tugas Internal mobile.**
+   Naik/turun dibungkus `.orderBtns` (satu unit `flex-shrink:0`), tapi pensil adalah sibling
+   terpisah di `.groupHead` — saat wrap, `.orderBtns` tetap utuh tapi pensil sendirian pindah baris
+   dengan jarak kosong janggal. Fix: wrapper baru `.groupActions` membungkus KEDUANYA sebagai satu
+   unit (bukan menyatukan ke `.orderBtns` — itu akan ikut menyusutkan pensil ke lebar 26px yang
+   memang didesain khusus untuk pasangan panah). Diverifikasi: ketiga tombol kini satu baris
+   (top identik). [TasksPage.tsx:298-327](src/features/tasks/TasksPage.tsx:298),
+   [TasksPage.module.css:259-275](src/features/tasks/TasksPage.module.css:259).
+
+5. **Nama device/teknisi terpotong tak konsisten — Dashboard mobile (Servis Terbaru & Performa
+   Teknisi).** `.recentDetail`/`.leaderName` punya `overflow:hidden` yang **implisit menjadikan
+   automatic min-width flex-nya 0** (per spesifikasi CSS: elemen non-`visible` overflow kehilangan
+   content-based minimum), sementara sibling (Badge/`.leaderStats`) `white-space:nowrap` tak
+   pernah menyusut — nama pendek ("Samsung A52") bisa terpotong LEBIH agresif daripada nama
+   panjang, semata tergantung lebar badge tetangganya ("Konfirmasi Biaya" = 155px vs "Lunas" =
+   70px, diukur presisi lewat DOM). Fix: `min-width:100px` sebagai lantai + `flex-wrap:wrap` pada
+   baris — badge lebar jatuh ke baris sendiri, badge pendek tetap sebaris dengan nama penuh.
+   Diverifikasi enam kombinasi nama+badge: badge lebar → wrap + nama utuh; badge pendek → sebaris
+   + nama utuh; SATU nama yang genuinely panjang ("MacBook Pro 13\" 2019", 21 karakter) tetap
+   ellipsis — itu benar, bukan lagi korban lebar badge tetangga.
+   [DashboardPage.module.css:393-433](src/features/dashboard/DashboardPage.module.css:393) &
+   [:533-556](src/features/dashboard/DashboardPage.module.css:533).
+
+**Pelajaran metodologis yang berlaku umum:** `minmax(min, max)` pada `grid-auto-columns` BUKAN
+"paksa ke nilai preferred" — itu sizing intrinsik yang bisa settle di `min`. Kalau niatnya
+"kartu harus selalu N% lebar viewport terlepas dari konten", pakai `clamp(min, preferred, max)`,
+bukan `minmax()`. Dan: `overflow:hidden` pada flex child mengubah automatic minimum size-nya jadi
+0 secara implisit (spec CSS Flexbox §4.5) — sumber tersembunyi kenapa elemen ber-ellipsis kadang
+menyusut jauh lebih agresif dari yang terlihat masuk akal, tanpa `min-width:0` eksplisit di mana
+pun dalam kode.
+
+Verifikasi: build hijau, lint bersih, 445 test lulus di baseline `main` (tak ada test baru — murni
+CSS/JSX layout; angka sama di `staging` relatif terhadap baseline-nya masing-masing, 457 di sana
+karena tes tambahan dari fitur lain yang belum di-merge — lihat catatan pemisahan rilis), audit
+visual diulang penuh pasca-fix (dark + light) mengonfirmasi kelima perbaikan di data nyata.
+
+#decision #ui #audit #css #flexbox #responsive

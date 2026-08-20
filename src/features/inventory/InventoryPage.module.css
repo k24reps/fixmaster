@@ -319,13 +319,16 @@
   }
 }
 @media (max-width: 520px) {
+  /* Used to force nowrap + overflow-x:auto, turning this into a horizontal-
+     scroll strip. The LAST chip ("Rp 14.145.000 nilai stok") is both the
+     widest and the money figure — with nothing after it to signal "keep
+     scrolling", it just cut off mid-digit ("Rp 14.145.00") at the viewport
+     edge with no ellipsis, reading as broken data rather than a scroll
+     hint. Only 4 short chips, so falling back to the base `.statsBar`
+     `flex-wrap: wrap` (no override needed here) wraps them onto two lines
+     instead — the Rp figure is then always fully visible, never cut. */
   .statsBar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: var(--space-5);
-  }
-  .statsBar span {
-    flex: 0 0 auto;
+    gap: var(--space-4);
   }
   .binGrid {
     grid-template-columns: 1fr;

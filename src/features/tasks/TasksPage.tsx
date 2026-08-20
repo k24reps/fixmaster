@@ -296,7 +296,10 @@ export function TasksPage() {
                         <strong className={styles.groupName}>{tpl.name || tpl.title}</strong>
                         <span className={styles.groupCount}>{tasks.length} tugas</span>
                         {canManage && (
-                          <>
+                          // Satu wrapper flex-shrink:0 untuk KETIGA tombol, supaya saat
+                          // .groupHead wrap di mobile, pensil tidak terpisah sendiri ke
+                          // baris baru dari pasangan naik/turun (lihat groupActions di CSS).
+                          <span className={styles.groupActions}>
                             <span className={styles.orderBtns}>
                               <button
                                 className={styles.iconBtn}
@@ -325,7 +328,7 @@ export function TasksPage() {
                             >
                               <Icon name="pen" aria-hidden />
                             </button>
-                          </>
+                          </span>
                         )}
                       </header>
                       <ul className={styles.taskList}>
