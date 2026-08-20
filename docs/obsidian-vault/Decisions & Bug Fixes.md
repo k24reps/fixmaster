@@ -1457,3 +1457,59 @@ Verifikasi: build hijau, lint bersih, 457 test lulus (tak ada test baru — murn
 audit visual diulang penuh pasca-fix (dark + light) mengonfirmasi kelima perbaikan di data nyata.
 
 #decision #ui #audit #css #flexbox #responsive
+
+---
+
+## Zoom browser 125-150% & laptop 1366px — tabel Servis dirender di lebar yang tak muat
+
+**Tanggal:** 20 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Pertanyaan awalnya soal perbandingan zoom 100% vs 80%. Zoom browser tidak mengubah lebar jendela
+fisik — ia mengubah berapa banyak CSS px yang muat di dalamnya. Jadi zoom **80% justru melegakan**
+(1440px @ 80% = viewport 1800 CSS px) dan yang berbahaya adalah **zoom masuk**: 1440 @ 125% = 1152,
+1920 @ 150% = 1280. Emulasi lebar viewport Playwright setara persis dengan zoom untuk urusan
+layout dan media query, jadi seluruh rentang bisa diukur tanpa mengutak-atik zoom asli.
+
+**Temuan.** Tabel `/services` punya 10 kolom dengan **min-content 1056px**, sementara wrapper =
+viewport − 360px (sidebar + padding). Artinya tabel baru muat mulai **viewport 1416px**, tapi
+breakpoint kartu baru aktif di `max-width: 1100px`. Ada pita **1101–1415px** di mana tabel tetap
+dirender lalu overflow — dan kolom AKSI yang `position: sticky; right: 0` dengan background opaque
+**menimpa** isi sel di bawahnya alih-alih sekadar menggeser. Terukur lewat DOM rect:
+
+| viewport | ekuivalen | wrapper | overflow | yang tertimpa |
+|---|---|---|---|---|
+| 1101 | 1920 @ 175% | 741 | +315 | — |
+| 1152 | 1440 @ 125% | 792 | +264 | kolom PROFIT |
+| 1280 | 1920 @ 150% | 920 | +136 | kolom STATUS + badge |
+| 1366 | laptop umum | 1006 | +50 | tepi STATUS |
+| 1416 | — | 1056 | 0 | pas |
+
+Pita ini bukan kasus pinggiran: **1366×768 adalah lebar laptop paling umum**, dan bug ini muncul
+di sana tanpa zoom sama sekali. Fix padding `12px 6px` sebelumnya dikalibrasi persis di 1440px —
+benar untuk lebar itu, tapi menyembunyikan bahwa margin selamatnya nol.
+
+**Kenapa padding tidak bisa dilonggarkan.** Diukur: tiap **+1px padding samping menambah 20px**
+kebutuhan viewport (10 kolom × 2 sisi). Padding 12px ⇒ butuh viewport 1536px, artinya laptop
+1440px pun tak akan pernah melihat tabelnya. Angka 6px itu memang batas bawah yang perlu, bukan
+pilihan estetis.
+
+**Fix (satu baris).** Breakpoint `1100px` → `1415px`. Tabel hanya dirender di lebar yang benar-benar
+memuatnya; di bawah itu kartu 2 kolom mengambil alih (terukur 353–502px per kartu, docOverflow 0).
+Kartu memuat semua kolom kecuali *Modal*, jadi turun ke kartu lebih awal nyaris tak kehilangan data
+— sedangkan tabel yang overflow justru **menyembunyikan** data di balik kolom sticky.
+[ServicesPage.module.css:356](src/features/services/ServicesPage.module.css:356).
+
+**Sisa yang sengaja dibiarkan.** `/reports` overflow +42px di pita 1025–1151px (transisi sidebar).
+Tabel itu **tidak punya kolom sticky**, jadi isinya bergeser dan tetap terjangkau lewat scroll
+horizontal — perilaku normal `overflow-x: auto`, bukan penyembunyian. Tidak diubah.
+
+**Pelajaran metodologis.** Breakpoint responsif harus diturunkan dari **min-content konten yang
+diukur**, bukan dari angka bulat yang enak dilihat. Dan kombinasi `overflow-x: auto` + kolom
+`position: sticky` ber-background opaque itu gagal secara diam-diam: tanpa sticky, overflow cuma
+berarti "scroll"; dengan sticky, overflow berarti "data tertutup". Setiap tabel dengan kolom
+sticky wajib punya breakpoint yang menjamin ia tak pernah overflow.
+
+Verifikasi: `scripts/audit-zoom.mjs` (11 lebar × 12 halaman) bersih pasca-fix; build hijau, lint
+bersih, 457 test lulus (murni CSS — tak ada test baru).
+
+#decision #ui #css #responsive #zoom #playwright

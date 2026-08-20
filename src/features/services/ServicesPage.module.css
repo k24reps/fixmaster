@@ -353,7 +353,19 @@
 }
 
 /* ---------- Responsive: table → cards ---------- */
-@media (max-width: 1100px) {
+/* 1415px, bukan 1100px. Tabel ini 10 kolom dan min-content-nya 1056px; wrapper
+   = viewport - 360px (sidebar + padding), jadi tabel baru muat mulai viewport
+   1416px. Di 1101-1415px ia dulu tetap dirender lalu overflow — dan kolom AKSI
+   yang `position: sticky; right: 0` dengan background opaque MENIMPA isi sel di
+   bawahnya, bukan sekadar menggeser (terukur: +315px di 1101, +136px di 1280,
+   +50px di 1366). Pita itu bukan kasus pinggiran: 1366px adalah lebar laptop
+   umum, dan zoom browser 125-150% mendarat tepat di sana (1440@125% = 1152,
+   1920@150% = 1280). Kartu memuat semua kolom kecuali Modal, jadi turun ke
+   kartu lebih awal nyaris tak kehilangan data.
+   Padding sel TIDAK bisa dilonggarkan untuk ini: tiap +1px padding samping
+   menambah 20px kebutuhan viewport (10 kolom x 2 sisi), jadi 12px menuntut
+   viewport 1536px — laptop 1440px pun tak akan pernah melihat tabelnya. */
+@media (max-width: 1415px) {
   .tableWrap {
     display: none;
   }
