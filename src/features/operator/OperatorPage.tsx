@@ -306,7 +306,7 @@ export function OperatorPage() {
                       return (
                         <tr key={o.orgId}>
                           <td>
-                            <span className={styles.orgCell2}>
+                            <span className={styles.orgCell}>
                               <span
                                 className={[
                                   styles.led,

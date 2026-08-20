@@ -1,11 +1,16 @@
 /*
  * Dashboard operator — bahasa visual "Precision Electronics Bench" yang sama
- * dengan sisa aplikasi: LED status, readout mono, spine tepi baris, ledger
- * grid. Motif ini page-local menurut konvensi repo (lihat SettingsPage /
- * FinancePage / AttendancePage), jadi dideklarasikan ulang di sini.
+ * dengan sisa aplikasi: LED status langganan, readout mono zero-pad, header
+ * tabel mono uppercase, angka tabular. Motif ini page-local menurut konvensi
+ * repo (lihat SettingsPage / FinancePage), jadi dideklarasikan ulang di sini.
+ *
+ * Pola tab (.tabs/.tab/.tabActive) sengaja disalin dari SettingsPage supaya
+ * kedua permukaan terasa satu produk.
+ *
  * Semua warna via var(--token) dari src/styles/tokens.css.
  */
 
+/* ---------- kerangka halaman ---------- */
 .wrap {
   display: flex;
   flex-direction: column;
@@ -21,6 +26,10 @@
   display: grid;
   place-items: center;
   padding: var(--space-4);
+}
+
+.noPad {
+  padding: 0;
 }
 
 /* ---------- masthead ---------- */
@@ -63,183 +72,7 @@
   color: var(--text-muted);
 }
 
-.hint,
-.warn {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.warn {
-  padding: var(--space-2) var(--space-3);
-  background: var(--warning-soft);
-  border-left: 3px solid var(--warning);
-  border-radius: var(--radius-sm, 4px);
-}
-
-.noPad {
-  padding: 0;
-}
-
-/* Diagnostic spine — invoice menggantung selalu butuh perhatian. */
-
-.orgName {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-base);
-  font-weight: var(--fw-medium, 550);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.demoTag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--info);
-  border: 1px solid var(--info);
-  border-radius: 3px;
-  padding: 0 4px;
-}
-
-/* LED status langganan — kosakata yang sama dengan BillingTab. */
-.led {
-  grid-row: 1 / span 2;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.ledOk {
-  background: var(--success);
-  box-shadow: 0 0 0 3px var(--success-soft);
-}
-
-.ledWarn {
-  background: var(--warning);
-  box-shadow: 0 0 0 3px var(--warning-soft);
-}
-
-.ledCrit {
-  background: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-soft);
-}
-
-.plan {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-}
-
-.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--text-secondary);
-}
-
-.idle {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-/* Sinyal dormant — 14 hari tanpa aktivitas patut dilihat. */
-.idleStale {
-  color: var(--warning);
-}
-
-/* ---------- form login operator ---------- */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 280px;
-}
-
-.label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.input {
-  height: var(--control-h);
-  padding: 0 var(--space-3);
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm, 6px);
-  font-size: var(--text-base);
-}
-
-.input:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 1px;
-}
-
-@media (max-width: 640px) {
-  .masthead {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
-/* ---------- baris klien (dua baris: identitas, lalu metrik) ---------- */
-
-.planSuspended {
-  color: var(--danger);
-}
-
-.daysWarn {
-  color: var(--warning);
-}
-
-.rowActions {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-/* ---------- jejak aksi ---------- */
-
-.trailAction {
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: var(--text-xs);
-  color: var(--brand);
-}
-
-/* ---------- modal aksi ---------- */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.modalFoot {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
-.err {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--danger);
-}
-
-/* ---------- readout ringkasan (tetap terlihat di semua tab) ---------- */
+/* ---------- readout ringkasan (di luar tab, selalu terlihat) ---------- */
 .readout {
   display: flex;
   flex-wrap: wrap;
@@ -281,7 +114,7 @@
   color: var(--danger);
 }
 
-/* ---------- tab (pola sama dengan SettingsPage) ---------- */
+/* ---------- tab ---------- */
 .tabs {
   display: flex;
   align-items: center;
@@ -329,7 +162,7 @@
   color: var(--brand-hover);
 }
 
-/* ---------- tabel ---------- */
+/* ---------- tabel (dipakai ketiga tab) ---------- */
 .tableWrap {
   overflow-x: auto;
 }
@@ -376,12 +209,37 @@
   text-align: right;
 }
 
-.orgCell2 {
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* ---------- isi sel ---------- */
+.orgCell {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
+.orgName {
+  font-size: var(--text-base);
+  font-weight: var(--fw-medium, 550);
+  color: var(--text-primary);
+}
+
+.demoTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--info);
+  border: 1px solid var(--info);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* Catatan internal vendor, di bawah nama org. Satu-satunya sel yang boleh
+   membungkus baris — sisanya nowrap agar kolom tetap sejajar. */
 .noteInline {
   display: block;
   margin-top: 2px;
@@ -391,6 +249,47 @@
   max-width: 260px;
 }
 
+/* LED status langganan — kosakata yang sama dengan BillingTab. */
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--text-muted);
+}
+
+.ledOk {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
+}
+
+.ledWarn {
+  background: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-soft);
+}
+
+.ledCrit {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.plan {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.planSuspended {
+  color: var(--danger);
+}
+
+.daysWarn {
+  color: var(--warning);
+}
+
+/* Pip retensi/modul: ●○ mono agar lebarnya tetap sejajar antar baris. */
 .pips {
   font-family: var(--font-mono);
   letter-spacing: 0.1em;
@@ -400,6 +299,27 @@
 .amount {
   color: var(--brand);
   font-size: var(--text-base);
+}
+
+.idle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Sinyal dormant — 14 hari tanpa aktivitas patut dilihat. */
+.idleStale {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--warning);
+}
+
+.trailAction {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--text-xs);
+  color: var(--brand);
 }
 
 .reasonCell,
@@ -412,4 +332,79 @@
 .detailCell {
   font-family: var(--font-mono);
   color: var(--text-muted);
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
+
+/* ---------- teks bantu ---------- */
+.hint {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.warn {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* ---------- form (login operator & modal aksi) ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 280px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.input {
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--text-base);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.modalFoot {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.err {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .masthead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
