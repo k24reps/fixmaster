@@ -353,19 +353,38 @@
 }
 
 /* ---------- Responsive: table → cards ---------- */
-/* 1415px, bukan 1100px. Tabel ini 10 kolom dan min-content-nya 1056px; wrapper
-   = viewport - 360px (sidebar + padding), jadi tabel baru muat mulai viewport
-   1416px. Di 1101-1415px ia dulu tetap dirender lalu overflow — dan kolom AKSI
-   yang `position: sticky; right: 0` dengan background opaque MENIMPA isi sel di
-   bawahnya, bukan sekadar menggeser (terukur: +315px di 1101, +136px di 1280,
-   +50px di 1366). Pita itu bukan kasus pinggiran: 1366px adalah lebar laptop
-   umum, dan zoom browser 125-150% mendarat tepat di sana (1440@125% = 1152,
-   1920@150% = 1280). Kartu memuat semua kolom kecuali Modal, jadi turun ke
-   kartu lebih awal nyaris tak kehilangan data.
-   Padding sel TIDAK bisa dilonggarkan untuk ini: tiap +1px padding samping
-   menambah 20px kebutuhan viewport (10 kolom x 2 sisi), jadi 12px menuntut
-   viewport 1536px — laptop 1440px pun tak akan pernah melihat tabelnya. */
-@media (max-width: 1415px) {
+/* ---------- Ambang tabel -> kartu: @container, BUKAN @media ---------- */
+/* Tabel ini punya min-content 1056px (10 kolom pemilik; 8 kolom untuk karyawan
+   karena Modal & Profit ownerOnly). Kalau ruangnya kurang, ia overflow — dan
+   kolom AKSI yang `position: sticky; right: 0` dengan background opaque MENIMPA
+   isi sel di bawahnya alih-alih sekadar menggeser. Terukur pada versi @media
+   lama: +315px di 1101, +264px di 1152, +136px di 1280, +50px di 1366 (dan
+   1366px adalah lebar laptop umum — ini bukan kasus pinggiran).
+
+   Kenapa container, bukan media query: properti CSS `zoom` (dipakai pengaturan
+   zoom aplikasi, lihat src/stores/zoom.ts) MENAMBAH ruang layout tapi TIDAK
+   menggeser media query. Terukur pada viewport 1152px, `zoom: 0.8` menaikkan
+   ruang <main> 858px -> 1146px sementara `matchMedia('(max-width: 1415px)')`
+   tetap true — jadi tabel yang sebenarnya sudah muat akan tetap tersembunyi,
+   dan sebaliknya di zoom 1.25 tabel yang tak lagi muat akan tetap dirender
+   lalu overflow. Media query ber-satuan `em` tidak menolong: `em` di media
+   query selalu resolve ke font-size awal, bukan ke root. Container query
+   mengukur elemen dalam koordinat layout yang SUDAH ter-zoom, jadi ia satu-
+   satunya yang benar di kedua arah (terverifikasi lewat scripts/audit-zoom.mjs).
+
+   Ambangnya memakai angka pemilik (1056px) untuk kedua peran. Bagi karyawan itu
+   sedikit konservatif — tabel 8 kolom mereka sebenarnya muat mulai ~895px —
+   tapi kartu memuat semua kolom kecuali Modal, jadi kelebihan-hati-hati di sini
+   hanya berarti tampilan kartu sedikit lebih awal, bukan data hilang.
+
+   Padding sel TIDAK bisa jadi jalan keluar: tiap +1px padding samping menambah
+   20px kebutuhan ruang (10 kolom x 2 sisi), jadi 12px menuntut 1256px. */
+.listArea {
+  container-type: inline-size;
+  container-name: servisList;
+}
+
+@container servisList (max-width: 1055px) {
   .tableWrap {
     display: none;
   }

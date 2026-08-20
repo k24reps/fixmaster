@@ -295,7 +295,7 @@ export function ServicesPage() {
             }
           />
         ) : (
-          <>
+          <div className={styles.listArea}>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
@@ -457,7 +457,7 @@ export function ServicesPage() {
                 {rows.length !== stats.total && ` · ${stats.total} total`}
               </span>
             </div>
-          </>
+          </div>
         )}
       </Card>
 

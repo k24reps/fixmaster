@@ -12,6 +12,10 @@ import { chromium } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5183';
+// ZOOM=0.8 menguji pengaturan zoom aplikasi (properti CSS `zoom` di :root),
+// bukan zoom browser. Keduanya menambah ruang layout, tapi hanya container
+// query yang mengikuti — lihat ServicesPage.module.css.
+const ZOOM = Number(process.env.ZOOM || 1);
 
 // Lebar CSS-px ekuivalen zoom untuk jendela 1440 dan 1920.
 const WIDTHS = [
@@ -90,10 +94,11 @@ const rows = [];
 for (const { w, note } of WIDTHS) {
   const page = await browser.newPage({ viewport: { width: w, height: 900 } });
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.evaluate(() => {
+  await page.evaluate((Z) => {
     localStorage.setItem('fixmaster-theme', 'dark');
+    localStorage.setItem('fixmaster-zoom', String(Z));
     document.documentElement.setAttribute('data-theme', 'dark');
-  });
+  }, ZOOM);
   await page.reload({ waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /Isi data demo/ }).click();
   await page.waitForSelector('a[href="/services"]', { timeout: 20000 });

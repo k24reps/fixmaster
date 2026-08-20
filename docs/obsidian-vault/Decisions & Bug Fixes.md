@@ -1513,3 +1513,76 @@ Verifikasi: `scripts/audit-zoom.mjs` (11 lebar × 12 halaman) bersih pasca-fix; 
 bersih, 457 test lulus (murni CSS — tak ada test baru).
 
 #decision #ui #css #responsive #zoom #playwright
+
+---
+
+## Pengaturan zoom aplikasi — dan kenapa satu breakpoint harus jadi @container
+
+**Tanggal:** 20 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Permintaan: zoom yang diatur di dalam aplikasi, bukan di browser. Kontrolnya di Topbar
+(kurang / readout mono / tambah), 5 tingkat: 80 · 90 · 100 · 110 · 125%, disimpan di
+`localStorage` dan dipasang oleh `initZoom()` sebelum React render.
+
+**Mekanisme: properti CSS `zoom` pada :root, bukan `transform: scale()`.** `zoom` memicu reflow
+sungguhan sehingga teks tetap tajam dan layout memakai ruang yang tersedia; `scale()` hanya
+melar-kecilkan hasil render (teks buram, scrollbar salah, hit-area geser).
+
+### Jebakan yang menentukan desain
+
+**`zoom` menambah ruang layout tapi TIDAK menggeser media query.** Terukur pada viewport 1152px:
+`zoom: 0.8` menaikkan ruang `<main>` dari 858px ke 1146px, sementara
+`matchMedia('(max-width: 1415px)')` tetap `true`. Media query ber-satuan `em` juga tidak menolong —
+`em` di media query selalu resolve ke font-size awal, bukan ke root (diuji: `88.4375em` tetap
+match di root font-size 16px maupun 13px).
+
+Akibatnya dua arah sama-sama salah kalau dibiarkan:
+- zoom **keluar** → tabel yang sebenarnya sudah muat tetap disembunyikan;
+- zoom **masuk** → tabel yang tak lagi muat tetap dirender lalu overflow, dan kolom AKSI yang
+  sticky menutupi data (bug yang baru saja ditutup lewat breakpoint 1415px, kembali lewat pintu lain).
+
+**`@container` adalah satu-satunya yang benar**, karena container query mengukur elemen dalam
+koordinat layout yang sudah ter-zoom. Terverifikasi: di `zoom: 0.8` container melaporkan MUAT
+saat media query masih melaporkan SEMPIT. Jadi breakpoint tabel Servis diubah dari
+`@media (max-width: 1415px)` menjadi `@container servisList (max-width: 1055px)` — ambangnya
+diturunkan ulang ke koordinat container (min-content tabel 1056px), dengan pembungkus baru
+`.listArea` sebagai container. Hasil terukur:
+
+| viewport | zoom | ruang | tampil |
+|---|---|---|---|
+| 1440 | 100% | 1080 | tabel |
+| 1440 | 125% | 949 | kartu (benar — dulu overflow) |
+| 1152 | 100% | 792 | kartu |
+| 1152 | **80%** | 1080 | **tabel** (media query tak akan pernah bisa) |
+
+### POS: breakpoint yang TIDAK bisa dijadikan container query
+
+`@media (max-width: 1024px)` di POS terikat pada **kehadiran sidebar**, bukan pada ruang: di
+≤1024px sidebar hilang sehingga `.layout` justru MELEBAR dari 667px ke 960px sambil berubah ke
+1 kolom. Hubungannya terbalik — tak ada ambang container yang bisa menirukannya. Akar overflow-nya
+ternyata lain dan lebih sederhana: kolom keranjang dipatok `400px` mati sementara containernya
+menyusut. Diganti `minmax(320px, 400px)` sehingga trek itu bisa mengembalikan ruang sendiri.
+Terverifikasi nol regresi: di zoom 100% kolom tetap 400px di 1025/1097/1280/1440, dan overflow
+31px di 1097px @ 125% hilang.
+
+### Sisa yang sengaja dibiarkan
+
+`/reports` overflow horizontal yang membesar mengikuti zoom (+42px di 100%, +261px di 125% pada
+1097px). Tabel itu **tidak punya kolom sticky** (diperiksa: nol `position: sticky` di CSS-nya),
+jadi isinya bergeser dan tetap terjangkau lewat scroll — bukan penyembunyian data. Ambangnya juga
+terikat sidebar seperti POS.
+
+### Pelajaran metodologis
+
+Zoom aplikasi dan zoom browser TIDAK setara: browser memiliki viewport sehingga media query-nya
+ikut, `zoom` tidak. Konsekuensinya, setiap breakpoint yang menjaga sesuatu dari overflow — bukan
+sekadar mengatur selera tata letak — harus berbasis container begitu zoom in-app ada. Dan
+breakpoint yang bergantung pada kehadiran elemen lain (sidebar) tidak bisa dikonversi sama sekali;
+di sana ruang sempit harus diserap oleh trek grid-nya sendiri.
+
+Verifikasi: `scripts/audit-zoom.mjs` (kini menerima `ZOOM=`, dipasang lewat localStorage supaya
+bertahan lintas navigasi) disapu penuh di zoom 80/100/125% × 11 lebar × 12 halaman. Build hijau,
+lint bersih, **463 test lulus** (+6 test baru untuk store zoom: langkah berhenti di ujung, 100%
+menghapus properti `zoom` alih-alih menulis '1', dan nilai localStorage rusak jatuh ke 100%).
+
+#decision #ui #css #responsive #zoom #container-queries #playwright
