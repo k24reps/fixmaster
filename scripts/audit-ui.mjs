@@ -14,6 +14,7 @@ const OUT = join(__dirname, 'shots');
 mkdirSync(OUT, { recursive: true });
 
 const BASE = process.env.BASE_URL || 'http://localhost:5174';
+const THEME = process.env.THEME || 'dark';
 
 const pages = [
   { path: '/', name: 'dashboard' },
@@ -77,7 +78,7 @@ for (const vp of VIEWPORTS) {
   const consoleErrors = [];
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 160)); });
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await setTheme(page, 'dark');
+  await setTheme(page, THEME);
   await page.reload({ waitUntil: 'networkidle' });
   // Fresh context per page: seed + sign-in via the wizard's dev button.
   await page.getByRole('button', { name: /Isi data demo/ }).click();
@@ -89,7 +90,7 @@ for (const vp of VIEWPORTS) {
     await page.waitForFunction(() => !document.querySelector('svg[class*="spin" i], [class*="spinner" i]:empty'), { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(1200);
     consoleErrors.length = 0;
-    const shot = join(OUT, `${p.name}-${vp.tag}.png`);
+    const shot = join(OUT, `${p.name}-${vp.tag}-${THEME}.png`);
     await page.screenshot({ path: shot, fullPage: true });
     const ov = await overflowCheck(page);
     report.push({ page: p.name, vp: vp.tag, ...ov, consoleErrors: [...new Set(consoleErrors)].slice(0, 3) });
