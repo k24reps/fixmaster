@@ -1339,3 +1339,40 @@ memblokir semua operasi tulis org itu. Yang hilang selama ini cuma tuasnya. Jadi
 bukan menambah kemampuan baru ke sistem keamanan, hanya memberi pegangan pada yang sudah dibangun.
 
 #decision #operator #audit #billing #promo
+
+### `CREATE OR REPLACE` tak bisa mengubah tipe kembalian — dan jebakan grant setelah DROP (`0046`)
+
+`supabase db push` untuk `0046` gagal:
+
+```
+ERROR: cannot change return type of existing function (SQLSTATE 42P13)
+Row type defined by OUT parameters is different.
+```
+
+`0045` membuat `admin_list_orgs()` dengan 13 kolom OUT; `0046` menjadikannya 17 (tambah kolom
+scorecard + catatan). **`CREATE OR REPLACE FUNCTION` tidak bisa mengubah tipe kembalian** — termasuk
+susunan kolom `RETURNS TABLE`. Harus `drop function if exists ...` lebih dulu.
+
+**Berlaku untuk migrasi mana pun yang menambah/menghapus kolom pada RPC ber-`RETURNS TABLE`.**
+Ini akan terulang; catatan ini ada supaya tidak perlu didiagnosis ulang.
+
+**Migrasi Supabase atomik — itu penyelamatnya.** Diverifikasi setelah kegagalan: `operator_actions`
+dan `client_notes` belum terbuat (`PGRST205`), fungsi `0046` belum ada (`PGRST202`). Rollback penuh,
+tak ada state setengah jadi yang perlu diperbaiki tangan.
+
+**Jebakan turunan yang nyaris lolos.** `DROP` + `CREATE` membuat **DEFAULT PRIVILEGES Supabase
+memasang ulang EXECUTE untuk `anon` dan `authenticated`** — persis lubang `0044`. Kalau `0046` hanya
+menambahkan `drop` tanpa me-revoke ulang, `admin_list_orgs` kembali terbuka untuk anon **secara
+diam-diam**, dan tak ada tes yang gagal karena `tier2c` menguji penolakan lewat gate
+`is_platform_admin()` (yang tetap menolak) — bukan lewat lapisan grant.
+
+Jadi aturannya: **setiap `drop function` pada RPC admin wajib diikuti `revoke ... from public, anon`
++ `grant ... to authenticated` di migrasi yang sama.** Terverifikasi lewat probe REST pasca-apply:
+`admin_list_orgs` membalas `42501` untuk anon.
+
+**Catatan probe yang ikut dipelajari:** `PGRST202` **bukan** bukti fungsi belum ter-deploy. PostgREST
+mencocokkan nama **dan tanda tangan**, jadi body `{}` untuk fungsi berparameter juga menghasilkan
+`PGRST202`. Dua kali di sesi ini hal itu hampir menghasilkan kesimpulan salah — kirim argumen yang
+benar dulu sebelum menyimpulkan.
+
+#decision #postgres #migrasi #security #supabase

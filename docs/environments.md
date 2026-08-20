@@ -15,10 +15,10 @@
 
 | | `main` (= produksi) | `staging` |
 |---|---|---|
-| Migrasi terakhir | `0042` | `0045` |
+| Migrasi terakhir | `0042` | `0046` |
 | Edge Function | `create-invoice`, `duitku-webhook`, `fersaku-webhook`, `health`, `delete-account` | `gopay-listener`, `health`, `delete-account` |
 | Billing | **Duitku** (tidak berubah) | listener GoPay |
-| Dashboard operator | tidak ada | `/operator` |
+| Dashboard operator | tidak ada | `/operator` (3 tab + kontrol tulis) |
 | Perbaikan egress | ✅ sudah | ✅ sudah |
 
 > [!CAUTION]

@@ -11,7 +11,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
-- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Per 13 Jun 2026 **disinkronkan ke migrasi 0031** (split-settle + cancel-refund-parsial + DP RPC + transfer_wallet).
+- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Per **19 Agu 2026 disinkronkan ke migrasi `0046`** — termasuk `0043`/`0044` (listener GoPay + perbaikan grant), `0045` (admin platform), `0046` (kontrol operator + jejak aksi). Diverifikasi lewat probe REST: seluruh RPC admin membalas `42501` untuk anon (ada, tapi tertutup).
 - **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per **22 Jun 2026 disinkronkan ke migrasi `0036`** (`0031` transfer_wallet/refund parsial, `0032` org_settings, `0033` satu-toko-per-email, `0034` PO→Keuangan, `0035` tracking kontak+garansi, `0036` admin outlet-scope — semua via `db push`, tracker sinkron). **`0036` di-apply 22 Jun setelah gerbang keamanan terpenuhi**: admin toko testing sudah di-set outlet; toko pilot owner-only (tanpa admin/karyawan) → nol risiko lockout. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging** (relink balik setelah tiap push prod).
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -138,3 +138,13 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
   360/390/700/721/1440 px, pertukaran slot, simpan/reset, More sheet, POS cart dock,
   dan pengecualian bottom bar pada detail servis.
 - **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`). Dua asersi paling menentukan: owner org LAIN ditolak men-suspend (gerbang lintas-tenant), dan **setiap aksi tulis meninggalkan jejak** di `operator_actions` lengkap dengan alasan + pelakunya. Juga menguji: suspend tanpa alasan ditolak, promo ke org suspended ditolak, durasi promo di luar 1–365 ditolak, `operator_actions` tak terbaca lewat REST.
+
+## Hasil testing dashboard operator (19 Agu 2026)
+
+- **`tier2c-platform-admin`**: 15/15 lolos. Termasuk asersi terpenting — **owner sebuah org DITOLAK `admin_list_orgs`** (hak tertinggi di dalam satu org tidak memberi akses ke org lain), dan setelah dipromosikan barulah ia melihat KEDUA org (bukti lintas-tenant bekerja).
+- **`tier2d-operator-controls`**: kontrol tulis + jejak aksi. Menguji dua sisi: owner org lain ditolak men-suspend (dan `plan_type` org target TIDAK berubah), lalu setelah promosi berhasil dengan jejak lengkap berisi alasan + pelaku.
+- **Teardown bersih diverifikasi**: `platform_admins` kosong lagi dan jumlah org kembali seperti semula setelah suite selesai — tes tidak meninggalkan admin platform menggantung di staging.
+- **Probe REST pasca-`0046`**: `admin_suspend_org`, `admin_apply_promo`, `admin_set_client_note`, `admin_reactivate_org`, `admin_list_operator_actions`, `admin_list_orgs` semuanya `42501` untuk anon. Yang terakhir penting karena ia sempat di-`DROP`+`CREATE` (lihat catatan 42P13 di [[Decisions & Bug Fixes]]) — grant default Supabase memasang ulang EXECUTE untuk anon, dan revoke ulang di `0046` terbukti menutupnya.
+
+> [!TIP]
+> **Cara probe RPC tanpa login** (dipakai berulang di sesi ini): POST `/rest/v1/rpc/<fn>` dengan anon key. `42501` = fungsi ADA tapi tertutup (yang kita mau). `PGRST202` = **tidak selalu berarti hilang** — PostgREST mencocokkan nama **dan tanda tangan**, jadi body `{}` untuk fungsi berparameter juga menghasilkan `PGRST202`. Selalu kirim argumen yang benar sebelum menyimpulkan sebuah fungsi belum ter-deploy. Kesalahan ini sudah dua kali hampir menghasilkan kesimpulan salah.
