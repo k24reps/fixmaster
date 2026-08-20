@@ -256,6 +256,16 @@
   background: none;
   color: var(--text-muted);
 }
+/* Wraps orderBtns + the edit pencil as ONE flex item. Without this, .groupHead's
+   mobile flex-wrap wraps each button independently — the up/down pair (its own
+   flex-shrink:0 unit) stays on line 1, but the pencil, a separate sibling, gets
+   orphaned alone onto line 2 with an awkward gap. */
+.groupActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
 /* Up/down pair: tight so it reads as ONE control, not two loose buttons. */
 .orderBtns {
   display: inline-flex;

@@ -206,9 +206,17 @@
   font-size: var(--text-sm);
 }
 .table thead th {
-  /* 12px sides (not 16): with 10 owner columns the AKSI cluster was pushed
-     past the right edge at 1440px, hiding the most-used buttons. */
-  padding: 12px 12px;
+  /* 6px sides (not 16, not 12): with 10 owner columns the table's natural
+     width exceeded its wrapper by 103px at 1440px. AKSI is
+     `position: sticky; right: 0` with an opaque background (below) — when
+     the table overflows, sticky pins AKSI to the wrapper's edge REGARDLESS
+     of the table's own layout, so its solid background painted on top of
+     whatever sat there, silently covering the tail of the STATUS badge text
+     (confirmed via measured DOM rects: badge and AKSI cell overlapped by up
+     to 97px). The real fix is making the table's natural width fit so sticky
+     never has to shift left. 6px closes the 103px gap exactly (verified:
+     0px overflow, 0px badge/AKSI overlap on every status at 1440px). */
+  padding: 12px 6px;
   text-align: left;
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -230,7 +238,7 @@
   background: var(--bg-hover);
 }
 .table tbody td {
-  padding: 12px 12px;
+  padding: 12px 6px;
   vertical-align: middle;
 }
 .table tbody td strong {

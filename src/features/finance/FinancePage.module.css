@@ -299,7 +299,17 @@
   .summaryGrid {
     grid-auto-flow: column;
     grid-template-columns: none;
-    grid-auto-columns: minmax(230px, 82vw);
+    /* clamp(), not minmax(): minmax() on a non-fr auto-column is intrinsic
+       sizing — it grows to fit CONTENT, capped at the max, so a short card
+       ("Bank BCA Rp 14.750.000") settled at ~230px (the min) instead of the
+       intended ~82vw. That made ~1.5 cards visible with a large, awkward
+       peek that cut a card's Rp figure mid-digit — reads as a data bug, not
+       "swipe for more". clamp() always resolves to its preferred value
+       (76vw) clamped to [230px, 300px], forcing every card to the same
+       width regardless of content, so the next card's peek is a small,
+       consistent sliver (verified ~35–45px at 375–390px viewports) instead
+       of a half-legible card. */
+    grid-auto-columns: clamp(230px, 76vw, 300px);
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: inline mandatory;
