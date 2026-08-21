@@ -48,6 +48,17 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 - **Ikon**: hanya lewat komponen `Icon` (`src/components/ui/Icon.tsx`).
 - **i18n**: teks UI lewat `useT()` + translation key, bukan string literal.
 - **Import alias**: `@/` → `src/`.
+- **Breakpoint yang MENJAGA dari overflow wajib `@container`, bukan `@media`.** Kalau sebuah
+  breakpoint hanya mengatur selera tata letak, media query boleh. Tapi kalau ia menentukan
+  "muat / tidak muat" (mis. tabel vs kartu), pakai container query. Dua alasan yang sudah
+  terukur: (a) pengaturan zoom aplikasi (`src/stores/zoom.ts`) MENAMBAH ruang layout tapi TIDAK
+  menggeser media query — `em` juga tidak menolong karena resolve ke font-size awal; (b) sidebar
+  muncul di >=1025px sehingga ruang konten MENYUSUT saat viewport melebar, bikin pita rusak yang
+  terputus dan mustahil dinyatakan satu `max-width`. Turunkan ambangnya dari min-content yang
+  **diukur**, bukan angka bulat. Detail: `Decisions & Bug Fixes.md`.
+- **Kecuali bila breakpoint terikat kehadiran elemen lain** (kasus POS: di <=1024px sidebar hilang
+  sehingga wadahnya justru melebar sambil jadi 1 kolom). Hubungan terbalik begitu tak bisa
+  dikonversi — serap ruang sempit lewat trek grid-nya sendiri (`minmax()`).
 
 ## 4. Verifikasi (default setelah perubahan)
 
@@ -57,7 +68,19 @@ npm run test    # vitest unit (463 test, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
-Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasumsi "kelihatannya benar". Pelajaran lengkap di `docs/obsidian-vault/Decisions & Bug Fixes.md`.
+Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasumsi "kelihatannya benar".
+Dua probe regresi siap pakai (butuh dev server jalan):
+
+```bash
+node scripts/audit-mobile.mjs                      # 5 lebar ponsel x 12 halaman
+MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
+node scripts/audit-zoom.mjs                        # 11 lebar desktop x 12 halaman
+ZOOM=1.25 node scripts/audit-zoom.mjs              # zoom aplikasi
+```
+
+Keduanya melaporkan luberan dokumen, tiap wadah yang bisa digeser ke samping, overlap kolom
+sticky, dan teks ter-clip. **Ukur DOM rect, jangan baca screenshot terkompresi** — tiga temuan
+palsu pada audit sebelumnya lahir dari membaca gambar. Pelajaran lengkap di `docs/obsidian-vault/Decisions & Bug Fixes.md`.
 
 ## 5. Pemeliharaan knowledge base (WAJIB — bagian dari "selesai")
 

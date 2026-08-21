@@ -1493,6 +1493,10 @@ kebutuhan viewport (10 kolom × 2 sisi). Padding 12px ⇒ butuh viewport 1536px,
 1440px pun tak akan pernah melihat tabelnya. Angka 6px itu memang batas bawah yang perlu, bukan
 pilihan estetis.
 
+> [!] **Digantikan.** Angka `1415px` di bawah benar saat ditulis, tapi kemudian diganti
+> `@container servisList (max-width: 1055px)` supaya ikut mengikuti zoom aplikasi. Jangan
+> menerapkan ulang media query ini — lihat catatan zoom aplikasi berikutnya.
+
 **Fix (satu baris).** Breakpoint `1100px` → `1415px`. Tabel hanya dirender di lebar yang benar-benar
 memuatnya; di bawah itu kartu 2 kolom mengambil alih (terukur 353–502px per kartu, docOverflow 0).
 Kartu memuat semua kolom kecuali *Modal*, jadi turun ke kartu lebih awal nyaris tak kehilangan data
@@ -1565,12 +1569,20 @@ menyusut. Diganti `minmax(320px, 400px)` sehingga trek itu bisa mengembalikan ru
 Terverifikasi nol regresi: di zoom 100% kolom tetap 400px di 1025/1097/1280/1440, dan overflow
 31px di 1097px @ 125% hilang.
 
-### Sisa yang sengaja dibiarkan
+### ~~Sisa yang sengaja dibiarkan~~ — SUDAH DIPERBAIKI 21 Agu 2026
 
-`/reports` overflow horizontal yang membesar mengikuti zoom (+42px di 100%, +261px di 125% pada
-1097px). Tabel itu **tidak punya kolom sticky** (diperiksa: nol `position: sticky` di CSS-nya),
-jadi isinya bergeser dan tetap terjangkau lewat scroll — bukan penyembunyian data. Ambangnya juga
-terikat sidebar seperti POS.
+> [!] Bagian ini **sudah tidak berlaku**. Saat itu `/reports` dibiarkan menggulung (+42px di 100%,
+> +261px di 125% pada 1097px) dengan alasan tabelnya tanpa kolom sticky sehingga isinya tetap
+> terjangkau. Alasan itu benar, tapi kesimpulan yang menyertainya — *"ambangnya terikat sidebar
+> seperti POS"* — **SALAH**. POS tak bisa dikonversi karena hubungannya terbalik (di <=1024px
+> sidebar hilang sehingga `.layout` justru MELEBAR sambil jadi 1 kolom). `/reports` tidak begitu:
+> min-content-nya konstan 779px, jadi lebar wadahnya monoton terhadap kebutuhan dan satu container
+> query menutupnya dengan bersih. Lihat [[#Tablet: dua pita meluber yang tak bisa dinyatakan satu
+> media query]] — di sana overflow ini ikut hilang, termasuk di zoom 125%.
+
+> **Pelajaran:** "tidak bisa dikonversi" pada satu halaman jangan digeneralisasi ke halaman lain
+> tanpa mengukur ulang. Dua kasus yang tampak mirip (sama-sama tabel, sama-sama terpengaruh
+> sidebar) ternyata berbeda secara mendasar.
 
 ### Pelajaran metodologis
 
@@ -1650,8 +1662,8 @@ Ditulis generik tanpa penempatan per-kolom karena kelas `.table` dipakai DUA tab
 
 ### Sisa yang sengaja dibiarkan
 
-- `/reports` masih menggulung +42px di pita **1025-1151px** (tablet, di atas cakupan mobile).
-  Tabelnya tanpa kolom sticky, jadi isinya tetap terjangkau.
+- ~~`/reports` masih menggulung +42px di pita **1025-1151px**~~ — **sudah diperbaiki** pada
+  pekerjaan tablet di hari yang sama; lihat catatan Tablet di bawah.
 - Ellipsis di 320px pada nama yang memang panjang ("PT Sumber Komponen") — kategori yang sudah
   ditetapkan benar pada audit sebelumnya.
 
