@@ -1660,3 +1660,56 @@ halaman; pemeriksaan kliping bersih kecuali dua ellipsis di atas; sapuan desktop
 (`audit-zoom.mjs`) tanpa regresi. Build hijau, lint bersih, 463 test lulus (murni CSS).
 
 #decision #ui #css #responsive #mobile #playwright
+
+---
+
+## Tablet: dua pita meluber yang tak bisa dinyatakan satu media query
+
+**Tanggal:** 21 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Lanjutan pembersihan mobile. Disapu di 744/768/810/834/912/1024/1025/1080/1112/1152/1180/1280px.
+Hanya SATU pelanggar tersisa — tabel `/reports` — tapi bentuknya yang menarik: ia meluber di
+**dua pita viewport yang terputus**, dengan pita bersih di tengahnya.
+
+| viewport | wadah | min-content | selisih |
+|---|---|---|---|
+| 744 | 678 | 779 | **-101** |
+| 834 | 768 | 779 | **-11** |
+| 912 | 846 | 779 | +67 |
+| 1024 | 958 | 779 | +179 |
+| **1025** | **665** | 779 | **-114** |
+| 1112 | 752 | 779 | **-27** |
+| 1152 | 792 | 779 | +13 |
+
+Penyebab lompatan 958 → 665 di 1024→1025px adalah **sidebar muncul**: viewport melebar 1px, ruang
+konten menyusut 293px. Karena itu tak ada satu pun `@media (max-width: ...)` yang bisa menyatakan
+"721-834 ATAU 1025-1151" — tapi kolom `wadah` di tabel di atas **kontinu dan monoton terhadap
+kebutuhan**, jadi satu `@container laporanTabel (max-width: 778px)` menutup kedua pita sekaligus,
+plus seluruh mobile. Ini pemakaian kedua pelajaran yang sama (lihat catatan zoom & ServicesPage):
+**breakpoint yang menjaga sesuatu dari overflow harus berbasis wadah, bukan viewport.**
+
+Ambang 779px stabil terhadap data karena `.descCell` dibatasi `max-width: 280px`, sehingga
+min-content tabel tidak tumbuh mengikuti panjang keterangan.
+
+### Dua jebakan saat memindahkan aturannya
+
+1. **`.tableScroll { overflow-x: visible }` di dalam container query adalah aturan MATI** — sebuah
+   container tak bisa ditata oleh container query-nya sendiri. Dibuang, bukan dibiarkan
+   menyesatkan; saat bertumpuk memang tak ada yang meluber.
+2. **Baris terbaca ragged (dua baris / tiga baris berganti-ganti).** Dua sebab bertumpuk:
+   `flex-basis: 100%` pada `.descCell` dikalahkan `max-width: 280px` dari aturan dasar sehingga ia
+   tetap muat sebaris; dan karena keterangan mendahului kolom Nominal di DOM, begitu ia mengambil
+   baris penuh, Nominal terdorong ke baris KETIGA. Perbaikan: `max-width: none` + **`order: 1`**
+   supaya keterangan jadi urutan terakhir. Hasil terukur di 1025px: tinggi baris 74px seragam
+   untuk kedelapan baris (sebelumnya berganti-ganti).
+
+Tabel Piutang dibungkus `.tableScroll` yang sama (satu baris JSX) supaya kedua tabel punya wadah
+dan perlakuan identik — sebelumnya ia telanjang tanpa wadah dan tak pernah teruji karena data demo
+tak punya piutang sehingga yang tampil `EmptyState`. Ambang 779px sedikit konservatif untuk 4
+kolomnya, tapi dua tabel di halaman yang sama menumpuk bersamaan lebih koheren dibaca.
+
+Verifikasi: sapuan tablet, mobile, desktop, DAN zoom aplikasi 125% semuanya **nol scroll
+horizontal** — termasuk `/reports tbl+42` di 1097px yang sebelumnya sengaja dibiarkan, kini ikut
+hilang. Build hijau, lint bersih, 463 test lulus.
+
+#decision #ui #css #responsive #tablet #container-queries #playwright

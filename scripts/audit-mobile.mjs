@@ -8,7 +8,11 @@ import { writeFileSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5183';
 // Lebar ponsel nyata. 320 = batas bawah yang masih dipakai (SE lama, Android murah).
-const WIDTHS = [320, 360, 375, 390, 414];
+// WIDTHS=768,1024,1152 untuk menyapu pita tablet.
+const WIDTHS = (process.env.WIDTHS || '320,360,375,390,414').split(',').map(Number);
+// Tablet bukan ponsel: sidebar muncul di >=1025px sehingga ruang konten
+// justru MENYUSUT saat viewport melebar. isMobile dimatikan di >=768px.
+const MOBILE = Number(process.env.MOBILE ?? 1) === 1;
 const PAGES = ['/', '/services', '/pos', '/customers', '/inventory', '/suppliers',
   '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
 
@@ -58,7 +62,7 @@ const browser = await chromium.launch();
 const rows = [];
 for (const w of WIDTHS) {
   const page = await browser.newPage({
-    viewport: { width: w, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
+    viewport: { width: w, height: 900 }, deviceScaleFactor: 2, hasTouch: true, isMobile: MOBILE,
   });
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate(() => {

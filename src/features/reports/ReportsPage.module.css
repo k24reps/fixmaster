@@ -336,6 +336,14 @@
 .tableScroll {
   width: 100%;
   overflow-x: auto;
+  /* Container, bukan media query: tabel ini meluber di DUA pita viewport
+     yang terpisah — 721-834px, lalu 1025-1151px setelah sidebar muncul dan
+     justru MENYUSUTKAN ruang konten (terukur: wadah 958px di 1024px, tapi
+     hanya 665px di 1025px). Tak ada satu pun `max-width` yang bisa menyatakan
+     dua pita terputus itu, sedangkan lebar WADAH-nya kontinu, jadi satu
+     ambang container menutup keduanya sekaligus — plus mobile. */
+  container-type: inline-size;
+  container-name: laporanTabel;
 }
 .table {
   width: 100%;
@@ -457,50 +465,6 @@
   /* nowrap pada baris sepanjang "Cabang Cimahi - masuk Rp 2.500.000"
      menyembunyikan 247px dari 320px teksnya di balik ellipsis — praktis
      seluruh isinya. Di mobile ia dibiarkan membungkus. */
-  /* Tabel -> baris bertumpuk. Lima kolom (Tanggal/Jenis/Kategori/Keterangan/
-     Nominal) tak akan pernah muat di 320px, dan menggulung ke samping justru
-     menyembunyikan kolom Nominal — kolom yang paling dicari orang. thead
-     disembunyikan karena isinya sudah swadeskripsi: tanggal, chip jenis,
-     kategori, keterangan, dan angka Rp. Ditulis generik (tanpa penempatan
-     per-kolom) karena kelas .table dipakai DUA tabel di halaman ini —
-     Piutang 4 kolom dan Rincian Transaksi 5 kolom. */
-  .tableScroll {
-    overflow-x: visible;
-  }
-  .table thead {
-    display: none;
-  }
-  .table,
-  .table tbody,
-  .table tr,
-  .table td {
-    display: block;
-  }
-  .table tr {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px var(--space-2);
-    padding: var(--space-3) var(--space-2);
-    border-bottom: 1px solid var(--border);
-  }
-  .table td {
-    padding: 0;
-    border: none;
-  }
-  /* Kolom angka didorong ke kanan; hanya yang PERTAMA, supaya dua kolom angka
-     berdampingan tidak saling terpisah oleh dua margin auto. */
-  .table td.num {
-    margin-left: auto;
-  }
-  .table td.num ~ td.num {
-    margin-left: 0;
-  }
-  .table .descCell {
-    flex-basis: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
   .channelName {
     white-space: normal;
   }
@@ -534,4 +498,62 @@
   .metrics > *:last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
+}
+
+/* Tabel bertumpuk saat wadahnya lebih sempit dari min-content tabel
+   Rincian Transaksi (779px, stabil karena .descCell dibatasi max-width
+   280px sehingga tak tumbuh mengikuti panjang keterangan). Tabel Piutang
+   ikut memakai ambang yang sama: 4 kolomnya sebenarnya muat lebih sempit,
+   tapi kedua tabel di halaman ini berbagi kelas .table dan menumpuknya
+   bersamaan lebih koheren dibaca daripada satu bertumpuk satu tidak. */
+@container laporanTabel (max-width: 778px) {
+    /* Tabel -> baris bertumpuk. Lima kolom (Tanggal/Jenis/Kategori/Keterangan/
+       Nominal) tak akan pernah muat di 320px, dan menggulung ke samping justru
+       menyembunyikan kolom Nominal — kolom yang paling dicari orang. thead
+       disembunyikan karena isinya sudah swadeskripsi: tanggal, chip jenis,
+       kategori, keterangan, dan angka Rp. Ditulis generik (tanpa penempatan
+       per-kolom) karena kelas .table dipakai DUA tabel di halaman ini —
+       Piutang 4 kolom dan Rincian Transaksi 5 kolom. */
+    .table thead {
+      display: none;
+    }
+    .table,
+    .table tbody,
+    .table tr,
+    .table td {
+      display: block;
+    }
+    .table tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px var(--space-2);
+      padding: var(--space-3) var(--space-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .table td {
+      padding: 0;
+      border: none;
+    }
+    /* Kolom angka didorong ke kanan; hanya yang PERTAMA, supaya dua kolom angka
+       berdampingan tidak saling terpisah oleh dua margin auto. */
+    .table td.num {
+      margin-left: auto;
+    }
+    .table td.num ~ td.num {
+      margin-left: 0;
+    }
+    /* `order: 1` memindahkan keterangan ke URUTAN TERAKHIR. Tanpa itu ia
+       berada sebelum kolom Nominal di DOM, sehingga saat ia mengambil satu
+       baris penuh, Nominal terdorong ke baris KETIGA — sebagian baris jadi
+       dua baris, sebagian tiga, dan daftarnya terbaca ragged.
+       `max-width: none` wajib: aturan dasar membatasi .descCell 280px, yang
+       mengalahkan flex-basis 100% sehingga ia tetap muat sebaris. */
+    .table .descCell {
+      order: 1;
+      flex-basis: 100%;
+      max-width: none;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
 }
