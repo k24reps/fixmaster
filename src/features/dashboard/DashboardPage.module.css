@@ -590,24 +590,37 @@
 }
 @media (max-width: 600px) {
   .metrics {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    /* clamp(), not minmax(): on a non-fr auto-column, minmax() is intrinsic
-       sizing — it grows to fit CONTENT capped at the max, so cards settled
-       at ~220px (the min) instead of the intended ~78vw. With 5 cards at
-       220px, only 1.5 fit in view and the 3 money cards (Pemasukan,
-       Pengeluaran, Total Saldo) were 100% off-screen with no peek at all —
-       not even a hint they exist. clamp() forces every card to the same
-       width so at least the next card's edge is always visible. Same fix
-       as FinancePage.module.css's wallet/summary carousel. */
-    grid-auto-columns: clamp(220px, 76vw, 290px);
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    padding-bottom: var(--space-1);
+    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
+       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
+       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
+       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
+       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* Dipadatkan untuk grid dua kolom. clamp lama bertumpu pada min 1.25rem,
+     yang di kartu ~170px memaksa "Rp 6.450.000" pecah jadi dua baris; suku
+     vw dinaikkan supaya angkanya menyusut sendiri di layar sempit. Ikon dan
+     padding ikut mengecil agar label tidak terdesak ke tepi kartu. */
   .metric {
-    scroll-snap-align: start;
+    padding: var(--space-3);
+  }
+  .metricTop {
+    gap: var(--space-2);
+  }
+  .metricIcon {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+  .metricLabel {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+  .metricValue {
+    font-size: clamp(1rem, 4.6vw, 1.6rem);
+  }
+  .metrics > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .console {
     flex-direction: column;

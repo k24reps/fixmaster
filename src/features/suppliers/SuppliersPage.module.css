@@ -347,12 +347,28 @@
   .tabs > button:last-child {
     width: 100%;
   }
+  /* minmax(100px, ...) memaksa 3 x 100px + gap = di atas 288px yang tersedia
+     pada layar 320px, jadi kotaknya menggulung ke samping (+43px terukur).
+     minmax(0, 1fr) membiarkan kolomnya menyusut; tak ada lagi scroll. */
   .poSummary {
-    grid-template-columns: repeat(3, minmax(100px, 1fr));
-    overflow-x: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Label dan angka sebaris butuh ~93px sementara selnya tinggal 61px
+     setelah padding, sehingga angkanya menonjol keluar halaman (terukur
+     +3px). Ditumpuk dan padding dipadatkan. */
+  .poSummary > span {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+  }
+  .poSummary strong {
+    font-size: var(--text-base);
   }
   .docket {
-    grid-template-columns: 92px 1fr;
+    /* 92px kurang 9px untuk "Rp 4.250.000" (terukur) — ellipsis pada
+       total nominal terbaca seperti angka salah, bukan teks dipendekkan. */
+    grid-template-columns: 104px 1fr;
     row-gap: var(--space-2);
   }
   .docketRight {

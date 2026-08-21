@@ -16,6 +16,7 @@
  */
 import {
   Plus,
+  Minus,
   Trash,
   Wrench,
   PencilSimple,
@@ -104,6 +105,7 @@ import {
 
 export type IconName =
   | 'plus'
+  | 'minus'
   | 'trash'
   | 'screwdriver-wrench'
   | 'wrench'
@@ -192,6 +194,7 @@ export type IconName =
 /** Name → Phosphor component. Aliases collapse onto shared glyphs. */
 const REGISTRY: Record<IconName, PhosphorIcon> = {
   plus: Plus,
+  minus: Minus,
   trash: Trash,
   'screwdriver-wrench': Wrench,
   wrench: Wrench,

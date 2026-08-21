@@ -1058,3 +1058,276 @@ karena tes tambahan dari fitur lain yang belum di-merge — lihat catatan pemisa
 visual diulang penuh pasca-fix (dark + light) mengonfirmasi kelima perbaikan di data nyata.
 
 #decision #ui #audit #css #flexbox #responsive
+
+---
+
+## Rilis produksi 21 Agu 2026 — hanya lapisan UI
+
+Empat catatan di bawah mendarat di `main` sebagai SATU rilis, dipisahkan dari `staging` dengan
+pola salin-berkas (bukan cherry-pick). Yang SENGAJA ditahan: seluruh jalur GoPay dan dashboard
+operator. Alasannya tetap sama seperti penolakan merge sebelumnya — `SettingsPage.tsx` versi
+staging memanggil `startGopayInvoice` dan membaca `VITE_GOPAY_QRIS_URL`; bila variabel itu kosong
+di produksi, invoice jatuh ke `provider: 'mock'` yang memunculkan tombol "Saya sudah bayar", dan
+guard `apply_payment` mengizinkannya untuk owner org — setiap pemilik toko bisa memperpanjang
+langganannya sendiri secara gratis. Dashboard operator ditahan karena bergantung pada migrasi
+0045/0046 yang belum dijalankan di basis data produksi.
+
+Angka test pada empat catatan di bawah diselaraskan ke **451** (baseline `main` 445 + 6 test store
+zoom). Di `staging` angkanya lebih besar karena memuat suite GoPay dan operator yang belum ada di
+produksi — bukan selisih cakupan pada kode yang dirilis ini.
+
+---
+
+## Zoom browser 125-150% & laptop 1366px — tabel Servis dirender di lebar yang tak muat
+
+**Tanggal:** 20 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Pertanyaan awalnya soal perbandingan zoom 100% vs 80%. Zoom browser tidak mengubah lebar jendela
+fisik — ia mengubah berapa banyak CSS px yang muat di dalamnya. Jadi zoom **80% justru melegakan**
+(1440px @ 80% = viewport 1800 CSS px) dan yang berbahaya adalah **zoom masuk**: 1440 @ 125% = 1152,
+1920 @ 150% = 1280. Emulasi lebar viewport Playwright setara persis dengan zoom untuk urusan
+layout dan media query, jadi seluruh rentang bisa diukur tanpa mengutak-atik zoom asli.
+
+**Temuan.** Tabel `/services` punya 10 kolom dengan **min-content 1056px**, sementara wrapper =
+viewport − 360px (sidebar + padding). Artinya tabel baru muat mulai **viewport 1416px**, tapi
+breakpoint kartu baru aktif di `max-width: 1100px`. Ada pita **1101–1415px** di mana tabel tetap
+dirender lalu overflow — dan kolom AKSI yang `position: sticky; right: 0` dengan background opaque
+**menimpa** isi sel di bawahnya alih-alih sekadar menggeser. Terukur lewat DOM rect:
+
+| viewport | ekuivalen | wrapper | overflow | yang tertimpa |
+|---|---|---|---|---|
+| 1101 | 1920 @ 175% | 741 | +315 | — |
+| 1152 | 1440 @ 125% | 792 | +264 | kolom PROFIT |
+| 1280 | 1920 @ 150% | 920 | +136 | kolom STATUS + badge |
+| 1366 | laptop umum | 1006 | +50 | tepi STATUS |
+| 1416 | — | 1056 | 0 | pas |
+
+Pita ini bukan kasus pinggiran: **1366×768 adalah lebar laptop paling umum**, dan bug ini muncul
+di sana tanpa zoom sama sekali. Fix padding `12px 6px` sebelumnya dikalibrasi persis di 1440px —
+benar untuk lebar itu, tapi menyembunyikan bahwa margin selamatnya nol.
+
+**Kenapa padding tidak bisa dilonggarkan.** Diukur: tiap **+1px padding samping menambah 20px**
+kebutuhan viewport (10 kolom × 2 sisi). Padding 12px ⇒ butuh viewport 1536px, artinya laptop
+1440px pun tak akan pernah melihat tabelnya. Angka 6px itu memang batas bawah yang perlu, bukan
+pilihan estetis.
+
+**Fix (satu baris).** Breakpoint `1100px` → `1415px`. Tabel hanya dirender di lebar yang benar-benar
+memuatnya; di bawah itu kartu 2 kolom mengambil alih (terukur 353–502px per kartu, docOverflow 0).
+Kartu memuat semua kolom kecuali *Modal*, jadi turun ke kartu lebih awal nyaris tak kehilangan data
+— sedangkan tabel yang overflow justru **menyembunyikan** data di balik kolom sticky.
+[ServicesPage.module.css:356](src/features/services/ServicesPage.module.css:356).
+
+**Sisa yang sengaja dibiarkan.** `/reports` overflow +42px di pita 1025–1151px (transisi sidebar).
+Tabel itu **tidak punya kolom sticky**, jadi isinya bergeser dan tetap terjangkau lewat scroll
+horizontal — perilaku normal `overflow-x: auto`, bukan penyembunyian. Tidak diubah.
+
+**Pelajaran metodologis.** Breakpoint responsif harus diturunkan dari **min-content konten yang
+diukur**, bukan dari angka bulat yang enak dilihat. Dan kombinasi `overflow-x: auto` + kolom
+`position: sticky` ber-background opaque itu gagal secara diam-diam: tanpa sticky, overflow cuma
+berarti "scroll"; dengan sticky, overflow berarti "data tertutup". Setiap tabel dengan kolom
+sticky wajib punya breakpoint yang menjamin ia tak pernah overflow.
+
+Verifikasi: `scripts/audit-zoom.mjs` (11 lebar × 12 halaman) bersih pasca-fix; build hijau, lint
+bersih, 451 test lulus (murni CSS — tak ada test baru).
+
+#decision #ui #css #responsive #zoom #playwright
+
+---
+
+## Pengaturan zoom aplikasi — dan kenapa satu breakpoint harus jadi @container
+
+**Tanggal:** 20 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Permintaan: zoom yang diatur di dalam aplikasi, bukan di browser. Kontrolnya di Topbar
+(kurang / readout mono / tambah), 5 tingkat: 80 · 90 · 100 · 110 · 125%, disimpan di
+`localStorage` dan dipasang oleh `initZoom()` sebelum React render.
+
+**Mekanisme: properti CSS `zoom` pada :root, bukan `transform: scale()`.** `zoom` memicu reflow
+sungguhan sehingga teks tetap tajam dan layout memakai ruang yang tersedia; `scale()` hanya
+melar-kecilkan hasil render (teks buram, scrollbar salah, hit-area geser).
+
+### Jebakan yang menentukan desain
+
+**`zoom` menambah ruang layout tapi TIDAK menggeser media query.** Terukur pada viewport 1152px:
+`zoom: 0.8` menaikkan ruang `<main>` dari 858px ke 1146px, sementara
+`matchMedia('(max-width: 1415px)')` tetap `true`. Media query ber-satuan `em` juga tidak menolong —
+`em` di media query selalu resolve ke font-size awal, bukan ke root (diuji: `88.4375em` tetap
+match di root font-size 16px maupun 13px).
+
+Akibatnya dua arah sama-sama salah kalau dibiarkan:
+- zoom **keluar** → tabel yang sebenarnya sudah muat tetap disembunyikan;
+- zoom **masuk** → tabel yang tak lagi muat tetap dirender lalu overflow, dan kolom AKSI yang
+  sticky menutupi data (bug yang baru saja ditutup lewat breakpoint 1415px, kembali lewat pintu lain).
+
+**`@container` adalah satu-satunya yang benar**, karena container query mengukur elemen dalam
+koordinat layout yang sudah ter-zoom. Terverifikasi: di `zoom: 0.8` container melaporkan MUAT
+saat media query masih melaporkan SEMPIT. Jadi breakpoint tabel Servis diubah dari
+`@media (max-width: 1415px)` menjadi `@container servisList (max-width: 1055px)` — ambangnya
+diturunkan ulang ke koordinat container (min-content tabel 1056px), dengan pembungkus baru
+`.listArea` sebagai container. Hasil terukur:
+
+| viewport | zoom | ruang | tampil |
+|---|---|---|---|
+| 1440 | 100% | 1080 | tabel |
+| 1440 | 125% | 949 | kartu (benar — dulu overflow) |
+| 1152 | 100% | 792 | kartu |
+| 1152 | **80%** | 1080 | **tabel** (media query tak akan pernah bisa) |
+
+### POS: breakpoint yang TIDAK bisa dijadikan container query
+
+`@media (max-width: 1024px)` di POS terikat pada **kehadiran sidebar**, bukan pada ruang: di
+≤1024px sidebar hilang sehingga `.layout` justru MELEBAR dari 667px ke 960px sambil berubah ke
+1 kolom. Hubungannya terbalik — tak ada ambang container yang bisa menirukannya. Akar overflow-nya
+ternyata lain dan lebih sederhana: kolom keranjang dipatok `400px` mati sementara containernya
+menyusut. Diganti `minmax(320px, 400px)` sehingga trek itu bisa mengembalikan ruang sendiri.
+Terverifikasi nol regresi: di zoom 100% kolom tetap 400px di 1025/1097/1280/1440, dan overflow
+31px di 1097px @ 125% hilang.
+
+### Sisa yang sengaja dibiarkan
+
+`/reports` overflow horizontal yang membesar mengikuti zoom (+42px di 100%, +261px di 125% pada
+1097px). Tabel itu **tidak punya kolom sticky** (diperiksa: nol `position: sticky` di CSS-nya),
+jadi isinya bergeser dan tetap terjangkau lewat scroll — bukan penyembunyian data. Ambangnya juga
+terikat sidebar seperti POS.
+
+### Pelajaran metodologis
+
+Zoom aplikasi dan zoom browser TIDAK setara: browser memiliki viewport sehingga media query-nya
+ikut, `zoom` tidak. Konsekuensinya, setiap breakpoint yang menjaga sesuatu dari overflow — bukan
+sekadar mengatur selera tata letak — harus berbasis container begitu zoom in-app ada. Dan
+breakpoint yang bergantung pada kehadiran elemen lain (sidebar) tidak bisa dikonversi sama sekali;
+di sana ruang sempit harus diserap oleh trek grid-nya sendiri.
+
+Verifikasi: `scripts/audit-zoom.mjs` (kini menerima `ZOOM=`, dipasang lewat localStorage supaya
+bertahan lintas navigasi) disapu penuh di zoom 80/100/125% × 11 lebar × 12 halaman. Build hijau,
+lint bersih, **451 test lulus** (+6 test baru untuk store zoom: langkah berhenti di ujung, 100%
+menghapus properti `zoom` alih-alih menulis '1', dan nilai localStorage rusak jatuh ke 100%).
+
+#decision #ui #css #responsive #zoom #container-queries #playwright
+
+---
+
+## Mobile: nol scroll horizontal, dan biaya sebenarnya dari carousel
+
+**Tanggal:** 21 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Permintaan: mobile lebih padat, **tidak boleh ada apa pun yang bisa digeser ke samping**.
+Disapu dengan `scripts/audit-mobile.mjs` (baru) di 320/360/375/390/414px x 12 halaman, yang
+membedakan tiga hal: luberan dokumen, elemen yang benar-benar bisa di-scroll, dan teks terpotong.
+
+### Empat carousel yang dibongkar
+
+`DashboardPage.metrics`, `ServicesPage.stats`, `ReportsPage.metrics`, dan
+`FinancePage.walletGrid/.summaryGrid` dulu carousel `scroll-snap`. Diganti grid dua kolom yang
+membungkus, dengan `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila jumlahnya
+ganjil. Alasannya bukan sekadar menuruti permintaan: carousel **selalu menyembunyikan sebagian
+isi di balik gestur yang tak terlihat** — catatan lama di kode sendiri mengakui tiga kartu uang
+Dashboard "100% off-screen with no peek at all".
+
+### Yang tidak terduga: memadatkan lebih penting daripada membungkus
+
+Begitu kartu jadi ~138px di 320px, isinya tidak muat dan **terpotong diam-diam** — persis mode
+gagal yang paling menyesatkan, karena "Rp 6.450.000" yang terpotong terbaca sebagai angka salah,
+bukan teks dipendekkan. Terukur sebelum dipadatkan: nilai Reports terpotong 79px, saldo Finance
+25px, label StatCard 12px. Perbaikannya bertingkat:
+
+| Tempat | Akar | Perbaikan |
+|---|---|---|
+| StatCard | ikon 40px + gap + padding 32px memakan 84px dari 138px | padding 12px, ikon 32px, gap 8px |
+| Reports `.metric` | ikon sebaris menyisakan ~74px untuk nilai (butuh ~106px) | ditumpuk (`flex-direction: column`) |
+| Dashboard `.metricValue` | `clamp()` bertumpu di min 1.25rem | suku vw dinaikkan ke `4.6vw` |
+| Finance saldo | `var(--text-xl)` mati | `clamp(0.95rem, 4.6vw, ...)` |
+
+Pelajaran: untuk angka yang tak boleh terpotong, **`clamp()` ber-`vw` mengalahkan ukuran mati** —
+ia menala dirinya lintas 320-414px tanpa satu media query per lebar.
+
+### Sumber scroll lain yang ketemu
+
+- **Settings** `.tabs` sengaja `flex-wrap: nowrap; overflow-x: auto`. Delapan tab tak akan pernah
+  muat sebaris di 320px. Dibungkus jadi chip beberapa baris + padding/font dipadatkan.
+- **Finance** `.tabBar` flex TANPA overflow, jadi ia memampat sampai memotong teks
+  ("Pengeluaran" hilang 45px) alih-alih menggulung. Dibiarkan `flex-wrap: wrap`.
+- **MobileBottomNav** `min-width` grid container default `auto` = min-content, sehingga lima label
+  menolak menyusut dan kotaknya **melar melewati `left/right` yang sudah dipatok** (317px di layar
+  320px). `min-width: 0` memaksanya menghormati inset. Jebakan halus: `minmax(0, 1fr)` pada trek
+  TIDAK cukup — containernya sendiri juga perlu `min-width: 0`.
+- **Suppliers** `.poSummary` `minmax(100px, 1fr)` x3 melebihi 288px yang tersedia; label+angka
+  sebaris juga menonjol keluar. Jadi `minmax(0, 1fr)` + isi ditumpuk.
+- **POS** harga + chip stok tak muat sebaris di kartu ~138px → `.productMeta { flex-wrap: wrap }`.
+- **Kolom lebar-mati yang kurang beberapa piksel**: `.tapeDate` 76px (butuh 79px) dan
+  `.docketTotal` 92px (butuh 101px). Ellipsis pada tanggal dan nominal terbaca seperti data rusak.
+
+### Tabel Reports: dari menggulung jadi bertumpuk
+
+Lima kolom tak akan pernah muat di 320px, dan menggulung ke samping justru menyembunyikan kolom
+**Nominal** — yang paling dicari. Di <=720px baris tabel jadi flex yang membungkus: `thead`
+disembunyikan (isinya swadeskripsi), kolom angka didorong ke kanan lewat `margin-left: auto`
+(hanya yang pertama — `td.num ~ td.num` mereset sisanya), dan `.descCell` mengambil baris penuh.
+Ditulis generik tanpa penempatan per-kolom karena kelas `.table` dipakai DUA tabel di halaman itu
+(Piutang 4 kolom, Rincian Transaksi 5 kolom).
+
+### Sisa yang sengaja dibiarkan
+
+- `/reports` masih menggulung +42px di pita **1025-1151px** (tablet, di atas cakupan mobile).
+  Tabelnya tanpa kolom sticky, jadi isinya tetap terjangkau.
+- Ellipsis di 320px pada nama yang memang panjang ("PT Sumber Komponen") — kategori yang sudah
+  ditetapkan benar pada audit sebelumnya.
+
+Verifikasi: `audit-mobile.mjs` **nol scroll horizontal dan nol luberan dokumen** di 5 lebar x 12
+halaman; pemeriksaan kliping bersih kecuali dua ellipsis di atas; sapuan desktop
+(`audit-zoom.mjs`) tanpa regresi. Build hijau, lint bersih, 451 test lulus (murni CSS).
+
+#decision #ui #css #responsive #mobile #playwright
+
+---
+
+## Tablet: dua pita meluber yang tak bisa dinyatakan satu media query
+
+**Tanggal:** 21 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Lanjutan pembersihan mobile. Disapu di 744/768/810/834/912/1024/1025/1080/1112/1152/1180/1280px.
+Hanya SATU pelanggar tersisa — tabel `/reports` — tapi bentuknya yang menarik: ia meluber di
+**dua pita viewport yang terputus**, dengan pita bersih di tengahnya.
+
+| viewport | wadah | min-content | selisih |
+|---|---|---|---|
+| 744 | 678 | 779 | **-101** |
+| 834 | 768 | 779 | **-11** |
+| 912 | 846 | 779 | +67 |
+| 1024 | 958 | 779 | +179 |
+| **1025** | **665** | 779 | **-114** |
+| 1112 | 752 | 779 | **-27** |
+| 1152 | 792 | 779 | +13 |
+
+Penyebab lompatan 958 → 665 di 1024→1025px adalah **sidebar muncul**: viewport melebar 1px, ruang
+konten menyusut 293px. Karena itu tak ada satu pun `@media (max-width: ...)` yang bisa menyatakan
+"721-834 ATAU 1025-1151" — tapi kolom `wadah` di tabel di atas **kontinu dan monoton terhadap
+kebutuhan**, jadi satu `@container laporanTabel (max-width: 778px)` menutup kedua pita sekaligus,
+plus seluruh mobile. Ini pemakaian kedua pelajaran yang sama (lihat catatan zoom & ServicesPage):
+**breakpoint yang menjaga sesuatu dari overflow harus berbasis wadah, bukan viewport.**
+
+Ambang 779px stabil terhadap data karena `.descCell` dibatasi `max-width: 280px`, sehingga
+min-content tabel tidak tumbuh mengikuti panjang keterangan.
+
+### Dua jebakan saat memindahkan aturannya
+
+1. **`.tableScroll { overflow-x: visible }` di dalam container query adalah aturan MATI** — sebuah
+   container tak bisa ditata oleh container query-nya sendiri. Dibuang, bukan dibiarkan
+   menyesatkan; saat bertumpuk memang tak ada yang meluber.
+2. **Baris terbaca ragged (dua baris / tiga baris berganti-ganti).** Dua sebab bertumpuk:
+   `flex-basis: 100%` pada `.descCell` dikalahkan `max-width: 280px` dari aturan dasar sehingga ia
+   tetap muat sebaris; dan karena keterangan mendahului kolom Nominal di DOM, begitu ia mengambil
+   baris penuh, Nominal terdorong ke baris KETIGA. Perbaikan: `max-width: none` + **`order: 1`**
+   supaya keterangan jadi urutan terakhir. Hasil terukur di 1025px: tinggi baris 74px seragam
+   untuk kedelapan baris (sebelumnya berganti-ganti).
+
+Tabel Piutang dibungkus `.tableScroll` yang sama (satu baris JSX) supaya kedua tabel punya wadah
+dan perlakuan identik — sebelumnya ia telanjang tanpa wadah dan tak pernah teruji karena data demo
+tak punya piutang sehingga yang tampil `EmptyState`. Ambang 779px sedikit konservatif untuk 4
+kolomnya, tapi dua tabel di halaman yang sama menumpuk bersamaan lebih koheren dibaca.
+
+Verifikasi: sapuan tablet, mobile, desktop, DAN zoom aplikasi 125% semuanya **nol scroll
+horizontal** — termasuk `/reports tbl+42` di 1097px yang sebelumnya sengaja dibiarkan, kini ikut
+hilang. Build hijau, lint bersih, 451 test lulus.
+
+#decision #ui #css #responsive #tablet #container-queries #playwright

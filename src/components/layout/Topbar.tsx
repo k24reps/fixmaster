@@ -1,4 +1,5 @@
 import { useThemeStore } from '@/stores/theme';
+import { useZoomStore, ZOOM_LEVELS } from '@/stores/zoom';
 import { Icon } from '@/components/ui';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useT } from '@/i18n';
@@ -44,6 +45,45 @@ function SyncBadge() {
   );
 }
 
+/**
+ * Zoom aplikasi: kurang / readout / tambah. Readout mono-persen sengaja
+ * ditampilkan permanen — di bahasa visual "Precision Electronics Bench"
+ * sebuah kontrol tanpa angka terbaca setengah jadi, dan pengguna perlu tahu
+ * ia sedang tidak di 100% saat membandingkan tampilan dengan orang lain.
+ */
+function ZoomControl() {
+  const zoom = useZoomStore((s) => s.zoom);
+  const stepZoom = useZoomStore((s) => s.stepZoom);
+  const min = zoom === ZOOM_LEVELS[0];
+  const max = zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+
+  return (
+    <div className={styles.zoom} role="group" aria-label="Zoom tampilan">
+      <button
+        className={styles.zoomBtn}
+        onClick={() => stepZoom(-1)}
+        disabled={min}
+        aria-label="Perkecil tampilan"
+        title="Perkecil tampilan"
+      >
+        <Icon name="minus" aria-hidden />
+      </button>
+      <span className={styles.zoomValue} aria-live="polite">
+        {Math.round(zoom * 100)}%
+      </span>
+      <button
+        className={styles.zoomBtn}
+        onClick={() => stepZoom(1)}
+        disabled={max}
+        aria-label="Perbesar tampilan"
+        title="Perbesar tampilan"
+      >
+        <Icon name="plus" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
@@ -67,6 +107,8 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
         {/* Language toggle removed: only ~5% of UI text is wired to i18n, so
             switching to English produced a jarring mixed-language UI. Re-add
             when the app is actually translated (see [[i18n coverage]]). */}
+
+        <ZoomControl />
 
         <button
           className={styles.iconBtn}
