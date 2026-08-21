@@ -1586,3 +1586,77 @@ lint bersih, **463 test lulus** (+6 test baru untuk store zoom: langkah berhenti
 menghapus properti `zoom` alih-alih menulis '1', dan nilai localStorage rusak jatuh ke 100%).
 
 #decision #ui #css #responsive #zoom #container-queries #playwright
+
+---
+
+## Mobile: nol scroll horizontal, dan biaya sebenarnya dari carousel
+
+**Tanggal:** 21 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Permintaan: mobile lebih padat, **tidak boleh ada apa pun yang bisa digeser ke samping**.
+Disapu dengan `scripts/audit-mobile.mjs` (baru) di 320/360/375/390/414px x 12 halaman, yang
+membedakan tiga hal: luberan dokumen, elemen yang benar-benar bisa di-scroll, dan teks terpotong.
+
+### Empat carousel yang dibongkar
+
+`DashboardPage.metrics`, `ServicesPage.stats`, `ReportsPage.metrics`, dan
+`FinancePage.walletGrid/.summaryGrid` dulu carousel `scroll-snap`. Diganti grid dua kolom yang
+membungkus, dengan `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila jumlahnya
+ganjil. Alasannya bukan sekadar menuruti permintaan: carousel **selalu menyembunyikan sebagian
+isi di balik gestur yang tak terlihat** — catatan lama di kode sendiri mengakui tiga kartu uang
+Dashboard "100% off-screen with no peek at all".
+
+### Yang tidak terduga: memadatkan lebih penting daripada membungkus
+
+Begitu kartu jadi ~138px di 320px, isinya tidak muat dan **terpotong diam-diam** — persis mode
+gagal yang paling menyesatkan, karena "Rp 6.450.000" yang terpotong terbaca sebagai angka salah,
+bukan teks dipendekkan. Terukur sebelum dipadatkan: nilai Reports terpotong 79px, saldo Finance
+25px, label StatCard 12px. Perbaikannya bertingkat:
+
+| Tempat | Akar | Perbaikan |
+|---|---|---|
+| StatCard | ikon 40px + gap + padding 32px memakan 84px dari 138px | padding 12px, ikon 32px, gap 8px |
+| Reports `.metric` | ikon sebaris menyisakan ~74px untuk nilai (butuh ~106px) | ditumpuk (`flex-direction: column`) |
+| Dashboard `.metricValue` | `clamp()` bertumpu di min 1.25rem | suku vw dinaikkan ke `4.6vw` |
+| Finance saldo | `var(--text-xl)` mati | `clamp(0.95rem, 4.6vw, ...)` |
+
+Pelajaran: untuk angka yang tak boleh terpotong, **`clamp()` ber-`vw` mengalahkan ukuran mati** —
+ia menala dirinya lintas 320-414px tanpa satu media query per lebar.
+
+### Sumber scroll lain yang ketemu
+
+- **Settings** `.tabs` sengaja `flex-wrap: nowrap; overflow-x: auto`. Delapan tab tak akan pernah
+  muat sebaris di 320px. Dibungkus jadi chip beberapa baris + padding/font dipadatkan.
+- **Finance** `.tabBar` flex TANPA overflow, jadi ia memampat sampai memotong teks
+  ("Pengeluaran" hilang 45px) alih-alih menggulung. Dibiarkan `flex-wrap: wrap`.
+- **MobileBottomNav** `min-width` grid container default `auto` = min-content, sehingga lima label
+  menolak menyusut dan kotaknya **melar melewati `left/right` yang sudah dipatok** (317px di layar
+  320px). `min-width: 0` memaksanya menghormati inset. Jebakan halus: `minmax(0, 1fr)` pada trek
+  TIDAK cukup — containernya sendiri juga perlu `min-width: 0`.
+- **Suppliers** `.poSummary` `minmax(100px, 1fr)` x3 melebihi 288px yang tersedia; label+angka
+  sebaris juga menonjol keluar. Jadi `minmax(0, 1fr)` + isi ditumpuk.
+- **POS** harga + chip stok tak muat sebaris di kartu ~138px → `.productMeta { flex-wrap: wrap }`.
+- **Kolom lebar-mati yang kurang beberapa piksel**: `.tapeDate` 76px (butuh 79px) dan
+  `.docketTotal` 92px (butuh 101px). Ellipsis pada tanggal dan nominal terbaca seperti data rusak.
+
+### Tabel Reports: dari menggulung jadi bertumpuk
+
+Lima kolom tak akan pernah muat di 320px, dan menggulung ke samping justru menyembunyikan kolom
+**Nominal** — yang paling dicari. Di <=720px baris tabel jadi flex yang membungkus: `thead`
+disembunyikan (isinya swadeskripsi), kolom angka didorong ke kanan lewat `margin-left: auto`
+(hanya yang pertama — `td.num ~ td.num` mereset sisanya), dan `.descCell` mengambil baris penuh.
+Ditulis generik tanpa penempatan per-kolom karena kelas `.table` dipakai DUA tabel di halaman itu
+(Piutang 4 kolom, Rincian Transaksi 5 kolom).
+
+### Sisa yang sengaja dibiarkan
+
+- `/reports` masih menggulung +42px di pita **1025-1151px** (tablet, di atas cakupan mobile).
+  Tabelnya tanpa kolom sticky, jadi isinya tetap terjangkau.
+- Ellipsis di 320px pada nama yang memang panjang ("PT Sumber Komponen") — kategori yang sudah
+  ditetapkan benar pada audit sebelumnya.
+
+Verifikasi: `audit-mobile.mjs` **nol scroll horizontal dan nol luberan dokumen** di 5 lebar x 12
+halaman; pemeriksaan kliping bersih kecuali dua ellipsis di atas; sapuan desktop
+(`audit-zoom.mjs`) tanpa regresi. Build hijau, lint bersih, 463 test lulus (murni CSS).
+
+#decision #ui #css #responsive #mobile #playwright

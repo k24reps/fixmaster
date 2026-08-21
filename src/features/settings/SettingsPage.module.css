@@ -292,14 +292,20 @@
    390px line — controls wrap to their own full-width line, right-aligned,
    and the row itself is allowed to wrap. */
 @media (max-width: 640px) {
+  /* Dulu strip yang digeser ke samping. Delapan tab tidak akan pernah muat
+     sebaris di 320px, dan strip geser menyembunyikan tab terakhir di balik
+     gestur yang tak terlihat. Dibungkus jadi beberapa baris chip: semua
+     tab terlihat sekaligus, dan padding/font dipadatkan supaya tambahan
+     tingginya minimal. */
   .tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    padding-bottom: var(--space-1);
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .tab {
     flex: 0 0 auto;
+    padding: 6px 10px;
+    min-height: 34px;
+    font-size: var(--text-xs);
   }
   .form {
     grid-template-columns: 1fr;

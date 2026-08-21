@@ -396,16 +396,15 @@
 
 @media (max-width: 720px) {
   .stats {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    grid-auto-columns: minmax(230px, 82vw);
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    padding-bottom: var(--space-1);
+    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
+       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
+       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
+       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
+       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stats > * {
-    scroll-snap-align: start;
+  .stats > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .toolbar,
   .filters {

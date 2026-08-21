@@ -434,6 +434,80 @@
 }
 
 @media (max-width: 720px) {
+  /* Dipadatkan untuk grid dua kolom: ikon dan padding mengecil, dan nilai
+     rupiah menyusut lewat clamp ber-vw. Tanpa ini "Rp 6.450.000" terpotong
+     79px di 320px (terukur). */
+  /* Ditumpuk, bukan sebaris: di kartu ~138px ikon 32px + gap menyisakan
+     hanya ~74px untuk nilai, sementara "Rp 6.450.000" butuh ~106px.
+     Menumpuknya memberi nilai lebar penuh kartu tanpa mengorbankan ikon
+     bernada warna yang jadi penanda cepat tiap metrik. */
+  .metric {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+  .metricIcon {
+    width: 32px;
+    height: 32px;
+  }
+  .metricValue {
+    font-size: clamp(0.9rem, 4.4vw, 1.4rem);
+  }
+  /* nowrap pada baris sepanjang "Cabang Cimahi - masuk Rp 2.500.000"
+     menyembunyikan 247px dari 320px teksnya di balik ellipsis — praktis
+     seluruh isinya. Di mobile ia dibiarkan membungkus. */
+  /* Tabel -> baris bertumpuk. Lima kolom (Tanggal/Jenis/Kategori/Keterangan/
+     Nominal) tak akan pernah muat di 320px, dan menggulung ke samping justru
+     menyembunyikan kolom Nominal — kolom yang paling dicari orang. thead
+     disembunyikan karena isinya sudah swadeskripsi: tanggal, chip jenis,
+     kategori, keterangan, dan angka Rp. Ditulis generik (tanpa penempatan
+     per-kolom) karena kelas .table dipakai DUA tabel di halaman ini —
+     Piutang 4 kolom dan Rincian Transaksi 5 kolom. */
+  .tableScroll {
+    overflow-x: visible;
+  }
+  .table thead {
+    display: none;
+  }
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+  }
+  .table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px var(--space-2);
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .table td {
+    padding: 0;
+    border: none;
+  }
+  /* Kolom angka didorong ke kanan; hanya yang PERTAMA, supaya dua kolom angka
+     berdampingan tidak saling terpisah oleh dua margin auto. */
+  .table td.num {
+    margin-left: auto;
+  }
+  .table td.num ~ td.num {
+    margin-left: 0;
+  }
+  .table .descCell {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .channelName {
+    white-space: normal;
+  }
+  .metricLabel {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
   .dateBar {
     align-items: stretch;
   }
@@ -450,15 +524,14 @@
     margin-left: 0;
   }
   .metrics {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    grid-auto-columns: minmax(230px, 82vw);
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    padding-bottom: var(--space-1);
+    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
+       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
+       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
+       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
+       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .metric {
-    scroll-snap-align: start;
+  .metrics > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }

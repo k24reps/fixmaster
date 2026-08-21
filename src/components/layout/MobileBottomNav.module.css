@@ -13,6 +13,12 @@
     z-index: calc(var(--z-overlay) + 2);
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* min-width grid container default-nya `auto` = min-content, jadi lima
+       label menolak menyusut dan kotaknya MELAR melewati left/right yang
+       sudah dipatok (terukur 317px di layar 320px, meluber 5px). min-width
+       0 memaksa ia menghormati inset; trek minmax(0,1fr) + ellipsis pada
+       .navLabel yang menangani sisanya. */
+    min-width: 0;
     min-height: var(--mobile-nav-height);
     padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
     border: 1px solid var(--border-strong);

@@ -560,6 +560,14 @@
   }
   .productCard {
     min-height: 112px;
+    padding: var(--space-3);
+  }
+  /* Harga (76px) + chip stok tidak muat sebaris di kartu ~138px pada layar
+     320px, dan flex tanpa wrap mendorong isinya keluar halaman (terukur
+     +13px). Dibiarkan turun ke baris kedua. */
+  .productMeta {
+    flex-wrap: wrap;
+    row-gap: 4px;
   }
   .mobileCartDock {
     position: fixed;
