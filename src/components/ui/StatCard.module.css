@@ -122,3 +122,32 @@
   background: var(--accent-soft);
   color: var(--accent-400);
 }
+
+/* Di grid dua kolom mobile kartu ini hanya ~138px di 320px, sementara
+   chrome-nya (ikon 40px + gap 12px + padding 16px x2) sudah memakan 84px —
+   menyisakan ~54px untuk teks, yang memotong label seperti "Menunggu
+   Diambil". Dipadatkan: padding 12px, ikon 32px, gap 8px = 20px lebih lebar
+   untuk teks, dan nilai memakai clamp ber-vw supaya menyusut sendiri di layar
+   sempit alih-alih terpotong. */
+@media (max-width: 600px) {
+  .card {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+  .card::before {
+    top: var(--space-3);
+    bottom: var(--space-3);
+  }
+  .iconWrap {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .value {
+    font-size: clamp(0.95rem, 4.2vw, var(--text-xl));
+  }
+}

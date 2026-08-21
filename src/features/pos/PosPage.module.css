@@ -62,7 +62,15 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 1fr 400px;
+  /* minmax, bukan 400px mati: kolom keranjang boleh mengembalikan ruang saat
+     containernya sempit. Ambang 1 vs 2 kolom di bawah terikat pada KEHADIRAN
+     SIDEBAR (di <=1024px sidebar hilang sehingga .layout justru melebar dari
+     667px ke 960px), jadi breakpoint itu tak bisa dijadikan container query —
+     hubungannya terbalik. Karena itu ruang sempit harus diserap oleh trek-nya
+     sendiri. Tanpa ini, zoom aplikasi 125% pada jendela 1097px membuat halaman
+     meluber 31px (terukur). Di lebar normal 1fr tetap menyisakan 400px penuh,
+     jadi tampilannya tak berubah. */
+  grid-template-columns: 1fr minmax(320px, 400px);
   gap: var(--space-4);
   align-items: start;
 }
@@ -552,6 +560,14 @@
   }
   .productCard {
     min-height: 112px;
+    padding: var(--space-3);
+  }
+  /* Harga (76px) + chip stok tidak muat sebaris di kartu ~138px pada layar
+     320px, dan flex tanpa wrap mendorong isinya keluar halaman (terukur
+     +13px). Dibiarkan turun ke baris kedua. */
+  .productMeta {
+    flex-wrap: wrap;
+    row-gap: 4px;
   }
   .mobileCartDock {
     position: fixed;

@@ -353,7 +353,38 @@
 }
 
 /* ---------- Responsive: table → cards ---------- */
-@media (max-width: 1100px) {
+/* ---------- Ambang tabel -> kartu: @container, BUKAN @media ---------- */
+/* Tabel ini punya min-content 1056px (10 kolom pemilik; 8 kolom untuk karyawan
+   karena Modal & Profit ownerOnly). Kalau ruangnya kurang, ia overflow — dan
+   kolom AKSI yang `position: sticky; right: 0` dengan background opaque MENIMPA
+   isi sel di bawahnya alih-alih sekadar menggeser. Terukur pada versi @media
+   lama: +315px di 1101, +264px di 1152, +136px di 1280, +50px di 1366 (dan
+   1366px adalah lebar laptop umum — ini bukan kasus pinggiran).
+
+   Kenapa container, bukan media query: properti CSS `zoom` (dipakai pengaturan
+   zoom aplikasi, lihat src/stores/zoom.ts) MENAMBAH ruang layout tapi TIDAK
+   menggeser media query. Terukur pada viewport 1152px, `zoom: 0.8` menaikkan
+   ruang <main> 858px -> 1146px sementara `matchMedia('(max-width: 1415px)')`
+   tetap true — jadi tabel yang sebenarnya sudah muat akan tetap tersembunyi,
+   dan sebaliknya di zoom 1.25 tabel yang tak lagi muat akan tetap dirender
+   lalu overflow. Media query ber-satuan `em` tidak menolong: `em` di media
+   query selalu resolve ke font-size awal, bukan ke root. Container query
+   mengukur elemen dalam koordinat layout yang SUDAH ter-zoom, jadi ia satu-
+   satunya yang benar di kedua arah (terverifikasi lewat scripts/audit-zoom.mjs).
+
+   Ambangnya memakai angka pemilik (1056px) untuk kedua peran. Bagi karyawan itu
+   sedikit konservatif — tabel 8 kolom mereka sebenarnya muat mulai ~895px —
+   tapi kartu memuat semua kolom kecuali Modal, jadi kelebihan-hati-hati di sini
+   hanya berarti tampilan kartu sedikit lebih awal, bukan data hilang.
+
+   Padding sel TIDAK bisa jadi jalan keluar: tiap +1px padding samping menambah
+   20px kebutuhan ruang (10 kolom x 2 sisi), jadi 12px menuntut 1256px. */
+.listArea {
+  container-type: inline-size;
+  container-name: servisList;
+}
+
+@container servisList (max-width: 1055px) {
   .tableWrap {
     display: none;
   }
@@ -365,16 +396,15 @@
 
 @media (max-width: 720px) {
   .stats {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    grid-auto-columns: minmax(230px, 82vw);
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    padding-bottom: var(--space-1);
+    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
+       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
+       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
+       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
+       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stats > * {
-    scroll-snap-align: start;
+  .stats > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .toolbar,
   .filters {

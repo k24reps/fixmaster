@@ -417,30 +417,32 @@ export function ReportsPage() {
           {receivables.length === 0 ? (
             <EmptyState icon={<Icon name="circle-check" aria-hidden />} title="Tidak ada piutang" />
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>No. Servis</th>
-                  <th>Pelanggan</th>
-                  <th className={styles.num}>Sisa</th>
-                  <th className={styles.num}>Umur</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receivables.map((r) => (
-                  <tr key={r.serviceId}>
-                    <td className={styles.mono}>{r.serviceNo}</td>
-                    <td>{r.customerName}</td>
-                    <td className={[styles.num, styles.mono, styles.exp].join(' ')}>{fmtRp(r.outstanding)}</td>
-                    <td className={styles.num}>
-                      <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
-                        {r.ageDays} hari
-                      </span>
-                    </td>
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>No. Servis</th>
+                    <th>Pelanggan</th>
+                    <th className={styles.num}>Sisa</th>
+                    <th className={styles.num}>Umur</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {receivables.map((r) => (
+                    <tr key={r.serviceId}>
+                      <td className={styles.mono}>{r.serviceNo}</td>
+                      <td>{r.customerName}</td>
+                      <td className={[styles.num, styles.mono, styles.exp].join(' ')}>{fmtRp(r.outstanding)}</td>
+                      <td className={styles.num}>
+                        <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
+                          {r.ageDays} hari
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardBody>
       </Card>

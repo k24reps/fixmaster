@@ -68,6 +68,68 @@
   color: var(--text-primary);
   background: var(--bg-hover);
 }
+/* ---------- kontrol zoom ---------- */
+/* Satu kotak segmented setinggi .iconBtn supaya sebaris rapi dengan tombol
+   tema di sebelahnya. Readout memakai tabular-nums agar lebarnya tidak
+   bergoyang saat berganti 80% <-> 100% <-> 125%. */
+.zoom {
+  display: flex;
+  align-items: center;
+  height: var(--control-h);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  overflow: hidden;
+}
+
+.zoomBtn {
+  width: calc(var(--control-h) - 6px);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: transparent;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.zoomBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* Ujung rentang tetap terlihat, bukan hilang — pengguna perlu tahu ia sudah
+   mentok, bukan mengira tombolnya rusak. */
+.zoomBtn:disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.zoomValue {
+  min-width: 44px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  border-inline: 1px solid var(--border);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Topbar mobile sudah padat, dan di ponsel pinch-zoom sudah menutupi
+   kebutuhan ini. */
+@media (max-width: 720px) {
+  .zoom {
+    display: none;
+  }
+}
+
 .langBtn {
   height: var(--control-h);
   min-width: var(--control-h);

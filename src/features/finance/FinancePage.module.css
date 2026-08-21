@@ -295,32 +295,58 @@
 }
 
 @media (max-width: 768px) {
+  /* Padding 16px/20px terlalu boros saat kartu tinggal ~138px di 320px, dan
+     saldo var(--text-xl) memotong "Rp 3.200.000" sebanyak 25px (terukur).
+     clamp ber-vw membuat angka menyusut sendiri alih-alih terpotong. */
+  .walletCard,
+  .summaryCard {
+    padding: var(--space-3);
+  }
+  /* Tab bar ini flex tanpa overflow, jadi saat sempit ia MEMAMPAT dan
+     memotong teks ("Pengeluaran" hilang 45px di 320px) alih-alih
+     menggulung. Dibiarkan membungkus ke baris kedua: tak ada scroll
+     horizontal, tak ada teks terpotong. */
+  /* Token panjang (nomor servis, kode part) tak punya titik pecah, jadi
+     meski white-space normal ia tetap meluber. */
+  .tapeDesc {
+    overflow-wrap: anywhere;
+  }
+  .tabBar {
+    flex-wrap: wrap;
+    padding: 0 var(--space-3);
+  }
+  .tab {
+    padding: 8px var(--space-2);
+    font-size: var(--text-xs);
+    letter-spacing: 0.02em;
+  }
+  .walletBalance {
+    font-size: clamp(0.95rem, 4.6vw, var(--text-xl));
+  }
+  .summaryCard strong {
+    font-size: clamp(0.9rem, 4.2vw, var(--text-lg));
+  }
+  .summaryCard span {
+    font-size: 10px;
+  }
   .walletGrid,
   .summaryGrid {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    /* clamp(), not minmax(): minmax() on a non-fr auto-column is intrinsic
-       sizing — it grows to fit CONTENT, capped at the max, so a short card
-       ("Bank BCA Rp 14.750.000") settled at ~230px (the min) instead of the
-       intended ~82vw. That made ~1.5 cards visible with a large, awkward
-       peek that cut a card's Rp figure mid-digit — reads as a data bug, not
-       "swipe for more". clamp() always resolves to its preferred value
-       (76vw) clamped to [230px, 300px], forcing every card to the same
-       width regardless of content, so the next card's peek is a small,
-       consistent sliver (verified ~35–45px at 375–390px viewports) instead
-       of a half-legible card. */
-    grid-auto-columns: clamp(230px, 76vw, 300px);
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    padding-bottom: var(--space-1);
+    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
+       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
+       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
+       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
+       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .walletGrid > *:last-child:nth-child(odd),
+  .summaryGrid > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .walletGrid > *,
-  .summaryGrid > * {
-    scroll-snap-align: start;
-  }
   .tapeRow {
-    grid-template-columns: 76px 1fr auto;
+    /* 76px kurang 3px untuk "21 Agu 2026" (terukur) — ellipsis pada
+       tanggal terbaca seperti data rusak. */
+    grid-template-columns: 84px 1fr auto;
     row-gap: 4px;
   }
   /* Buttons drop to their own full-width line, side by side (they used to
