@@ -3,7 +3,6 @@ import { useZoomStore, ZOOM_LEVELS } from '@/stores/zoom';
 import { Icon } from '@/components/ui';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useT } from '@/i18n';
-import { GlobalSearch } from './GlobalSearch';
 import styles from './Topbar.module.css';
 
 interface TopbarProps {
@@ -102,7 +101,6 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
 
       <div className={styles.actions}>
         <SyncBadge />
-        <GlobalSearch />
 
         {/* Language toggle removed: only ~5% of UI text is wired to i18n, so
             switching to English produced a jarring mixed-language UI. Re-add

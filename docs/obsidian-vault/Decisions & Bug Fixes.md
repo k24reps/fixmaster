@@ -1165,6 +1165,10 @@ edit data tenant, akses isi bisnis klien.
 
 ### Egress Supabase lewat kuota: GlobalSearch menarik tabel penuh di setiap halaman
 
+> [!] **GlobalSearch sudah DIHAPUS 27 Agu 2026** (lihat entri terakhir catatan ini). Analisis
+> egress di bawah tetap berlaku sebagai pelajaran — gerbang `enabled` pada `useCollection`
+> juga masih ada — tapi konsumennya tinggal nol.
+
 **Gejala.** Org Supabase melewati kuota egress Free Plan (5 GB) di siklus sebelumnya; masa tenggang
 berakhir 7 Sep 2026, setelahnya request dibalas **402**. Produksi ada di org yang sama, jadi 402
 berarti aplikasi klien **dan** `gopay-listener` mati bersamaan.
@@ -1725,3 +1729,48 @@ horizontal** — termasuk `/reports tbl+42` di 1097px yang sebelumnya sengaja di
 hilang. Build hijau, lint bersih, 463 test lulus.
 
 #decision #ui #css #responsive #tablet #container-queries #playwright
+
+---
+
+## Global search dihapus (27 Agu 2026)
+
+**Tanggal:** 27 Agu 2026 · **Status:** selesai · **Cabang:** staging
+
+Permintaan user: hilangkan fitur pencarian global di Topbar. Dihapus utuh, bukan disembunyikan —
+komponen yang tak dipakai tapi tetap ada akan terus ikut di-bundle dan tetap harus dirawat saat
+tema/token berubah.
+
+| Dihapus | Alasan |
+|---|---|
+| `src/components/layout/GlobalSearch.tsx` + `.module.css` | fiturnya |
+| `src/lib/business/search.ts` + `search.test.ts` | hanya dipakai GlobalSearch (8 test ikut hilang) |
+| `scripts/shoot-search-mobile.mjs` | seluruh skrip khusus memotret dropdown search |
+| 2 shot search di `scripts/shoot-revisi.mjs` | selector `getByPlaceholder` akan gagal bila dijalankan ulang |
+| blok `.search` di `Topbar.module.css` | **sudah mati sejak lama**: CSS Module men-scope per file, sedangkan `styles.search` tinggal di `GlobalSearch.module.css` — aturan di Topbar tak pernah kena elemennya |
+
+### Yang SENGAJA ditinggal
+
+- **Gerbang `enabled` di `useCollection`** (`{ enabled: false }` melewati fetch **dan** langganan
+  realtime) tetap ada beserta 3 tes penjaganya, walau kini nol konsumen di kode produksi. Ia lahir
+  dari insiden egress 16 Agu dan tesnya ditulis eksplisit "supaya opsi ini tidak hilang tanpa
+  sengaja". Menghapusnya bukan bagian dari permintaan, dan komponen always-mounted berikutnya akan
+  membutuhkannya lagi. Kalau dipandang mati, hapus terpisah dengan sadar.
+- **Key i18n `common.search`** — sudah tak terpakai bahkan sebelum penghapusan ini.
+- Ikon `magnifying-glass` tetap dipakai 7 pencarian per-halaman (Servis, Pelanggan, Inventori, POS,
+  Log Aktivitas, picker sparepart, Lacak). Pencarian per-halaman TIDAK tersentuh — yang hilang hanya
+  yang lintas-entitas di Topbar.
+
+**Efek samping menyenangkan:** akar penyebab insiden egress terbesar (tiga tabel penuh ditarik di
+setiap halaman, ditarik ulang tiap event realtime) kini hilang sepenuhnya, bukan sekadar
+digerbangi.
+
+Verifikasi: build hijau, lint bersih, **455 test lulus** (463 - 8), screenshot asli desktop 1440px +
+mobile 390px dark/light — topbar rapi tanpa celah sisa, tak ada elemen yang bergeser.
+
+> Sapuan `audit-mobile.mjs` **tidak** dijalankan: skrip itu butuh dev server mode lokal (root
+> langsung Wizard "Isi data demo"), sedangkan `.env` sekarang membuat root jadi landing cloud.
+> Menghapus satu flex child dari topbar tidak bisa menciptakan overflow baru, dan dua screenshot
+> sudah membuktikan hasilnya. Kalau probe itu mau dipakai lagi, ia perlu diarahkan ke server tanpa
+> env Supabase.
+
+#decision #cleanup #ui #egress

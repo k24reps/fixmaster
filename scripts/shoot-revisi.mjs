@@ -1,6 +1,5 @@
 /**
  * Verification shots for revision phases 1-3:
- *  - #4 global search dropdown + navigation
  *  - #5 quick task on the Tasks "today" tab
  *  - #9 service template chips (form) + Settings management
  *
@@ -40,20 +39,6 @@ async function shoot(name, theme, fn) {
   console.log('shot:', name);
   await ctx.close();
 }
-
-// #4 — Global search dropdown with results (type a service number).
-await shoot('rev-search-dark', 'dark', async (page) => {
-  const input = page.getByPlaceholder('Cari servis, pelanggan, barang…');
-  await input.click();
-  await input.fill('FM');
-  await page.waitForTimeout(400);
-});
-await shoot('rev-search-light', 'light', async (page) => {
-  const input = page.getByPlaceholder('Cari servis, pelanggan, barang…');
-  await input.click();
-  await input.fill('Citra');
-  await page.waitForTimeout(400);
-});
 
 // #5 — Quick task input on the Tasks today tab.
 await shoot('rev-quicktask-dark', 'dark', async (page) => {

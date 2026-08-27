@@ -16,7 +16,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 | Folder | Isi |
 |---|---|
 | `app/` | Komposisi aplikasi (AuthGate, dll) |
-| `components/` | Komponen reusable: `ui/` (Button, Card, Icon, dst) + `layout/` (Sidebar, Topbar dengan **global search**, AppLayout) |
+| `components/` | Komponen reusable: `ui/` (Button, Card, Icon, dst) + `layout/` (Sidebar, Topbar, MobileBottomNav, AppLayout) |
 | `config/` | `navigation.ts`, `plans.ts` (fitur per-plan) |
 | `data/` | Repository, adapter (`local-adapter`, `supabase-adapter`), `types.ts`, `repository.ts` |
 | `dev/` | Tooling dev, mis. `seed.ts` (data demo) |
@@ -50,7 +50,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (463 test) |
+| `npm run test` | Vitest (455 test) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 
