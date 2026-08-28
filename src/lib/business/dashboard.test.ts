@@ -175,11 +175,28 @@ describe('computeAlerts', () => {
       ],
       inv,
     );
-    const messages = alerts.map((a) => a.message).join(' | ');
-    expect(messages).toContain('menunggu konfirmasi');
-    expect(messages).toContain('habis');
-    expect(messages).toContain('menipis');
-    expect(messages).toContain('1 unit menunggu diambil');
+    expect(alerts).toEqual([
+      expect.objectContaining({
+        kind: 'confirmation',
+        count: 1,
+        href: '/services?status=konfirmasi',
+      }),
+      expect.objectContaining({
+        kind: 'out-of-stock',
+        count: 1,
+        href: '/inventory?stock=out',
+      }),
+      expect.objectContaining({
+        kind: 'low-stock',
+        count: 1,
+        href: '/inventory?stock=low',
+      }),
+      expect.objectContaining({
+        kind: 'awaiting-pickup',
+        count: 1,
+        href: '/services?pickup=awaiting',
+      }),
+    ]);
   });
 
   it('returns no alerts when all clear', () => {

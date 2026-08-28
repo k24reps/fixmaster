@@ -39,6 +39,13 @@ Metode inti: `list`, `get`, `put`, `putMany`, `remove`, `subscribe`, `clearAll`.
 
 Hook `useCollection(name)` membungkus TanStack Query: query me-`list()` koleksi, lalu `repository.subscribe()` meng-invalidate query saat ada perubahan → UI re-fetch otomatis.
 
+Sejak 28 Agu 2026, kontrak hasil hook tidak hanya `{ data, loading, refetch }`, tetapi juga
+`refreshing`, `error`, dan `updatedAt`; `useCollectionRange` punya kontrak yang sama. `loading`
+tetap **true selama `placeholderData: []` masih aktif**, supaya array kosong sementara tidak dapat
+ditampilkan sebagai angka bisnis nol atau empty state yang sah. `updatedAt` memungkinkan halaman
+mempertahankan data terakhir secara jujur ketika refresh gagal, sedangkan error sebelum fetch
+pertama harus menyembunyikan angka turunan dan memberi retry. Dijaga 2 unit test baru.
+
 > [!warning] Bug halus yang sudah diperbaiki
 > Awalnya hook pakai `initialData: []`. React Query menganggap itu data "fresh", jadi—digabung `staleTime`—fetch saat mount **dilewati** dan UI kosong sampai stale. Solusinya `placeholderData: []`. Detail di [[Decisions & Bug Fixes]].
 

@@ -1774,3 +1774,44 @@ mobile 390px dark/light — topbar rapi tanpa celah sisa, tak ada elemen yang be
 > env Supabase.
 
 #decision #cleanup #ui #egress
+
+---
+
+## Dashboard dari panel status menjadi panel keputusan harian (28 Agu 2026)
+
+Audit Impeccable memberi skor heuristic **21/40**: identitas “Precision Electronics Bench” kuat,
+tetapi dashboard masih memamerkan status lebih daripada membantu pekerjaan berikutnya. Tiga P1
+berasal dari akar yang berbeda:
+
+1. **Notifikasi pasif** — konfirmasi biaya, stok rendah, dan unit siap diambil hanya teks. Kini
+   `computeAlerts()` mengembalikan `kind/count/href`; UI menerjemahkan copy dan setiap baris menjadi
+   link ke antrean terfilter. `ServicesPage` membaca `status`/`pickup`, `InventoryPage` membaca
+   `stock` dan mendapat filter kondisi stok yang terlihat.
+2. **Servis Terbaru palsu-sebagai-link** — `<li onClick>` tak bisa keyboard dan menuju `/services`,
+   bukan tiket. Kini `<Link to=/services/:id>` dengan focus state, chevron, dan accessible name.
+3. **Array kosong sementara berbohong.** `placeholderData: []` membuat UI aman dari `undefined`,
+   tetapi `loading` lama dapat padam sebelum respons nyata; dashboard lalu menampilkan Rp0 atau
+   “Belum ada servis” saat koneksi gagal. Hook kini mengekspos `refreshing/error/updatedAt`, dan
+   `loading` tetap true selama placeholder aktif. Dashboard memakai skeleton, last-known timestamp,
+   fault plate + retry, dan menahan semua angka bila query gagal sebelum punya data sah.
+
+### Mobile & motion
+
+Urutan lama pada 390×844: console 205 px → hero 186 px → grid KPI 359 px; Servis Terbaru baru
+mulai sekitar y=1196. Kini console **74 px**, hero 153 px, **Perlu Tindakan** y=347–611, dan KPI
+rail mulai y=631; tindakan nyata terlihat penuh di viewport pertama. KPI rail memang satu-satunya
+horizontal scroller yang disengaja (kartu berikutnya mengintip), sesuai kontrak [[Design System]].
+Label KPI terukur 12 px dan dokumen tetap nol overflow.
+
+Detector awal menemukan `margin-left`, dua `padding-left`, dua `width`, dan easing dengan overshoot
+sebagai animasi layout/bounce. Collapse sidebar dibuat diskrit; mobile drawer tetap memakai
+`transform`; hover baris hanya mengubah warna; gauge/level-meter memakai `scaleX()`; easing global
+diganti expo-out tanpa overshoot. Detector akhir: **0 temuan**.
+
+Verifikasi: deep link konfirmasi memilih “Konfirmasi Biaya”, stok memilih “Stok Menipis”, dan klik
+servis membuka ID tiket tepat. Render asli dark/light pada 1440×900 + 390×844; screenshot
+`dash2-dark.png` diregenerasi. Build + lint hijau, **457/457 test**, audit mobile 320–414 px (hanya
+KPI rail yang disengaja), tablet 744–1152 px, dan 11 kombinasi desktop/zoom semuanya tanpa overflow
+dokumen atau clipping.
+
+#decision #dashboard #accessibility #responsive #data-integrity #impeccable

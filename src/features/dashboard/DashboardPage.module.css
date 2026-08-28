@@ -9,6 +9,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  container: dashboard / inline-size;
 }
 
 /* ---------- Console header (info NOT shown in the tiles) ---------- */
@@ -89,6 +90,89 @@
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
+.consoleFault {
+  color: var(--danger);
+}
+
+/* ---------- Data fault + honest loading ---------- */
+.fault {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+}
+.faultIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: var(--bg-surface);
+}
+.faultCopy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.faultCopy strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+.faultCopy span {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+.loadingPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+}
+.loadingHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.loadingReadout,
+.loadingMetrics {
+  display: grid;
+  gap: var(--space-3);
+}
+.loadingReadout {
+  grid-template-columns: 2fr 1fr;
+}
+.loadingMetrics {
+  grid-template-columns: repeat(3, 1fr);
+}
+.loadingReadout span,
+.loadingMetrics span {
+  min-height: 72px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--bg-surface-2), var(--bg-elevated), var(--bg-surface-2));
+  background-size: 200% 100%;
+  animation: dashboard-loading 1.4s var(--ease-in-out) infinite;
+}
+.loadingReadout span:first-child {
+  grid-row: span 2;
+  min-height: 156px;
+}
+@keyframes dashboard-loading {
+  to { background-position: -200% 0; }
+}
 
 /* ---------- Hero readout (instrument screen) ----------
    The screen stays dark in BOTH themes (like a real LCD), so every
@@ -150,7 +234,7 @@
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
   color: var(--readout-text);
-  word-break: break-word;
+  white-space: nowrap;
 }
 .heroTag {
   align-self: flex-start;
@@ -270,11 +354,11 @@
 .metricValue {
   font-family: var(--font-mono);
   font-weight: var(--fw-bold);
-  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-size: clamp(1.1rem, 1.85cqi, 1.5rem);
   line-height: 1.1;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
-  word-break: break-word;
+  white-space: nowrap;
 }
 .metricUnit {
   font-family: var(--font-mono);
@@ -342,7 +426,8 @@
   inset: 0;
   border-radius: inherit;
   background: var(--gradient-brand);
-  transition: width var(--dur-slow) var(--ease-out);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 .gauge.ok .gaugeFill {
   background: linear-gradient(90deg, var(--green-500), var(--green-400));
@@ -381,6 +466,9 @@
   grid-template-columns: 1.4fr 1fr;
   gap: var(--space-4);
 }
+.gridSingle {
+  grid-template-columns: 1fr;
+}
 .noPad {
   padding: 0;
 }
@@ -390,6 +478,9 @@
   display: flex;
   flex-direction: column;
 }
+.recentRow {
+  min-width: 0;
+}
 .recentItem {
   display: flex;
   align-items: center;
@@ -398,7 +489,9 @@
   padding: 12px var(--space-5);
   border-bottom: 1px dotted var(--border);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out), padding-left var(--dur-fast);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 /* No./device (.recentDetail's 140px floor, above) claim line 1 together;
    on a narrow status badge (e.g. "Lunas") that's plenty of room and nothing
@@ -409,12 +502,16 @@
    badge happened to be narrower). flex-wrap here lets the badge alone drop
    to its own line instead of continuing to squeeze the name below its
    140px floor. */
-.recentItem:last-child {
+.recentRow:last-child .recentItem {
   border-bottom: none;
 }
 .recentItem:hover {
   background: var(--bg-hover);
-  padding-left: calc(var(--space-5) + 4px);
+}
+.recentItem:focus-visible {
+  outline: none;
+  background: var(--brand-soft);
+  box-shadow: inset var(--ring);
 }
 .recentNo {
   font-family: var(--font-mono);
@@ -445,8 +542,21 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+.recentArrow {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.recentItem:hover .recentArrow,
+.recentItem:focus-visible .recentArrow {
+  color: var(--brand-hover);
+  transform: translateX(2px);
+}
 
-/* ---------- Alerts (status log) ---------- */
+/* ---------- Action queue ---------- */
+.actionCard {
+  border-color: var(--border-brand);
+}
 .alertList {
   display: flex;
   flex-direction: column;
@@ -459,9 +569,20 @@
   border-bottom: 1px dotted var(--border);
   font-size: var(--text-sm);
   position: relative;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
 }
-.alertItem:last-child {
+.alertList li:last-child .alertItem {
   border-bottom: none;
+}
+.alertItem:hover {
+  background: var(--bg-hover);
+}
+.alertItem:focus-visible {
+  outline: none;
+  background: var(--brand-soft);
+  box-shadow: inset var(--ring);
 }
 .alertIcon {
   width: 30px;
@@ -486,6 +607,61 @@
 .alertIcon.info {
   background: var(--info-soft);
   color: var(--blue-400);
+}
+.alertCopy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.alertCopy strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+.alertCopy small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.alertArrow {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.alertItem:hover .alertArrow,
+.alertItem:focus-visible .alertArrow {
+  color: var(--brand-hover);
+  transform: translateX(2px);
+}
+.allClear {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+.allClearIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--radius-sm);
+  color: var(--success);
+  background: var(--success-soft);
+}
+.allClear > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.allClear strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+.allClear small {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 /* ---------- Leaderboard (channel level-meters) ---------- */
@@ -573,13 +749,14 @@
   inset: 0;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
-  transition: width var(--dur-slow) var(--ease-out);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 .meterFill[data-rank='1'] {
   background: var(--gradient-brand);
 }
 
-@media (max-width: 1024px) {
+@container dashboard (max-width: 900px) {
   .metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -588,21 +765,23 @@
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 600px) {
+@container dashboard (max-width: 560px) {
   .metrics {
-    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
-       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
-       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
-       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
-       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--space-4);
+    padding-bottom: var(--space-1);
+    scrollbar-width: none;
   }
-  /* Dipadatkan untuk grid dua kolom. clamp lama bertumpu pada min 1.25rem,
-     yang di kartu ~170px memaksa "Rp 6.450.000" pecah jadi dua baris; suku
-     vw dinaikkan supaya angkanya menyusut sendiri di layar sempit. Ikon dan
-     padding ikut mengecil agar label tidak terdesak ke tepi kartu. */
+  .metrics::-webkit-scrollbar {
+    display: none;
+  }
   .metric {
+    flex: 0 0 min(78cqi, 280px);
+    min-width: 220px;
     padding: var(--space-3);
+    scroll-snap-align: start;
   }
   .metricTop {
     gap: var(--space-2);
@@ -613,47 +792,87 @@
     font-size: 0.95rem;
   }
   .metricLabel {
-    font-size: 10px;
+    font-size: var(--text-xs);
     letter-spacing: 0.06em;
   }
   .metricValue {
-    font-size: clamp(1rem, 4.6vw, 1.6rem);
-  }
-  .metrics > *:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
+    font-size: clamp(1.05rem, 5cqi, 1.35rem);
+    white-space: nowrap;
   }
   .console {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-3);
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
   }
   .consoleBrand {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-1);
     padding-right: 0;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: var(--space-3);
   }
   .consoleMascotImg {
-    width: 56px !important;
-    height: 56px !important;
-  }
-  .consoleBrandText {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    width: 28px !important;
+    height: 28px !important;
   }
   .consoleTitle {
+    display: none;
+  }
+  .consolePulse {
+    width: 7px;
+    height: 7px;
+  }
+  .consoleReadouts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    flex-wrap: nowrap;
+  }
+  .consoleDate {
+    display: none;
+  }
+  .consoleKey,
+  .consoleVal {
     font-size: var(--text-xs);
   }
   .heroScreen {
-    padding: var(--space-4);
+    flex-wrap: nowrap;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
   }
   .heroAside {
-    width: 100%;
-    justify-content: space-between;
-    gap: var(--space-4);
+    width: auto;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .heroValue {
+    font-size: clamp(1.45rem, 7cqi, 2rem);
+  }
+  .fault {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .faultCopy {
+    min-width: calc(100% - 52px);
+  }
+  .loadingReadout,
+  .loadingMetrics {
+    grid-template-columns: 1fr;
+  }
+  .loadingReadout span:first-child {
+    grid-row: auto;
+    min-height: 112px;
+  }
+  .loadingMetrics {
+    display: flex;
+    overflow: hidden;
+  }
+  .loadingMetrics span {
+    min-width: 72%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingReadout span,
+  .loadingMetrics span {
+    animation: none;
   }
 }

@@ -22,9 +22,9 @@
   bottom: 14px;
   overflow: hidden;
   z-index: var(--z-sidebar);
-  transition:
-    width var(--dur-normal) var(--ease-out),
-    transform var(--dur-normal) var(--ease-out);
+  /* Width changes together with AppLayout's margin. Keeping both discrete
+     avoids a full-page layout animation; transform remains for the mobile drawer. */
+  transition: transform var(--dur-normal) var(--ease-out);
 }
 .collapsed {
   width: var(--sidebar-collapsed);

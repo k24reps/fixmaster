@@ -50,7 +50,13 @@ export function useCollection<K extends CollectionName>(
 
   return {
     data: query.data ?? [],
-    loading: query.isLoading,
+    // `placeholderData: []` prevents undefined at call sites, but it must not
+    // make an empty placeholder look like verified business data. Keep the
+    // explicit loading signal true until the first real response arrives.
+    loading: enabled && (query.isPending || query.isPlaceholderData),
+    refreshing: query.isFetching && !query.isPending && !query.isPlaceholderData,
+    error: query.error instanceof Error ? query.error : null,
+    updatedAt: query.dataUpdatedAt,
     refetch: query.refetch,
   };
 }

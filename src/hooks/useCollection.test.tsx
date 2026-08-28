@@ -44,6 +44,29 @@ describe('useCollection — gerbang enabled (egress)', () => {
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
   });
 
+  it('placeholder kosong tetap ditandai loading sampai respons nyata tiba', async () => {
+    let finish!: (rows: never[]) => void;
+    list.mockImplementationOnce(
+      () => new Promise<never[]>((resolve) => { finish = resolve; }),
+    );
+    const { result } = renderHook(() => useCollection('services'), { wrapper });
+
+    expect(result.current.data).toEqual([]);
+    expect(result.current.loading).toBe(true);
+
+    finish([]);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
+
+  it('mengekspos error agar UI tidak menyajikan array kosong sebagai fakta', async () => {
+    list.mockRejectedValueOnce(new Error('Koneksi data terputus'));
+    const { result } = renderHook(() => useCollection('services'), { wrapper });
+
+    await waitFor(() => expect(result.current.error?.message).toBe('Koneksi data terputus'));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.updatedAt).toBe(0);
+  });
+
   it('enabled: false → TIDAK mengambil apa pun', async () => {
     const { result } = renderHook(() => useCollection('services', { enabled: false }), {
       wrapper,

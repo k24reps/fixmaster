@@ -21,7 +21,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  animation: fm-scale-in var(--dur-normal) var(--ease-spring);
+  animation: fm-scale-in var(--dur-normal) var(--ease-emphasized);
   position: relative;
   overflow: hidden;
 }

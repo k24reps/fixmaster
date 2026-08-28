@@ -26,7 +26,7 @@
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
-  animation: fm-scale-in var(--dur-normal) var(--ease-spring);
+  animation: fm-scale-in var(--dur-normal) var(--ease-emphasized);
 }
 
 /* ---------- Brand panel ---------- */

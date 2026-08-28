@@ -128,10 +128,11 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 
 `deploy-migrations.bat` dulu memakai `set /p` untuk meminta password DB — dan `set /p` **menampilkan ketikan apa adanya**. Insiden nyata: password DB **produksi** tampil di layar, ikut ter-screenshot, lalu terkirim ke percakapan; password harus dirotasi. Kini pakai helper `:askpw` yang membungkus `Read-Host -AsSecureString` (PowerShell) sehingga ketikan tertutup. Aturan umum: input rahasia di skrip mana pun tidak boleh muncul di stdout — layar terminal itu permukaan yang bocor (screenshot, screen-share, scrollback).
 
-## Baseline terkini (27 Agu 2026)
+## Baseline terkini (28 Agu 2026)
 
-- Unit/komponen: `npm run test` **455/455 hijau** (40 file) — turun 8 dari 463 karena
-  `lib/business/search.test.ts` ikut terhapus bersama fitur global search.
+- Unit/komponen: `npm run test` **457/457 hijau** (40 file) — 455 setelah global search
+  dihapus, lalu +2 regresi state data dashboard (`placeholderData` tetap loading dan error
+  diekspos agar array kosong tidak terbaca sebagai fakta bisnis).
 - Integration RLS/RPC staging: `npm run test:integration` **59/59 hijau** (8 file) — terakhir dijalankan 11 Agu 2026, butuh `.env.test.local`.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence

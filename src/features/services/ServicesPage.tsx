@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, Button, Input, Badge, StatCard, EmptyState, Icon } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
@@ -32,6 +32,7 @@ import styles from './ServicesPage.module.css';
 const PAGE_SIZE = 100;
 
 export function ServicesPage() {
+  const [searchParams] = useSearchParams();
   const { data: services, loading } = useCollection('services');
   const { data: customers } = useCollection('customers');
   const { data: employees } = useCollection('employees');
@@ -43,9 +44,19 @@ export function ServicesPage() {
   const isManager = role === 'owner' || role === 'admin';
 
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
+  const requestedStatus = searchParams.get('status');
+  const initialStatus = (Object.keys(STATUS_LABELS) as ServiceStatus[]).includes(
+    requestedStatus as ServiceStatus,
+  )
+    ? (requestedStatus as ServiceStatus)
+    : 'all';
+  const requestedPickup = searchParams.get('pickup');
+  const initialPickup = requestedPickup === 'awaiting' || requestedPickup === 'collected'
+    ? requestedPickup
+    : 'all';
+  const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>(initialStatus);
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting' | 'collected'>('all');
+  const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting' | 'collected'>(initialPickup);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);

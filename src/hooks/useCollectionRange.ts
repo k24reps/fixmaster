@@ -43,7 +43,10 @@ export function useCollectionRange<K extends CollectionName>(
 
   return {
     data: query.data ?? [],
-    loading: query.isLoading,
+    loading: query.isPending || query.isPlaceholderData,
+    refreshing: query.isFetching && !query.isPending && !query.isPlaceholderData,
+    error: query.error instanceof Error ? query.error : null,
+    updatedAt: query.dataUpdatedAt,
     refetch: query.refetch,
   };
 }

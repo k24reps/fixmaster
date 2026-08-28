@@ -7,7 +7,6 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--dur-normal) var(--ease-out);
 }
 .collapsed .main {
   margin-left: calc(var(--sidebar-collapsed) + var(--space-4));

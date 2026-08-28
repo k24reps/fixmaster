@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, Button, Input, EmptyState, Icon } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -13,6 +14,7 @@ import type { InventoryItem } from '@/data/types';
 import styles from './InventoryPage.module.css';
 
 type SortKey = 'low_first' | 'name_asc' | 'stock_desc';
+type StockFilter = 'all' | 'low' | 'out';
 
 function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
   if (item.stock <= 0) return 'out';
@@ -21,12 +23,17 @@ function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
 }
 
 export function InventoryPage() {
+  const [searchParams] = useSearchParams();
   const { data: inventory } = useCollection('inventory');
   const { data: services } = useCollection('services');
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const requestedStock = searchParams.get('stock');
+  const [stockFilter, setStockFilter] = useState<StockFilter>(
+    requestedStock === 'low' || requestedStock === 'out' ? requestedStock : 'all',
+  );
   const [sort, setSort] = useState<SortKey>('low_first');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
@@ -50,13 +57,14 @@ export function InventoryPage() {
     const order = { out: 0, low: 1, ok: 2 };
     return inventory
       .filter((i) => categoryFilter === 'all' || i.category === categoryFilter)
+      .filter((i) => stockFilter === 'all' || stockState(i) === stockFilter)
       .filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
       .sort((a, b) => {
         if (sort === 'name_asc') return a.name.localeCompare(b.name);
         if (sort === 'stock_desc') return b.stock - a.stock;
         return order[stockState(a)] - order[stockState(b)] || a.stock - b.stock;
       });
-  }, [inventory, query, categoryFilter, sort]);
+  }, [inventory, query, categoryFilter, stockFilter, sort]);
 
   const openNew = () => {
     setEditing(null);
@@ -116,6 +124,16 @@ export function InventoryPage() {
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+          <select
+            className={styles.select}
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+            aria-label="Filter kondisi stok"
+          >
+            <option value="all">Semua Kondisi</option>
+            <option value="out">Stok Habis</option>
+            <option value="low">Stok Menipis</option>
           </select>
           <select className={styles.select} value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             <option value="low_first">Stok Rendah Dulu</option>

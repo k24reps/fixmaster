@@ -161,6 +161,18 @@ Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, denga
 
 Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis()` di [[Data Layer]].
 
+- **Action-first + state data jujur (28 Agu 2026).** Panel **Perlu Tindakan** kini tepat di bawah
+  laba dan setiap baris membuka antrean terfilter (`status=konfirmasi`, `pickup=awaiting`, atau
+  `stock=low/out`) — bukan notifikasi pasif yang harus diingat. Servis Terbaru memakai `<Link>`
+  penuh ke tiket spesifik (keyboard-focusable), bukan `<li onClick>` ke daftar generik.
+- Dashboard membedakan **loading / refresh / gagal / kosong**: skeleton saat fetch pertama,
+  timestamp data terakhir saat refresh, fault plate + retry saat gagal, dan angka disembunyikan
+  bila koleksi gagal sebelum pernah berhasil. Seluruh copy dashboard kini lewat i18n ID/EN.
+- Mobile: BENCH CONSOLE dipadatkan 205→74 px, label KPI kembali ke batas 12 px, dan lima KPI
+  menjadi rail satu baris; panel tindakan sudah terlihat di viewport pertama. Breakpoint yang
+  bergantung ruang memakai `@container dashboard`, bukan viewport. Gauge memakai `scaleX()` dan
+  collapse sidebar diskrit sehingga tak ada animasi properti layout.
+
 ![[dash2-dark.png]]
 
 ## Pelanggan — Contact Registry

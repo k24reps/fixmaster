@@ -25,7 +25,7 @@
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
   pointer-events: auto;
-  animation: fm-slide-in-right var(--dur-normal) var(--ease-spring);
+  animation: fm-slide-in-right var(--dur-normal) var(--ease-emphasized);
 }
 
 .icon {

@@ -68,9 +68,11 @@ export function technicianLeaderboard(services: Service[]): TechStat[] {
 }
 
 export interface Alert {
+  kind: 'confirmation' | 'out-of-stock' | 'low-stock' | 'awaiting-pickup';
   tone: 'warning' | 'danger' | 'info';
   icon: string;
-  message: string;
+  count: number;
+  href: string;
 }
 
 export function computeAlerts(services: Service[], inventory: InventoryItem[]): Alert[] {
@@ -79,35 +81,43 @@ export function computeAlerts(services: Service[], inventory: InventoryItem[]): 
   const awaitingConfirm = services.filter((s) => s.status === 'konfirmasi').length;
   if (awaitingConfirm > 0) {
     alerts.push({
+      kind: 'confirmation',
       tone: 'warning',
-      icon: 'fa-circle-question',
-      message: `${awaitingConfirm} unit menunggu konfirmasi biaya`,
+      icon: 'circle-question',
+      count: awaitingConfirm,
+      href: '/services?status=konfirmasi',
     });
   }
 
   const outOfStock = inventory.filter((i) => i.stock <= 0).length;
   if (outOfStock > 0) {
     alerts.push({
+      kind: 'out-of-stock',
       tone: 'danger',
-      icon: 'fa-box-open',
-      message: `${outOfStock} sparepart habis`,
+      icon: 'box-open',
+      count: outOfStock,
+      href: '/inventory?stock=out',
     });
   }
   const lowStock = inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
   if (lowStock > 0) {
     alerts.push({
+      kind: 'low-stock',
       tone: 'warning',
-      icon: 'fa-triangle-exclamation',
-      message: `${lowStock} sparepart stok menipis`,
+      icon: 'triangle-exclamation',
+      count: lowStock,
+      href: '/inventory?stock=low',
     });
   }
 
   const readyUncollected = services.filter(isAwaitingPickup).length;
   if (readyUncollected > 0) {
     alerts.push({
+      kind: 'awaiting-pickup',
       tone: 'info',
-      icon: 'fa-box',
-      message: `${readyUncollected} unit menunggu diambil`,
+      icon: 'box',
+      count: readyUncollected,
+      href: '/services?pickup=awaiting',
     });
   }
 
