@@ -15,11 +15,21 @@
  *  - Navigations use network-first, falling back to cached index.html offline.
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE = `fixmaster-shell-${CACHE_VERSION}`;
 
 // Minimal shell precache. Hashed assets are cached lazily on first fetch.
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg'];
+const SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/logo.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

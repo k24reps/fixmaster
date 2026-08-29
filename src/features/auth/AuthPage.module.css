@@ -12,20 +12,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-5);
+  padding: clamp(var(--space-3), 4vw, var(--space-5));
   overflow: auto;
+  container-type: inline-size;
+  container-name: auth;
 }
 
 .shell {
   width: 100%;
-  max-width: 880px;
+  max-width: 940px;
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: 1.08fr 1fr;
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-bench-tight);
   animation: fm-scale-in var(--dur-normal) var(--ease-emphasized);
 }
 
@@ -56,6 +58,89 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.voltModule {
+  position: relative;
+  min-height: 132px;
+  display: grid;
+  grid-template-columns: 98px 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  isolation: isolate;
+}
+
+.voltModule::before {
+  content: '';
+  position: absolute;
+  width: 156px;
+  height: 156px;
+  left: -46px;
+  top: -16px;
+  z-index: -1;
+  background: radial-gradient(circle, var(--accent-soft), transparent 68%);
+  opacity: 0.76;
+}
+
+.voltModule > svg {
+  justify-self: center;
+  filter: drop-shadow(0 12px 14px color-mix(in srgb, var(--volt-display) 22%, transparent));
+}
+
+.voltTrace {
+  position: absolute;
+  left: 78px;
+  right: 0;
+  top: 35px;
+  height: 1px;
+  z-index: -1;
+  border-top: 1px dotted var(--border-brand);
+}
+
+.voltTrace::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px var(--accent);
+}
+
+.voltCopy {
+  min-width: 0;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--brand);
+}
+
+.voltCopy > span,
+.voltCopy strong,
+.voltCopy small {
+  display: block;
+}
+
+.voltCopy > span {
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.voltCopy strong {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+.voltCopy small {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
 }
 .brandLogo {
   width: 44px;
@@ -176,6 +261,40 @@
   margin-bottom: var(--space-5);
 }
 
+.mobileVolt {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: 7px var(--space-3) 7px 8px;
+  background: var(--bg-app);
+  border-left: 2px solid var(--brand);
+  border-top: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+}
+
+.mobileVolt > span,
+.mobileVolt small,
+.mobileVolt strong {
+  min-width: 0;
+  display: block;
+}
+
+.mobileVolt small {
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mobileVolt strong {
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
 .terminalTop {
   display: flex;
   align-items: center;
@@ -186,7 +305,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px 4px 8px;
+  min-height: 44px;
+  padding: 8px 12px 8px 10px;
   margin-right: var(--space-1);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
@@ -209,8 +329,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--bg-app);
@@ -310,6 +430,10 @@
   color: var(--text-muted);
 }
 .link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-2);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   background: none;
@@ -321,6 +445,10 @@
   color: var(--text-primary);
 }
 .linkStrong {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-1);
   color: var(--brand);
   font-weight: var(--fw-semibold);
   background: none;
@@ -333,7 +461,7 @@
 }
 
 /* ---------- Responsive: collapse to a single faceplate ---------- */
-@media (max-width: 720px) {
+@container auth (max-width: 720px) {
   .shell {
     grid-template-columns: 1fr;
     max-width: 440px;
@@ -344,7 +472,35 @@
   .mobileBrand {
     display: flex;
   }
+  .mobileVolt {
+    display: flex;
+  }
   .formPanel {
     padding: var(--space-6);
+  }
+}
+
+@container auth (max-width: 400px) {
+  .formPanel {
+    padding: var(--space-5);
+  }
+
+  .terminalLabel {
+    display: none;
+  }
+
+  .modeTag {
+    margin-left: 0;
+  }
+
+  .themeBtn {
+    margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .ledLive {
+    animation: none;
   }
 }

@@ -109,11 +109,9 @@ export function Sidebar({
                   className={[styles.navItem, styles.locked].join(' ')}
                   title={`${t(item.labelKey)} — tersedia di paket Pro`}
                 >
-                  <Icon
-                    name={item.icon}
-                    className={styles.navIcon}
-                    aria-hidden
-                  />
+                  <span className={styles.navIconCell} aria-hidden>
+                    <Icon name={item.icon} className={styles.navIcon} />
+                  </span>
                   <span className={styles.navLabel}>{t(item.labelKey)}</span>
                   <span className={styles.lockBadge}>
                     <span className={styles.lockLed} aria-hidden />
@@ -134,11 +132,9 @@ export function Sidebar({
                 }
                 title={t(item.labelKey)}
               >
-                <Icon
-                  name={item.icon}
-                  className={styles.navIcon}
-                  aria-hidden
-                />
+                <span className={styles.navIconCell} aria-hidden>
+                  <Icon name={item.icon} className={styles.navIcon} />
+                </span>
                 <span className={styles.navLabel}>{t(item.labelKey)}</span>
                 {sig && sig.tone !== 'idle' ? (
                   <span

@@ -1,9 +1,16 @@
 /* ---------- Demo shell ---------- */
 .demoRoot {
+  /* Faceplate = tinggi kontrol + padding + border, dipatok supaya offset di
+     bawah ini bisa dihitung CSS tanpa mengukur DOM. */
+  --demo-bar-h: 62px;
+  --demo-bar-gap: var(--space-3);
+  /* Sidebar app itu `position: fixed`, jadi tanpa ini ia berlabuh ke tepi
+     viewport dan menutupi faceplate demo. Geser ke bawah faceplate. */
+  --app-inset-top: calc(var(--demo-bar-gap) + var(--demo-bar-h) + 14px);
   display: flex;
   flex-direction: column;
   height: 100vh;
-  height: 100dvh;
+  height: var(--app-vh);
   background: var(--bg-base);
 }
 
@@ -25,7 +32,7 @@
   justify-content: center;
   gap: var(--space-4);
   height: 100vh;
-  height: 100dvh;
+  height: var(--app-vh);
   background: var(--bg-base);
   color: var(--text-secondary);
 }
@@ -56,5 +63,11 @@
 @keyframes demoSpin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .demoRoot {
+    --demo-bar-gap: var(--space-2);
   }
 }

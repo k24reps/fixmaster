@@ -1,7 +1,7 @@
 /* ============================================================
    Sidebar — "Live Diagnostic Rail"
    A bench control panel: nameplate header with a power LED, nav
-   items as numbered channels with live status readouts (LED +
+   items as instrument channels with live status readouts (LED +
    count), active item lit like a selected channel, and an
    operator module footer. Collapsed = an at-a-glance LED tower.
    Global tokens only — works in both dark & light themes.
@@ -9,15 +9,14 @@
 
 .sidebar {
   width: var(--sidebar-width);
-  background:
-    linear-gradient(180deg, var(--bg-surface), var(--bg-app));
-  border: 1px solid var(--border-strong);
+  background: var(--rail-bg);
+  border: 1px solid var(--rail-divider);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--rail-shadow);
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 14px;
+  top: var(--app-inset-top);
   left: 14px;
   bottom: 14px;
   overflow: hidden;
@@ -33,29 +32,15 @@
 /* ---------- Nameplate header ---------- */
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-4) var(--space-5);
   min-height: var(--topbar-height);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rail-divider);
+  background: var(--rail-panel);
   flex-shrink: 0;
   position: relative;
-}
-/* engraved seam under the nameplate */
-.header::after {
-  content: '';
-  position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  bottom: -1px;
-  height: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--border-strong) 0 6px,
-    transparent 6px 12px
-  );
-  opacity: 0.5;
 }
 .brand {
   display: flex;
@@ -89,7 +74,7 @@
   letter-spacing: 0.01em;
 }
 .brandAccent {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .unitLine {
   display: flex;
@@ -109,7 +94,7 @@
   padding: 0 6px;
   border-radius: var(--radius-xs);
   background: var(--brand-soft);
-  color: var(--brand-hover);
+  color: var(--brand-text);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -121,23 +106,24 @@
 }
 
 .collapseBtn {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   width: 40px;
   height: 40px;
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid transparent;
+  border: 1px solid var(--rail-divider);
   border-radius: var(--radius-sm);
+  background: var(--rail-control);
   transition:
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
   flex-shrink: 0;
 }
 .collapseBtn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  border-color: var(--border-brand);
 }
 .collapsed .collapseBtn svg {
   transform: rotate(180deg);
@@ -147,6 +133,15 @@
 .nav {
   flex: 1;
   padding: var(--space-3);
+  /* Bayangan gulir: lapis penutup ikut menggulir (`local`), lapis bayangan
+     diam (`scroll`), jadi bayangan hanya muncul di sisi yang masih ada
+     isinya. Tanpa ini kanal terpotong di tepi tanpa tanda bisa digulir. */
+  background:
+    linear-gradient(var(--rail-well) 40%, transparent) top / 100% 22px no-repeat local,
+    linear-gradient(transparent, var(--rail-well) 60%) bottom / 100% 22px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--rail-divider), transparent) top / 100% 11px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--rail-divider), transparent) bottom / 100% 11px no-repeat scroll,
+    var(--rail-well);
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -157,9 +152,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 43px;
-  padding: 9px 11px;
-  border-radius: var(--radius-md);
+  min-height: 48px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
@@ -172,16 +167,35 @@
     border-color var(--dur-fast) var(--ease-out);
 }
 .navItem:hover {
-  background: var(--bg-hover);
+  background: var(--rail-panel);
   color: var(--text-primary);
+  border-color: var(--border);
 }
 
-.navIcon {
-  width: 22px;
-  text-align: center;
-  font-size: 1rem;
+.navIconCell {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--text-muted);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.navIcon {
+  width: 17px;
+  height: 17px;
+  font-size: 1rem;
+}
+.navItem:hover .navIconCell {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
 }
 .navLabel {
   flex: 1;
@@ -217,7 +231,9 @@
 
 /* tones */
 .tone_idle .readoutLed {
-  opacity: 0.35;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  opacity: 0.75;
 }
 .tone_info {
   background: var(--accent-soft);
@@ -228,37 +244,37 @@
   box-shadow: 0 0 6px var(--accent);
 }
 .tone_info .readoutNum {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .tone_good {
   background: var(--success-soft);
 }
 .tone_good .readoutLed {
-  background: var(--green-400);
-  box-shadow: 0 0 6px var(--green-400);
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
 }
 .tone_good .readoutNum {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .tone_warn {
   background: var(--warning-soft);
 }
 .tone_warn .readoutLed {
-  background: var(--amber-400);
-  box-shadow: 0 0 6px var(--amber-400);
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning);
 }
 .tone_warn .readoutNum {
-  color: var(--amber-400);
+  color: var(--brand-text);
 }
 .tone_crit {
   background: var(--danger-soft);
 }
 .tone_crit .readoutLed {
-  background: var(--red-400);
-  box-shadow: 0 0 7px var(--red-400);
+  background: var(--danger);
+  box-shadow: 0 0 7px var(--danger);
 }
 .tone_crit .readoutNum {
-  color: var(--red-400);
+  color: var(--danger);
 }
 .pulse .readoutLed {
   animation: fm-pulse 1s var(--ease-in-out) infinite;
@@ -266,38 +282,35 @@
 
 /* active = selected/lit channel */
 .navItem.active {
-  background: linear-gradient(90deg, var(--brand-soft), color-mix(in srgb, var(--brand-soft) 30%, transparent));
+  background: var(--rail-active);
   color: var(--text-primary);
   border-color: var(--border-brand);
-  box-shadow: inset 0 1px 0 var(--gradient-sheen);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-100) 38%, transparent);
 }
-.navItem.active::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 64%;
-  border-radius: var(--radius-full);
-  background: var(--gradient-brand);
-  box-shadow: 0 0 8px var(--border-brand);
+.navItem.active .navIconCell {
+  color: var(--on-brand);
+  background: var(--brand);
+  border-color: var(--brand-hover);
+  box-shadow: var(--shadow-brand-tight);
 }
-.navItem.active .navIcon {
-  color: var(--brand);
-  filter: brightness(1.1);
+.navItem.active .tone_idle .readoutLed {
+  background: var(--brand);
+  border-color: var(--brand);
+  box-shadow: 0 0 5px var(--brand);
 }
 
 /* locked = feature gated to Pro; shown dimmed with a "Pro" badge so Solo
    users see what upgrading unlocks. Links to Settings (upgrade). */
 .locked {
-  opacity: 0.5;
+  color: var(--text-muted);
 }
 .locked:hover {
-  opacity: 0.85;
+  background: var(--brand-soft);
+  border-color: var(--border-brand);
 }
-.locked .navIcon {
-  filter: grayscale(0.6);
+.locked .navIconCell {
+  color: var(--text-muted);
+  border-color: var(--border);
 }
 .lockBadge {
   display: inline-flex;
@@ -341,25 +354,12 @@
 .bizBlock {
   flex-shrink: 0;
   padding: var(--space-4);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rail-divider);
+  background: var(--rail-panel);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   position: relative;
-}
-.bizBlock::before {
-  content: '';
-  position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  top: -1px;
-  height: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--border-strong) 0 6px,
-    transparent 6px 12px
-  );
-  opacity: 0.5;
 }
 .bizIdentity {
   display: flex;
@@ -374,7 +374,7 @@
   flex-shrink: 0;
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  background: var(--bg-input);
+  background: var(--rail-control);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -388,7 +388,7 @@
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: var(--fw-extra);
-  color: var(--brand-hover);
+  color: var(--brand-text);
 }
 .bizInfo {
   min-width: 0;
@@ -425,8 +425,8 @@
   min-height: 48px;
   padding: 8px 11px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-input);
+  border: 1px solid var(--rail-divider);
+  background: var(--rail-control);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -437,11 +437,11 @@
 }
 .branchBtn:hover {
   border-color: var(--border-brand);
-  background: var(--bg-surface-2);
+  background: var(--brand-soft);
 }
 .branchBtnOpen {
   border-color: var(--border-brand);
-  box-shadow: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--brand);
 }
 .branchLed {
   width: 9px;
@@ -563,23 +563,10 @@
 /* ---------- Operator module ---------- */
 .footer {
   padding: var(--space-4);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rail-divider);
+  background: var(--rail-panel);
   flex-shrink: 0;
   position: relative;
-}
-.footer::before {
-  content: '';
-  position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  top: -1px;
-  height: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--border-strong) 0 6px,
-    transparent 6px 12px
-  );
-  opacity: 0.5;
 }
 .user {
   display: flex;
@@ -592,7 +579,7 @@
   height: 38px;
   border-radius: var(--radius-md);
   background: var(--brand-soft);
-  color: var(--brand-hover);
+  color: var(--brand-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -667,7 +654,11 @@
 }
 .collapsed .navItem {
   justify-content: center;
-  padding: 10px 0;
+  padding: 7px 0;
+}
+.collapsed .navIconCell {
+  width: 36px;
+  height: 36px;
 }
 .collapsed .navLabel,
 .collapsed .readoutNum {
@@ -762,7 +753,11 @@
   }
   .collapsed .navItem {
     justify-content: flex-start;
-    padding: 9px 10px;
+    padding: 7px 9px;
+  }
+  .collapsed .navIconCell {
+    width: 32px;
+    height: 32px;
   }
   .collapsed .readout {
     position: static;

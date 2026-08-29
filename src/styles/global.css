@@ -121,8 +121,8 @@ img, svg { display: block; max-width: 100%; }
 
 /* ---------- Focus visibility (accessibility) ---------- */
 :focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
   border-radius: var(--radius-xs);
 }
 

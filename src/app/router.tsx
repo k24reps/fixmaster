@@ -1,15 +1,19 @@
 /* eslint-disable react-refresh/only-export-components -- router config module: lazy() route components live here by design, not a fast-refreshed component file. */
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { LandingPageV2 } from '@/features/landing/LandingPageV2';
 import { AuthGate } from './AuthGate';
+import { AuthSplash } from './AuthSplash';
 import { appChildRoutes } from './appChildRoutes';
 
-// Route pages are code-split: each becomes its own chunk loaded on demand,
-// keeping the initial bundle small. The shell (AppLayout/AuthGate) and the
-// tiny NotFoundPage stay eager. The authenticated app's child routes live in
-// appChildRoutes so the public demo (MemoryRouter) can reuse them verbatim.
+// Route pages and the authenticated shell are code-split. Signed-out visitors
+// do not download AppLayout, while authenticated users do not pay for the
+// marketing surface until they explicitly open its preview route.
+const AppLayout = lazy(() =>
+  import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })),
+);
+const LandingPageV2 = lazy(() =>
+  import('@/features/landing/LandingPageV2').then((module) => ({ default: module.LandingPageV2 })),
+);
 const TrackingPage = lazy(() =>
   import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
@@ -35,7 +39,11 @@ export const router = createBrowserRouter([
     // Stable preview alias for the live signed-out landing page. Keeping this
     // route makes design review links durable while AuthGate serves V2 at `/`.
     path: '/landing-preview',
-    element: <LandingPageV2 />,
+    element: (
+      <Suspense fallback={<AuthSplash />}>
+        <LandingPageV2 />
+      </Suspense>
+    ),
   },
   {
     // Operator dashboard (vendor-only, CROSS-TENANT). Deliberately OUTSIDE
@@ -100,7 +108,9 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <AuthGate>
-        <AppLayout />
+        <Suspense fallback={<AuthSplash />}>
+          <AppLayout />
+        </Suspense>
       </AuthGate>
     ),
     children: appChildRoutes,

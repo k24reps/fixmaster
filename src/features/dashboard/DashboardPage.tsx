@@ -159,7 +159,7 @@ export function DashboardPage() {
       <section className={styles.console} aria-label={t('dashboard.consoleAria')}>
         <div className={styles.consoleBrand}>
           <div className={styles.consoleMascot}>
-            <Mascot variant="face" size={26} className={styles.consoleMascotImg} />
+            <Mascot variant="face" size={30} animated={false} className={styles.consoleMascotImg} />
           </div>
           <div className={styles.consoleBrandText}>
             <span className={styles.consolePulse} aria-hidden />

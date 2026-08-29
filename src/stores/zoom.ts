@@ -44,6 +44,9 @@ function applyZoom(zoom: Zoom) {
   // 100% dikosongkan, bukan ditulis '1': menyisakan properti `zoom` membuat
   // :root jadi containing block dan bisa mengubah perilaku position: fixed.
   document.documentElement.style.zoom = zoom === 1 ? '' : String(zoom);
+  // Unit viewport (100dvh dst.) ikut terskala zoom. `--zoom` membuat CSS bisa
+  // membaginya kembali lewat `--app-vh`.
+  document.documentElement.style.setProperty('--zoom', String(zoom));
 }
 
 interface ZoomState {

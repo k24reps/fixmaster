@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-28T00:00:00.000Z",
+  "title": "Design System: FixMaster",
+  "extensions": {
+    "colorMeta": {
+      "safety-amber": {
+        "role": "primary",
+        "displayName": "Safety Amber",
+        "canonical": "#f5a623",
+        "tonalRamp": [
+          "#7c4d12",
+          "#985c0f",
+          "#c0750a",
+          "#e8920c",
+          "#f5a623",
+          "#f7b733",
+          "#f9c95f",
+          "#fcdf9d"
+        ]
+      },
+      "diagnostic-cyan": {
+        "role": "secondary",
+        "displayName": "Diagnostic Cyan",
+        "canonical": "#3dd9c4",
+        "tonalRamp": [
+          "#04211e",
+          "#083f39",
+          "#0b766d",
+          "#149c8c",
+          "#1fb3a0",
+          "#3dd9c4",
+          "#5fe6d4",
+          "#a8f2e8"
+        ]
+      },
+      "signal-good": {
+        "role": "tertiary",
+        "displayName": "Signal Good",
+        "canonical": "#34d399",
+        "tonalRamp": [
+          "#03301f",
+          "#04563a",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5"
+        ]
+      },
+      "signal-warn": {
+        "role": "tertiary",
+        "displayName": "Signal Warn",
+        "canonical": "#fbbf24",
+        "tonalRamp": [
+          "#4a2c05",
+          "#78450a",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fcd34d",
+          "#fde68a"
+        ]
+      },
+      "signal-crit": {
+        "role": "tertiary",
+        "displayName": "Signal Critical",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca"
+        ]
+      },
+      "signal-info": {
+        "role": "tertiary",
+        "displayName": "Signal Info",
+        "canonical": "#60a5fa",
+        "tonalRamp": [
+          "#0c1e3d",
+          "#1e3a8a",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#93c5fd",
+          "#bfdbfe"
+        ]
+      },
+      "graphite-app": {
+        "role": "neutral",
+        "displayName": "Graphite Steel",
+        "canonical": "#111419",
+        "tonalRamp": [
+          "#0b0d10",
+          "#111419",
+          "#191d23",
+          "#20252c",
+          "#252b33",
+          "#3a424c",
+          "#8290a0",
+          "#f1f3f6"
+        ]
+      },
+      "rail-chassis": {
+        "role": "neutral",
+        "displayName": "Chassis Graphite",
+        "canonical": "#15191f",
+        "tonalRamp": [
+          "#101318",
+          "#12161c",
+          "#15191f",
+          "#1d2229",
+          "#2a313a",
+          "#e3e9ed",
+          "#f3f6f8",
+          "#ffffff"
+        ]
+      },
+      "readout-base": {
+        "role": "neutral",
+        "displayName": "Readout Black",
+        "canonical": "#090b0e",
+        "tonalRamp": [
+          "#050709",
+          "#090b0e",
+          "#12161d",
+          "#1c222b",
+          "#3a434f",
+          "#6b7787",
+          "#8b97a6",
+          "#cfd6e0"
+        ]
+      },
+      "ink-primary": {
+        "role": "neutral",
+        "displayName": "Bench Ink",
+        "canonical": "#f1f3f6",
+        "tonalRamp": [
+          "#131a22",
+          "#20252c",
+          "#3f4d5b",
+          "#526170",
+          "#8290a0",
+          "#a7b0bc",
+          "#d5dbe3",
+          "#f1f3f6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles and landing headlines. Space Grotesk, mechanical without novelty."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section heads inside a page."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card headers and modal titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, form values, list content. Inter, invisible by design."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Mono uppercase micro-label at 0.07em. Field labels, stat captions, table headers, section markers — the system's most repeated gesture."
+      },
+      "readout": {
+        "displayName": "Readout",
+        "purpose": "Money, counts, durations, IDs, timestamps. Always tabular so columns align."
+      }
+    },
+    "shadows": [
+      {
+        "name": "chassis-mount",
+        "value": "0 6px 8px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+        "purpose": "The sidebar rail only. The inset highlight is the top bevel of a mounted panel."
+      },
+      {
+        "name": "bench-tight",
+        "value": "0 6px 8px rgba(0, 0, 0, 0.34)",
+        "purpose": "Objects resting on the bench — the repair ticket, the product frame. Short throw, close contact."
+      },
+      {
+        "name": "lift",
+        "value": "0 10px 30px rgba(0, 0, 0, 0.34)",
+        "purpose": "Hover response of an interactive card, paired with translateY(-2px). Never a resting state."
+      },
+      {
+        "name": "overlay",
+        "value": "0 24px 70px rgba(0, 0, 0, 0.52)",
+        "purpose": "Modals, sheets, the featured plan plate. Genuinely floating above everything."
+      },
+      {
+        "name": "powered",
+        "value": "0 6px 22px rgba(245, 166, 35, 0.32)",
+        "purpose": "The only colored shadow in the system. Under primary buttons and brand-active elements; means energized, not important."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px var(--focus-ring)",
+        "purpose": "Focus state on inputs and icon buttons, alongside a border shift to brand."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "purpose": "Default easing. Mechanical departure, soft arrival."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Symmetric transitions such as pulsing LEDs."
+      },
+      {
+        "name": "ease-emphasized",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Entrances that need a longer settle."
+      },
+      {
+        "name": "dur-fast",
+        "value": "0.13s",
+        "purpose": "Control state changes: hover, focus, press."
+      },
+      {
+        "name": "dur-normal",
+        "value": "0.22s",
+        "purpose": "Surface changes: card lift, theme swap, route fade."
+      },
+      {
+        "name": "dur-slow",
+        "value": "0.36s",
+        "purpose": "Drawer and sheet travel."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "640px"
+      },
+      {
+        "name": "bottom-nav",
+        "value": "720px"
+      },
+      {
+        "name": "tablet-drawer",
+        "value": "1024px"
+      },
+      {
+        "name": "sidebar-fixed",
+        "value": "1025px"
+      },
+      {
+        "name": "content-max",
+        "value": "1380px"
+      }
+    ],
+    "notes": [
+      "Dual theme: frontmatter carries the dark theme (default). Light theme re-binds the same token names in src/styles/tokens.css.",
+      "The readout-* family is defined once and never re-bound per theme, which is what makes an instrument well look identical in dark and light.",
+      "Breakpoints that decide fits/does-not-fit must be @container, not @media — app zoom adds layout space without moving media queries."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most important action in a view. Amber gradient, deep bitumen text, powered glow.",
+      "html": "<button class=\"ds-btn-primary\">Simpan Servis</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 18px; font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600; color: #1a1205; background: linear-gradient(135deg, #f5a623, #e8920c); border: 1px solid transparent; border-radius: 8px; box-shadow: 0 6px 22px rgba(245,166,35,0.32); cursor: pointer; transition: transform 0.13s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.13s cubic-bezier(0.2,0.8,0.2,1); } .ds-btn-primary:hover { transform: translateY(-2px); } .ds-btn-primary:active { transform: translateY(1px) scale(0.99); } .ds-btn-primary:focus-visible { outline: 3px solid #f7b733; outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Companion action. Solid graphite surface with a real edge that warms to brand on hover.",
+      "html": "<button class=\"ds-btn-secondary\">Batal</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 18px; font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600; color: #f1f3f6; background: #191d23; border: 1px solid rgba(255,255,255,0.145); border-radius: 8px; cursor: pointer; transition: background 0.13s cubic-bezier(0.2,0.8,0.2,1), border-color 0.13s cubic-bezier(0.2,0.8,0.2,1); } .ds-btn-secondary:hover { background: #252b33; border-color: rgba(245,166,35,0.45); } .ds-btn-secondary:active { transform: translateY(1px) scale(0.99); } .ds-btn-secondary:focus-visible { outline: 3px solid #f7b733; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Recessed channel with a mono uppercase label. Brightens as it powers up on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">No. Servis</span><input class=\"ds-field-input\" type=\"text\" placeholder=\"FM-0241\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 7px; } .ds-field-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #8290a0; } .ds-field-input { min-height: 46px; width: 100%; padding: 10px 14px; font-family: 'Inter', sans-serif; font-size: 0.9375rem; color: #f1f3f6; background: #14181e; border: 1px solid rgba(255,255,255,0.145); border-radius: 12px; transition: border-color 0.13s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.13s cubic-bezier(0.2,0.8,0.2,1), background 0.13s cubic-bezier(0.2,0.8,0.2,1); } .ds-field-input::placeholder { color: #8290a0; } .ds-field-input:focus { outline: none; background: #191d23; border-color: #f5a623; box-shadow: 0 0 0 3px #f7b733; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-brand",
+      "description": "Mono uppercase pill with its own LED. The tint-plus-border treatment is the only badge; there is no outline/solid axis.",
+      "html": "<span class=\"ds-badge ds-badge-success\"><i class=\"ds-badge-dot\"></i>Lunas</span> <span class=\"ds-badge ds-badge-warn\"><i class=\"ds-badge-dot\"></i>Pengerjaan</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.045em; text-transform: uppercase; line-height: 1.4; white-space: nowrap; border: 1px solid transparent; border-radius: 999px; } .ds-badge-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: currentColor; } .ds-badge-success { background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3); } .ds-badge-warn { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3); }"
+    },
+    {
+      "name": "Card with Diagnostic Spine",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Bordered graphite panel under a machined top-light, classified by a 3px leading spine. Flat at rest.",
+      "html": "<article class=\"ds-card ds-card-warn\"><header class=\"ds-card-head\"><span class=\"ds-card-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88 88.1 88.1 0 0 1-88 88Zm8-80a8 8 0 0 1-16 0V80a8 8 0 0 1 16 0Zm4 36a12 12 0 1 1-12-12 12 12 0 0 1 12 12Z\"/></svg></span><span class=\"ds-card-title\">Perlu Tindakan</span></header><div class=\"ds-card-body\">3 unit menunggu diambil</div></article>",
+      "css": ".ds-card { position: relative; overflow: hidden; background: linear-gradient(145deg, rgba(241,243,246,0.025), transparent 38%), #191d23; border: 1px solid rgba(255,255,255,0.145); border-radius: 16px; transition: transform 0.22s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.22s cubic-bezier(0.2,0.8,0.2,1), border-color 0.22s cubic-bezier(0.2,0.8,0.2,1); } .ds-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.34); border-color: rgba(245,166,35,0.45); } .ds-card-warn::before { content: ''; position: absolute; top: 14px; left: 0; bottom: 14px; width: 3px; border-radius: 0 999px 999px 0; background: linear-gradient(180deg, #f59e0b, #fbbf24); } .ds-card-head { display: flex; align-items: center; gap: 8px; padding: 18px 20px; border-bottom: 1px dotted rgba(255,255,255,0.145); } .ds-card-icon { display: grid; place-items: center; width: 30px; height: 30px; color: #f5a623; background: rgba(245,166,35,0.15); border: 1px solid rgba(245,166,35,0.45); border-radius: 8px; } .ds-card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; color: #f1f3f6; } .ds-card-body { padding: 24px; font-family: 'Inter', sans-serif; font-size: 0.9375rem; color: #a7b0bc; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Glass summary tile that sits on the ambient blueprint grid. Mono label, mono value, colored spine and icon tile.",
+      "html": "<div class=\"ds-stat\"><span class=\"ds-stat-icon\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M232 208a8 8 0 0 1-8 8H32a8 8 0 0 1-8-8V48a8 8 0 0 1 16 0v106.75l50.34-50.34a8 8 0 0 1 11.32 0L128 132.69l43.31-43.32a8 8 0 0 1 11.32 11.32l-49 48.97a8 8 0 0 1-11.31 0L96 121.31l-56 56V200h184a8 8 0 0 1 8 8Z\"/></svg></span><div><div class=\"ds-stat-label\">Pemasukan</div><div class=\"ds-stat-value\">Rp 6.450.000</div><div class=\"ds-stat-sub\">bulan ini</div></div></div>",
+      "css": ".ds-stat { position: relative; display: flex; align-items: flex-start; gap: 12px; overflow: hidden; padding: 16px; background: linear-gradient(145deg, rgba(241,243,246,0.025), transparent 42%), rgba(25,29,35,0.76); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.145); border-radius: 16px; transition: transform 0.22s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.22s cubic-bezier(0.2,0.8,0.2,1); } .ds-stat::before { content: ''; position: absolute; top: 16px; left: 0; bottom: 16px; width: 3px; border-radius: 0 999px 999px 0; background: linear-gradient(180deg, #10b981, #34d399); } .ds-stat:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.34); } .ds-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; color: #34d399; background: rgba(16,185,129,0.15); border-radius: 12px; } .ds-stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: #8290a0; margin-bottom: 3px; } .ds-stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; color: #f1f3f6; } .ds-stat-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #8290a0; margin-top: 2px; }"
+    },
+    {
+      "name": "Navigation Channel",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "Sidebar item as an instrument channel: icon cell, label, and a live readout of LED plus mono count. Active inverts the icon cell to solid brand.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-chan ds-chan-active\" href=\"#\"><span class=\"ds-chan-cell\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224 120h-88V32a8 8 0 0 0-8-8H32a8 8 0 0 0-8 8v192a8 8 0 0 0 8 8h192a8 8 0 0 0 8-8v-96a8 8 0 0 0-8-8Z\"/></svg></span><span class=\"ds-chan-label\">Dashboard</span><span class=\"ds-chan-read\"><i class=\"ds-led\"></i></span></a><a class=\"ds-chan\" href=\"#\"><span class=\"ds-chan-cell\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M226.76 69a8 8 0 0 0-12.84-2.88l-40.3 37.19-17.23-3.7-3.7-17.23 37.19-40.3A8 8 0 0 0 187 29.24a72 72 0 0 0-88.56 100.4l-63.8 55.87a8 8 0 0 0-.35 11.65l24.55 24.55a8 8 0 0 0 11.65-.35l55.87-63.8A72 72 0 0 0 226.76 69Z\"/></svg></span><span class=\"ds-chan-label\">Servis</span><span class=\"ds-chan-read\"><i class=\"ds-led ds-led-warn\"></i><b>3</b></span></a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; gap: 4px; padding: 12px; background: #101318; border-radius: 12px; } .ds-chan { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 7px 9px; font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 500; color: #a7b0bc; text-decoration: none; border: 1px solid transparent; border-radius: 8px; transition: background 0.13s cubic-bezier(0.2,0.8,0.2,1), color 0.13s cubic-bezier(0.2,0.8,0.2,1); } .ds-chan-cell { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; color: #8290a0; border: 1px solid transparent; border-radius: 8px; transition: all 0.13s cubic-bezier(0.2,0.8,0.2,1); } .ds-chan-label { flex: 1; } .ds-chan-read { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; } .ds-led { width: 7px; height: 7px; border-radius: 50%; background: transparent; border: 1px solid rgba(255,255,255,0.145); } .ds-led-warn { background: #fbbf24; border-color: #fbbf24; box-shadow: 0 0 6px #fbbf24; } .ds-chan-read b { color: #fbbf24; } .ds-chan:hover { background: #1d2229; color: #f1f3f6; border-color: rgba(255,255,255,0.075); } .ds-chan:hover .ds-chan-cell { color: #5fe6d4; background: rgba(61,217,196,0.14); border-color: rgba(61,217,196,0.38); } .ds-chan-active { background: rgba(245,166,35,0.16); color: #f1f3f6; border-color: rgba(245,166,35,0.45); box-shadow: inset 0 1px 0 rgba(254,239,206,0.38); } .ds-chan-active .ds-chan-cell { color: #1a1205; background: #f5a623; border-color: #f7b733; box-shadow: 0 4px 8px rgba(245,166,35,0.26); }"
+    },
+    {
+      "name": "Instrument Well",
+      "kind": "custom",
+      "refersTo": "instrument-well",
+      "description": "Signature recessed readout panel. Theme-independent — identical in dark and light. Budgeted at one per viewport.",
+      "html": "<div class=\"ds-well\"><span class=\"ds-well-scan\"></span><div class=\"ds-well-body\"><div class=\"ds-well-label\"><i class=\"ds-well-led\"></i>Laba bersih · bulan ini</div><div class=\"ds-well-value\">Rp 5.100.000</div><span class=\"ds-well-tag\">Surplus</span></div></div>",
+      "css": ".ds-well { position: relative; isolation: isolate; overflow: hidden; padding: 2px; background: linear-gradient(135deg, #f5a623, #3dd9c4); border-radius: 16px; box-shadow: 0 24px 70px rgba(0,0,0,0.52); } .ds-well-scan { position: absolute; inset: 2px; z-index: 1; pointer-events: none; border-radius: 14px; background: repeating-linear-gradient(0deg, rgba(241,244,248,0.03) 0 1px, transparent 1px 3px); } .ds-well-body { position: relative; padding: 20px 24px; border-radius: 14px; background: radial-gradient(130% 150% at 0% 0%, #12161d, #090b0e); } .ds-well-label { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: #8b97a6; } .ds-well-led { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 9px #34d399; } .ds-well-value { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 2.2rem; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; color: #34d399; } .ds-well-tag { display: inline-block; margin-top: 8px; padding: 3px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #34d399; border: 1px solid rgba(52,211,153,0.5); border-radius: 999px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Precision Electronics Bench",
+    "overview": "The interface is a technician's bench, not a dashboard. Every surface behaves like a piece of shop equipment: a graphite chassis with things mounted on it, instruments that read out in monospace, status carried by lit indicators rather than by words, and seams that look machined rather than drawn. The operator is standing at a counter with a customer waiting and a device in one hand — so the system favors the glance over the read, and the exact number over the friendly approximation.\n\nThree pillars carry the whole palette. Graphite steel is the neutral ground: cool, slightly blue, never warm grey and never office-paper white. Safety amber (#f5a623) is the single brand voice — the color of a machine that is powered and doing something. Diagnostic cyan (#3dd9c4) is the instrument voice — measurement, liveness, information that the machine reports about itself.\n\nBoth themes are first class and neither is a tint of the other. Dark is \"Graphite Workshop\"; light is \"Bright Workshop Steel\" — cool anodized metal, deliberately not a bright paper document. A component is finished only when it has been judged in both. The confirmed anti-reference is generic SaaS: stock component-library chrome, a padlock glyph for a gated feature, a soft rounded card with a pastel icon standing in for content.",
+    "keyCharacteristics": [
+      "Monospace for every number, ID, code, and status readout — the single strongest signal that this is instrumentation",
+      "Status is a lit LED plus a value, never a word alone",
+      "Colored spine on the leading edge of cards and rows, not a full colored surface",
+      "Dotted and perforated seams instead of solid rules",
+      "Machined radii (5/8/12/16/24px) — never fully rounded except for pills and indicators",
+      "Two themes at equal weight, guaranteed by tokens rather than by review"
+    ],
+    "rules": [
+      {
+        "name": "The Token-Only Rule",
+        "body": "No hex, rgb(), or hsl() literal ever appears in feature CSS. Every color resolves through var(--token) from src/styles/tokens.css. This is not a style preference — it is the mechanism that guarantees both themes are correct without anyone checking. The one sanctioned exception is the readout family, which is already theme-independent by design.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Amber Rule",
+        "body": "Safety amber marks the single most important action or the single active state in a view. Two ambers competing on one screen means neither is the answer. Cyan is not a second brand color to reach for when amber feels repetitive — it means instrument reading, and using it decoratively drains it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lit-Signal Rule",
+        "body": "A status is an LED plus a value, never a word alone and never a color alone. The LED is 7–9px, filled with the signal color, and carries a matching box-shadow glow at 6–9px blur. A colorblind operator reads the value; a glancing operator reads the light.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Numbers Rule",
+        "body": "Every number a user might compare, verify, or read aloud is monospace with tabular figures: currency, quantities, service IDs (FM-0241), phone numbers, times, percentages. Proportional digits in an operational readout is a defect, not a preference.",
+        "section": "typography"
+      },
+      {
+        "name": "The 12px Floor Rule",
+        "body": "No leaf text that carries information or an action goes below 12px at the default 16px root. Non-interactive ornament may be smaller. This is an ergonomic contract, not a suggestion — the operator is reading at arm's length under shop lighting.",
+        "section": "typography"
+      },
+      {
+        "name": "The Container Query Rule",
+        "body": "Any breakpoint that decides fits / does not fit — table versus cards, one column versus two — must be a @container query, never @media. Two measured reasons: the app's own zoom control adds layout space without moving media queries (em units do not help; they resolve against the initial font size), and the sidebar appears at ≥1025px so content space shrinks as the viewport widens, producing a broken band no single max-width can express. Derive the threshold from measured min-content, not a round number.",
+        "section": "layout"
+      },
+      {
+        "name": "The Zoom-Aware Viewport Rule",
+        "body": "Any element sized to the screen uses --app-vh, never bare 100vh/100dvh. The CSS zoom property scales viewport units, so a raw 100dvh shell leaves dead space below 100% zoom and overflows above it.",
+        "section": "layout"
+      },
+      {
+        "name": "The Mounted-or-Flat Rule",
+        "body": "A surface earns a shadow by being mounted chassis (rail, topbar), a true overlay (modal, toast, dropdown, bottom sheet), or an object resting on the bench (ticket, frame). Everything else is flat at rest and may acquire --shadow-md only as a hover response. A resting content card with a drop shadow is drift.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Ambient Bench Rule",
+        "body": "The blueprint grid and its two radial washes on body::before are the system's only ambient depth. Individual sections do not get their own decorative glow; they get a tonal step or a border.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Spine, Not the Fill Rule",
+        "body": "Category and status are carried by the 3px leading spine, never by flooding a card or row with a tinted background. A border-left heavier than 3px, or a colored surface standing in for the spine, is a different system.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Earned Well Rule",
+        "body": "The instrument well is not a surface anyone may reach for. It is earned by content that is genuinely an instrument reading — a live operational value the operator checks at a glance (net profit, the flow of a job through states, the plan that is the recommended answer) — and it is budgeted at one per viewport. A long scrolling page may carry one per chapter, provided two are never in view together. Its power is scarcity: a screen showing three wells has none. When a panel merely needs to feel important, it gets a tonal step and a border instead.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do resolve every color through var(--token) from src/styles/tokens.css, and judge every new component in both themes before calling it done.",
+      "Do set numbers in JetBrains Mono with tabular figures — money, counts, IDs, times, percentages.",
+      "Do pair a signal color with a lit LED and a readable value, so status survives both a glance and colorblindness.",
+      "Do classify cards and rows with the 3px diagnostic spine.",
+      "Do use 1px dotted seams for internal division instead of solid rules.",
+      "Do use @container for any breakpoint that decides whether content fits, and derive the threshold from measured min-content.",
+      "Do size full-screen shells with --app-vh.",
+      "Do keep informational leaf text at 12px or above and interactive targets at 44×44px on touch.",
+      "Do give a gated feature a dimmed channel and a mono \"PRO\" badge with a brand LED."
+    ],
+    "donts": [
+      "Don't hardcode a hex, rgb(), or hsl() value in feature CSS.",
+      "Don't use a padlock glyph, or any stock component-library chrome, to mark a plan-gated feature — that gets the dimmed channel and the mono \"PRO\" badge. A lock icon on a genuine permission denial is a different message and stays.",
+      "Don't put a drop shadow on a content surface at rest — shadow means mounted, overlaid, or just-lifted.",
+      "Don't widen the colored spine past 3px or replace it with a flooded background tint.",
+      "Don't place more than one instrument well on a screen, or use the readout palette for a panel that merely wants attention.",
+      "Don't reach for diagnostic cyan as a second brand color when amber starts to feel repetitive — cyan means instrument reading.",
+      "Don't put white text on safety amber; amber always carries --on-brand (#1a1205).",
+      "Don't apply glass or backdrop-filter to a card sitting in a list or grid on a page that already has its own surface. Glass belongs to things that float over something: chassis (topbar, drawers, sheets, action bars, the demo faceplate), overlays, and standalone panels resting directly on the ambient grid (auth, onboarding wizard, tracking result, the summary rail).",
+      "Don't set an operational number in a proportional face.",
+      "Don't use emoji or a Unicode glyph where an icon belongs — icons come only through the Icon component."
+    ]
+  }
+}

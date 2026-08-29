@@ -29,26 +29,26 @@
 }
 .brand {
   background: var(--brand-soft);
-  color: var(--brand-hover);
+  color: var(--brand-text);
   border-color: var(--border-brand);
 }
 .success {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
   border-color: color-mix(in srgb, var(--success) 30%, transparent);
 }
 .warning {
   background: var(--warning-soft);
-  color: var(--amber-400);
+  color: var(--warning-text);
   border-color: color-mix(in srgb, var(--warning) 30%, transparent);
 }
 .danger {
   background: var(--danger-soft);
-  color: var(--red-400);
+  color: var(--danger-text);
   border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 .info {
   background: var(--info-soft);
-  color: var(--blue-400);
+  color: var(--info-text);
   border-color: color-mix(in srgb, var(--info) 30%, transparent);
 }

@@ -27,10 +27,26 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
    * controlled value.
    */
   revealable?: boolean;
+  /** Localized labels for the optional password visibility control. */
+  revealLabels?: { show: string; hide: string };
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, iconLeft, className, id, noAutoCap, autoCapWords, revealable, type, onChange, ...rest },
+  {
+    label,
+    hint,
+    error,
+    iconLeft,
+    className,
+    id,
+    noAutoCap,
+    autoCapWords,
+    revealable,
+    revealLabels,
+    type,
+    onChange,
+    ...rest
+  },
   ref,
 ) {
   const inputId = id ?? rest.name;
@@ -80,8 +96,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             type="button"
             className={styles.reveal}
             onClick={() => setRevealed((v) => !v)}
-            aria-label={revealed ? 'Sembunyikan password' : 'Tampilkan password'}
-            title={revealed ? 'Sembunyikan password' : 'Tampilkan password'}
+            aria-label={revealed ? (revealLabels?.hide ?? 'Sembunyikan password') : (revealLabels?.show ?? 'Tampilkan password')}
+            title={revealed ? (revealLabels?.hide ?? 'Sembunyikan password') : (revealLabels?.show ?? 'Tampilkan password')}
             tabIndex={-1}
           >
             <Icon name={revealed ? 'eye-slash' : 'eye'} aria-hidden />

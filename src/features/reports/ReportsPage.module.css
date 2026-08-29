@@ -469,8 +469,8 @@
     white-space: normal;
   }
   .metricLabel {
-    font-size: 10px;
-    letter-spacing: 0.06em;
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
   }
   .dateBar {
     align-items: stretch;

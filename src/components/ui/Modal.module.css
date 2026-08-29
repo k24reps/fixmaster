@@ -140,14 +140,14 @@
   }
   .modal {
     max-width: 100% !important;
-    max-height: calc(100dvh - var(--space-4));
+    max-height: calc(var(--app-vh) - var(--space-4));
     border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
   }
 }
 
 @media (max-width: 520px) {
   .modal {
-    max-height: calc(100dvh - var(--space-4));
+    max-height: calc(var(--app-vh) - var(--space-4));
   }
   .header {
     padding: var(--space-3) var(--space-3);

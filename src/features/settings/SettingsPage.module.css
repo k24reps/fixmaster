@@ -231,6 +231,9 @@
   height: 2px;
   background: transparent;
 }
+/* Satu-satunya teks di bawah 12px yang disengaja: ini maket miniatur bottom
+   nav, ornamen non-interaktif yang tidak membawa informasi operasional.
+   Lihat lantai 12px di DESIGN.md. */
 .mobileNavPreview small {
   max-width: 100%;
   overflow: hidden;

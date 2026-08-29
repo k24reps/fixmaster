@@ -30,33 +30,69 @@ kembali bila diperlukan.
 
 ![[landing-v2-dark.png]]
 
-- **Arah narasi**: bukan lagi daftar fitur + komparasi panjang. Halaman mengikuti satu
-  unit reparasi dari penerimaan → pengerjaan → sparepart → uang tercatat, sehingga nilai
-  produk terbaca sebagai alur operasional nyata.
-- **Hero**: headline outcome untuk konter ramai + konsol pekerjaan aktif (tiket FM-0241,
-  rail status, antrean, stok, kas, dan readout Volt). Semua angka bersifat data contoh,
-  bukan klaim performa pelanggan.
-- **Ritme**: trust rail → alur empat tahap → pandangan owner/tiket digital → screenshot
-  produk asli → dua paket → FAQ → CTA. Lebih pendek dan lebih visual dari V1.
+- **Arah narasi**: bukan lagi daftar fitur + komparasi panjang. Janji utama adalah
+  **“catat servis sekali”**: satu tiket mengikuti unit dari penerimaan → pengerjaan →
+  sparepart → uang dan margin tercatat, sehingga nilai produk terbaca sebagai hubungan
+  operasional yang konkret—bukan sekadar “semua fitur di satu aplikasi”.
+- **Hero**: headline menamai mekanisme khas FixMaster (stok dan margin ikut terhitung),
+  lalu konsol pekerjaan aktif membuktikannya lewat tiket FM-0241, rail status, antrean,
+  stok, kas, dan readout Volt. Semua angka bersifat data contoh, bukan klaim performa
+  pelanggan. Demo aplikasi asli menjadi CTA utama; trial 14 hari tetap tersedia sebagai
+  aksi kedua.
+- **Ritme**: pain rail (empat gejala toko) → alur empat tahap → pandangan owner/tiket
+  digital → screenshot produk asli → dua paket berbasis cara kerja → FAQ → CTA. Pain rail
+  menggantikan trust rail generik agar calon klien mengenali masalahnya sebelum membaca
+  solusi. Halaman tetap lebih pendek dan lebih visual dari V1.
+- **Bukti margin owner (29 Agu 2026)**: empat kartu generik diganti diagnostic rail yang
+  menghubungkan margin, waktu pengerjaan, sparepart, serta aktivitas tim. Tiket contoh
+  menampilkan sumber angka secara eksplisit—**tagihan Rp1.250.000 − modal sparepart
+  Rp830.000 = margin Rp420.000**—dan diberi label “Contoh data”. Klaim margin jadi dapat
+  diperiksa calon klien, bukan angka hijau tanpa asal perhitungan.
 - **Narasi lintas layar (11 Agu 2026)**: hero kini menyebut alur yang sama di meja dan
   ponsel, ukuran judul + jarak hero dipadatkan khusus layar kecil, dan section produk
   tidak lagi mengecilkan screenshot desktop menjadi bukti yang sulit dibaca. Desktop
   menampilkan dashboard besar dengan ponsel sebagai instrumen pendamping; mobile
   menampilkan screenshot ponsel lebih dahulu, kemudian konteks desktop. Pesan, CTA,
   dan urutan cerita tetap sama—hanya prioritas visualnya yang mengikuti perangkat.
-- **Bukti produk mobile**: `demo-mobile-dark.png` / `demo-mobile-light.png` di
-  `public/screenshots/` adalah viewport 390×844 dari `/demo` asli, lengkap dengan
-  dashboard dan bottom navigation; bukan mockup. Regenerasi dilakukan oleh
-  `scripts/shoot-demo.mjs`, yang juga menyalin hasil ke `scripts/shots/` untuk vault.
-  Frame landing memakai bezel ponsel (speaker, kamera, tombol samping, home indicator)
-  dan tidak menaruh label di atas layar, sehingga bottom navigation tetap terlihat utuh.
+- **Bukti produk desktop + mobile**: `demo-dashboard-{dark,light}.png` dan
+  `demo-mobile-{dark,light}.png` di `public/screenshots/` berasal dari `/demo` asli;
+  bukan mockup. `scripts/shoot-demo.mjs` meregenerasi keduanya ke `scripts/shots/` dan
+  menyalin pasangan yang dipakai landing ke `public/screenshots/`, sehingga bukti produk
+  tidak tertinggal dari UI hidup. Frame ponsel memakai bezel (speaker, kamera, tombol
+  samping, home indicator) tanpa label yang menutup bottom navigation.
 - **Identitas**: tetap memakai token dark/light, mono readout, LED cyan, spine tiket,
-  divider titik, dan maskot Volt. Tidak memakai aset/komponen eksternal baru.
-- **Teknis**: `AuthGate` merender V2 untuk sesi signed-out dan `app/router.tsx`
-  mempertahankan alias publik tanpa impor ganda; copy memakai namespace i18n
-  `landingV2.*`, CTA auth membuka panel auth, dan demo tetap memakai `/demo`.
-- **Verifikasi**: render asli desktop 1280×720, mobile 390×844, serta tema terang;
-  tidak ada overflow horizontal dan header sticky tetap bekerja.
+  divider titik, serta VOLT Probe sebagai pendamping diagnostik dan logo compact. Tidak
+  memakai aset/komponen eksternal baru.
+- **Polish VOLT (29 Agu 2026)**: readout hero kini menjadi diagnostic dock lengkap dengan
+  indikator sinyal alur, bukan maskot kecil yang mengambang. CTA akhir menempatkan varian
+  penuh dalam probe bay dengan trace, LED, dan status “bench siap” sehingga karakter,
+  mekanisme produk, dan aksi trial membentuk satu komposisi. Motion hanya tinggal pada
+  momen brand CTA dan otomatis berhenti saat reduced motion.
+- **Teknis**: `AuthGate` hanya memulihkan sesi cloud dan memuat V2/Auth secara lazy;
+  bootstrap repository, wizard, PIN, dan shell aplikasi pindah ke `WorkspaceGate` yang
+  baru dimuat setelah sesi membutuhkan workspace. `app/router.tsx` juga memuat V2 dan
+  `AppLayout` secara lazy. Copy memakai namespace i18n `landingV2.*`; CTA hero primer
+  menuju `/demo`, sedangkan CTA trial membuka panel auth.
+- **Guardrail copy (28 Agu 2026)**: klaim offline dibedakan secara jujur antara mode
+  lokal satu-perangkat dan mode cloud yang memerlukan koneksi; jargon “row-level” diganti
+  bahasa akses toko; trial tidak lagi mengaku membuka “semua fitur” karena ekspor/impor
+  memang dikecualikan. Tombol harga tidak lagi berpura-pura memilih Solo/Pro ketika alur
+  auth belum membawa pilihan paket. Metadata, noscript, dan FAQ JSON-LD memakai janji
+  “catat sekali” yang sama; klaim kanal pembayaran QRIS yang belum final dibuang.
+- **Polish aksesibilitas (28 Agu 2026)**: light theme memakai token foreground dengan
+  kontras minimum 4.5:1, focus ring solid, skip link, target sentuh 44 px, teks mobile
+  minimum 14 px, serta maskot yang tunduk pada reduced motion. Scaffold nomor berulang
+  dibuang; urutan angka tinggal pada alur reparasi yang memang bersekuens.
+- **Verifikasi**: render asli dark/light desktop 1440×960 dan mobile 390×844; sapuan
+  320/360/375/390/414/744/834/980/981/1025/1440 px nol overflow dokumen, nol teks
+  terpotong, dan nol target di bawah 44 px. Direct text-contrast audit sebelumnya tetap
+  nol pelanggaran; build + lint bersih dan 459/459 test lulus.
+  `scripts/audit-landing-owner.mjs` khusus menjaga section owner pada 320–1440 px,
+  synthetic long copy, RTL, forced-colors, serta text scaling 200%.
+  `scripts/shoot-landing.mjs` meregenerasi gambar di bawah dan
+  `scripts/sync-vault-attachments.ps1` menyelaraskannya ke vault.
+
+![[landing-owner-dark.png]]
 
 ![[landing-phone-frame-desktop.png]]
 
@@ -412,9 +448,23 @@ Logika tak berubah (subscribe/confirm/cancel + auto-refresh realtime); murni lap
 
 Halaman auth (`AuthPage`, cloud-only, sebelum workspace boot) — login / daftar / reset. Dulu kartu glass polos di tengah; kini **split-panel "terminal akses bench"** senada identitas produk:
 
-- **Panel brand (kiri)** — logo + wordmark FixMaster, tagline domain (reparasi gadget/elektronik), dan **diagnostic rail** ber-LED (BENCH ONLINE / DATA TERSINKRON / QRIS SIAP) bergaya mono — gema dari [[Sidebar - Live Diagnostic Rail]]. Wash grid blueprint + radial brand.
-- **Panel form (kanan)** — **faceplate bersekrup** di empat sudut, header "Terminal Akses" dengan **power LED** (accent, berkedip `fm-pulse`) + tag mode mono (login/signup/reset), lalu form (email/password/konfirmasi) + tautan. Header kini juga memuat tombol **"Beranda"** ber-ikon di kiri (kembali ke landing — selalu terlihat tanpa scroll, gantikan tautan lama di dasar) dan **toggle tema** sun/moon di kanan.
-- **Responsif** — di ≤720px panel brand disembunyikan, form jadi faceplate tunggal dengan wordmark ringkas di atas.
+- **Panel brand (kiri)** — logo + wordmark FixMaster, tagline domain
+  (reparasi gadget/elektronik), VOLT Probe penuh yang statis, dan **diagnostic rail**
+  ber-LED (SERVIS SIAP / STOK TERHUBUNG / MARGIN TERHITUNG) bergaya mono — gema dari
+  [[Sidebar - Live Diagnostic Rail]]. QRIS yang belum menjadi janji produk tidak lagi
+  ditampilkan. Wash grid blueprint + radial brand.
+- **Panel form (kanan)** — **faceplate bersekrup** di empat sudut, header "Terminal
+  Akses" dengan **power LED** (accent, berkedip `fm-pulse`) + tag mode terlokalisasi,
+  lalu form (email/password/konfirmasi) + tautan. Header memuat tombol **"Beranda"**
+  ber-ikon di kiri dan **toggle tema** sun/moon di kanan; seluruh kontrol minimal 44 px.
+- **Responsif** — collapse memakai container query `auth` di ≤720px. Panel brand
+  disembunyikan, form jadi faceplate tunggal dengan wordmark dan compact VOLT status
+  module. Pada lebar sangat sempit label terminal dilepas agar kontrol tidak overflow.
+- **Copy per mode + i18n (29 Agu 2026)** — login, daftar, dan reset memiliki heading,
+  hint, CTA, pesan VOLT, validasi, toast, label tema, dan consent yang berbeda sesuai
+  tugasnya melalui namespace `authPage.*` ID/EN. Pesan “Silakan masuk” tidak lagi bocor
+  ke mode daftar/reset. `Input.revealLabels` membuat label aksesibilitas tombol mata ikut
+  bahasa aktif.
 
 Logika auth tak berubah (Supabase Auth: signIn/signUp/resetPassword). Copy toast signup diperbaiki: tak lagi menyebut "cek email untuk verifikasi" karena email confirmation dimatikan — akun langsung aktif → arahkan ke login. Token `var(--...)` saja.
 

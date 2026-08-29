@@ -1,40 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
-  <!-- Maskable app icon = "Volt" mascot face, full-bleed square background
-       (safe zone: all face elements stay within the central 80%). -->
-  <defs>
-    <linearGradient id="g-brand" x1="40" y1="40" x2="472" y2="472" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#f5a623"/>
-      <stop offset="100%" stop-color="#3dd9c4"/>
-    </linearGradient>
-    <filter id="f-glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <linearGradient id="g-sheen" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="url(#g-brand)"/>
-  <rect width="512" height="512" fill="url(#g-sheen)"/>
-  <rect x="243" y="120" width="26" height="60" rx="13" fill="#0b0d11" opacity="0.6"/>
-  <circle cx="256" cy="106" r="26" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <g opacity="0.5">
-    <circle cx="122" cy="146" r="16" fill="#0b0d11"/>
-    <line x1="112" y1="136" x2="132" y2="156" stroke="#f5a623" stroke-width="7"/>
-    <circle cx="390" cy="146" r="16" fill="#0b0d11"/>
-    <line x1="380" y1="136" x2="400" y2="156" stroke="#f5a623" stroke-width="7"/>
+  <title>FixMaster — VOLT Probe app icon</title>
+  <!-- Full-bleed maskable icon; all identifying geometry remains inside the central safe zone. -->
+  <rect width="512" height="512" fill="#111419"/>
+  <circle cx="256" cy="256" r="222" fill="#15191f" stroke="#2c333c" stroke-width="4"/>
+  <g transform="rotate(-17 176 132)">
+    <rect x="158" y="70" width="36" height="105" rx="14" fill="#303741" stroke="#606a76" stroke-width="7"/>
+    <rect x="164" y="39" width="24" height="50" rx="10" fill="#f5a623"/>
+    <path d="M176 22L193 43H159L176 22Z" fill="#aab2bd"/>
+    <rect x="145" y="157" width="62" height="44" rx="18" fill="#15191f" stroke="#c0750a" stroke-width="7"/>
   </g>
-  <rect x="126" y="196" width="260" height="180" rx="52" fill="#0b0d11" opacity="0.92"/>
-  <circle cx="208" cy="272" r="27" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <circle cx="304" cy="272" r="27" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <path d="M208 322 Q256 360 304 322" stroke="#f5a623" stroke-width="19" stroke-linecap="round"/>
-  <g stroke="#0b0d11" stroke-width="11" stroke-linecap="round" opacity="0.55">
-    <line x1="212" y1="402" x2="212" y2="424"/>
-    <line x1="256" y1="402" x2="256" y2="424"/>
-    <line x1="300" y1="402" x2="300" y2="424"/>
+  <path d="M180 118H332L398 184V373L347 438H184L113 381V188L180 118Z" fill="#1b2027" stroke="#606a76" stroke-width="10"/>
+  <path d="M113 194L169 134V409L113 376V194Z" fill="#f5a623"/>
+  <path d="M190 178H323L365 220V306L329 342H187L149 307V219L190 178Z" fill="#070a0d" stroke="#3dd9c4" stroke-opacity="0.62" stroke-width="8"/>
+  <path d="M186 261H212L231 220L258 305L284 239L305 271H333" stroke="#3dd9c4" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#3dd9c4" opacity="0.72">
+    <rect x="190" y="315" width="35" height="8" rx="4"/>
+    <rect x="236" y="315" width="18" height="8" rx="4"/>
+    <rect x="265" y="315" width="50" height="8" rx="4"/>
   </g>
+  <circle cx="257" cy="384" r="39" fill="#070a0d" stroke="#606a76" stroke-width="8"/>
+  <circle cx="257" cy="384" r="28" fill="#f5a623"/>
+  <path d="M257 384L273 362" stroke="#070a0d" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="337" cy="151" r="8" fill="#aab2bd"/>
 </svg>

@@ -4,8 +4,8 @@
  * /prototype/ticket and screenshotted. This is a DESIGN PROBE for the
  * "precision electronics bench" identity — not yet wired into the app.
  */
-import { useState } from 'react';
 import { Icon } from '@/components/ui';
+import { useThemeStore } from '@/stores/theme';
 import styles from './RepairTicketPrototype.module.css';
 
 const STAGES = [
@@ -35,15 +35,24 @@ const LOG = [
 ];
 
 export function RepairTicketPrototype() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // Probe ini dulu punya state tema sendiri di atas palet privatnya. Palet itu
+  // sekarang memetakan ke token asli, jadi tombolnya menggerakkan tema aplikasi
+  // — satu sumber kebenaran, dan probe otomatis benar di kedua tema.
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   return (
-    <div className={styles.root} data-proto-theme={theme}>
+    <div className={styles.root}>
       {/* Probe toolbar (not part of the design) */}
       <div className={styles.probeBar}>
         <span className={styles.probeTag}>PROTOTYPE · Repair Ticket</span>
-        <button className={styles.probeToggle} onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}>
-          {theme === 'dark' ? '☀ Light' : '☾ Dark'}
+        <button
+          className={styles.probeToggle}
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Tema terang' : 'Tema gelap'}
+        >
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
+          {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
       </div>
 

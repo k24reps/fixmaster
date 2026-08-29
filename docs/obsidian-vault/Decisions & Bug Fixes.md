@@ -1815,3 +1815,205 @@ KPI rail yang disengaja), tablet 744–1152 px, dan 11 kombinasi desktop/zoom se
 dokumen atau clipping.
 
 #decision #dashboard #accessibility #responsive #data-integrity #impeccable
+
+---
+
+## Landing V2: polish aksesibilitas + jalur muat signed-out (28 Agu 2026)
+
+Audit Impeccable menemukan kontras teks light theme, focus ring transparan, ketiadaan skip link,
+SMIL maskot yang tetap bergerak saat reduced motion, label mobile terlalu kecil, target sentuh di
+bawah 44 px, dan pola section bernomor yang berulang. Semuanya diperbaiki tanpa menghilangkan
+identitas `Repair Flow Console`: diagnostic spine sekarang pseudo-element, nomor hanya tinggal pada
+alur reparasi, sedangkan hierarchy lain memakai judul, seam, LED, dan readout mono.
+
+Warna dekoratif dipisahkan dari warna foreground melalui `--brand-text`, `--accent-text`,
+`--success-text`, dan `--focus-ring`. Light theme terukur minimum 4.5:1 untuk teks langsung pada
+permukaan solid. Landing punya skip link, outline keyboard solid, kontrol 44×44 px, teks informasi
+mobile 14 px, container query `landing`, dan `Mascot` yang menghapus animasi SMIL ketika
+`prefers-reduced-motion` aktif. Dua unit test menjaga perilaku maskot.
+
+Jalur signed-out juga dipisah: `AuthGate` cukup memulihkan sesi cloud lalu lazy-load landing/auth;
+bootstrap repository, wizard, PIN, dan shell pindah ke `WorkspaceGate`. `AppLayout` dan alias
+preview ikut lazy. Hasil build: jalur awal turun sekitar **42 kB gzip** dibanding sebelum split;
+vendor Supabase tetap eager karena pemulihan sesi cloud memang diperlukan.
+
+Verifikasi: build hijau, lint bersih, **459/459 test**; dark/light dan mobile difoto ulang. Audit
+langsung pada 390/744/834/980/981/1025/1440 px menghasilkan nol overflow dokumen dan nol target
+interaktif di bawah 44 px; direct text-contrast audit nol pelanggaran. Deep link `/?auth=1`, FAQ,
+skip link keyboard, dan alias preview tetap bekerja.
+
+#decision #landing #accessibility #performance #responsive #impeccable
+
+---
+
+## Light mode tidak lagi pucat + sidebar channel hierarchy (28 Agu 2026)
+
+**Masalah:** light mode memakai empat lapisan putih/abu yang terlalu dekat, shadow terlalu samar,
+dan cyan muncul pada hampir semua icon sidebar. Akibatnya panel melebur, active channel kurang
+tegas, LED idle tampak seperti status aktif yang pudar, dan channel Pro kehilangan keterbacaan
+karena seluruh baris diberi `opacity`.
+
+**Keputusan visual:** light theme menjadi **Bright Workshop Steel**—baja anodized abu-biru untuk
+app/chassis, pelat putih untuk permukaan kerja, dan amber/cyan hanya untuk aksi atau status.
+Token `rail-bg/well/panel/control/divider/active/shadow` ditambahkan untuk menjaga dark/light dari
+satu sistem. Shadow panel light dipadatkan ke blur 8 px; depth utama datang dari jarak luminans,
+divider, dan well, bukan ghost card.
+
+Sidebar kini memakai graphite untuk icon idle, port cincin untuk LED tanpa sinyal, semantic ink
+untuk readout kecil, serta full border + plate amber + icon cell solid untuk active channel. Side
+stripe active dan seam `repeating-linear-gradient` dibuang. Channel terkunci tetap terbaca tanpa
+opacity global; badge LED PRO tetap menjadi penanda plan. Selector cabang dan panel identitas
+memakai chassis control yang sama.
+
+Token foreground status (`warning-text`, `danger-text`, `info-text`, serta token yang sudah ada)
+diterapkan pada Badge, StatCard, field error, dan dashboard metric/action. Ramp 400 yang luminous
+tetap dipertahankan untuk layar readout gelap, sehingga light mode kuat tanpa merusak instrumen LCD.
+
+Verifikasi: render browser dark/light desktop 1440×900, collapsed tower, Solo locked-state, drawer
+tablet 834×1112, mobile 390×844, control deck, branch dropdown, dan landing light; semuanya nol
+overflow dokumen. Audit teks langsung pada sidebar light menghasilkan nol pelanggaran kontras.
+Detector Impeccable nol temuan; build dan lint hijau, **459/459 test lulus**. Screenshot rail dark/light diregenerasi dari
+`/demo` lewat `scripts/shoot-sidebar.mjs` dan `scripts/shoot-locked-nav.mjs`.
+
+#decision #light-mode #sidebar #design-system #accessibility #impeccable
+
+---
+
+## Landing V2: dari “rapi” generik ke bukti satu pencatatan (28 Agu 2026)
+
+**Masalah:** hero “Konter tetap rapi” mudah dipahami tetapi sama dengan bahasa kategori.
+Mekanisme paling khas FixMaster—sparepart terpakai mengurangi stok, masuk ke biaya tiket, lalu
+membentuk margin—baru terbaca setelah fold. Rail sesudah hero berisi jaminan generik sebelum calon
+klien mengenali masalahnya; demo aplikasi asli justru menjadi CTA kedua. Audit copy juga menemukan
+tiga drift fakta: cloud disebut tetap bekerja offline, trial disebut membuka semua fitur walau
+ekspor/impor dikecualikan, dan tombol Solo/Pro menyiratkan pilihan paket yang tidak dibawa ke auth.
+
+**Keputusan narasi:** hero kini memimpin dengan **“Catat servis sekali. Stok dan margin ikut
+terhitung.”** Lead menjelaskan hubungan tiket–sparepart–kas–laporan dan biaya catat ulang dari
+buku/chat/Excel. CTA demo menjadi primer karena status produk masih pra-peluncuran dan demo asli
+adalah bukti terkuat yang tersedia. Trust rail diganti empat gejala operasional: pelanggan terus
+menanyakan status, stok belum mengikuti pemakaian part, margin baru dihitung saat tutup, dan owner
+masih harus mengecek staf. Alur empat tahap dipertahankan sebagai penjelasan mekanisme.
+
+Bagian owner menamai hasil keputusan (“servis mana yang untung”), sedangkan panggung produk
+membagi dua adegan nyata: operasional di meja dan pantauan dari ponsel. Paket dijelaskan dari cara
+kerja hari ini—Solo untuk satu orang/satu outlet, Pro untuk tim/multi-outlet—tanpa badge popularitas
+fiktif. Tombol kedua paket menjadi “Mulai uji coba 14 hari” sampai aplikasi benar-benar membawa
+pilihan tier ke alur signup.
+
+**Guardrail kejujuran:** pain rail tidak lagi memuat klaim offline. FAQ membedakan mode lokal
+satu-perangkat dari mode cloud yang membutuhkan koneksi, menjelaskan isolasi data dalam bahasa
+akses pengguna, dan menambahkan fakta “tanpa instalasi”. Final CTA hanya menjanjikan penggunaan
+gratis 14 hari, bukan “semua fitur”. `index.html` (title, description, OG/Twitter, noscript,
+SoftwareApplication, dan FAQ JSON-LD) diselaraskan; klaim pembayaran QRIS dihapus karena kanal
+pembayaran belum menjadi komitmen produk.
+
+**Bukti visual:** `scripts/shoot-demo.mjs` sebelumnya hanya menyalin screenshot mobile ke
+`public/screenshots/`; dashboard publik tetap basi. Skrip kini menyalin dashboard dark/light juga,
+lalu `scripts/shoot-landing.mjs` memotret bukti produk terbaru di landing.
+
+Verifikasi: build hijau, lint bersih, **459/459 test** lulus; render asli desktop dark/light
+1440×960 dan mobile 390×844 diregenerasi. Probe DOM pada
+320/360/375/390/414/744/834/980/981/1025/1440 px menemukan nol overflow dokumen, nol teks
+terpotong, dan nol target interaktif di bawah 44 px. Headline, pain rail, pricing, FAQ, dan CTA
+tetap utuh; rail desktop diberi ruang aman agar tidak tertutup tombol WhatsApp mengambang.
+
+#decision #landing #copywriting #positioning #conversion #truthfulness #impeccable
+
+---
+
+## VOLT Probe menyatukan maskot, logo, dan alat diagnosis (29 Agu 2026)
+
+**Masalah:** VOLT lama memakai pola robot kotak tersenyum dengan antena. Detail sekrup,
+LCD, dan tick-gauge memang berasal dari bench, tetapi pada ukuran logo 26–42 px siluetnya
+tetap terbaca sebagai chatbot/AI generik. Label “Asisten meja” memperkuat janji AI yang
+tidak ada di produk, sementara shell gradien rounded-square membuat app icon kurang khas
+untuk usaha reparasi elektronik.
+
+**Keputusan:** VOLT menjadi **VOLT Probe**, continuity tester hidup yang non-humanoid.
+Ciri primer adalah probe asimetris; ciri sekunder adalah spine amber, waveform cyan,
+selector dial, kabel uji, dan kaki magnet. Ekspresi datang dari sinyal LCD, bukan wajah.
+Nama VOLT dipertahankan, tetapi perannya berubah menjadi “Pendamping diagnostik”. Logo,
+favicon, PWA maskable icon, Apple touch icon, dan social preview memakai siluet compact
+yang sama sehingga brand dan maskot kini satu keluarga bentuk.
+
+**Perbedaan register:** landing boleh menampilkan varian penuh 124 px dengan gerak probe
+dan waveform yang halus. Dashboard hanya memakai varian compact statis 30 px; auth,
+sidebar, splash, header, dan footer memakai logo statis. Ini menjaga kehangatan di brand
+surface tanpa menjadikan maskot ornamen bergerak di ruang kerja atau pengganti penjelasan
+keuangan yang serius.
+
+**Sumber & regenerasi:** React SVG memakai token material `--volt-*` agar tidak hardcode
+warna UI dan tetap sama sebagai benda fisik di dark/light. SVG publik adalah sumber aset
+statis; `npm run brand:render` menghasilkan PNG 192/512, maskable PNG, Apple touch icon,
+dan `og-image.png`. Service-worker shell dinaikkan ke `v2` agar identitas lama tidak
+tertahan cache.
+
+Verifikasi: build dan lint bersih, **459/459 test** lulus; render landing dark/light,
+auth dark/light, sidebar expanded/collapsed dark/light, dashboard demo dark/light, dan
+mobile 390×844 menunjukkan siluet tetap terbaca tanpa distorsi. Audit mobile pada
+320/360/375/390/414 px dan audit zoom pada 11 lebar efektif 960–2400 px selesai tanpa
+regresi; overflow yang dilaporkan hanya rail/carousel horizontal yang disengaja.
+Screenshot bukti produk diregenerasi agar landing tidak menampilkan logo lama.
+
+#decision #brand #mascot #logo #pwa #design-system #impeccable
+
+---
+
+## Landing + auth: VOLT sebagai continuity device lintas funnel (29 Agu 2026)
+
+**Masalah:** setelah rebrand VOLT Probe, landing masih menaruh wajah compact sebagai
+ornamen kecil dan CTA akhir hanya meletakkan maskot di samping copy. Auth bahkan hanya
+memakai logo; rail brand masih mengklaim `QRIS SIAP` dan `DATA TERSINKRON`, padahal itu
+bukan pesan yang aman untuk setiap mode/paket. Copy auth seluruhnya hardcoded Indonesia,
+pesan VOLT tidak mengikuti login/daftar/reset, dan tombol back/theme/password reveal
+sebagian masih di bawah target sentuh 44 px.
+
+**Keputusan desain:** perlakukan landing → auth sebagai satu lintasan perangkat. Di hero,
+VOLT duduk dalam diagnostic dock dengan signal meter yang menempel pada konsol pekerjaan.
+CTA akhir menjadi probe bay dengan trace, LED, dan status kesiapan alur. Di auth, VOLT
+menjadi instrumen statis: varian penuh pada panel brand desktop dan compact status module
+pada faceplate mobile. Gerak hanya dipakai pada CTA brand; login/daftar/reset tetap tenang.
+
+**Keputusan copy dan aksesibilitas:** rail auth kini memvisualkan mekanisme produk yang
+benar (`SERVIS SIAP`, `STOK TERHUBUNG`, `MARGIN TERHITUNG`), bukan kanal pembayaran yang
+belum final. Seluruh copy AuthPage dipindahkan ke `authPage.*` ID/EN dan status VOLT
+berubah sesuai mode. Tombol back/theme/reveal/link memenuhi 44 px, breakpoint struktural
+auth memakai `@container auth`, dan animasi shell/LED dihentikan pada reduced motion.
+`Input` menerima `revealLabels` agar show/hide password ikut bahasa halaman.
+
+**Verifikasi:** build + lint bersih, **459/459 test** lulus. Playwright memotret landing
+dark/light desktop + mobile, CTA dark/light, serta auth login/daftar/reset dark, login
+light, dan login/daftar mobile. Probe DOM menemukan nol overflow horizontal dan nol tombol
+di bawah 44 px pada semua surface itu. Audit aplikasi pada 320/360/375/390/414 px dan 11
+lebar efektif zoom 960–2400 px selesai; laporan horizontal hanya carousel aplikasi yang
+memang dapat digeser.
+
+#decision #landing #auth #brand #mascot #copywriting #accessibility #impeccable
+
+---
+
+## Landing owner proof: margin yang dapat diaudit (29 Agu 2026)
+
+**Masalah:** section “Tahu servis mana yang untung” menyatakan margin Rp420.000, tetapi
+tidak memperlihatkan modal pembentuknya. Empat manfaat juga dirender sebagai grid kartu
+identik, sehingga bukti operasional terlihat seperti daftar fitur generik. Pada narrow
+viewport kartu tiket masih mengandalkan rotasi/ghost layer, dan struktur dua kolom rumus
+belum pernah diuji dengan copy panjang, RTL, atau text-only zoom 200%.
+
+**Keputusan:** headline dipadatkan menjadi “Lihat margin tiap servis sebelum toko tutup”.
+Grid kartu diubah menjadi diagnostic rail dengan leader titik. Tiket membawa stamp
+**Contoh data** dan formula nyata yang sesuai `serviceProfit()`:
+`tagihan servis − modal sparepart = margin` (Rp1.250.000 − Rp830.000 = Rp420.000).
+Spine 4 px di sisi kartu yang melanggar guardrail side-stripe dipindah menjadi calibration
+rail horizontal di atas tiket. Transform/ghost offset dinetralkan pada mobile.
+
+**Hardening:** semua item grid memiliki `min-width: 0` dan `overflow-wrap`, judul memakai
+balanced wrapping, tiket/rail memakai struktur semantik `ul`, `dl`, dan `role=group`,
+serta formula turun menjadi input biaya + hasil margin dua tingkat agar angka tidak
+dipaksa mengecil. `scripts/audit-landing-owner.mjs` menguji 320/360/390/744/980/1025/
+1112/1440 px, long copy + emoji, RTL, forced-colors, dan text scaling 200%—seluruhnya
+nol overflow/clipping. Render dark/light/mobile diregenerasi; build + lint bersih dan
+**459/459 test** lulus.
+
+#decision #landing #margin #copywriting #responsive #accessibility #impeccable

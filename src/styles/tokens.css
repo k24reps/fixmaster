@@ -22,6 +22,7 @@
   --accent-400: #5fe6d4;
   --accent-500: #3dd9c4;
   --accent-600: #1fb3a0;
+  --accent-700: #0b766d;
 
   /* ---------- Semantic ---------- */
   --green-400: #34d399;
@@ -45,6 +46,12 @@
   --readout-muted: #8b97a6;
   --readout-muted-2: #6b7787;
   --readout-soft: #cfd6e0;
+  /* VOLT Probe keeps the same physical materials in both app themes. */
+  --volt-shell: #15191f;
+  --volt-shell-high: #303741;
+  --volt-edge: #606a76;
+  --volt-display: #070a0d;
+  --volt-metal: #aab2bd;
   --whatsapp: #25d366;
   --whatsapp-ink: #06351a;
 
@@ -108,6 +115,15 @@
   --topbar-height: 76px;
   --mobile-nav-height: 68px;
   --content-max: 1380px;
+  /* Jarak bingkai app dari tepi atas viewport. Shell yang menyisipkan chrome
+     sendiri di atas app (mis. /demo) menimpanya supaya elemen `fixed` seperti
+     sidebar berhenti menutupi chrome itu. */
+  --app-inset-top: 14px;
+  /* Tinggi viewport yang sudah mengompensasi `zoom` di :root (lihat
+     stores/zoom.ts). `100dvh` ikut terskala zoom, jadi shell setinggi layar
+     akan menyisakan ruang kosong di zoom <100% dan terpotong di >100%. */
+  --zoom: 1;
+  --app-vh: calc(100dvh / var(--zoom));
 
   /* ---------- Z-index scale ---------- */
   --z-base: 1;
@@ -150,20 +166,35 @@
 
   --brand: var(--brand-500);
   --brand-hover: var(--brand-400);
+  --brand-text: var(--brand-400);
   --brand-soft: rgba(245, 166, 35, 0.15);
   --accent: var(--accent-500);
+  --accent-text: var(--accent-400);
   --accent-soft: rgba(61, 217, 196, 0.14);
   --success: var(--green-500);
+  --success-text: var(--green-400);
   --success-soft: rgba(16, 185, 129, 0.15);
   --warning: var(--amber-500);
+  --warning-text: var(--amber-400);
   --warning-soft: rgba(245, 158, 11, 0.15);
   --danger: var(--red-500);
+  --danger-text: var(--red-400);
   --danger-soft: rgba(239, 68, 68, 0.15);
   --info: var(--blue-500);
+  --info-text: var(--blue-400);
   --info-soft: rgba(59, 130, 246, 0.15);
 
   /* Faint PCB / blueprint grid line tint. */
   --grid-line: rgba(255, 255, 255, 0.022);
+
+  /* App-shell chassis: sidebar/control-deck surfaces. */
+  --rail-bg: #15191f;
+  --rail-well: #101318;
+  --rail-panel: #1d2229;
+  --rail-control: #12161c;
+  --rail-divider: rgba(255, 255, 255, 0.12);
+  --rail-active: rgba(245, 166, 35, 0.16);
+  --rail-shadow: 0 6px 8px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   --gradient-brand: linear-gradient(135deg, #f5a623, #e8920c);
   --gradient-brand-accent: linear-gradient(135deg, #f5a623, #3dd9c4);
@@ -173,61 +204,82 @@
   --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.34);
   --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.52);
   --shadow-brand: 0 6px 22px rgba(245, 166, 35, 0.32);
+  --shadow-bench-tight: 0 6px 8px rgba(0, 0, 0, 0.34);
+  --shadow-brand-tight: 0 4px 8px rgba(245, 166, 35, 0.26);
 
-  --ring: 0 0 0 3px rgba(245, 166, 35, 0.3);
+  --focus-ring: var(--brand-400);
+  --ring: 0 0 0 3px var(--focus-ring);
 }
 
 /* ============================================================
-   LIGHT THEME — "Concrete & Paper"
+   LIGHT THEME — "Bright Workshop Steel"
    ============================================================ */
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg-base: #eceff2;
-  --bg-app: #f5f6f7;
-  --bg-surface: #ffffff;
-  --bg-surface-2: #f0f2f4;
+  --bg-base: #d7dee4;
+  --bg-app: #e9edf0;
+  --bg-surface: #fbfcfd;
+  --bg-surface-2: #e1e7eb;
   --bg-elevated: #ffffff;
-  --bg-input: #f5f6f7;
-  --bg-hover: rgba(15, 22, 35, 0.03);
+  --bg-input: #edf1f4;
+  --bg-hover: rgba(20, 35, 48, 0.07);
 
-  --surface-glass: rgba(255, 255, 255, 0.74);
-  --surface-glass-strong: rgba(255, 255, 255, 0.9);
+  --surface-glass: rgba(251, 252, 253, 0.88);
+  --surface-glass-strong: rgba(255, 255, 255, 0.96);
 
-  --text-primary: #15191f;
-  --text-secondary: #566170;
-  --text-muted: #667382;
+  --text-primary: #131a22;
+  --text-secondary: #3f4d5b;
+  --text-muted: #526170;
   --text-inverse: #ffffff;
   --on-brand: #1a1205;
 
-  --border: rgba(15, 22, 35, 0.1);
-  --border-strong: rgba(15, 22, 35, 0.18);
-  --border-brand: rgba(217, 130, 10, 0.4);
+  --border: rgba(20, 35, 48, 0.16);
+  --border-strong: rgba(20, 35, 48, 0.27);
+  --border-brand: rgba(184, 109, 0, 0.58);
 
   --brand: #d9820a;
-  --brand-hover: #b86d00;
-  --brand-soft: rgba(217, 130, 10, 0.1);
+  --brand-hover: #8a5200;
+  --brand-text: var(--brand-900);
+  --brand-soft: rgba(217, 130, 10, 0.16);
   --accent: var(--accent-600);
-  --accent-soft: rgba(31, 179, 160, 0.12);
+  --accent-text: #08645d;
+  --accent-soft: rgba(31, 179, 160, 0.16);
   --success: var(--green-600);
-  --success-soft: rgba(16, 185, 129, 0.12);
+  --success-text: #036b4e;
+  --success-soft: rgba(16, 185, 129, 0.15);
   --warning: var(--amber-600);
-  --warning-soft: rgba(245, 158, 11, 0.12);
+  --warning-text: #8f5100;
+  --warning-soft: rgba(245, 158, 11, 0.16);
   --danger: var(--red-600);
-  --danger-soft: rgba(239, 68, 68, 0.1);
+  --danger-text: #b91c1c;
+  --danger-soft: rgba(239, 68, 68, 0.13);
   --info: var(--blue-500);
-  --info-soft: rgba(59, 130, 246, 0.1);
+  --info-text: #1d4ed8;
+  --info-soft: rgba(59, 130, 246, 0.13);
 
-  --grid-line: rgba(15, 22, 35, 0.03);
+  --grid-line: rgba(20, 35, 48, 0.055);
+
+  /* Bright-workshop chassis: cool anodized steel, not pale office paper. */
+  --rail-bg: #f3f6f8;
+  --rail-well: #e3e9ed;
+  --rail-panel: #fafbfc;
+  --rail-control: #ffffff;
+  --rail-divider: rgba(20, 35, 48, 0.22);
+  --rail-active: #ffefd2;
+  --rail-shadow: 0 6px 8px rgba(20, 35, 48, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   --gradient-brand: linear-gradient(135deg, #e8920c, #d9820a);
   --gradient-brand-accent: linear-gradient(135deg, #e8920c, #1fb3a0);
   --gradient-sheen: linear-gradient(135deg, rgba(245, 166, 35, 0.06), rgba(255, 255, 255, 0));
 
-  --shadow-sm: 0 1px 2px rgba(15, 22, 35, 0.06);
-  --shadow-md: 0 6px 20px rgba(15, 22, 35, 0.08);
-  --shadow-lg: 0 16px 48px rgba(15, 22, 35, 0.14);
+  --shadow-sm: 0 2px 4px rgba(20, 35, 48, 0.12);
+  --shadow-md: 0 6px 8px rgba(20, 35, 48, 0.14);
+  --shadow-lg: 0 16px 28px rgba(20, 35, 48, 0.2);
   --shadow-brand: 0 6px 20px rgba(217, 130, 10, 0.25);
+  --shadow-bench-tight: 0 6px 8px rgba(15, 22, 35, 0.1);
+  --shadow-brand-tight: 0 4px 8px rgba(217, 130, 10, 0.18);
 
-  --ring: 0 0 0 3px rgba(217, 130, 10, 0.22);
+  --focus-ring: var(--brand-800);
+  --ring: 0 0 0 3px var(--focus-ring);
 }
