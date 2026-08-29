@@ -72,7 +72,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
       <header className={styles.header}>
         <a className={styles.brand} href="#top" aria-label="FixMaster">
-          <img src="/logo.svg" alt="" width="42" height="42" />
+          <img src="/logo-volt.svg" alt="" width="42" height="42" />
           <span>
             <strong>FixMaster</strong>
             <small>{t('landingV2.brandSub')}</small>
@@ -426,7 +426,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
       <footer className={styles.footer}>
         <div className={styles.footerBrand}>
-          <img src="/logo.svg" alt="" width="36" height="36" />
+          <img src="/logo-volt.svg" alt="" width="36" height="36" />
           <span><strong>FixMaster</strong><small>{t('landingV2.footerTagline')}</small></span>
         </div>
         <div className={styles.footerLinks}>

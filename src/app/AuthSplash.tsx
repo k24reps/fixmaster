@@ -4,7 +4,7 @@ export function AuthSplash() {
   return (
     <div className={styles.splash}>
       <div className={styles.logoMark}>
-        <img src="/logo.svg" alt="FixMaster" width="64" height="64" />
+        <img src="/logo-volt.svg" alt="FixMaster" width="64" height="64" />
       </div>
       <div className={styles.spinner} aria-label="Memuat" />
     </div>

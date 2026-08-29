@@ -1355,3 +1355,11 @@ pendapatan dikurangi biaya. Aset PWA/OG ikut diregenerasi dan probe khusus landi
 320–1440 px, long copy, RTL, forced-colors, serta text scaling 200%.
 
 #decision #rilis #brand #landing #auth #billing-safety
+
+### Hotfix cache aset brand pada production
+
+Deploy `f306e4f` selesai di Vercel, tetapi checksum menunjukkan path lama `logo.svg`, favicon,
+manifest, dan service worker masih dilayani dari cache CDN sementara aset baru yang belum pernah
+ada (`icon-192.png`) sudah aktif. Aset identitas dipindah ke path unik ber-namespace `-volt` dan
+semua referensi HTML, React, manifest, service worker, serta renderer diselaraskan. Ini membuat
+rilis brand deterministik tanpa menunggu invalidasi path lama.

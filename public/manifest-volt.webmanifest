@@ -14,7 +14,7 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/favicon-volt.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"

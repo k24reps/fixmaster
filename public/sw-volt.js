@@ -22,9 +22,9 @@ const CACHE = `fixmaster-shell-${CACHE_VERSION}`;
 const SHELL = [
   '/',
   '/index.html',
-  '/manifest.webmanifest',
-  '/favicon.svg',
-  '/logo.svg',
+  '/manifest-volt.webmanifest',
+  '/favicon-volt.svg',
+  '/logo-volt.svg',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-192.png',

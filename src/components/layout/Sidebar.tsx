@@ -76,7 +76,7 @@ export function Sidebar({
         <div className={styles.header}>
           <div className={styles.brand}>
             <span className={styles.brandMark} aria-hidden>
-              <img src="/logo.svg" alt="" width="38" height="38" />
+              <img src="/logo-volt.svg" alt="" width="38" height="38" />
             </span>
             <span className={styles.brandText}>
               <strong>

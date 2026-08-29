@@ -1,6 +1,6 @@
 /**
  * Render production PNG fallbacks from the canonical VOLT Probe SVG assets.
- * Run after changing public/logo.svg or public/icon-maskable.svg.
+ * Run after changing public/logo-volt.svg or public/icon-maskable-volt.svg.
  */
 import { chromium } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -28,7 +28,7 @@ async function renderSvg(source, target, size, omitBackground) {
 
 async function renderOpenGraph() {
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-  const logo = readFileSync(join(PUBLIC, 'logo.svg'), 'utf8');
+  const logo = readFileSync(join(PUBLIC, 'logo-volt.svg'), 'utf8');
   await page.setContent(`
     <style>
       * { box-sizing: border-box; }
@@ -136,15 +136,15 @@ async function renderOpenGraph() {
       </aside>
     </main>
   `);
-  await page.screenshot({ path: join(PUBLIC, 'og-image.png') });
+  await page.screenshot({ path: join(PUBLIC, 'og-image-volt.png') });
   await page.close();
-  console.log('rendered: og-image.png');
+  console.log('rendered: og-image-volt.png');
 }
 
-await renderSvg('logo.svg', 'icon-192.png', 192, true);
-await renderSvg('logo.svg', 'icon-512.png', 512, true);
-await renderSvg('icon-maskable.svg', 'icon-maskable-192.png', 192, false);
-await renderSvg('icon-maskable.svg', 'icon-maskable-512.png', 512, false);
-await renderSvg('icon-maskable.svg', 'apple-touch-icon.png', 180, false);
+await renderSvg('logo-volt.svg', 'icon-192.png', 192, true);
+await renderSvg('logo-volt.svg', 'icon-512.png', 512, true);
+await renderSvg('icon-maskable-volt.svg', 'icon-maskable-192.png', 192, false);
+await renderSvg('icon-maskable-volt.svg', 'icon-maskable-512.png', 512, false);
+await renderSvg('icon-maskable-volt.svg', 'apple-touch-icon.png', 180, false);
 await renderOpenGraph();
 await browser.close();

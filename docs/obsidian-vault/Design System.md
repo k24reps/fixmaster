@@ -113,9 +113,9 @@ hangat tetapi tidak menyiratkan fitur AI yang tidak dimiliki produk.
   Dashboard BENCH CONSOLE memakai `face` 30 px statis agar motion tidak mengganggu
   pekerjaan. Header, splash, sidebar, dan footer memakai logo compact yang sama tanpa
   animasi.
-- **Aset merek**: `public/logo.svg` dan `favicon.svg` adalah siluet VOLT Probe tanpa
-  rounded-square generik. `icon-maskable.svg` adalah versi safe-zone PWA. PNG 192/512,
-  Apple touch icon, dan `og-image.png` diregenerasi deterministik lewat
+- **Aset merek**: `public/logo-volt.svg` dan `favicon-volt.svg` adalah siluet VOLT Probe tanpa
+  rounded-square generik. `icon-maskable-volt.svg` adalah versi safe-zone PWA. PNG 192/512,
+  Apple touch icon, dan `og-image-volt.png` diregenerasi deterministik lewat
   `npm run brand:render` (`scripts/render-brand-assets.mjs`).
 - **Prinsip penggunaan**: VOLT adalah pendamping diagnostik, bukan narator atau
   customer-support bot. Ia menandai identitas, status ringan, dan momen brand; informasi
