@@ -93,6 +93,15 @@ Ia bukan sekadar dark mode yang diputihkan.
 - Shadow light dipadatkan maksimal 8 px untuk panel biasa; elevasi besar tinggal untuk
   overlay/dropdown. Kedalaman berasal dari lapisan permukaan dan divider, bukan ghost card.
 
+### Ambient bench pada produk dan demo (29 Agu 2026)
+
+Grid blueprint/PCB 30 px pada `body::before` adalah material lingkungan bersama, bukan
+ornamen milik satu halaman. Shell aplikasi dan demo tidak boleh menutupnya dengan bidang
+`--bg-base` opak. Demo memakai primitive yang sama melalui `body.fm-demo-active`, tetapi
+`--ambient-bench-opacity: 0.72` membuatnya 28% lebih tenang agar faceplate presentasi dan
+CTA tetap dominan. Jangan menyalin resep gradient ke CSS demo; perubahan pola, warna, dan
+ukuran harus tetap dilakukan sekali di `src/styles/global.css`.
+
 ## Maskot dan logo: "VOLT Probe" (29 Agu 2026)
 
 VOLT bukan lagi robot humanoid/chatbot. Anatominya sekarang berasal langsung dari alat

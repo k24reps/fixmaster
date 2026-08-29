@@ -6,6 +6,7 @@ import { InMemoryAdapter } from '@/data/in-memory-adapter';
 import { installRepository, resetRepository } from '@/data';
 import { useDemoStore } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
+import { useZoomStore } from '@/stores/zoom';
 import { seedDemoWorkspace } from '@/dev/seed';
 import { Icon } from '@/components/ui';
 import { DemoChrome } from './DemoChrome';
@@ -48,6 +49,12 @@ export function DemoApp() {
     robots.content = 'noindex';
     document.head.appendChild(robots);
 
+    // Keep the public demo visually faithful and readable regardless of an
+    // existing app preference on the same origin. This session is temporary:
+    // zoom controls work, but the saved preference is restored on exit.
+    const endTransientZoom = useZoomStore.getState().beginTransientZoom(1);
+    document.body.classList.add('fm-demo-active');
+
     installRepository(new InMemoryAdapter());
     useDemoStore.getState().enter();
     void seedDemoWorkspace().then(() => {
@@ -56,6 +63,8 @@ export function DemoApp() {
     return () => {
       cancelled = true;
       robots.remove();
+      document.body.classList.remove('fm-demo-active');
+      endTransientZoom();
       useDemoStore.getState().exit();
       useSessionStore.getState().reset();
       resetRepository();

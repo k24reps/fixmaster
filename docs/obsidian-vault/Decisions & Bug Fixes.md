@@ -1363,3 +1363,32 @@ manifest, dan service worker masih dilayani dari cache CDN sementara aset baru y
 ada (`icon-192.png`) sudah aktif. Aset identitas dipindah ke path unik ber-namespace `-volt` dan
 semua referensi HTML, React, manifest, service worker, serta renderer diselaraskan. Ini membuat
 rilis brand deterministik tanpa menunggu invalidasi path lama.
+
+---
+
+## Demo memakai ambient bench production tanpa mewarisi zoom pengguna (29 Agu 2026)
+
+**Masalah:** production memperlihatkan grid blueprint/PCB tipis dari `body::before`, tetapi
+`DemoApp.module.css` memberi `.demoRoot` bidang `--bg-base` opak sehingga grid tertutup.
+Akibatnya demo terlihat lebih generik dan tidak identik dengan produk yang dijanjikan. Selain
+itu, `/demo` mewarisi `fixmaster-zoom` dari origin yang sama; preferensi 80% membuat density
+screenshot tidak setara dengan production 100% dan menurunkan keterbacaan calon pengguna.
+
+**Keputusan visual:** `.demoRoot` dan splash boot dibuat transparan agar memakai satu primitive
+ambient global—resep grid tidak diduplikasi. Saat demo aktif, kelas `body.fm-demo-active`
+menurunkan `--ambient-bench-opacity` menjadi **0.72**: identitas Precision Electronics Bench
+tetap ada, tetapi 28% lebih tenang daripada ruang kerja production.
+
+**Keputusan zoom:** store zoom menyediakan `beginTransientZoom(1)`. Demo dimulai pada 100%; aksi
+zoom di Topbar tetap berfungsi selama sesi tetapi tidak menulis `localStorage`. Cleanup memulihkan
+zoom sebelum demo beserta tampilan `:root`, sehingga kunjungan demo tidak mengubah preferensi
+aplikasi utama. Unit test menjaga set–ubah–pulihkan dan persistensi nilai sebelumnya.
+
+**Bukti visual dan regresi:** `scripts/shoot-demo.mjs` sengaja menanam preferensi 80%, lalu
+mengharuskan computed zoom `1`, shell transparan, pseudo-element berisi linear-gradient,
+kelas demo aktif, dan opacity `0.72` sebelum mengambil gambar. Dashboard dark/light desktop
+1440×960 dan mobile 390×844 diregenerasi; frame menunggu readout laba agar screenshot publik
+tidak menangkap instrument kosong. Build dan lint bersih, serta **454/454 test** lulus pada
+worktree production terisolasi.
+
+#decision #demo #design-system #zoom #visual-fidelity #impeccable

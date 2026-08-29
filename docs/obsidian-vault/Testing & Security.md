@@ -128,8 +128,9 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 
 ## Baseline terkini (11 Agu 2026)
 
-- Unit/komponen: `npm run test` **453/453 hijau** (39 file) — baseline production 451
-  ditambah 2 penjaga reduced-motion maskot VOLT Probe.
+- Unit/komponen: `npm run test` **454/454 hijau** (39 file) — baseline production 451
+  ditambah 2 penjaga reduced-motion maskot VOLT Probe dan 1 penjaga sesi zoom sementara
+  pada demo publik.
 - Integration RLS/RPC staging: `npm run test:integration` **59/59 hijau** (8 file) — terakhir dijalankan 11 Agu 2026, butuh `.env.test.local`.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence
