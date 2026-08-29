@@ -147,7 +147,7 @@
   top: calc(var(--topbar-height) + var(--space-4));
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - var(--topbar-height) - var(--space-8));
+  max-height: calc(var(--app-vh) - var(--topbar-height) - var(--space-8));
   padding: 0 !important;
   overflow: hidden;
 }

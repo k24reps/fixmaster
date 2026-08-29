@@ -1,30 +1,33 @@
 /* ============================================================
    Repair Ticket Prototype — "Precision Electronics Bench"
-   Self-contained theming (data-proto-theme) so it doesn't touch
-   global tokens. Design probe for the new visual identity.
+   Design probe untuk identitas visual. Dulu punya palet privat
+   sendiri; itu sudah menyimpang dari tokens.css (mis. #f26d6d vs
+   --red-400 #f87171) sehingga probe justru mengajarkan warna yang
+   nyaris-tapi-bukan sistem. Sekarang --p-* cuma lapisan pemetaan
+   ke token asli: 694 baris di bawah tak perlu diubah, tapi nilainya
+   tak bisa menyimpang lagi dan tema terang datang gratis.
    ============================================================ */
 
 .root {
-  --p-bg: #0e1014;
-  --p-app: #14171c;
-  --p-surface: #1b1f26;
-  --p-surface-2: #20252e;
-  --p-border: rgba(255, 255, 255, 0.09);
-  --p-border-strong: rgba(255, 255, 255, 0.16);
-  --p-text: #eef1f6;
-  --p-text-2: #9aa4b3;
-  --p-text-3: #5f6b7a;
-  --p-brand: #f5a623;
-  --p-brand-2: #ffbe4d;
-  --p-cyan: #3dd9c4;
-  --p-success: #34d399;
-  --p-warning: #fbbf24;
-  --p-danger: #f26d6d;
-  --p-mono: 'JetBrains Mono', monospace;
-  --p-display: 'Space Grotesk', 'Inter', sans-serif;
-  --p-body: 'Inter', sans-serif;
-  /* Faint PCB grid texture */
-  --p-grid: rgba(255, 255, 255, 0.022);
+  --p-bg: var(--bg-base);
+  --p-app: var(--bg-app);
+  --p-surface: var(--bg-surface);
+  --p-surface-2: var(--bg-surface-2);
+  --p-border: var(--border);
+  --p-border-strong: var(--border-strong);
+  --p-text: var(--text-primary);
+  --p-text-2: var(--text-secondary);
+  --p-text-3: var(--text-muted);
+  --p-brand: var(--brand);
+  --p-brand-2: var(--brand-text);
+  --p-cyan: var(--accent-text);
+  --p-success: var(--success-text);
+  --p-warning: var(--warning-text);
+  --p-danger: var(--danger-text);
+  --p-mono: var(--font-mono);
+  --p-display: var(--font-display);
+  --p-body: var(--font-sans);
+  --p-grid: var(--grid-line);
 
   min-height: 100vh;
   overflow-x: clip;
@@ -35,22 +38,6 @@
     linear-gradient(var(--p-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--p-grid) 1px, transparent 1px);
   background-size: 28px 28px;
-}
-
-.root[data-proto-theme='light'] {
-  --p-bg: #eef0f3;
-  --p-app: #f4f5f7;
-  --p-surface: #ffffff;
-  --p-surface-2: #f0f2f5;
-  --p-border: rgba(15, 22, 35, 0.1);
-  --p-border-strong: rgba(15, 22, 35, 0.18);
-  --p-text: #161a21;
-  --p-text-2: #5a6573;
-  --p-text-3: #98a2b0;
-  --p-brand: #d9820a;
-  --p-brand-2: #b86d00;
-  --p-cyan: #0f9e8c;
-  --p-grid: rgba(15, 22, 35, 0.03);
 }
 
 /* ---------- Probe toolbar (not part of the design) ---------- */
@@ -69,6 +56,9 @@
   color: var(--p-text-3);
 }
 .probeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-family: var(--p-mono);
   min-height: 44px;
   font-size: 12px;
@@ -277,7 +267,7 @@
 .stageCurrent .stageNode {
   background: var(--p-brand);
   border-color: var(--p-brand);
-  color: #1a1205;
+  color: var(--on-brand);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--p-brand) 22%, transparent);
 }
 .stageCurrent .stageLabel {
@@ -358,8 +348,8 @@
   cursor: pointer;
 }
 .waBtn {
-  background: #25d366;
-  color: #06351a;
+  background: var(--whatsapp);
+  color: var(--whatsapp-ink);
   border: none;
 }
 .ghostBtn {
@@ -648,7 +638,7 @@
 }
 .primaryBtn {
   background: var(--p-brand);
-  color: #1a1205;
+  color: var(--on-brand);
   border: none;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--p-brand) 35%, transparent);
 }

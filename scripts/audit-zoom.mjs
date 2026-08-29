@@ -6,7 +6,14 @@
  *
  * Yang diukur: overflow dokumen, overflow tiap wrapper tabel, dan overlap
  * kolom sticky AKSI di atas badge STATUS (akar masalah yang diperbaiki di
- * ServicesPage). Run: node scripts/audit-zoom.mjs
+ * ServicesPage).
+ *
+ * Lewat /demo + navigasi via klik link (BUKAN page.goto ke rute app — itu
+ * me-reload SPA dan membuang state demo; root sekarang landing cloud, bukan
+ * lagi wizard "Isi data demo"). Semua WIDTHS di sini >720px jadi hanya dua
+ * rezim yang berlaku: sidebar tetap (>1024) atau drawer off-canvas via
+ * hamburger (721-1024, hanya lebar 960 di daftar bawah).
+ * Run: node scripts/audit-zoom.mjs
  */
 import { chromium } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -34,6 +41,17 @@ const WIDTHS = [
 
 const PAGES = ['/', '/services', '/pos', '/customers', '/inventory', '/suppliers',
   '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
+
+/** Navigasi in-app ke `path`, memilih klik yang benar untuk lebar saat ini. */
+async function gotoInApp(page, path, w) {
+  if (w > 1024) {
+    await page.locator(`aside nav[aria-label="Navigasi utama"] a[href="${path}"]`).first().click();
+    return;
+  }
+  await page.locator('button[aria-label="Menu"]').click();
+  await page.waitForTimeout(250);
+  await page.locator(`aside nav[aria-label="Navigasi utama"] a[href="${path}"]`).first().click();
+}
 
 function probe() {
   const doc = document.documentElement;
@@ -93,18 +111,18 @@ const rows = [];
 
 for (const { w, note } of WIDTHS) {
   const page = await browser.newPage({ viewport: { width: w, height: 900 } });
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate((Z) => {
     localStorage.setItem('fixmaster-theme', 'dark');
     localStorage.setItem('fixmaster-zoom', String(Z));
     document.documentElement.setAttribute('data-theme', 'dark');
   }, ZOOM);
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /Isi data demo/ }).click();
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.waitForSelector('a[href="/services"]', { timeout: 20000 });
+  await page.waitForTimeout(500);
 
   for (const p of PAGES) {
-    await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle' });
+    await gotoInApp(page, p, w);
     await page.waitForTimeout(900);
     const r = await page.evaluate(probe);
     rows.push({ w, note, page: p, ...r });

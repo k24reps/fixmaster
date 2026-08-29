@@ -53,6 +53,6 @@
 }
 .error {
   font-size: var(--text-xs);
-  color: var(--red-400);
+  color: var(--danger-text);
   font-weight: var(--fw-medium);
 }

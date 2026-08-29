@@ -85,7 +85,8 @@
 .dayActive {
   background: var(--brand);
   border-color: var(--brand);
-  color: var(--on-solid);
+  /* --on-brand, bukan --on-solid: putih di atas amber cuma 2.03:1. */
+  color: var(--on-brand);
 }
 
 /* ---------- Item editor (the template's contents) ---------- */

@@ -1,46 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
-  <!-- "Volt" mascot badge — bench-bot face on the brand plate.
-       Same gradient/badge shell as before so every 40px logo spot still reads
-       as the FixMaster mark, but now it has a face (LED eyes on a dark
-       readout display, status-LED antenna, plate screws). -->
-  <defs>
-    <linearGradient id="g-brand" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#f5a623"/>
-      <stop offset="100%" stop-color="#3dd9c4"/>
-    </linearGradient>
-    <filter id="f-glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <linearGradient id="g-sheen" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <rect width="48" height="48" rx="11" fill="url(#g-brand)"/>
-  <rect width="48" height="48" rx="11" fill="url(#g-sheen)"/>
-  <!-- antenna: stem + live LED -->
-  <rect x="22.8" y="8" width="2.4" height="6.5" rx="1.2" fill="#0b0d11" opacity="0.6"/>
-  <circle cx="24" cy="6.5" r="2.8" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <!-- plate screws (45° slot) -->
-  <g opacity="0.5">
-    <circle cx="8" cy="10.5" r="1.8" fill="#0b0d11"/>
-    <line x1="6.9" y1="9.4" x2="9.1" y2="11.6" stroke="#f5a623" stroke-width="0.7"/>
-    <circle cx="40" cy="10.5" r="1.8" fill="#0b0d11"/>
-    <line x1="38.9" y1="9.4" x2="41.1" y2="11.6" stroke="#f5a623" stroke-width="0.7"/>
+  <title>FixMaster — VOLT Probe</title>
+  <!-- Compact VOLT Probe brand mark: asymmetric test tip, LCD waveform, and selector dial. -->
+  <g transform="rotate(-17 15 14)">
+    <rect x="13" y="5" width="4" height="14" rx="1.5" fill="#303741" stroke="#606a76" stroke-width="0.8"/>
+    <rect x="13.7" y="1.5" width="2.6" height="6" rx="1.2" fill="#f5a623"/>
+    <path d="M15 0L16.8 2.5H13.2L15 0Z" fill="#aab2bd"/>
+    <rect x="11.5" y="16" width="7" height="5" rx="2" fill="#15191f" stroke="#c0750a" stroke-width="0.9"/>
   </g>
-  <!-- face: dark readout display, LED eyes, smile -->
-  <rect x="9" y="16.5" width="30" height="21" rx="6.5" fill="#0b0d11" opacity="0.92"/>
-  <circle cx="18.5" cy="25.5" r="3.1" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <circle cx="29.5" cy="25.5" r="3.1" fill="#3dd9c4" filter="url(#f-glow)"/>
-  <path d="M18.5 31 Q24 35.4 29.5 31" stroke="#f5a623" stroke-width="2.2" stroke-linecap="round"/>
-  <!-- chin ticks -->
-  <g stroke="#0b0d11" stroke-width="1.2" stroke-linecap="round" opacity="0.55">
-    <line x1="19" y1="40.5" x2="19" y2="43"/>
-    <line x1="24" y1="40.5" x2="24" y2="43"/>
-    <line x1="29" y1="40.5" x2="29" y2="43"/>
-  </g>
+  <path d="M16 12H33.5L41 19.5V38L35 45H16L9 39V20L16 12Z" fill="#15191f" stroke="#606a76" stroke-width="1.3"/>
+  <path d="M9 21L15 14.5V42L9 38V21Z" fill="#f5a623"/>
+  <path d="M17 18H32.5L37 22.5V30.5L33.5 34H17L13 30.5V22L17 18Z" fill="#070a0d" stroke="#3dd9c4" stroke-opacity="0.58" stroke-width="0.9"/>
+  <path d="M17 26H20L22 22L24.8 30L27.4 24L29.5 27H33" stroke="#3dd9c4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="25" cy="39.2" r="4" fill="#070a0d" stroke="#606a76" stroke-width="0.9"/>
+  <circle cx="25" cy="39.2" r="2.8" fill="#f5a623"/>
+  <path d="M25 39.2L26.8 36.8" stroke="#070a0d" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="34.5" cy="16" r="1.2" fill="#aab2bd"/>
 </svg>

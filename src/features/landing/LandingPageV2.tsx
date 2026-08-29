@@ -8,7 +8,7 @@ import { useThemeStore } from '@/stores/theme';
 import styles from './LandingPageV2.module.css';
 
 interface LandingPageV2Props {
-  /** Optional so this page can live at /landing-preview before replacing V1. */
+  /** Optional so the public preview route can open the account flow. */
   onStart?: () => void;
 }
 
@@ -34,8 +34,9 @@ const OWNER_READOUT: { icon: IconName; label: TranslationKey; value: Translation
 ];
 
 const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
-  { question: 'landingV2.faq.offline.q', answer: 'landingV2.faq.offline.a' },
   { question: 'landingV2.faq.device.q', answer: 'landingV2.faq.device.a' },
+  { question: 'landingV2.faq.install.q', answer: 'landingV2.faq.install.a' },
+  { question: 'landingV2.faq.connection.q', answer: 'landingV2.faq.connection.a' },
   { question: 'landingV2.faq.safe.q', answer: 'landingV2.faq.safe.a' },
   { question: 'landingV2.faq.move.q', answer: 'landingV2.faq.move.a' },
 ];
@@ -45,8 +46,8 @@ function defaultStart() {
 }
 
 /**
- * Candidate landing page. Kept separate from LandingPage V1 so it can be
- * reviewed at /landing-preview without changing the signed-out front door.
+ * Public FixMaster landing page. Also available at /landing-preview for
+ * stable visual review links.
  */
 export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
   const t = useT();
@@ -65,6 +66,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
   return (
     <div className={styles.page}>
+      <a className={styles.skipLink} href="#top">
+        {t('landingV2.skipToContent')}
+      </a>
+
       <header className={styles.header}>
         <a className={styles.brand} href="#top" aria-label="FixMaster">
           <img src="/logo.svg" alt="" width="42" height="42" />
@@ -106,14 +111,14 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             <h1>{t('landingV2.heroTitle')}</h1>
             <p className={styles.heroLead}>{t('landingV2.heroLead')}</p>
             <div className={styles.heroActions}>
-              <button className={styles.primaryButton} type="button" onClick={onStart}>
-                {t('landingV2.startTrial')}
-                <Icon name="arrow-right" aria-hidden />
-              </button>
-              <a className={styles.demoButton} href="/demo">
+              <a className={styles.primaryButton} href="/demo">
                 <Icon name="pulse" aria-hidden />
                 {t('landingV2.openDemo')}
               </a>
+              <button className={styles.demoButton} type="button" onClick={onStart}>
+                {t('landingV2.startTrial')}
+                <Icon name="arrow-right" aria-hidden />
+              </button>
             </div>
             <p className={styles.heroFineprint}>{t('landingV2.heroFineprint')}</p>
           </div>
@@ -169,64 +174,77 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             </div>
 
             <div className={styles.consoleMessage}>
-              <Mascot variant="face" size={42} animated={false} />
-              <span>
-                <small>VOLT // {t('landingV2.consoleAssistant')}</small>
+              <span className={styles.voltConsoleDock}>
+                <Mascot variant="face" size={48} animated={false} />
+              </span>
+              <span className={styles.consoleMessageCopy}>
+                <small>VOLT // {t('landingV2.consoleCompanion')}</small>
                 <strong>{t('landingV2.consoleMessage')}</strong>
+              </span>
+              <span className={styles.consoleSignal} aria-hidden>
+                <i /><i /><i /><i />
+                <small>{t('landingV2.consoleSignal')}</small>
+                <strong>{t('landingV2.consoleSignalValue')}</strong>
               </span>
             </div>
           </div>
         </section>
 
-        <section className={styles.trustRail} aria-label={t('landingV2.trustLabel')}>
-          <span><Icon name="lightning" aria-hidden /> {t('landingV2.trustOffline')}</span>
-          <span><Icon name="shield-halved" aria-hidden /> {t('landingV2.trustSecure')}</span>
-          <span><Icon name="download" aria-hidden /> {t('landingV2.trustBackup')}</span>
-          <span><Icon name="check-circle" aria-hidden /> {t('landingV2.trustNoContract')}</span>
+        <section className={styles.painRail} aria-label={t('landingV2.painLabel')}>
+          <span><Icon name="whatsapp" aria-hidden /> {t('landingV2.painCustomer')}</span>
+          <span><Icon name="box" aria-hidden /> {t('landingV2.painStock')}</span>
+          <span><Icon name="wallet" aria-hidden /> {t('landingV2.painMargin')}</span>
+          <span><Icon name="users" aria-hidden /> {t('landingV2.painTeam')}</span>
         </section>
 
         <section id="workflow" className={styles.workflowSection}>
-          <div className={styles.sectionIntro}>
-            <span className={styles.sectionIndex}>01 // {t('landingV2.workflowKicker')}</span>
-            <h2>{t('landingV2.workflowTitle')}</h2>
-            <p>{t('landingV2.workflowLead')}</p>
-          </div>
+          <span className={styles.wellScan} aria-hidden />
+          <div className={styles.workflowInner}>
+            <div className={styles.sectionIntro}>
+              <span className={styles.sectionLabel}>{t('landingV2.workflowKicker')}</span>
+              <h2>{t('landingV2.workflowTitle')}</h2>
+              <p>{t('landingV2.workflowLead')}</p>
+            </div>
 
-          <ol className={styles.flowTrack}>
-            {FLOW.map((step) => (
-              <li key={step.no} className={styles.flowStep}>
-                <span className={styles.flowNo}>{step.no}</span>
-                <span className={styles.flowIcon}><Icon name={step.icon} aria-hidden /></span>
-                <div>
-                  <h3>{t(step.title)}</h3>
-                  <p>{t(step.text)}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
+            <ol className={styles.flowTrack}>
+              {FLOW.map((step) => (
+                <li key={step.no} className={styles.flowStep}>
+                  <span className={styles.flowNo}>{step.no}</span>
+                  <span className={styles.flowIcon}><Icon name={step.icon} aria-hidden /></span>
+                  <div>
+                    <h3>{t(step.title)}</h3>
+                    <p>{t(step.text)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         </section>
 
-        <section className={styles.ownerSection}>
+        <section id="owner-proof" className={styles.ownerSection}>
           <div className={styles.ownerPlate}>
-            <span className={styles.sectionIndex}>02 // {t('landingV2.ownerKicker')}</span>
             <h2>{t('landingV2.ownerTitle')}</h2>
             <p>{t('landingV2.ownerLead')}</p>
-            <div className={styles.ownerReadouts}>
+            <ul className={styles.ownerReadouts}>
               {OWNER_READOUT.map((item) => (
-                <div key={item.label} className={styles.ownerReadout}>
+                <li key={item.label} className={styles.ownerReadout}>
                   <Icon name={item.icon} aria-hidden />
                   <span>{t(item.label)}</span>
+                  <i aria-hidden />
                   <strong>{t(item.value)}</strong>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
           <div className={styles.ticketStack} aria-label={t('landingV2.ticketLabel')}>
             <article className={styles.ticketGhost} aria-hidden />
             <article className={styles.ticket}>
               <header>
-                <span>{t('landingV2.ticketTitle')}</span>
+                <span className={styles.ticketHeading}>
+                  <span>{t('landingV2.ticketTitle')}</span>
+                  <small>{t('landingV2.ticketExample')}</small>
+                </span>
                 <strong>FM-0241</strong>
               </header>
               <dl>
@@ -234,9 +252,24 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 <div><dt>{t('landingV2.ticketDevice')}</dt><dd>iPhone 13 · 128 GB</dd></div>
                 <div><dt>{t('landingV2.ticketProblem')}</dt><dd>{t('landingV2.jobIssue')}</dd></div>
                 <div><dt>{t('landingV2.ticketTechnician')}</dt><dd>Sari Dewi</dd></div>
-                <div><dt>{t('landingV2.ticketCost')}</dt><dd>Rp 1.250.000</dd></div>
-                <div><dt>{t('landingV2.ticketMargin')}</dt><dd className={styles.ticketPositive}>Rp 420.000</dd></div>
               </dl>
+              <div className={styles.marginCalculation} role="group" aria-label={t('landingV2.ticketMarginCalculation')}>
+                <div className={styles.marginInputs}>
+                  <span className={styles.marginTerm}>
+                    <small>{t('landingV2.ticketRevenue')}</small>
+                    <strong>Rp 1.250.000</strong>
+                  </span>
+                  <span className={styles.marginOperator} aria-hidden>−</span>
+                  <span className={styles.marginTerm}>
+                    <small>{t('landingV2.ticketPartsCost')}</small>
+                    <strong>Rp 830.000</strong>
+                  </span>
+                </div>
+                <span className={[styles.marginTerm, styles.marginResult, styles.ticketPositive].join(' ')}>
+                  <small>{t('landingV2.ticketMargin')}</small>
+                  <strong>Rp 420.000</strong>
+                </span>
+              </div>
               <footer>
                 <span><span className={styles.liveLed} aria-hidden /> {t('landingV2.jobStatus')}</span>
                 <span>{t('landingV2.ticketUpdated')}</span>
@@ -247,7 +280,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
         <section id="product" className={styles.productSection}>
           <div className={styles.productCopy}>
-            <span className={styles.sectionIndex}>03 // {t('landingV2.productKicker')}</span>
             <h2>{t('landingV2.productTitle')}</h2>
             <p>{t('landingV2.productLead')}</p>
             <a className={styles.textLink} href="/demo">
@@ -265,14 +297,22 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 className={styles.productShotDark}
                 src="/screenshots/demo-dashboard-dark.png"
                 alt={t('landingV2.productAlt')}
+                width="2160"
+                height="1440"
                 loading="lazy"
+                decoding="async"
+                fetchPriority="low"
               />
               <img
                 className={styles.productShotLight}
                 src="/screenshots/demo-dashboard-light.png"
                 alt=""
                 aria-hidden
+                width="2160"
+                height="1440"
                 loading="lazy"
+                decoding="async"
+                fetchPriority="low"
               />
               <span className={styles.frameLaunch}>
                 <Icon name="arrow-square-out" aria-hidden /> {t('landingV2.tryNow')}
@@ -287,14 +327,22 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                   className={styles.mobileShotDark}
                   src="/screenshots/demo-mobile-dark.png"
                   alt={t('landingV2.productMobileAlt')}
+                  width="390"
+                  height="844"
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                 />
                 <img
                   className={styles.mobileShotLight}
                   src="/screenshots/demo-mobile-light.png"
                   alt=""
                   aria-hidden
+                  width="390"
+                  height="844"
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                 />
               </span>
               <span className={styles.phoneHome} aria-hidden />
@@ -304,7 +352,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
         <section id="pricing" className={styles.pricingSection}>
           <div className={styles.sectionIntro}>
-            <span className={styles.sectionIndex}>04 // {t('landingV2.pricingKicker')}</span>
             <h2>{t('landingV2.pricingTitle')}</h2>
             <p>{t('landingV2.pricingLead')}</p>
           </div>
@@ -342,7 +389,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
         <section className={styles.faqSection}>
           <div>
-            <span className={styles.sectionIndex}>05 // FAQ</span>
             <h2>{t('landingV2.faqTitle')}</h2>
           </div>
           <div className={styles.faqList}>
@@ -355,10 +401,20 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           </div>
         </section>
 
-        <section className={styles.finalCta}>
-          <Mascot variant="full" size={104} />
-          <div>
-            <span className={styles.sectionIndex}>{t('landingV2.finalKicker')}</span>
+        <section id="start" className={styles.finalCta}>
+          <div className={styles.voltBay}>
+            <span className={styles.voltBayTrace} aria-hidden />
+            <Mascot variant="full" size={150} />
+            <div className={styles.voltBayStatus}>
+              <span className={styles.liveLed} aria-hidden />
+              <span>
+                <small>{t('landingV2.finalVoltLabel')}</small>
+                <strong>{t('landingV2.finalVoltStatus')}</strong>
+              </span>
+            </div>
+          </div>
+          <div className={styles.finalCtaCopy}>
+            <span className={styles.sectionLabel}>{t('landingV2.finalKicker')}</span>
             <h2>{t('landingV2.finalTitle')}</h2>
             <p>{t('landingV2.finalLead')}</p>
           </div>

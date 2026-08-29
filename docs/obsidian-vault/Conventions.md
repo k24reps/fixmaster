@@ -15,8 +15,8 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 
 | Folder | Isi |
 |---|---|
-| `app/` | Komposisi aplikasi (AuthGate, dll) |
-| `components/` | Komponen reusable: `ui/` (Button, Card, Icon, dst) + `layout/` (Sidebar, Topbar dengan **global search**, AppLayout) |
+| `app/` | Komposisi aplikasi (`AuthGate` untuk sesi cloud, `WorkspaceGate` untuk bootstrap workspace, `AuthSplash`, router) |
+| `components/` | Komponen reusable: `ui/` (Button, Card, Icon, dst) + `layout/` (Sidebar, Topbar dengan **global search**, MobileBottomNav, AppLayout) |
 | `config/` | `navigation.ts`, `plans.ts` (fitur per-plan) |
 | `data/` | Repository, adapter (`local-adapter`, `supabase-adapter`), `types.ts`, `repository.ts` |
 | `dev/` | Tooling dev, mis. `seed.ts` (data demo) |
@@ -50,9 +50,10 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (441 test) |
+| `npm run test` | Vitest (453 test) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
+| `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |
 
 ## Verifikasi UI
 Screenshot via Playwright di `scripts/` (mis. `shoot-batch.mjs`, `verify-sidebar.mjs`). Seed data demo lewat `window.__fixmasterSeed()`. Sinkron attachment vault: `scripts/sync-vault-attachments.ps1`.

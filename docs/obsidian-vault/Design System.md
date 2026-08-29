@@ -17,7 +17,7 @@ FixMaster memakai bahasa visual **"Precision Electronics Bench"** — meja kerja
 - **Safety amber** (`#f5a623`) — warna brand, aksen utama & status aktif
 - **Diagnostic cyan** (`#3dd9c4`) — aksen diagnostik/informasi
 
-Dua tema: **dark (default)** "Graphite Workshop" dan **light** "Concrete & Paper".
+Dua tema: **dark (default)** "Graphite Workshop" dan **light** "Bright Workshop Steel".
 
 ## Token (sumber kebenaran tunggal)
 
@@ -77,24 +77,71 @@ Render asli setelah reset fondasi:
 ![[bench-os-v2-desktop-dark.png]]
 ![[bench-os-v2-mobile-dark.png]]
 
-## Maskot: "Volt" (17 Jul 2026)
+### Light mode — Bright Workshop Steel (28 Agu 2026)
 
-Robot bengkel mungil yang **seluruh anatominya lahir dari idiom bench** (bukan clipart):
-kepala = pelat instrumen amber + sekrup sudut + knob dial; wajah = **layar readout gelap**
-dengan mata LED teal menyala (berkedip, SMIL); antena = status LED berdenyut (idiom
-`.ledLive`); dada = layar mini berisi **bolt brand** (kontinuitas logo lama); senyum arc
-amber; dagu tick-gauge; lengan kanan melambai. Warna = konstanta brand (#f5a623/#3dd9c4/
-#0b0d11), identik di dua tema — layar wajah memang gelap seperti LCD asli.
+Light mode menggambarkan konter reparasi di bawah lampu kerja terang: bidang aplikasi
+adalah baja anodized abu-biru, sedangkan kartu dan kontrol adalah pelat instrumen putih.
+Ia bukan sekadar dark mode yang diputihkan.
 
-- **Komponen**: `Mascot` di `src/components/ui/Mascot.tsx` — props `variant` (`face` |
-  `full`), `size`, `animated` (SMIL kedip/denyut/lambai). Ekspor via barrel `ui`.
-- **Penempatan**: landing hero (full, di atas panel DIAGNOSTIK) + CTA bar (face);
-  dashboard strip BENCH CONSOLE (face 26px); `public/logo.svg` + `favicon.svg` +
-  `icon-maskable.svg` = badge wajah Volt (shell gradien rounded-square dipertahankan
-  agar tiap spot logo 40px tetap terbaca sebagai merek).
-- **Kenapa**: perbandingan vs FixMate — FixMaster unggul craft tapi terasa dingin;
-  maskot menambah kehangatan TANPA meninggalkan identitas (aturan: elemen visual baru
-  wajib otentik bench, bukan pola SaaS generik).
+- `bg-base → bg-app → bg-surface-2 → bg-surface` memiliki jarak luminans dan border
+  yang jelas; panel kerja tidak lagi melebur menjadi hamparan putih pucat.
+- Token `rail-*` memisahkan chassis, well navigasi, panel identitas, kontrol, divider,
+  active channel, dan shadow. Sidebar tetap konsisten di dark/light tanpa selector tema
+  satu kali pakai.
+- Amber/cyan/hijau/biru memakai pasangan foreground semantik (`*-text`) ketika berada
+  di permukaan terang. Ramp `400` yang luminous tetap dipakai pada layar readout gelap.
+- Shadow light dipadatkan maksimal 8 px untuk panel biasa; elevasi besar tinggal untuk
+  overlay/dropdown. Kedalaman berasal dari lapisan permukaan dan divider, bukan ghost card.
+
+## Maskot dan logo: "VOLT Probe" (29 Agu 2026)
+
+VOLT bukan lagi robot humanoid/chatbot. Anatominya sekarang berasal langsung dari alat
+diagnosis meja: **continuity probe asimetris**, chassis graphite ber-chamfer, grip/spine
+amber, selector dial, layar LCD dengan waveform cyan, kabel uji, konektor, dan kaki
+magnet. Ekspresi disampaikan lewat sinyal diagnosis—bukan mata bulat dan senyum—agar
+hangat tetapi tidak menyiratkan fitur AI yang tidak dimiliki produk.
+
+- **Material lintas tema**: token `--volt-shell`, `--volt-shell-high`, `--volt-edge`,
+  `--volt-display`, dan `--volt-metal` tinggal di `tokens.css`. Benda fisiknya tetap
+  graphite pada dark/light; amber dan cyan tetap memakai ramp brand global.
+- **Komponen**: `Mascot` di `src/components/ui/Mascot.tsx` — `face` adalah instrumen
+  compact; `full` menambah kabel/konektor dan kaki magnet. `size` menjaga rasio siluet;
+  `animated` menghidupkan probe + waveform melalui SMIL dan tunduk pada reduced motion.
+- **Penempatan**: landing hero console memakai `face` 48 px statis di diagnostic dock;
+  final CTA memakai `full` 150 px dengan motion di probe bay. Auth desktop memakai
+  `full` 112 px statis sebagai status terminal dan mobile memakai `face` 44 px statis.
+  Dashboard BENCH CONSOLE memakai `face` 30 px statis agar motion tidak mengganggu
+  pekerjaan. Header, splash, sidebar, dan footer memakai logo compact yang sama tanpa
+  animasi.
+- **Aset merek**: `public/logo.svg` dan `favicon.svg` adalah siluet VOLT Probe tanpa
+  rounded-square generik. `icon-maskable.svg` adalah versi safe-zone PWA. PNG 192/512,
+  Apple touch icon, dan `og-image.png` diregenerasi deterministik lewat
+  `npm run brand:render` (`scripts/render-brand-assets.mjs`).
+- **Prinsip penggunaan**: VOLT adalah pendamping diagnostik, bukan narator atau
+  customer-support bot. Ia menandai identitas, status ringan, dan momen brand; informasi
+  finansial/operasional serius tetap disampaikan oleh copy serta komponen data.
+- **Register motion**: gerak hanya dipakai di momen brand besar seperti CTA landing.
+  Auth memakai VOLT statis karena login/daftar/reset adalah product surface yang menuntut
+  fokus. Copy statusnya harus mengikuti mode; jangan menyuruh “masuk” ketika pengguna
+  sedang membuat akun atau memulihkan password.
+
+### Guardrail landing yang dapat diakses (28 Agu 2026)
+
+Audit landing mengunci detail yang sebelumnya lolos karena dark theme terlihat baik:
+
+- Token foreground semantik `--brand-text`, `--accent-text`, `--success-text`, dan
+  `--text-muted` punya pasangan khusus light/dark. Warna dekoratif tidak lagi dipakai
+  langsung sebagai teks kecil di permukaan terang.
+- Fokus keyboard memakai outline solid `--focus-ring`; landing menyediakan skip link
+  ke `<main>`. Kontrol dan tautan yang terlihat menjaga area minimal 44×44 px.
+- Copy informasi landing di ponsel minimal 14 px. Label mono tetap menjadi readout,
+  tetapi tracking dan uppercase dikendurkan pada progres sempit agar terbaca.
+- `Mascot animated` otomatis mematikan seluruh SMIL saat
+  `prefers-reduced-motion: reduce`; perilaku ini dijaga unit test.
+- Nomor urut hanya dipakai ketika benar-benar menyatakan proses. Section lain memakai
+  hierarchy judul, seam, LED, dan diagnostic spine—bukan scaffold nomor/kartu generik.
+- Breakpoint landing yang menjaga muat/tidak muat memakai container query bernama
+  `landing`; media query tersisa hanya untuk preferensi reduced motion.
 
 ## Terkait
 - [[Iconography]] — set ikon Phosphor

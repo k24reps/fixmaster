@@ -13,7 +13,7 @@ Sidebar bukan sekadar daftar menu, melainkan **panel kendali bench yang hidup**.
 
 ## Tiga lapis
 
-1. **Active-as-channel** — menu aktif menyala seperti channel terpilih: spine amber + glow + border-brand (bukan blok highlight biasa).
+1. **Active-as-channel** — menu aktif menyala seperti channel terpilih: plate amber + icon cell solid + full border-brand (bukan blok highlight biasa).
 2. **Readout live** — tiap item membawa **LED + angka** dari data nyata, lewat hook `useNavSignals` yang memakai ulang logika di [[Data Layer]] (`isActive`, `isOverdue`, dst). Angka di rail identik dengan halamannya.
 3. **Identitas produk vs usaha terpisah** — **header atas = produk FixMaster** (monogram "FM" gradient brand→cyan + power-LED + tagline `BENCH OS` mono + plan badge). **Blok "UNIT USAHA"** (di atas footer operator) = identitas toko: logo (`org.logoDataUrl`, fallback inisial) + nama toko + **selector cabang**. Footer = **modul operator** (avatar plate + online-LED + role mono).
 
@@ -48,9 +48,26 @@ Tombol bergaya channel-switch dengan LED status (cyan = Semua Outlet, amber = ca
 - **Pasangan shell** — topbar juga menjadi faceplate sticky mengambang; pada mobile
   judul, pencarian, tema, dan notifikasi tetap berada dalam panel 60 px yang ringkas.
 
+### Polish light mode + channel hierarchy (28 Agu 2026)
+
+- Light rail memakai chassis `rail-bg`, well navigasi lebih gelap, serta panel header,
+  unit usaha, dan operator yang terpisah jelas. Inactive icon kembali graphite; cyan
+  hanya muncul saat hover/status live, sehingga amber active channel menjadi prioritas.
+- Active channel tidak lagi memakai side stripe. State dibentuk oleh full border amber,
+  plate `rail-active`, dan icon cell amber solid—lebih kuat sekaligus lolos detector.
+- LED idle berubah menjadi port cincin tanpa daya. Readout aktif memakai foreground
+  semantik yang terukur ≥4.5:1 pada light rail.
+- Channel Pro tidak lagi memakai `opacity` pada seluruh baris. Label tetap terbaca,
+  sementara icon cell redup dan badge LED PRO tetap menyampaikan status terkunci.
+- Selector cabang, dropdown, collapse control, avatar, dan business plate memakai
+  kontrol chassis yang sama; state open tidak menumpuk dua focus ring.
+
 ![[rail-expanded-dark.png]]
+![[rail-expanded-light.png]]
 ![[rail-collapsed-dark.png]]
-![[rail-mobile-dark.png]]
+![[rail-collapsed-light.png]]
+![[rail-tablet-dark.png]]
+![[rail-tablet-light.png]]
 ![[mobile-bottom-nav-dark.png]]
 ![[mobile-more-dark.png]]
 

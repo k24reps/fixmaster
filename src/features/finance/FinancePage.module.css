@@ -327,7 +327,7 @@
     font-size: clamp(0.9rem, 4.2vw, var(--text-lg));
   }
   .summaryCard span {
-    font-size: 10px;
+    font-size: var(--text-xs);
   }
   .walletGrid,
   .summaryGrid {

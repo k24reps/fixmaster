@@ -1340,3 +1340,18 @@ horizontal** — termasuk `/reports tbl+42` di 1097px yang sebelumnya sengaja di
 hilang. Build hijau, lint bersih, 451 test lulus.
 
 #decision #ui #css #responsive #tablet #container-queries #playwright
+
+---
+
+## Rilis visual terisolasi: VOLT Probe + owner proof (29 Agu 2026)
+
+Perubahan brand dan funnel publik dirilis dari `origin/main`, bukan dengan mempromosikan seluruh
+`staging`. Pagar ini mempertahankan keputusan 17 Agu: cutover billing/GoPay di staging tidak boleh
+ikut production sebelum konfigurasi serta alurnya dinyatakan siap.
+
+Rilis membawa VOLT Probe sebagai logo sekaligus maskot, polish landing dan login, pemisahan
+`AuthGate`/`WorkspaceGate`, serta owner proof yang membuat margin tiket dapat diaudit dari formula
+pendapatan dikurangi biaya. Aset PWA/OG ikut diregenerasi dan probe khusus landing memeriksa lebar
+320–1440 px, long copy, RTL, forced-colors, serta text scaling 200%.
+
+#decision #rilis #brand #landing #auth #billing-safety

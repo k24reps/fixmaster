@@ -1,6 +1,14 @@
 /**
  * Audit mobile — mencari SEMUA sumber scroll horizontal, baik yang tak sengaja
  * (dokumen meluber) maupun yang dulu disengaja (carousel scroll-snap).
+ *
+ * Lewat /demo + navigasi via klik link (BUKAN page.goto ke rute app — itu
+ * me-reload SPA dan membuang state demo; root sekarang landing cloud, bukan
+ * lagi wizard "Isi data demo"). Lihat "Decisions & Bug Fixes.md" § pelajaran
+ * tooling screenshot. Tiga rezim navigasi mengikuti breakpoint nyata sidebar:
+ *   >1024px   sidebar tetap, link langsung diklik
+ *   721-1024  sidebar drawer off-canvas, dibuka lewat hamburger dulu
+ *   <=720     bottom nav; 4 tujuan langsung + sisanya di sheet "Lainnya"
  * Run: node scripts/audit-mobile.mjs
  */
 import { chromium } from '@playwright/test';
@@ -8,13 +16,35 @@ import { writeFileSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5183';
 // Lebar ponsel nyata. 320 = batas bawah yang masih dipakai (SE lama, Android murah).
-// WIDTHS=768,1024,1152 untuk menyapu pita tablet.
+// WIDTHS=744,834,1025,1112,1152 untuk menyapu pita tablet.
 const WIDTHS = (process.env.WIDTHS || '320,360,375,390,414').split(',').map(Number);
 // Tablet bukan ponsel: sidebar muncul di >=1025px sehingga ruang konten
 // justru MENYUSUT saat viewport melebar. isMobile dimatikan di >=768px.
 const MOBILE = Number(process.env.MOBILE ?? 1) === 1;
 const PAGES = ['/', '/services', '/pos', '/customers', '/inventory', '/suppliers',
   '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
+
+/** Navigasi in-app ke `path`, memilih klik yang benar untuk lebar saat ini. */
+async function gotoInApp(page, path, w) {
+  if (w > 1024) {
+    await page.locator(`aside nav[aria-label="Navigasi utama"] a[href="${path}"]`).first().click();
+    return;
+  }
+  if (w > 720) {
+    await page.locator('button[aria-label="Menu"]').click();
+    await page.waitForTimeout(250);
+    await page.locator(`aside nav[aria-label="Navigasi utama"] a[href="${path}"]`).first().click();
+    return;
+  }
+  const primary = page.locator(`nav[aria-label="Navigasi utama seluler"] a[href="${path}"]`).first();
+  if (await primary.count()) {
+    await primary.click();
+    return;
+  }
+  await page.getByRole('button', { name: /Lainnya/i }).click();
+  await page.waitForTimeout(250);
+  await page.locator(`#mobile-more-sheet a[href="${path}"]`).first().click();
+}
 
 function probe() {
   const d = document.documentElement;
@@ -64,16 +94,16 @@ for (const w of WIDTHS) {
   const page = await browser.newPage({
     viewport: { width: w, height: 900 }, deviceScaleFactor: 2, hasTouch: true, isMobile: MOBILE,
   });
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.evaluate(() => {
     localStorage.setItem('fixmaster-theme', 'dark');
     document.documentElement.setAttribute('data-theme', 'dark');
   });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /Isi data demo/ }).click();
+  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.waitForSelector('a[href="/services"]', { timeout: 20000 });
+  await page.waitForTimeout(500);
   for (const p of PAGES) {
-    await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle' });
+    await gotoInApp(page, p, w);
     await page.waitForTimeout(800);
     const r = await page.evaluate(probe);
     rows.push({ w, page: p, ...r });

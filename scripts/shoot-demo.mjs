@@ -47,7 +47,10 @@ for (const theme of ['dark', 'light']) {
   await setTheme(page, theme);
   await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await waitForDemo(page);
-  await page.screenshot({ path: join(OUT, `demo-dashboard-${theme}.png`) });
+  const dashboardFile = `demo-dashboard-${theme}.png`;
+  const dashboardPath = join(OUT, dashboardFile);
+  await page.screenshot({ path: dashboardPath });
+  copyFileSync(dashboardPath, join(PUBLIC_OUT, dashboardFile));
   console.log('shot:', `demo-dashboard-${theme}`);
 
   for (const target of navTargets.slice(1)) {

@@ -73,10 +73,10 @@
   margin-top: 4px;
 }
 .up {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .down {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 
 /* ---------- Tones ---------- */
@@ -85,42 +85,42 @@
 }
 .brand .iconWrap {
   background: var(--brand-soft);
-  color: var(--brand-hover);
+  color: var(--brand-text);
 }
 .success::before {
   background: linear-gradient(180deg, var(--green-500), var(--green-400));
 }
 .success .iconWrap {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .warning::before {
   background: linear-gradient(180deg, var(--amber-500), var(--amber-400));
 }
 .warning .iconWrap {
   background: var(--warning-soft);
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .danger::before {
   background: linear-gradient(180deg, var(--red-500), var(--red-400));
 }
 .danger .iconWrap {
   background: var(--danger-soft);
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .info::before {
   background: linear-gradient(180deg, var(--blue-500), var(--blue-400));
 }
 .info .iconWrap {
   background: var(--info-soft);
-  color: var(--blue-400);
+  color: var(--info-text);
 }
 .accent::before {
   background: linear-gradient(180deg, var(--accent-500), var(--accent-400));
 }
 .accent .iconWrap {
   background: var(--accent-soft);
-  color: var(--accent-400);
+  color: var(--accent-text);
 }
 
 /* Di grid dua kolom mobile kartu ini hanya ~138px di 320px, sementara
@@ -144,8 +144,8 @@
     font-size: 1rem;
   }
   .label {
-    font-size: 10px;
-    letter-spacing: 0.04em;
+    font-size: var(--text-xs);
+    letter-spacing: 0.03em;
   }
   .value {
     font-size: clamp(0.95rem, 4.2vw, var(--text-xl));
