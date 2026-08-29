@@ -52,16 +52,44 @@ function applyZoom(zoom: Zoom) {
 interface ZoomState {
   zoom: Zoom;
   setZoom: (zoom: Zoom) => void;
+  /**
+   * Mulai sesi zoom sementara (mis. public demo). Selama sesi aktif, kontrol
+   * zoom tetap bekerja tetapi tidak menimpa preferensi tersimpan. Panggil
+   * fungsi cleanup yang dikembalikan untuk memulihkan zoom sebelumnya.
+   */
+  beginTransientZoom: (zoom: Zoom) => () => void;
   /** Geser satu tingkat; berhenti di ujung (tidak memutar balik). */
   stepZoom: (dir: 1 | -1) => void;
 }
+
+let transientZoomBefore: Zoom | null = null;
 
 export const useZoomStore = create<ZoomState>((set, get) => ({
   zoom: getInitialZoom(),
   setZoom: (zoom) => {
     applyZoom(zoom);
-    window.localStorage.setItem(STORAGE_KEY, String(zoom));
+    if (transientZoomBefore === null) {
+      window.localStorage.setItem(STORAGE_KEY, String(zoom));
+    }
     set({ zoom });
+  },
+  beginTransientZoom: (zoom) => {
+    // Demo hanya punya satu shell per document. Guard ini menjaga cleanup
+    // idempotent tanpa membuat sesi bertumpuk yang sulit dipulihkan.
+    if (transientZoomBefore !== null) return () => undefined;
+    transientZoomBefore = get().zoom;
+    applyZoom(zoom);
+    set({ zoom });
+
+    let active = true;
+    return () => {
+      if (!active || transientZoomBefore === null) return;
+      active = false;
+      const previous = transientZoomBefore;
+      transientZoomBefore = null;
+      applyZoom(previous);
+      set({ zoom: previous });
+    };
   },
   stepZoom: (dir) => {
     const i = ZOOM_LEVELS.indexOf(get().zoom);

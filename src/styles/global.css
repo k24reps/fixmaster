@@ -21,6 +21,7 @@ html {
 }
 
 body {
+  --ambient-bench-opacity: 1;
   font-family: var(--font-sans);
   background: var(--bg-app);
   color: var(--text-primary);
@@ -33,6 +34,12 @@ body {
     color var(--dur-normal) var(--ease-out);
 }
 
+/* Demo memakai material bench yang sama dengan production, tetapi sedikit
+   lebih tenang agar faceplate presentasi dan CTA tetap menjadi fokus. */
+body.fm-demo-active {
+  --ambient-bench-opacity: 0.72;
+}
+
 /* Ambient: faint blueprint/PCB grid + subtle amber & cyan glow for depth */
 body::before {
   content: '';
@@ -40,6 +47,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  opacity: var(--ambient-bench-opacity);
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),

@@ -86,7 +86,7 @@ kembali bila diperlukan.
 - **Verifikasi**: render asli dark/light desktop 1440×960 dan mobile 390×844; sapuan
   320/360/375/390/414/744/834/980/981/1025/1440 px nol overflow dokumen, nol teks
   terpotong, dan nol target di bawah 44 px. Direct text-contrast audit sebelumnya tetap
-  nol pelanggaran; build + lint bersih dan 459/459 test lulus.
+  nol pelanggaran; build + lint bersih dan 460/460 test lulus.
   `scripts/audit-landing-owner.mjs` khusus menjaga section owner pada 320–1440 px,
   synthetic long copy, RTL, forced-colors, serta text scaling 200%.
   `scripts/shoot-landing.mjs` meregenerasi gambar di bawah dan
@@ -148,6 +148,10 @@ Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, 
 - Berjalan di **`MemoryRouter`** sendiri yang memakai ulang `appChildRoutes` (rute anak yang sama dengan app asli, via [`appChildRoutes.tsx`](src/app/appChildRoutes.tsx)) → navigasi sidebar tetap di dalam demo, URL browser tetap `/demo`.
 - **Nested-router trap**: `MemoryRouter` tak boleh di dalam `BrowserRouter`. Solusi: `App` mengintersep `pathname.startsWith('/demo')` **sebelum** `RouterProvider` mount → DemoApp jadi satu-satunya router. Route `/demo` **dihapus** dari `router.tsx`.
 - **Bersih saat unmount**: `resetRepository()` (kembali ke adapter asli) + `session.reset()` + hapus meta `noindex`.
+- **Fidelity visual**: shell demo transparan sehingga memakai grid blueprint/PCB global yang
+  sama dengan production, dengan intensitas 72% selama `body.fm-demo-active`. Demo selalu
+  mulai pada zoom 100% melalui sesi zoom sementara; kontrol zoom tetap bekerja tetapi tidak
+  mengubah preferensi tersimpan pengguna, lalu nilai sebelumnya pulih saat unmount.
 - **`noindex`**: meta robots disuntik selama demo mounted (demo = sandbox, bukan konten SEO).
 
 **Faceplate demo** ([`DemoChrome`](src/features/demo/DemoChrome.tsx)): bar instrumen menetap di atas app — sekrup sudut, **LED warning berdenyut**, readout mono `MODE DEMO · data contoh · tidak tersimpan`, tombol **Reset Demo** (re-seed dataset awal), dan CTA brand **Daftar Gratis** (`exitDemoToSignup` → `/?auth=1`). Bukan banner SaaS generik.

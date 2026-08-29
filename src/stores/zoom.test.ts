@@ -63,4 +63,23 @@ describe('store zoom', () => {
     initZoom();
     expect(root().style.zoom).toBe('1.1');
   });
+
+  it('zoom sementara tidak menimpa preferensi dan pulih saat sesi selesai', () => {
+    useZoomStore.getState().setZoom(0.8);
+
+    const endTransientZoom = useZoomStore.getState().beginTransientZoom(1);
+    expect(useZoomStore.getState().zoom).toBe(1);
+    expect(root().style.zoom).toBe('');
+    expect(localStorage.getItem('fixmaster-zoom')).toBe('0.8');
+
+    // Kontrol zoom di dalam demo tetap aktif, tetapi masih bersifat sementara.
+    useZoomStore.getState().setZoom(1.25);
+    expect(root().style.zoom).toBe('1.25');
+    expect(localStorage.getItem('fixmaster-zoom')).toBe('0.8');
+
+    endTransientZoom();
+    expect(useZoomStore.getState().zoom).toBe(0.8);
+    expect(root().style.zoom).toBe('0.8');
+    expect(localStorage.getItem('fixmaster-zoom')).toBe('0.8');
+  });
 });

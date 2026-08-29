@@ -130,9 +130,11 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 
 ## Baseline terkini (28 Agu 2026)
 
-- Unit/komponen: `npm run test` **459/459 hijau** (41 file) — 455 setelah global search, 457 setelah audit dashboard, lalu +2 penjaga reduced-motion maskot landing
-  dihapus, lalu +2 regresi state data dashboard (`placeholderData` tetap loading dan error
-  diekspos agar array kosong tidak terbaca sebagai fakta bisnis).
+- Unit/komponen: `npm run test` **460/460 hijau** (41 file) — 455 setelah global search,
+  457 setelah audit dashboard, +2 penjaga reduced-motion maskot landing lalu dihapus,
+  +2 regresi state data dashboard (`placeholderData` tetap loading dan error diekspos agar
+  array kosong tidak terbaca sebagai fakta bisnis), lalu +1 penjaga sesi zoom sementara
+  pada demo publik.
 - Integration RLS/RPC staging: `npm run test:integration` **59/59 hijau** (8 file) — terakhir dijalankan 11 Agu 2026, butuh `.env.test.local`.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence

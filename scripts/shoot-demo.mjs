@@ -31,6 +31,9 @@ const browser = await chromium.launch();
 async function setTheme(page, theme) {
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
+    // The demo must still present itself at 100%, even when this origin has a
+    // denser app preference saved from a previous session.
+    localStorage.setItem('fixmaster-zoom', '0.8');
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
 }
@@ -38,7 +41,33 @@ async function setTheme(page, theme) {
 async function waitForDemo(page) {
   // The faceplate "MODE DEMO" appears once the seed completes.
   await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
+  // Dashboard aggregates settle just after the shell. Waiting for the hero
+  // readout prevents public proof images from catching an empty instrument.
+  await page.getByText(/Rp\s*5\.100\.000/).waitFor({ timeout: 10000 });
   await page.waitForTimeout(800);
+
+  const surface = await page.evaluate(() => {
+    const shell = document.querySelector('#root > div');
+    const ambient = getComputedStyle(document.body, '::before');
+    return {
+      hasDemoClass: document.body.classList.contains('fm-demo-active'),
+      shellBackground: shell ? getComputedStyle(shell).backgroundColor : null,
+      ambientOpacity: ambient.opacity,
+      ambientImage: ambient.backgroundImage,
+      zoom: getComputedStyle(document.documentElement).zoom,
+    };
+  });
+
+  const gridVisible = surface.ambientImage.includes('linear-gradient');
+  if (
+    !surface.hasDemoClass ||
+    surface.shellBackground !== 'rgba(0, 0, 0, 0)' ||
+    surface.ambientOpacity !== '0.72' ||
+    surface.zoom !== '1' ||
+    !gridVisible
+  ) {
+    throw new Error(`Demo surface regression: ${JSON.stringify(surface)}`);
+  }
 }
 
 for (const theme of ['dark', 'light']) {
