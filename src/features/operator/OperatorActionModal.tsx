@@ -1,6 +1,6 @@
 /**
  * Satu modal untuk semua aksi tulis operator: suspend, aktifkan kembali,
- * konfirmasi pembayaran manual, dan catatan klien.
+ * konfirmasi pembayaran manual, catatan klien, dan penghapusan organisasi.
  *
  * Digabung jadi satu komponen karena bentuknya sama — pilih org, isi alasan,
  * konfirmasi — dan menyebarnya jadi empat modal hanya menduplikasi validasi
@@ -14,23 +14,26 @@ import { useState } from 'react';
 import { Button, Icon, Modal } from '@/components/ui';
 import {
   adminConfirmManualPayment,
+  adminDeleteOrganization,
   adminReactivateOrg,
   adminSetClientNote,
   adminSuspendOrg,
   type AdminOrgRow,
 } from '@/data/supabase-client';
 import { priceForOutlets } from '@/config/plans';
+import { organizationNumber } from '@/lib/business/operator';
 import { fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
 import styles from './OperatorPage.module.css';
 
-export type ActionMode = 'suspend' | 'reactivate' | 'payment' | 'note';
+export type ActionMode = 'suspend' | 'reactivate' | 'payment' | 'note' | 'delete';
 
 const TITLES: Record<ActionMode, string> = {
   suspend: 'Tangguhkan klien',
   reactivate: 'Aktifkan kembali',
   payment: 'Konfirmasi pembayaran',
   note: 'Catatan klien',
+  delete: 'Hapus organisasi',
 };
 
 export function OperatorActionModal({
@@ -49,7 +52,8 @@ export function OperatorActionModal({
   const [months, setMonths] = useState(1);
   const [amount, setAmount] = useState(99_000);
   const [reference, setReference] = useState('');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(org?.note ?? '');
+  const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -59,8 +63,12 @@ export function OperatorActionModal({
 
   const submit = async () => {
     setErr('');
-    if ((mode === 'suspend' || mode === 'payment') && reason.trim() === '') {
-      setErr('Alasan wajib diisi');
+    if (mode !== 'note' && reason.trim() === '') {
+      setErr(
+        mode === 'delete'
+          ? 'Alasan penghapusan wajib diisi'
+          : 'Catatan verifikasi wajib diisi',
+      );
       return;
     }
     if (mode === 'payment' && reference.trim() === '') {
@@ -69,6 +77,15 @@ export function OperatorActionModal({
     }
     if (mode === 'payment' && (!Number.isFinite(amount) || amount < 1)) {
       setErr('Nominal pembayaran harus lebih dari Rp0');
+      return;
+    }
+    if (mode === 'payment' && (!Number.isInteger(months) || months < 1 || months > 12)) {
+      setErr('Durasi pembayaran harus 1–12 bulan');
+      return;
+    }
+    const orgNumber = organizationNumber(org.orgId);
+    if (mode === 'delete' && confirmation.trim().toUpperCase() !== orgNumber) {
+      setErr(`Ketik ${orgNumber} secara lengkap untuk melanjutkan`);
       return;
     }
     setBusy(true);
@@ -89,6 +106,9 @@ export function OperatorActionModal({
           reason.trim(),
         );
         toast.success(`Pembayaran ${org.name} dicatat · aktif sampai ${fmtDate(until)}`);
+      } else if (mode === 'delete') {
+        await adminDeleteOrganization(org.orgId, confirmation.trim(), reason.trim());
+        toast.success(`${org.name} telah dihapus permanen`);
       } else {
         await adminSetClientNote(org.orgId, note);
         toast.success('Catatan disimpan');
@@ -116,9 +136,17 @@ export function OperatorActionModal({
           <Button
             onClick={() => void submit()}
             loading={busy}
-            variant={mode === 'suspend' ? 'danger' : 'primary'}
+            variant={mode === 'suspend' || mode === 'delete' ? 'danger' : 'primary'}
+            disabled={
+              mode === 'delete' &&
+              confirmation.trim().toUpperCase() !== organizationNumber(org.orgId)
+            }
           >
-            {mode === 'suspend' ? 'Tangguhkan' : 'Simpan'}
+            {mode === 'suspend'
+              ? 'Tangguhkan'
+              : mode === 'delete'
+                ? 'Hapus permanen'
+                : 'Simpan'}
           </Button>
         </div>
       }
@@ -129,6 +157,21 @@ export function OperatorActionModal({
             Operasi tulis {org.name} akan diblokir database sampai diaktifkan kembali.
             Mereka masih bisa masuk dan membaca datanya.
           </p>
+        )}
+
+        {mode === 'delete' && (
+          <div className={styles.dangerPanel}>
+            <span className={styles.dangerIcon} aria-hidden>
+              <Icon name="trash" />
+            </span>
+            <div>
+              <strong>Seluruh data organisasi akan dihapus permanen.</strong>
+              <p>
+                Tiket, pelanggan, transaksi, stok, dan keanggotaan ikut terhapus. Akun
+                login pengguna tetap ada dan dapat membuat organisasi baru.
+              </p>
+            </div>
+          </div>
         )}
 
         {mode === 'payment' && (
@@ -215,10 +258,24 @@ export function OperatorActionModal({
           </label>
         )}
 
+        {mode === 'delete' && (
+          <label className={styles.label}>
+            Ketik nomor organisasi <strong>{organizationNumber(org.orgId)}</strong>
+            <input
+              className={[styles.input, styles.confirmInput].join(' ')}
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              placeholder={organizationNumber(org.orgId)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+        )}
+
         {mode !== 'note' && (
           <label className={styles.label}>
-            Catatan verifikasi{' '}
-            {(mode === 'suspend' || mode === 'payment') && <span aria-hidden>*</span>}
+            {mode === 'delete' ? 'Alasan penghapusan' : 'Catatan verifikasi'}{' '}
+            <span aria-hidden>*</span>
             <input
               className={styles.input}
               value={reason}
@@ -228,7 +285,9 @@ export function OperatorActionModal({
                   ? 'mis. menunggak 12 hari'
                   : mode === 'payment'
                     ? 'mis. bukti transfer diverifikasi via WhatsApp'
-                    : 'mis. aktivasi kembali setelah verifikasi'
+                    : mode === 'delete'
+                      ? 'mis. permintaan penghapusan diverifikasi oleh pemilik'
+                      : 'mis. aktivasi kembali setelah verifikasi'
               }
             />
           </label>

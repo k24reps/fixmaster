@@ -18,8 +18,18 @@
  * Disetujui sebagai penyimpangan dari AGENTS.md §3 (preseden: BillingTab,
  * FinancePage). Lihat [[Decisions & Bug Fixes]].
  */
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, CardBody, CardHeader, EmptyState, Icon } from '@/components/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  EmptyState,
+  Icon,
+  Input,
+  Mascot,
+} from '@/components/ui';
 import {
   adminListOrgs,
   adminListOperatorActions,
@@ -28,10 +38,12 @@ import {
   type OperatorAction,
 } from '@/data/supabase-client';
 import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
+import { matchesOrganization, organizationNumber } from '@/lib/business/operator';
 import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
 import { fmtRp } from '@/lib/format';
-import { fmtDate } from '@/lib/time';
+import { fmtDate, localDateOf } from '@/lib/time';
 import { useAuthStore } from '@/stores/auth';
+import { useThemeStore } from '@/stores/theme';
 import { toast } from '@/stores/toast';
 import styles from './OperatorPage.module.css';
 
@@ -75,6 +87,8 @@ export function OperatorPage() {
   const signOut = useAuthStore((s) => s.signOut);
   const email = useAuthStore((s) => s.email);
   const userId = useAuthStore((s) => s.userId);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   // Status admin disimpan BERSAMA userId pemiliknya, lalu diturunkan — bukan
   // di-reset lewat effect. Kalau akun berganti, `admin` otomatis kembali null,
@@ -86,6 +100,12 @@ export function OperatorPage() {
   const [actMode, setActMode] = useState<ActionMode | null>(null);
   const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
   const [tab, setTab] = useState<Tab>('klien');
+  const [query, setQuery] = useState('');
+  const [reloading, setReloading] = useState(false);
+  const visibleOrgs = useMemo(
+    () => orgs.filter((organization) => matchesOrganization(organization, query)),
+    [orgs, query],
+  );
 
   // AuthGate biasanya yang memanggil ini; route ini di luarnya.
   useEffect(() => {
@@ -166,6 +186,22 @@ export function OperatorPage() {
     return d !== null && d <= 7 && o.plan !== 'suspended';
   }).length;
   const dormant = orgs.filter((o) => idleLabel(o.lastActivityAt).stale).length;
+  const openAction = (organization: AdminOrgRow, mode: ActionMode) => {
+    setActOrg(organization);
+    setActMode(mode);
+  };
+
+  const manualReload = async () => {
+    setReloading(true);
+    try {
+      await reload();
+      toast.success('Data operator diperbarui');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal memuat ulang');
+    } finally {
+      setReloading(false);
+    }
+  };
 
   const TABS: { id: Tab; label: string; icon: string; count: number }[] = [
     { id: 'klien', label: 'Klien', icon: 'buildings', count: orgs.length },
@@ -180,16 +216,35 @@ export function OperatorPage() {
   return (
     <div className={styles.wrap}>
       <header className={styles.masthead}>
-        <div>
-          <span className={styles.eyebrow}>FixMaster · Operator</span>
-          <h1 className={styles.title}>Dashboard Klien</h1>
+        <div className={styles.mastheadIdentity}>
+          <span className={styles.mastheadMark} aria-hidden>
+            <Mascot variant="face" size={50} animated={false} />
+          </span>
+          <div>
+            <span className={styles.eyebrow}>FixMaster · Bench Console</span>
+            <h1 className={styles.title}>Konsol Operator</h1>
+            <p className={styles.subtitle}>Kelola akses dan masa aktif organisasi.</p>
+          </div>
         </div>
         <div className={styles.mastheadRight}>
-          <span className={styles.who}>{email}</span>
+          <span className={styles.operatorState}>
+            <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden />
+            <span className={styles.who}>{email}</span>
+          </span>
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Gunakan tema terang' : 'Gunakan tema gelap'}
+            title={theme === 'dark' ? 'Tema terang' : 'Tema gelap'}
+          >
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
+          </button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => void reload().catch(() => toast.error('Gagal memuat ulang'))}
+            onClick={() => void manualReload()}
+            loading={reloading}
             iconLeft={<Icon name="arrows-rotate" aria-hidden />}
           >
             Muat ulang
@@ -256,152 +311,156 @@ export function OperatorPage() {
       </div>
 
       {tab === 'klien' && (
-        <Card glass>
-          <CardBody className={orgs.length ? styles.noPad : undefined}>
-            {orgs.length === 0 ? (
-              <EmptyState title="Belum ada organisasi" />
-            ) : (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Organisasi</th>
-                      <th>Paket</th>
-                      <th className={styles.num}>Sisa</th>
-                      <th
-                        className={styles.num}
-                        title="Jam dari daftar sampai tiket pertama"
-                      >
-                        Aktivasi
-                      </th>
-                      <th title="Minggu dengan aktivitas dari 3 minggu terakhir">
-                        Retensi
-                      </th>
-                      <th title="Modul inti dipakai: servis, kasir, stok, keuangan">
-                        Modul
-                      </th>
-                      <th className={styles.num}>Outlet</th>
-                      <th className={styles.num}>User</th>
-                      <th className={styles.num}>Tiket</th>
-                      <th>Aktivitas</th>
-                      <th>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orgs.map((o) => {
-                      const phase = subscriptionPhase(o.expiresAt);
-                      const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
-                      const idle = idleLabel(o.lastActivityAt);
-                      const suspended = o.plan === 'suspended';
-                      return (
-                        <tr key={o.orgId}>
-                          <td>
-                            <span className={styles.orgCell}>
-                              <span
-                                className={[
-                                  styles.led,
-                                  suspended ? styles.ledCrit : (PHASE_LED[phase] ?? ''),
-                                ].join(' ')}
-                                title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
-                              />
-                              <span className={styles.orgName}>{o.name}</span>
-                              {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
-                            </span>
-                            {o.note && (
-                              <span className={styles.noteInline}>{o.note}</span>
-                            )}
-                          </td>
-                          <td>
-                            <span
-                              className={[
-                                styles.plan,
-                                suspended ? styles.planSuspended : '',
-                              ].join(' ')}
-                            >
-                              {o.plan}
-                            </span>
-                          </td>
-                          <td
-                            className={[
-                              styles.num,
-                              days !== null && days <= 7 ? styles.daysWarn : '',
-                            ].join(' ')}
+        <>
+          <div className={styles.clientToolbar}>
+            <label className={styles.searchBox}>
+              <Icon name="magnifying-glass" aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Cari nama atau nomor organisasi"
+                aria-label="Cari nama atau nomor organisasi"
+                autoComplete="off"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery('')}>
+                  Bersihkan
+                </button>
+              )}
+            </label>
+            <span className={styles.resultCount} aria-live="polite">
+              {visibleOrgs.length} dari {orgs.length} organisasi
+            </span>
+          </div>
+
+          <Card glass>
+            <CardBody className={visibleOrgs.length ? styles.noPad : undefined}>
+              {visibleOrgs.length === 0 ? (
+                <EmptyState
+                  title={
+                    orgs.length === 0
+                      ? 'Belum ada organisasi'
+                      : 'Organisasi tidak ditemukan'
+                  }
+                  description={
+                    orgs.length === 0
+                      ? 'Organisasi yang mendaftar akan muncul di konsol ini.'
+                      : 'Coba nama lain, nomor ORG, atau UUID lengkap.'
+                  }
+                />
+              ) : (
+                <>
+                  <div className={[styles.tableWrap, styles.tableOnly].join(' ')}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Organisasi</th>
+                          <th>Terdaftar</th>
+                          <th>Paket</th>
+                          <th className={styles.num}>Sisa</th>
+                          <th
+                            className={styles.num}
+                            title="Jam dari daftar sampai tiket pertama"
                           >
-                            {days === null ? '∞' : `${days}h`}
-                          </td>
-                          <td className={styles.num}>
-                            {o.activationHours === null ? '—' : `${o.activationHours}j`}
-                          </td>
-                          <td className={styles.pips}>
-                            {'●'.repeat(o.weeksActive)}
-                            {'○'.repeat(Math.max(0, 3 - o.weeksActive))}
-                          </td>
-                          <td className={styles.pips}>
-                            {'●'.repeat(o.modulesUsed)}
-                            {'○'.repeat(Math.max(0, 4 - o.modulesUsed))}
-                          </td>
-                          <td className={styles.num}>{o.outletCount}</td>
-                          <td className={styles.num}>{o.userCount}</td>
-                          <td className={styles.num}>{o.serviceCount}</td>
-                          <td className={idle.stale ? styles.idleStale : styles.idle}>
-                            {idle.text}
-                          </td>
-                          <td>
-                            <div className={styles.rowActions}>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setActOrg(o);
-                                  setActMode('note');
-                                }}
-                              >
-                                Catatan
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  setActOrg(o);
-                                  setActMode('payment');
-                                }}
-                              >
-                                Konfirmasi bayar
-                              </Button>
-                              {suspended ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setActOrg(o);
-                                    setActMode('reactivate');
-                                  }}
-                                >
-                                  Aktifkan
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setActOrg(o);
-                                    setActMode('suspend');
-                                  }}
-                                >
-                                  Suspend
-                                </Button>
-                              )}
-                            </div>
-                          </td>
+                            Aktivasi
+                          </th>
+                          <th className={styles.num}>Outlet</th>
+                          <th className={styles.num}>User</th>
+                          <th className={styles.num}>Tiket</th>
+                          <th>Aktivitas</th>
+                          <th>Aksi</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+                      </thead>
+                      <tbody>
+                        {visibleOrgs.map((o) => {
+                          const phase = subscriptionPhase(o.expiresAt);
+                          const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
+                          const idle = idleLabel(o.lastActivityAt);
+                          const suspended = o.plan === 'suspended';
+                          return (
+                            <tr key={o.orgId}>
+                              <td>
+                                <span className={styles.orgNumber}>
+                                  {organizationNumber(o.orgId)}
+                                </span>
+                                <span className={styles.orgCell}>
+                                  <span
+                                    className={[
+                                      styles.led,
+                                      suspended
+                                        ? styles.ledCrit
+                                        : (PHASE_LED[phase] ?? ''),
+                                    ].join(' ')}
+                                    title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
+                                  />
+                                  <span className={styles.orgName}>{o.name}</span>
+                                  {o.isDemo && (
+                                    <span className={styles.demoTag}>DEMO</span>
+                                  )}
+                                </span>
+                                {o.note && (
+                                  <span className={styles.noteInline}>{o.note}</span>
+                                )}
+                              </td>
+                              <td className={styles.dateCell}>
+                                {fmtDate(localDateOf(o.registeredAt))}
+                              </td>
+                              <td>
+                                <span
+                                  className={[
+                                    styles.plan,
+                                    suspended ? styles.planSuspended : '',
+                                  ].join(' ')}
+                                >
+                                  {o.plan}
+                                </span>
+                              </td>
+                              <td
+                                className={[
+                                  styles.num,
+                                  days !== null && days <= 7 ? styles.daysWarn : '',
+                                ].join(' ')}
+                              >
+                                {days === null ? '∞' : `${days}h`}
+                              </td>
+                              <td className={styles.num}>
+                                {o.activationHours === null
+                                  ? '—'
+                                  : `${o.activationHours}j`}
+                              </td>
+                              <td className={styles.num}>{o.outletCount}</td>
+                              <td className={styles.num}>{o.userCount}</td>
+                              <td className={styles.num}>{o.serviceCount}</td>
+                              <td className={idle.stale ? styles.idleStale : styles.idle}>
+                                {idle.text}
+                              </td>
+                              <td>
+                                <OrganizationActions
+                                  organization={o}
+                                  onAction={openAction}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className={styles.clientCards}>
+                    {visibleOrgs.map((o) => (
+                      <OrganizationCard
+                        key={o.orgId}
+                        organization={o}
+                        onAction={openAction}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardBody>
+          </Card>
+        </>
       )}
 
       {tab === 'jejak' && (
@@ -458,6 +517,117 @@ export function OperatorPage() {
   );
 }
 
+function OrganizationActions({
+  organization,
+  onAction,
+}: {
+  organization: AdminOrgRow;
+  onAction: (organization: AdminOrgRow, mode: ActionMode) => void;
+}) {
+  const suspended = organization.plan === 'suspended';
+  return (
+    <div className={styles.rowActions}>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => onAction(organization, 'payment')}
+      >
+        Konfirmasi bayar
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => onAction(organization, 'note')}>
+        Catatan
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onAction(organization, suspended ? 'reactivate' : 'suspend')}
+      >
+        {suspended ? 'Aktifkan' : 'Tangguhkan'}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className={styles.deleteButton}
+        iconLeft={<Icon name="trash" aria-hidden />}
+        onClick={() => onAction(organization, 'delete')}
+      >
+        Hapus
+      </Button>
+    </div>
+  );
+}
+
+function OrganizationCard({
+  organization: o,
+  onAction,
+}: {
+  organization: AdminOrgRow;
+  onAction: (organization: AdminOrgRow, mode: ActionMode) => void;
+}) {
+  const phase = subscriptionPhase(o.expiresAt);
+  const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
+  const idle = idleLabel(o.lastActivityAt);
+  const suspended = o.plan === 'suspended';
+
+  return (
+    <article className={styles.clientCard}>
+      <header className={styles.clientCardHead}>
+        <div>
+          <span className={styles.orgNumber}>{organizationNumber(o.orgId)}</span>
+          <h2 className={styles.clientCardTitle}>
+            <span
+              className={[
+                styles.led,
+                suspended ? styles.ledCrit : (PHASE_LED[phase] ?? ''),
+              ].join(' ')}
+              title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
+            />
+            {o.name}
+            {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
+          </h2>
+        </div>
+        <span className={[styles.plan, suspended ? styles.planSuspended : ''].join(' ')}>
+          {o.plan}
+        </span>
+      </header>
+
+      <dl className={styles.clientFacts}>
+        <div>
+          <dt>Terdaftar</dt>
+          <dd>{fmtDate(localDateOf(o.registeredAt))}</dd>
+        </div>
+        <div>
+          <dt>Sisa masa aktif</dt>
+          <dd className={days !== null && days <= 7 ? styles.daysWarn : ''}>
+            {days === null ? '∞' : `${days} hari`}
+          </dd>
+        </div>
+        <div>
+          <dt>Aktivasi</dt>
+          <dd>{o.activationHours === null ? '—' : `${o.activationHours} jam`}</dd>
+        </div>
+        <div>
+          <dt>Aktivitas</dt>
+          <dd className={idle.stale ? styles.idleStale : ''}>{idle.text}</dd>
+        </div>
+        <div>
+          <dt>Outlet</dt>
+          <dd>{o.outletCount}</dd>
+        </div>
+        <div>
+          <dt>Pengguna / tiket</dt>
+          <dd>
+            {o.userCount} / {o.serviceCount}
+          </dd>
+        </div>
+      </dl>
+
+      {o.note && <p className={styles.cardNote}>{o.note}</p>}
+      <OrganizationActions organization={o} onAction={onAction} />
+    </article>
+  );
+}
+
 /**
  * Login minimal khusus operator. Sengaja tidak memakai AuthPage: komponen itu
  * membawa alur tenant (signup, wizard, PIN) yang tak relevan dan justru
@@ -468,55 +638,139 @@ function OperatorLogin({
 }: {
   onSignIn: (email: string, password: string) => Promise<{ error?: string | null }>;
 }) {
+  const theme = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setError('');
     setBusy(true);
-    const res = await onSignIn(email.trim(), password);
-    setBusy(false);
-    if (res.error) toast.error(res.error);
+    try {
+      const res = await onSignIn(email.trim(), password);
+      if (res.error) setError(res.error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className={styles.center}>
-      <Card glass>
-        <CardHeader
-          icon={<Icon name="shield" aria-hidden />}
-          title="Operator FixMaster"
-        />
-        <CardBody>
-          <form className={styles.form} onSubmit={submit}>
-            <label className={styles.label}>
-              Email
-              <input
-                className={styles.input}
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label className={styles.label}>
-              Password
-              <input
-                className={styles.input}
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            <Button type="submit" loading={busy} fullWidth>
-              Masuk
+    <div className={styles.loginPage}>
+      <section className={styles.loginShell} aria-labelledby="operator-login-title">
+        <aside className={styles.loginIdentity}>
+          <div className={styles.loginBrand}>
+            <img src="/logo.svg" width="44" height="44" alt="" />
+            <span>
+              <strong>FixMaster</strong>
+              <small>BENCH OS</small>
+            </span>
+          </div>
+
+          <div className={styles.loginVolt} aria-hidden>
+            <Mascot variant="full" size={148} animated />
+            <span className={styles.voltLine} />
+          </div>
+
+          <div className={styles.loginIdentityCopy}>
+            <span className={styles.consoleLabel}>VOLT // SECURE CHANNEL</span>
+            <h2>Kendali klien hanya untuk operator.</h2>
+            <p>
+              Periksa masa aktif, konfirmasi pembayaran, dan tindak organisasi dari satu
+              konsol yang tercatat.
+            </p>
+          </div>
+
+          <ul className={styles.loginSignals}>
+            <li>
+              <span className={[styles.led, styles.ledOk].join(' ')} />
+              Akses lintas organisasi<span>TERKUNCI</span>
+            </li>
+            <li>
+              <span className={[styles.led, styles.ledOk].join(' ')} />
+              Jejak tindakan<span>AKTIF</span>
+            </li>
+            <li>
+              <span className={[styles.led, styles.ledWarn].join(' ')} />
+              Pembayaran<span>WA MANUAL</span>
+            </li>
+          </ul>
+        </aside>
+
+        <main className={styles.loginPanel}>
+          <div className={styles.loginPanelTop}>
+            <Link to="/" className={styles.backLink}>
+              <Icon name="arrow-left" aria-hidden /> Beranda
+            </Link>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Gunakan tema terang' : 'Gunakan tema gelap'}
+              title={theme === 'dark' ? 'Tema terang' : 'Tema gelap'}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
+            </button>
+          </div>
+
+          <div className={styles.loginHeading}>
+            <span className={styles.consoleLabel}>OPERATOR TERMINAL // 01</span>
+            <h1 id="operator-login-title">Masuk ke konsol operator</h1>
+            <p>Gunakan akun platform admin FixMaster, bukan akun pemilik organisasi.</p>
+          </div>
+
+          <form className={styles.loginForm} onSubmit={submit}>
+            <Input
+              noAutoCap
+              type="email"
+              name="operator-email"
+              label="Email operator"
+              placeholder="operator@fixmaster.app"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              iconLeft={<Icon name="envelope" aria-hidden />}
+            />
+            <Input
+              noAutoCap
+              revealable
+              type="password"
+              name="operator-password"
+              label="Password"
+              placeholder="Masukkan password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              revealLabels={{ show: 'Tampilkan password', hide: 'Sembunyikan password' }}
+            />
+
+            {error && (
+              <p className={styles.loginError} role="alert">
+                <Icon name="warning" aria-hidden /> {error}
+              </p>
+            )}
+
+            <Button
+              type="submit"
+              loading={busy}
+              fullWidth
+              iconLeft={<Icon name="shield" aria-hidden />}
+            >
+              Masuk aman
             </Button>
           </form>
-        </CardBody>
-      </Card>
+
+          <p className={styles.loginFoot}>
+            Tidak memiliki akses? Hubungi pemilik sistem untuk memasukkan akun ke
+            <code>platform_admins</code>.
+          </p>
+        </main>
+      </section>
     </div>
   );
 }

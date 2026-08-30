@@ -703,10 +703,6 @@ export interface AdminOrgRow {
   lastPaidAt: string | null;
   /** Jam dari daftar sampai tiket pertama. null = belum pernah bertransaksi. */
   activationHours: number | null;
-  /** Berapa dari 3 minggu terakhir yang ada aktivitasnya (0-3). */
-  weeksActive: number;
-  /** Berapa dari 4 modul inti yang dipakai (servis, kasir, stok, keuangan). */
-  modulesUsed: number;
   /** Catatan internal vendor. Tidak pernah terlihat klien. */
   note: string;
 }
@@ -727,8 +723,6 @@ function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
     pendingInvoices: Number(d.pending_invoices ?? 0),
     lastPaidAt: (d.last_paid_at as string | null) ?? null,
     activationHours: d.activation_hours == null ? null : Number(d.activation_hours),
-    weeksActive: Number(d.weeks_active ?? 0),
-    modulesUsed: Number(d.modules_used ?? 0),
     note: (d.note as string) ?? '',
   };
 }
@@ -809,6 +803,26 @@ export async function adminSetClientNote(orgId: string, note: string): Promise<v
   const { error } = await c.rpc('admin_set_client_note', {
     p_org_id: orgId,
     p_note: note,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Permanently erase an organization and every tenant row that cascades from it.
+ * Auth users are deliberately retained; the server writes an immutable operator
+ * audit row before deleting the organization.
+ */
+export async function adminDeleteOrganization(
+  orgId: string,
+  confirmation: string,
+  reason: string,
+): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_delete_org', {
+    p_org_id: orgId,
+    p_confirmation: confirmation,
+    p_reason: reason,
   });
   if (error) throw new Error(error.message);
 }

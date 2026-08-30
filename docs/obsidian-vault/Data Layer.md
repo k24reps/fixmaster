@@ -162,6 +162,12 @@ UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), ro
 
 **`apply_payment` mencatat bila pemanggilnya admin platform.** Webhook (service_role) tidak dicatat di sini karena sudah punya log Edge Function; owner mock-confirm bukan aksi lintas-tenant. Yang dicatat khusus jalur operator — rekonsiliasi manual, yang dari luar tampak sama dengan promo: "masa aktif bertambah tanpa webhook".
 
+### Konsol organisasi & penghapusan permanen (migration `0048`)
+
+`0048` menyederhanakan scorecard menjadi data yang benar-benar dipakai operator. `admin_list_orgs()` dibuat ulang tanpa `weeks_active` dan `modules_used`; `registered_at`, `activation_hours`, jumlah agregat, status paket, expiry, aktivitas, dan catatan tetap tersedia. Nomor tampilan `ORG-XXXXXXXX` **bukan kolom baru** dan bukan nomor urut yang mudah ditebak: klien menurunkannya secara deterministik dari delapan karakter awal UUID organisasi melalui `organizationNumber()`. Pencarian nama/nomor/UUID dilakukan lokal terhadap hasil admin yang sudah dibatasi skemanya.
+
+RPC baru `admin_delete_org(org, confirmation, reason)` adalah operasi vendor-only yang fail-closed: gate `is_platform_admin()`, alasan wajib, organisasi dikunci `FOR UPDATE`, dan konfirmasi harus sama dengan nomor `ORG-XXXXXXXX` yang dihitung ulang di server. Sebelum `DELETE organizations`, RPC menghitung outlet/anggota/tiket lalu memanggil `log_operator_action('delete_org')`; FK `operator_actions.org_id on delete set null` menjaga audit dan salinan `org_name`, sedangkan seluruh data tenant ber-FK cascade ikut hilang. **Baris `auth.users` sengaja dipertahankan**—pengguna masih dapat login dan membuat organisasi baru. Fungsi di-revoke dari `public, anon`, hanya di-grant ke `authenticated`, lalu tetap menolak semua akun yang bukan admin platform.
+
 ### Model akses peran (migration `0016`) — TIGA lapis
 
 Sebelum `0016`, RLS hanya kenal dua level (`is_org_member` vs `is_org_manager` = owner/admin), sehingga ada dua celah yang hanya tertutup UI (bisa di-bypass via API):

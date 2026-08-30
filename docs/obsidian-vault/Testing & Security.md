@@ -11,8 +11,8 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
-- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Tracker server sinkron `0001`–`0047` per 30 Agu 2026.
-- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI**. Tracker server juga sinkron `0001`–`0047` per 30 Agu 2026; `0043`–`0047` diterapkan setelah dry-run dan 76/76 test integrasi staging lulus. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default kembali ter-link ke **staging** setelah tiap push prod.
+- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Tracker server sinkron `0001`–`0048` per 30 Agu 2026.
+- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI**. Tracker server masih `0001`–`0047` per 30 Agu 2026; `0048` belum dipromosikan. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging**.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Edge functions source aktif**: hanya `delete-account` + `health`. Deployment `gopay-listener` staging sudah dihapus saat cutover `0047`. Deployment hosted legacy non-GoPay masih dapat terlihat di dashboard remote, tetapi tidak dipanggil frontend dan RPC billing-nya sudah dicabut; penghapusan remote perlu audit target + persetujuan eksplisit.
@@ -112,7 +112,6 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - `[x]` Tier 2 (RPC/billing/restore/track) + 2b (edge auth) + Tier 4 E2E + Tier 3 + Tier 5.
 - `[x]` **Perbaikan F5/F2/F1/F3 — SELESAI & terverifikasi** (36/36 integration hijau).
 - `[x]` ~~Deploy edge function `fersaku-webhook` agar F1 aktif~~ — usang, gateway dicabut.
-- `[ ]` Set `GOPAY_LISTENER_SECRET` + deploy `gopay-listener` di produksi (aksi user/devops).
 - `[ ]` (Opsional) F3 lebih ketat via Supabase Auth password policy.
 
 ## Terkait
@@ -130,14 +129,14 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 
 ## Baseline terkini (30 Agu 2026)
 
-- Unit/komponen: `npm run test` **449/449 hijau** (40 file). Penurunan dari 460 bukan regresi cakupan aktif: test parser/listener GoPay yang source-nya dihapus ikut dicabut; ditambah test deep-link WhatsApp yang menjaga id organisasi, paket, nominal, dan bukti bayar masuk pesan.
-- Integration RLS/RPC staging: **76/76 hijau** (10 file) sesudah `0047` diterapkan. Mencakup penolakan owner biasa, konfirmasi manual admin, invoice `paid`, perpanjangan expiry, idempotensi referensi, serta audit `payment_manual`.
+- Unit/komponen: `npm run test` **452/452 hijau** (41 file). Tiga test baru menjaga nomor organisasi stabil dan pencarian berdasarkan nama, nomor pendek, maupun UUID penuh.
+- Integration RLS/RPC staging: **78/78 hijau** (10 file) sesudah `0048` diterapkan. Selain pembayaran manual, suite menjaga non-operator ditolak menghapus, konfirmasi nomor yang salah gagal, organisasi fixture + data tenant terhapus saat konfirmasi benar, dan jejak `delete_org` tetap bertahan setelah FK org menjadi null.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence
   `Organization.settings.mobileNavigation`; verifikasi browser asli mencakup breakpoint
   360/390/700/721/1440 px, pertukaran slot, simpan/reset, More sheet, POS cart dock,
   dan pengecualian bottom bar pada detail servis.
-- **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`–`0047`). Menjaga owner org lain ditolak, lalu admin dapat mengonfirmasi pembayaran manual menjadi invoice `paid` + expiry baru + aksi `payment_manual`. Referensi, durasi, nominal, paket, pelaku, dan alasan diverifikasi; tabel audit tetap tak terbaca via REST.
+- **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`–`0048`). Menjaga owner org lain ditolak, pembayaran manual atomik, metadata scorecard yang usang tidak lagi diekspos, serta penghapusan organisasi hanya berhasil dengan alasan + nomor konfirmasi server-side. Tabel audit tetap tak terbaca via REST dan jejak penghapusan tidak ikut terhapus.
 
 ### Batas keamanan pembayaran manual (`0047`)
 
@@ -153,6 +152,7 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - **`tier2d-operator-controls`**: kontrol tulis + jejak aksi. Menguji dua sisi: owner org lain ditolak men-suspend (dan `plan_type` org target TIDAK berubah), lalu setelah promosi berhasil dengan jejak lengkap berisi alasan + pelaku.
 - **Teardown bersih diverifikasi**: `platform_admins` kosong lagi dan jumlah org kembali seperti semula setelah suite selesai — tes tidak meninggalkan admin platform menggantung di staging.
 - **Probe REST pasca-`0046`**: `admin_suspend_org`, `admin_apply_promo`, `admin_set_client_note`, `admin_reactivate_org`, `admin_list_operator_actions`, `admin_list_orgs` semuanya `42501` untuk anon. Yang terakhir penting karena ia sempat di-`DROP`+`CREATE` (lihat catatan 42P13 di [[Decisions & Bug Fixes]]) — grant default Supabase memasang ulang EXECUTE untuk anon, dan revoke ulang di `0046` terbukti menutupnya.
+- **Penghapusan `0048`**: owner org biasa ditolak `admin_delete_org`; nomor salah tidak memutasi data; nomor tepat + alasan menghapus organisasi fixture beserta data tenant; audit menyimpan `org_name`, actor, reason, nomor, dan hitungan dampak walau `org_id` menjadi null. Akun Auth sengaja tetap ada.
 
 > [!TIP]
 > **Cara probe RPC tanpa login** (dipakai berulang di sesi ini): POST `/rest/v1/rpc/<fn>` dengan anon key. `42501` = fungsi ADA tapi tertutup (yang kita mau). `PGRST202` = **tidak selalu berarti hilang** — PostgREST mencocokkan nama **dan tanda tangan**, jadi body `{}` untuk fungsi berparameter juga menghasilkan `PGRST202`. Selalu kirim argumen yang benar sebelum menyimpulkan sebuah fungsi belum ter-deploy. Kesalahan ini sudah dua kali hampir menghasilkan kesimpulan salah.

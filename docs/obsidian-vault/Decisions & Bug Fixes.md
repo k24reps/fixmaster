@@ -2061,8 +2061,22 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 
 **Trade-off sadar:** operator menjadi bottleneck dan pelanggan tidak aktif otomatis. Ini diterima untuk fase pilot karena volumenya kecil dan kontak langsung justru bernilai. Sinyal menghidupkan otomasi lagi: SLA aktivasi mulai lambat, salah verifikasi berulang, atau volume membuat audit manual sulit dijaga.
 
-**Verifikasi & rilis:** build hijau; 449/449 unit hijau; lint hijau; 76/76 test integrasi staging hijau setelah `0047` diterapkan. Tracker migrasi staging dan production sama-sama `0001`–`0047`; `main`, `staging`, dan HEAD menunjuk commit yang sama (`09590ca`). Vercel production `Ready`, ber-alias `fixmaster.app`, bundle live memuat `admin_confirm_manual_payment`, landing render tanpa console error, dan deployment `gopay-listener` staging sudah dihapus.
+**Verifikasi & rilis:** build hijau; 449/449 unit hijau; lint hijau; 76/76 test integrasi staging hijau setelah `0047` diterapkan. Tracker migrasi staging dan production sama-sama `0001`–`0047`; `main`, `staging`, dan HEAD menunjuk commit yang sama (`9947685`). Vercel production `Ready`, ber-alias `fixmaster.app`, bundle live memuat `admin_confirm_manual_payment`, landing render tanpa console error, dan deployment `gopay-listener` staging sudah dihapus.
 
 **Batas parity:** yang disamakan adalah kode aplikasi, urutan migrasi, dan perilaku billing. Kredensial, URL project, serta data staging/production tetap sengaja berbeda. Deployment hosted legacy non-GoPay tidak lagi punya jalur RPC dari aplikasi, tetapi penghapusan remote-nya ditunda sampai target diaudit dan disetujui eksplisit; jangan menyamakan lingkungan dengan menyalin data atau secret.
 
 #decision #billing #whatsapp #operator #security #keputusan-user
+
+---
+
+## Konsol operator dipadatkan & penghapusan organisasi diamankan (`0048`, 30 Agu 2026)
+
+**Masalah UX:** tabel klien memuat Retensi dan Modul yang tidak membantu tugas utama operator—mencari organisasi, memeriksa masa aktif, mengonfirmasi pembayaran WhatsApp, dan memberi dukungan. Identitas hanya nama juga rawan salah pilih saat ada toko bernama mirip; tanggal onboarding tersembunyi; login operator belum terasa sebagai permukaan vendor yang sensitif.
+
+**Keputusan UI:** login diubah menjadi secure bench terminal dengan VOLT Probe, status koneksi, penanda internal, tema, dan error inline. Dashboard mendapat pencarian nama/nomor/UUID, nomor stabil `ORG-XXXXXXXX`, tanggal pendaftaran, reload state, serta layout container-aware: tabel desktop berubah menjadi kartu pada ruang sempit. Retensi/Modul dihapus dari RPC dan UI, bukan sekadar disembunyikan. QA browser asli lulus pada desktop light/dark dan 390 px tanpa overflow; detector Impeccable bersih setelah seluruh radius kembali ke token desain.
+
+**Keputusan penghapusan:** tombol hapus bukan shortcut langsung. Modal menjelaskan cakupan cascade, mewajibkan alasan dan mengetik nomor organisasi, kemudian server menghitung ulang nomor yang sama, mengunci baris, menulis audit, baru menghapus. Auth user dipertahankan agar identitas login tidak ikut musnah diam-diam. Ini lebih aman daripada mengandalkan konfirmasi UI karena pemanggil API tetap harus melewati `is_platform_admin()` dan guard server-side.
+
+**Verifikasi:** build + lint hijau; 452/452 unit hijau; 78/78 integration staging hijau; tracker staging `0001`–`0048`. Production sengaja masih `0001`–`0047` sampai ada permintaan promote/deploy eksplisit.
+
+#decision #operator #security #ux #responsive #migration

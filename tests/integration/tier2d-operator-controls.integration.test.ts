@@ -2,8 +2,8 @@
  * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0047).
  *
  * `tier2c` menguji operator boleh MELIHAT lintas-tenant. File ini menguji
- * operator boleh MENGUBAH — suspend, pembayaran manual, catatan — dan bahwa yang bukan
- * operator tidak bisa.
+ * operator boleh MENGUBAH — suspend, pembayaran manual, catatan, penghapusan — dan
+ * bahwa yang bukan operator tidak bisa.
  *
  * Dua asersi yang paling menentukan:
  *  1. owner org LAIN tidak bisa men-suspend siapa pun (gerbang lintas-tenant)
@@ -21,6 +21,7 @@ import {
   teardownTenants,
   type TenantCtx,
 } from './helpers';
+import { organizationNumber } from '@/lib/business/operator';
 
 const d = hasConfig ? describe : describe.skip;
 
@@ -33,7 +34,7 @@ d('Tier 2d — kontrol operator (tulis)', () => {
 
   afterAll(async () => {
     if (ctx) {
-      await ctx.admin.from('operator_actions').delete().eq('org_id', ctx.orgB);
+      await ctx.admin.from('operator_actions').delete().eq('actor_id', ctx.ownerA.userId);
       await ctx.admin
         .from('invoices')
         .delete()
@@ -76,6 +77,15 @@ d('Tier 2d — kontrol operator (tulis)', () => {
       p_amount: 99_000,
       p_reference: 'PALSU',
       p_reason: 'belum admin',
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it('owner org lain DITOLAK menghapus organisasi', async () => {
+    const { error } = await ctx.ownerA.client.rpc('admin_delete_org', {
+      p_org_id: ctx.orgB,
+      p_confirmation: organizationNumber(ctx.orgB),
+      p_reason: 'bukan operator',
     });
     expect(error).not.toBeNull();
   });
@@ -256,15 +266,15 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(rowB?.note).toBe('bingung di alur DP');
   });
 
-  it('admin_list_orgs memuat kolom scorecard', async () => {
+  it('admin_list_orgs memuat tanggal daftar dan tidak lagi memuat retensi/modul', async () => {
     const { data } = await ctx.ownerA.client.rpc('admin_list_orgs');
     const rowB = ((data ?? []) as Record<string, unknown>[]).find(
       (r) => r.org_id === ctx.orgB,
     );
     expect(rowB).toHaveProperty('activation_hours');
-    expect(typeof rowB?.weeks_active).toBe('number');
-    expect(rowB!.modules_used as number).toBeGreaterThanOrEqual(0);
-    expect(rowB!.modules_used as number).toBeLessThanOrEqual(4);
+    expect(rowB).toHaveProperty('registered_at');
+    expect(rowB).not.toHaveProperty('weeks_active');
+    expect(rowB).not.toHaveProperty('modules_used');
   });
 
   it('jejak terbaca lewat admin_list_operator_actions', async () => {
@@ -276,5 +286,52 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(acts).toContain('suspend');
     expect(acts).toContain('reactivate');
     expect(acts).toContain('payment_manual');
+  });
+
+  it('hapus organisasi wajib nomor tepat dan menyisakan jejak audit', async () => {
+    const { error: mismatchError } = await ctx.ownerA.client.rpc('admin_delete_org', {
+      p_org_id: ctx.orgB,
+      p_confirmation: 'ORG-SALAH',
+      p_reason: 'permintaan pemilik diverifikasi',
+    });
+    expect(mismatchError).not.toBeNull();
+
+    const { data: before } = await ctx.admin
+      .from('organizations')
+      .select('id,name')
+      .eq('id', ctx.orgB)
+      .single();
+    expect(before?.id).toBe(ctx.orgB);
+
+    const { error } = await ctx.ownerA.client.rpc('admin_delete_org', {
+      p_org_id: ctx.orgB,
+      p_confirmation: organizationNumber(ctx.orgB),
+      p_reason: 'permintaan pemilik diverifikasi',
+    });
+    expect(error).toBeNull();
+
+    const { data: deleted } = await ctx.admin
+      .from('organizations')
+      .select('id')
+      .eq('id', ctx.orgB);
+    expect(deleted).toHaveLength(0);
+
+    const { data: trail } = await ctx.admin
+      .from('operator_actions')
+      .select('org_id,org_name,action,reason,detail')
+      .eq('actor_id', ctx.ownerA.userId)
+      .eq('action', 'delete_org')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    expect(trail).toMatchObject({
+      org_id: null,
+      org_name: before?.name,
+      action: 'delete_org',
+      reason: 'permintaan pemilik diverifikasi',
+    });
+    expect((trail?.detail as { org_number: string }).org_number).toBe(
+      organizationNumber(ctx.orgB),
+    );
   });
 });
