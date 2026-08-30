@@ -7,6 +7,7 @@ import {
   isOrgActive,
   REMINDER_DAYS,
   GRACE_DAYS,
+  manualPaymentWhatsAppLink,
 } from './billing';
 
 const NOW = new Date('2026-06-06T12:00:00.000Z');
@@ -63,28 +64,55 @@ describe('canWrite', () => {
 
 describe('isOrgActive', () => {
   it('false when suspended', () => {
-    expect(isOrgActive({ plan: 'suspended', expiry: inDays(30), outletCount: 1, now: NOW })).toBe(
-      false,
-    );
+    expect(
+      isOrgActive({ plan: 'suspended', expiry: inDays(30), outletCount: 1, now: NOW }),
+    ).toBe(false);
   });
   it('false when over outlet quota', () => {
     // standard (Solo) allows 1 outlet
-    expect(isOrgActive({ plan: 'standard', expiry: inDays(30), outletCount: 2, now: NOW })).toBe(
-      false,
-    );
+    expect(
+      isOrgActive({ plan: 'standard', expiry: inDays(30), outletCount: 2, now: NOW }),
+    ).toBe(false);
   });
   it('false when past grace', () => {
     expect(
-      isOrgActive({ plan: 'standard', expiry: inDays(-GRACE_DAYS - 1), outletCount: 1, now: NOW }),
+      isOrgActive({
+        plan: 'standard',
+        expiry: inDays(-GRACE_DAYS - 1),
+        outletCount: 1,
+        now: NOW,
+      }),
     ).toBe(false);
   });
   it('true within quota and not expired', () => {
-    expect(isOrgActive({ plan: 'enterprise', expiry: inDays(10), outletCount: 5, now: NOW })).toBe(
-      true,
-    );
+    expect(
+      isOrgActive({ plan: 'enterprise', expiry: inDays(10), outletCount: 5, now: NOW }),
+    ).toBe(true);
     // grace still counts as active for access
-    expect(isOrgActive({ plan: 'standard', expiry: inDays(-1), outletCount: 1, now: NOW })).toBe(
-      true,
-    );
+    expect(
+      isOrgActive({ plan: 'standard', expiry: inDays(-1), outletCount: 1, now: NOW }),
+    ).toBe(true);
+  });
+});
+
+describe('manualPaymentWhatsAppLink', () => {
+  it('encodes a traceable payment request without changing billing state', () => {
+    const link = manualPaymentWhatsAppLink({
+      supportPhone: '0899-5318-638',
+      orgId: 'org-123',
+      orgName: 'Nuara Service',
+      currentPlan: 'Trial',
+      expiresAt: '2026-09-01T00:00:00.000Z',
+      requestedPlan: 'Pro',
+      amount: 199_000,
+      outletCount: 3,
+    });
+
+    expect(link).toMatch(/^https:\/\/wa\.me\/628995318638\?text=/);
+    const message = decodeURIComponent(link.split('?text=')[1]);
+    expect(message).toContain('ID organisasi: org-123');
+    expect(message).toContain('Paket pilihan: Pro');
+    expect(message).toContain('Nominal: Rp\u00a0199.000 / bulan');
+    expect(message).toContain('bukti bayar');
   });
 });

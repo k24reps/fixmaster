@@ -1,5 +1,6 @@
 import type { PlanType } from '@/data/types';
 import { PLANS, withinOutletQuota } from '@/config/plans';
+import { waLink } from './notify';
 
 /**
  * Pure subscription/billing logic (Fase 1B). No I/O — mirrors the server-side
@@ -83,4 +84,54 @@ export function phaseLabel(phase: SubscriptionPhase): string {
 /** Display price for a plan (placeholder numbers until launch). */
 export function planPrice(plan: PlanType): string {
   return PLANS[plan].priceLabel;
+}
+
+export interface ManualPaymentRequest {
+  supportPhone: string;
+  orgId: string;
+  orgName: string;
+  currentPlan: string;
+  expiresAt: string | null;
+  requestedPlan: string;
+  amount: number;
+  outletCount: number;
+}
+
+/**
+ * Build the owner → FixMaster WhatsApp hand-off for manual subscription
+ * payments. This function only creates a message; it never creates an invoice
+ * or changes access. The stable org id prevents similarly named shops from
+ * being credited accidentally by the operator.
+ */
+export function manualPaymentWhatsAppLink(request: ManualPaymentRequest): string {
+  const expiry = request.expiresAt
+    ? new Date(request.expiresAt).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta',
+      })
+    : 'belum ditentukan';
+  const amount = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(request.amount);
+
+  return waLink(
+    request.supportPhone,
+    [
+      'Halo FixMaster, saya ingin memperpanjang masa aktif.',
+      '',
+      `Usaha: ${request.orgName}`,
+      `ID organisasi: ${request.orgId}`,
+      `Paket saat ini: ${request.currentPlan}`,
+      `Aktif sampai: ${expiry}`,
+      `Paket pilihan: ${request.requestedPlan}`,
+      `Jumlah outlet: ${request.outletCount}`,
+      `Nominal: ${amount} / bulan`,
+      '',
+      'Mohon kirim instruksi pembayaran. Setelah transfer, saya akan mengirim bukti bayar di chat ini.',
+    ].join('\n'),
+  );
 }

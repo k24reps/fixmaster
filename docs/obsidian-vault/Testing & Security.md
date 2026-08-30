@@ -11,11 +11,11 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
-- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Per **19 Agu 2026 disinkronkan ke migrasi `0046`** — termasuk `0043`/`0044` (listener GoPay + perbaikan grant), `0045` (admin platform), `0046` (kontrol operator + jejak aksi). Diverifikasi lewat probe REST: seluruh RPC admin membalas `42501` untuk anon (ada, tapi tertutup).
+- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Server masih di migrasi `0046`; kode repo sudah menambah `0047` (pembayaran WhatsApp manual) tetapi belum di-push ke DB per 30 Agu 2026.
 - **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per **22 Jun 2026 disinkronkan ke migrasi `0036`** (`0031` transfer_wallet/refund parsial, `0032` org_settings, `0033` satu-toko-per-email, `0034` PO→Keuangan, `0035` tracking kontak+garansi, `0036` admin outlet-scope — semua via `db push`, tracker sinkron). **`0036` di-apply 22 Jun setelah gerbang keamanan terpenuhi**: admin toko testing sudah di-set outlet; toko pilot owner-only (tanpa admin/karyawan) → nol risiko lockout. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging** (relink balik setelah tiap push prod).
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Edge functions ter-deploy di staging**: `gopay-listener`, `delete-account`, `health` (3 fungsi). Gateway hosted (`create-invoice`, `duitku-webhook`, `fersaku-webhook`) sudah dicabut — lihat [[Decisions & Bug Fixes]]. Jadi Tier 2 bisa diuji langsung di staging.
+- **Edge functions ter-deploy di staging**: instalasi lama masih dapat memuat `gopay-listener`, `delete-account`, `health`; source aktif repo hanya menyisakan `delete-account` + `health`. Listener harus dihapus dari staging saat cutover `0047` agar infrastruktur sama dengan kode.
 - **Tooling lokal**: Node v24 ✅, Supabase CLI 2.101.0 ✅, **Docker ❌ (tidak terpasang)**. Maka `supabase start` (DB lokal) tidak dipakai — kita pakai **staging cloud**.
 
 > [!CAUTION]
@@ -128,20 +128,24 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 
 `deploy-migrations.bat` dulu memakai `set /p` untuk meminta password DB — dan `set /p` **menampilkan ketikan apa adanya**. Insiden nyata: password DB **produksi** tampil di layar, ikut ter-screenshot, lalu terkirim ke percakapan; password harus dirotasi. Kini pakai helper `:askpw` yang membungkus `Read-Host -AsSecureString` (PowerShell) sehingga ketikan tertutup. Aturan umum: input rahasia di skrip mana pun tidak boleh muncul di stdout — layar terminal itu permukaan yang bocor (screenshot, screen-share, scrollback).
 
-## Baseline terkini (28 Agu 2026)
+## Baseline terkini (30 Agu 2026)
 
-- Unit/komponen: `npm run test` **460/460 hijau** (41 file) — 455 setelah global search,
-  457 setelah audit dashboard, +2 penjaga reduced-motion maskot landing lalu dihapus,
-  +2 regresi state data dashboard (`placeholderData` tetap loading dan error diekspos agar
-  array kosong tidak terbaca sebagai fakta bisnis), lalu +1 penjaga sesi zoom sementara
-  pada demo publik.
-- Integration RLS/RPC staging: `npm run test:integration` **59/59 hijau** (8 file) — terakhir dijalankan 11 Agu 2026, butuh `.env.test.local`.
+- Unit/komponen: `npm run test` **449/449 hijau** (40 file). Penurunan dari 460 bukan regresi cakupan aktif: test parser/listener GoPay yang source-nya dihapus ikut dicabut; ditambah test deep-link WhatsApp yang menjaga id organisasi, paket, nominal, dan bukti bayar masuk pesan.
+- Integration RLS/RPC staging: suite diperbarui untuk `0047`, tetapi **belum dijalankan** karena migrasi baru belum diterapkan ke Supabase staging. Baseline terakhir server `0046` tetap 59/59 (11 Agu 2026); jangan mengklaim `0047` terverifikasi sebelum `supabase db push` staging.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence
   `Organization.settings.mobileNavigation`; verifikasi browser asli mencakup breakpoint
   360/390/700/721/1440 px, pertukaran slot, simpan/reset, More sheet, POS cart dock,
   dan pengecualian bottom bar pada detail servis.
-- **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`). Dua asersi paling menentukan: owner org LAIN ditolak men-suspend (gerbang lintas-tenant), dan **setiap aksi tulis meninggalkan jejak** di `operator_actions` lengkap dengan alasan + pelakunya. Juga menguji: suspend tanpa alasan ditolak, promo ke org suspended ditolak, durasi promo di luar 1–365 ditolak, `operator_actions` tak terbaca lewat REST.
+- **`tier2d-operator-controls`** — kontrol operator yang MENULIS (`0046`–`0047`). Menjaga owner org lain ditolak, lalu admin dapat mengonfirmasi pembayaran manual menjadi invoice `paid` + expiry baru + aksi `payment_manual`. Referensi, durasi, nominal, paket, pelaku, dan alasan diverifikasi; tabel audit tetap tak terbaca via REST.
+
+### Batas keamanan pembayaran manual (`0047`)
+
+- Klien tidak memiliki RPC create/confirm/cancel invoice; tombol WhatsApp hanya membuat pesan.
+- `admin_confirm_manual_payment` menerima hanya plan Solo/Pro, 1–12 bulan, nominal positif, serta referensi + alasan wajib.
+- Baris organisasi dikunci `FOR UPDATE`; invoice, expiry, plan, dan audit ditulis dalam transaksi yang sama. Retry dengan referensi sama idempoten sehingga timeout jaringan tidak menggandakan bulan.
+- RPC di-revoke dari `public, anon`, di-grant ke `authenticated`, lalu tetap fail-closed lewat `is_platform_admin()`.
+- Seluruh pending invoice lama di-cancel saat migrasi, jadi tidak ada checkout lama yang masih tampak bisa dibayar.
 
 ## Hasil testing dashboard operator (19 Agu 2026)
 

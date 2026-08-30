@@ -5,8 +5,7 @@
  * di dalam fungsi adalah satu-satunya pertahanan) + privilege khusus:
  *   - void_sale / receive_goods → manager-only.
  *   - set_member_role / deactivate_member → manager; owner-only utk role owner.
- *   - start_subscription → owner-only.
- *   - apply_payment → DICURIGAI tak ada cek pemanggil (potensi billing bypass).
+ *   - billing self-service → tidak tersedia sejak 0047.
  *   - restore_org_data → owner-only + org dipaksa (anti lintas-tenant).
  *   - track_service (publik) → hanya field aman, history internal tersembunyi.
  *
@@ -50,7 +49,11 @@ d('Tier 2 — RPC privilege (manager/owner gates)', () => {
     });
     expect(error).not.toBeNull();
     // Pastikan sale B tidak ter-void.
-    const { data } = await ctx.admin.from('sales').select('voided').eq('id', ctx.saleBId).single();
+    const { data } = await ctx.admin
+      .from('sales')
+      .select('voided')
+      .eq('id', ctx.saleBId)
+      .single();
     expect(data?.voided).toBe(false);
   });
 
@@ -128,61 +131,12 @@ d('Tier 2 — Eskalasi via PostgREST langsung (direct write)', () => {
 });
 
 d('Tier 2 — Billing gates', () => {
-  it('karyawan TIDAK bisa start_subscription (owner-only sejak 0016)', async () => {
-    const { error } = await ctx.karyawanA.client.rpc('start_subscription', {
+  it('owner pun TIDAK bisa membuat invoice self-service sejak 0047', async () => {
+    const { error } = await ctx.ownerA.client.rpc('start_subscription', {
       p_plan: 'standard',
-      p_amount: 1000,
+      p_amount: 99_000,
     });
     expect(error).not.toBeNull();
-  });
-
-  it('admin A TIDAK bisa start_subscription (owner-only sejak 0016)', async () => {
-    const { error } = await ctx.adminA.client.rpc('start_subscription', {
-      p_plan: 'standard',
-      p_amount: 1000,
-    });
-    expect(error).not.toBeNull();
-  });
-
-  it('F5 regresi: karyawan DITOLAK apply_payment; invoice tetap pending', async () => {
-    // Owner A membuat invoice pending sah.
-    const { data: invId, error: eInv } = await ctx.ownerA.client.rpc('start_subscription', {
-      p_plan: 'enterprise',
-      p_amount: 0,
-    });
-    expect(eInv).toBeNull();
-
-    // Karyawan A mencoba menandai invoice itu LUNAS tanpa bayar → harus ditolak.
-    const { error } = await ctx.karyawanA.client.rpc('apply_payment', {
-      p_invoice_id: invId,
-    });
-    expect(error).not.toBeNull(); // guard 0022 menolak non-owner
-
-    // Bukti tak berdampak: invoice masih pending.
-    const { data: inv } = await ctx.admin
-      .from('invoices')
-      .select('status')
-      .eq('id', invId)
-      .single();
-    expect(inv?.status).toBe('pending');
-  });
-
-  it('F5 regresi: OWNER tetap BISA apply_payment (jalur sah) → invoice paid', async () => {
-    const { data: invId, error: eInv } = await ctx.ownerA.client.rpc('start_subscription', {
-      p_plan: 'standard',
-      p_amount: 0,
-    });
-    expect(eInv).toBeNull();
-
-    const { error } = await ctx.ownerA.client.rpc('apply_payment', { p_invoice_id: invId });
-    expect(error).toBeNull(); // owner = jalur mock-confirm yang sah
-
-    const { data: inv } = await ctx.admin
-      .from('invoices')
-      .select('status')
-      .eq('id', invId)
-      .single();
-    expect(inv?.status).toBe('paid');
   });
 
   it('gerbang is_org_active: org kedaluwarsa (lewat grace) TIDAK bisa menulis', async () => {

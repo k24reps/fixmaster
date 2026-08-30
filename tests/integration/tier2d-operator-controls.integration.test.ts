@@ -1,21 +1,26 @@
 /**
- * TIER 2d — Kontrol operator yang MENULIS (migration 0046).
+ * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0047).
  *
  * `tier2c` menguji operator boleh MELIHAT lintas-tenant. File ini menguji
- * operator boleh MENGUBAH — suspend, promo, catatan — dan bahwa yang bukan
+ * operator boleh MENGUBAH — suspend, pembayaran manual, catatan — dan bahwa yang bukan
  * operator tidak bisa.
  *
  * Dua asersi yang paling menentukan:
  *  1. owner org LAIN tidak bisa men-suspend siapa pun (gerbang lintas-tenant)
  *  2. setiap aksi tulis MENINGGALKAN JEJAK di operator_actions
  *
- * Nomor 2 bukan sekadar "fitur log jalan". Promo tidak punya bukti pendamping
- * (tak ada uang, tak ada webhook); kalau jejaknya tidak tertulis, informasinya
- * hilang permanen dan bulan-yang-dibayar tak bisa lagi dibedakan dari
- * bulan-yang-diberikan.
+ * Nomor 2 bukan sekadar "fitur log jalan". Pembayaran manual tidak punya
+ * webhook; audit RPC adalah bukti penghubung antara invoice, operator, dan
+ * konfirmasi yang diterima lewat WhatsApp.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { hasConfig, makeAnon, setupTenants, teardownTenants, type TenantCtx } from './helpers';
+import {
+  hasConfig,
+  makeAnon,
+  setupTenants,
+  teardownTenants,
+  type TenantCtx,
+} from './helpers';
 
 const d = hasConfig ? describe : describe.skip;
 
@@ -29,6 +34,11 @@ d('Tier 2d — kontrol operator (tulis)', () => {
   afterAll(async () => {
     if (ctx) {
       await ctx.admin.from('operator_actions').delete().eq('org_id', ctx.orgB);
+      await ctx.admin
+        .from('invoices')
+        .delete()
+        .eq('org_id', ctx.orgB)
+        .eq('provider', 'manual_whatsapp');
       await ctx.admin.from('client_notes').delete().eq('org_id', ctx.orgB);
       await ctx.admin.from('platform_admins').delete().eq('user_id', ctx.ownerA.userId);
       await teardownTenants(ctx);
@@ -58,18 +68,22 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(org?.plan_type).not.toBe('suspended');
   });
 
-  it('owner org lain DITOLAK memberi promo', async () => {
-    const { error } = await ctx.ownerA.client.rpc('admin_apply_promo', {
+  it('owner org lain DITOLAK mengonfirmasi pembayaran manual', async () => {
+    const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
       p_org_id: ctx.orgB,
-      p_promo: 'Founding member',
-      p_days: 60,
-      p_reason: 'iseng',
+      p_plan: 'standard',
+      p_months: 1,
+      p_amount: 99_000,
+      p_reference: 'PALSU',
+      p_reason: 'belum admin',
     });
     expect(error).not.toBeNull();
   });
 
   it('anon DITOLAK membaca jejak operator', async () => {
-    const { error } = await makeAnon().rpc('admin_list_operator_actions', { p_limit: 10 });
+    const { error } = await makeAnon().rpc('admin_list_operator_actions', {
+      p_limit: 10,
+    });
     expect(error).not.toBeNull();
   });
 
@@ -78,7 +92,7 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(data ?? []).toHaveLength(0);
   });
 
-  it('promosi admin, lalu suspend org lain BERHASIL + tercatat', async () => {
+  it('admin dapat menangguhkan org lain + aksinya tercatat', async () => {
     await ctx.admin.from('platform_admins').insert({
       user_id: ctx.ownerA.userId,
       email: ctx.ownerA.email,
@@ -116,16 +130,6 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(error).not.toBeNull();
   });
 
-  it('promo ke org suspended ditolak (aksesnya tetap mati)', async () => {
-    const { error } = await ctx.ownerA.client.rpc('admin_apply_promo', {
-      p_org_id: ctx.orgB,
-      p_promo: 'Founding member',
-      p_days: 60,
-      p_reason: 'mitra pilot',
-    });
-    expect(error).not.toBeNull();
-  });
-
   it('aktifkan kembali BERHASIL + tercatat', async () => {
     const { error } = await ctx.ownerA.client.rpc('admin_reactivate_org', {
       p_org_id: ctx.orgB,
@@ -149,19 +153,24 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(trail?.length).toBe(1);
   });
 
-  it('promo memperpanjang expiry + tercatat lengkap dengan durasinya', async () => {
+  it('pembayaran manual membuat invoice paid, memperpanjang expiry, dan tercatat', async () => {
     const { data: before } = await ctx.admin
       .from('organizations')
       .select('plan_expired_at')
       .eq('id', ctx.orgB)
       .single();
 
-    const { data: newExpiry, error } = await ctx.ownerA.client.rpc('admin_apply_promo', {
-      p_org_id: ctx.orgB,
-      p_promo: 'Founding member',
-      p_days: 60,
-      p_reason: 'mitra pilot',
-    });
+    const { data: newExpiry, error } = await ctx.ownerA.client.rpc(
+      'admin_confirm_manual_payment',
+      {
+        p_org_id: ctx.orgB,
+        p_plan: 'enterprise',
+        p_months: 2,
+        p_amount: 398_000,
+        p_reference: 'RIFAN 29/08 14:32',
+        p_reason: 'bukti transfer diverifikasi via WhatsApp',
+      },
+    );
     expect(error).toBeNull();
     expect(newExpiry).toBeTruthy();
 
@@ -170,25 +179,65 @@ d('Tier 2d — kontrol operator (tulis)', () => {
       .select('plan_expired_at')
       .eq('id', ctx.orgB)
       .single();
-    const beforeMs = before?.plan_expired_at ? Date.parse(before.plan_expired_at) : Date.now();
+    const beforeMs = before?.plan_expired_at
+      ? Date.parse(before.plan_expired_at)
+      : Date.now();
     expect(Date.parse(after!.plan_expired_at!)).toBeGreaterThan(beforeMs);
 
     const { data: trail } = await ctx.admin
       .from('operator_actions')
       .select('action,detail')
       .eq('org_id', ctx.orgB)
-      .eq('action', 'promo');
+      .eq('action', 'payment_manual');
     expect(trail?.length).toBe(1);
-    expect((trail?.[0].detail as { hari: number }).hari).toBe(60);
-    expect((trail?.[0].detail as { promo: string }).promo).toBe('Founding member');
+    expect((trail?.[0].detail as { bulan: number }).bulan).toBe(2);
+    expect((trail?.[0].detail as { referensi: string }).referensi).toBe(
+      'RIFAN 29/08 14:32',
+    );
+
+    const { data: invoices } = await ctx.admin
+      .from('invoices')
+      .select('status,provider,provider_ref,amount,plan')
+      .eq('org_id', ctx.orgB)
+      .eq('provider', 'manual_whatsapp');
+    expect(invoices).toHaveLength(1);
+    expect(invoices?.[0]).toMatchObject({
+      status: 'paid',
+      provider: 'manual_whatsapp',
+      provider_ref: 'RIFAN 29/08 14:32',
+      plan: 'enterprise',
+    });
+    expect(Number(invoices?.[0].amount)).toBe(398_000);
+
+    const { data: retriedExpiry, error: retryError } = await ctx.ownerA.client.rpc(
+      'admin_confirm_manual_payment',
+      {
+        p_org_id: ctx.orgB,
+        p_plan: 'enterprise',
+        p_months: 2,
+        p_amount: 398_000,
+        p_reference: 'RIFAN 29/08 14:32',
+        p_reason: 'retry setelah timeout',
+      },
+    );
+    expect(retryError).toBeNull();
+    expect(retriedExpiry).toBe(newExpiry);
+    const { count } = await ctx.admin
+      .from('invoices')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', ctx.orgB)
+      .eq('provider_ref', 'RIFAN 29/08 14:32');
+    expect(count).toBe(1);
   });
 
-  it('durasi promo di luar 1-365 ditolak', async () => {
-    const { error } = await ctx.ownerA.client.rpc('admin_apply_promo', {
+  it('pembayaran manual tanpa referensi atau durasi valid ditolak', async () => {
+    const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
       p_org_id: ctx.orgB,
-      p_promo: 'Founding member',
-      p_days: 400,
-      p_reason: 'kebanyakan',
+      p_plan: 'standard',
+      p_months: 13,
+      p_amount: 99_000,
+      p_reference: ' ',
+      p_reason: 'invalid',
     });
     expect(error).not.toBeNull();
   });
@@ -209,7 +258,9 @@ d('Tier 2d — kontrol operator (tulis)', () => {
 
   it('admin_list_orgs memuat kolom scorecard', async () => {
     const { data } = await ctx.ownerA.client.rpc('admin_list_orgs');
-    const rowB = ((data ?? []) as Record<string, unknown>[]).find((r) => r.org_id === ctx.orgB);
+    const rowB = ((data ?? []) as Record<string, unknown>[]).find(
+      (r) => r.org_id === ctx.orgB,
+    );
     expect(rowB).toHaveProperty('activation_hours');
     expect(typeof rowB?.weeks_active).toBe('number');
     expect(rowB!.modules_used as number).toBeGreaterThanOrEqual(0);
@@ -224,6 +275,6 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     const acts = ((data ?? []) as { action: string }[]).map((r) => r.action);
     expect(acts).toContain('suspend');
     expect(acts).toContain('reactivate');
-    expect(acts).toContain('promo');
+    expect(acts).toContain('payment_manual');
   });
 });

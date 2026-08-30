@@ -16,7 +16,7 @@ import { roleAllows, isManager, isOwner } from './plans';
 // Batas server yang relevan untuk UI (dari RLS/RPC):
 //   - Baca keuangan (incomes/expenses select) = manager-only (0016).
 //   - Manager (is_org_manager) = owner + admin (0001).
-//   - Owner-only: billing/start_subscription (0016) + kelola peran owner.
+//   - Owner-only: kelola peran owner; billing self-service dihapus sejak 0047.
 const SERVER = {
   financeReadManagerOnly: true,
   managers: ['owner', 'admin'] as Role[],

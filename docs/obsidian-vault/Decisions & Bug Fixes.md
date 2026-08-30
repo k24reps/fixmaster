@@ -2046,3 +2046,21 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 `.tmp-release/**` dikecualikan, dan **460/460 test** lulus.
 
 #decision #demo #design-system #zoom #visual-fidelity #impeccable
+
+---
+
+## Pembayaran langganan kembali manual via WhatsApp (`0047`, 30 Agu 2026)
+
+**Keputusan user:** batalkan gateway GoPay untuk sementara. Volume awal belum membenarkan perangkat listener, secret publik, korelasi nominal unik, dan rekonsiliasi gateway. Pelanggan cukup meminta instruksi serta mengirim bukti bayar lewat WhatsApp; masa aktif hanya berubah setelah operator FixMaster memverifikasi uang masuk.
+
+**Batas kepercayaan yang dipilih:** chat WhatsApp bukan bukti pembayaran dan tombol paket bukan aksi billing. Deep-link membawa nama + **id organisasi stabil**, paket saat ini/pilihan, expiry, outlet, dan nominal agar operator tidak salah mengkredit toko bernama mirip. Tidak ada invoice pending saat tombol diklik, tidak ada tombol “Saya sudah bayar”, dan tidak ada perubahan database di sisi klien.
+
+**Satu transaksi operator:** `admin_confirm_manual_payment` hanya menerima admin platform, plan `standard|enterprise`, 1–12 bulan, nominal positif, referensi, dan alasan. RPC `FOR UPDATE` organisasi → insert invoice `paid` ber-provider `manual_whatsapp` → update plan/expiry dari `greatest(now, expiry)` → `log_operator_action('payment_manual')`. Karena semuanya satu transaksi, tidak mungkin akses bertambah tanpa invoice/audit pendamping.
+
+**Decommission forward-only:** migrasi historis `0043`–`0046` tidak ditulis ulang. `0047` membatalkan semua invoice pending lalu menghapus index/RPC GoPay, RPC self-service/mock, dan promo gratis. Source Edge Function listener, parser, env QR, config publik, skrip rekonsiliasi, tab Rekonsiliasi, dan tombol Promo dihapus. Runbook lama diberi banner arsip supaya histori keputusan tetap bisa ditelusuri.
+
+**Trade-off sadar:** operator menjadi bottleneck dan pelanggan tidak aktif otomatis. Ini diterima untuk fase pilot karena volumenya kecil dan kontak langsung justru bernilai. Sinyal menghidupkan otomasi lagi: SLA aktivasi mulai lambat, salah verifikasi berulang, atau volume membuat audit manual sulit dijaga.
+
+**Verifikasi lokal:** build hijau; 449/449 unit hijau; lint hijau. Test integrasi `0047` sudah ditulis tetapi belum boleh diklaim hijau sebelum migrasi diterapkan ke Supabase staging.
+
+#decision #billing #whatsapp #operator #security #keputusan-user

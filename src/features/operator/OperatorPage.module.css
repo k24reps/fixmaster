@@ -114,6 +114,13 @@
   color: var(--danger);
 }
 
+.readMode {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  color: var(--success);
+}
+
 /* ---------- tab ---------- */
 .tabs {
   display: flex;

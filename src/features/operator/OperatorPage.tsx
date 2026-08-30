@@ -20,15 +20,11 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, CardBody, CardHeader, EmptyState, Icon } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   adminListOrgs,
   adminListOperatorActions,
-  adminUnpaidGopay,
-  applyPayment,
   isPlatformAdmin,
   type AdminOrgRow,
-  type AdminUnpaidInvoice,
   type OperatorAction,
 } from '@/data/supabase-client';
 import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
@@ -47,7 +43,7 @@ const PHASE_LED: Record<string, string> = {
   expired: styles.ledCrit,
 };
 
-type Tab = 'klien' | 'rekonsiliasi' | 'jejak';
+type Tab = 'klien' | 'jejak';
 
 /**
  * Ringkas `detail` jsonb jadi satu kalimat pendek untuk kolom tabel jejak.
@@ -57,7 +53,8 @@ type Tab = 'klien' | 'rekonsiliasi' | 'jejak';
 function summarizeDetail(d: Record<string, unknown>): string {
   if (d.promo) return `${String(d.promo)} · ${String(d.hari ?? '?')} hari`;
   if (d.nominal != null) return fmtRp(Number(d.nominal));
-  if (d.plan_sesudah) return `${String(d.plan_sebelum ?? '?')} → ${String(d.plan_sesudah)}`;
+  if (d.plan_sesudah)
+    return `${String(d.plan_sebelum ?? '?')} → ${String(d.plan_sesudah)}`;
   if (d.plan_sebelum) return `dari ${String(d.plan_sebelum)}`;
   return '—';
 }
@@ -85,9 +82,6 @@ export function OperatorPage() {
   const [adminFor, setAdminFor] = useState<{ userId: string; ok: boolean } | null>(null);
   const admin = adminFor && adminFor.userId === userId ? adminFor.ok : null;
   const [orgs, setOrgs] = useState<AdminOrgRow[]>([]);
-  const [unpaid, setUnpaid] = useState<AdminUnpaidInvoice[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState<AdminUnpaidInvoice | null>(null);
   const [actions, setActions] = useState<OperatorAction[]>([]);
   const [actMode, setActMode] = useState<ActionMode | null>(null);
   const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
@@ -99,13 +93,8 @@ export function OperatorPage() {
   }, [initAuth]);
 
   const reload = useCallback(async () => {
-    const [o, u, a] = await Promise.all([
-      adminListOrgs(),
-      adminUnpaidGopay(),
-      adminListOperatorActions(20),
-    ]);
+    const [o, a] = await Promise.all([adminListOrgs(), adminListOperatorActions(20)]);
     setOrgs(o);
-    setUnpaid(u);
     setActions(a);
   }, []);
 
@@ -130,20 +119,6 @@ export function OperatorPage() {
     };
   }, [authStatus, userId, reload]);
 
-  const acceptPayment = async (inv: AdminUnpaidInvoice) => {
-    setBusy(true);
-    try {
-      await applyPayment(inv.invoiceId);
-      toast.success(`${inv.orgName} — pembayaran diterima, masa aktif diperpanjang`);
-      await reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal menerima pembayaran');
-    } finally {
-      setBusy(false);
-      setConfirm(null);
-    }
-  };
-
   if (authStatus === 'loading') {
     return (
       <div className={styles.center}>
@@ -165,8 +140,8 @@ export function OperatorPage() {
           <CardHeader icon={<Icon name="lock" aria-hidden />} title="Akses ditolak" />
           <CardBody>
             <p className={styles.hint}>
-              Akun <strong>{email}</strong> bukan admin platform. Halaman ini hanya untuk operator
-              FixMaster.
+              Akun <strong>{email}</strong> bukan admin platform. Halaman ini hanya untuk
+              operator FixMaster.
             </p>
             <Button variant="secondary" onClick={() => void signOut()}>
               Keluar
@@ -194,8 +169,12 @@ export function OperatorPage() {
 
   const TABS: { id: Tab; label: string; icon: string; count: number }[] = [
     { id: 'klien', label: 'Klien', icon: 'buildings', count: orgs.length },
-    { id: 'rekonsiliasi', label: 'Rekonsiliasi', icon: 'qr-code', count: unpaid.length },
-    { id: 'jejak', label: 'Jejak aksi', icon: 'clock-rotate-left', count: actions.length },
+    {
+      id: 'jejak',
+      label: 'Jejak aksi',
+      icon: 'clock-rotate-left',
+      count: actions.length,
+    },
   ];
 
   return (
@@ -231,29 +210,33 @@ export function OperatorPage() {
         </div>
         <div className={styles.readItem}>
           <span className={styles.readLabel}>JATUH TEMPO ≤7H</span>
-          <strong className={[styles.readValue, dueSoon > 0 ? styles.readWarn : ''].join(' ')}>
+          <strong
+            className={[styles.readValue, dueSoon > 0 ? styles.readWarn : ''].join(' ')}
+          >
             {dueSoon}
           </strong>
         </div>
         <div className={styles.readItem}>
           <span className={styles.readLabel}>DORMANT</span>
-          <strong className={[styles.readValue, dormant > 0 ? styles.readWarn : ''].join(' ')}>
+          <strong
+            className={[styles.readValue, dormant > 0 ? styles.readWarn : ''].join(' ')}
+          >
             {dormant}
           </strong>
         </div>
         <div className={styles.readItem}>
           <span className={styles.readLabel}>DITANGGUHKAN</span>
           <strong
-            className={[styles.readValue, suspendedCount > 0 ? styles.readCrit : ''].join(' ')}
+            className={[styles.readValue, suspendedCount > 0 ? styles.readCrit : ''].join(
+              ' ',
+            )}
           >
             {suspendedCount}
           </strong>
         </div>
         <div className={styles.readItem}>
-          <span className={styles.readLabel}>INVOICE MENGGANTUNG</span>
-          <strong className={[styles.readValue, unpaid.length > 0 ? styles.readWarn : ''].join(' ')}>
-            {unpaid.length}
-          </strong>
+          <span className={styles.readLabel}>MODE TAGIHAN</span>
+          <strong className={styles.readMode}>WA MANUAL</strong>
         </div>
       </div>
 
@@ -285,11 +268,18 @@ export function OperatorPage() {
                       <th>Organisasi</th>
                       <th>Paket</th>
                       <th className={styles.num}>Sisa</th>
-                      <th className={styles.num} title="Jam dari daftar sampai tiket pertama">
+                      <th
+                        className={styles.num}
+                        title="Jam dari daftar sampai tiket pertama"
+                      >
                         Aktivasi
                       </th>
-                      <th title="Minggu dengan aktivitas dari 3 minggu terakhir">Retensi</th>
-                      <th title="Modul inti dipakai: servis, kasir, stok, keuangan">Modul</th>
+                      <th title="Minggu dengan aktivitas dari 3 minggu terakhir">
+                        Retensi
+                      </th>
+                      <th title="Modul inti dipakai: servis, kasir, stok, keuangan">
+                        Modul
+                      </th>
                       <th className={styles.num}>Outlet</th>
                       <th className={styles.num}>User</th>
                       <th className={styles.num}>Tiket</th>
@@ -317,7 +307,9 @@ export function OperatorPage() {
                               <span className={styles.orgName}>{o.name}</span>
                               {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
                             </span>
-                            {o.note && <span className={styles.noteInline}>{o.note}</span>}
+                            {o.note && (
+                              <span className={styles.noteInline}>{o.note}</span>
+                            )}
                           </td>
                           <td>
                             <span
@@ -368,13 +360,13 @@ export function OperatorPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="ghost"
+                                variant="secondary"
                                 onClick={() => {
                                   setActOrg(o);
-                                  setActMode('promo');
+                                  setActMode('payment');
                                 }}
                               >
-                                Promo
+                                Konfirmasi bayar
                               </Button>
                               {suspended ? (
                                 <Button
@@ -407,64 +399,6 @@ export function OperatorPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
-      {tab === 'rekonsiliasi' && (
-        <Card glass accent={unpaid.length > 0 ? 'warning' : 'none'}>
-          <CardBody className={unpaid.length ? styles.noPad : undefined}>
-            {unpaid.length === 0 ? (
-              <EmptyState
-                icon={<Icon name="check" aria-hidden />}
-                title="Tidak ada invoice menggantung"
-                description="Semua pembayaran GoPay sudah terkorelasi otomatis."
-              />
-            ) : (
-              <>
-                <p className={styles.warn}>
-                  Cocokkan nominal dengan riwayat GoPay Merchant sebelum menerima. Menerima tanpa
-                  uangnya benar-benar masuk = memberi langganan gratis.
-                </p>
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Organisasi</th>
-                        <th>Paket</th>
-                        <th className={styles.num}>Nominal</th>
-                        <th>Status</th>
-                        <th>Dibuat</th>
-                        <th>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unpaid.map((inv) => (
-                        <tr key={inv.invoiceId}>
-                          <td className={styles.orgName}>{inv.orgName}</td>
-                          <td className={styles.plan}>{inv.plan}</td>
-                          <td className={[styles.num, styles.amount].join(' ')}>
-                            {fmtRp(inv.amount)}
-                          </td>
-                          <td className={styles.plan}>{inv.status}</td>
-                          <td className={styles.idle}>{fmtDate(inv.openedAt)}</td>
-                          <td>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={busy}
-                              onClick={() => setConfirm(inv)}
-                            >
-                              Terima
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
             )}
           </CardBody>
         </Card>
@@ -520,19 +454,6 @@ export function OperatorPage() {
         }}
         onDone={reload}
       />
-
-      <ConfirmDialog
-        open={confirm !== null}
-        title="Terima pembayaran ini?"
-        message={
-          confirm
-            ? `${confirm.orgName} — ${fmtRp(confirm.amount)}. Pastikan nominal PERSIS ini ada di riwayat GoPay Merchant. Masa aktif akan diperpanjang 1 bulan.`
-            : ''
-        }
-        confirmLabel="Ya, terima"
-        onConfirm={() => confirm && void acceptPayment(confirm)}
-        onCancel={() => setConfirm(null)}
-      />
     </div>
   );
 }
@@ -562,7 +483,10 @@ function OperatorLogin({
   return (
     <div className={styles.center}>
       <Card glass>
-        <CardHeader icon={<Icon name="shield" aria-hidden />} title="Operator FixMaster" />
+        <CardHeader
+          icon={<Icon name="shield" aria-hidden />}
+          title="Operator FixMaster"
+        />
         <CardBody>
           <form className={styles.form} onSubmit={submit}>
             <label className={styles.label}>

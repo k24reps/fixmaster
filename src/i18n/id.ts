@@ -81,8 +81,10 @@ export const id = {
   'dashboard.ready': 'Siap',
   'dashboard.dataStale': 'Data terakhir',
   'dashboard.errorTitle': 'Sebagian data gagal dimuat',
-  'dashboard.errorUnavailable': 'Angka dashboard disembunyikan agar data kosong tidak terbaca sebagai fakta bisnis.',
-  'dashboard.errorStale': 'Data terakhir tetap ditampilkan. Coba muat ulang untuk memperoleh angka terbaru.',
+  'dashboard.errorUnavailable':
+    'Angka dashboard disembunyikan agar data kosong tidak terbaca sebagai fakta bisnis.',
+  'dashboard.errorStale':
+    'Data terakhir tetap ditampilkan. Coba muat ulang untuk memperoleh angka terbaru.',
   'dashboard.retry': 'Coba lagi',
   'dashboard.netProfit': 'Laba Bersih · Bulan Ini',
   'dashboard.netProfitAria': 'Laba bersih bulan ini',
@@ -119,7 +121,8 @@ export const id = {
   'dashboard.units': 'unit',
   'dashboard.technicianPerformance': 'Performa Teknisi',
   'dashboard.noPerformance': 'Belum ada data',
-  'dashboard.noPerformanceDescription': 'Performa muncul setelah ada servis selesai dengan teknisi.',
+  'dashboard.noPerformanceDescription':
+    'Performa muncul setelah ada servis selesai dengan teknisi.',
   'dashboard.completed': 'selesai',
 
   // ---------- Service statuses ----------
@@ -141,14 +144,33 @@ export const id = {
   'settings.mobileNav.tab': 'Navigasi',
   'settings.mobileNav.title': 'Navigasi Mobile',
   'settings.mobileNav.ownerControl': 'Kontrol owner',
-  'settings.mobileNav.description': 'Pilih dan urutkan empat menu utama yang tampil di bawah layar ponsel. Susunan ini berlaku untuk seluruh tim dan otomatis mengikuti hak akses tiap peran.',
+  'settings.mobileNav.description':
+    'Pilih dan urutkan empat menu utama yang tampil di bawah layar ponsel. Susunan ini berlaku untuk seluruh tim dan otomatis mengikuti hak akses tiap peran.',
   'settings.mobileNav.synced': 'Sinkron semua perangkat',
   'settings.mobileNav.slot': 'Posisi',
   'settings.mobileNav.preview': 'Pratinjau bar',
-  'settings.mobileNav.hint': 'Lainnya selalu tersedia sebagai jalur ke menu lain, pilihan cabang, dan akun.',
+  'settings.mobileNav.hint':
+    'Lainnya selalu tersedia sebagai jalur ke menu lain, pilihan cabang, dan akun.',
   'settings.mobileNav.reset': 'Kembalikan Default',
   'settings.mobileNav.saved': 'Navigasi mobile disimpan',
   'settings.mobileNav.error': 'Gagal menyimpan navigasi mobile',
+  'settings.billing.status': 'Status Langganan',
+  'settings.billing.manualTitle': 'Perpanjang via WhatsApp',
+  'settings.billing.manualKicker': 'Konfirmasi manual oleh tim FixMaster',
+  'settings.billing.manualDescription':
+    'Pilih paket untuk membuka chat dengan rincian akun dan nominal yang sudah terisi. Kirim bukti transfer di WhatsApp; masa aktif baru berubah setelah pembayaran kami verifikasi.',
+  'settings.billing.stepChoose': 'Pilih paket dan minta instruksi pembayaran.',
+  'settings.billing.stepProof': 'Transfer, lalu kirim bukti bayar di chat yang sama.',
+  'settings.billing.stepConfirm':
+    'Tim FixMaster memverifikasi dan memperpanjang masa aktif.',
+  'settings.billing.priceIntro':
+    'Harga per organisasi; paket Pro menyesuaikan jumlah outlet. Outlet aktif:',
+  'settings.billing.recommendation': 'Rekomendasi:',
+  'settings.billing.requestViaWhatsapp': 'Hubungi via WhatsApp',
+  'settings.billing.outletExceeded': 'Outlet melebihi batas',
+  'settings.billing.whatsappOpened':
+    'Membuka WhatsApp — kirim pesan untuk meminta instruksi pembayaran',
+  'settings.billing.history': 'Riwayat Pembayaran',
 
   // ---------- Landing V2 ----------
   'landingV2.metaTitle': 'FixMaster — Aplikasi Servis HP: Tiket, Stok & Margin',
@@ -161,7 +183,8 @@ export const id = {
   'landingV2.signIn': 'Masuk',
   'landingV2.heroKicker': 'Untuk konter HP, laptop & reparasi elektronik',
   'landingV2.heroTitle': 'Catat servis sekali. Stok dan margin ikut terhitung.',
-  'landingV2.heroLead': 'Dari unit masuk sampai pembayaran, FixMaster menyambungkan tiket, sparepart, kas, dan laporan. Pemilik bisa melihat antrean, biaya, dan keuntungan tanpa menyalin buku, chat, atau Excel satu per satu.',
+  'landingV2.heroLead':
+    'Dari unit masuk sampai pembayaran, FixMaster menyambungkan tiket, sparepart, kas, dan laporan. Pemilik bisa melihat antrean, biaya, dan keuntungan tanpa menyalin buku, chat, atau Excel satu per satu.',
   'landingV2.startTrial': 'Mulai gratis 14 hari',
   'landingV2.openDemo': 'Coba alur lengkap di demo',
   'landingV2.heroFineprint': 'Demo tanpa akun · data contoh · tidak tersimpan',
@@ -191,17 +214,23 @@ export const id = {
   'landingV2.painTeam': 'Pemilik masih harus cek staf',
   'landingV2.workflowKicker': 'Satu alur',
   'landingV2.workflowTitle': 'Satu unit masuk. Semua bagian usaha ikut tercatat.',
-  'landingV2.workflowLead': 'Tak perlu menyalin data dari buku ke chat, lalu ke Excel. FixMaster menghubungkan pekerjaan dari meja penerimaan sampai tutup kas.',
+  'landingV2.workflowLead':
+    'Tak perlu menyalin data dari buku ke chat, lalu ke Excel. FixMaster menghubungkan pekerjaan dari meja penerimaan sampai tutup kas.',
   'landingV2.flow.intake.title': 'Terima unit',
-  'landingV2.flow.intake.text': 'Buat tiket, simpan keluhan, perangkat, pelanggan, dan estimasi awal.',
+  'landingV2.flow.intake.text':
+    'Buat tiket, simpan keluhan, perangkat, pelanggan, dan estimasi awal.',
   'landingV2.flow.repair.title': 'Kerjakan servis',
-  'landingV2.flow.repair.text': 'Teknisi memperbarui status dan pelanggan bisa melacak progres sendiri.',
+  'landingV2.flow.repair.text':
+    'Teknisi memperbarui status dan pelanggan bisa melacak progres sendiri.',
   'landingV2.flow.stock.title': 'Pakai sparepart',
-  'landingV2.flow.stock.text': 'Komponen yang dipakai masuk ke biaya servis dan stok ikut berkurang.',
+  'landingV2.flow.stock.text':
+    'Komponen yang dipakai masuk ke biaya servis dan stok ikut berkurang.',
   'landingV2.flow.money.title': 'Catat uang',
-  'landingV2.flow.money.text': 'Pembayaran, margin, akun kas, dan laporan tersambung tanpa hitung ulang.',
+  'landingV2.flow.money.text':
+    'Pembayaran, margin, akun kas, dan laporan tersambung tanpa hitung ulang.',
   'landingV2.ownerTitle': 'Lihat margin tiap servis sebelum toko tutup.',
-  'landingV2.ownerLead': 'Tagihan, modal sparepart, dan margin tetap terhubung ke tiket. Antrean terlambat, stok menipis, dan aktivitas tim terlihat tanpa bertanya satu per satu.',
+  'landingV2.ownerLead':
+    'Tagihan, modal sparepart, dan margin tetap terhubung ke tiket. Antrean terlambat, stok menipis, dan aktivitas tim terlihat tanpa bertanya satu per satu.',
   'landingV2.owner.margin': 'Margin servis',
   'landingV2.owner.marginValue': 'Tercatat per tiket',
   'landingV2.owner.turnaround': 'Waktu pengerjaan',
@@ -223,24 +252,30 @@ export const id = {
   'landingV2.ticketMargin': 'Margin',
   'landingV2.ticketUpdated': 'Diperbarui 14:32',
   'landingV2.productTitle': 'Operasional di meja. Pantau dari ponsel.',
-  'landingV2.productLead': 'Demo ini memakai aplikasi FixMaster yang asli, bukan video. Coba terima unit, ubah status, pakai sparepart, lalu lihat dampaknya ke stok dan keuangan — tanpa akun; data contoh tidak disimpan.',
+  'landingV2.productLead':
+    'Demo ini memakai aplikasi FixMaster yang asli, bukan video. Coba terima unit, ubah status, pakai sparepart, lalu lihat dampaknya ke stok dan keuangan — tanpa akun; data contoh tidak disimpan.',
   'landingV2.productDesktop': 'Desktop',
   'landingV2.productMobile': 'Mobile',
-  'landingV2.productAlt': 'Dashboard FixMaster dengan tiket servis, keuangan, inventori, dan aktivitas konter',
-  'landingV2.productMobileAlt': 'Dashboard mobile FixMaster dengan ringkasan usaha dan navigasi bawah',
+  'landingV2.productAlt':
+    'Dashboard FixMaster dengan tiket servis, keuangan, inventori, dan aktivitas konter',
+  'landingV2.productMobileAlt':
+    'Dashboard mobile FixMaster dengan ringkasan usaha dan navigasi bawah',
   'landingV2.openDemoDesktop': 'Buka demo FixMaster versi desktop',
   'landingV2.openDemoMobile': 'Buka demo FixMaster versi mobile',
   'landingV2.tryNow': 'Buka demo',
   'landingV2.pricingTitle': 'Pilih sesuai cara kerja toko hari ini.',
-  'landingV2.pricingLead': 'Solo untuk satu orang dan satu outlet. Pro saat pekerjaan mulai dibagi ke tim atau cabang.',
+  'landingV2.pricingLead':
+    'Solo untuk satu orang dan satu outlet. Pro saat pekerjaan mulai dibagi ke tim atau cabang.',
   'landingV2.soloTag': 'Untuk usaha satu orang',
-  'landingV2.soloText': 'Alur inti untuk menerima servis, berjualan, mengelola stok, dan membaca laporan.',
+  'landingV2.soloText':
+    'Alur inti untuk menerima servis, berjualan, mengelola stok, dan membaca laporan.',
   'landingV2.soloFeature1': 'Tiket servis, pelanggan, kasir & stok',
   'landingV2.soloFeature2': 'Keuangan & laporan toko',
   'landingV2.soloFeature3': '1 pengguna · 1 outlet · 2 akun kas/bank',
   'landingV2.chooseSolo': 'Mulai uji coba 14 hari',
   'landingV2.proTag': 'Untuk tim & multi-outlet',
-  'landingV2.proText': 'Tambahkan staf, bagi pekerjaan, kelola pembelian supplier, dan pantau lebih dari satu outlet.',
+  'landingV2.proText':
+    'Tambahkan staf, bagi pekerjaan, kelola pembelian supplier, dan pantau lebih dari satu outlet.',
   'landingV2.proFeature1': 'Semua fitur Solo + supplier & pembelian',
   'landingV2.proFeature2': 'Pengguna tak terbatas, pembagian tugas & absensi',
   'landingV2.proFeature3': 'outlet termasuk',
@@ -248,18 +283,24 @@ export const id = {
   'landingV2.recommended': 'Untuk kerja tim',
   'landingV2.faqTitle': 'Pertanyaan sebelum mulai.',
   'landingV2.faq.device.q': 'Hanya untuk servis HP?',
-  'landingV2.faq.device.a': 'Tidak. FixMaster dibuat untuk HP, laptop, tablet, printer, konsol, dan elektronik konsumen lainnya.',
+  'landingV2.faq.device.a':
+    'Tidak. FixMaster dibuat untuk HP, laptop, tablet, printer, konsol, dan elektronik konsumen lainnya.',
   'landingV2.faq.install.q': 'Harus instal aplikasi di komputer kasir?',
-  'landingV2.faq.install.a': 'Tidak. FixMaster dibuka lewat browser di laptop atau ponsel. Anda juga bisa mencoba demo tanpa membuat akun.',
+  'landingV2.faq.install.a':
+    'Tidak. FixMaster dibuka lewat browser di laptop atau ponsel. Anda juga bisa mencoba demo tanpa membuat akun.',
   'landingV2.faq.connection.q': 'Bagaimana kalau koneksi internet terputus?',
-  'landingV2.faq.connection.a': 'Mode lokal bekerja di satu perangkat tanpa akun. Untuk kerja tim dan sinkronisasi antarperangkat, mode cloud membutuhkan internet; saat koneksi kembali, FixMaster memuat ulang data terbaru.',
+  'landingV2.faq.connection.a':
+    'Mode lokal bekerja di satu perangkat tanpa akun. Untuk kerja tim dan sinkronisasi antarperangkat, mode cloud membutuhkan internet; saat koneksi kembali, FixMaster memuat ulang data terbaru.',
   'landingV2.faq.safe.q': 'Siapa yang bisa melihat data toko saya?',
-  'landingV2.faq.safe.a': 'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
+  'landingV2.faq.safe.a':
+    'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
   'landingV2.faq.move.q': 'Bagaimana kalau data saya masih di Excel?',
-  'landingV2.faq.move.a': 'Paket Pro mendukung impor data agar perpindahan tidak perlu dimulai dari nol.',
+  'landingV2.faq.move.a':
+    'Paket Pro mendukung impor data agar perpindahan tidak perlu dimulai dari nol.',
   'landingV2.finalKicker': 'Satu alur. Tanpa catat ulang.',
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
-  'landingV2.finalLead': 'Gunakan FixMaster gratis selama 14 hari. Tidak perlu kartu kredit.',
+  'landingV2.finalLead':
+    'Gunakan FixMaster gratis selama 14 hari. Tidak perlu kartu kredit.',
   'landingV2.finalVoltLabel': 'VOLT // Bench siap',
   'landingV2.finalVoltStatus': 'Alur servis pertama siap dinyalakan.',
   'landingV2.footerTagline': 'Operasional reparasi gadget & elektronik',
@@ -269,14 +310,18 @@ export const id = {
 
   // ---------- Auth / session ----------
   'authPage.brandTagline': 'Meja kerja digital untuk usaha reparasi gadget & elektronik.',
-  'authPage.brandSub': 'Tiket servis, stok sparepart, pelanggan, kas, dan margin bekerja dalam satu alur.',
+  'authPage.brandSub':
+    'Tiket servis, stok sparepart, pelanggan, kas, dan margin bekerja dalam satu alur.',
   'authPage.voltLabel': 'VOLT // Terminal siap',
   'authPage.volt.loginReady': 'Bench siap. Silakan masuk.',
-  'authPage.volt.loginDetail': 'Lanjutkan alur servis, stok, dan margin toko dari meja yang sama.',
+  'authPage.volt.loginDetail':
+    'Lanjutkan alur servis, stok, dan margin toko dari meja yang sama.',
   'authPage.volt.signupReady': 'Bench baru siap dikalibrasi.',
-  'authPage.volt.signupDetail': 'Buat akun untuk menyiapkan alur servis, stok, dan margin toko.',
+  'authPage.volt.signupDetail':
+    'Buat akun untuk menyiapkan alur servis, stok, dan margin toko.',
   'authPage.volt.resetReady': 'Jalur pemulihan siap digunakan.',
-  'authPage.volt.resetDetail': 'Masukkan email akun untuk menerima tautan pengaturan ulang.',
+  'authPage.volt.resetDetail':
+    'Masukkan email akun untuk menerima tautan pengaturan ulang.',
   'authPage.rail.service': 'SERVIS',
   'authPage.rail.serviceValue': 'SIAP',
   'authPage.rail.stock': 'STOK',

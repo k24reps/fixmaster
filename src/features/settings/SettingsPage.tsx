@@ -1,13 +1,38 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardBody, Button, Input, Badge, Select, EmptyState, Icon } from '@/components/ui';
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Input,
+  Badge,
+  Select,
+  EmptyState,
+  Icon,
+} from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { PLANS, roleAllows, PAID_TIERS, withinOutletQuota, outletTierFor, withinUserQuota, priceForOutlets } from '@/config/plans';
-import { subscriptionPhase, daysUntil, phaseLabel, GRACE_DAYS } from '@/lib/business/billing';
+import {
+  PLANS,
+  roleAllows,
+  PAID_TIERS,
+  withinOutletQuota,
+  outletTierFor,
+  withinUserQuota,
+  priceForOutlets,
+} from '@/config/plans';
+import {
+  subscriptionPhase,
+  daysUntil,
+  phaseLabel,
+  GRACE_DAYS,
+  manualPaymentWhatsAppLink,
+} from '@/lib/business/billing';
+import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   getComplaintTemplates,
   setComplaintTemplates,
@@ -27,7 +52,10 @@ import {
   setMobileNavigation as saveMobileNavigation,
 } from '@/config/orgConfig';
 import { NAV_ITEMS } from '@/config/navigation';
-import { DEFAULT_MOBILE_NAV_PATHS, sanitizeMobileNavPaths } from '@/lib/business/navigation';
+import {
+  DEFAULT_MOBILE_NAV_PATHS,
+  sanitizeMobileNavPaths,
+} from '@/lib/business/navigation';
 import { useT } from '@/i18n';
 import {
   DEFAULT_WA_TEMPLATES,
@@ -52,10 +80,6 @@ import {
   getOrgMemberOutlets,
   deactivateMember,
   deleteMember,
-  startSubscription,
-  startGopayInvoice,
-  applyPayment,
-  cancelInvoice,
   listInvoices,
   subscribeOrgBilling,
   deleteAccountCredential,
@@ -109,7 +133,15 @@ async function fileToLogoBlob(file: File): Promise<Blob> {
   );
 }
 
-type Tab = 'usaha' | 'operasional' | 'tim' | 'keuangan' | 'outlet' | 'langganan' | 'navigasi' | 'sistem';
+type Tab =
+  | 'usaha'
+  | 'operasional'
+  | 'tim'
+  | 'keuangan'
+  | 'outlet'
+  | 'langganan'
+  | 'navigasi'
+  | 'sistem';
 
 export function SettingsPage() {
   const me = useSessionStore((s) => s.currentEmployee);
@@ -124,14 +156,31 @@ export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('usaha');
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const TABS: { id: Tab; label: string; icon: string; ownerOnly?: boolean; cloudOnly?: boolean }[] = [
+  const TABS: {
+    id: Tab;
+    label: string;
+    icon: string;
+    ownerOnly?: boolean;
+    cloudOnly?: boolean;
+  }[] = [
     { id: 'usaha', label: 'Usaha', icon: 'fa-store' },
     { id: 'operasional', label: 'Operasional', icon: 'fa-sliders' },
     { id: 'tim', label: 'Tim', icon: 'fa-users', ownerOnly: true },
     { id: 'keuangan', label: 'Wallet', icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: 'Outlet', icon: 'fa-shop', ownerOnly: true },
-    { id: 'langganan', label: 'Langganan', icon: 'fa-crown', ownerOnly: true, cloudOnly: true },
-    { id: 'navigasi', label: t('settings.mobileNav.tab'), icon: 'fa-bars', ownerOnly: true },
+    {
+      id: 'langganan',
+      label: 'Langganan',
+      icon: 'fa-crown',
+      ownerOnly: true,
+      cloudOnly: true,
+    },
+    {
+      id: 'navigasi',
+      label: t('settings.mobileNav.tab'),
+      icon: 'fa-bars',
+      ownerOnly: true,
+    },
     { id: 'sistem', label: 'Sistem', icon: 'fa-gear' },
   ];
   const visibleTabs = TABS.filter(
@@ -164,12 +213,19 @@ export function SettingsPage() {
       {tab === 'tim' && isOwner && <TeamTab employees={employees} outlets={outlets} />}
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} outlets={outlets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
-      {tab === 'langganan' && isOwner && isSupabaseConfigured && <BillingTab outlets={outlets} />}
+      {tab === 'langganan' && isOwner && isSupabaseConfigured && (
+        <BillingTab outlets={outlets} />
+      )}
       {tab === 'navigasi' && isOwner && <MobileNavigationCard />}
       {tab === 'sistem' && (
         <SystemTab
           onReset={() => {
-            if (demoGuard('Reset data dinonaktifkan di demo. Pakai tombol "Reset Demo" di atas untuk mengembalikan data contoh.')) return;
+            if (
+              demoGuard(
+                'Reset data dinonaktifkan di demo. Pakai tombol "Reset Demo" di atas untuk mengembalikan data contoh.',
+              )
+            )
+              return;
             setConfirmReset(true);
           }}
           isOwner={isOwner}
@@ -251,7 +307,8 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
         <div className={styles.mobileNavIntro}>
           <div>
             <span className={styles.mobileNavKicker}>
-              <span aria-hidden />{t('settings.mobileNav.ownerControl')}
+              <span aria-hidden />
+              {t('settings.mobileNav.ownerControl')}
             </span>
             <p>{t('settings.mobileNav.description')}</p>
           </div>
@@ -264,7 +321,9 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
           <div className={styles.mobileNavSlots}>
             {draft.map((path, index) => (
               <div className={styles.mobileNavSlot} key={index}>
-                <span className={styles.mobileNavSlotNumber}>{String(index + 1).padStart(2, '0')}</span>
+                <span className={styles.mobileNavSlotNumber}>
+                  {String(index + 1).padStart(2, '0')}
+                </span>
                 <Select
                   id={`mobile-navigation-slot-${index + 1}`}
                   label={`${t('settings.mobileNav.slot')} ${index + 1}`}
@@ -277,13 +336,22 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
           </div>
 
           <div className={styles.mobileNavPreviewWrap}>
-            <span className={styles.mobileNavPreviewLabel}>{t('settings.mobileNav.preview')}</span>
+            <span className={styles.mobileNavPreviewLabel}>
+              {t('settings.mobileNav.preview')}
+            </span>
             <div className={styles.mobileNavPreview}>
               {draft.map((path, index) => {
                 const item = NAV_ITEMS.find((entry) => entry.to === path) ?? NAV_ITEMS[0];
                 return (
-                  <span className={index === 0 ? styles.mobileNavPreviewActive : ''} key={path}>
-                    <Icon name={item.icon} weight={index === 0 ? 'fill' : 'regular'} aria-hidden />
+                  <span
+                    className={index === 0 ? styles.mobileNavPreviewActive : ''}
+                    key={path}
+                  >
+                    <Icon
+                      name={item.icon}
+                      weight={index === 0 ? 'fill' : 'regular'}
+                      aria-hidden
+                    />
                     <small>{item.to === '/' ? t('nav.home') : t(item.labelKey)}</small>
                   </span>
                 );
@@ -305,7 +373,11 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
           >
             {t('settings.mobileNav.reset')}
           </Button>
-          <Button onClick={save} loading={busy} iconLeft={<Icon name="check" aria-hidden />}>
+          <Button
+            onClick={save}
+            loading={busy}
+            iconLeft={<Icon name="check" aria-hidden />}
+          >
             {t('common.save')}
           </Button>
         </div>
@@ -326,7 +398,12 @@ function BusinessTab() {
   const save = async () => {
     if (!org) return;
     setBusy(true);
-    const updated = { ...org, name: name.trim(), address: address.trim(), phone: phone.trim() };
+    const updated = {
+      ...org,
+      name: name.trim(),
+      address: address.trim(),
+      phone: phone.trim(),
+    };
     try {
       await repository.setSingleton('organization', updated);
       setOrg(updated);
@@ -401,7 +478,11 @@ function BusinessTab() {
                   {org?.logoDataUrl ? 'Ganti Logo' : 'Unggah Logo'}
                 </Button>
                 {org?.logoDataUrl && (
-                  <Button variant="ghost" onClick={removeLogo} iconLeft={<Icon name="trash" aria-hidden />}>
+                  <Button
+                    variant="ghost"
+                    onClick={removeLogo}
+                    iconLeft={<Icon name="trash" aria-hidden />}
+                  >
                     Hapus
                   </Button>
                 )}
@@ -415,10 +496,25 @@ function BusinessTab() {
               />
             </div>
           </div>
-          <Input label="Nama Usaha" value={name} autoCapWords onChange={(e) => setName(e.target.value)} />
-          <Input label="Alamat" value={address} onChange={(e) => setAddress(e.target.value)} />
-          <Input label="No. Telepon" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <Button onClick={save} loading={busy}>Simpan Perubahan</Button>
+          <Input
+            label="Nama Usaha"
+            value={name}
+            autoCapWords
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            label="Alamat"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+          <Input
+            label="No. Telepon"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <Button onClick={save} loading={busy}>
+            Simpan Perubahan
+          </Button>
         </div>
       </CardBody>
     </Card>
@@ -525,7 +621,8 @@ function DeviceCategoriesCard() {
       <CardHeader icon={<Icon name="laptop" aria-hidden />} title="Kategori Perangkat" />
       <CardBody>
         <p className={styles.tplHint}>
-          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan kategori saat membuat servis baru. Tersinkron di semua perangkat.
+          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan
+          kategori saat membuat servis baru. Tersinkron di semua perangkat.
         </p>
         <StringListEditor
           label="Kategori"
@@ -574,7 +671,12 @@ function StringListEditor({
           {items.map((item) => (
             <span key={item} className={styles.tplChip}>
               {item}
-              <button onClick={() => onRemove(item)} aria-label={`Hapus ${item}`} title="Hapus" disabled={disabled}>
+              <button
+                onClick={() => onRemove(item)}
+                aria-label={`Hapus ${item}`}
+                title="Hapus"
+                disabled={disabled}
+              >
                 <Icon name="times" aria-hidden />
               </button>
             </span>
@@ -589,7 +691,13 @@ function StringListEditor({
           onKeyDown={(e) => e.key === 'Enter' && commit()}
           disabled={disabled}
         />
-        <Button onClick={commit} iconLeft={<Icon name="plus" aria-hidden />} disabled={disabled}>Tambah</Button>
+        <Button
+          onClick={commit}
+          iconLeft={<Icon name="plus" aria-hidden />}
+          disabled={disabled}
+        >
+          Tambah
+        </Button>
       </div>
     </div>
   );
@@ -632,8 +740,8 @@ function WarrantyCard() {
       <CardHeader icon={<Icon name="shield-halved" aria-hidden />} title="Garansi" />
       <CardBody>
         <p className={styles.tplHint}>
-          Lama garansi default (hari) yang otomatis terisi saat servis ditandai <strong>selesai</strong>.
-          Bisa diubah per servis.
+          Lama garansi default (hari) yang otomatis terisi saat servis ditandai{' '}
+          <strong>selesai</strong>. Bisa diubah per servis.
         </p>
         <div className={styles.warrantyDefaults}>
           <Input
@@ -660,7 +768,11 @@ function WarrantyCard() {
               {presets.map((p) => (
                 <span key={p} className={styles.tplChip}>
                   {p} hari
-                  <button onClick={() => removePreset(p)} aria-label={`Hapus ${p} hari`} title="Hapus">
+                  <button
+                    onClick={() => removePreset(p)}
+                    aria-label={`Hapus ${p} hari`}
+                    title="Hapus"
+                  >
                     <Icon name="times" aria-hidden />
                   </button>
                 </span>
@@ -676,7 +788,9 @@ function WarrantyCard() {
               onChange={(e) => setPresetInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addPreset()}
             />
-            <Button onClick={addPreset} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+            <Button onClick={addPreset} iconLeft={<Icon name="plus" aria-hidden />}>
+              Tambah
+            </Button>
           </div>
         </div>
       </CardBody>
@@ -726,7 +840,11 @@ function WhatsAppTemplatesCard() {
           <div key={k} className={styles.tplGroup}>
             <div className={styles.waHead}>
               <span className={styles.tplLabel}>{WA_TEMPLATE_LABELS[k]}</span>
-              <button className={styles.waReset} onClick={() => resetKey(k)} type="button">
+              <button
+                className={styles.waReset}
+                onClick={() => resetKey(k)}
+                type="button"
+              >
                 Reset default
               </button>
             </div>
@@ -745,7 +863,11 @@ function WhatsAppTemplatesCard() {
   );
 }
 
-const ROLE_LABEL: Record<string, string> = { owner: 'Owner', admin: 'Admin', karyawan: 'Karyawan' };
+const ROLE_LABEL: Record<string, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  karyawan: 'Karyawan',
+};
 
 /**
  * Inline editor to assign a staff member to one or more branches (outlets).
@@ -772,7 +894,9 @@ function MemberOutletsEditor({
       .then((ids) => {
         if (!cancelled) setSelected(ids);
       })
-      .catch((err) => toast.error(err instanceof Error ? err.message : 'Gagal memuat cabang'))
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Gagal memuat cabang'),
+      )
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -782,7 +906,9 @@ function MemberOutletsEditor({
   }, [memberId]);
 
   const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const save = async () => {
     setBusy(true);
@@ -801,7 +927,9 @@ function MemberOutletsEditor({
     <div className={styles.outletEditor}>
       <div className={styles.outletEditorHead}>
         <strong>Cabang yang dapat diakses</strong>
-        <small className={styles.hint}>Anggota ini hanya melihat &amp; mengelola data cabang terpilih.</small>
+        <small className={styles.hint}>
+          Anggota ini hanya melihat &amp; mengelola data cabang terpilih.
+        </small>
       </div>
       {loading ? (
         <small className={styles.hint}>Memuat…</small>
@@ -825,12 +953,17 @@ function MemberOutletsEditor({
       )}
       {!loading && selected.length === 0 && (
         <small className={styles.hint} role="note">
-          Tidak ada cabang terpilih — anggota ini tak akan melihat data transaksi cabang mana pun.
+          Tidak ada cabang terpilih — anggota ini tak akan melihat data transaksi cabang
+          mana pun.
         </small>
       )}
       <div className={styles.addRow}>
-        <Button variant="secondary" size="sm" onClick={onClose}>Tutup</Button>
-        <Button size="sm" onClick={save} loading={busy}>Simpan</Button>
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          Tutup
+        </Button>
+        <Button size="sm" onClick={save} loading={busy}>
+          Simpan
+        </Button>
       </div>
     </div>
   );
@@ -873,7 +1006,9 @@ function TeamTab({
   }, [orgId]);
 
   const toggleInviteOutlet = (id: string) =>
-    setInviteOutlets((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setInviteOutlets((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const loadInvites = useCallback(async () => {
     if (!isSupabaseConfigured || !orgId) return;
@@ -924,7 +1059,9 @@ function TeamTab({
 
   const invite = async () => {
     if (!canInvite)
-      return toast.error('Paket Solo hanya untuk 1 pengguna. Upgrade ke Pro untuk menambah anggota tim.');
+      return toast.error(
+        'Paket Solo hanya untuk 1 pengguna. Upgrade ke Pro untuk menambah anggota tim.',
+      );
     if (!name.trim()) return toast.error('Nama wajib diisi');
     if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
     setBusy(true);
@@ -988,20 +1125,27 @@ function TeamTab({
     <>
       {isSupabaseConfigured && (
         <Card glass>
-          <CardHeader icon={<Icon name="user-plus" aria-hidden />} title="Undang Anggota" />
+          <CardHeader
+            icon={<Icon name="user-plus" aria-hidden />}
+            title="Undang Anggota"
+          />
           <CardBody>
             <p className={styles.hint}>
-              Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis bergabung ke
-              organisasi ini saat masuk pertama kali.
+              Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis
+              bergabung ke organisasi ini saat masuk pertama kali.
             </p>
             {!canInvite ? (
               <p className={styles.hint} role="note">
-                Paket <strong>{PLANS[plan].name}</strong> hanya untuk 1 pengguna. Upgrade ke{' '}
-                <strong>Pro</strong> untuk menambah anggota tim tanpa batas.
+                Paket <strong>{PLANS[plan].name}</strong> hanya untuk 1 pengguna. Upgrade
+                ke <strong>Pro</strong> untuk menambah anggota tim tanpa batas.
               </p>
             ) : (
               <div className={styles.inviteRow}>
-                <Input placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  placeholder="Nama"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
                 <Input
                   placeholder="email@contoh.com"
                   value={email}
@@ -1016,7 +1160,11 @@ function TeamTab({
                   <option value="karyawan">Karyawan</option>
                   <option value="admin">Admin</option>
                 </select>
-                <Button onClick={invite} loading={busy} iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}>
+                <Button
+                  onClick={invite}
+                  loading={busy}
+                  iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}
+                >
                   Undang
                 </Button>
               </div>
@@ -1117,7 +1265,9 @@ function TeamTab({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setEditOutletsFor(editOutletsFor === e.id ? null : e.id)}
+                          onClick={() =>
+                            setEditOutletsFor(editOutletsFor === e.id ? null : e.id)
+                          }
                           iconLeft={<Icon name="shop" aria-hidden />}
                         >
                           Cabang
@@ -1200,22 +1350,14 @@ function TeamTab({
   );
 }
 
-/**
- * Public URL of our GoPay merchant QR image. This is the only real payment
- * path since the hosted gateways were dropped — leaving it empty degrades
- * billing to mock invoices that an owner must confirm by hand.
- */
-const GOPAY_QRIS_URL = (import.meta.env.VITE_GOPAY_QRIS_URL as string | undefined) ?? '';
-
 function BillingTab({ outlets }: { outlets: Outlet[] }) {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const orgId = org?.id ?? '';
   const plan = (org?.planType ?? 'trial') as PlanType;
   const expiry = org?.planExpiredAt ?? null;
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [busy, setBusy] = useState(false);
-
   const phase = subscriptionPhase(expiry);
   const days = expiry ? daysUntil(expiry) : null;
   const outletCount = outlets.length || 1;
@@ -1228,7 +1370,9 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       .then((data) => {
         if (!cancelled) setInvoices(data);
       })
-      .catch((err) => toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice'));
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice'),
+      );
     return () => {
       cancelled = true;
     };
@@ -1254,73 +1398,29 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
     return unsubscribe;
   }, [orgId]);
 
-  const reload = async () => {
-    try {
-      setInvoices(await listInvoices(orgId));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice');
-    }
-  };
-
-  const subscribe = async (tier: PlanType) => {
+  const requestPayment = (tier: PlanType) => {
     if (!withinOutletQuota(tier, outletCount)) {
-      return toast.error(`Tier ${PLANS[tier].name} maksimal ${PLANS[tier].maxOutlets} outlet`);
+      return toast.error(
+        `Tier ${PLANS[tier].name} maksimal ${PLANS[tier].maxOutlets} outlet`,
+      );
     }
-    setBusy(true);
-    try {
-      // Pro (enterprise) scales with outlet count: base covers 2 outlets,
-      // +addon per extra, capped at the ceiling. Solo is a flat label price.
-      const amount =
-        tier === 'enterprise'
-          ? priceForOutlets(outletCount)
-          : parseAmount(PLANS[tier].priceLabel);
-      // GoPay listener is the only payment path. Without a configured merchant
-      // QR we fall back to a mock invoice (confirmable by hand) so the renewal
-      // flow stays testable on a machine with no GoPay account.
-      if (GOPAY_QRIS_URL) {
-        const { exactAmount } = await startGopayInvoice(tier, amount);
-        toast.success(
-          `Invoice ${PLANS[tier].name} dibuat — bayar TEPAT Rp${exactAmount.toLocaleString('id-ID')}`,
-        );
-      } else {
-        await startSubscription(tier, amount);
-        toast.success(`Invoice ${PLANS[tier].name} dibuat — konfirmasi manual`);
-      }
-      await reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal membuat invoice');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirmPay = async (invoiceId: string) => {
-    setBusy(true);
-    try {
-      await applyPayment(invoiceId);
-      toast.success('Pembayaran diterima — langganan diperpanjang');
-      await reload();
-      // Refresh org plan in session (expiry/plan changed).
-      const fresh = await repository.getSingleton('organization');
-      if (fresh) useSessionStore.getState().setOrg(fresh);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal memproses pembayaran');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const cancelPay = async (invoiceId: string) => {
-    setBusy(true);
-    try {
-      await cancelInvoice(invoiceId);
-      toast.success('Invoice dibatalkan');
-      await reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
-    } finally {
-      setBusy(false);
-    }
+    if (!org) return;
+    const amount =
+      tier === 'enterprise'
+        ? priceForOutlets(outletCount)
+        : parseAmount(PLANS[tier].priceLabel);
+    const link = manualPaymentWhatsAppLink({
+      supportPhone: FIXMASTER_WHATSAPP,
+      orgId: org.id,
+      orgName: org.name,
+      currentPlan: PLANS[plan].name,
+      expiresAt: expiry,
+      requestedPlan: PLANS[tier].name,
+      amount,
+      outletCount,
+    });
+    window.open(link, '_blank', 'noopener,noreferrer');
+    toast.success(t('settings.billing.whatsappOpened'));
   };
 
   // LED color per subscription phase (bench status-light language).
@@ -1340,19 +1440,26 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
 
   // Charge gauge: remaining subscription "power" as % of a ~30-day period.
   // No expiry (e.g. unlimited) reads as full charge.
-  const chargePct = expiry ? Math.max(0, Math.min(100, Math.round(((days ?? 0) / 30) * 100))) : 100;
+  const chargePct = expiry
+    ? Math.max(0, Math.min(100, Math.round(((days ?? 0) / 30) * 100)))
+    : 100;
   const TICKS = 24;
   const filledTicks = Math.round((chargePct / 100) * TICKS);
 
   const invoiceTone = (status: string) =>
-    status === 'paid' ? styles.tonePaid : status === 'pending' ? styles.tonePending : styles.toneVoid;
-
-  const pendingInvoice = invoices.find((i) => i.status === 'pending');
+    status === 'paid'
+      ? styles.tonePaid
+      : status === 'pending'
+        ? styles.tonePending
+        : styles.toneVoid;
 
   return (
     <>
       <Card glass>
-        <CardHeader icon={<Icon name="crown" aria-hidden />} title="Status Langganan" />
+        <CardHeader
+          icon={<Icon name="crown" aria-hidden />}
+          title={t('settings.billing.status')}
+        />
         <CardBody>
           {/* License meter — subscription as bench operating "power". */}
           <div className={styles.licenseMeter}>
@@ -1382,7 +1489,9 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                 {Array.from({ length: TICKS }).map((_, i) => (
                   <span
                     key={i}
-                    className={[styles.tick, i < filledTicks ? styles.tickOn : ''].join(' ')}
+                    className={[styles.tick, i < filledTicks ? styles.tickOn : ''].join(
+                      ' ',
+                    )}
                   />
                 ))}
               </div>
@@ -1395,7 +1504,10 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                 ) : days != null && days >= 0 ? (
                   <>Berlaku s/d {new Date(expiry).toLocaleDateString('id-ID')}</>
                 ) : (
-                  <>Masa tenggang hingga {GRACE_DAYS} hari setelah {new Date(expiry).toLocaleDateString('id-ID')}</>
+                  <>
+                    Masa tenggang hingga {GRACE_DAYS} hari setelah{' '}
+                    {new Date(expiry).toLocaleDateString('id-ID')}
+                  </>
                 )
               ) : (
                 <>Tanpa batas masa aktif</>
@@ -1416,71 +1528,28 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         </CardBody>
       </Card>
 
-      {pendingInvoice && (
-        <Card glass>
-          <CardHeader icon={<Icon name="qr-code" aria-hidden />} title="Selesaikan Pembayaran" />
-          <CardBody>
-            <div className={styles.payDock}>
-              <span className={styles.payDockLabel}>Menunggu pembayaran</span>
-              <span className={styles.payDockAmount}>{fmtRp(pendingInvoice.amount)}</span>
-              <span className={styles.payDockPlan}>
-                {PLANS[pendingInvoice.plan as PlanType]?.name ?? pendingInvoice.plan}
-              </span>
-            </div>
-            {pendingInvoice.provider === 'mock' ? (
-              <>
-                <p className={styles.hint}>
-                  Provider QRIS belum terhubung (mode mock). Konfirmasi manual untuk menguji alur
-                  perpanjangan langganan.
-                </p>
-                <Button
-                  onClick={() => void confirmPay(pendingInvoice.id)}
-                  loading={busy}
-                  iconLeft={<Icon name="check" aria-hidden />}
-                >
-                  Saya sudah bayar
-                </Button>
-              </>
-            ) : pendingInvoice.provider === 'gopay' ? (
-              <>
-                <a
-                  className={styles.payLink}
-                  href={GOPAY_QRIS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="up-right-from-square" aria-hidden /> Buka QRIS GoPay
-                </a>
-                {/* The amount is the ONLY thing tying the incoming payment to
-                    this invoice, so paying a rounded figure breaks matching.
-                    This warning is load-bearing, not decoration. */}
-                <p className={styles.hint}>
-                  Bayar <strong>tepat Rp{pendingInvoice.amount.toLocaleString('id-ID')}</strong> —
-                  angka di belakang bukan salah ketik, itu penanda invoice ini. Nominal berbeda
-                  tidak akan terdeteksi otomatis. Invoice berlaku 30 menit.
-                </p>
-              </>
-            ) : (
-              // Legacy invoice from a hosted gateway we no longer run. Its
-              // checkout page may still accept money, but the webhook that
-              // confirmed it is gone — so we deliberately do NOT show a pay
-              // link. Paying it would leave the invoice pending forever.
-              <p className={styles.hint}>
-                Invoice ini dibuat lewat provider lama ({pendingInvoice.provider}) yang sudah tidak
-                dipakai. <strong>Jangan dibayar</strong> — pembayarannya tidak akan terdeteksi.
-                Batalkan invoice ini, lalu buat ulang.
-              </p>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
       <Card glass>
-        <CardHeader icon={<Icon name="tag" aria-hidden />} title="Pilih Paket" />
+        <CardHeader
+          icon={<Icon name="whatsapp" aria-hidden />}
+          title={t('settings.billing.manualTitle')}
+        />
         <CardBody>
+          <div className={styles.manualBillingFlow}>
+            <span className={styles.manualBillingLed} aria-hidden />
+            <div>
+              <strong>{t('settings.billing.manualKicker')}</strong>
+              <p>{t('settings.billing.manualDescription')}</p>
+            </div>
+            <ol className={styles.manualBillingSteps}>
+              <li>{t('settings.billing.stepChoose')}</li>
+              <li>{t('settings.billing.stepProof')}</li>
+              <li>{t('settings.billing.stepConfirm')}</li>
+            </ol>
+          </div>
           <p className={styles.hint}>
-            Harga per organisasi. Solo untuk 1 pengguna; Pro pengguna tak terbatas. Pro menyesuaikan
-            jumlah outlet (kamu punya {outletCount}). {suggested && `Rekomendasi: ${PLANS[suggested].name}.`}
+            {t('settings.billing.priceIntro')} {outletCount}.{' '}
+            {suggested &&
+              `${t('settings.billing.recommendation')} ${PLANS[suggested].name}.`}
           </p>
           <div className={styles.planGrid}>
             {PAID_TIERS.map((tier) => {
@@ -1501,16 +1570,22 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                       : def.priceLabel}
                   </span>
                   <small className={styles.planQuota}>
-                    {def.maxOutlets < 0 ? 'Outlet tanpa batas' : `s/d ${def.maxOutlets} outlet`} ·{' '}
+                    {def.maxOutlets < 0
+                      ? 'Outlet tanpa batas'
+                      : `s/d ${def.maxOutlets} outlet`}{' '}
+                    ·{' '}
                     {def.maxUsers < 0 ? 'user tak terbatas' : `${def.maxUsers} pengguna`}
                   </small>
                   <Button
                     variant={isRec ? 'primary' : 'secondary'}
                     size="sm"
-                    disabled={!fits || busy}
-                    onClick={() => void subscribe(tier)}
+                    disabled={!fits}
+                    onClick={() => requestPayment(tier)}
+                    iconLeft={fits ? <Icon name="whatsapp" aria-hidden /> : undefined}
                   >
-                    {fits ? 'Pilih' : 'Outlet melebihi'}
+                    {fits
+                      ? t('settings.billing.requestViaWhatsapp')
+                      : t('settings.billing.outletExceeded')}
                   </Button>
                 </div>
               );
@@ -1521,12 +1596,18 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
 
       {invoices.length > 0 && (
         <Card glass>
-          <CardHeader icon={<Icon name="receipt" aria-hidden />} title="Riwayat Invoice" />
+          <CardHeader
+            icon={<Icon name="receipt" aria-hidden />}
+            title={t('settings.billing.history')}
+          />
           <CardBody className={styles.noPad}>
             {/* Receipt tape — thermal-print language, shared with POS/Keuangan. */}
             <div className={styles.tape}>
               {invoices.map((inv) => (
-                <div key={inv.id} className={[styles.tapeRow, invoiceTone(inv.status)].join(' ')}>
+                <div
+                  key={inv.id}
+                  className={[styles.tapeRow, invoiceTone(inv.status)].join(' ')}
+                >
                   <div className={styles.tapeInfo}>
                     <strong className={styles.tapePlan}>
                       {PLANS[inv.plan as PlanType]?.name ?? inv.plan}
@@ -1537,20 +1618,11 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   </div>
                   <div className={styles.tapeRight}>
                     <span className={styles.tapeAmount}>{fmtRp(inv.amount)}</span>
-                    <span className={[styles.tapeStatus, invoiceTone(inv.status)].join(' ')}>
+                    <span
+                      className={[styles.tapeStatus, invoiceTone(inv.status)].join(' ')}
+                    >
                       {inv.status}
                     </span>
-                    {inv.status === 'pending' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void cancelPay(inv.id)}
-                        loading={busy}
-                        iconLeft={<Icon name="xmark" aria-hidden />}
-                      >
-                        Batalkan
-                      </Button>
-                    )}
                   </div>
                 </div>
               ))}
@@ -1592,9 +1664,15 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     const now = new Date().toISOString();
     try {
       await repository.put('wallets', {
-        id: newId(), orgId, outletId: outletId || null, name: name.trim(),
-        balance: parseRpInput(balance), sortOrder: wallets.length,
-        createdAt: now, updatedAt: now, deletedAt: null,
+        id: newId(),
+        orgId,
+        outletId: outletId || null,
+        name: name.trim(),
+        balance: parseRpInput(balance),
+        sortOrder: wallets.length,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
       });
       toast.success('Wallet ditambahkan');
       setName('');
@@ -1620,8 +1698,14 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
       if (isSupabaseConfigured) {
         await transferWallet({ orgId, fromWalletId: fromId, toWalletId: toId, amount });
       } else {
-        await repository.put('wallets', { ...result.fromWallet!, updatedAt: new Date().toISOString() });
-        await repository.put('wallets', { ...result.toWallet!, updatedAt: new Date().toISOString() });
+        await repository.put('wallets', {
+          ...result.fromWallet!,
+          updatedAt: new Date().toISOString(),
+        });
+        await repository.put('wallets', {
+          ...result.toWallet!,
+          updatedAt: new Date().toISOString(),
+        });
       }
       logActivity({
         action: 'wallet.transfer',
@@ -1646,23 +1730,33 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
       <CardHeader icon={<Icon name="wallet" aria-hidden />} title="Wallet / Kas" />
       <CardBody>
         <p className={styles.hint}>
-          Kas bisa <strong>Bersama</strong> (dipakai semua cabang) atau dikhususkan ke satu
-          cabang. Saat transaksi, hanya kas bersama + kas cabang aktif yang tampil.
+          Kas bisa <strong>Bersama</strong> (dipakai semua cabang) atau dikhususkan ke
+          satu cabang. Saat transaksi, hanya kas bersama + kas cabang aktif yang tampil.
         </p>
         <ul className={styles.walletList}>
           {wallets.map((w) => (
             <li key={w.id} className={styles.walletItem}>
               <span>
                 {w.name}
-                <Badge tone={w.outletId ? 'info' : 'neutral'}>{outletName(w.outletId)}</Badge>
+                <Badge tone={w.outletId ? 'info' : 'neutral'}>
+                  {outletName(w.outletId)}
+                </Badge>
               </span>
               <strong>{fmtRp(w.balance)}</strong>
             </li>
           ))}
         </ul>
         <div className={styles.addRow}>
-          <Input placeholder="Nama wallet" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Saldo awal" value={balance} onChange={(e) => setBalance(fmtRpInput(e.target.value))} />
+          <Input
+            placeholder="Nama wallet"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            placeholder="Saldo awal"
+            value={balance}
+            onChange={(e) => setBalance(fmtRpInput(e.target.value))}
+          />
           {outlets.length > 0 && (
             <Select
               aria-label="Cabang wallet"
@@ -1674,28 +1768,40 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
               ]}
             />
           )}
-          <Button onClick={add} loading={adding} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+          <Button
+            onClick={add}
+            loading={adding}
+            iconLeft={<Icon name="plus" aria-hidden />}
+          >
+            Tambah
+          </Button>
         </div>
 
         {wallets.length >= 2 && (
           <div className={styles.tplGroup}>
             <span className={styles.tplLabel}>Transfer Saldo Antar Wallet</span>
             <p className={styles.tplHint}>
-              Pindahkan saldo antar kas. Tidak tercatat sebagai pemasukan/pengeluaran (bukan untung/rugi).
+              Pindahkan saldo antar kas. Tidak tercatat sebagai pemasukan/pengeluaran
+              (bukan untung/rugi).
             </p>
             <div className={styles.addRow}>
               <Select
                 aria-label="Wallet asal"
                 value={fromId}
                 onChange={(e) => setFromId(e.target.value)}
-                options={wallets.map((w) => ({ value: w.id, label: `${w.name} (${fmtRp(w.balance)})` }))}
+                options={wallets.map((w) => ({
+                  value: w.id,
+                  label: `${w.name} (${fmtRp(w.balance)})`,
+                }))}
                 placeholder="Dari wallet…"
               />
               <Select
                 aria-label="Wallet tujuan"
                 value={toId}
                 onChange={(e) => setToId(e.target.value)}
-                options={wallets.filter((w) => w.id !== fromId).map((w) => ({ value: w.id, label: w.name }))}
+                options={wallets
+                  .filter((w) => w.id !== fromId)
+                  .map((w) => ({ value: w.id, label: w.name }))}
                 placeholder="Ke wallet…"
               />
               <Input
@@ -1703,7 +1809,11 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
                 value={transferAmount}
                 onChange={(e) => setTransferAmount(fmtRpInput(e.target.value))}
               />
-              <Button onClick={doTransfer} disabled={transferring} iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}>
+              <Button
+                onClick={doTransfer}
+                disabled={transferring}
+                iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
+              >
                 Transfer
               </Button>
             </div>
@@ -1736,8 +1846,15 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
     const now = new Date().toISOString();
     try {
       await repository.put('outlets', {
-        id: newId(), orgId, outletId: null, name: name.trim(), address: address.trim(),
-        isPrimary: outlets.length === 0, createdAt: now, updatedAt: now, deletedAt: null,
+        id: newId(),
+        orgId,
+        outletId: null,
+        name: name.trim(),
+        address: address.trim(),
+        isPrimary: outlets.length === 0,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
       });
       toast.success('Outlet ditambahkan');
       setName('');
@@ -1767,9 +1884,23 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
           </ul>
         )}
         <div className={styles.addRow}>
-          <Input placeholder="Nama outlet" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Alamat" value={address} onChange={(e) => setAddress(e.target.value)} />
-          <Button onClick={add} loading={adding} iconLeft={<Icon name="plus" aria-hidden />}>Tambah</Button>
+          <Input
+            placeholder="Nama outlet"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            placeholder="Alamat"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+          <Button
+            onClick={add}
+            loading={adding}
+            iconLeft={<Icon name="plus" aria-hidden />}
+          >
+            Tambah
+          </Button>
         </div>
       </CardBody>
     </Card>
@@ -1792,7 +1923,8 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
 
-  const geofenceOn = outlet.lat != null && outlet.lng != null && (outlet.geofenceRadiusM ?? 0) > 0;
+  const geofenceOn =
+    outlet.lat != null && outlet.lng != null && (outlet.geofenceRadiusM ?? 0) > 0;
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -1863,7 +1995,9 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
   return (
     <li className={styles.outletItem}>
       <div className={styles.listItem}>
-        <span className={styles.avatar}><Icon name="shop" aria-hidden /></span>
+        <span className={styles.avatar}>
+          <Icon name="shop" aria-hidden />
+        </span>
         <div className={styles.itemInfo}>
           <strong>{outlet.name}</strong>
           <small>{outlet.address || '—'}</small>
@@ -1887,14 +2021,30 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       {open && (
         <div className={styles.geofenceBox}>
           <p className={styles.geofenceHint}>
-            <Icon name="info-circle" aria-hidden /> Isi koordinat + radius untuk mewajibkan
-            absensi dari lokasi outlet. Kosongkan untuk absensi bebas lokasi. Set saat Anda
-            sedang berada di outlet.
+            <Icon name="info-circle" aria-hidden /> Isi koordinat + radius untuk
+            mewajibkan absensi dari lokasi outlet. Kosongkan untuk absensi bebas lokasi.
+            Set saat Anda sedang berada di outlet.
           </p>
           <div className={styles.geofenceRow}>
-            <Input label="Latitude" placeholder="-6.200000" value={lat} onChange={(e) => setLat(e.target.value)} />
-            <Input label="Longitude" placeholder="106.816666" value={lng} onChange={(e) => setLng(e.target.value)} />
-            <Input label="Radius (m)" type="number" placeholder="100" value={radius} onChange={(e) => setRadius(e.target.value)} />
+            <Input
+              label="Latitude"
+              placeholder="-6.200000"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+            />
+            <Input
+              label="Longitude"
+              placeholder="106.816666"
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+            />
+            <Input
+              label="Radius (m)"
+              type="number"
+              placeholder="100"
+              value={radius}
+              onChange={(e) => setRadius(e.target.value)}
+            />
           </div>
           <div className={styles.geofenceActions}>
             <Button
@@ -1912,7 +2062,12 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
                 Matikan
               </Button>
             )}
-            <Button size="sm" onClick={save} loading={busy} iconLeft={<Icon name="check" aria-hidden />}>
+            <Button
+              size="sm"
+              onClick={save}
+              loading={busy}
+              iconLeft={<Icon name="check" aria-hidden />}
+            >
               Simpan
             </Button>
           </div>
@@ -1946,7 +2101,8 @@ function ExportDataCard() {
       <CardHeader icon={<Icon name="download" aria-hidden />} title="Export Data" />
       <CardBody>
         <p className={styles.dangerNote}>
-          Unduh data sebagai CSV (bisa dibuka di Excel/Spreadsheet) — untuk cadangan, laporan, atau pindah sistem.
+          Unduh data sebagai CSV (bisa dibuka di Excel/Spreadsheet) — untuk cadangan,
+          laporan, atau pindah sistem.
         </p>
         <div className={styles.exportGrid}>
           {DATASETS.map((d) => (
@@ -2019,7 +2175,8 @@ function BackupCard() {
   };
 
   const handleRestore = async () => {
-    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh — daftar gratis.')) return;
+    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh — daftar gratis.'))
+      return;
     if (pendingText === null) return;
     setRestoring(true);
     try {
@@ -2038,14 +2195,21 @@ function BackupCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="clock-rotate-left" aria-hidden />} title="Backup & Restore" />
+      <CardHeader
+        icon={<Icon name="clock-rotate-left" aria-hidden />}
+        title="Backup & Restore"
+      />
       <CardBody>
         <p className={styles.dangerNote}>
           Backup menyimpan SELURUH data sebagai satu file JSON yang bisa dipulihkan utuh
           (berbeda dari Export CSV yang untuk laporan). Simpan file di tempat aman.
         </p>
         <div className={styles.backupRow}>
-          <Button onClick={handleBackup} loading={busy} iconLeft={<Icon name="download" aria-hidden />}>
+          <Button
+            onClick={handleBackup}
+            loading={busy}
+            iconLeft={<Icon name="download" aria-hidden />}
+          >
             Backup Sekarang
           </Button>
           {canRestore && (
@@ -2067,9 +2231,10 @@ function BackupCard() {
         </div>
         {cloud && (
           <p className={styles.planNote}>
-            <Icon name="info-circle" aria-hidden /> Restore mengganti SELURUH data operasional
-            org ini dengan isi file. Tim, langganan, dan profil org TIDAK ikut diganti. Disarankan
-            backup dulu sebelum memulihkan.{isDemo ? ' (Akun demo)' : ''}
+            <Icon name="info-circle" aria-hidden /> Restore mengganti SELURUH data
+            operasional org ini dengan isi file. Tim, langganan, dan profil org TIDAK ikut
+            diganti. Disarankan backup dulu sebelum memulihkan.
+            {isDemo ? ' (Akun demo)' : ''}
           </p>
         )}
         <hr className={styles.dangerDivider} />
@@ -2104,13 +2269,7 @@ function BackupCard() {
   );
 }
 
-function SystemTab({
-  onReset,
-  isOwner,
-}: {
-  onReset: () => void;
-  isOwner: boolean;
-}) {
+function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean }) {
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(useSessionStore((s) => s.org)?.isDemo);
   const signOut = useAuthStore((s) => s.signOut);
@@ -2135,7 +2294,9 @@ function SystemTab({
       toast.success('Akun & seluruh data dihapus permanen');
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'Gagal menghapus akun. Data Anda tetap aman — coba lagi atau hubungi dukungan.',
+        e instanceof Error
+          ? e.message
+          : 'Gagal menghapus akun. Data Anda tetap aman — coba lagi atau hubungi dukungan.',
       );
     } finally {
       setDeleting(false);
@@ -2151,14 +2312,21 @@ function SystemTab({
 
       {isOwner && (
         <Card glass accent="danger">
-          <CardHeader icon={<Icon name="triangle-exclamation" aria-hidden />} title="Zona Berbahaya" />
+          <CardHeader
+            icon={<Icon name="triangle-exclamation" aria-hidden />}
+            title="Zona Berbahaya"
+          />
           <CardBody>
             <p className={styles.dangerNote}>
               {cloud
                 ? 'Reset mengosongkan seluruh data operasional org ini (servis, transaksi, stok, keuangan). Tim, langganan, dan profil usaha tetap.'
                 : 'Reset menghapus seluruh data dan mengembalikan ke setup awal.'}
             </p>
-            <Button variant="danger" onClick={onReset} iconLeft={<Icon name="trash" aria-hidden />}>
+            <Button
+              variant="danger"
+              onClick={onReset}
+              iconLeft={<Icon name="trash" aria-hidden />}
+            >
               Reset Seluruh Data
             </Button>
 
@@ -2166,9 +2334,9 @@ function SystemTab({
               <>
                 <hr className={styles.dangerDivider} />
                 <p className={styles.dangerNote}>
-                  Hapus akun permanen: seluruh data usaha dihapus, kredensial login
-                  (email &amp; sandi) dihapus dari server, lalu kamu keluar. Tindakan ini
-                  tidak dapat dibatalkan — export data lebih dulu bila perlu.
+                  Hapus akun permanen: seluruh data usaha dihapus, kredensial login (email
+                  &amp; sandi) dihapus dari server, lalu kamu keluar. Tindakan ini tidak
+                  dapat dibatalkan — export data lebih dulu bila perlu.
                 </p>
                 <Button
                   variant="danger"

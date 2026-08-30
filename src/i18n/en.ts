@@ -78,8 +78,10 @@ export const en: Dictionary = {
   'dashboard.ready': 'Ready',
   'dashboard.dataStale': 'Last known data',
   'dashboard.errorTitle': 'Some data failed to load',
-  'dashboard.errorUnavailable': 'Dashboard figures are hidden so missing data is not presented as business fact.',
-  'dashboard.errorStale': 'Last known data remains visible. Retry to retrieve the latest figures.',
+  'dashboard.errorUnavailable':
+    'Dashboard figures are hidden so missing data is not presented as business fact.',
+  'dashboard.errorStale':
+    'Last known data remains visible. Retry to retrieve the latest figures.',
   'dashboard.retry': 'Try again',
   'dashboard.netProfit': 'Net Profit · This Month',
   'dashboard.netProfitAria': 'Net profit this month',
@@ -116,7 +118,8 @@ export const en: Dictionary = {
   'dashboard.units': 'units',
   'dashboard.technicianPerformance': 'Technician Performance',
   'dashboard.noPerformance': 'No data yet',
-  'dashboard.noPerformanceDescription': 'Performance appears after a technician completes a service.',
+  'dashboard.noPerformanceDescription':
+    'Performance appears after a technician completes a service.',
   'dashboard.completed': 'completed',
 
   // ---------- Service statuses ----------
@@ -138,14 +141,33 @@ export const en: Dictionary = {
   'settings.mobileNav.tab': 'Navigation',
   'settings.mobileNav.title': 'Mobile Navigation',
   'settings.mobileNav.ownerControl': 'Owner control',
-  'settings.mobileNav.description': 'Choose and order the four primary menus shown at the bottom of phones. This layout applies to the whole team and automatically respects each role\'s access.',
+  'settings.mobileNav.description':
+    "Choose and order the four primary menus shown at the bottom of phones. This layout applies to the whole team and automatically respects each role's access.",
   'settings.mobileNav.synced': 'Synced across devices',
   'settings.mobileNav.slot': 'Position',
   'settings.mobileNav.preview': 'Bar preview',
-  'settings.mobileNav.hint': 'More always remains available for other menus, outlet selection, and account controls.',
+  'settings.mobileNav.hint':
+    'More always remains available for other menus, outlet selection, and account controls.',
   'settings.mobileNav.reset': 'Restore Defaults',
   'settings.mobileNav.saved': 'Mobile navigation saved',
   'settings.mobileNav.error': 'Failed to save mobile navigation',
+  'settings.billing.status': 'Subscription Status',
+  'settings.billing.manualTitle': 'Renew via WhatsApp',
+  'settings.billing.manualKicker': 'Manually confirmed by the FixMaster team',
+  'settings.billing.manualDescription':
+    'Choose a plan to open a chat with your account details and amount pre-filled. Send the transfer receipt on WhatsApp; access is extended only after we verify the payment.',
+  'settings.billing.stepChoose': 'Choose a plan and request payment instructions.',
+  'settings.billing.stepProof': 'Transfer, then send the receipt in the same chat.',
+  'settings.billing.stepConfirm':
+    'The FixMaster team verifies it and extends your access.',
+  'settings.billing.priceIntro':
+    'Pricing is per organization; Pro scales with outlet count. Active outlets:',
+  'settings.billing.recommendation': 'Recommended:',
+  'settings.billing.requestViaWhatsapp': 'Contact via WhatsApp',
+  'settings.billing.outletExceeded': 'Outlet limit exceeded',
+  'settings.billing.whatsappOpened':
+    'Opening WhatsApp — send the message to request payment instructions',
+  'settings.billing.history': 'Payment History',
 
   // ---------- Landing V2 ----------
   'landingV2.metaTitle': 'FixMaster — Repair Tickets, Stock & Margins Connected',
@@ -158,7 +180,8 @@ export const en: Dictionary = {
   'landingV2.signIn': 'Sign in',
   'landingV2.heroKicker': 'For phone, laptop & electronics repair shops',
   'landingV2.heroTitle': 'Record each repair once. Stock and margins update with it.',
-  'landingV2.heroLead': 'From intake to payment, FixMaster connects tickets, parts, cash, and reports. Owners can see queues, costs, and profit without copying the same information between notebooks, chat, and spreadsheets.',
+  'landingV2.heroLead':
+    'From intake to payment, FixMaster connects tickets, parts, cash, and reports. Owners can see queues, costs, and profit without copying the same information between notebooks, chat, and spreadsheets.',
   'landingV2.startTrial': 'Start 14-day free trial',
   'landingV2.openDemo': 'Try the complete flow in the demo',
   'landingV2.heroFineprint': 'No demo account · sample data · nothing is saved',
@@ -187,18 +210,25 @@ export const en: Dictionary = {
   'landingV2.painMargin': 'Margins are calculated only at closing',
   'landingV2.painTeam': 'Owners still have to check with staff',
   'landingV2.workflowKicker': 'One flow',
-  'landingV2.workflowTitle': 'One device comes in. Every part of the business is recorded.',
-  'landingV2.workflowLead': 'No copying data from a notebook to chat and then into Excel. FixMaster connects the work from intake desk to closing the register.',
+  'landingV2.workflowTitle':
+    'One device comes in. Every part of the business is recorded.',
+  'landingV2.workflowLead':
+    'No copying data from a notebook to chat and then into Excel. FixMaster connects the work from intake desk to closing the register.',
   'landingV2.flow.intake.title': 'Receive device',
-  'landingV2.flow.intake.text': 'Create a ticket and record the issue, device, customer, and initial estimate.',
+  'landingV2.flow.intake.text':
+    'Create a ticket and record the issue, device, customer, and initial estimate.',
   'landingV2.flow.repair.title': 'Repair it',
-  'landingV2.flow.repair.text': 'Technicians update status while customers can track progress themselves.',
+  'landingV2.flow.repair.text':
+    'Technicians update status while customers can track progress themselves.',
   'landingV2.flow.stock.title': 'Use spare parts',
-  'landingV2.flow.stock.text': 'Parts used enter the service cost and inventory decreases automatically.',
+  'landingV2.flow.stock.text':
+    'Parts used enter the service cost and inventory decreases automatically.',
   'landingV2.flow.money.title': 'Record money',
-  'landingV2.flow.money.text': 'Payments, margins, cash accounts, and reports connect without recalculation.',
+  'landingV2.flow.money.text':
+    'Payments, margins, cash accounts, and reports connect without recalculation.',
   'landingV2.ownerTitle': 'See the margin on every repair before closing time.',
-  'landingV2.ownerLead': 'Customer charges, parts cost, and margin stay connected to each ticket. See delayed jobs, low stock, and team activity without checking with every technician.',
+  'landingV2.ownerLead':
+    'Customer charges, parts cost, and margin stay connected to each ticket. See delayed jobs, low stock, and team activity without checking with every technician.',
   'landingV2.owner.margin': 'Service margin',
   'landingV2.owner.marginValue': 'Recorded per ticket',
   'landingV2.owner.turnaround': 'Turnaround time',
@@ -220,24 +250,30 @@ export const en: Dictionary = {
   'landingV2.ticketMargin': 'Margin',
   'landingV2.ticketUpdated': 'Updated 14:32',
   'landingV2.productTitle': 'Run the counter at the desk. Keep watch from your phone.',
-  'landingV2.productLead': 'This demo uses the real FixMaster app, not a video. Receive a device, change its status, use a part, then see the effect on stock and finances—no account required; sample data is not saved.',
+  'landingV2.productLead':
+    'This demo uses the real FixMaster app, not a video. Receive a device, change its status, use a part, then see the effect on stock and finances—no account required; sample data is not saved.',
   'landingV2.productDesktop': 'Desktop',
   'landingV2.productMobile': 'Mobile',
-  'landingV2.productAlt': 'FixMaster dashboard with service tickets, finance, inventory, and repair shop activity',
-  'landingV2.productMobileAlt': 'FixMaster mobile dashboard with business summary and bottom navigation',
+  'landingV2.productAlt':
+    'FixMaster dashboard with service tickets, finance, inventory, and repair shop activity',
+  'landingV2.productMobileAlt':
+    'FixMaster mobile dashboard with business summary and bottom navigation',
   'landingV2.openDemoDesktop': 'Open the FixMaster desktop demo',
   'landingV2.openDemoMobile': 'Open the FixMaster mobile demo',
   'landingV2.tryNow': 'Open demo',
   'landingV2.pricingTitle': 'Choose for how your shop works today.',
-  'landingV2.pricingLead': 'Solo is for one person and one outlet. Pro is for work shared across a team or multiple outlets.',
+  'landingV2.pricingLead':
+    'Solo is for one person and one outlet. Pro is for work shared across a team or multiple outlets.',
   'landingV2.soloTag': 'For a one-person shop',
-  'landingV2.soloText': 'The core flow for receiving repairs, selling, managing stock, and reading reports.',
+  'landingV2.soloText':
+    'The core flow for receiving repairs, selling, managing stock, and reading reports.',
   'landingV2.soloFeature1': 'Repair tickets, customers, POS & stock',
   'landingV2.soloFeature2': 'Finance & shop reports',
   'landingV2.soloFeature3': '1 user · 1 outlet · 2 cash/bank accounts',
   'landingV2.chooseSolo': 'Start the 14-day trial',
   'landingV2.proTag': 'For teams & multiple outlets',
-  'landingV2.proText': 'Add staff, divide the work, manage supplier purchasing, and monitor more than one outlet.',
+  'landingV2.proText':
+    'Add staff, divide the work, manage supplier purchasing, and monitor more than one outlet.',
   'landingV2.proFeature1': 'Everything in Solo + suppliers & purchasing',
   'landingV2.proFeature2': 'Unlimited users, work assignments & attendance',
   'landingV2.proFeature3': 'outlets included',
@@ -245,15 +281,20 @@ export const en: Dictionary = {
   'landingV2.recommended': 'For team operations',
   'landingV2.faqTitle': 'Questions before you start.',
   'landingV2.faq.device.q': 'Is it only for phone repair?',
-  'landingV2.faq.device.a': 'No. FixMaster supports phones, laptops, tablets, printers, consoles, and other consumer electronics.',
+  'landingV2.faq.device.a':
+    'No. FixMaster supports phones, laptops, tablets, printers, consoles, and other consumer electronics.',
   'landingV2.faq.install.q': 'Do I need to install it on the cashier computer?',
-  'landingV2.faq.install.a': 'No. FixMaster opens in a browser on a laptop or phone. You can also try the demo without creating an account.',
+  'landingV2.faq.install.a':
+    'No. FixMaster opens in a browser on a laptop or phone. You can also try the demo without creating an account.',
   'landingV2.faq.connection.q': 'What happens if the internet connection drops?',
-  'landingV2.faq.connection.a': 'Local mode works on one device without an account. Team work and cross-device sync use cloud mode, which needs internet; when the connection returns, FixMaster reloads the latest data.',
+  'landingV2.faq.connection.a':
+    'Local mode works on one device without an account. Team work and cross-device sync use cloud mode, which needs internet; when the connection returns, FixMaster reloads the latest data.',
   'landingV2.faq.safe.q': 'Who can see my shop’s data?',
-  'landingV2.faq.safe.a': 'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
+  'landingV2.faq.safe.a':
+    'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
   'landingV2.faq.move.q': 'What if my data is still in Excel?',
-  'landingV2.faq.move.a': 'The Pro plan supports data import, so you do not have to start from scratch.',
+  'landingV2.faq.move.a':
+    'The Pro plan supports data import, so you do not have to start from scratch.',
   'landingV2.finalKicker': 'One flow. No duplicate entry.',
   'landingV2.finalTitle': 'Stop recording the same information in three places.',
   'landingV2.finalLead': 'Use FixMaster free for 14 days. No credit card needed.',
@@ -265,15 +306,20 @@ export const en: Dictionary = {
   'landingV2.whatsapp': 'Ask on WhatsApp',
 
   // ---------- Auth / session ----------
-  'authPage.brandTagline': 'The digital workbench for gadget & electronics repair businesses.',
-  'authPage.brandSub': 'Service tickets, parts, customers, cash, and margins work in one connected flow.',
+  'authPage.brandTagline':
+    'The digital workbench for gadget & electronics repair businesses.',
+  'authPage.brandSub':
+    'Service tickets, parts, customers, cash, and margins work in one connected flow.',
   'authPage.voltLabel': 'VOLT // Terminal ready',
   'authPage.volt.loginReady': 'Bench ready. Sign in to continue.',
-  'authPage.volt.loginDetail': 'Continue your shop’s service, stock, and margin flow from the same bench.',
+  'authPage.volt.loginDetail':
+    'Continue your shop’s service, stock, and margin flow from the same bench.',
   'authPage.volt.signupReady': 'A new bench is ready to calibrate.',
-  'authPage.volt.signupDetail': 'Create an account to set up your shop’s service, stock, and margin flow.',
+  'authPage.volt.signupDetail':
+    'Create an account to set up your shop’s service, stock, and margin flow.',
   'authPage.volt.resetReady': 'The recovery channel is ready.',
-  'authPage.volt.resetDetail': 'Enter your account email to receive a password reset link.',
+  'authPage.volt.resetDetail':
+    'Enter your account email to receive a password reset link.',
   'authPage.rail.service': 'SERVICE',
   'authPage.rail.serviceValue': 'READY',
   'authPage.rail.stock': 'STOCK',

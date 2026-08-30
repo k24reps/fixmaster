@@ -82,8 +82,13 @@ export async function authResetPassword(email: string): Promise<AuthResult> {
   const c = getSupabase();
   if (!c) return { error: 'Supabase tidak terkonfigurasi' };
   const redirectTo =
-    typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
-  const { error } = await c.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/reset-password`
+      : undefined;
+  const { error } = await c.auth.resetPasswordForEmail(
+    email,
+    redirectTo ? { redirectTo } : undefined,
+  );
   return { error: error ? mapAuthError(error.message) : null };
 }
 
@@ -106,7 +111,11 @@ export async function authUpdatePassword(newPassword: string): Promise<AuthResul
  * id used across the app), so login needs no PIN. Returns null when the user
  * has no org yet (→ onboarding wizard).
  */
-export async function getMyMembership(): Promise<{ orgId: string; membershipId: string; outletIds: string[] } | null> {
+export async function getMyMembership(): Promise<{
+  orgId: string;
+  membershipId: string;
+  outletIds: string[];
+} | null> {
   const c = getSupabase();
   if (!c) return null;
   const { data: u } = await c.auth.getUser();
@@ -481,7 +490,10 @@ export async function inviteMember(args: {
 }
 
 /** Manager sets the outlets a member is assigned to (replaces the set). */
-export async function setMemberOutlets(memberId: string, outletIds: string[]): Promise<void> {
+export async function setMemberOutlets(
+  memberId: string,
+  outletIds: string[],
+): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
   const { error } = await c.rpc('set_member_outlets', {
@@ -508,7 +520,9 @@ export async function getMemberOutlets(memberId: string): Promise<string[]> {
  * membership_id. Used by the team list to show each member's branches at a
  * glance without an N+1 query per row.
  */
-export async function getOrgMemberOutlets(orgId: string): Promise<Record<string, string[]>> {
+export async function getOrgMemberOutlets(
+  orgId: string,
+): Promise<Record<string, string[]>> {
   const c = getSupabase();
   if (!c) return {};
   const { data, error } = await c
@@ -570,7 +584,10 @@ export async function claimInvite(): Promise<string | null> {
 export async function setMemberRole(memberId: string, role: string): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('set_member_role', { p_member_id: memberId, p_role: role });
+  const { error } = await c.rpc('set_member_role', {
+    p_member_id: memberId,
+    p_role: role,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -598,10 +615,8 @@ export async function deleteMember(memberId: string): Promise<void> {
 }
 
 // ============================================================
-// Billing (Fase 1B). QRIS is one-shot, so subscriptions generate an
-// invoice per cycle. start_subscription creates a pending invoice;
-// the Mayar Edge Function fills qris_url; the webhook (or a mock
-// confirm) calls apply_payment to extend the plan. All via RPC.
+// Billing history. Since 0047 clients only read invoices; a platform operator
+// creates paid manual_whatsapp rows through adminConfirmManualPayment.
 // ============================================================
 
 export interface Invoice {
@@ -634,60 +649,6 @@ function toInvoice(d: Record<string, unknown>): Invoice {
     createdAt: d.created_at as string,
     paidAt: (d.paid_at as string | null) ?? null,
   };
-}
-
-/** Start/renew a subscription: creates a pending invoice, returns its id. */
-export async function startSubscription(plan: string, amount: number): Promise<string> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.rpc('start_subscription', { p_plan: plan, p_amount: amount });
-  if (error) throw new Error(error.message);
-  return data as string;
-}
-
-/**
- * Mark an invoice paid (mock-payment confirm; in production the Mayar webhook
- * calls the same RPC server-side). Extends the org's plan atomically.
- */
-export async function applyPayment(invoiceId: string): Promise<void> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('apply_payment', { p_invoice_id: invoiceId });
-  if (error) throw new Error(error.message);
-}
-
-/** Cancel a pending invoice (manager-only). No-op if not pending. */
-export async function cancelInvoice(invoiceId: string): Promise<void> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('cancel_invoice', { p_invoice_id: invoiceId });
-  if (error) throw new Error(error.message);
-}
-
-/**
- * Start/renew a subscription paid via the GoPay merchant QR (listener flow).
- * Returns the EXACT amount the customer must transfer — the amount carries a
- * random rupiah suffix because it is the only thing correlating an incoming
- * GoPay notification back to this invoice. Paying a rounded figure instead
- * will not be matched automatically.
- */
-export async function startGopayInvoice(
-  plan: string,
-  amount: number,
-): Promise<{ invoiceId: string; exactAmount: number }> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.rpc('start_gopay_invoice', {
-    p_plan: plan,
-    p_amount: amount,
-  });
-  if (error) throw new Error(error.message);
-  // The RPC returns a single-row table.
-  const row = (Array.isArray(data) ? data[0] : data) as
-    | { invoice_id: string; exact_amount: number }
-    | undefined;
-  if (!row) throw new Error('Gagal membuat invoice GoPay');
-  return { invoiceId: row.invoice_id, exactAmount: Number(row.exact_amount) };
 }
 
 /** List an org's invoices, newest first. */
@@ -781,42 +742,6 @@ export async function adminListOrgs(): Promise<AdminOrgRow[]> {
   return ((data ?? []) as Record<string, unknown>[]).map(toAdminOrg);
 }
 
-/** Invoice GoPay yang menggantung (pending/expired) di semua org. */
-export interface AdminUnpaidInvoice {
-  invoiceId: string;
-  orgId: string;
-  orgName: string;
-  plan: string;
-  amount: number;
-  status: string;
-  openedAt: string;
-}
-
-function toAdminUnpaid(d: Record<string, unknown>): AdminUnpaidInvoice {
-  return {
-    invoiceId: d.invoice_id as string,
-    orgId: d.org_id as string,
-    orgName: (d.org_name as string) ?? '',
-    plan: d.invoice_plan as string,
-    amount: Number(d.invoice_amount ?? 0),
-    status: d.inv_status as string,
-    openedAt: d.opened_at as string,
-  };
-}
-
-/**
- * Invoice GoPay belum-lunas lintas-tenant, untuk panel rekonsiliasi. Terima
- * pembayarannya lewat `applyPayment(invoiceId)` yang sudah ada — guard-nya
- * mengizinkan admin platform sejak 0045.
- */
-export async function adminUnpaidGopay(): Promise<AdminUnpaidInvoice[]> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.rpc('admin_unpaid_gopay');
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, unknown>[]).map(toAdminUnpaid);
-}
-
 /**
  * Kontrol operator (migration 0046). SETIAP fungsi tulis di bawah dicatat ke
  * `operator_actions` oleh RPC-nya sendiri — pencatatan bukan tanggung jawab
@@ -827,7 +752,10 @@ export async function adminUnpaidGopay(): Promise<AdminUnpaidInvoice[]> {
 export async function adminSuspendOrg(orgId: string, reason: string): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('admin_suspend_org', { p_org_id: orgId, p_reason: reason });
+  const { error } = await c.rpc('admin_suspend_org', {
+    p_org_id: orgId,
+    p_reason: reason,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -848,22 +776,26 @@ export async function adminReactivateOrg(
 }
 
 /**
- * Tambah masa aktif TANPA pembayaran. Sengaja terpisah dari `applyPayment`
- * supaya bulan yang dibayar bisa dibedakan dari bulan yang diberikan.
- * Mengembalikan expiry baru.
+ * Record a verified WhatsApp payment and extend access atomically. The RPC
+ * creates a paid invoice and an operator audit row; the browser never edits
+ * subscription dates directly.
  */
-export async function adminApplyPromo(
+export async function adminConfirmManualPayment(
   orgId: string,
-  promo: string,
-  days: number,
+  plan: string,
+  months: number,
+  amount: number,
+  reference: string,
   reason: string,
 ): Promise<string> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.rpc('admin_apply_promo', {
+  const { data, error } = await c.rpc('admin_confirm_manual_payment', {
     p_org_id: orgId,
-    p_promo: promo,
-    p_days: days,
+    p_plan: plan,
+    p_months: months,
+    p_amount: amount,
+    p_reference: reference,
     p_reason: reason,
   });
   if (error) throw new Error(error.message);
@@ -874,7 +806,10 @@ export async function adminApplyPromo(
 export async function adminSetClientNote(orgId: string, note: string): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('admin_set_client_note', { p_org_id: orgId, p_note: note });
+  const { error } = await c.rpc('admin_set_client_note', {
+    p_org_id: orgId,
+    p_note: note,
+  });
   if (error) throw new Error(error.message);
 }
 

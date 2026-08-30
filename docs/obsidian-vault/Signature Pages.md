@@ -438,11 +438,11 @@ hamburger/drawer; desktop 1440 px tidak berubah. Dock Kasir berada di atas botto
 Tab **Langganan** (`/settings`, owner + cloud-only) memakai metafora **"daya/lisensi bench"** — langganan = daya untuk mengoperasikan workshop. Senada bahasa visual Signature Pages lain (POS Register Readout, Cashbook Tape):
 
 - **License Meter** — kartu status: **LED** fase (ok hijau / warn amber / **crit merah berkedip** `fm-pulse`), nama plan font display, readout sisa hari mono besar, dan **charge-gauge** 24-tick (fill = sisa hari / ~30 hari, warna ikut fase) di atas wash grid blueprint.
-- **Pay dock** — invoice pending jadi panel readout (label mono, nominal besar, nama plan) + tombol/link QRIS.
+- **Hand-off WhatsApp manual (`0047`)** — panel ber-spine hijau + LED menjelaskan tiga langkah: pilih paket, transfer/kirim bukti di WhatsApp, lalu tunggu verifikasi FixMaster. Tombol paket membuka chat dengan identitas organisasi dan nominal sudah terisi; klik ini **tidak** mengubah database.
 - **Tier modules** — kartu paket ber-**spine** kiri; kartu rekomendasi diberi spine gradient brand + tag mono "DISARANKAN"; harga **mono** tebal.
-- **Receipt tape** — riwayat invoice jadi **pita thermal mono** dengan divider titik-titik + spine status (paid hijau / pending amber / void abu) + chip status pill — senada struk POS & Cashbook Keuangan. Tombol Batalkan tetap untuk invoice pending.
+- **Receipt tape** — riwayat pembayaran terverifikasi jadi **pita thermal mono** dengan divider titik-titik + spine status (paid hijau / legacy void abu) + chip status pill — senada struk POS & Cashbook Keuangan.
 
-Logika tak berubah (subscribe/confirm/cancel + auto-refresh realtime); murni lapisan presentasi pakai token `var(--...)`.
+Realtime tetap menyegarkan invoice + organisasi setelah operator mengonfirmasi pembayaran. Jalur self-confirm/mock, QR, dan cancel invoice dari klien sudah dihapus.
 
 ![[billing-dark.png]]
 
@@ -487,10 +487,9 @@ Logika auth tak berubah (Supabase Auth: signIn/signUp/resetPassword). Copy toast
 
 Halaman `/operator` ([`OperatorPage`](src/features/operator/OperatorPage.tsx)), **di luar `AuthGate`** (lihat [[Decisions & Bug Fixes]]). Bukan halaman tenant — tidak memakai `AppLayout`, tidak ada sidebar, dan mengurus auth-nya sendiri.
 
-- **Readout ringkasan** (mono, zero-pad tabular): `KLIEN` / `JATUH TEMPO ≤7H` / `DORMANT` / `DITANGGUHKAN` / `INVOICE MENGGANTUNG`. Sengaja **di luar tab** dan selalu terlihat — ini angka yang menentukan apakah hari ini ada yang perlu dikerjakan; menyembunyikannya di dalam tab memaksa operator berpindah-pindah hanya untuk tahu keadaan. Nilai non-nol menyala warning/danger.
-- **Tiga tab** dengan badge jumlah, memakai pola & class yang sama dengan `SettingsPage` (`.tabs`/`.tab`/`.tabActive`) supaya terasa satu produk: **Klien**, **Rekonsiliasi**, **Jejak aksi**.
-- **Tabel, bukan kartu.** Ketiga tab memakai `<table>` dalam `.tableWrap` (`overflow-x: auto`), header sticky mono uppercase, baris hover, kolom angka rata kanan + `tabular-nums`. Daftar padat dengan banyak dimensi lebih terbaca sebagai tabel; kartu memaksa mata melompat.
+- **Readout ringkasan** (mono, zero-pad tabular): `KLIEN` / `JATUH TEMPO ≤7H` / `DORMANT` / `DITANGGUHKAN` / `MODE TAGIHAN: WA MANUAL`. Sengaja **di luar tab** dan selalu terlihat — operator tidak boleh salah mengira ada otomasi gateway yang aktif.
+- **Dua tab** dengan badge jumlah, memakai pola & class yang sama dengan `SettingsPage`: **Klien** dan **Jejak aksi**. Tab Rekonsiliasi GoPay dihapus karena tidak ada lagi invoice gateway yang perlu dicocokkan.
+- **Tabel, bukan kartu.** Kedua tab memakai `<table>` dalam `.tableWrap` (`overflow-x: auto`), header sticky mono uppercase, baris hover, kolom angka rata kanan + `tabular-nums`.
   - **Klien** — LED status + nama + badge DEMO, paket, sisa hari (warning ≤7), **Aktivasi/Retensi/Modul** (Scorecard Pilot, pip `●○`), jumlah outlet/user/tiket, aktivitas terakhir (warning bila ≥14 hari), dan tombol aksi per baris. Catatan klien tampil sebagai baris kecil di bawah nama.
-  - **Rekonsiliasi** — org, paket, nominal (mono amber), status, tanggal, tombol Terima. Peringatan cocokkan-dulu di atas tabel.
   - **Jejak aksi** — waktu, aksi (chip mono amber), org, alasan, rincian, operator. `detail` jsonb diringkas jadi kalimat pendek (`summarizeDetail`) — kolom audit yang tak terbaca sama saja dengan tidak ada.
-- **Satu modal untuk empat aksi** ([`OperatorActionModal`](src/features/operator/OperatorActionModal.tsx)): suspend, aktifkan, promo, catatan. Digabung karena bentuknya sama (pilih org → isi alasan → konfirmasi); empat modal hanya menduplikasi validasi yang sama. Promo dipilih dari daftar bernama, bukan kotak hari kosong.
+- **Satu modal untuk empat aksi** ([`OperatorActionModal`](src/features/operator/OperatorActionModal.tsx)): konfirmasi pembayaran, suspend, aktifkan, catatan. Pembayaran meminta paket, durasi 1–12 bulan, nominal, referensi/nama pengirim, dan catatan verifikasi. Aksi Promo dihapus dari UI agar perpanjangan berbayar tidak tercampur dengan masa gratis.

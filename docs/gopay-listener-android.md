@@ -268,3 +268,7 @@ curl -X POST "https://<project-ref>.supabase.co/functions/v1/gopay-listener" \
 
 Balasan `{"matched":false,...}` berarti pipeline hidup tapi tidak ada invoice dengan nominal itu —
 buat invoice dulu lewat UI, pakai nominal persisnya, lalu ulangi.
+> [!WARNING]
+> **ARSIP — tidak dipakai sejak migrasi `0047`.** Billing aktif sekarang memakai konfirmasi
+> pembayaran manual via WhatsApp dan dashboard `/operator`. Jangan memasang listener Android
+> dari dokumen ini kecuali keputusan gateway GoPay sengaja diaktifkan kembali.

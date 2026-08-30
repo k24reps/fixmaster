@@ -9,24 +9,23 @@
 - **Berisiko saat user banyak:** apa pun yang menyentuh Supabase — **migrasi DB, RLS, Edge Function**. Ini wajib diuji di staging dulu.
 - **Lini pertama selalu mode lokal** (IndexedDB) — mayoritas fitur bisa dikembangkan tanpa backend sama sekali.
 
-## Status branch vs produksi (per 17 Agu 2026)
+## Status branch vs produksi (per 30 Agu 2026)
 
 `main` dan `staging` **sengaja berbeda isi**. Jangan asumsikan staging = produksi + sedikit.
 
 | | `main` (= produksi) | `staging` |
 |---|---|---|
-| Migrasi terakhir | `0042` | `0046` |
-| Edge Function | `create-invoice`, `duitku-webhook`, `fersaku-webhook`, `health`, `delete-account` | `gopay-listener`, `health`, `delete-account` |
-| Billing | **Duitku** (tidak berubah) | listener GoPay |
-| Dashboard operator | tidak ada | `/operator` (3 tab + kontrol tulis) |
+| Migrasi server terakhir | `0042` | `0046` (`0047` masih lokal/pending) |
+| Edge Function pada source terbaru | release lama masih gateway hosted | `health`, `delete-account` |
+| Billing target `0047` | belum dirilis | bukti bayar via WhatsApp → operator konfirmasi manual |
+| Dashboard operator | tidak ada | `/operator` (2 tab + konfirmasi bayar) |
 | Perbaikan egress | ✅ sudah | ✅ sudah |
 
 > [!CAUTION]
-> **Jangan merge `staging` → `main` tanpa menyelesaikan Fase 5 lebih dulu.** Selama
-> `VITE_GOPAY_QRIS_URL` kosong di Vercel Production, invoice jatuh ke `provider: mock` dan pay
-> dock menampilkan tombol "Saya sudah bayar" yang bisa diklik pemilik toko untuk memperpanjang
-> langganan **tanpa membayar**. Urutan wajibnya ada di
-> [`runbook-gopay-cutover.md`](runbook-gopay-cutover.md) Fase 5.
+> **Jangan merge penuh `staging` → `main`.** Produksi masih berada di jalur billing lama, sedangkan
+> `0047` menghapus RPC gateway/self-service dan membatalkan invoice pending. Cutover manual wajib
+> berurutan: backup → migrasi staging → test integrasi + browser → rilis frontend staging → baru
+> siapkan release selektif produksi. Runbook GoPay lama sudah arsip, bukan prosedur aktif.
 
 ---
 
@@ -45,7 +44,7 @@
 
 1. Buat project Supabase **kedua**, mis. `fixmaster-staging` (free tier cukup).
 2. Jalankan **semua** migrasi `supabase/migrations/` (`0001` → terbaru) di SQL Editor staging, urut.
-3. Deploy Edge Functions ke staging: `gopay-listener`, `health`, `delete-account`.
+3. Deploy Edge Functions ke staging: `health`, `delete-account`. Hapus deployment `gopay-listener` lama saat `0047` diterapkan.
 4. Isi dengan **data dummy** (jangan salin data user asli — itu PII).
 5. Catat **Project URL** + **anon key** staging.
 

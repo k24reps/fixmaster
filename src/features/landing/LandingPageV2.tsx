@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon, Mascot, type IconName } from '@/components/ui';
+import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import { PLANS, OUTLET_ADDON_PRICE, PRO_INCLUDED_OUTLETS } from '@/config/plans';
 import { useT, type TranslationKey } from '@/i18n';
+import { waLink } from '@/lib/business/notify';
 import { fmtRp } from '@/lib/format';
 import { useThemeStore } from '@/stores/theme';
 import styles from './LandingPageV2.module.css';
@@ -20,18 +22,47 @@ interface FlowStep {
 }
 
 const FLOW: FlowStep[] = [
-  { no: '01', icon: 'receipt', title: 'landingV2.flow.intake.title', text: 'landingV2.flow.intake.text' },
-  { no: '02', icon: 'screwdriver-wrench', title: 'landingV2.flow.repair.title', text: 'landingV2.flow.repair.text' },
-  { no: '03', icon: 'box', title: 'landingV2.flow.stock.title', text: 'landingV2.flow.stock.text' },
-  { no: '04', icon: 'wallet', title: 'landingV2.flow.money.title', text: 'landingV2.flow.money.text' },
+  {
+    no: '01',
+    icon: 'receipt',
+    title: 'landingV2.flow.intake.title',
+    text: 'landingV2.flow.intake.text',
+  },
+  {
+    no: '02',
+    icon: 'screwdriver-wrench',
+    title: 'landingV2.flow.repair.title',
+    text: 'landingV2.flow.repair.text',
+  },
+  {
+    no: '03',
+    icon: 'box',
+    title: 'landingV2.flow.stock.title',
+    text: 'landingV2.flow.stock.text',
+  },
+  {
+    no: '04',
+    icon: 'wallet',
+    title: 'landingV2.flow.money.title',
+    text: 'landingV2.flow.money.text',
+  },
 ];
 
-const OWNER_READOUT: { icon: IconName; label: TranslationKey; value: TranslationKey }[] = [
-  { icon: 'chart-line', label: 'landingV2.owner.margin', value: 'landingV2.owner.marginValue' },
-  { icon: 'clock', label: 'landingV2.owner.turnaround', value: 'landingV2.owner.turnaroundValue' },
-  { icon: 'box', label: 'landingV2.owner.stock', value: 'landingV2.owner.stockValue' },
-  { icon: 'users', label: 'landingV2.owner.team', value: 'landingV2.owner.teamValue' },
-];
+const OWNER_READOUT: { icon: IconName; label: TranslationKey; value: TranslationKey }[] =
+  [
+    {
+      icon: 'chart-line',
+      label: 'landingV2.owner.margin',
+      value: 'landingV2.owner.marginValue',
+    },
+    {
+      icon: 'clock',
+      label: 'landingV2.owner.turnaround',
+      value: 'landingV2.owner.turnaroundValue',
+    },
+    { icon: 'box', label: 'landingV2.owner.stock', value: 'landingV2.owner.stockValue' },
+    { icon: 'users', label: 'landingV2.owner.team', value: 'landingV2.owner.teamValue' },
+  ];
 
 const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
   { question: 'landingV2.faq.device.q', answer: 'landingV2.faq.device.a' },
@@ -90,7 +121,9 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             className={styles.themeButton}
             type="button"
             onClick={toggleTheme}
-            aria-label={theme === 'dark' ? t('settings.theme.light') : t('settings.theme.dark')}
+            aria-label={
+              theme === 'dark' ? t('settings.theme.light') : t('settings.theme.dark')
+            }
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
           </button>
@@ -182,7 +215,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 <strong>{t('landingV2.consoleMessage')}</strong>
               </span>
               <span className={styles.consoleSignal} aria-hidden>
-                <i /><i /><i /><i />
+                <i />
+                <i />
+                <i />
+                <i />
                 <small>{t('landingV2.consoleSignal')}</small>
                 <strong>{t('landingV2.consoleSignalValue')}</strong>
               </span>
@@ -191,10 +227,18 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
         </section>
 
         <section className={styles.painRail} aria-label={t('landingV2.painLabel')}>
-          <span><Icon name="whatsapp" aria-hidden /> {t('landingV2.painCustomer')}</span>
-          <span><Icon name="box" aria-hidden /> {t('landingV2.painStock')}</span>
-          <span><Icon name="wallet" aria-hidden /> {t('landingV2.painMargin')}</span>
-          <span><Icon name="users" aria-hidden /> {t('landingV2.painTeam')}</span>
+          <span>
+            <Icon name="whatsapp" aria-hidden /> {t('landingV2.painCustomer')}
+          </span>
+          <span>
+            <Icon name="box" aria-hidden /> {t('landingV2.painStock')}
+          </span>
+          <span>
+            <Icon name="wallet" aria-hidden /> {t('landingV2.painMargin')}
+          </span>
+          <span>
+            <Icon name="users" aria-hidden /> {t('landingV2.painTeam')}
+          </span>
         </section>
 
         <section id="workflow" className={styles.workflowSection}>
@@ -210,7 +254,9 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               {FLOW.map((step) => (
                 <li key={step.no} className={styles.flowStep}>
                   <span className={styles.flowNo}>{step.no}</span>
-                  <span className={styles.flowIcon}><Icon name={step.icon} aria-hidden /></span>
+                  <span className={styles.flowIcon}>
+                    <Icon name={step.icon} aria-hidden />
+                  </span>
                   <div>
                     <h3>{t(step.title)}</h3>
                     <p>{t(step.text)}</p>
@@ -248,30 +294,57 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 <strong>FM-0241</strong>
               </header>
               <dl>
-                <div><dt>{t('landingV2.ticketCustomer')}</dt><dd>Raka Pratama</dd></div>
-                <div><dt>{t('landingV2.ticketDevice')}</dt><dd>iPhone 13 · 128 GB</dd></div>
-                <div><dt>{t('landingV2.ticketProblem')}</dt><dd>{t('landingV2.jobIssue')}</dd></div>
-                <div><dt>{t('landingV2.ticketTechnician')}</dt><dd>Sari Dewi</dd></div>
+                <div>
+                  <dt>{t('landingV2.ticketCustomer')}</dt>
+                  <dd>Raka Pratama</dd>
+                </div>
+                <div>
+                  <dt>{t('landingV2.ticketDevice')}</dt>
+                  <dd>iPhone 13 · 128 GB</dd>
+                </div>
+                <div>
+                  <dt>{t('landingV2.ticketProblem')}</dt>
+                  <dd>{t('landingV2.jobIssue')}</dd>
+                </div>
+                <div>
+                  <dt>{t('landingV2.ticketTechnician')}</dt>
+                  <dd>Sari Dewi</dd>
+                </div>
               </dl>
-              <div className={styles.marginCalculation} role="group" aria-label={t('landingV2.ticketMarginCalculation')}>
+              <div
+                className={styles.marginCalculation}
+                role="group"
+                aria-label={t('landingV2.ticketMarginCalculation')}
+              >
                 <div className={styles.marginInputs}>
                   <span className={styles.marginTerm}>
                     <small>{t('landingV2.ticketRevenue')}</small>
                     <strong>Rp 1.250.000</strong>
                   </span>
-                  <span className={styles.marginOperator} aria-hidden>−</span>
+                  <span className={styles.marginOperator} aria-hidden>
+                    −
+                  </span>
                   <span className={styles.marginTerm}>
                     <small>{t('landingV2.ticketPartsCost')}</small>
                     <strong>Rp 830.000</strong>
                   </span>
                 </div>
-                <span className={[styles.marginTerm, styles.marginResult, styles.ticketPositive].join(' ')}>
+                <span
+                  className={[
+                    styles.marginTerm,
+                    styles.marginResult,
+                    styles.ticketPositive,
+                  ].join(' ')}
+                >
                   <small>{t('landingV2.ticketMargin')}</small>
                   <strong>Rp 420.000</strong>
                 </span>
               </div>
               <footer>
-                <span><span className={styles.liveLed} aria-hidden /> {t('landingV2.jobStatus')}</span>
+                <span>
+                  <span className={styles.liveLed} aria-hidden />{' '}
+                  {t('landingV2.jobStatus')}
+                </span>
                 <span>{t('landingV2.ticketUpdated')}</span>
               </footer>
             </article>
@@ -287,9 +360,15 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             </a>
           </div>
           <div className={styles.productVisuals}>
-            <a className={styles.productFrame} href="/demo" aria-label={t('landingV2.openDemoDesktop')}>
+            <a
+              className={styles.productFrame}
+              href="/demo"
+              aria-label={t('landingV2.openDemoDesktop')}
+            >
               <span className={styles.frameBar}>
-                <i /><i /><i />
+                <i />
+                <i />
+                <i />
                 <b>{t('landingV2.productDesktop')} // fixmaster.app/demo</b>
                 <em>{t('landingV2.online')}</em>
               </span>
@@ -319,7 +398,11 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               </span>
             </a>
 
-            <a className={styles.mobileFrame} href="/demo" aria-label={t('landingV2.openDemoMobile')}>
+            <a
+              className={styles.mobileFrame}
+              href="/demo"
+              aria-label={t('landingV2.openDemoMobile')}
+            >
               <span className={styles.phoneEarpiece} aria-hidden />
               <span className={styles.phoneCamera} aria-hidden />
               <span className={styles.mobileScreen}>
@@ -358,31 +441,56 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           <div className={styles.priceGrid}>
             <article className={styles.pricePlate}>
               <div className={styles.priceHead}>
-                <div><span>{t('landingV2.soloTag')}</span><h3>{solo.name}</h3></div>
+                <div>
+                  <span>{t('landingV2.soloTag')}</span>
+                  <h3>{solo.name}</h3>
+                </div>
                 <strong>{solo.priceLabel}</strong>
               </div>
               <p>{t('landingV2.soloText')}</p>
               <ul>
-                <li><Icon name="check" aria-hidden /> {t('landingV2.soloFeature1')}</li>
-                <li><Icon name="check" aria-hidden /> {t('landingV2.soloFeature2')}</li>
-                <li><Icon name="check" aria-hidden /> {t('landingV2.soloFeature3')}</li>
+                <li>
+                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature1')}
+                </li>
+                <li>
+                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature2')}
+                </li>
+                <li>
+                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature3')}
+                </li>
               </ul>
-              <button type="button" onClick={onStart}>{t('landingV2.chooseSolo')}</button>
+              <button type="button" onClick={onStart}>
+                {t('landingV2.chooseSolo')}
+              </button>
             </article>
 
             <article className={[styles.pricePlate, styles.priceFeatured].join(' ')}>
-              <span className={styles.recommended}><span className={styles.liveLed} /> {t('landingV2.recommended')}</span>
+              <span className={styles.recommended}>
+                <span className={styles.liveLed} /> {t('landingV2.recommended')}
+              </span>
               <div className={styles.priceHead}>
-                <div><span>{t('landingV2.proTag')}</span><h3>{pro.name}</h3></div>
+                <div>
+                  <span>{t('landingV2.proTag')}</span>
+                  <h3>{pro.name}</h3>
+                </div>
                 <strong>{pro.priceLabel}</strong>
               </div>
               <p>{t('landingV2.proText')}</p>
               <ul>
-                <li><Icon name="check" aria-hidden /> {t('landingV2.proFeature1')}</li>
-                <li><Icon name="check" aria-hidden /> {t('landingV2.proFeature2')}</li>
-                <li><Icon name="check" aria-hidden /> {PRO_INCLUDED_OUTLETS} {t('landingV2.proFeature3')} (+{fmtRp(OUTLET_ADDON_PRICE)}/outlet)</li>
+                <li>
+                  <Icon name="check" aria-hidden /> {t('landingV2.proFeature1')}
+                </li>
+                <li>
+                  <Icon name="check" aria-hidden /> {t('landingV2.proFeature2')}
+                </li>
+                <li>
+                  <Icon name="check" aria-hidden /> {PRO_INCLUDED_OUTLETS}{' '}
+                  {t('landingV2.proFeature3')} (+{fmtRp(OUTLET_ADDON_PRICE)}/outlet)
+                </li>
               </ul>
-              <button type="button" onClick={onStart}>{t('landingV2.choosePro')}</button>
+              <button type="button" onClick={onStart}>
+                {t('landingV2.choosePro')}
+              </button>
             </article>
           </div>
         </section>
@@ -394,7 +502,9 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           <div className={styles.faqList}>
             {FAQ.map((item) => (
               <details key={item.question}>
-                <summary>{t(item.question)} <Icon name="chevron-down" aria-hidden /></summary>
+                <summary>
+                  {t(item.question)} <Icon name="chevron-down" aria-hidden />
+                </summary>
                 <p>{t(item.answer)}</p>
               </details>
             ))}
@@ -427,7 +537,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
       <footer className={styles.footer}>
         <div className={styles.footerBrand}>
           <img src="/logo.svg" alt="" width="36" height="36" />
-          <span><strong>FixMaster</strong><small>{t('landingV2.footerTagline')}</small></span>
+          <span>
+            <strong>FixMaster</strong>
+            <small>{t('landingV2.footerTagline')}</small>
+          </span>
         </div>
         <div className={styles.footerLinks}>
           <Link to="/privacy">{t('landingV2.privacy')}</Link>
@@ -439,7 +552,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
       <a
         className={styles.whatsapp}
-        href="https://wa.me/628995318638?text=Halo%20FixMaster%2C%20saya%20mau%20tanya%20soal%20aplikasinya"
+        href={waLink(
+          FIXMASTER_WHATSAPP,
+          'Halo FixMaster, saya mau tanya soal aplikasinya',
+        )}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={t('landingV2.whatsapp')}

@@ -22,7 +22,7 @@ Ada dua jenis "siap" yang sering ketuker:
 ### Kenapa posisimu kuat (aset yang langka dimiliki bersamaan)
 - **Full-time** → bisa mendampingi pilot secara intens.
 - **Kenal beberapa pemilik toko servis** → pintu masuk hangat (kebanyakan orang harus cari dari nol).
-- **QRIS sudah jalan** (listener GoPay, bebas MDR) → hambatan pembayaran sudah hilang.
+- **Alur pembayaran pilot sudah jelas** → pelanggan meminta instruksi dan mengirim bukti via WhatsApp; kamu mengaktifkan dari dashboard operator setelah uang terverifikasi.
 
 Kamu sudah siap menjalankan langkah validasi terpenting. Tidak perlu menunggu apa-apa lagi.
 
@@ -54,7 +54,7 @@ flowchart LR
 
 - Begitu pilot bilang "ini aku mau bayar" → mulai tagih (boleh diskon founding member).
 - Pakai gesekan dari Fase 0 untuk bikin onboarding **swalayan** (in-app guide, data contoh, checklist setup).
-- Selesaikan jalur **impor data lama** & **aktivasi otomatis setelah bayar** (lihat "Celah siap-bisnis").
+- Selesaikan jalur **impor data lama**; aktivasi manual masih memadai selama volume pilot kecil (lihat "Celah siap-bisnis").
 
 > [!TIP]
 > **Kriteria LULUS Fase 1:** ada pelanggan membayar yang **bukan kenalan dekat**, DAN minimal satu toko berhasil setup sendiri tanpa kamu dampingi langkah-demi-langkah.
@@ -111,9 +111,10 @@ Ukur ini per toko, tiap minggu, selama 3–4 minggu:
 Pemilik toko sudah punya catatan di buku/Excel. Kalau pindah ke FixMaster berarti mulai dari nol, itu hambatan terbesar pindah sistem. Pilot akan menunjukkan seberapa parah. Minimal sediakan jalur impor pelanggan & stok.
 
 ### 2. Aktivasi setelah bayar
-QRIS via listener GoPay sudah jalan. Yang perlu diperjelas: setelah pelanggan bayar, akun aktif **otomatis** atau kamu **aktifkan manual**? Jawaban sekarang: otomatis **bila** pelanggan membayar nominal persis dan listener sedang hidup; kalau tidak, jatuh ke konfirmasi manual.
-- Manual = oke untuk pilot (volume kecil).
-- Jadi penghambat saat skala → otomasi sebelum Fase 2.
+Keputusan sementara (`0047`): pelanggan memilih paket lalu membuka WhatsApp dengan identitas organisasi + nominal sudah terisi. Setelah transfer, pelanggan mengirim bukti di chat yang sama. Kamu memverifikasi mutasi/bukti lalu menekan **Konfirmasi bayar** di `/operator`; sistem membuat invoice paid, memperpanjang masa aktif, dan mencatat audit.
+- Manual = tepat untuk pilot/volume kecil karena murah dan kamu tetap dekat dengan calon klien.
+- Batas aman: jangan pernah memperpanjang hanya karena pelanggan mengirim pesan; cocokkan uang masuk, isi referensi + catatan verifikasi, baru konfirmasi.
+- Saat volume membuat verifikasi manual lambat/sering salah, otomasi kembali menjadi kebutuhan sebelum Fase 2.
 
 ---
 

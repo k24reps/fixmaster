@@ -1,14 +1,7 @@
 project_id = "fixmaster"
 
-# Edge Functions config. Declaring verify_jwt here (instead of relying on the
-# --no-verify-jwt CLI flag) keeps the setting version-controlled and prevents
-# accidental redeploys from re-enabling JWT on the public webhook.
-
-[functions.gopay-listener]
-# Called by the paired Android device (no Supabase session) → must be public.
-# Authenticity is enforced inside the function via a shared secret in the
-# X-Listener-Secret header (GOPAY_LISTENER_SECRET), compared timing-safely.
-verify_jwt = false
+# Edge Functions config. Public functions declare verify_jwt explicitly so
+# deployments cannot change their authentication boundary by accident.
 
 [functions.health]
 # Public liveness/readiness probe for external uptime monitors. Returns only

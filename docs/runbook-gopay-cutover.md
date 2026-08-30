@@ -424,3 +424,7 @@ Default menargetkan **staging**. Untuk produksi, set env dulu:
 `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/reconcile-gopay.mjs` — skrip selalu
 mencetak ref project sebelum apply, jadi kamu tidak salah environment. Alat ini adalah cikal-bakal
 panel rekonsiliasi di dashboard operator (lihat [[Data Layer]] / catatan dashboard bila sudah dibangun).
+> [!WARNING]
+> **RUNBOOK DIARSIPKAN (30 Agu 2026).** Cutover GoPay dibatalkan. Arsitektur target `0047` adalah
+> bukti bayar via WhatsApp → verifikasi operator → invoice `manual_whatsapp`. Instruksi di bawah
+> dipertahankan hanya untuk histori dan tidak boleh dijalankan pada staging/produksi aktif.
