@@ -2061,6 +2061,8 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 
 **Trade-off sadar:** operator menjadi bottleneck dan pelanggan tidak aktif otomatis. Ini diterima untuk fase pilot karena volumenya kecil dan kontak langsung justru bernilai. Sinyal menghidupkan otomasi lagi: SLA aktivasi mulai lambat, salah verifikasi berulang, atau volume membuat audit manual sulit dijaga.
 
-**Verifikasi lokal:** build hijau; 449/449 unit hijau; lint hijau. Test integrasi `0047` sudah ditulis tetapi belum boleh diklaim hijau sebelum migrasi diterapkan ke Supabase staging.
+**Verifikasi & rilis:** build hijau; 449/449 unit hijau; lint hijau; 76/76 test integrasi staging hijau setelah `0047` diterapkan. Tracker migrasi staging dan production sama-sama `0001`–`0047`; `main`, `staging`, dan HEAD menunjuk commit yang sama (`09590ca`). Vercel production `Ready`, ber-alias `fixmaster.app`, bundle live memuat `admin_confirm_manual_payment`, landing render tanpa console error, dan deployment `gopay-listener` staging sudah dihapus.
+
+**Batas parity:** yang disamakan adalah kode aplikasi, urutan migrasi, dan perilaku billing. Kredensial, URL project, serta data staging/production tetap sengaja berbeda. Deployment hosted legacy non-GoPay tidak lagi punya jalur RPC dari aplikasi, tetapi penghapusan remote-nya ditunda sampai target diaudit dan disetujui eksplisit; jangan menyamakan lingkungan dengan menyalin data atau secret.
 
 #decision #billing #whatsapp #operator #security #keputusan-user

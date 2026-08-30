@@ -8,7 +8,7 @@ SaaS multi-tenant untuk manajemen bisnis jasa reparasi **gadget & elektronik** (
 - **Vite + React 19 + TypeScript** — komponen kecil, type-safe.
 - **Vanilla CSS + CSS Modules** — sistem desain premium, tanpa Tailwind.
 - **Repository Pattern** — local-first (IndexedDB) untuk dev, Supabase untuk produksi.
-- **Vitest** — 250 unit + integration test.
+- **Vitest** — 449 unit/komponen + integration test staging.
 
 ## Fitur
 - Dashboard KPI, target bulanan, notifikasi, leaderboard teknisi
@@ -44,8 +44,8 @@ npm run test:coverage  # cakupan test
 
 ### 1. Setup Supabase
 1. Buat project di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor**, jalankan **semua** migrasi di `supabase/migrations/` secara berurutan (`0001_*` → `0015_*`). Termasuk schema, RLS, RPC atomik, geofence, tim, billing, **Storage logo** (`0014`), dan **rate limiting** (`0015`).
-3. (Opsional) Deploy Edge Functions: `supabase functions deploy gopay-listener` (pembayaran langganan), `delete-account`, dan `health` (probe uptime). Konfigurasi `verify_jwt` sudah di `supabase/config.toml`.
+2. Jalankan **semua** migrasi di `supabase/migrations/` secara berurutan (`0001_*` → terbaru) lewat Supabase CLI. Termasuk schema, RLS, RPC atomik, geofence, tim, billing manual, Storage logo, dan rate limiting.
+3. (Opsional) Deploy Edge Functions aktif: `delete-account` dan `health`. Pembayaran langganan dikonfirmasi manual via WhatsApp; gateway GoPay tidak dipakai.
 4. Di **Project Settings → API**, salin **Project URL** dan **anon public key**.
 
 ### 2. Konfigurasi Environment

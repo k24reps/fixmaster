@@ -11,21 +11,26 @@
 
 ## Status branch vs produksi (per 30 Agu 2026)
 
-`main` dan `staging` **sengaja berbeda isi**. Jangan asumsikan staging = produksi + sedikit.
+`main` dan `staging` sekarang memakai **commit aplikasi dan urutan migrasi yang sama**. Perbedaan
+yang tetap wajib ada hanya kredensial, URL project, dan data: staging berisi data uji, production
+berisi data asli.
 
 | | `main` (= produksi) | `staging` |
 |---|---|---|
-| Migrasi server terakhir | `0042` | `0046` (`0047` masih lokal/pending) |
-| Edge Function pada source terbaru | release lama masih gateway hosted | `health`, `delete-account` |
-| Billing target `0047` | belum dirilis | bukti bayar via WhatsApp → operator konfirmasi manual |
-| Dashboard operator | tidak ada | `/operator` (2 tab + konfirmasi bayar) |
+| Commit aplikasi | `09590ca` | `09590ca` |
+| Migrasi server terakhir | `0047` | `0047` |
+| Edge Function pada source aktif | `health`, `delete-account` | `health`, `delete-account` |
+| Billing aktif | bukti bayar via WhatsApp → operator konfirmasi manual | sama |
+| Dashboard operator | `/operator` (2 tab + konfirmasi bayar) | sama |
 | Perbaikan egress | ✅ sudah | ✅ sudah |
 
-> [!CAUTION]
-> **Jangan merge penuh `staging` → `main`.** Produksi masih berada di jalur billing lama, sedangkan
-> `0047` menghapus RPC gateway/self-service tanpa mengubah invoice historis. Cutover manual wajib
-> berurutan: backup → migrasi staging → test integrasi + browser → rilis frontend staging → baru
-> siapkan release selektif produksi. Runbook GoPay lama sudah arsip, bukan prosedur aktif.
+> [!IMPORTANT]
+> **Jaga parity ini:** rilis hanya commit yang sudah lulus staging, lalu fast-forward commit yang
+> sama ke `main`. Jangan membuat hotfix hanya di salah satu branch. Migrasi tetap diuji di staging
+> lebih dulu, tetapi nomor akhir staging dan production harus kembali sama setelah rilis selesai.
+> Deployment gateway lama yang masih terlihat di dashboard Supabase bukan source aktif aplikasi;
+> RPC gateway telah dicabut oleh `0047`. Hapus deployment legacy hanya setelah targetnya diaudit
+> dan disetujui eksplisit.
 
 ---
 

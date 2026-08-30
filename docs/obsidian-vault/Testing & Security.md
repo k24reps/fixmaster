@@ -11,11 +11,11 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
-- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Server masih di migrasi `0046`; kode repo sudah menambah `0047` (pembayaran WhatsApp manual) tetapi belum di-push ke DB per 30 Agu 2026.
-- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI** (sudah ada tes order Fersaku). Per **22 Jun 2026 disinkronkan ke migrasi `0036`** (`0031` transfer_wallet/refund parsial, `0032` org_settings, `0033` satu-toko-per-email, `0034` PO→Keuangan, `0035` tracking kontak+garansi, `0036` admin outlet-scope — semua via `db push`, tracker sinkron). **`0036` di-apply 22 Jun setelah gerbang keamanan terpenuhi**: admin toko testing sudah di-set outlet; toko pilot owner-only (tanpa admin/karyawan) → nol risiko lockout. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default tetap ter-link ke **staging** (relink balik setelah tiap push prod).
+- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Tracker server sinkron `0001`–`0047` per 30 Agu 2026.
+- **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI**. Tracker server juga sinkron `0001`–`0047` per 30 Agu 2026; `0043`–`0047` diterapkan setelah dry-run dan 76/76 test integrasi staging lulus. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default kembali ter-link ke **staging** setelah tiap push prod.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Edge functions ter-deploy di staging**: instalasi lama masih dapat memuat `gopay-listener`, `delete-account`, `health`; source aktif repo hanya menyisakan `delete-account` + `health`. Listener harus dihapus dari staging saat cutover `0047` agar infrastruktur sama dengan kode.
+- **Edge functions source aktif**: hanya `delete-account` + `health`. Deployment `gopay-listener` staging sudah dihapus saat cutover `0047`. Deployment hosted legacy non-GoPay masih dapat terlihat di dashboard remote, tetapi tidak dipanggil frontend dan RPC billing-nya sudah dicabut; penghapusan remote perlu audit target + persetujuan eksplisit.
 - **Tooling lokal**: Node v24 ✅, Supabase CLI 2.101.0 ✅, **Docker ❌ (tidak terpasang)**. Maka `supabase start` (DB lokal) tidak dipakai — kita pakai **staging cloud**.
 
 > [!CAUTION]
@@ -131,7 +131,7 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 ## Baseline terkini (30 Agu 2026)
 
 - Unit/komponen: `npm run test` **449/449 hijau** (40 file). Penurunan dari 460 bukan regresi cakupan aktif: test parser/listener GoPay yang source-nya dihapus ikut dicabut; ditambah test deep-link WhatsApp yang menjaga id organisasi, paket, nominal, dan bukti bayar masuk pesan.
-- Integration RLS/RPC staging: suite diperbarui untuk `0047`, tetapi **belum dijalankan** karena migrasi baru belum diterapkan ke Supabase staging. Baseline terakhir server `0046` tetap 59/59 (11 Agu 2026); jangan mengklaim `0047` terverifikasi sebelum `supabase db push` staging.
+- Integration RLS/RPC staging: **76/76 hijau** (10 file) sesudah `0047` diterapkan. Mencakup penolakan owner biasa, konfirmasi manual admin, invoice `paid`, perpanjangan expiry, idempotensi referensi, serta audit `payment_manual`.
 - `npm run build` dan `npm run lint` hijau.
 - Tambahan terbaru: 4 unit test resolver mobile navigation + 2 test persistence
   `Organization.settings.mobileNavigation`; verifikasi browser asli mencakup breakpoint
