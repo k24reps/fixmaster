@@ -2080,3 +2080,17 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 **Verifikasi & rilis:** build + lint hijau; 452/452 unit hijau; 78/78 integration staging hijau. Dry-run production hanya menemukan `0048`, migrasi berhasil diterapkan, lalu CLI dikembalikan ke staging. `main` dan `staging` dipromosikan fast-forward ke commit fitur `54d126e`; Vercel production membalas 200 dengan bundle baru yang memuat pencarian organisasi, tanggal pendaftaran, modal hapus, dan RPC `admin_delete_org`. Smoke test `https://fixmaster.app/operator` merender secure bench login tanpa log runtime. Tracker staging dan production sama-sama `0001`–`0048`.
 
 #decision #operator #security #ux #responsive #migration
+
+---
+
+## Aktivasi operator dikunci ke pembayaran terverifikasi (`0049`, 30 Agu 2026)
+
+**Masalah:** konsol masih menonjolkan Dormant/aktivasi pilot dan menyediakan tombol “Aktifkan” yang dapat memilih Trial/Free. Jalur itu bertentangan dengan keputusan pembayaran WhatsApp manual: operator bisa memulihkan akses tanpa invoice paid. Nominal pembayaran juga dapat diketik bebas, preview tidak menunjukkan konteks organisasi/expiry terakhir, dan kegagalan refresh setelah RPC sukses tampil seperti pembayaran gagal—berisiko operator mengulang konfirmasi.
+
+**Keputusan task-first:** readout menjadi filter `Perlu tindakan`, H-7, kedaluwarsa, dan suspended; status WA manual pindah ke masthead. Aktivasi, Retensi, Modul, dan readout Dormant tidak menjadi pekerjaan rutin. Paket selalu ditampilkan sebagai Solo/Pro, expiry negatif menjadi “Kedaluwarsa N hari”, tanggal expiry tampil eksplisit, hapus diturunkan ke menu `Lainnya`, dan jejak aksi mendapat pencarian + load-more 50→200. Error muat kini persisten dan keberhasilan mutasi dipisahkan dari keberhasilan refresh.
+
+**Batas server:** `0049` menghapus `admin_reactivate_org`. `admin_confirm_manual_payment` menghitung ulang nominal resmi dari paket × bulan × outlet, menolak Solo untuk multi-outlet, dan tetap idempoten berdasarkan referensi per organisasi. Modal browser hanya mengirim total hasil formula yang sama; operator melihat org number, paket/expiry saat ini, pembayaran/ref terakhir, biaya bulanan, total, dan expiry proyeksi sebelum commit. `admin_list_orgs` menghapus `sale_count`, `pending_invoices`, `activation_hours` serta menambah `last_paid_reference`.
+
+**Verifikasi staging:** project ref `fpwwswngqpftaixdlozo` diverifikasi sebelum dry-run; hanya `0049_operator_payment_safety.sql` yang pending lalu diterapkan. Build hijau, lint hijau, **456/456 unit** dan **79/79 integration staging** lulus. Browser asli memverifikasi login desktop serta 390×844: nol document overflow dan semua link/input/button utama 44 px. Production belum dimigrasikan atau dideploy pada keputusan ini.
+
+#decision #operator #billing #security #whatsapp #impeccable #migration

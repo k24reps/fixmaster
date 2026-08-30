@@ -38,7 +38,12 @@ import {
   type OperatorAction,
 } from '@/data/supabase-client';
 import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
-import { matchesOrganization, organizationNumber } from '@/lib/business/operator';
+import {
+  accessRemainingLabel,
+  matchesOrganization,
+  operatorPlanLabel,
+  organizationNumber,
+} from '@/lib/business/operator';
 import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
@@ -56,6 +61,7 @@ const PHASE_LED: Record<string, string> = {
 };
 
 type Tab = 'klien' | 'jejak';
+type OrgFilter = 'all' | 'attention' | 'due' | 'expired' | 'suspended';
 
 /**
  * Ringkas `detail` jsonb jadi satu kalimat pendek untuk kolom tabel jejak.
@@ -64,7 +70,12 @@ type Tab = 'klien' | 'jejak';
  */
 function summarizeDetail(d: Record<string, unknown>): string {
   if (d.promo) return `${String(d.promo)} · ${String(d.hari ?? '?')} hari`;
-  if (d.nominal != null) return fmtRp(Number(d.nominal));
+  if (d.nominal != null) {
+    const plan = d.plan_sesudah ? operatorPlanLabel(String(d.plan_sesudah)) : '';
+    const months = d.bulan ? `${String(d.bulan)} bulan` : '';
+    return [fmtRp(Number(d.nominal)), plan, months].filter(Boolean).join(' · ');
+  }
+  if (d.org_number) return String(d.org_number);
   if (d.plan_sesudah)
     return `${String(d.plan_sebelum ?? '?')} → ${String(d.plan_sesudah)}`;
   if (d.plan_sebelum) return `dari ${String(d.plan_sebelum)}`;
@@ -78,6 +89,28 @@ function idleLabel(iso: string | null): { text: string; stale: boolean } {
   if (days <= 0) return { text: 'hari ini', stale: false };
   if (days === 1) return { text: '1 hari lalu', stale: false };
   return { text: `${days} hari lalu`, stale: days >= 14 };
+}
+
+function matchesAction(action: OperatorAction, query: string): boolean {
+  const needle = query.trim().toLocaleLowerCase('id-ID');
+  if (!needle) return true;
+  return [
+    action.action,
+    action.orgName,
+    action.actorEmail,
+    action.reason,
+    summarizeDetail(action.detail),
+  ].some((value) => value.toLocaleLowerCase('id-ID').includes(needle));
+}
+
+function matchesFilter(organization: AdminOrgRow, filter: OrgFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'suspended') return organization.plan === 'suspended';
+  if (organization.plan === 'suspended') return filter === 'attention';
+  const days = organization.expiresAt ? daysUntil(organization.expiresAt) : null;
+  if (filter === 'expired') return days !== null && days < 0;
+  if (filter === 'due') return days !== null && days >= 0 && days <= 7;
+  return days !== null && days <= 7;
 }
 
 export function OperatorPage() {
@@ -101,10 +134,22 @@ export function OperatorPage() {
   const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
   const [tab, setTab] = useState<Tab>('klien');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<OrgFilter>('all');
+  const [actionQuery, setActionQuery] = useState('');
+  const [actionLimit, setActionLimit] = useState(50);
+  const [loadError, setLoadError] = useState('');
   const [reloading, setReloading] = useState(false);
   const visibleOrgs = useMemo(
-    () => orgs.filter((organization) => matchesOrganization(organization, query)),
-    [orgs, query],
+    () =>
+      orgs.filter(
+        (organization) =>
+          matchesFilter(organization, filter) && matchesOrganization(organization, query),
+      ),
+    [filter, orgs, query],
+  );
+  const visibleActions = useMemo(
+    () => actions.filter((action) => matchesAction(action, actionQuery)),
+    [actionQuery, actions],
   );
 
   // AuthGate biasanya yang memanggil ini; route ini di luarnya.
@@ -113,10 +158,20 @@ export function OperatorPage() {
   }, [initAuth]);
 
   const reload = useCallback(async () => {
-    const [o, a] = await Promise.all([adminListOrgs(), adminListOperatorActions(20)]);
-    setOrgs(o);
-    setActions(a);
-  }, []);
+    try {
+      const [o, a] = await Promise.all([
+        adminListOrgs(),
+        adminListOperatorActions(actionLimit),
+      ]);
+      setOrgs(o);
+      setActions(a);
+      setLoadError('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal memuat data operator';
+      setLoadError(message);
+      throw error;
+    }
+  }, [actionLimit]);
 
   // Cek keanggotaan admin, lalu muat data. Fail-closed: error apa pun →
   // bukan admin, jangan pernah menampilkan data karena gagal memeriksa.
@@ -141,7 +196,7 @@ export function OperatorPage() {
 
   if (authStatus === 'loading') {
     return (
-      <div className={styles.center}>
+      <div className={styles.center} role="status" aria-label="Memuat sesi operator">
         <Icon name="circle-notch" className="spin" aria-hidden />
       </div>
     );
@@ -174,7 +229,7 @@ export function OperatorPage() {
 
   if (admin === null) {
     return (
-      <div className={styles.center}>
+      <div className={styles.center} role="status" aria-label="Memeriksa akses operator">
         <Icon name="circle-notch" className="spin" aria-hidden />
       </div>
     );
@@ -183,9 +238,13 @@ export function OperatorPage() {
   const suspendedCount = orgs.filter((o) => o.plan === 'suspended').length;
   const dueSoon = orgs.filter((o) => {
     const d = o.expiresAt ? daysUntil(o.expiresAt) : null;
-    return d !== null && d <= 7 && o.plan !== 'suspended';
+    return d !== null && d >= 0 && d <= 7 && o.plan !== 'suspended';
   }).length;
-  const dormant = orgs.filter((o) => idleLabel(o.lastActivityAt).stale).length;
+  const expiredCount = orgs.filter((o) => {
+    const d = o.expiresAt ? daysUntil(o.expiresAt) : null;
+    return d !== null && d < 0 && o.plan !== 'suspended';
+  }).length;
+  const attentionCount = dueSoon + expiredCount + suspendedCount;
   const openAction = (organization: AdminOrgRow, mode: ActionMode) => {
     setActOrg(organization);
     setActMode(mode);
@@ -198,6 +257,21 @@ export function OperatorPage() {
       toast.success('Data operator diperbarui');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal memuat ulang');
+    } finally {
+      setReloading(false);
+    }
+  };
+
+  const loadMoreActions = async () => {
+    const nextLimit = Math.min(actionLimit + 50, 200);
+    setReloading(true);
+    try {
+      const next = await adminListOperatorActions(nextLimit);
+      setActions(next);
+      setActionLimit(nextLimit);
+      toast.success(`${next.length} aktivitas terbaru dimuat`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal memuat jejak aksi');
     } finally {
       setReloading(false);
     }
@@ -231,6 +305,10 @@ export function OperatorPage() {
             <span className={[styles.led, styles.ledOk].join(' ')} aria-hidden />
             <span className={styles.who}>{email}</span>
           </span>
+          <span className={styles.billingMode}>
+            <span className={[styles.led, styles.ledWarn].join(' ')} aria-hidden />
+            TAGIHAN · WA MANUAL
+          </span>
           <button
             type="button"
             className={styles.iconButton}
@@ -255,31 +333,71 @@ export function OperatorPage() {
         </div>
       </header>
 
+      {loadError && (
+        <div className={styles.loadError} role="alert">
+          <span><Icon name="warning" aria-hidden /> Data operator gagal dimuat: {loadError}</span>
+          <Button variant="secondary" size="sm" onClick={() => void manualReload()} loading={reloading}>
+            Coba lagi
+          </Button>
+        </div>
+      )}
+
       {/* Readout tetap terlihat di SEMUA tab: ini angka yang menentukan apakah
           hari ini ada yang perlu dikerjakan. Menyembunyikannya di dalam tab
           berarti operator harus berpindah-pindah untuk tahu keadaan. */}
       <div className={styles.readout}>
-        <div className={styles.readItem}>
+        <button
+          type="button"
+          className={[styles.readItem, filter === 'all' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'all'}
+          onClick={() => { setFilter('all'); setTab('klien'); }}
+        >
           <span className={styles.readLabel}>KLIEN</span>
           <strong className={styles.readValue}>{orgs.length}</strong>
-        </div>
-        <div className={styles.readItem}>
+        </button>
+        <button
+          type="button"
+          className={[styles.readItem, filter === 'attention' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'attention'}
+          onClick={() => { setFilter('attention'); setTab('klien'); }}
+        >
+          <span className={styles.readLabel}>PERLU TINDAKAN</span>
+          <strong
+            className={[styles.readValue, attentionCount > 0 ? styles.readCrit : ''].join(' ')}
+          >
+            {attentionCount}
+          </strong>
+        </button>
+        <button
+          type="button"
+          className={[styles.readItem, filter === 'due' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'due'}
+          onClick={() => { setFilter('due'); setTab('klien'); }}
+        >
           <span className={styles.readLabel}>JATUH TEMPO ≤7H</span>
           <strong
             className={[styles.readValue, dueSoon > 0 ? styles.readWarn : ''].join(' ')}
           >
             {dueSoon}
           </strong>
-        </div>
-        <div className={styles.readItem}>
-          <span className={styles.readLabel}>DORMANT</span>
-          <strong
-            className={[styles.readValue, dormant > 0 ? styles.readWarn : ''].join(' ')}
-          >
-            {dormant}
+        </button>
+        <button
+          type="button"
+          className={[styles.readItem, filter === 'expired' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'expired'}
+          onClick={() => { setFilter('expired'); setTab('klien'); }}
+        >
+          <span className={styles.readLabel}>KEDALUWARSA</span>
+          <strong className={[styles.readValue, expiredCount > 0 ? styles.readCrit : ''].join(' ')}>
+            {expiredCount}
           </strong>
-        </div>
-        <div className={styles.readItem}>
+        </button>
+        <button
+          type="button"
+          className={[styles.readItem, filter === 'suspended' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'suspended'}
+          onClick={() => { setFilter('suspended'); setTab('klien'); }}
+        >
           <span className={styles.readLabel}>DITANGGUHKAN</span>
           <strong
             className={[styles.readValue, suspendedCount > 0 ? styles.readCrit : ''].join(
@@ -288,18 +406,17 @@ export function OperatorPage() {
           >
             {suspendedCount}
           </strong>
-        </div>
-        <div className={styles.readItem}>
-          <span className={styles.readLabel}>MODE TAGIHAN</span>
-          <strong className={styles.readMode}>WA MANUAL</strong>
-        </div>
+        </button>
       </div>
 
       <div className={styles.tabs} role="tablist">
         {TABS.map((t) => (
           <button
             key={t.id}
+            id={`operator-tab-${t.id}`}
+            type="button"
             role="tab"
+            aria-controls={`operator-panel-${t.id}`}
             aria-selected={tab === t.id}
             className={[styles.tab, tab === t.id ? styles.tabActive : ''].join(' ')}
             onClick={() => setTab(t.id)}
@@ -311,7 +428,12 @@ export function OperatorPage() {
       </div>
 
       {tab === 'klien' && (
-        <>
+        <section
+          id="operator-panel-klien"
+          role="tabpanel"
+          aria-labelledby="operator-tab-klien"
+          className={styles.panel}
+        >
           <div className={styles.clientToolbar}>
             <label className={styles.searchBox}>
               <Icon name="magnifying-glass" aria-hidden />
@@ -331,6 +453,7 @@ export function OperatorPage() {
             </label>
             <span className={styles.resultCount} aria-live="polite">
               {visibleOrgs.length} dari {orgs.length} organisasi
+              {filter !== 'all' ? ' · filter aktif' : ''}
             </span>
           </div>
 
@@ -358,13 +481,8 @@ export function OperatorPage() {
                           <th>Organisasi</th>
                           <th>Terdaftar</th>
                           <th>Paket</th>
-                          <th className={styles.num}>Sisa</th>
-                          <th
-                            className={styles.num}
-                            title="Jam dari daftar sampai tiket pertama"
-                          >
-                            Aktivasi
-                          </th>
+                          <th>Masa aktif</th>
+                          <th>Berakhir</th>
                           <th className={styles.num}>Outlet</th>
                           <th className={styles.num}>User</th>
                           <th className={styles.num}>Tiket</th>
@@ -413,21 +531,19 @@ export function OperatorPage() {
                                     suspended ? styles.planSuspended : '',
                                   ].join(' ')}
                                 >
-                                  {o.plan}
+                                  {operatorPlanLabel(o.plan)}
                                 </span>
                               </td>
                               <td
                                 className={[
-                                  styles.num,
+                                  styles.dateCell,
                                   days !== null && days <= 7 ? styles.daysWarn : '',
                                 ].join(' ')}
                               >
-                                {days === null ? '∞' : `${days}h`}
+                                {accessRemainingLabel(days)}
                               </td>
-                              <td className={styles.num}>
-                                {o.activationHours === null
-                                  ? '—'
-                                  : `${o.activationHours}j`}
+                              <td className={styles.dateCell}>
+                                {o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : '—'}
                               </td>
                               <td className={styles.num}>{o.outletCount}</td>
                               <td className={styles.num}>{o.userCount}</td>
@@ -460,46 +576,80 @@ export function OperatorPage() {
               )}
             </CardBody>
           </Card>
-        </>
+        </section>
       )}
 
       {tab === 'jejak' && (
-        <Card glass>
-          <CardBody className={actions.length ? styles.noPad : undefined}>
-            {actions.length === 0 ? (
-              <EmptyState title="Belum ada aksi tercatat" />
-            ) : (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Waktu</th>
-                      <th>Aksi</th>
-                      <th>Organisasi</th>
-                      <th>Alasan</th>
-                      <th>Rincian</th>
-                      <th>Operator</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {actions.map((a) => (
-                      <tr key={a.id}>
-                        <td className={styles.idle}>{fmtDate(a.actedAt)}</td>
-                        <td>
-                          <span className={styles.trailAction}>{a.action}</span>
-                        </td>
-                        <td className={styles.orgName}>{a.orgName}</td>
-                        <td className={styles.reasonCell}>{a.reason || '—'}</td>
-                        <td className={styles.detailCell}>{summarizeDetail(a.detail)}</td>
-                        <td className={styles.idle}>{a.actorEmail}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+        <section
+          id="operator-panel-jejak"
+          role="tabpanel"
+          aria-labelledby="operator-tab-jejak"
+          className={styles.panel}
+        >
+          <div className={styles.clientToolbar}>
+            <label className={styles.searchBox}>
+              <Icon name="magnifying-glass" aria-hidden />
+              <input
+                type="search"
+                value={actionQuery}
+                onChange={(event) => setActionQuery(event.target.value)}
+                placeholder="Cari organisasi, aksi, alasan, atau operator"
+                aria-label="Cari jejak aksi"
+                autoComplete="off"
+              />
+              {actionQuery && <button type="button" onClick={() => setActionQuery('')}>Bersihkan</button>}
+            </label>
+            <span className={styles.resultCount} aria-live="polite">
+              {visibleActions.length} dari {actions.length} aktivitas terbaru
+            </span>
+          </div>
+          <Card glass>
+            <CardBody className={visibleActions.length ? styles.noPad : undefined}>
+              {visibleActions.length === 0 ? (
+                <EmptyState
+                  title={actions.length === 0 ? 'Belum ada aksi tercatat' : 'Jejak aksi tidak ditemukan'}
+                  description={actions.length === 0 ? undefined : 'Coba kata kunci lain atau bersihkan pencarian.'}
+                />
+              ) : (
+                <>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Waktu</th>
+                          <th>Aksi</th>
+                          <th>Organisasi</th>
+                          <th>Alasan</th>
+                          <th>Rincian</th>
+                          <th>Operator</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleActions.map((a) => (
+                          <tr key={a.id}>
+                            <td className={styles.idle}>{fmtDate(localDateOf(a.actedAt))}</td>
+                            <td><span className={styles.trailAction}>{a.action}</span></td>
+                            <td className={styles.orgName}>{a.orgName}</td>
+                            <td className={styles.reasonCell}>{a.reason || '—'}</td>
+                            <td className={styles.detailCell}>{summarizeDetail(a.detail)}</td>
+                            <td className={styles.idle}>{a.actorEmail}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {actions.length >= actionLimit && actionLimit < 200 && (
+                    <div className={styles.loadMore}>
+                      <Button variant="secondary" loading={reloading} onClick={() => void loadMoreActions()}>
+                        Muat 50 aktivitas berikutnya
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardBody>
+          </Card>
+        </section>
       )}
 
       {/* Remount per (mode, org) supaya field modal selalu mulai bersih. */}
@@ -529,7 +679,7 @@ function OrganizationActions({
     <div className={styles.rowActions}>
       <Button
         size="sm"
-        variant="secondary"
+        variant="primary"
         onClick={() => onAction(organization, 'payment')}
       >
         Konfirmasi bayar
@@ -537,22 +687,21 @@ function OrganizationActions({
       <Button size="sm" variant="ghost" onClick={() => onAction(organization, 'note')}>
         Catatan
       </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => onAction(organization, suspended ? 'reactivate' : 'suspend')}
-      >
-        {suspended ? 'Aktifkan' : 'Tangguhkan'}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className={styles.deleteButton}
-        iconLeft={<Icon name="trash" aria-hidden />}
-        onClick={() => onAction(organization, 'delete')}
-      >
-        Hapus
-      </Button>
+      {!suspended && (
+        <Button size="sm" variant="ghost" onClick={() => onAction(organization, 'suspend')}>
+          Tangguhkan
+        </Button>
+      )}
+      <details className={styles.moreActions}>
+        <summary>Lainnya</summary>
+        <button
+          type="button"
+          className={styles.deleteButton}
+          onClick={() => onAction(organization, 'delete')}
+        >
+          <Icon name="trash" aria-hidden /> Hapus organisasi
+        </button>
+      </details>
     </div>
   );
 }
@@ -587,7 +736,7 @@ function OrganizationCard({
           </h2>
         </div>
         <span className={[styles.plan, suspended ? styles.planSuspended : ''].join(' ')}>
-          {o.plan}
+          {operatorPlanLabel(o.plan)}
         </span>
       </header>
 
@@ -599,12 +748,12 @@ function OrganizationCard({
         <div>
           <dt>Sisa masa aktif</dt>
           <dd className={days !== null && days <= 7 ? styles.daysWarn : ''}>
-            {days === null ? '∞' : `${days} hari`}
+            {accessRemainingLabel(days)}
           </dd>
         </div>
         <div>
-          <dt>Aktivasi</dt>
-          <dd>{o.activationHours === null ? '—' : `${o.activationHours} jam`}</dd>
+          <dt>Berakhir</dt>
+          <dd>{o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : '—'}</dd>
         </div>
         <div>
           <dt>Aktivitas</dt>
@@ -687,7 +836,7 @@ function OperatorLogin({
           <ul className={styles.loginSignals}>
             <li>
               <span className={[styles.led, styles.ledOk].join(' ')} />
-              Akses lintas organisasi<span>TERKUNCI</span>
+              Akses lintas organisasi<span>DILINDUNGI</span>
             </li>
             <li>
               <span className={[styles.led, styles.ledOk].join(' ')} />
@@ -766,8 +915,8 @@ function OperatorLogin({
           </form>
 
           <p className={styles.loginFoot}>
-            Tidak memiliki akses? Hubungi pemilik sistem untuk memasukkan akun ke
-            <code>platform_admins</code>.
+            Tidak memiliki akses? Hubungi pemilik sistem untuk mendaftarkan akun sebagai
+            operator FixMaster.
           </p>
         </main>
       </section>

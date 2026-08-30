@@ -129,12 +129,12 @@ Sebelum `0045` tak ada konsep peran global sama sekali: tidak ada tabel `profile
 
 RPC (semua `security definer` + `set search_path = public, pg_temp`, gate `is_platform_admin()` di baris pertama):
 - `is_platform_admin()` → boolean. Aman di-grant `authenticated`: hanya membocorkan status diri sendiri, bukan daftar admin.
-- `admin_list_orgs()` → satu baris per org: `org_id, org_name, org_plan, expires_at, registered_at, demo, outlet_count, user_count, service_count, sale_count, last_activity_at, pending_invoices, last_paid_at`. Urut `plan_expired_at asc nulls last`. `last_activity_at` ditopang index `idx_activity_org_created` (`0019`).
-- `admin_confirm_manual_payment()` (sejak `0047`) → satu-satunya aksi berbayar: invoice paid + perpanjangan + audit dalam satu transaksi.
+- `admin_list_orgs()` → satu baris per org: `org_id, org_name, org_plan, expires_at, registered_at, demo, outlet_count, user_count, service_count, last_activity_at, last_paid_at, last_paid_reference, note`. Urut `plan_expired_at asc nulls last`. `last_activity_at` ditopang index `idx_activity_org_created` (`0019`).
+- `admin_confirm_manual_payment()` (sejak `0047`, diperketat `0049`) → satu-satunya aksi berbayar: validasi harga resmi + invoice paid + perpanjangan + audit dalam satu transaksi.
 
 **Batas privasi ditegakkan di level skema query, bukan di UI:** yang diekspos hanya metadata + **jumlah agregat**. Tidak ada nama pelanggan klien, detail tiket, atau angka keuangan mereka. Vendor perlu tahu klien X jatuh tempo, bukan mengintip pelanggan klien X — sekaligus memperkecil ledakan bila surface ini bocor. Ada tes yang mengasersikan tidak ada kolom bocoran.
 
-**Pembayaran manual dibungkus RPC khusus.** `admin_confirm_manual_payment` tidak menerima id invoice buatan klien; ia membuat invoice paid sendiri setelah operator mengisi nominal + referensi bukti. Ini menghapus ambiguitas antara “klik saya sudah bayar”, promo gratis, dan uang yang benar-benar sudah diverifikasi.
+**Pembayaran manual dibungkus RPC khusus.** `admin_confirm_manual_payment` tidak menerima id invoice buatan klien; ia membuat invoice paid sendiri setelah operator memilih paket/durasi dan mengisi referensi bukti. Nominal dihitung UI lalu dihitung ulang server dari paket × bulan × outlet aktif; selisih satu rupiah pun ditolak. Ini menghapus ambiguitas antara “klik saya sudah bayar”, promo gratis, dan uang yang benar-benar sudah diverifikasi.
 
 Grant mengikuti pelajaran `0044`: `revoke ... from public, anon` lalu `grant ... to authenticated` (fungsi self-gated). Klien memakainya lewat free function di [supabase-client.ts](src/data/supabase-client.ts) (`isPlatformAdmin`, `adminListOrgs`, `adminConfirmManualPayment`) — **bukan** lewat `repository`/`useCollection`, karena `SupabaseAdapter` single-tenant secara konstruksi. Tidak ada service key di browser.
 
@@ -153,7 +153,7 @@ UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), ro
 
 **RPC (semua gate `is_platform_admin()` + `set search_path`):**
 - `admin_suspend_org(org, reason)` — set `plan_type='suspended'`. **Alasan wajib** (RPC menolak string kosong). Memakai `set_config('fixmaster.bypass_plan_lock')` seperti `apply_payment`, karena trigger `guard_plan_type_change` (`0016`) mengunci kolom itu.
-- `admin_reactivate_org(org, plan, reason)` — menolak `plan='suspended'` (pakai suspend untuk itu).
+- `admin_reactivate_org(org, plan, reason)` — jalur historis `0046`; **dihapus oleh `0049`** agar akses tidak dapat dipulihkan tanpa pembayaran terverifikasi.
 - `admin_apply_promo(org, promo, days, reason)` — menambah masa aktif **tanpa uang**. Menolak org yang sedang `suspended` (menambah hari ke akses yang mati itu menyesatkan) dan durasi di luar 1–365.
 - `admin_set_client_note(org, note)` — upsert. **Sengaja tidak menulis `operator_actions`**: `client_notes` sudah punya `updated_by`/`updated_at`, jadi ia jejaknya sendiri; mencatat tiap penyuntingan hanya menenggelamkan aksi yang benar-benar mengubah akses/masa aktif.
 - `admin_list_operator_actions(limit)` — baca jejak, dibatasi 200.
@@ -167,6 +167,12 @@ UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), ro
 `0048` menyederhanakan scorecard menjadi data yang benar-benar dipakai operator. `admin_list_orgs()` dibuat ulang tanpa `weeks_active` dan `modules_used`; `registered_at`, `activation_hours`, jumlah agregat, status paket, expiry, aktivitas, dan catatan tetap tersedia. Nomor tampilan `ORG-XXXXXXXX` **bukan kolom baru** dan bukan nomor urut yang mudah ditebak: klien menurunkannya secara deterministik dari delapan karakter awal UUID organisasi melalui `organizationNumber()`. Pencarian nama/nomor/UUID dilakukan lokal terhadap hasil admin yang sudah dibatasi skemanya.
 
 RPC baru `admin_delete_org(org, confirmation, reason)` adalah operasi vendor-only yang fail-closed: gate `is_platform_admin()`, alasan wajib, organisasi dikunci `FOR UPDATE`, dan konfirmasi harus sama dengan nomor `ORG-XXXXXXXX` yang dihitung ulang di server. Sebelum `DELETE organizations`, RPC menghitung outlet/anggota/tiket lalu memanggil `log_operator_action('delete_org')`; FK `operator_actions.org_id on delete set null` menjaga audit dan salinan `org_name`, sedangkan seluruh data tenant ber-FK cascade ikut hilang. **Baris `auth.users` sengaja dipertahankan**—pengguna masih dapat login dan membuat organisasi baru. Fungsi di-revoke dari `public, anon`, hanya di-grant ke `authenticated`, lalu tetap menolak semua akun yang bukan admin platform.
+
+### Aktivasi berbayar fail-closed (migration `0049`)
+
+`0049` menghapus `admin_reactivate_org` dan menjadikan pembayaran Solo/Pro sebagai satu-satunya jalur rutin untuk menghidupkan organisasi trial, kedaluwarsa, atau suspended. `admin_confirm_manual_payment` mengunci organisasi, menghitung outlet aktif, menolak Solo bila outlet >1, lalu memvalidasi nominal tepat: Solo Rp99.000/bulan; Pro Rp199.000 untuk dua outlet + Rp50.000/outlet tambahan, capped Rp349.000/bulan. Harga dikali 1–12 bulan di server. Referensi yang sama tetap idempoten agar retry jaringan tidak menggandakan masa aktif.
+
+Payload `admin_list_orgs` dipangkas lagi: `sale_count`, `pending_invoices`, dan `activation_hours` dihapus karena tidak menentukan tindakan operator. `last_paid_reference` ditambahkan agar modal pembayaran dapat membandingkan organisasi, tanggal/ref pembayaran terakhir, biaya bulanan, total, dan expiry proyeksi sebelum operator mengonfirmasi.
 
 ### Model akses peran (migration `0016`) — TIGA lapis
 

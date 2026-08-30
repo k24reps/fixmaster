@@ -110,7 +110,9 @@ d('Tier 2c — admin platform (lintas-tenant)', () => {
     expect(rowB).toHaveProperty('org_name');
     expect(rowB).toHaveProperty('org_plan');
     expect(typeof rowB?.user_count).toBe('number');
-    expect(typeof rowB?.sale_count).toBe('number');
+    expect(typeof rowB?.outlet_count).toBe('number');
+    expect(typeof rowB?.service_count).toBe('number');
+    expect(rowB).not.toHaveProperty('sale_count');
 
     // Batas privasi ditegakkan: tak ada kolom yang membawa isi bisnis klien.
     for (const leaked of [

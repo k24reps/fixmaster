@@ -697,12 +697,9 @@ export interface AdminOrgRow {
   outletCount: number;
   userCount: number;
   serviceCount: number;
-  saleCount: number;
   lastActivityAt: string | null;
-  pendingInvoices: number;
   lastPaidAt: string | null;
-  /** Jam dari daftar sampai tiket pertama. null = belum pernah bertransaksi. */
-  activationHours: number | null;
+  lastPaidReference: string | null;
   /** Catatan internal vendor. Tidak pernah terlihat klien. */
   note: string;
 }
@@ -718,11 +715,9 @@ function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
     outletCount: Number(d.outlet_count ?? 0),
     userCount: Number(d.user_count ?? 0),
     serviceCount: Number(d.service_count ?? 0),
-    saleCount: Number(d.sale_count ?? 0),
     lastActivityAt: (d.last_activity_at as string | null) ?? null,
-    pendingInvoices: Number(d.pending_invoices ?? 0),
     lastPaidAt: (d.last_paid_at as string | null) ?? null,
-    activationHours: d.activation_hours == null ? null : Number(d.activation_hours),
+    lastPaidReference: (d.last_paid_reference as string | null) ?? null,
     note: (d.note as string) ?? '',
   };
 }
@@ -748,22 +743,6 @@ export async function adminSuspendOrg(orgId: string, reason: string): Promise<vo
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
   const { error } = await c.rpc('admin_suspend_org', {
     p_org_id: orgId,
-    p_reason: reason,
-  });
-  if (error) throw new Error(error.message);
-}
-
-/** Aktifkan kembali org yang ditangguhkan, ke paket tertentu. */
-export async function adminReactivateOrg(
-  orgId: string,
-  plan: string,
-  reason: string,
-): Promise<void> {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('admin_reactivate_org', {
-    p_org_id: orgId,
-    p_plan: plan,
     p_reason: reason,
   });
   if (error) throw new Error(error.message);

@@ -1,5 +1,5 @@
 /**
- * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0047).
+ * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0049).
  *
  * `tier2c` menguji operator boleh MELIHAT lintas-tenant. File ini menguji
  * operator boleh MENGUBAH — suspend, pembayaran manual, catatan, penghapusan — dan
@@ -140,27 +140,39 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(error).not.toBeNull();
   });
 
-  it('aktifkan kembali BERHASIL + tercatat', async () => {
+  it('aktivasi kembali bebas DIHAPUS; org tetap ditangguhkan', async () => {
     const { error } = await ctx.ownerA.client.rpc('admin_reactivate_org', {
       p_org_id: ctx.orgB,
       p_plan: 'standard',
       p_reason: 'sudah bayar',
     });
-    expect(error).toBeNull();
+    expect(error).not.toBeNull();
 
     const { data: org } = await ctx.admin
       .from('organizations')
       .select('plan_type')
       .eq('id', ctx.orgB)
       .single();
-    expect(org?.plan_type).toBe('standard');
+    expect(org?.plan_type).toBe('suspended');
+  });
 
-    const { data: trail } = await ctx.admin
-      .from('operator_actions')
-      .select('action')
+  it('pembayaran manual dengan nominal tidak sesuai DITOLAK', async () => {
+    const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
+      p_org_id: ctx.orgB,
+      p_plan: 'enterprise',
+      p_months: 2,
+      p_amount: 99_000,
+      p_reference: 'NOMINAL-SALAH',
+      p_reason: 'uji guard nominal',
+    });
+    expect(error).not.toBeNull();
+
+    const { count } = await ctx.admin
+      .from('invoices')
+      .select('id', { count: 'exact', head: true })
       .eq('org_id', ctx.orgB)
-      .eq('action', 'reactivate');
-    expect(trail?.length).toBe(1);
+      .eq('provider_ref', 'NOMINAL-SALAH');
+    expect(count).toBe(0);
   });
 
   it('pembayaran manual membuat invoice paid, memperpanjang expiry, dan tercatat', async () => {
@@ -271,8 +283,11 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     const rowB = ((data ?? []) as Record<string, unknown>[]).find(
       (r) => r.org_id === ctx.orgB,
     );
-    expect(rowB).toHaveProperty('activation_hours');
     expect(rowB).toHaveProperty('registered_at');
+    expect(rowB).toHaveProperty('last_paid_reference');
+    expect(rowB).not.toHaveProperty('activation_hours');
+    expect(rowB).not.toHaveProperty('sale_count');
+    expect(rowB).not.toHaveProperty('pending_invoices');
     expect(rowB).not.toHaveProperty('weeks_active');
     expect(rowB).not.toHaveProperty('modules_used');
   });
@@ -284,7 +299,6 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(error).toBeNull();
     const acts = ((data ?? []) as { action: string }[]).map((r) => r.action);
     expect(acts).toContain('suspend');
-    expect(acts).toContain('reactivate');
     expect(acts).toContain('payment_manual');
   });
 
