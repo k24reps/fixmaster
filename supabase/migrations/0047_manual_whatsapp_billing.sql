@@ -11,12 +11,6 @@
 -- tidak diubah; keputusan ini diterapkan secara forward-only.
 -- ============================================================
 
--- Invoice terbuka dari eksperimen gateway lama tidak boleh lagi terlihat
--- sebagai tagihan yang masih bisa dibayar.
-update invoices
-set status = 'canceled'
-where status = 'pending';
-
 -- Riwayat billing menjadi read-only bagi tenant. Insert/update hanya boleh
 -- terjadi di RPC operator security-definer di bawah.
 drop policy if exists invoices_manage on invoices;

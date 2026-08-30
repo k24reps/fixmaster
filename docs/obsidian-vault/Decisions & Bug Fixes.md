@@ -2057,7 +2057,7 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 
 **Satu transaksi operator:** `admin_confirm_manual_payment` hanya menerima admin platform, plan `standard|enterprise`, 1–12 bulan, nominal positif, referensi, dan alasan. RPC `FOR UPDATE` organisasi → insert invoice `paid` ber-provider `manual_whatsapp` → update plan/expiry dari `greatest(now, expiry)` → `log_operator_action('payment_manual')`. Karena semuanya satu transaksi, tidak mungkin akses bertambah tanpa invoice/audit pendamping.
 
-**Decommission forward-only:** migrasi historis `0043`–`0046` tidak ditulis ulang. `0047` membatalkan semua invoice pending lalu menghapus index/RPC GoPay, RPC self-service/mock, dan promo gratis. Source Edge Function listener, parser, env QR, config publik, skrip rekonsiliasi, tab Rekonsiliasi, dan tombol Promo dihapus. Runbook lama diberi banner arsip supaya histori keputusan tetap bisa ditelusuri.
+**Decommission forward-only:** migrasi historis `0043`–`0046` tidak ditulis ulang. `0047` menghapus index/RPC GoPay, RPC self-service/mock, dan promo gratis tanpa mengubah status invoice lama; UI hanya menampilkan baris paid. Source Edge Function listener, parser, env QR, config publik, skrip rekonsiliasi, tab Rekonsiliasi, dan tombol Promo dihapus. Runbook lama diberi banner arsip supaya histori keputusan tetap bisa ditelusuri.
 
 **Trade-off sadar:** operator menjadi bottleneck dan pelanggan tidak aktif otomatis. Ini diterima untuk fase pilot karena volumenya kecil dan kontak langsung justru bernilai. Sinyal menghidupkan otomasi lagi: SLA aktivasi mulai lambat, salah verifikasi berulang, atau volume membuat audit manual sulit dijaga.
 

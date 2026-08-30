@@ -23,7 +23,7 @@
 
 > [!CAUTION]
 > **Jangan merge penuh `staging` → `main`.** Produksi masih berada di jalur billing lama, sedangkan
-> `0047` menghapus RPC gateway/self-service dan membatalkan invoice pending. Cutover manual wajib
+> `0047` menghapus RPC gateway/self-service tanpa mengubah invoice historis. Cutover manual wajib
 > berurutan: backup → migrasi staging → test integrasi + browser → rilis frontend staging → baru
 > siapkan release selektif produksi. Runbook GoPay lama sudah arsip, bukan prosedur aktif.
 

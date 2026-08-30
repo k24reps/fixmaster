@@ -145,7 +145,7 @@ Level 2 (tim per-cabang) diaktifkan di staging. Urutan apply: `0023`–`0026` (E
 - `admin_confirm_manual_payment` menerima hanya plan Solo/Pro, 1–12 bulan, nominal positif, serta referensi + alasan wajib.
 - Baris organisasi dikunci `FOR UPDATE`; invoice, expiry, plan, dan audit ditulis dalam transaksi yang sama. Retry dengan referensi sama idempoten sehingga timeout jaringan tidak menggandakan bulan.
 - RPC di-revoke dari `public, anon`, di-grant ke `authenticated`, lalu tetap fail-closed lewat `is_platform_admin()`.
-- Seluruh pending invoice lama di-cancel saat migrasi, jadi tidak ada checkout lama yang masih tampak bisa dibayar.
+- Pending invoice lama tidak dimutasi; UI hanya menampilkan invoice `paid`, sehingga data audit tetap utuh tanpa memberi kesan checkout lama masih aktif.
 
 ## Hasil testing dashboard operator (19 Agu 2026)
 

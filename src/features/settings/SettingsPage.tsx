@@ -1452,6 +1452,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       : status === 'pending'
         ? styles.tonePending
         : styles.toneVoid;
+  const paymentHistory = invoices.filter((invoice) => invoice.status === 'paid');
 
   return (
     <>
@@ -1594,7 +1595,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         </CardBody>
       </Card>
 
-      {invoices.length > 0 && (
+      {paymentHistory.length > 0 && (
         <Card glass>
           <CardHeader
             icon={<Icon name="receipt" aria-hidden />}
@@ -1603,7 +1604,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
           <CardBody className={styles.noPad}>
             {/* Receipt tape — thermal-print language, shared with POS/Keuangan. */}
             <div className={styles.tape}>
-              {invoices.map((inv) => (
+              {paymentHistory.map((inv) => (
                 <div
                   key={inv.id}
                   className={[styles.tapeRow, invoiceTone(inv.status)].join(' ')}
