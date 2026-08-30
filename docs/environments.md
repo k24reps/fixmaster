@@ -9,7 +9,7 @@
 - **Berisiko saat user banyak:** apa pun yang menyentuh Supabase — **migrasi DB, RLS, Edge Function**. Ini wajib diuji di staging dulu.
 - **Lini pertama selalu mode lokal** (IndexedDB) — mayoritas fitur bisa dikembangkan tanpa backend sama sekali.
 
-## Status branch vs produksi (per 30 Agu 2026)
+## Status branch vs produksi (per 31 Agu 2026)
 
 `main` dan `staging` sekarang memakai **commit aplikasi dan urutan migrasi yang sama**. Perbedaan
 yang tetap wajib ada hanya kredensial, URL project, dan data: staging berisi data uji, production
@@ -17,8 +17,8 @@ berisi data asli.
 
 | | `main` (= produksi) | `staging` |
 |---|---|---|
-| Commit aplikasi | `09590ca` | `09590ca` |
-| Migrasi server terakhir | `0047` | `0047` |
+| Commit aplikasi | `4348edc` | `4348edc` |
+| Migrasi server terakhir | `0049` | `0049` |
 | Edge Function pada source aktif | `health`, `delete-account` | `health`, `delete-account` |
 | Billing aktif | bukti bayar via WhatsApp → operator konfirmasi manual | sama |
 | Dashboard operator | `/operator` (2 tab + konfirmasi bayar) | sama |
