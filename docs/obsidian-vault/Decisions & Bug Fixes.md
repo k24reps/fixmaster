@@ -2077,6 +2077,6 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 
 **Keputusan penghapusan:** tombol hapus bukan shortcut langsung. Modal menjelaskan cakupan cascade, mewajibkan alasan dan mengetik nomor organisasi, kemudian server menghitung ulang nomor yang sama, mengunci baris, menulis audit, baru menghapus. Auth user dipertahankan agar identitas login tidak ikut musnah diam-diam. Ini lebih aman daripada mengandalkan konfirmasi UI karena pemanggil API tetap harus melewati `is_platform_admin()` dan guard server-side.
 
-**Verifikasi:** build + lint hijau; 452/452 unit hijau; 78/78 integration staging hijau; tracker staging `0001`–`0048`. Production sengaja masih `0001`–`0047` sampai ada permintaan promote/deploy eksplisit.
+**Verifikasi & rilis:** build + lint hijau; 452/452 unit hijau; 78/78 integration staging hijau. Dry-run production hanya menemukan `0048`, migrasi berhasil diterapkan, lalu CLI dikembalikan ke staging. `main` dan `staging` dipromosikan fast-forward ke commit fitur `54d126e`; Vercel production membalas 200 dengan bundle baru yang memuat pencarian organisasi, tanggal pendaftaran, modal hapus, dan RPC `admin_delete_org`. Smoke test `https://fixmaster.app/operator` merender secure bench login tanpa log runtime. Tracker staging dan production sama-sama `0001`–`0048`.
 
 #decision #operator #security #ux #responsive #migration
