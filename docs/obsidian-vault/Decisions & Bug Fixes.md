@@ -2094,3 +2094,45 @@ tidak menangkap instrument kosong. Build hijau, lint bersih setelah nested relea
 **Verifikasi & rilis:** project ref staging `fpwwswngqpftaixdlozo` diverifikasi sebelum dry-run; hanya `0049_operator_payment_safety.sql` yang pending lalu diterapkan. Build hijau, lint hijau, **456/456 unit** dan **79/79 integration staging** lulus. Browser asli memverifikasi login desktop serta 390×844: nol document overflow dan semua link/input/button utama 44 px. Commit `4348edc` dipush identik ke `staging` dan `main`; production juga hanya memiliki `0049` sebagai migrasi pending lalu berhasil menerapkannya. CLI dikembalikan ke staging. `https://fixmaster.app/operator` membalas 200, memuat chunk baru dengan `PERLU TINDAKAN`/`lastPaidReference` tanpa `admin_reactivate_org`, merender login operator tanpa overflow, dan mencatat nol warning/error runtime.
 
 #decision #operator #billing #security #whatsapp #impeccable #migration
+
+---
+
+## Tujuh prioritas audit landing ditutup sebagai satu funnel terukur (1 Sep 2026)
+
+**Masalah:** CTA trial dan tombol harga hanya membuka `AuthPage` yang selalu mulai pada
+login, sehingga janji tombol tidak sama dengan layar berikutnya dan pilihan Solo/Pro
+hilang. FAQ mengklaim impor Excel walau produk baru punya ekspor CSV + backup/restore
+JSON. Tidak ada event funnel. Catch-all rewrite mengubah semua URL asing menjadi homepage
+200 (soft-404). Lapisan agent-readable belum ada. Skip link hanya mengubah hash, status
+VOLT masih 12 px, WhatsApp fixed menutup konten ponsel, dan metadata sosial/schema mudah
+drift dari copy serta config harga.
+
+**Keputusan funnel:** intent auth menjadi data eksplisit (`mode`, `source`, `plan`) di
+query dan state. Masuk membuka login; trial/demo membuka signup; tombol harga membawa
+`standard` atau `enterprise`. Parser tetap menerima `?auth=1` sebagai login legacy.
+Event Vercel membentuk funnel `landing_cta_clicked`, `demo_started`,
+`demo_signup_clicked`, `signup_started`, `signup_completed`, `activation_completed`, dan
+`first_service_created`. Properti hanya konteks rendah-kardinalitas; query/hash dibuang,
+route tracking/reset tidak dikirim, dan ID detail servis dinormalisasi.
+
+**Keputusan crawl/discovery:** `vercel.json` hanya me-rewrite route SPA yang benar-benar
+ada. URL asing jatuh ke 404 dan build membawa `404.html`. Crawler AI utama diberi kebijakan
+eksplisit tanpa membuka `/demo` atau `/track`. `index.md`, `pricing.md`, `llms.txt`, dan
+`llms-full.txt` memuat ringkasan, harga, batas paket, serta keterbatasan impor Excel yang
+sama dengan halaman manusia; root mengiklankan representasi Markdown lewat `Link` header.
+
+**Keputusan aksesibilitas/metadata:** `main#top` dapat difokuskan dan skip link memindahkan
+fokus aktual. Leaf text VOLT mobile dinaikkan ke 14 px. WhatsApp fixed tetap ada di desktop,
+tetapi pada ponsel diganti tautan footer. OG/Twitter image menjadi URL absolut. JSON-LD
+mendapat ID entitas dan hubungan publisher tanpa membuat rating/review palsu; test membaca
+HTML produksi untuk mengunci semua FAQ serta harga terhadap i18n dan `plans.ts`.
+
+**Verifikasi:** build dan lint hijau; **470/470 test** lulus. Playwright memotret landing
+dark/light desktop dan mobile 390×844. Audit 320–1440 px, long copy, RTL, forced-colors,
+dan text scaling 200% tetap nol overflow/clipping/target <44 px. Probe prioritas memastikan
+CTA hero membuka signup, Pro mempertahankan `plan=enterprise`, fokus skip link benar,
+font VOLT 14 px, floating WhatsApp hilang di mobile, dan tautan support footer terlihat.
+Web Analytics perlu diaktifkan di dashboard Vercel setelah deploy; custom events hanya
+tersedia bila paket hosting Vercel mendukungnya.
+
+#decision #landing #auth #analytics #seo #ai-seo #accessibility #vercel #impeccable

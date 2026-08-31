@@ -7,11 +7,17 @@ import { useT, type TranslationKey } from '@/i18n';
 import { waLink } from '@/lib/business/notify';
 import { fmtRp } from '@/lib/format';
 import { useThemeStore } from '@/stores/theme';
+import { trackEvent } from '@/lib/analytics';
+import {
+  authIntentHref,
+  type AuthIntent,
+  type SignupPlan,
+} from '@/features/auth/auth-intent';
 import styles from './LandingPageV2.module.css';
 
 interface LandingPageV2Props {
   /** Optional so the public preview route can open the account flow. */
-  onStart?: () => void;
+  onStart?: (intent: AuthIntent) => void;
 }
 
 interface FlowStep {
@@ -72,8 +78,8 @@ const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
   { question: 'landingV2.faq.move.q', answer: 'landingV2.faq.move.a' },
 ];
 
-function defaultStart() {
-  window.location.assign('/?auth=1');
+function defaultStart(intent: AuthIntent) {
+  window.location.assign(authIntentHref(intent));
 }
 
 /**
@@ -86,6 +92,26 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const solo = PLANS.standard;
   const pro = PLANS.enterprise;
+  const supportHref = waLink(
+    FIXMASTER_WHATSAPP,
+    'Halo FixMaster, saya mau tanya soal aplikasinya',
+  );
+
+  const startAuth = (intent: AuthIntent, location: string) => {
+    trackEvent('landing_cta_clicked', {
+      location,
+      intent: intent.mode,
+      plan: intent.plan ?? 'none',
+    });
+    onStart(intent);
+  };
+
+  const trackDemo = (location: string) => {
+    trackEvent('landing_cta_clicked', { location, intent: 'demo', plan: 'none' });
+  };
+
+  const startTrial = (source: AuthIntent['source'], location: string, plan?: SignupPlan) =>
+    startAuth({ mode: 'signup', source, ...(plan ? { plan } : {}) }, location);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -97,7 +123,11 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
   return (
     <div className={styles.page}>
-      <a className={styles.skipLink} href="#top">
+      <a
+        className={styles.skipLink}
+        href="#top"
+        onClick={() => document.getElementById('top')?.focus()}
+      >
         {t('landingV2.skipToContent')}
       </a>
 
@@ -127,14 +157,18 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
           </button>
-          <button className={styles.signInButton} type="button" onClick={onStart}>
+          <button
+            className={styles.signInButton}
+            type="button"
+            onClick={() => startAuth({ mode: 'login', source: 'header' }, 'header')}
+          >
             <span className={styles.liveLed} aria-hidden />
             {t('landingV2.signIn')}
           </button>
         </div>
       </header>
 
-      <main id="top">
+      <main id="top" tabIndex={-1}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <div className={styles.kicker}>
@@ -144,11 +178,15 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             <h1>{t('landingV2.heroTitle')}</h1>
             <p className={styles.heroLead}>{t('landingV2.heroLead')}</p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="/demo">
+              <a className={styles.primaryButton} href="/demo" onClick={() => trackDemo('hero')}>
                 <Icon name="pulse" aria-hidden />
                 {t('landingV2.openDemo')}
               </a>
-              <button className={styles.demoButton} type="button" onClick={onStart}>
+              <button
+                className={styles.demoButton}
+                type="button"
+                onClick={() => startTrial('hero', 'hero')}
+              >
                 {t('landingV2.startTrial')}
                 <Icon name="arrow-right" aria-hidden />
               </button>
@@ -355,7 +393,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           <div className={styles.productCopy}>
             <h2>{t('landingV2.productTitle')}</h2>
             <p>{t('landingV2.productLead')}</p>
-            <a className={styles.textLink} href="/demo">
+            <a className={styles.textLink} href="/demo" onClick={() => trackDemo('product_copy')}>
               {t('landingV2.openDemo')} <Icon name="arrow-right" aria-hidden />
             </a>
           </div>
@@ -364,6 +402,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               className={styles.productFrame}
               href="/demo"
               aria-label={t('landingV2.openDemoDesktop')}
+              onClick={() => trackDemo('product_desktop')}
             >
               <span className={styles.frameBar}>
                 <i />
@@ -402,6 +441,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               className={styles.mobileFrame}
               href="/demo"
               aria-label={t('landingV2.openDemoMobile')}
+              onClick={() => trackDemo('product_mobile')}
             >
               <span className={styles.phoneEarpiece} aria-hidden />
               <span className={styles.phoneCamera} aria-hidden />
@@ -459,7 +499,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                   <Icon name="check" aria-hidden /> {t('landingV2.soloFeature3')}
                 </li>
               </ul>
-              <button type="button" onClick={onStart}>
+              <button
+                type="button"
+                onClick={() => startTrial('pricing_solo', 'pricing_solo', 'standard')}
+              >
                 {t('landingV2.chooseSolo')}
               </button>
             </article>
@@ -488,7 +531,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                   {t('landingV2.proFeature3')} (+{fmtRp(OUTLET_ADDON_PRICE)}/outlet)
                 </li>
               </ul>
-              <button type="button" onClick={onStart}>
+              <button
+                type="button"
+                onClick={() => startTrial('pricing_pro', 'pricing_pro', 'enterprise')}
+              >
                 {t('landingV2.choosePro')}
               </button>
             </article>
@@ -528,7 +574,11 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             <h2>{t('landingV2.finalTitle')}</h2>
             <p>{t('landingV2.finalLead')}</p>
           </div>
-          <button className={styles.primaryButton} type="button" onClick={onStart}>
+          <button
+            className={styles.primaryButton}
+            type="button"
+            onClick={() => startTrial('final_cta', 'final_cta')}
+          >
             {t('landingV2.startTrial')} <Icon name="arrow-right" aria-hidden />
           </button>
         </section>
@@ -545,6 +595,20 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
         <div className={styles.footerLinks}>
           <Link to="/privacy">{t('landingV2.privacy')}</Link>
           <Link to="/terms">{t('landingV2.terms')}</Link>
+          <a
+            href={supportHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              trackEvent('landing_cta_clicked', {
+                location: 'footer',
+                intent: 'support',
+                plan: 'none',
+              })
+            }
+          >
+            {t('landingV2.whatsapp')}
+          </a>
           <a href="mailto:fixmaster.cs@gmail.com">fixmaster.cs@gmail.com</a>
         </div>
         <span className={styles.serial}>FX-{new Date().getFullYear()} // CIMAHI</span>
@@ -552,13 +616,17 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
 
       <a
         className={styles.whatsapp}
-        href={waLink(
-          FIXMASTER_WHATSAPP,
-          'Halo FixMaster, saya mau tanya soal aplikasinya',
-        )}
+        href={supportHref}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={t('landingV2.whatsapp')}
+        onClick={() =>
+          trackEvent('landing_cta_clicked', {
+            location: 'floating_whatsapp',
+            intent: 'support',
+            plan: 'none',
+          })
+        }
       >
         <span className={styles.liveLed} aria-hidden />
         <Icon name="whatsapp" aria-hidden />

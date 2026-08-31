@@ -1,11 +1,42 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/landing-preview", "destination": "/index.html" },
+    { "source": "/operator", "destination": "/index.html" },
+    { "source": "/prototype/ticket", "destination": "/index.html" },
+    { "source": "/track", "destination": "/index.html" },
+    { "source": "/privacy", "destination": "/index.html" },
+    { "source": "/terms", "destination": "/index.html" },
+    { "source": "/reset-password", "destination": "/index.html" },
+    { "source": "/demo", "destination": "/index.html" },
+    { "source": "/services", "destination": "/index.html" },
+    { "source": "/services/:id", "destination": "/index.html" },
+    { "source": "/pos", "destination": "/index.html" },
+    { "source": "/customers", "destination": "/index.html" },
+    { "source": "/inventory", "destination": "/index.html" },
+    { "source": "/suppliers", "destination": "/index.html" },
+    { "source": "/finance", "destination": "/index.html" },
+    { "source": "/tasks", "destination": "/index.html" },
+    { "source": "/attendance", "destination": "/index.html" },
+    { "source": "/reports", "destination": "/index.html" },
+    { "source": "/activity", "destination": "/index.html" },
+    { "source": "/settings", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://fixmaster.app/index.md>; rel=\"alternate\"; type=\"text/markdown\", <https://fixmaster.app/pricing.md>; rel=\"describedby\"; type=\"text/markdown\""
+        }
       ]
     },
     {

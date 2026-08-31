@@ -9,6 +9,9 @@ import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/c
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { isSupabaseConfigured } from '@/data/supabase-client';
+import { trackEvent } from '@/lib/analytics';
+import { useDemoStore } from '@/stores/demo';
 import type { Service, Customer, Employee } from '@/data/types';
 import styles from './ServiceModal.module.css';
 
@@ -229,6 +232,11 @@ export function ServiceModal({
           deletedAt: null,
         };
         await repository.put('services', record);
+        if (services.length === 0 && !useDemoStore.getState().isDemo) {
+          trackEvent('first_service_created', {
+            workspace_mode: isSupabaseConfigured ? 'cloud' : 'local',
+          });
+        }
         logActivity({
           action: 'service.create',
           entityType: 'service',

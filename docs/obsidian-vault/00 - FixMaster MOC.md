@@ -48,6 +48,12 @@ Tiap halaman punya metafora "alat" sendiri tapi berbagi satu bahasa visual. Liha
 - [[Decisions & Bug Fixes]] — keputusan desain + bug nyata yang ditemukan saat verifikasi
 - [[Testing & Security]] — audit keamanan, lingkungan staging, rencana testing RLS/edge (memori persisten)
 
+## 📈 Bisnis & Go-to-Market
+
+- [Marketing Plan FixMaster](../marketing-plans/fixmaster-app/progress.md) — research record, progres 13 bagian, dan roadmap AARRR yang sedang direview
+- [Roadmap & Strategi Penjualan](../roadmap-penjualan.md) — urutan pilot → konversi berbayar → referral + satu channel
+- [Skrip Onboarding Pilot](../skrip-onboarding-pilot.md) — playbook observasi toko pertama
+
 ## 📅 Log Sesi
 
 - [[2026-06-04]] — sidebar Live Diagnostic Rail, konsistensi tema, pembuatan vault ini

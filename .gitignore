@@ -30,3 +30,6 @@ docs/obsidian-vault/attachments/
 # Supabase CLI local state (link metadata, temp files)
 supabase/.temp/
 prod_public_schema.sql
+
+# Release worktree (git worktree add .tmp-release)
+.tmp-release/

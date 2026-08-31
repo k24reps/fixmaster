@@ -154,7 +154,12 @@ export function ResetPasswordPage() {
                 Tautan reset tidak valid atau sudah kedaluwarsa. Minta tautan baru dari halaman masuk.
               </p>
               <div className={styles.fields}>
-                <Button fullWidth onClick={() => navigate('/?auth=1', { replace: true })}>
+                <Button
+                  fullWidth
+                  onClick={() =>
+                    navigate('/?auth=login&source=reset_password', { replace: true })
+                  }
+                >
                   Kembali ke Masuk
                 </Button>
               </div>

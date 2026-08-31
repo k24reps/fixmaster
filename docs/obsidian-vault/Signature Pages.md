@@ -73,22 +73,38 @@ kembali bila diperlukan.
   baru dimuat setelah sesi membutuhkan workspace. `app/router.tsx` juga memuat V2 dan
   `AppLayout` secara lazy. Copy memakai namespace i18n `landingV2.*`; CTA hero primer
   menuju `/demo`, sedangkan CTA trial membuka panel auth.
+- **Hardening funnel + discovery (1 Sep 2026)**: setiap CTA kini membawa intent eksplisit
+  (`login`/`signup`), sumber CTA, dan pilihan `standard`/`enterprise` dari pelat harga;
+  demo juga keluar langsung ke signup. Vercel Web Analytics merekam tujuh event funnel
+  tanpa PII dan menyensor URL sensitif. Rewrite Vercel berubah dari catch-all menjadi
+  allowlist route aplikasi sehingga URL asing benar-benar 404. `robots.txt` menyatakan
+  kebijakan crawler AI; `llms.txt`, `llms-full.txt`, `index.md`, dan `pricing.md`
+  menyediakan versi agent-readable yang jujur dan dapat ditemukan dari sitemap/header.
 - **Guardrail copy (28 Agu 2026)**: klaim offline dibedakan secara jujur antara mode
   lokal satu-perangkat dan mode cloud yang memerlukan koneksi; jargon “row-level” diganti
   bahasa akses toko; trial tidak lagi mengaku membuka “semua fitur” karena ekspor/impor
   memang dikecualikan. Tombol harga tidak lagi berpura-pura memilih Solo/Pro ketika alur
   auth belum membawa pilihan paket. Metadata, noscript, dan FAQ JSON-LD memakai janji
   “catat sekali” yang sama; klaim kanal pembayaran QRIS yang belum final dibuang.
+- **Koreksi perpindahan data (1 Sep 2026)**: FAQ tidak lagi mengklaim impor Excel yang
+  belum tersedia. Copy visible, noscript, JSON-LD, `pricing.md`, dan `llms-full.txt`
+  menyatakan bahwa data inti masih perlu dimasukkan bertahap. Test menjaga semua FAQ
+  schema dan harga Solo/Pro tetap sinkron dengan i18n + `config/plans.ts`.
 - **Polish aksesibilitas (28 Agu 2026)**: light theme memakai token foreground dengan
   kontras minimum 4.5:1, focus ring solid, skip link, target sentuh 44 px, teks mobile
   minimum 14 px, serta maskot yang tunduk pada reduced motion. Scaffold nomor berulang
   dibuang; urutan angka tinggal pada alur reparasi yang memang bersekuens.
+- **Aksesibilitas mobile (1 Sep 2026)**: skip link kini memindahkan fokus aktual ke
+  `main#top`; status VOLT CTA berlantai 14 px; tombol WhatsApp fixed disembunyikan pada
+  ≤520 px dan aksinya dipindahkan ke footer agar tidak menutup konsol hero.
 - **Verifikasi**: render asli dark/light desktop 1440×960 dan mobile 390×844; sapuan
   320/360/375/390/414/744/834/980/981/1025/1440 px nol overflow dokumen, nol teks
   terpotong, dan nol target di bawah 44 px. Direct text-contrast audit sebelumnya tetap
-  nol pelanggaran; build + lint bersih dan 460/460 test lulus.
+  nol pelanggaran; build + lint bersih dan 470/470 test lulus.
   `scripts/audit-landing-owner.mjs` khusus menjaga section owner pada 320–1440 px,
   synthetic long copy, RTL, forced-colors, serta text scaling 200%.
+  `scripts/audit-landing-priorities.mjs` menjaga intent auth/paket, fokus skip link,
+  font VOLT, serta relokasi WhatsApp mobile.
   `scripts/shoot-landing.mjs` meregenerasi gambar di bawah dan
   `scripts/sync-vault-attachments.ps1` menyelaraskannya ke vault.
 

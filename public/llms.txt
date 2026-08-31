@@ -1,0 +1,17 @@
+# FixMaster
+
+> FixMaster adalah aplikasi web manajemen usaha reparasi gadget dan elektronik di Indonesia. Produk ini menghubungkan tiket servis, pelanggan, sparepart, stok, kas, pembayaran, dan margin dalam satu alur.
+
+FixMaster ditujukan untuk konter HP, jasa servis laptop, serta reparasi tablet, printer, konsol, dan elektronik konsumen. Produk ini bukan aplikasi bengkel kendaraan.
+
+## Informasi utama
+
+- [Ringkasan produk](https://fixmaster.app/index.md)
+- [Harga dan batas paket](https://fixmaster.app/pricing.md)
+- [Konteks lengkap](https://fixmaster.app/llms-full.txt)
+- [Kebijakan privasi](https://fixmaster.app/privacy)
+- [Syarat dan ketentuan](https://fixmaster.app/terms)
+
+## Opsional
+
+- [Demo interaktif](https://fixmaster.app/demo): aplikasi asli dengan data contoh yang tidak disimpan; halaman ini tidak untuk diindeks.

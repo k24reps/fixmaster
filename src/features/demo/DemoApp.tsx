@@ -9,6 +9,7 @@ import { useSessionStore } from '@/stores/session';
 import { useZoomStore } from '@/stores/zoom';
 import { seedDemoWorkspace } from '@/dev/seed';
 import { Icon } from '@/components/ui';
+import { trackEvent } from '@/lib/analytics';
 import { DemoChrome } from './DemoChrome';
 import styles from './DemoApp.module.css';
 
@@ -43,6 +44,7 @@ export function DemoApp() {
 
   useEffect(() => {
     let cancelled = false;
+    trackEvent('demo_started', { entry: 'public_route' });
     // Keep the demo route out of search engines (it's a sandbox, not content).
     const robots = document.createElement('meta');
     robots.name = 'robots';

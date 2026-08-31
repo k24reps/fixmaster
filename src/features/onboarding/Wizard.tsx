@@ -6,6 +6,7 @@ import { derivePrefix } from '@/lib/id';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
+import { trackEvent } from '@/lib/analytics';
 import {
   emptyWizardData,
   validateStep,
@@ -105,6 +106,7 @@ export function Wizard({ onComplete }: WizardProps) {
     setBusy(true);
     try {
       const { org, owner } = await commitWizard(data);
+      trackEvent('activation_completed', { workspace_mode: isCloud ? 'cloud' : 'local' });
       toast.success('Workspace berhasil dibuat!');
       onComplete(org.id, owner.id);
     } catch {

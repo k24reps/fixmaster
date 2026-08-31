@@ -1,6 +1,11 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { AuthSplash } from './AuthSplash';
+import {
+  authIntentFromSearch,
+  authIntentHref,
+  type AuthIntent,
+} from '@/features/auth/auth-intent';
 
 const AuthPage = lazy(() =>
   import('@/features/auth/AuthPage').then((module) => ({ default: module.AuthPage })),
@@ -26,12 +31,23 @@ export function AuthGate({ children }: AuthGateProps) {
   const initAuth = useAuthStore((s) => s.init);
 
   // In cloud signed-out state, show the marketing landing page first; the CTA
-  // reveals the auth form. This is the public "front door" for selling. The
-  // demo's "Daftar Gratis" CTA deep-links here via /?auth=1, so honor it.
-  const [showAuth, setShowAuth] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('auth') === '1';
+  // reveals the auth form. Public CTAs deep-link here with an explicit
+  // login/signup intent and, when
+  // applicable, the plan selected on the pricing plate.
+  const [authIntent, setAuthIntent] = useState<AuthIntent | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return authIntentFromSearch(window.location.search);
   });
+
+  const openAuth = (intent: AuthIntent) => {
+    window.history.replaceState(null, '', authIntentHref(intent));
+    setAuthIntent(intent);
+  };
+
+  const closeAuth = () => {
+    window.history.replaceState(null, '', '/');
+    setAuthIntent(null);
+  };
 
   // Resolve the cloud-account session first.
   useEffect(() => {
@@ -46,10 +62,15 @@ export function AuthGate({ children }: AuthGateProps) {
   if (authStatus === 'signed-out') {
     return (
       <Suspense fallback={<AuthSplash />}>
-        {showAuth ? (
-          <AuthPage onBack={() => setShowAuth(false)} />
+        {authIntent ? (
+          <AuthPage
+            initialMode={authIntent.mode}
+            signupPlan={authIntent.plan}
+            source={authIntent.source}
+            onBack={closeAuth}
+          />
         ) : (
-          <LandingPageV2 onStart={() => setShowAuth(true)} />
+          <LandingPageV2 onStart={openAuth} />
         )}
       </Suspense>
     );

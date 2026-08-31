@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { toast } from './toast';
+import { authIntentHref } from '@/features/auth/auth-intent';
+import { trackEvent } from '@/lib/analytics';
 
 /**
  * Public-demo session flag. Set true only while the landing-page demo
@@ -38,6 +40,7 @@ export function demoGuard(message?: string): boolean {
 
 /** Leave the demo and open the real signup (breaks out of the iframe if embedded). */
 export function exitDemoToSignup(): void {
+  trackEvent('demo_signup_clicked', { location: 'demo_chrome' });
   const top = window.top ?? window;
-  top.location.href = '/?auth=1';
+  top.location.href = authIntentHref({ mode: 'signup', source: 'demo' });
 }

@@ -1,0 +1,82 @@
+# FixMaster — konteks produk lengkap
+
+Terakhir diperbarui: 1 September 2026.
+
+## Apa itu FixMaster?
+
+FixMaster adalah aplikasi web untuk mengelola usaha reparasi gadget dan elektronik, seperti konter HP, jasa servis laptop, serta reparasi tablet, printer, konsol, dan elektronik konsumen. FixMaster bukan aplikasi bengkel motor atau mobil.
+
+Tujuan utamanya adalah mencatat satu unit sekali. Tiket servis yang sama menghubungkan pelanggan, keluhan, perangkat, teknisi, sparepart, stok, biaya, pembayaran, kas, dan margin sehingga pemilik tidak perlu menyalin data dari buku ke chat lalu ke Excel.
+
+## Siapa yang menggunakan FixMaster?
+
+- Pemilik toko yang ingin memantau antrean, stok, kas, margin, dan kerja tim.
+- Teknisi atau kasir yang menerima unit, memperbarui status, memakai sparepart, dan mencatat pembayaran.
+- Usaha satu orang maupun tim dengan beberapa outlet.
+
+## Fitur utama
+
+- Tiket servis digital dari unit masuk sampai diambil.
+- Tautan pelacakan publik agar pelanggan dapat mengecek status servis.
+- Data pelanggan dan riwayat servis.
+- Kasir/POS untuk penjualan sparepart, aksesori, dan jasa.
+- Inventori sparepart dengan peringatan stok menipis.
+- Keuangan multi-akun kas/bank, biaya, pembayaran, dan margin per servis.
+- Laporan operasional dan keuangan.
+- Supplier, pembelian, tugas internal, absensi, peran pengguna, log aktivitas, dan multi-outlet pada paket yang mendukungnya.
+
+## Cara kerja data
+
+FixMaster memiliki mode lokal dan mode cloud. Mode lokal bekerja pada satu perangkat tanpa akun. Mode cloud dipakai untuk kerja tim dan sinkronisasi antarperangkat serta membutuhkan koneksi internet. Data setiap toko dipisahkan dengan aturan akses; hanya akun yang terdaftar pada toko tersebut yang dapat membukanya.
+
+Pemilik dapat membuat backup. Paket Pro menyediakan ekspor laporan CSV serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; data inti perlu dimasukkan bertahap.
+
+## Harga
+
+Semua akun baru mendapat uji coba 14 hari tanpa kartu kredit.
+
+### Solo
+
+- Rp 99.000 per bulan.
+- 1 pengguna dan 1 outlet.
+- Tiket servis, pelanggan, kasir/POS, inventori, keuangan, dan laporan.
+
+### Pro
+
+- Rp 199.000 per bulan.
+- Pengguna tidak dibatasi.
+- 2 outlet termasuk; outlet tambahan Rp 50.000 per bulan per outlet.
+- Harga multi-outlet dibatasi sampai Rp 349.000 per bulan.
+- Semua fitur Solo ditambah supplier dan pembelian, tugas, absensi, multi-outlet, logo, template WhatsApp, ekspor laporan CSV, serta backup/restore JSON.
+
+Sumber harga terstruktur: https://fixmaster.app/pricing.md
+
+## Demo
+
+Demo publik tersedia di https://fixmaster.app/demo. Demo menjalankan aplikasi asli dengan data contoh di memori. Perubahan yang dibuat di demo tidak disimpan dan tidak menyentuh data pengunjung.
+
+## Pertanyaan umum
+
+### Apakah FixMaster hanya untuk servis HP?
+
+Tidak. FixMaster juga mendukung laptop, tablet, printer, konsol, dan elektronik konsumen lainnya.
+
+### Apakah harus memasang aplikasi di komputer kasir?
+
+Tidak. FixMaster dibuka lewat browser di laptop atau ponsel.
+
+### Bagaimana jika internet terputus?
+
+Mode lokal tetap bekerja pada satu perangkat. Mode cloud untuk tim dan sinkronisasi antarperangkat membutuhkan internet; ketika koneksi kembali, aplikasi memuat data terbaru.
+
+### Bagaimana jika data masih di Excel?
+
+Impor Excel otomatis belum tersedia. Data inti perlu dimasukkan bertahap; tim FixMaster dapat dihubungi untuk membahas pendekatan perpindahan data.
+
+## Kontak dan kebijakan
+
+- Email: fixmaster.cs@gmail.com
+- WhatsApp: +62 899-5318-638
+- Lokasi: Cimahi, Indonesia
+- Privasi: https://fixmaster.app/privacy
+- Syarat: https://fixmaster.app/terms

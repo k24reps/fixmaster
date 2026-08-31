@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Input, Icon, Mascot, PasswordStrength } from '@/components/ui';
 import { FormError } from '@/components/ui/Form';
@@ -6,6 +6,8 @@ import { useT, type TranslationKey } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { toast } from '@/stores/toast';
+import { trackEvent } from '@/lib/analytics';
+import type { AuthSource, PublicAuthMode, SignupPlan } from './auth-intent';
 import styles from './AuthPage.module.css';
 
 type Mode = 'login' | 'signup' | 'reset';
@@ -13,6 +15,9 @@ type Mode = 'login' | 'signup' | 'reset';
 interface AuthPageProps {
   /** Return to the marketing landing page (cloud signed-out front door). */
   onBack?: () => void;
+  initialMode?: PublicAuthMode;
+  signupPlan?: SignupPlan;
+  source?: AuthSource;
 }
 
 const TITLES: Record<Mode, {
@@ -64,7 +69,12 @@ const RAIL = [
  * the FixMaster identity + a live diagnostic rail; right panel is a screwed-down
  * faceplate with a power LED, mono labels, and the auth form.
  */
-export function AuthPage({ onBack }: AuthPageProps = {}) {
+export function AuthPage({
+  onBack,
+  initialMode = 'login',
+  signupPlan,
+  source = 'direct',
+}: AuthPageProps = {}) {
   const t = useT();
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
@@ -72,12 +82,22 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const signupStartTracked = useRef(false);
+
+  useEffect(() => {
+    if (mode !== 'signup' || signupStartTracked.current) return;
+    signupStartTracked.current = true;
+    trackEvent('signup_started', {
+      source,
+      plan: signupPlan ?? 'unselected',
+    });
+  }, [mode, signupPlan, source]);
 
   const title = TITLES[mode];
 
@@ -129,6 +149,11 @@ export function AuthPage({ onBack }: AuthPageProps = {}) {
         return;
       }
       if (mode === 'signup') {
+        trackEvent('signup_completed', {
+          source,
+          plan: signupPlan ?? 'unselected',
+          method: 'email',
+        });
         // Email confirmation is disabled on this project, so the account is
         // active immediately — send the user straight to login (no inbox step).
         toast.success(t('authPage.toast.accountCreated'));

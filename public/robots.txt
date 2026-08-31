@@ -1,4 +1,39 @@
 # FixMaster — robots
+User-agent: GPTBot
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /demo
+Disallow: /track
+
+User-agent: Bingbot
+Allow: /
+Disallow: /demo
+Disallow: /track
+
 User-agent: *
 Allow: /
 # /demo is a live sandbox (in-memory, sample data), not indexable content.

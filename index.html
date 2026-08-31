@@ -17,6 +17,7 @@
     <meta name="robots" content="index, follow" />
     <meta name="author" content="FixMaster" />
     <link rel="canonical" href="https://fixmaster.app/" />
+    <link rel="alternate" type="text/markdown" href="https://fixmaster.app/index.md" />
 
     <!-- PWA: installable web app -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -36,7 +37,8 @@
     <meta property="og:url" content="https://fixmaster.app/" />
     <meta property="og:locale" content="id_ID" />
     <meta property="og:site_name" content="FixMaster" />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image" content="https://fixmaster.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://fixmaster.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="FixMaster menghubungkan tiket servis, stok sparepart, dan margin konter" />
@@ -46,7 +48,7 @@
       name="twitter:description"
       content="Catat servis sekali. Stok, biaya, pembayaran, dan margin ikut terhubung tanpa pencatatan ulang."
     />
-    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image" content="https://fixmaster.app/og-image.png" />
 
     <!-- Structured data (JSON-LD) for rich results -->
     <script type="application/ld+json">
@@ -55,11 +57,13 @@
         "@graph": [
           {
             "@type": "SoftwareApplication",
+            "@id": "https://fixmaster.app/#software",
             "name": "FixMaster",
             "applicationCategory": "BusinessApplication",
             "operatingSystem": "Web",
             "description": "Aplikasi manajemen konter reparasi gadget & elektronik. Satu tiket menghubungkan servis, stok sparepart, biaya, pembayaran, dan margin tanpa pencatatan ulang.",
             "url": "https://fixmaster.app/",
+            "image": "https://fixmaster.app/og-image.png",
             "inLanguage": "id-ID",
             "offers": [
               {
@@ -68,6 +72,7 @@
                 "price": "99000",
                 "priceCurrency": "IDR",
                 "availability": "https://schema.org/InStock",
+                "url": "https://fixmaster.app/#pricing",
                 "description": "1 pengguna dan 1 outlet. Tiket servis, pelanggan, kasir, stok, keuangan, dan laporan."
               },
               {
@@ -76,12 +81,14 @@
                 "price": "199000",
                 "priceCurrency": "IDR",
                 "availability": "https://schema.org/InStock",
+                "url": "https://fixmaster.app/#pricing",
                 "description": "Pengguna tak terbatas, multi-outlet, supplier dan pembelian, pembagian tugas, absensi, serta semua fitur Solo."
               }
             ]
           },
           {
             "@type": "Organization",
+            "@id": "https://fixmaster.app/#organization",
             "name": "FixMaster",
             "url": "https://fixmaster.app/",
             "logo": "https://fixmaster.app/icon-maskable.svg",
@@ -89,12 +96,15 @@
           },
           {
             "@type": "WebSite",
+            "@id": "https://fixmaster.app/#website",
             "name": "FixMaster",
             "url": "https://fixmaster.app/",
+            "publisher": { "@id": "https://fixmaster.app/#organization" },
             "inLanguage": "id-ID"
           },
           {
             "@type": "FAQPage",
+            "@id": "https://fixmaster.app/#faq",
             "mainEntity": [
               {
                 "@type": "Question",
@@ -133,7 +143,7 @@
                 "name": "Bagaimana kalau data saya masih di Excel?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Paket Pro mendukung impor data agar perpindahan tidak perlu dimulai dari nol."
+                  "text": "Saat ini belum ada impor Excel otomatis. Data inti perlu dimasukkan bertahap; hubungi tim FixMaster jika Anda ingin membahas cara perpindahannya."
                 }
               }
             ]
@@ -170,6 +180,20 @@
         </ul>
         <p>
           Coba gratis 14 hari tanpa kartu kredit. Aktifkan JavaScript untuk menjalankan aplikasi.
+        </p>
+        <h2>Harga</h2>
+        <ul>
+          <li>Solo — Rp 99.000 per bulan untuk 1 pengguna dan 1 outlet.</li>
+          <li>Pro — Rp 199.000 per bulan untuk pengguna tak terbatas dan 2 outlet.</li>
+        </ul>
+        <h2>Pertanyaan umum</h2>
+        <h3>Apakah FixMaster hanya untuk servis HP?</h3>
+        <p>Tidak. FixMaster juga mendukung laptop, tablet, printer, konsol, dan elektronik konsumen lainnya.</p>
+        <h3>Bagaimana jika data masih di Excel?</h3>
+        <p>Saat ini belum ada impor Excel otomatis. Data inti perlu dimasukkan bertahap; hubungi tim FixMaster untuk membahas cara perpindahannya.</p>
+        <p>
+          <a href="/demo">Buka demo interaktif</a> ·
+          <a href="/pricing.md">Baca harga dalam format Markdown</a>
         </p>
       </section>
     </noscript>

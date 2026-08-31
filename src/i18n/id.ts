@@ -296,7 +296,7 @@ export const id = {
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
   'landingV2.faq.move.q': 'Bagaimana kalau data saya masih di Excel?',
   'landingV2.faq.move.a':
-    'Paket Pro mendukung impor data agar perpindahan tidak perlu dimulai dari nol.',
+    'Saat ini belum ada impor Excel otomatis. Data inti perlu dimasukkan bertahap; hubungi tim FixMaster jika Anda ingin membahas cara perpindahannya.',
   'landingV2.finalKicker': 'Satu alur. Tanpa catat ulang.',
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
   'landingV2.finalLead':

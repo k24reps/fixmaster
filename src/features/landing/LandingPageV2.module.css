@@ -37,6 +37,10 @@
   scroll-margin-top: 90px;
 }
 
+.page main:focus {
+  outline: none;
+}
+
 .page * {
   box-sizing: border-box;
 }
@@ -1946,6 +1950,11 @@
 
   .voltBayStatus { text-align: left; }
 
+  .voltBayStatus small,
+  .voltBayStatus strong {
+    font-size: var(--text-sm);
+  }
+
   .finalCta .primaryButton {
     grid-column: 1;
     justify-self: center;
@@ -2073,17 +2082,7 @@
     margin-bottom: var(--space-4);
   }
 
-  .whatsapp {
-    width: 52px;
-    height: 52px;
-    padding: 0;
-    justify-content: center;
-    right: var(--space-3);
-    bottom: var(--space-3);
-  }
-
-  .whatsapp .liveLed { display: none; }
-  .whatsapp > span:last-child { display: none; }
+  .whatsapp { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

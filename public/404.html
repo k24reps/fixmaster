@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>404 — Halaman Tidak Ditemukan | FixMaster</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg-app: Canvas;
+        --bg-surface: Canvas;
+        --text-primary: CanvasText;
+        --text-secondary: GrayText;
+        --border-strong: GrayText;
+        --brand: Highlight;
+        --on-brand: HighlightText;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: var(--text-primary);
+        background: var(--bg-app);
+        font-family: Inter, system-ui, sans-serif;
+      }
+      main {
+        width: min(620px, 100%);
+        padding: 32px;
+        border: 1px solid var(--border-strong);
+        border-radius: 16px;
+        background: var(--bg-surface);
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 16px;
+        border-bottom: 1px dotted var(--border-strong);
+        color: var(--text-secondary);
+        font-family: ui-monospace, monospace;
+        letter-spacing: .08em;
+      }
+      .led {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--brand);
+      }
+      h1 { margin: 28px 0 12px; font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1; }
+      p { max-width: 52ch; color: var(--text-secondary); line-height: 1.6; }
+      a {
+        min-height: 44px;
+        margin-top: 16px;
+        padding: 10px 18px;
+        display: inline-flex;
+        align-items: center;
+        color: var(--on-brand);
+        background: var(--brand);
+        border-radius: 8px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="status"><span class="led" aria-hidden="true"></span>FAULT // 404</div>
+      <h1>Halaman tidak ditemukan.</h1>
+      <p>Alamat ini tidak terhubung ke modul FixMaster. Kembali ke halaman utama untuk membuka demo, harga, atau akun Anda.</p>
+      <a href="/">Kembali ke FixMaster</a>
+    </main>
+  </body>
+</html>
