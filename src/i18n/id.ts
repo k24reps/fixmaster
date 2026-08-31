@@ -290,7 +290,7 @@ export const id = {
     'Tidak. FixMaster dibuka lewat browser di laptop atau ponsel. Anda juga bisa mencoba demo tanpa membuat akun.',
   'landingV2.faq.connection.q': 'Bagaimana kalau koneksi internet terputus?',
   'landingV2.faq.connection.a':
-    'Mode lokal bekerja di satu perangkat tanpa akun. Untuk kerja tim dan sinkronisasi antarperangkat, mode cloud membutuhkan internet; saat koneksi kembali, FixMaster memuat ulang data terbaru.',
+    'FixMaster berjalan di cloud, jadi butuh koneksi internet agar data tetap sinkron antarperangkat dan antar-staf. Saat koneksi terputus aplikasi tidak bisa mencatat transaksi baru; begitu internet kembali, FixMaster otomatis memuat data terbaru tanpa perlu login ulang.',
   'landingV2.faq.safe.q': 'Siapa yang bisa melihat data toko saya?',
   'landingV2.faq.safe.a':
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',

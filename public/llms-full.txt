@@ -27,7 +27,7 @@ Tujuan utamanya adalah mencatat satu unit sekali. Tiket servis yang sama menghub
 
 ## Cara kerja data
 
-FixMaster memiliki mode lokal dan mode cloud. Mode lokal bekerja pada satu perangkat tanpa akun. Mode cloud dipakai untuk kerja tim dan sinkronisasi antarperangkat serta membutuhkan koneksi internet. Data setiap toko dipisahkan dengan aturan akses; hanya akun yang terdaftar pada toko tersebut yang dapat membukanya.
+FixMaster berjalan di cloud dan membutuhkan koneksi internet. Data disimpan di server, lalu disinkronkan secara realtime ke semua perangkat dan staf di toko yang sama. Data setiap toko dipisahkan dengan aturan akses; hanya akun yang terdaftar pada toko tersebut yang dapat membukanya.
 
 Pemilik dapat membuat backup. Paket Pro menyediakan ekspor laporan CSV serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; data inti perlu dimasukkan bertahap.
 
@@ -67,7 +67,7 @@ Tidak. FixMaster dibuka lewat browser di laptop atau ponsel.
 
 ### Bagaimana jika internet terputus?
 
-Mode lokal tetap bekerja pada satu perangkat. Mode cloud untuk tim dan sinkronisasi antarperangkat membutuhkan internet; ketika koneksi kembali, aplikasi memuat data terbaru.
+FixMaster berjalan di cloud sehingga membutuhkan koneksi internet. Selama koneksi terputus, transaksi baru tidak dapat dicatat. Ketika koneksi kembali, aplikasi otomatis memuat data terbaru tanpa perlu login ulang.
 
 ### Bagaimana jika data masih di Excel?
 

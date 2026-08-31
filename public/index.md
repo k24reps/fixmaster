@@ -15,7 +15,7 @@ FixMaster membantu konter HP, jasa servis laptop, dan usaha reparasi elektronik 
 - Pelanggan, kasir/POS, dan inventori sparepart
 - Keuangan, margin per servis, dan laporan
 - Supplier, tugas internal, absensi, dan multi-outlet pada paket Pro
-- Mode lokal satu perangkat dan mode cloud untuk kerja tim
+- Sinkronisasi realtime antarperangkat dan antar-staf (berbasis cloud, butuh internet)
 - Demo interaktif dengan data contoh yang tidak disimpan
 
 ## Tautan utama

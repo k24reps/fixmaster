@@ -288,7 +288,7 @@ export const en: Dictionary = {
     'No. FixMaster opens in a browser on a laptop or phone. You can also try the demo without creating an account.',
   'landingV2.faq.connection.q': 'What happens if the internet connection drops?',
   'landingV2.faq.connection.a':
-    'Local mode works on one device without an account. Team work and cross-device sync use cloud mode, which needs internet; when the connection returns, FixMaster reloads the latest data.',
+    'FixMaster runs in the cloud, so it needs an internet connection to keep data in sync across devices and staff. While the connection is down you cannot record new transactions; once you are back online, FixMaster reloads the latest data automatically, with no new sign-in.',
   'landingV2.faq.safe.q': 'Who can see my shop’s data?',
   'landingV2.faq.safe.a':
     'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
