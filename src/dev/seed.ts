@@ -18,6 +18,7 @@ import type {
   Customer,
   InventoryItem,
   Service,
+  ServiceSparepart,
   ServiceStatus,
   Supplier,
   PurchaseOrder,
@@ -106,12 +107,15 @@ export async function seedDemoWorkspace(): Promise<void> {
   ];
   await repository.putMany('customers', customers);
 
-  // 4) Inventory — distributed; a couple low/critical for alerts.
+  // 4) Inventory — distributed; a couple low/critical for alerts. Stock here is
+  //    the CURRENT state, i.e. already net of the sales and the service part
+  //    usage seeded below (keyboard 4->3, thermal paste 25->24). The low-stock
+  //    set is unchanged: battery 1/3 critical and iPhone LCD 2/2 at minimum.
   const inventory: InventoryItem[] = [
-    { ...at(oPusat), id: newId(), name: 'Keyboard MacBook A1989', category: 'Sparepart', sku: 'KB-A1989', stock: 4, minStock: 2, costPrice: 850_000, sellPrice: 1_250_000, supplierId: null },
+    { ...at(oPusat), id: newId(), name: 'Keyboard MacBook A1989', category: 'Sparepart', sku: 'KB-A1989', stock: 3, minStock: 2, costPrice: 850_000, sellPrice: 1_250_000, supplierId: null },
     { ...at(oPusat), id: newId(), name: 'SSD NVMe 512GB', category: 'Sparepart', sku: 'SSD-512', stock: 10, minStock: 4, costPrice: 620_000, sellPrice: 950_000, supplierId: null },
     { ...at(oDago), id: newId(), name: 'Baterai A1964 58Wh', category: 'Sparepart', sku: 'BT-A1964', stock: 1, minStock: 3, costPrice: 720_000, sellPrice: 1_100_000, supplierId: null },
-    { ...at(oDago), id: newId(), name: 'Thermal Paste MX-4', category: 'Consumable', sku: 'TP-MX4', stock: 25, minStock: 5, costPrice: 45_000, sellPrice: 90_000, supplierId: null },
+    { ...at(oDago), id: newId(), name: 'Thermal Paste MX-4', category: 'Consumable', sku: 'TP-MX4', stock: 24, minStock: 5, costPrice: 45_000, sellPrice: 90_000, supplierId: null },
     { ...at(oCimahi), id: newId(), name: 'LCD iPhone 12', category: 'Sparepart', sku: 'LCD-IP12', stock: 2, minStock: 2, costPrice: 1_350_000, sellPrice: 1_950_000, supplierId: null },
   ];
   await repository.putMany('inventory', inventory);
@@ -128,6 +132,7 @@ export async function seedDemoWorkspace(): Promise<void> {
     status: ServiceStatus,
     finalCost: number,
     downPayment: number,
+    spareparts: ServiceSparepart[] = [],
   ): Service => ({
     ...at(outletId),
     id: newId(),
@@ -145,7 +150,7 @@ export async function seedDemoWorkspace(): Promise<void> {
     estimateCost: finalCost || 500_000,
     finalCost,
     downPayment,
-    spareparts: [],
+    spareparts,
     warrantyServiceUntil: status === 'lunas' || status === 'selesai' ? addDays(today, 30) : null,
     warrantyPartsUntil: status === 'lunas' || status === 'selesai' ? addDays(today, 7) : null,
     pickedUp: false,
@@ -156,10 +161,36 @@ export async function seedDemoWorkspace(): Promise<void> {
     ],
     archived: false,
   });
+  /**
+   * Sparepart terpakai pada satu tiket — sumber modal & margin tiket itu.
+   * `deducted: true` karena kedua tiket pemakainya sudah lunas, jadi stoknya
+   * memang sudah berkurang; angka stok di atas ditulis sebagai keadaan akhir.
+   * `kind: 'inventory'` berarti tidak membuat Expense: modalnya sudah keluar
+   * saat pembelian stok, bukan saat dipasang.
+   */
+  const partUsed = (item: InventoryItem, qty: number): ServiceSparepart => ({
+    itemId: item.id,
+    name: item.name,
+    qty,
+    costPrice: item.costPrice,
+    sellPrice: item.sellPrice,
+    deducted: true,
+    kind: 'inventory',
+  });
+
+  // Tiga tiket lunas sengaja beda profil modalnya, supaya kolom Biaya di
+  // halaman Servis memperlihatkan ketiga keadaannya: modal besar, modal tipis,
+  // dan tanpa modal sama sekali (jasa murni -> tak ada rincian di bawah biaya).
   const services: Service[] = [
-    mkService(oPusat, 1, customers[0], 'Laptop', 'MacBook Pro 13" 2019', 'Keyboard mati total', 'lunas', 1_500_000, 0),
+    // Modal besar: 850.000 dari 1.500.000 -> profit 650.000.
+    mkService(oPusat, 1, customers[0], 'Laptop', 'MacBook Pro 13" 2019', 'Keyboard mati total', 'lunas', 1_500_000, 0, [
+      partUsed(inventory[0], 1),
+    ]),
     mkService(oPusat, 2, customers[0], 'HP / Smartphone', 'iPhone 12', 'LCD retak', 'pengerjaan', 0, 200_000),
-    mkService(oDago, 3, customers[1], 'Laptop', 'Asus ROG G14', 'Overheat & mati sendiri', 'lunas', 1_200_000, 0),
+    // Modal tipis: pekerjaan bersih-bersih, hanya pasta -> profit 1.155.000.
+    mkService(oDago, 3, customers[1], 'Laptop', 'Asus ROG G14', 'Overheat & mati sendiri', 'lunas', 1_200_000, 0, [
+      partUsed(inventory[3], 1),
+    ]),
     mkService(oDago, 4, customers[1], 'HP / Smartphone', 'Samsung A52', 'Baterai cepat habis', 'konfirmasi', 0, 0),
     mkService(oCimahi, 5, customers[2], 'Printer', 'Epson L3110', 'Hasil cetak bergaris', 'lunas', 850_000, 0),
     mkService(oCimahi, 6, customers[2], 'PC / Komputer', 'PC Rakitan', 'Tidak mau menyala', 'diterima', 0, 0),
