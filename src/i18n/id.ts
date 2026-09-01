@@ -173,7 +173,7 @@ export const id = {
   'settings.billing.history': 'Riwayat Pembayaran',
 
   // ---------- Landing V2 ----------
-  'landingV2.metaTitle': 'FixMaster — Aplikasi Servis HP: Tiket, Stok & Margin',
+  'landingV2.metaTitle': 'FixMaster — Aplikasi Servis HP, Laptop & Elektronik: Tiket, Stok, Margin',
   'landingV2.skipToContent': 'Lewati ke konten utama',
   'landingV2.brandSub': 'Sistem operasi konter',
   'landingV2.navLabel': 'Navigasi landing page',
@@ -296,7 +296,7 @@ export const id = {
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
   'landingV2.faq.move.q': 'Bagaimana kalau data saya masih di Excel?',
   'landingV2.faq.move.a':
-    'Saat ini belum ada impor Excel otomatis. Data inti perlu dimasukkan bertahap; hubungi tim FixMaster jika Anda ingin membahas cara perpindahannya.',
+    'Anda tidak perlu memindahkan semua riwayat lama sekaligus. Cukup mulai catat unit yang baru masuk di FixMaster mulai hari ini — file Excel lama tetap bisa dibuka sebagai arsip. Belum ada impor otomatis; kalau ingin dibantu memindahkan data pelanggan atau stok inti, tim FixMaster siap bantu lewat WhatsApp.',
   'landingV2.finalKicker': 'Satu alur. Tanpa catat ulang.',
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
   'landingV2.finalLead':

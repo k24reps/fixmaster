@@ -29,7 +29,7 @@ Tujuan utamanya adalah mencatat satu unit sekali. Tiket servis yang sama menghub
 
 FixMaster berjalan di cloud dan membutuhkan koneksi internet. Data disimpan di server, lalu disinkronkan secara realtime ke semua perangkat dan staf di toko yang sama. Data setiap toko dipisahkan dengan aturan akses; hanya akun yang terdaftar pada toko tersebut yang dapat membukanya.
 
-Pemilik dapat membuat backup. Paket Pro menyediakan ekspor laporan CSV serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; data inti perlu dimasukkan bertahap.
+Pemilik dapat membuat backup. Paket Pro menyediakan ekspor laporan CSV serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; pemilik dapat mulai dari unit yang baru masuk dan memindahkan data pelanggan atau stok inti dengan bantuan tim FixMaster.
 
 ## Harga
 
@@ -71,7 +71,7 @@ FixMaster berjalan di cloud sehingga membutuhkan koneksi internet. Selama koneks
 
 ### Bagaimana jika data masih di Excel?
 
-Impor Excel otomatis belum tersedia. Data inti perlu dimasukkan bertahap; tim FixMaster dapat dihubungi untuk membahas pendekatan perpindahan data.
+Riwayat lama tidak perlu dipindahkan sekaligus; pemilik cukup mulai mencatat unit yang baru masuk di FixMaster, sementara file Excel lama tetap dipakai sebagai arsip. Impor otomatis belum tersedia, tetapi tim FixMaster dapat membantu memindahkan data pelanggan atau stok inti lewat WhatsApp.
 
 ## Kontak dan kebijakan
 

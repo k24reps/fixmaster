@@ -24,7 +24,7 @@ Semua akun baru mendapat uji coba 14 hari tanpa kartu kredit. Harga di bawah ada
 
 ## Catatan perpindahan data
 
-FixMaster belum menyediakan impor Excel otomatis. Data inti perlu dimasukkan bertahap. Hubungi tim FixMaster jika Anda ingin membahas pendekatan perpindahan data sebelum memulai.
+FixMaster belum menyediakan impor Excel otomatis. Anda tidak perlu memindahkan seluruh riwayat lama; cukup mulai dari unit yang baru masuk dan simpan file Excel lama sebagai arsip. Tim FixMaster dapat membantu memindahkan data pelanggan atau stok inti lewat WhatsApp.
 
 ## Tautan
 

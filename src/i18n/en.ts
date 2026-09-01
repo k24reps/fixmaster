@@ -294,7 +294,7 @@ export const en: Dictionary = {
     'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
   'landingV2.faq.move.q': 'What if my data is still in Excel?',
   'landingV2.faq.move.a':
-    'Automatic Excel import is not available yet. Core data needs to be entered gradually; contact the FixMaster team if you want to discuss a migration approach.',
+    'You don’t need to move all your old history at once. Just start logging new units in FixMaster today — your old Excel file still works as an archive. Automatic import isn’t available yet; if you’d like help moving core customer or stock data, the FixMaster team can help over WhatsApp.',
   'landingV2.finalKicker': 'One flow. No duplicate entry.',
   'landingV2.finalTitle': 'Stop recording the same information in three places.',
   'landingV2.finalLead': 'Use FixMaster free for 14 days. No credit card needed.',
