@@ -6,7 +6,7 @@ import { InMemoryAdapter } from '@/data/in-memory-adapter';
 import { installRepository, resetRepository } from '@/data';
 import { useDemoStore } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
-import { useZoomStore } from '@/stores/zoom';
+import { deviceDensityZoom, useZoomStore } from '@/stores/zoom';
 import { seedDemoWorkspace } from '@/dev/seed';
 import { Icon } from '@/components/ui';
 import { trackEvent } from '@/lib/analytics';
@@ -51,10 +51,12 @@ export function DemoApp() {
     robots.content = 'noindex';
     document.head.appendChild(robots);
 
-    // Keep the public demo visually faithful and readable regardless of an
-    // existing app preference on the same origin. This session is temporary:
-    // zoom controls work, but the saved preference is restored on exit.
-    const endTransientZoom = useZoomStore.getState().beginTransientZoom(1);
+    // Pin the density this device would actually get in the app, ignoring any
+    // saved preference on the same origin — a demo should show the real thing,
+    // not one visitor's zoom. Desk (mouse) starts compact; touch stays at 100%
+    // so hit areas and reading distance survive. The session is temporary: the
+    // zoom control still works, and the saved preference returns on exit.
+    const endTransientZoom = useZoomStore.getState().beginTransientZoom(deviceDensityZoom());
     document.body.classList.add('fm-demo-active');
 
     installRepository(new InMemoryAdapter());

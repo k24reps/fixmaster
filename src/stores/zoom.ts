@@ -136,6 +136,16 @@ export function applyDeviceDensityDefault() {
   if (typeof window === 'undefined') return;
   if (transientZoomBefore !== null) return;
   if (isZoom(Number(window.localStorage.getItem(STORAGE_KEY)))) return;
-  const fine = window.matchMedia?.('(pointer: fine)').matches ?? false;
-  useZoomStore.getState().setZoom(fine ? 0.8 : 1);
+  useZoomStore.getState().setZoom(deviceDensityZoom());
+}
+
+/**
+ * Kerapatan yang pantas untuk kelas perangkat ini, tanpa menyentuh preferensi
+ * tersimpan. Dipakai app shell lewat {@link applyDeviceDensityDefault} dan
+ * oleh demo publik, yang menyematkannya sebagai zoom sementara — demo harus
+ * memperlihatkan tampilan aplikasi yang SEBENARNYA di perangkat pengunjung.
+ */
+export function deviceDensityZoom(): Zoom {
+  if (typeof window === 'undefined') return 1;
+  return window.matchMedia?.('(pointer: fine)').matches ? 0.8 : 1;
 }

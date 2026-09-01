@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useZoomStore, initZoom, applyDeviceDensityDefault, ZOOM_LEVELS } from './zoom';
+import {
+  useZoomStore,
+  initZoom,
+  applyDeviceDensityDefault,
+  deviceDensityZoom,
+  ZOOM_LEVELS,
+} from './zoom';
 
 /**
  * Zoom aplikasi. Yang dijaga di sini bukan "apakah zustand bekerja", tapi tiga
@@ -96,6 +102,15 @@ describe('store zoom', () => {
       mockPointer(true);
       initZoom();
       expect(root().style.zoom).toBe('');
+    });
+
+    it('demo publik memakai kerapatan kelas perangkat yang sama', () => {
+      // Demo menyematkan nilai ini lewat beginTransientZoom supaya pengunjung
+      // melihat tampilan aplikasi yang sebenarnya di perangkatnya.
+      mockPointer(true);
+      expect(deviceDensityZoom()).toBe(0.8);
+      mockPointer(false);
+      expect(deviceDensityZoom()).toBe(1);
     });
 
     it('tidak menimpa zoom yang disematkan demo publik', () => {
