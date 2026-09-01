@@ -346,16 +346,17 @@ export function ServicesPage() {
                         ) : (
                           <span className={styles.muted}>—</span>
                         )}
-                        {isOwner && s.finalCost > 0 && (
+                        {/* Hanya kalau ada modal. Tanpa sparepart, profit SAMA DENGAN
+                            biaya, dan sub-baris cuma mengulang angka di atasnya —
+                            terbaca seperti angka dobel, bukan informasi. */}
+                        {isOwner && serviceModalTotal(s.spareparts) > 0 && (
                           <span className={styles.breakdown}>
-                            {serviceModalTotal(s.spareparts) > 0 && (
-                              <span
-                                className={styles.modal}
-                                aria-label={`Modal ${fmtRp(serviceModalTotal(s.spareparts))}`}
-                              >
-                                -{fmtNumber(serviceModalTotal(s.spareparts))}
-                              </span>
-                            )}
+                            <span
+                              className={styles.modal}
+                              aria-label={`Modal ${fmtRp(serviceModalTotal(s.spareparts))}`}
+                            >
+                              -{fmtNumber(serviceModalTotal(s.spareparts))}
+                            </span>
                             <span
                               className={styles.profit}
                               data-loss={serviceProfit(s) < 0 ? 'true' : undefined}

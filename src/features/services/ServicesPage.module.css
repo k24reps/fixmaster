@@ -352,6 +352,13 @@
   background: var(--bg-surface);
   box-shadow: -10px 0 18px color-mix(in srgb, var(--bg-base) 12%, transparent);
 }
+/* `.table thead th` (0,1,2) menang atas `.num`/`.actionsCol` (0,1,0), jadi
+   header kolom angka rata kiri sementara selnya rata kanan — judulnya tidak
+   berdiri di atas angkanya. Dinaikkan spesifisitasnya, bukan dipindah urutan. */
+.table thead th.num,
+.table thead th.actionsCol {
+  text-align: right;
+}
 .table thead .actionsCol {
   z-index: 2;
   background: var(--bg-surface-2);
