@@ -161,6 +161,27 @@
 .profit[data-loss='true'] {
   color: var(--danger);
 }
+/* ---------- Money cell: biaya utama + rincian pemilik ---------- */
+/* Modal dan profit dulu dua kolom sendiri. Digabung ke sini karena tiga kolom
+   uang memakan 252px dan memaksa tabel jatuh ke kartu di laptop 1366px; satu
+   sel menahannya di ~109px. Angka dibiarkan tanpa "Rp" — baris utama di
+   atasnya sudah menetapkan mata uangnya, dan mengulangnya tiga kali dalam satu
+   sel menghabiskan hemat yang baru saja didapat. Tanda dan warna yang membawa
+   arti: biru = modal keluar, hijau/merah = profit masuk atau rugi. Kartu di
+   halaman yang sama sudah lebih dulu memakai pola ini. */
+.breakdown {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.breakdown .modal,
+.breakdown .profit {
+  font-weight: var(--fw-medium);
+}
+
 /* ---------- Money columns, color-differentiated ---------- */
 .cost {
   font-family: var(--font-mono);
@@ -354,8 +375,18 @@
 
 /* ---------- Responsive: table → cards ---------- */
 /* ---------- Ambang tabel -> kartu: @container, BUKAN @media ---------- */
-/* Tabel ini punya min-content 1056px (10 kolom pemilik; 8 kolom untuk karyawan
-   karena Modal & Profit ownerOnly). Kalau ruangnya kurang, ia overflow — dan
+/* Tabel ini punya min-content 919px untuk 8 kolom. Dulu 1056px dengan 10
+   kolom, sebelum Biaya/Modal/Profit disatukan jadi satu sel: tiga kolom uang
+   itu memakan 252px, satu sel dengan sub-baris cukup ~117px (terukur -137px
+   pada data yang sama, +30px lagi kalau nilainya selebar "Rp 12.500.000"
+   dengan modal aktif). Sekarang pemilik dan karyawan sama-sama 8 kolom —
+   bedanya hanya sub-baris di dalam sel, bukan jumlah kolom, jadi ambang ini
+   tidak lagi konservatif untuk karyawan seperti dulu.
+
+   Yang dibeli oleh 137px itu: di laptop 1366px pada zoom 100% ruang konten
+   ~1050px, dulu jatuh ke kartu, sekarang tetap tabel.
+
+   Kalau ruangnya kurang, ia overflow — dan
    kolom AKSI yang `position: sticky; right: 0` dengan background opaque MENIMPA
    isi sel di bawahnya alih-alih sekadar menggeser. Terukur pada versi @media
    lama: +315px di 1101, +264px di 1152, +136px di 1280, +50px di 1366 (dan
@@ -372,19 +403,18 @@
    mengukur elemen dalam koordinat layout yang SUDAH ter-zoom, jadi ia satu-
    satunya yang benar di kedua arah (terverifikasi lewat scripts/audit-zoom.mjs).
 
-   Ambangnya memakai angka pemilik (1056px) untuk kedua peran. Bagi karyawan itu
-   sedikit konservatif — tabel 8 kolom mereka sebenarnya muat mulai ~895px —
-   tapi kartu memuat semua kolom kecuali Modal, jadi kelebihan-hati-hati di sini
-   hanya berarti tampilan kartu sedikit lebih awal, bukan data hilang.
+   Kedua peran kini memakai ambang yang sama karena jumlah kolomnya sama.
+   Sub-baris modal/profit milik pemilik menambah lebar di dalam sel Biaya,
+   bukan kolom baru, dan sudah ikut terhitung di 919px.
 
    Padding sel TIDAK bisa jadi jalan keluar: tiap +1px padding samping menambah
-   20px kebutuhan ruang (10 kolom x 2 sisi), jadi 12px menuntut 1256px. */
+   16px kebutuhan ruang (8 kolom x 2 sisi), jadi 12px menuntut ~1050px. */
 .listArea {
   container-type: inline-size;
   container-name: servisList;
 }
 
-@container servisList (max-width: 1055px) {
+@container servisList (max-width: 918px) {
   .tableWrap {
     display: none;
   }

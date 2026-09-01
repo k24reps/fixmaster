@@ -5,7 +5,7 @@ import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
-import { fmtRp } from '@/lib/format';
+import { fmtNumber, fmtRp } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
 import {
   STATUS_LABELS,
@@ -317,8 +317,6 @@ export function ServicesPage() {
                     <th>Perangkat</th>
                     <th>Teknisi</th>
                     <th className={styles.num}>Biaya</th>
-                    {isOwner && <th className={styles.num}>Modal</th>}
-                    {isOwner && <th className={styles.num}>Profit</th>}
                     <th>Status</th>
                     <th className={styles.actionsCol}>Aksi</th>
                   </tr>
@@ -348,27 +346,27 @@ export function ServicesPage() {
                         ) : (
                           <span className={styles.muted}>—</span>
                         )}
-                      </td>
-                      {isOwner && (
-                        <td className={styles.num}>
-                          {serviceModalTotal(s.spareparts) > 0 ? (
-                            <span className={styles.modal}>{fmtRp(serviceModalTotal(s.spareparts))}</span>
-                          ) : (
-                            <span className={styles.muted}>—</span>
-                          )}
-                        </td>
-                      )}
-                      {isOwner && (
-                        <td className={styles.num}>
-                          {s.finalCost > 0 ? (
-                            <span data-loss={serviceProfit(s) < 0 ? 'true' : undefined} className={styles.profit}>
-                              {fmtRp(serviceProfit(s))}
+                        {isOwner && s.finalCost > 0 && (
+                          <span className={styles.breakdown}>
+                            {serviceModalTotal(s.spareparts) > 0 && (
+                              <span
+                                className={styles.modal}
+                                aria-label={`Modal ${fmtRp(serviceModalTotal(s.spareparts))}`}
+                              >
+                                -{fmtNumber(serviceModalTotal(s.spareparts))}
+                              </span>
+                            )}
+                            <span
+                              className={styles.profit}
+                              data-loss={serviceProfit(s) < 0 ? 'true' : undefined}
+                              aria-label={`Profit ${fmtRp(serviceProfit(s))}`}
+                            >
+                              {serviceProfit(s) >= 0 && '+'}
+                              {fmtNumber(serviceProfit(s))}
                             </span>
-                          ) : (
-                            <span className={styles.muted}>—</span>
-                          )}
-                        </td>
-                      )}
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <button
                           type="button"
