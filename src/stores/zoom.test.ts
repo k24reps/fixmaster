@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useZoomStore, initZoom, ZOOM_LEVELS } from './zoom';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { useZoomStore, initZoom, applyDeviceDensityDefault, ZOOM_LEVELS } from './zoom';
 
 /**
  * Zoom aplikasi. Yang dijaga di sini bukan "apakah zustand bekerja", tapi tiga
  * hal yang benar-benar bisa membuat aplikasi tak terpakai kalau rusak:
- * langkah berhenti di ujung, nilai localStorage yang rusak tidak dipasang, dan
+ * langkah berhenti di ujung, nilai localStorage yang rusak tidak dipasang,
  * 100% menghapus properti `zoom` (bukan menulis '1') supaya :root tidak jadi
- * containing block bagi position: fixed.
+ * containing block bagi position: fixed, dan default mengikuti kelas perangkat.
  */
 
 const root = () => document.documentElement;
@@ -23,6 +23,7 @@ describe('store zoom', () => {
     expect(root().style.zoom).toBe('0.8');
     expect(localStorage.getItem('fixmaster-zoom')).toBe('0.8');
   });
+
 
   it('100% MENGHAPUS properti zoom, bukan menulis "1"', () => {
     useZoomStore.getState().setZoom(1.25);
@@ -56,6 +57,55 @@ describe('store zoom', () => {
       initZoom();
       expect(root().style.zoom).toBe('');
     }
+  });
+
+  describe('kerapatan awal per kelas perangkat (app shell)', () => {
+    const mockPointer = (fine: boolean) =>
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query.includes('pointer: fine') ? fine : false,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('mouse (pointer: fine) mulai padat di 0.8 tanpa preferensi tersimpan', () => {
+      mockPointer(true);
+      applyDeviceDensityDefault();
+      expect(root().style.zoom).toBe('0.8');
+      // Disimpan supaya keputusannya sekali per perangkat, bukan lonjakan
+      // ukuran tiap kali app dibuka.
+      expect(localStorage.getItem('fixmaster-zoom')).toBe('0.8');
+    });
+
+    it('sentuh (pointer: coarse) tetap 100% supaya hit-area 44px utuh', () => {
+      mockPointer(false);
+      applyDeviceDensityDefault();
+      expect(root().style.zoom).toBe('');
+    });
+
+    it('preferensi tersimpan selalu menang atas default perangkat', () => {
+      mockPointer(true);
+      localStorage.setItem('fixmaster-zoom', '1.1');
+      applyDeviceDensityDefault();
+      expect(localStorage.getItem('fixmaster-zoom')).toBe('1.1');
+    });
+
+    it('tidak menyentuh landing: initZoom tetap 100% walau ada mouse', () => {
+      mockPointer(true);
+      initZoom();
+      expect(root().style.zoom).toBe('');
+    });
+
+    it('tidak menimpa zoom yang disematkan demo publik', () => {
+      mockPointer(true);
+      const endTransientZoom = useZoomStore.getState().beginTransientZoom(1);
+      applyDeviceDensityDefault();
+      expect(root().style.zoom).toBe('');
+      expect(localStorage.getItem('fixmaster-zoom')).toBeNull();
+      endTransientZoom();
+    });
   });
 
   it('nilai tersimpan yang sah dipasang ulang saat init', () => {

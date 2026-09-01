@@ -102,3 +102,40 @@ export const useZoomStore = create<ZoomState>((set, get) => ({
 export function initZoom() {
   applyZoom(getInitialZoom());
 }
+
+/**
+ * Kerapatan awal untuk shell APLIKASI, dipanggil sekali saat AppLayout mount.
+ *
+ * Sengaja TIDAK di `initZoom()`: itu berjalan untuk seluruh dokumen, termasuk
+ * landing, demo, dan halaman legal yang komposisinya dirancang di 100%.
+ * Hanya app shell yang punya masalah kanvas ini.
+ *
+ * `pointer: fine` = ada mouse = meja kerja. Kerapatan dasar produk ini
+ * dibentuk ergonomi counter (kontrol 44px, baris 54px, lantai teks 12px) dan
+ * terlalu lapang untuk monitor, jadi di sana tampilan dimulai padat. Terukur
+ * di 1440x900: kanvas 826px -> 1051px, dashboard 1,76 -> 1,39 layar.
+ *
+ * Padat berarti SEMUANYA ikut mengecil, teks termasuk (label mono 12px ->
+ * 9,6px). Itu keputusan produk yang disengaja untuk skenario meja kerja —
+ * lihat "Lantai 12px" di DESIGN.md. Pengguna yang butuh lebih besar menaikkan
+ * lewat kontrol zoom, yang tetap pembesar murni.
+ *
+ * Sentuh (`coarse`) tetap 100%: skenario teknisi di meja penerimaan yang
+ * dilindungi hit-area 44px dan jarak baca lengan, dan memadatkannya akan
+ * menggerus target sentuh sekaligus keterbacaan di bawah lampu toko.
+ *
+ * Preferensi yang sudah tersimpan SELALU menang. Nilai yang dipilih di sini
+ * ikut disimpan supaya keputusannya terjadi sekali per perangkat, bukan
+ * lonjakan ukuran di tiap kali app dibuka.
+ *
+ * Sesi zoom sementara juga menang: demo publik menyematkan 100% sebelum shell
+ * mount supaya presentasinya sama untuk semua orang, dan default perangkat
+ * tidak boleh menimpanya.
+ */
+export function applyDeviceDensityDefault() {
+  if (typeof window === 'undefined') return;
+  if (transientZoomBefore !== null) return;
+  if (isZoom(Number(window.localStorage.getItem(STORAGE_KEY)))) return;
+  const fine = window.matchMedia?.('(pointer: fine)').matches ?? false;
+  useZoomStore.getState().setZoom(fine ? 0.8 : 1);
+}

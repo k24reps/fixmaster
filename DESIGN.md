@@ -210,6 +210,8 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 
 **The 12px Floor Rule.** No leaf text that carries information or an action goes below 12px at the default 16px root. Non-interactive ornament may be smaller. This is an ergonomic contract, not a suggestion — the operator is reading at arm's length under shop lighting.
 
+The floor governs the **touch/counter scene**, which is what it was written for. It binds every `px`/`rem` value a component chooses, and it binds the shipped default on touch devices. It does **not** bind the app-wide zoom control: on a pointer-precise device the shell starts at 80% (`applyDeviceDensityDefault` in `src/stores/zoom.ts`), which scales the whole document and takes mono labels to 9.6px. That is a deliberate product decision for the desk scene — closer reading distance, mouse instead of glove — and the zoom control is the escape hatch in both directions. Never design a component *to* the zoomed size; design to the floor, then let zoom scale it.
+
 ## Layout
 
 The app shell is a **floating chassis**: a fixed instrument rail on the left (`--sidebar-width` 278px, collapsing to `--sidebar-collapsed` 78px) inset 14px from the viewport edge, with a sticky topbar (`--topbar-height` 76px) inset to match. Content is capped at `--content-max` (1380px) and centered. The inset is exposed as `--app-inset-top` so a shell that mounts its own chrome above the app (the `/demo` faceplate) can push the fixed rail below it instead of covering it.

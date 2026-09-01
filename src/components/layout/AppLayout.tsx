@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NAV_ITEMS } from '@/config/navigation';
 import { useT, type TranslationKey } from '@/i18n';
 import { useBackupStore } from '@/stores/backup';
+import { applyDeviceDensityDefault } from '@/stores/zoom';
 import { isBackupDue } from '@/lib/business/backup';
 import { toast } from '@/stores/toast';
 import styles from './AppLayout.module.css';
@@ -16,6 +17,19 @@ import styles from './AppLayout.module.css';
  * scheduled jobs while closed, so this honest reminder-on-open is the local-mode
  * substitute for true scheduling (cloud users have Supabase backups).
  */
+let densityDefaultApplied = false;
+/**
+ * Kerapatan awal shell mengikuti kelas perangkat (mouse -> padat). Sekali per
+ * sesi, dan hanya di app shell — landing dan demo tetap 100%. Lihat zoom.ts.
+ */
+function useDeviceDensityDefault() {
+  useEffect(() => {
+    if (densityDefaultApplied) return;
+    densityDefaultApplied = true;
+    applyDeviceDensityDefault();
+  }, []);
+}
+
 let backupReminderShown = false;
 function useBackupReminder() {
   useEffect(() => {
@@ -49,6 +63,7 @@ export function AppLayout() {
   const location = useLocation();
   const contentRef = useRef<HTMLElement>(null);
   const t = useT();
+  useDeviceDensityDefault();
   useBackupReminder();
 
   useEffect(() => {
