@@ -198,6 +198,9 @@
 .heroCopy {
   position: relative;
   z-index: 1;
+  /* Judul di dalamnya diukur dari KOLOM ini, bukan dari viewport. Lihat
+     .hero h1 untuk alasannya. */
+  container-type: inline-size;
 }
 
 .kicker,
@@ -213,11 +216,19 @@
   text-transform: uppercase;
 }
 
+/* Ukurannya diikat ke lebar KOLOM (cqw), bukan viewport (vw).
+   Dengan `6vw` hurufnya terus tumbuh sementara kolomnya berhenti di 554px
+   (grid dua kolom di dalam --content-max), jadi rasionya justru memburuk makin
+   lebar monitor: terukur 5 baris dengan 10 karakter per baris di 1440 DAN di
+   1920 — dan di atas 1480px clamp mentok sehingga rasio terburuknya membeku.
+   11.5cqw menjaga ~8,7em kolom per baris di semua lebar: 554px -> 64px -> 3
+   baris, 17 karakter. Batas atas 4.4rem hanya jaring pengaman; kolom hero tak
+   pernah cukup lebar untuk menyentuhnya. */
 .hero h1 {
   max-width: 720px;
   margin: var(--space-5) 0 var(--space-5);
   font-family: var(--font-display);
-  font-size: clamp(3.15rem, 6vw, 5.55rem);
+  font-size: clamp(2.35rem, 11.5cqw, 4.4rem);
   font-weight: var(--fw-bold);
   line-height: 0.96;
   letter-spacing: -0.035em;
@@ -725,9 +736,16 @@
 }
 
 /* Lima h2 dengan clamp identik membuat halaman terbaca satu nada.
-   Kolom product lebih sempit, jadi skalanya turun satu tingkat. */
+   Kolom product lebih sempit, jadi skalanya turun satu tingkat — dan diukur
+   dari kolomnya sendiri, karena kolom ini berhenti di 440px sementara `vw`
+   terus naik: terukur 2 baris di 1440 tapi jatuh ke 3 baris/13 karakter di
+   1920. 10.9cqw mempertahankan komposisi 1440 yang sudah benar di semua
+   lebar. */
+.productCopy {
+  container-type: inline-size;
+}
 .productCopy h2 {
-  font-size: clamp(1.95rem, 3.3vw, 3.15rem);
+  font-size: clamp(1.95rem, 10.9cqw, 3.15rem);
 }
 
 .faqSection h2,
@@ -1795,6 +1813,14 @@
     max-width: 12ch;
     font-size: clamp(2.65rem, 12vw, 3.45rem);
     line-height: 0.99;
+  }
+
+  /* Di bawah 760px kolom product praktis selebar viewport, jadi vw dan cqw
+     sama-sama benar — dan skala lama dipertahankan supaya perbaikan desktop
+     tidak diam-diam membesarkan judul di ponsel (terukur 31,2px -> 37,4px
+     kalau cqw dibiarkan berlaku sampai sini). */
+  .productCopy h2 {
+    font-size: clamp(1.95rem, 3.3vw, 3.15rem);
   }
 
   .heroLead { font-size: var(--text-md); }
