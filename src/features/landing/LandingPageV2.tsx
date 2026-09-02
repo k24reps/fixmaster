@@ -542,7 +542,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
         </section>
 
         <section className={styles.faqSection}>
-          <div>
+          <div className={styles.faqHead}>
             <h2>{t('landingV2.faqTitle')}</h2>
           </div>
           <div className={styles.faqList}>

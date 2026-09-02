@@ -752,8 +752,14 @@
   margin-top: var(--space-4);
 }
 
-/* Lima h2 dengan clamp identik membuat halaman terbaca satu nada.
-   Kolom product lebih sempit, jadi skalanya turun satu tingkat — dan diukur
+/* Aturan bersama di atas hanya menyisakan sectionIntro. Kalimat lama di sini
+   menyebut "lima h2 dengan clamp identik" — itu tidak pernah benar: terukur
+   63,4 / 57,6 / 51,2 / 54,4px di 1440 karena empat di antaranya sudah punya
+   override sendiri. Yang menyatukan nada halaman adalah RASIO kolom-ke-huruf
+   (8-12em per baris), bukan angka font yang sama; itu sebabnya masing-masing
+   kini diukur dari kolomnya sendiri.
+
+   Kolom product lebih sempit, jadi skalanya turun satu tingkat, dan diukur
    dari kolomnya sendiri, karena kolom ini berhenti di 440px sementara `vw`
    terus naik: terukur 2 baris di 1440 tapi jatuh ke 3 baris/13 karakter di
    1920. 10.9cqw mempertahankan komposisi 1440 yang sudah benar di semua
@@ -888,9 +894,17 @@
   min-width: 0;
 }
 
+/* cqw = ukuran hari ini dibagi lebar kolom TERLEBARnya, jadi komposisi di
+   layar lebar tidak berubah sementara kolom yang menyempit ikut menurunkan
+   hurufnya. Sebelumnya font mentok di cap vw sementara kolomnya menyusut:
+   terukur 8em/3 baris di 1440 tapi 7,1em/4 baris di 1100. */
+.ownerPlate {
+  container-type: inline-size;
+}
+
 .ownerPlate h2 {
   max-width: 14ch;
-  font-size: clamp(2.15rem, 4vw, 3.65rem);
+  font-size: clamp(2.15rem, 12.5cqw, 3.65rem);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -1530,8 +1544,15 @@
   border-top: 1px dotted var(--border-strong);
 }
 
+/* Kolom judul FAQ menyempit 405px -> 318px antara 1440 dan 980 sementara
+   fontnya mentok 51,2px: terukur jatuh ke 6,2em, 3 baris, 8 karakter per
+   baris — separah hero sebelum diperbaiki. */
+.faqHead {
+  container-type: inline-size;
+}
+
 .faqSection h2 {
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: clamp(2rem, 12.6cqw, 3.2rem);
 }
 
 .faqList details {
@@ -1589,9 +1610,14 @@
   z-index: 1;
 }
 
+/* Terukur 10em/3 baris di 1440 tapi 8,1em/4 baris di 1100, sebab yang sama. */
+.finalCtaCopy {
+  container-type: inline-size;
+}
+
 .finalCta h2 {
   margin: var(--space-2) 0;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-size: clamp(2rem, 10cqw, 3.4rem);
 }
 
 .voltBay {
@@ -1832,12 +1858,22 @@
     line-height: 0.99;
   }
 
-  /* Di bawah 760px kolom product praktis selebar viewport, jadi vw dan cqw
+  /* Di bawah 760px semua kolom judul praktis selebar viewport, jadi vw dan cqw
      sama-sama benar — dan skala lama dipertahankan supaya perbaikan desktop
-     tidak diam-diam membesarkan judul di ponsel (terukur 31,2px -> 37,4px
-     kalau cqw dibiarkan berlaku sampai sini). */
+     tidak diam-diam membesarkan judul di ponsel. Terukur di 375px kalau cqw
+     dibiarkan berlaku sampai sini: product 31,2px -> 37,4px, FAQ 32px ->
+     43,2px, owner 34,4px -> 36,6px. finalCta tidak perlu override: kedua
+     rumus sama-sama mentok di batas bawah 2rem. */
   .productCopy h2 {
     font-size: clamp(1.95rem, 3.3vw, 3.15rem);
+  }
+
+  .faqSection h2 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+  }
+
+  .ownerPlate h2 {
+    font-size: clamp(2.15rem, 4vw, 3.65rem);
   }
 
   .heroLead { font-size: var(--text-md); }
