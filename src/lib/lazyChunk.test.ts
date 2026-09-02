@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { retryOnStaleChunk, __test } from './lazyChunk';
+import { retryOnStaleChunk, installPreloadErrorRecovery, __test } from './lazyChunk';
 
 /**
  * Yang dijaga di sini adalah satu keputusan: KAPAN halaman boleh dimuat ulang
@@ -43,6 +43,17 @@ describe('retryOnStaleChunk', () => {
     for (const m of pesan) expect(__test.isChunkLoadError(new Error(m))).toBe(true);
   });
 
+  it('mengenali kegagalan preload CSS rute, bukan hanya modul', () => {
+    // Halaman /reset-password tidak pernah tampil di produksi karena chunk CSS
+    // milik AuthPage sudah berganti hash. Galatnya datang dari helper preload
+    // Vite dan bunyinya beda dari galat import mesin browser.
+    expect(
+      __test.isChunkLoadError(
+        new Error('Unable to preload CSS for /assets/AuthPage-D_dRcV_i.css'),
+      ),
+    ).toBe(true);
+  });
+
   it('TIDAK menganggap galat biasa sebagai chunk basi', async () => {
     const bug = new TypeError('Cannot read properties of undefined');
     expect(__test.isChunkLoadError(bug)).toBe(false);
@@ -53,7 +64,9 @@ describe('retryOnStaleChunk', () => {
 
   it('memuat ulang sekali saat chunk basi, dan promise-nya tidak pernah selesai', async () => {
     let settled = false;
-    void retryOnStaleChunk(chunkError('Failed to fetch dynamically imported module: /x.js')).then(
+    void retryOnStaleChunk(
+      chunkError('Failed to fetch dynamically imported module: /x.js'),
+    ).then(
       () => (settled = true),
       () => (settled = true),
     );
@@ -66,7 +79,9 @@ describe('retryOnStaleChunk', () => {
   });
 
   it('menolak memuat ulang dua kali beruntun (anti-loop)', async () => {
-    void retryOnStaleChunk(chunkError('Failed to fetch dynamically imported module: /x.js'));
+    void retryOnStaleChunk(
+      chunkError('Failed to fetch dynamically imported module: /x.js'),
+    );
     await Promise.resolve();
     expect(reload).toHaveBeenCalledTimes(1);
 
@@ -78,12 +93,28 @@ describe('retryOnStaleChunk', () => {
   });
 
   it('boleh memuat ulang lagi setelah cooldown lewat (deploy berikutnya)', async () => {
-    void retryOnStaleChunk(chunkError('Failed to fetch dynamically imported module: /x.js'));
+    void retryOnStaleChunk(
+      chunkError('Failed to fetch dynamically imported module: /x.js'),
+    );
     await Promise.resolve();
 
     now += __test.RELOAD_COOLDOWN_MS + 1;
-    void retryOnStaleChunk(chunkError('Failed to fetch dynamically imported module: /y.js'));
+    void retryOnStaleChunk(
+      chunkError('Failed to fetch dynamically imported module: /y.js'),
+    );
     await Promise.resolve();
     expect(reload).toHaveBeenCalledTimes(2);
+  });
+  it('menangkap vite:preloadError dan menahan Vite melempar ulang', () => {
+    installPreloadErrorRecovery();
+    const ev = new Event('vite:preloadError', { cancelable: true });
+    (ev as Event & { payload?: unknown }).payload = new Error(
+      'Unable to preload CSS for /assets/AuthPage-D_dRcV_i.css',
+    );
+    window.dispatchEvent(ev);
+    expect(reload).toHaveBeenCalledTimes(1);
+    // Tanpa preventDefault, Vite melempar ulang galatnya dan pengguna sempat
+    // melihat layar galat walau halaman sedang dimuat ulang.
+    expect(ev.defaultPrevented).toBe(true);
   });
 });
