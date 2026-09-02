@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { lazyChunk } from '@/lib/lazyChunk';
 import { useAuthStore } from '@/stores/auth';
 import { AuthSplash } from './AuthSplash';
 import {
@@ -7,13 +8,13 @@ import {
   type AuthIntent,
 } from '@/features/auth/auth-intent';
 
-const AuthPage = lazy(() =>
+const AuthPage = lazyChunk(() =>
   import('@/features/auth/AuthPage').then((module) => ({ default: module.AuthPage })),
 );
-const LandingPageV2 = lazy(() =>
+const LandingPageV2 = lazyChunk(() =>
   import('@/features/landing/LandingPageV2').then((module) => ({ default: module.LandingPageV2 })),
 );
-const WorkspaceGate = lazy(() =>
+const WorkspaceGate = lazyChunk(() =>
   import('./WorkspaceGate').then((module) => ({ default: module.WorkspaceGate })),
 );
 

@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import { lazyChunk } from '@/lib/lazyChunk';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
 import { RouterProvider } from 'react-router-dom';
@@ -28,7 +29,7 @@ const queryClient = new QueryClient({
 // app's BrowserRouter (React Router forbids nested routers). We branch on the
 // path here, before any RouterProvider mounts. This serves both direct visits
 // to /demo. Keep this exact so lookalike unknown paths can resolve as a real 404.
-const DemoApp = lazy(() =>
+const DemoApp = lazyChunk(() =>
   import('./features/demo/DemoApp').then((m) => ({ default: m.DemoApp })),
 );
 

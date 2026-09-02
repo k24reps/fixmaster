@@ -60,56 +60,74 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    return <ErrorFallback error={error} root={this.props.root} onRetry={this.reset} />;
+  }
+}
 
-    const { root } = this.props;
-    const faultCode = root ? 'FX-SYS-500' : 'FX-MOD-500';
-    return (
-      <div className={[styles.wrap, root ? styles.rootWrap : ''].join(' ')} role="alert">
-        <div className={styles.panel}>
-          <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
-          <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
-          <span className={[styles.screw, styles.screwBL].join(' ')} aria-hidden />
-          <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
+interface ErrorFallbackProps {
+  error: Error;
+  /** Full-screen last-resort variant with a "reload app" action. */
+  root?: boolean;
+  /** Omitted by the router variant: there is nothing to reset without a boundary. */
+  onRetry?: () => void;
+}
 
-          <div className={styles.faultHead}>
-            <span className={styles.faultStamp}>
-              <span className={styles.led} /> FAULT
-            </span>
-            <span className={styles.faultCode}>{faultCode}</span>
-          </div>
+/**
+ * Tampilan galat bersama. Dipakai oleh ErrorBoundary (galat render React)
+ * DAN oleh errorElement React Router (galat pemuatan rute) — router menangkap
+ * galatnya sendiri sebelum sampai ke error boundary React, jadi tanpa ini
+ * pengguna produksi melihat layar bawaan React Router yang berbunyi
+ * "Hey developer".
+ */
+export function ErrorFallback({ error, root, onRetry }: ErrorFallbackProps) {
+  const faultCode = root ? 'FX-SYS-500' : 'FX-MOD-500';
+  return (
+    <div className={[styles.wrap, root ? styles.rootWrap : ''].join(' ')} role="alert">
+      <div className={styles.panel}>
+        <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
+        <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
+        <span className={[styles.screw, styles.screwBL].join(' ')} aria-hidden />
+        <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
 
-          <span className={styles.icon}>
-            <Icon name="triangle-exclamation" aria-hidden />
+        <div className={styles.faultHead}>
+          <span className={styles.faultStamp}>
+            <span className={styles.led} /> FAULT
           </span>
-          <h1 className={styles.title}>Terjadi kesalahan</h1>
-          <p className={styles.desc}>
-            {root
-              ? 'Aplikasi mengalami gangguan tak terduga. Muat ulang untuk melanjutkan.'
-              : 'Halaman ini gagal dimuat. Coba lagi, atau kembali ke dashboard.'}
-          </p>
+          <span className={styles.faultCode}>{faultCode}</span>
+        </div>
 
-          {import.meta.env.DEV && (
-            <pre className={styles.detail}>{error.message}</pre>
-          )}
+        <span className={styles.icon}>
+          <Icon name="triangle-exclamation" aria-hidden />
+        </span>
+        <h1 className={styles.title}>Terjadi kesalahan</h1>
+        <p className={styles.desc}>
+          {root
+            ? 'Aplikasi mengalami gangguan tak terduga. Muat ulang untuk melanjutkan.'
+            : 'Halaman ini gagal dimuat. Coba lagi, atau kembali ke dashboard.'}
+        </p>
 
-          <div className={styles.actions}>
-            {root ? (
-              <button className={styles.btnPrimary} onClick={() => window.location.reload()}>
-                <Icon name="repeat" aria-hidden /> Muat Ulang Aplikasi
+        {import.meta.env.DEV && <pre className={styles.detail}>{error.message}</pre>}
+
+        <div className={styles.actions}>
+          {root ? (
+            <button
+              className={styles.btnPrimary}
+              onClick={() => window.location.reload()}
+            >
+              <Icon name="repeat" aria-hidden /> Muat Ulang Aplikasi
+            </button>
+          ) : (
+            <>
+              <button className={styles.btnPrimary} onClick={onRetry}>
+                <Icon name="repeat" aria-hidden /> Coba Lagi
               </button>
-            ) : (
-              <>
-                <button className={styles.btnPrimary} onClick={this.reset}>
-                  <Icon name="repeat" aria-hidden /> Coba Lagi
-                </button>
-                <a className={styles.btnGhost} href="/">
-                  <Icon name="arrow-left" aria-hidden /> Ke Dashboard
-                </a>
-              </>
-            )}
-          </div>
+              <a className={styles.btnGhost} href="/">
+                <Icon name="arrow-left" aria-hidden /> Ke Dashboard
+              </a>
+            </>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 }

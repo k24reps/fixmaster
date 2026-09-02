@@ -1,37 +1,38 @@
-/* eslint-disable react-refresh/only-export-components -- router config module: lazy() route components live here by design, not a fast-refreshed component file. */
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AuthGate } from './AuthGate';
 import { AuthSplash } from './AuthSplash';
 import { appChildRoutes } from './appChildRoutes';
+import { RouteError } from './RouteError';
+import { lazyChunk } from '@/lib/lazyChunk';
 
 // Route pages and the authenticated shell are code-split. Signed-out visitors
 // do not download AppLayout, while authenticated users do not pay for the
 // marketing surface until they explicitly open its preview route.
-const AppLayout = lazy(() =>
+const AppLayout = lazyChunk(() =>
   import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })),
 );
-const LandingPageV2 = lazy(() =>
+const LandingPageV2 = lazyChunk(() =>
   import('@/features/landing/LandingPageV2').then((module) => ({ default: module.LandingPageV2 })),
 );
-const TrackingPage = lazy(() =>
+const TrackingPage = lazyChunk(() =>
   import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
-const RepairTicketPrototype = lazy(() =>
+const RepairTicketPrototype = lazyChunk(() =>
   import('@/features/prototype/RepairTicketPrototype').then((m) => ({
     default: m.RepairTicketPrototype,
   })),
 );
-const PrivacyPage = lazy(() =>
+const PrivacyPage = lazyChunk(() =>
   import('@/features/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
 );
-const TermsPage = lazy(() =>
+const TermsPage = lazyChunk(() =>
   import('@/features/legal/TermsPage').then((m) => ({ default: m.TermsPage })),
 );
-const ResetPasswordPage = lazy(() =>
+const ResetPasswordPage = lazyChunk(() =>
   import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 );
-const OperatorPage = lazy(() =>
+const OperatorPage = lazyChunk(() =>
   import('@/features/operator/OperatorPage').then((m) => ({ default: m.OperatorPage })),
 );
 export const router = createBrowserRouter([
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
     // Stable preview alias for the live signed-out landing page. Keeping this
     // route makes design review links durable while AuthGate serves V2 at `/`.
     path: '/landing-preview',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={<AuthSplash />}>
         <LandingPageV2 />
@@ -52,6 +54,7 @@ export const router = createBrowserRouter([
     // design. The page handles its own auth init, sign-in, and admin gate.
     // Real enforcement is server-side (is_platform_admin() in every RPC, 0045).
     path: '/operator',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <OperatorPage />
@@ -61,6 +64,7 @@ export const router = createBrowserRouter([
   {
     // Public design prototype (no auth) — for visual evaluation only.
     path: '/prototype/ticket',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <RepairTicketPrototype />
@@ -70,6 +74,7 @@ export const router = createBrowserRouter([
   {
     // Public, no-login service tracking.
     path: '/track',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <TrackingPage />
@@ -80,6 +85,7 @@ export const router = createBrowserRouter([
     // Public legal pages — linkable from signup consent, payment gateway,
     // and app store listings (no auth required).
     path: '/privacy',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <PrivacyPage />
@@ -88,6 +94,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/terms',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <TermsPage />
@@ -98,6 +105,7 @@ export const router = createBrowserRouter([
     // Password recovery landing (email link target). Public — outside AuthGate
     // — so supabase-js can parse the recovery token and authorize the update.
     path: '/reset-password',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={null}>
         <ResetPasswordPage />
@@ -106,6 +114,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
+    errorElement: <RouteError />,
     element: (
       <AuthGate>
         <Suspense fallback={<AuthSplash />}>
