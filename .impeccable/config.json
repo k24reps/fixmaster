@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "docs/email-templates/reset-password.html"
+        ],
+        "createdAt": "2026-09-02T01:50:24.814Z",
+        "reason": "HTML email: klien email tidak mendukung custom property CSS, ukuran harus px inline dan absolut"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "docs/email-templates/reset-password.html"
+        ],
+        "createdAt": "2026-09-02T01:50:42.769Z",
+        "reason": "HTML email: klien email tidak memuat webfont dan tidak mendukung custom property CSS; ukuran px inline dan tumpukan font sistem itu wajib"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "docs/email-templates/confirm-signup.html"
+        ],
+        "createdAt": "2026-09-02T01:50:42.936Z",
+        "reason": "HTML email: klien email tidak memuat webfont dan tidak mendukung custom property CSS; ukuran px inline dan tumpukan font sistem itu wajib"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "docs/email-templates/confirm-signup.html"
+        ],
+        "createdAt": "2026-09-02T01:50:43.121Z",
+        "reason": "HTML email: klien email tidak memuat webfont dan tidak mendukung custom property CSS; ukuran px inline dan tumpukan font sistem itu wajib"
+      }
+    ]
+  }
+}
