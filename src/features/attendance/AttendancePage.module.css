@@ -190,6 +190,12 @@
   color: var(--green-400);
   border-color: transparent;
 }
+/* Izin / sakit / alpha. Netral, bukan hijau: hijau di kartu ini berarti
+   "shift selesai", dan baris yang tidak masuk kerja tidak boleh meminjamnya. */
+.statePill.absent {
+  background: var(--bg-surface-2);
+  color: var(--text-muted);
+}
 
 /* ---------- Timecard ledger ---------- */
 .ledger {
@@ -197,10 +203,11 @@
   flex-direction: column;
   font-family: var(--font-mono);
 }
+/* Tanggal · Karyawan · Masuk · Keluar · Status · Total */
 .ledgerHead,
 .ledgerRow {
   display: grid;
-  grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 0.8fr;
+  grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 0.8fr 0.8fr;
   gap: var(--space-3);
   align-items: center;
   padding: 11px var(--space-5);
@@ -225,10 +232,45 @@
   background: var(--bg-hover);
 }
 .ledgerName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-family: var(--font-sans);
+  min-width: 0;
+}
+/* Catatan koreksi, di bawah nama. Dipotong dengan ellipsis supaya baris tabel
+   tetap satu tinggi — teks penuhnya tetap ada di modal koreksi. */
+.rowNote {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Status: hadir sengaja paling sunyi. Yang perlu menarik mata saat pemilik
+   memindai tabel adalah baris yang TIDAK normal. */
+.statusTag {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+}
+.statusTag.hadir {
+  color: var(--text-muted);
+}
+.statusTag.izin {
+  background: var(--info-soft);
+  color: var(--blue-400);
+}
+.statusTag.sakit {
+  background: var(--warning-soft);
+  color: var(--amber-400);
+}
+.statusTag.alpha {
+  background: var(--danger-soft);
+  color: var(--red-400);
 }
 .punch {
   color: var(--text-secondary);
@@ -278,10 +320,11 @@
   border-color: var(--brand);
   box-shadow: var(--ring);
 }
+/* Karyawan · Hadir · Izin · Sakit · Alpha · Total Jam */
 .recapHead,
 .recapRow {
   display: grid;
-  grid-template-columns: 2fr 0.7fr 1fr;
+  grid-template-columns: 2fr 0.6fr 0.6fr 0.6fr 0.6fr 1fr;
   gap: var(--space-3);
   align-items: center;
   padding: 11px var(--space-5);
@@ -308,7 +351,7 @@
 /* manager correction column */
 .ledgerHead.withActions,
 .ledgerRow.withActions {
-  grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 0.8fr 0.9fr;
+  grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 0.8fr 0.8fr 0.9fr;
 }
 .actionsCol {
   display: flex;
@@ -349,6 +392,27 @@
   .ledgerRow.withActions {
     grid-template-columns: 1fr 1fr;
     row-gap: 4px;
+  }
+  /* Rekap enam kolom tidak muat di 375px. Nama mengambil baris penuh, lalu
+     empat hitungan + total mengalir di bawahnya. Header rekap TETAP tampil
+     (tidak seperti .ledgerHead): "2" tanpa label tidak berarti apa-apa,
+     sedangkan jam dan status di ledger sudah menjelaskan dirinya sendiri. */
+  .recapHead,
+  .recapRow {
+    grid-template-columns: repeat(5, 1fr);
+    row-gap: 2px;
+  }
+  .recapHead > :first-child,
+  .recapRow > :first-child {
+    grid-column: 1 / -1;
+  }
+  .recapHead > span,
+  .recapRow > span {
+    text-align: center;
+  }
+  .recapHead > :first-child,
+  .recapRow > :first-child {
+    text-align: left;
   }
   .hours {
     text-align: left;

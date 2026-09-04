@@ -2,11 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
-import { isSupabaseConfigured, clockIn } from '@/data/supabase-client';
-import { isManager, isOwner } from '@/config/plans';
+import { isSupabaseConfigured, clockIn, clockOut } from '@/data/supabase-client';
+import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
-import { hasGeofence, monthlyHoursByEmployee } from '@/lib/business/attendance';
+import {
+  hasGeofence,
+  monthlyHoursByEmployee,
+  isWorkedDay,
+  STATUS_LABEL,
+  IMPLAUSIBLE_HOURS,
+} from '@/lib/business/attendance';
 import { newId } from '@/lib/id';
 import { localDateStr, localTimeStr, localTimeSec, calcHours, fmtDate } from '@/lib/time';
 import { toast } from '@/stores/toast';
@@ -24,7 +30,6 @@ export function AttendancePage() {
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const today = localDateStr();
   const isMgr = me ? isManager(me.role) : false;
-  const owner = me ? isOwner(me.role) : false;
   const { fmtDate: fmtLocaleDate } = useFormat();
 
   // Manager correction: edit jam / status, or delete a row.
@@ -40,19 +45,29 @@ export function AttendancePage() {
   const [editBusy, setEditBusy] = useState(false);
   const [toDelete, setToDelete] = useState<Attendance | null>(null);
 
-  // Owner recap: total work hours per employee for the selected month.
+  // Bulan yang sedang dilihat — mengendalikan REKAP sekaligus RIWAYAT.
+  // Sebelumnya riwayat dipotong 30 baris terakhir tanpa filter apa pun, yang
+  // untuk tim 5 orang hanya enam hari; tidak ada cara mengaudit bulan lalu.
   const [month, setMonth] = useState(() => today.slice(0, 7));
+  // Rekap kini terbuka untuk manager, bukan owner saja: admin sudah boleh
+  // mengoreksi baris absensi, jadi menahan angka totalnya tidak melindungi
+  // apa pun — hanya membuatnya mengoreksi tanpa bisa memeriksa hasilnya.
   const monthly = useMemo(
-    () => (owner ? monthlyHoursByEmployee(attendance, month) : []),
-    [attendance, month, owner],
+    () => (isMgr ? monthlyHoursByEmployee(attendance, month) : []),
+    [attendance, month, isMgr],
   );
 
   // Outlet whose geofence applies to this check-in: the active branch if one is
   // selected, otherwise the primary (or first) outlet.
   const targetOutlet = useMemo(() => {
     if (outlets.length === 0) return null;
-    if (activeOutletId) return outlets.find((o) => o.id === activeOutletId) ?? null;
-    return outlets.find((o) => o.isPrimary) ?? outlets[0];
+    const fallback = outlets.find((o) => o.isPrimary) ?? outlets[0];
+    if (!activeOutletId) return fallback;
+    // Cabang aktif yang sudah dihapus TIDAK boleh mengembalikan null: dulu
+    // itu menjatuhkan check-in ke jalur legacy — tulis langsung, tanpa GPS,
+    // tanpa server. Kegagalan senyap ke arah yang lebih longgar adalah
+    // kegagalan terburuk untuk sebuah gerbang.
+    return outlets.find((o) => o.id === activeOutletId) ?? fallback;
   }, [outlets, activeOutletId]);
 
   const openEdit = (a: Attendance) => {
@@ -80,10 +95,30 @@ export function AttendancePage() {
     setCreating(false);
   };
 
+  // Jam yang akan tersimpan, dihitung sambil mengetik. Menampilkannya di modal
+  // membuat shift semalaman (calcHours menambah 24 jam saat keluar < masuk)
+  // terlihat SEBELUM disimpan — dulu "17:00–08:00" diam-diam jadi 15 jam.
+  const editHours = useMemo(
+    () => (editIn && editOut ? calcHours(editIn, editOut) : null),
+    [editIn, editOut],
+  );
+
   const saveEdit = async () => {
     if (!editRow && !creating) return;
     const checkIn = editIn.trim() || null;
     const checkOut = editOut.trim() || null;
+    // Input-nya kini type="time", tapi nilai bisa datang dari paste atau
+    // browser lama. Tanpa penjagaan ini "8" tersimpan apa adanya dan
+    // calcHours mengembalikan 0 — sehari upah hilang tanpa satu peringatan.
+    const badFormat = (v: string | null) => v !== null && !/^\d{2}:\d{2}$/.test(v);
+    if (badFormat(checkIn) || badFormat(checkOut)) {
+      toast.error('Format jam harus HH:MM, misalnya 08:30');
+      return;
+    }
+    if (checkOut && !checkIn) {
+      toast.error('Isi jam masuk dulu sebelum jam keluar');
+      return;
+    }
     const totalHours = checkIn && checkOut ? calcHours(checkIn, checkOut) : 0;
     setEditBusy(true);
     try {
@@ -177,22 +212,19 @@ export function AttendancePage() {
   }, []);
   const hhmmss = localTimeSec(clock);
 
-  // The current user's open shift today (checked in, not out).
-  const myToday = useMemo(
-    () =>
-      attendance.find(
-        (a) => a.employeeId === me?.id && a.date === today && a.checkIn && !a.checkOut,
-      ) ?? null,
+  // Baris absensi SAYA hari ini — satu-satunya, karena satu baris per hari
+  // (dijamin indeks di migrasi 0054). Tiga turunan di bawah dibaca darinya,
+  // bukan dari tiga pencarian terpisah yang bisa saling bertentangan.
+  const myRow = useMemo(
+    () => attendance.find((a) => a.employeeId === me?.id && a.date === today) ?? null,
     [attendance, me, today],
   );
-
-  const myTodayDone = useMemo(
-    () =>
-      attendance.find(
-        (a) => a.employeeId === me?.id && a.date === today && a.checkIn && a.checkOut,
-      ) ?? null,
-    [attendance, me, today],
-  );
+  // Izin/sakit/alpha bukan shift. Dulu ketiganya lolos ke myTodayDone dan
+  // membuat papan jam menampilkan "Selesai · 8.75 jam" untuk orang yang
+  // justru sedang tidak masuk.
+  const myAbsent = myRow && myRow.status !== 'hadir' ? myRow : null;
+  const myToday = myRow && !myAbsent && myRow.checkIn && !myRow.checkOut ? myRow : null;
+  const myTodayDone = myRow && !myAbsent && myRow.checkIn && myRow.checkOut ? myRow : null;
 
   const todayRecords = useMemo(
     () => attendance.filter((a) => a.date === today).sort((a, b) => (a.checkIn ?? '').localeCompare(b.checkIn ?? '')),
@@ -200,15 +232,31 @@ export function AttendancePage() {
   );
 
   const recentByDay = useMemo(() => {
-    // Managers (owner/admin) see the whole team's history; staff only see their
-    // own rows (privacy — a karyawan shouldn't see colleagues' attendance).
+    // Manager (owner/admin) melihat riwayat seluruh tim; karyawan hanya
+    // barisnya sendiri. Batasnya soal RIWAYAT, bukan kehadiran hari ini:
+    // papan "Kehadiran Hari Ini" di atas memang terbuka untuk semua — siapa
+    // yang sedang jaga adalah informasi shift biasa. Yang sensitif adalah
+    // polanya sebulan: siapa sering telat, siapa sering absen.
     const scoped = isMgr ? attendance : attendance.filter((a) => a.employeeId === me?.id);
-    const sorted = [...scoped].sort((a, b) => b.date.localeCompare(a.date));
-    return sorted.slice(0, 30);
-  }, [attendance, isMgr, me]);
+    // Difilter per bulan, bukan dipotong 30 baris terakhir. Potongan lama
+    // membuat tim 5 orang hanya punya enam hari riwayat, dan tidak ada cara
+    // sama sekali melihat bulan lalu.
+    return scoped
+      .filter((a) => a.date?.startsWith(month))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.checkIn ?? '').localeCompare(a.checkIn ?? ''));
+  }, [attendance, isMgr, me, month]);
 
   const checkIn = async () => {
     if (!me) return;
+    // Satu baris per karyawan per hari — penjagaan yang sudah ada di entri
+    // manual (lihat saveEdit) tapi hilang di jalur otomatis. Dua perangkat,
+    // atau satu yang belum sempat refetch, menghasilkan dua baris dan rekap
+    // yang menggelembung. Server menolaknya juga (migrasi 0053); ini hanya
+    // supaya pesannya ramah, bukan lemparan RPC.
+    if (attendance.some((a) => a.employeeId === me.id && a.date === today)) {
+      toast.error('Anda sudah tercatat absen hari ini');
+      return;
+    }
     setBusy(true);
     try {
       // Cloud + geofenced outlet → request GPS and let the server re-validate
@@ -263,11 +311,21 @@ export function AttendancePage() {
     setBusy(true);
     const out = localTimeStr();
     try {
-      await repository.put('attendance', {
-        ...myToday,
-        checkOut: out,
-        totalHours: calcHours(myToday.checkIn ?? '00:00', out),
-      });
+      // Cermin dari checkIn: kalau outlet-nya ber-geofence, pulang divalidasi
+      // server juga. Sebelumnya masuk dijaga GPS + jam server sementara pulang
+      // ditulis langsung dari perangkat — separuh catatan jam kerja tidak
+      // bisa dipercaya, dan separuh itulah yang menentukan upah.
+      if (isSupabaseConfigured && targetOutlet && hasGeofence(targetOutlet)) {
+        const pos = await getCurrentPosition();
+        await clockOut({ attendanceId: myToday.id, lat: pos.lat, lng: pos.lng });
+        await refetch();
+      } else {
+        await repository.put('attendance', {
+          ...myToday,
+          checkOut: out,
+          totalHours: calcHours(myToday.checkIn ?? '00:00', out),
+        });
+      }
       toast.success(`Check-out ${out}`);
       logActivity({
         action: 'attendance.checkout',
@@ -282,6 +340,24 @@ export function AttendancePage() {
       setBusy(false);
     }
   };
+
+  // Satu pemilih bulan, dua kartu. Rekap dan riwayat harus selalu menunjukkan
+  // periode yang sama — dua pemilih terpisah adalah cara termudah membuat
+  // pemilik membandingkan angka Agustus dengan baris September.
+  const monthPicker = (
+    <label className={styles.monthPicker}>
+      <span>{fmtLocaleDate(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</span>
+      <Icon name="calendar" aria-hidden />
+      <input
+        type="month"
+        max={today.slice(0, 7)}
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        className={styles.monthInput}
+        aria-label="Bulan yang ditampilkan"
+      />
+    </label>
+  );
 
   return (
     <div className={styles.wrap}>
@@ -302,9 +378,18 @@ export function AttendancePage() {
               Selesai · {myTodayDone.totalHours} jam ({myTodayDone.checkIn}–{myTodayDone.checkOut})
             </span>
           )}
+          {myAbsent && (
+            <span className={styles.clockStatus}>
+              <span className={styles.statusLed} aria-hidden />
+              Tercatat {STATUS_LABEL[myAbsent.status].toLowerCase()} hari ini
+            </span>
+          )}
         </div>
         <div className={styles.clockActions}>
-          {!myToday && !myTodayDone && (
+          {/* Tombol Check In hilang begitu ADA baris hari ini, apa pun
+              statusnya. Dulu baris izin tidak dikenali, tombolnya tetap
+              muncul, dan menekannya hanya menghasilkan penolakan. */}
+          {!myRow && (
             <Button size="lg" onClick={checkIn} loading={busy} iconLeft={<Icon name="right-to-bracket" aria-hidden />}>
               Check In
             </Button>
@@ -319,6 +404,11 @@ export function AttendancePage() {
               <Icon name="circle-check" aria-hidden /> Lengkap
             </span>
           )}
+          {myAbsent && (
+            <span className={[styles.statePill, styles.absent].join(' ')}>
+              {STATUS_LABEL[myAbsent.status]}
+            </span>
+          )}
         </div>
       </div>
 
@@ -327,7 +417,10 @@ export function AttendancePage() {
           icon={<Icon name="users" aria-hidden />}
           title="Kehadiran Hari Ini"
           action={
-            owner && (
+            // Manager, bukan owner saja: admin sudah boleh mengedit dan
+            // MENGHAPUS baris absensi. Menahan tombol "buat" sementara tombol
+            // "hapus" terbuka adalah gerbang yang menjaga pintu yang salah.
+            isMgr && (
               <Button size="sm" variant="secondary" onClick={openCreate} iconLeft={<Icon name="plus" aria-hidden />}>
                 Absenkan
               </Button>
@@ -349,10 +442,20 @@ export function AttendancePage() {
                   <div className={styles.itemInfo}>
                     <strong>{a.employeeName}</strong>
                     <small>
-                      {a.checkIn ?? '—'} {a.checkOut ? `– ${a.checkOut}` : ''}
+                      {a.status === 'hadir'
+                        ? `${a.checkIn ?? '—'}${a.checkOut ? ` – ${a.checkOut}` : ''}`
+                        : STATUS_LABEL[a.status]}
+                      {a.note ? ` · ${a.note}` : ''}
                     </small>
                   </div>
-                  {a.checkOut ? (
+                  {/* Pill hijau berarti "shift selesai". Baris izin/sakit/alpha
+                      dulu ikut memakainya dan terbaca sebagai hari kerja penuh
+                      dengan nol jam — kebalikan dari kenyataannya. */}
+                  {a.status !== 'hadir' ? (
+                    <span className={[styles.statePill, styles.absent].join(' ')}>
+                      {STATUS_LABEL[a.status]}
+                    </span>
+                  ) : a.checkOut ? (
                     <span className={[styles.statePill, styles.done].join(' ')}>{a.totalHours} jam</span>
                   ) : (
                     <span className={[styles.statePill, styles.working].join(' ')}>Bekerja</span>
@@ -364,24 +467,12 @@ export function AttendancePage() {
         </CardBody>
       </Card>
 
-      {owner && (
+      {isMgr && (
         <Card glass>
           <CardHeader
             icon={<Icon name="clock" aria-hidden />}
             title="Total Jam Kerja per Karyawan"
-            action={
-              <label className={styles.monthPicker}>
-                <span>{fmtLocaleDate(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</span>
-                <Icon name="calendar" aria-hidden />
-                <input
-                  type="month"
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                  className={styles.monthInput}
-                  aria-label="Bulan rekap"
-                />
-              </label>
-            }
+            action={monthPicker}
           />
           <CardBody className={styles.noPad}>
             {monthly.length === 0 ? (
@@ -390,13 +481,21 @@ export function AttendancePage() {
               <div className={styles.ledger}>
                 <div className={styles.recapHead}>
                   <span>Karyawan</span>
-                  <span className={styles.hours}>Hari</span>
+                  <span className={styles.hours}>Hadir</span>
+                  <span className={styles.hours}>Izin</span>
+                  <span className={styles.hours}>Sakit</span>
+                  <span className={styles.hours}>Alpha</span>
                   <span className={styles.hours}>Total Jam</span>
                 </div>
                 {monthly.map((r) => (
                   <div key={r.employeeId} className={styles.recapRow}>
                     <span className={styles.ledgerName}>{r.employeeName}</span>
                     <span className={styles.hours}>{r.days}</span>
+                    {/* Nol ditulis samar, bukan nol tebal: yang perlu terbaca
+                        sekilas adalah kolom yang BERISI. */}
+                    <span className={[styles.hours, r.izin ? '' : styles.muted].join(' ')}>{r.izin}</span>
+                    <span className={[styles.hours, r.sakit ? '' : styles.muted].join(' ')}>{r.sakit}</span>
+                    <span className={[styles.hours, r.alpha ? '' : styles.muted].join(' ')}>{r.alpha}</span>
                     <span className={styles.hours}>{r.totalHours} jam</span>
                   </div>
                 ))}
@@ -407,10 +506,14 @@ export function AttendancePage() {
       )}
 
       <Card glass>
-        <CardHeader icon={<Icon name="clock-rotate-left" aria-hidden />} title="Riwayat Absensi" />
+        <CardHeader
+          icon={<Icon name="clock-rotate-left" aria-hidden />}
+          title="Riwayat Absensi"
+          action={monthPicker}
+        />
         <CardBody className={styles.noPad}>
           {recentByDay.length === 0 ? (
-            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat" />
+            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat bulan ini" />
           ) : (
             <div className={styles.ledger}>
               <div className={[styles.ledgerHead, isMgr ? styles.withActions : ''].join(' ')}>
@@ -418,16 +521,38 @@ export function AttendancePage() {
                 <span>Karyawan</span>
                 <span>Masuk</span>
                 <span>Keluar</span>
+                <span>Status</span>
                 <span className={styles.hours}>Total</span>
                 {isMgr && <span className={styles.actionsCol}>Aksi</span>}
               </div>
               {recentByDay.map((a) => (
                 <div key={a.id} className={[styles.ledgerRow, isMgr ? styles.withActions : ''].join(' ')}>
                   <span className={styles.punch}>{fmtDate(a.date)}</span>
-                  <span className={styles.ledgerName}>{a.employeeName}</span>
+                  <span className={styles.ledgerName}>
+                    {a.employeeName}
+                    {/* Catatan dulu bisa diisi tapi tidak pernah tampil di mana
+                        pun — alasan sebuah koreksi hilang begitu modal ditutup. */}
+                    {a.note && <small className={styles.rowNote}>{a.note}</small>}
+                  </span>
                   <span className={styles.punch}>{a.checkIn ?? '—'}</span>
                   <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}>—</span>}</span>
-                  <span className={styles.hours}>{a.checkOut ? `${a.totalHours} jam` : '—'}</span>
+                  <span>
+                    <span className={[styles.statusTag, styles[a.status]].join(' ')}>
+                      {STATUS_LABEL[a.status]}
+                    </span>
+                  </span>
+                  {/* Jam hanya dihitung untuk hari yang benar-benar dikerjakan.
+                      Baris izin bisa saja masih membawa jam sisa dari check-in
+                      pagi; menampilkannya di sini membuat baris berkata "8.75
+                      jam" sementara rekap di atas berkata 0 — dua angka
+                      bertentangan tentang upah yang sama. */}
+                  <span className={styles.hours}>
+                    {isWorkedDay(a) && a.checkOut ? (
+                      `${a.totalHours} jam`
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
+                  </span>
                   {isMgr && (
                     <span className={styles.actionsCol}>
                       <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Edit absensi">
@@ -478,9 +603,23 @@ export function AttendancePage() {
               />
             </>
           )}
+          {/* type="time" — pemilih jam bawaan browser. Sebelumnya ini teks
+              bebas: "8" tersimpan apa adanya, calcHours mengembalikan 0, dan
+              sehari upah hilang di balik toast hijau "Absensi diperbarui". */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <Input label="Jam Masuk" placeholder="HH:MM" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
-            <Input label="Jam Keluar" placeholder="HH:MM" value={editOut} onChange={(e) => setEditOut(e.target.value)} />
+            <Input label="Jam Masuk" type="time" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
+            <Input
+              label="Jam Keluar"
+              type="time"
+              value={editOut}
+              onChange={(e) => setEditOut(e.target.value)}
+              hint={editHours !== null ? `${editHours} jam` : undefined}
+              error={
+                editHours !== null && editHours > IMPLAUSIBLE_HOURS
+                  ? `${editHours} jam — jam masuk & keluar tertukar?`
+                  : undefined
+              }
+            />
           </div>
           <Select
             label="Status"

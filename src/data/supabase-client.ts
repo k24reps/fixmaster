@@ -171,6 +171,29 @@ export async function clockIn(args: {
 }
 
 /**
+ * Cloud clock-out via the `clock_out` RPC. Mirror of `clockIn`: the same
+ * geofence is re-checked, the timestamp comes from the server clock, and
+ * `total_hours` is computed by the database trigger — never sent from here.
+ * Returns the hours the server recorded. Throws the server's Indonesian
+ * message (already out of radius, shift already closed, …).
+ */
+export async function clockOut(args: {
+  attendanceId: string;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<number> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('clock_out', {
+    p_attendance_id: args.attendanceId,
+    p_lat: args.lat ?? null,
+    p_lng: args.lng ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+/**
  * Cloud void of a POS sale via the `void_sale` RPC (manager-only, atomic):
  * restores stock, reverses wallet balances, deletes linked income rows, and
  * marks the sale voided (row retained for audit). Throws the server's

@@ -1,9 +1,14 @@
 /**
- * Pure attendance geofence logic. No DOM/repository dependencies →
- * unit-testable. The same distance check runs client-side (UX hint) and is
- * re-validated server-side in the clock_in RPC (the real security boundary).
+ * Logika absensi murni — tanpa DOM, tanpa repository, jadi bisa diuji unit.
+ *
+ * Cek jarak yang sama berjalan di klien (sekadar petunjuk UX) dan diulang di
+ * server oleh RPC `clock_in`/`clock_out`. Yang perlu diingat: geofence hanya
+ * menjaga DETIK penulisan. Yang menjaga sisanya adalah trigger
+ * `attendance_enforce` (migrasi 0053) — ia menghitung ulang `total_hours` dan
+ * melarang karyawan menulis ulang jamnya sendiri lewat REST. Tanpa trigger
+ * itu, geofence hanya menentukan di mana baris LAHIR, bukan apa isinya.
  */
-import type { Attendance, Outlet } from '@/data/types';
+import type { Attendance, AttendanceStatus, Outlet } from '@/data/types';
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -38,22 +43,56 @@ export function hasGeofence(outlet: Pick<Outlet, 'lat' | 'lng' | 'geofenceRadius
   );
 }
 
+/** Label Indonesia untuk tiap status — satu sumber, dipakai modal dan tabel. */
+export const STATUS_LABEL: Record<AttendanceStatus, string> = {
+  hadir: 'Hadir',
+  izin: 'Izin',
+  sakit: 'Sakit',
+  alpha: 'Alpha',
+};
+
+/**
+ * Apakah baris ini mewakili hari kerja yang benar-benar dijalani.
+ *
+ * Bukan sekadar "punya jam masuk": baris izin/sakit/alpha bisa saja punya
+ * jam yang terlanjur terisi sebelum statusnya dikoreksi, dan menghitungnya
+ * sebagai hari hadir membuat rekap bulanan berbohong ke arah yang
+ * menguntungkan karyawan.
+ */
+export function isWorkedDay(
+  r: Pick<Attendance, 'status' | 'checkIn'>,
+): boolean {
+  return r.status === 'hadir' && !!r.checkIn;
+}
+
+/**
+ * Jam kerja di atas ambang ini hampir pasti salah ketik — biasanya jam masuk
+ * dan keluar tertukar, yang oleh calcHours() dibaca sebagai shift semalaman.
+ * Dipakai untuk memperingatkan, bukan menolak: shift malam itu nyata.
+ */
+export const IMPLAUSIBLE_HOURS = 16;
+
 export interface EmployeeMonthHours {
   employeeId: string;
   employeeName: string;
-  /** Days with a recorded check-in (open shifts included). */
+  /** Hari kerja betulan: berstatus `hadir` dan punya jam masuk. */
   days: number;
+  /** Hari tidak masuk, dipecah per alasan — tiga angka ini yang dipakai
+   *  pemilik untuk menghitung potongan, dan dulu tidak ada sama sekali. */
+  izin: number;
+  sakit: number;
+  alpha: number;
   totalHours: number;
 }
 
 /**
- * Total work hours per employee for one month ("YYYY-MM"), highest first.
- * Sums the stored `totalHours`, so an open shift (no check-out yet) counts as
- * a present day with zero hours — exactly what the ledger shows.
- * ponytail: employees with no row that month are absent from the result.
+ * Rekap satu bulan ("YYYY-MM") per karyawan, jam terbanyak dulu.
+ * Menjumlahkan `totalHours` yang tersimpan, jadi shift yang belum di-checkout
+ * terhitung sebagai hari hadir dengan nol jam — persis seperti di tabel.
+ * ponytail: karyawan tanpa baris bulan itu tidak muncul di hasil.
  */
 export function monthlyHoursByEmployee(
-  rows: Pick<Attendance, 'employeeId' | 'employeeName' | 'date' | 'checkIn' | 'totalHours'>[],
+  rows: Pick<Attendance, 'employeeId' | 'employeeName' | 'date' | 'status' | 'checkIn' | 'totalHours'>[],
   month: string,
 ): EmployeeMonthHours[] {
   const acc = new Map<string, EmployeeMonthHours>();
@@ -63,11 +102,18 @@ export function monthlyHoursByEmployee(
       employeeId: r.employeeId,
       employeeName: r.employeeName,
       days: 0,
+      izin: 0,
+      sakit: 0,
+      alpha: 0,
       totalHours: 0,
     };
-    cur.employeeName = r.employeeName; // newest row wins on rename
-    if (r.checkIn) cur.days += 1;
-    cur.totalHours += r.totalHours || 0;
+    cur.employeeName = r.employeeName; // baris terbaru menang saat ganti nama
+    if (isWorkedDay(r)) {
+      cur.days += 1;
+      cur.totalHours += r.totalHours || 0;
+    } else if (r.status === 'izin') cur.izin += 1;
+    else if (r.status === 'sakit') cur.sakit += 1;
+    else if (r.status === 'alpha') cur.alpha += 1;
     acc.set(r.employeeId, cur);
   }
   return [...acc.values()]

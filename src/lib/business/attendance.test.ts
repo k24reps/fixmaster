@@ -4,6 +4,7 @@ import {
   hasGeofence,
   checkWithinGeofence,
   monthlyHoursByEmployee,
+  isWorkedDay,
 } from './attendance';
 import type { Outlet } from '@/data/types';
 
@@ -56,14 +57,29 @@ describe('hasGeofence', () => {
   });
 });
 
+describe('isWorkedDay', () => {
+  it('counts only a `hadir` row that has a check-in', () => {
+    expect(isWorkedDay({ status: 'hadir', checkIn: '08:00' })).toBe(true);
+    expect(isWorkedDay({ status: 'hadir', checkIn: null })).toBe(false);
+  });
+
+  it('rejects izin/sakit/alpha even when a time is left over', () => {
+    // Ini kasus nyatanya: baris sudah punya jam masuk dari check-in pagi, lalu
+    // manager mengoreksi statusnya jadi izin. Jamnya tidak ikut terhapus.
+    expect(isWorkedDay({ status: 'izin', checkIn: '08:00' })).toBe(false);
+    expect(isWorkedDay({ status: 'sakit', checkIn: '08:00' })).toBe(false);
+    expect(isWorkedDay({ status: 'alpha', checkIn: '08:00' })).toBe(false);
+  });
+});
+
 describe('monthlyHoursByEmployee', () => {
-  const rows = [
-    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-01', checkIn: '08:00', totalHours: 8 },
-    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-02', checkIn: '08:00', totalHours: 7.5 },
-    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-03', checkIn: '08:00', totalHours: 0 }, // open shift
-    { employeeId: 'e2', employeeName: 'Ani', date: '2026-08-01', checkIn: '09:00', totalHours: 6 },
-    { employeeId: 'e2', employeeName: 'Ani', date: '2026-07-31', checkIn: '09:00', totalHours: 9 }, // other month
-    { employeeId: 'e3', employeeName: 'Cici', date: '2026-08-04', checkIn: null, totalHours: 0 }, // izin
+  const rows: Parameters<typeof monthlyHoursByEmployee>[0] = [
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-01', status: 'hadir', checkIn: '08:00', totalHours: 8 },
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-02', status: 'hadir', checkIn: '08:00', totalHours: 7.5 },
+    { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-03', status: 'hadir', checkIn: '08:00', totalHours: 0 }, // shift terbuka
+    { employeeId: 'e2', employeeName: 'Ani', date: '2026-08-01', status: 'hadir', checkIn: '09:00', totalHours: 6 },
+    { employeeId: 'e2', employeeName: 'Ani', date: '2026-07-31', status: 'hadir', checkIn: '09:00', totalHours: 9 }, // bulan lain
+    { employeeId: 'e3', employeeName: 'Cici', date: '2026-08-04', status: 'izin', checkIn: null, totalHours: 0 },
   ];
 
   it('sums hours per employee within the month only', () => {
@@ -73,6 +89,25 @@ describe('monthlyHoursByEmployee', () => {
       ['Ani', 6, 1],
       ['Cici', 0, 0],
     ]);
+  });
+
+  it('counts absences separately instead of folding them into work days', () => {
+    const res = monthlyHoursByEmployee(rows, '2026-08');
+    const cici = res.find((r) => r.employeeName === 'Cici')!;
+    expect([cici.days, cici.izin, cici.sakit, cici.alpha]).toEqual([0, 1, 0, 0]);
+  });
+
+  it('does NOT count a leave day as present even when its times survived', () => {
+    // Bug yang diperbaiki: rekap dulu memakai `if (r.checkIn)` saja, jadi baris
+    // izin dengan jam sisa terhitung sebagai hari hadir — dan jamnya ikut
+    // dijumlahkan. Angka rekapnya condong ke arah yang menguntungkan karyawan.
+    const res = monthlyHoursByEmployee(
+      [
+        { employeeId: 'e9', employeeName: 'Dedi', date: '2026-08-05', status: 'izin', checkIn: '08:00', totalHours: 8 },
+      ],
+      '2026-08',
+    );
+    expect([res[0].days, res[0].totalHours, res[0].izin]).toEqual([0, 0, 1]);
   });
 
   it('returns nothing for a month with no rows', () => {
