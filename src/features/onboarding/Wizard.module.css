@@ -152,12 +152,16 @@
 }
 
 /* ---------- Card ---------- */
+/* Tanpa pita brand 3px di tepi ATAS. Dua alasan: spine DESIGN.md:256 ada di
+   leading edge (kiri), bukan atas — dan pita lurus 3px di atas sudut
+   --radius-lg 16px melebar jadi busur tebal yang meruncing di kedua ujungnya.
+   Kartunya juga tidak mengklasifikasi apa pun; amber-nya hanya bersaing
+   dengan tombol lanjut, satu-satunya aksi di layar onboarding. */
 .card {
   position: relative;
   background: var(--surface-glass);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  border-top: 3px solid var(--brand);
   padding: var(--space-8);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);

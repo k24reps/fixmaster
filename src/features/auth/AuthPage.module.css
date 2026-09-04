@@ -50,7 +50,10 @@
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 26px 26px;
+  /* 30px, sama dengan bench ambient di global.css:56 dan pitch yang ditulis
+     DESIGN.md:181. Sebelumnya 26px — grid yang sama dengan dua langkah
+     berbeda, dan panel ini menutupi body sehingga keduanya bertemu di tepi. */
+  background-size: 30px 30px;
   pointer-events: none;
 }
 .brandTop {

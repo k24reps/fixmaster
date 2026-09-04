@@ -38,6 +38,33 @@
         ],
         "createdAt": "2026-09-02T01:50:43.121Z",
         "reason": "HTML email: klien email tidak memuat webfont dan tidak mendukung custom property CSS; ukuran px inline dan tumpukan font sistem itu wajib"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "src/features/auth/AuthPage.module.css"
+        ],
+        "createdAt": "2026-09-04T12:53:32.283Z",
+        "reason": "DESIGN.md:181 mendefinisikan --grid-line sebagai blueprint/PCB bench surface, dan DESIGN.md:246 (Ambient Bench Rule) menjadikannya satu-satunya ambient depth sistem. Panel auth menutupi body sehingga harus menggambar ulang bench yang sama; pitch sudah disamakan ke 30px."
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "src/features/onboarding/Wizard.module.css"
+        ],
+        "createdAt": "2026-09-04T12:53:43.893Z",
+        "reason": "Sama dengan AuthPage: overlay wizard fixed inset-0 menutupi body, jadi menggambar ulang bench ambient DESIGN.md:181 pada pitch 30px yang sama dengan global.css:56. Bukan lapisan kedua, melainkan lapisan yang sama yang dipulihkan."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/onboarding/Wizard.module.css"
+        ],
+        "createdAt": "2026-09-04T12:53:44.102Z",
+        "reason": "L31 sudah dinetralkan ke --border-strong (garis pemisah, bukan aksen warna). L329 .inviteWarn adalah spine --warning semantik: DESIGN.md:289 mengizinkan diagnostic spine dalam brand/success/warning/danger/info, dan peringatan itu menandai kesalahan yang tak ada jalan mundurnya."
       }
     ]
   }
