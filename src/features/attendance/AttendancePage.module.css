@@ -101,12 +101,17 @@
   display: flex;
   flex-direction: column;
 }
+/* Tidak ada pita warna di tepi kiri. Dulu ada — 3px biru untuk "bekerja",
+   hijau untuk "selesai" — tapi pill di ujung kanan sudah mengatakan hal yang
+   sama dengan KATA, dan pitanya hanya membaca `checkOut`. Begitu status
+   izin/sakit/alpha ikut tampil, baris izin yang jamnya terlanjur terisi
+   mendapat pita hijau "selesai bekerja": persis pertentangan yang perbaikan
+   ini justru dimaksudkan untuk menghapus. */
 .listItem {
-  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 12px var(--space-5) 12px calc(var(--space-5) + 3px);
+  padding: 12px var(--space-5);
   border-bottom: 1px dotted var(--border);
   transition: background var(--dur-fast) var(--ease-out);
 }
@@ -115,18 +120,6 @@
 }
 .listItem:hover {
   background: var(--bg-hover);
-}
-.listItem::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--blue-500);
-}
-.listItem.complete::before {
-  background: var(--green-500);
 }
 .plate {
   width: 38px;

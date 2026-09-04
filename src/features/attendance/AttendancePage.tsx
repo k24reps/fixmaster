@@ -437,7 +437,7 @@ export function AttendancePage() {
           ) : (
             <ul className={styles.list}>
               {todayRecords.map((a) => (
-                <li key={a.id} className={[styles.listItem, a.checkOut ? styles.complete : ''].join(' ')}>
+                <li key={a.id} className={styles.listItem}>
                   <span className={styles.plate}>{a.employeeName.charAt(0).toUpperCase()}</span>
                   <div className={styles.itemInfo}>
                     <strong>{a.employeeName}</strong>
