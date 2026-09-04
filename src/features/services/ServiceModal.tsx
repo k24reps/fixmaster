@@ -9,6 +9,7 @@ import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/c
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { trackEvent } from '@/lib/analytics';
 import { useDemoStore } from '@/stores/demo';
@@ -56,11 +57,8 @@ export function ServiceModal({
   // avoid near-duplicate records from re-typing a slightly different name.
   const [suggestField, setSuggestField] = useState<'name' | 'phone' | null>(null);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  const currentKey = editing?.id ?? 'new';
-  if (open && lastKey !== currentKey) {
-    setLastKey(currentKey);
-    // New service always starts blank; editing reflects the record.
+  // Servis baru selalu mulai kosong; mode edit mencerminkan recordnya.
+  useResetOnOpen(open, editing?.id ?? 'new', () => {
     setCustomerName(editing?.customerName ?? '');
     setCustomerPhone(editing?.customerPhone ?? '');
     setCategory(editing?.category ?? categories[0] ?? '');
@@ -70,7 +68,8 @@ export function ServiceModal({
     setTechnicianId(editing?.technicianId ?? '');
     setEstimateCost(editing?.estimateCost ? fmtRpInput(String(editing.estimateCost)) : '');
     setError('');
-  }
+    setSuggestField(null);
+  });
 
   const technicianOptions = [
     { value: '', label: '— Belum ditentukan —' },

@@ -4,6 +4,7 @@ import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { Supplier } from '@/data/types';
 
 interface SupplierModalProps {
@@ -22,17 +23,14 @@ export function SupplierModal({ open, onClose, editing }: SupplierModalProps) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  const currentKey = editing?.id ?? 'new';
-  if (open && lastKey !== currentKey) {
-    setLastKey(currentKey);
+  useResetOnOpen(open, editing?.id ?? 'new', () => {
     setName(editing?.name ?? '');
     setPhone(editing?.phone ?? '');
     setEmail(editing?.email ?? '');
     setAddress(editing?.address ?? '');
     setNote(editing?.note ?? '');
     setError('');
-  }
+  });
 
   const save = async () => {
     if (!name.trim()) return setError('Nama supplier wajib diisi');

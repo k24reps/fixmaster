@@ -11,6 +11,7 @@ import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { PurchaseOrder, Supplier } from '@/data/types';
 import styles from './ReceiveModal.module.css';
 
@@ -33,16 +34,15 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
 
   const sortedWallets = [...wallets].sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  if (open && po && lastKey !== po.id) {
-    setLastKey(po.id);
+  useResetOnOpen(open, po?.id ?? null, () => {
+    if (!po) return;
     // Default each line to its remaining quantity.
     const init: Record<string, number> = {};
     for (const l of po.lines) init[l.itemId] = Math.max(0, l.qty - l.receivedQty);
     setReceipts(init);
     setPayFromWallet(true);
     setWalletId(sortedWallets[0]?.id ?? '');
-  }
+  });
 
   if (!po) return null;
 

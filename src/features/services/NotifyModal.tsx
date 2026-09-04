@@ -14,6 +14,7 @@ import { getWaTemplateOverrides } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { Service } from '@/data/types';
 import styles from './NotifyModal.module.css';
 
@@ -32,20 +33,22 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
 
   const templates = resolveWaTemplates(getWaTemplateOverrides());
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
   // Include finalCost + updatedAt in the memo key so the message regenerates
   // when the cost (or any field) changes after the modal was first opened.
   // Without this, the WA text kept a stale "Rp 0" until a full page refresh.
   const memoKey = service ? `${service.id}|${templateKey}|${service.finalCost}|${service.updatedAt}` : null;
-  if (open && service && org && lastKey !== memoKey) {
-    setLastKey(memoKey);
+  useResetOnOpen(open, memoKey, () => {
+    // Penyempitan tipe tidak menembus batas callback, jadi diulang di sini.
+    // `memoKey` sudah null saat service belum ada, jadi ini praktis tak
+    // pernah terpicu — tetapi tetap ditulis agar tipenya jujur.
+    if (!service || !org) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const vars = {
       ...serviceVars(service, org),
       tautan: trackingUrl(origin, org.id, service.serviceNo),
     };
     setMessage(interpolate(templates[templateKey], vars));
-  }
+  });
 
   if (!service || !org) return null;
 

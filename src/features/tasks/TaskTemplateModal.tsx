@@ -7,6 +7,7 @@ import { localDateStr } from '@/lib/time';
 import { reorder, templateItems } from '@/lib/business/tasks';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type {
   TaskTemplate,
   TaskTemplateItem,
@@ -69,10 +70,7 @@ export function TaskTemplateModal({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  const currentKey = editing?.id ?? 'new';
-  if (open && lastKey !== currentKey) {
-    setLastKey(currentKey);
+  useResetOnOpen(open, editing?.id ?? 'new', () => {
     setName(editing?.name ?? '');
     setItems(editing ? templateItems(editing) : []);
     setBulkTitles('');
@@ -86,7 +84,7 @@ export function TaskTemplateModal({
     setAssigneeEmployeeId(editing?.assigneeEmployeeId ?? '');
     setAssigneeOutletId(editing?.assigneeOutletId ?? '');
     setError('');
-  }
+  });
 
   const toggleWeekday = (d: number) =>
     setWeekdays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));

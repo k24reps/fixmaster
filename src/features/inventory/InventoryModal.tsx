@@ -6,6 +6,7 @@ import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { InventoryItem } from '@/data/types';
 
 interface InventoryModalProps {
@@ -26,11 +27,8 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  const currentKey = editing?.id ?? 'new';
-  if (open && lastKey !== currentKey) {
-    setLastKey(currentKey);
-    // New item always starts blank; editing reflects the record.
+  // Barang baru selalu mulai kosong; mode edit mencerminkan recordnya.
+  useResetOnOpen(open, editing?.id ?? 'new', () => {
     setName(editing?.name ?? '');
     setCategory(editing?.category ?? '');
     setStock(editing ? String(editing.stock) : '');
@@ -38,7 +36,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     setCostPrice(editing?.costPrice ? fmtRpInput(String(editing.costPrice)) : '');
     setSellPrice(editing?.sellPrice ? fmtRpInput(String(editing.sellPrice)) : '');
     setError('');
-  }
+  });
 
   const save = async () => {
     if (!name.trim()) return setError('Nama barang wajib diisi');

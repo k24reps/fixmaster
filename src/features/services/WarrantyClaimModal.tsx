@@ -8,6 +8,7 @@ import { applyBalance } from '@/lib/business/finance';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { Service } from '@/data/types';
 
 interface WarrantyClaimModalProps {
@@ -39,16 +40,13 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [lastKey, setLastKey] = useState<string | null>(null);
-  if (open && origin && lastKey !== origin.id) {
-    setLastKey(origin.id);
+  useResetOnOpen(open, origin?.id ?? null, () => {
     setComplaint('');
     setRecordLoss(false);
     setLossAmount('');
     setWalletId(wallets[0]?.id ?? '');
     setError('');
-  }
-  if (!open && lastKey !== null) setLastKey(null);
+  });
 
   if (!origin) return null;
 
