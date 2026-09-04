@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  prunableBackups,
   buildBackup,
   buildRestorePayload,
   serializeBackup,
@@ -143,5 +144,49 @@ describe('isBackupDue', () => {
 
   it('treats an unparseable date as due', () => {
     expect(isBackupDue('not-a-date', 'weekly', now)).toBe(true);
+  });
+});
+describe('prunableBackups (retensi auto-backup)', () => {
+  // Nama objek memuat ISO timestamp, jadi urutan leksikografis = urutan waktu.
+  // Seluruh strategi retensi bergantung pada sifat itu.
+  const name = (iso: string) => `auto-${iso.replace(/[:.]/g, '-')}.json`;
+  const days = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      name(new Date(Date.UTC(2026, 8, i + 1, 18)).toISOString()),
+    );
+
+  it('tidak membuang apa pun selama belum melewati kuota', () => {
+    expect(prunableBackups(days(7), 7)).toEqual([]);
+    expect(prunableBackups(days(3), 7)).toEqual([]);
+    expect(prunableBackups([], 7)).toEqual([]);
+  });
+
+  it('membuang yang TERLAMA, bukan yang terbaru', () => {
+    const all = days(9);
+    const stale = prunableBackups(all, 7);
+    expect(stale).toHaveLength(2);
+    // 1 dan 2 September adalah dua yang tertua.
+    expect(stale).toContain(all[0]);
+    expect(stale).toContain(all[1]);
+    expect(stale).not.toContain(all[8]);
+  });
+
+  it('tidak peduli urutan masukan — Storage tidak menjamin urutan list', () => {
+    const all = days(9);
+    const shuffled = [all[4], all[8], all[0], all[6], all[1], all[7], all[2], all[5], all[3]];
+    expect(prunableBackups(shuffled, 7).sort()).toEqual([all[0], all[1]].sort());
+  });
+
+  it('tidak mengubah array asli', () => {
+    const all = days(9);
+    const copy = [...all];
+    prunableBackups(all, 7);
+    expect(all).toEqual(copy);
+  });
+
+  // keep = 0 berarti hapus semua. Bukan konfigurasi yang dipakai, tapi kalau
+  // suatu saat RETENTION salah diset nol, ia harus berperilaku terduga.
+  it('keep 0 memangkas semuanya', () => {
+    expect(prunableBackups(days(3), 0)).toHaveLength(3);
   });
 });

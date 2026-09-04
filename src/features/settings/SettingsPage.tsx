@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useFeature } from '@/hooks/useFeature';
+import { useSearchParams } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -9,6 +11,8 @@ import {
   Select,
   EmptyState,
   Icon,
+  ProBadge,
+  ProNotice,
 } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -18,11 +22,18 @@ import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import {
   PLANS,
+  BILLING_TERMS,
+  BILLING_TERM_IDS,
+  monthlyRateForTerm,
+  totalForTerm,
+  savingForTerm,
+  type BillingTerm,
   roleAllows,
   PAID_TIERS,
   withinOutletQuota,
   outletTierFor,
   withinUserQuota,
+  withinWalletQuota,
   priceForOutlets,
 } from '@/config/plans';
 import {
@@ -50,6 +61,8 @@ import {
   setCategories,
   seedCategoriesFromLocal,
   setMobileNavigation as saveMobileNavigation,
+  PUBLIC_NOTE_MAX,
+  setPublicNote,
 } from '@/config/orgConfig';
 import { NAV_ITEMS } from '@/config/navigation';
 import {
@@ -93,6 +106,13 @@ import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
 import { createBackup, downloadBackup, restoreBackup } from './backupRestore';
 import { useBackupStore } from '@/stores/backup';
+import {
+  listCloudBackups,
+  readCloudBackup,
+  latestBackupRun,
+  type CloudBackup,
+  type BackupRun,
+} from '@/data/cloudBackup';
 import { type BackupFrequency } from '@/lib/business/backup';
 import styles from './SettingsPage.module.css';
 
@@ -143,6 +163,17 @@ type Tab =
   | 'navigasi'
   | 'sistem';
 
+const TAB_IDS: Tab[] = [
+  'usaha',
+  'operasional',
+  'tim',
+  'keuangan',
+  'outlet',
+  'langganan',
+  'navigasi',
+  'sistem',
+];
+
 export function SettingsPage() {
   const me = useSessionStore((s) => s.currentEmployee);
   const resetWorkspace = useSessionStore((s) => s.resetWorkspace);
@@ -153,7 +184,14 @@ export function SettingsPage() {
   const { data: outlets } = useCollection('outlets');
   const { data: employees } = useCollection('employees');
 
-  const [tab, setTab] = useState<Tab>('usaha');
+  // ?tab= membuat kartu terkunci (dan kanal terkunci di sidebar) bisa
+  // menautkan langsung ke tab yang relevan. Nilai tak dikenal jatuh ke
+  // Usaha; tab yang tidak boleh dilihat peran ini disaring oleh visibleTabs.
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    requestedTab && TAB_IDS.includes(requestedTab) ? requestedTab : 'usaha',
+  );
   const [confirmReset, setConfirmReset] = useState(false);
 
   const TABS: {
@@ -208,6 +246,7 @@ export function SettingsPage() {
           <DeviceCategoriesCard />
           <WarrantyCard />
           <WhatsAppTemplatesCard />
+          <PublicNoteCard />
         </>
       )}
       {tab === 'tim' && isOwner && <TeamTab employees={employees} outlets={outlets} />}
@@ -438,6 +477,12 @@ function BusinessTab() {
     }
   };
 
+  // Logo kustom adalah fitur Pro. Yang dikunci adalah KONTROLNYA, bukan
+  // datanya: org yang turun paket tetap menampilkan logonya di nota dan
+  // halaman lacak, karena mencabutnya diam-diam akan mengubah dokumen yang
+  // sudah dipegang pelanggan mereka.
+  const canLogo = useFeature('logo');
+
   const removeLogo = async () => {
     if (!org) return;
     try {
@@ -472,6 +517,7 @@ function BusinessTab() {
               <div className={styles.logoActions}>
                 <Button
                   variant="secondary"
+                  disabled={!canLogo}
                   onClick={() => fileRef.current?.click()}
                   iconLeft={<Icon name="download" aria-hidden />}
                 >
@@ -487,6 +533,12 @@ function BusinessTab() {
                   </Button>
                 )}
               </div>
+              {!canLogo && (
+                <ProNotice>
+                  Logo toko tampil di sidebar, nota cetak, dan halaman lacak yang dilihat
+                  pelanggan Anda.
+                </ProNotice>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -799,10 +851,70 @@ function WarrantyCard() {
 }
 
 /**
+ * Catatan bebas milik toko, tampil di nota cetak DAN halaman lacak publik.
+ * Ini satu-satunya teks pada kedua dokumen itu yang ditulis pemiliknya
+ * sendiri — jadi nota yang dibawa pulang pelanggan terbaca sebagai dokumen
+ * toko tersebut, bukan cetakan seragam dari sebuah aplikasi.
+ */
+function PublicNoteCard() {
+  const org = useSessionStore((s) => s.org);
+  const [draft, setDraft] = useState(() => org?.settings?.publicNote ?? '');
+  const [busy, setBusy] = useState(false);
+  const left = PUBLIC_NOTE_MAX - draft.length;
+
+  const save = async () => {
+    if (demoGuard()) return;
+    setBusy(true);
+    try {
+      await setPublicNote(draft);
+      toast.success('Catatan toko disimpan');
+    } catch {
+      toast.error('Gagal menyimpan catatan');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="note" aria-hidden />} title="Catatan Toko" />
+      <CardBody>
+        <p className={styles.tplHint}>
+          Tampil di nota cetak dan halaman lacak publik. Isi hal yang selalu ditanyakan
+          pelanggan — jam operasional, syarat garansi, batas waktu pengambilan. Kosongkan
+          bila tidak ingin menampilkan apa pun.
+        </p>
+        <textarea
+          className={styles.waTextarea}
+          value={draft}
+          maxLength={PUBLIC_NOTE_MAX}
+          rows={4}
+          placeholder={'Senin–Sabtu 09.00–17.00 WIB.\nGaransi batal bila segel rusak.'}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <div className={styles.noteFoot}>
+          <span className={styles.noteCount} data-low={left <= 40 ? 'true' : undefined}>
+            {left} karakter tersisa
+          </span>
+          <Button onClick={save} disabled={busy || draft === (org?.settings?.publicNote ?? '')}>
+            Simpan Catatan
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+
+/**
  * Per-key WhatsApp message template editor. Saves overrides to orgConfig;
  * blank fields fall back to the built-in default via resolveWaTemplates.
  */
 function WhatsAppTemplatesCard() {
+  // Menyunting template adalah fitur Pro; MEMAKAI-nya tidak. Solo tetap
+  // mengirim WhatsApp dengan template bawaan — yang dibeli adalah menulis
+  // ulang suaranya, bukan kemampuan mengabari pelanggan.
+  const canEdit = useFeature('waTemplates');
   const overrides = getWaTemplateOverrides();
   const keys = Object.keys(DEFAULT_WA_TEMPLATES) as WaTemplateKey[];
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
@@ -812,6 +924,7 @@ function WhatsAppTemplatesCard() {
   });
 
   const save = () => {
+    if (!canEdit) return;
     const next: Record<string, string> = {};
     for (const k of keys) {
       const v = drafts[k]?.trim();
@@ -823,41 +936,67 @@ function WhatsAppTemplatesCard() {
   };
 
   const resetKey = (k: WaTemplateKey) => {
+    if (!canEdit) return;
     setDrafts((d) => ({ ...d, [k]: DEFAULT_WA_TEMPLATES[k] }));
   };
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="whatsapp" aria-hidden />} title="Template WhatsApp" />
+      <CardHeader
+        icon={<Icon name="whatsapp" aria-hidden />}
+        title="Template WhatsApp"
+        action={canEdit ? undefined : <ProBadge />}
+      />
       <CardBody>
         <p className={styles.tplHint}>
           Variabel tersedia:{' '}
           {WA_TEMPLATE_VARS.map((v) => (
             <code key={v} className={styles.varChip}>{`{${v}}`}</code>
           ))}
+          <br />
+          <code className={styles.varChip}>{`{keluhan}`}</code>,{' '}
+          <code className={styles.varChip}>{`{kelengkapan}`}</code>,{' '}
+          <code className={styles.varChip}>{`{alamat}`}</code>,{' '}
+          <code className={styles.varChip}>{`{garansi}`}</code> dan{' '}
+          <code className={styles.varChip}>{`{rincian_bayar}`}</code> membawa barisnya
+          sendiri — barisnya hilang otomatis kalau datanya kosong, jadi tidak perlu
+          ditulis label lagi di depannya.
         </p>
         {keys.map((k) => (
           <div key={k} className={styles.tplGroup}>
             <div className={styles.waHead}>
               <span className={styles.tplLabel}>{WA_TEMPLATE_LABELS[k]}</span>
-              <button
-                className={styles.waReset}
-                onClick={() => resetKey(k)}
-                type="button"
-              >
-                Reset default
-              </button>
+              {canEdit && (
+                <button
+                  className={styles.waReset}
+                  onClick={() => resetKey(k)}
+                  type="button"
+                >
+                  Reset default
+                </button>
+              )}
             </div>
             <textarea
               className={styles.waTextarea}
               // Default kini multi-baris — 3 baris memotongnya jadi tak terbaca.
               rows={10}
               value={drafts[k]}
+              // Solo tetap boleh MEMBACA template yang dipakainya; yang dikunci
+              // adalah menyuntingnya. readOnly, bukan disabled, supaya teksnya
+              // tetap bisa disorot dan disalin.
+              readOnly={!canEdit}
               onChange={(e) => setDrafts((d) => ({ ...d, [k]: e.target.value }))}
             />
           </div>
         ))}
-        <Button onClick={save}>Simpan Template</Button>
+        {canEdit ? (
+          <Button onClick={save}>Simpan Template</Button>
+        ) : (
+          <ProNotice>
+            Template bawaan tetap terkirim seperti biasa. Pro membuka penyuntingannya,
+            supaya pesan ke pelanggan memakai kalimat dan nama toko Anda sendiri.
+          </ProNotice>
+        )}
       </CardBody>
     </Card>
   );
@@ -1358,7 +1497,10 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
   const expiry = org?.planExpiredAt ?? null;
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const phase = subscriptionPhase(expiry);
+  // Termin yang sedang dilihat pemilik. Default bulanan: opsi termurah di
+  // muka dulu, penghematannya yang menarik dia ke kanan — bukan sebaliknya.
+  const [term, setTerm] = useState<BillingTerm>('monthly');
+  const phase = subscriptionPhase(expiry, undefined, BILLING_TERMS[term].reminderDays);
   const days = expiry ? daysUntil(expiry) : null;
   const outletCount = outlets.length || 1;
   const suggested = outletTierFor(outletCount);
@@ -1405,10 +1547,11 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       );
     }
     if (!org) return;
-    const amount =
+    const base =
       tier === 'enterprise'
         ? priceForOutlets(outletCount)
-        : parseAmount(PLANS[tier].priceLabel);
+        : PLANS[tier].priceMonthly;
+    const amount = monthlyRateForTerm(base, term);
     const link = manualPaymentWhatsAppLink({
       supportPhone: FIXMASTER_WHATSAPP,
       orgId: org.id,
@@ -1418,6 +1561,8 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       requestedPlan: PLANS[tier].name,
       amount,
       outletCount,
+      term,
+      total: totalForTerm(base, term),
     });
     window.open(link, '_blank', 'noopener,noreferrer');
     toast.success(t('settings.billing.whatsappOpened'));
@@ -1552,11 +1697,48 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
             {suggested &&
               `${t('settings.billing.recommendation')} ${PLANS[suggested].name}.`}
           </p>
+          {/* Pemilih termin. Radiogroup, bukan sekadar tombol: ini satu
+              pilihan dari tiga yang saling meniadakan, dan pembaca layar
+              harus mendengarnya begitu. */}
+          <div
+            className={styles.termBar}
+            role="radiogroup"
+            aria-label="Termin pembayaran"
+          >
+            {BILLING_TERM_IDS.map((id) => {
+              const termDef = BILLING_TERMS[id];
+              const active = term === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  className={[styles.termBtn, active ? styles.termBtnActive : ''].join(' ')}
+                  onClick={() => setTerm(id)}
+                >
+                  {termDef.label}
+                  {termDef.multiplier < 1 && (
+                    <span className={styles.termSave}>
+                      &minus;{Math.round((1 - termDef.multiplier) * 100)}%
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           <div className={styles.planGrid}>
             {PAID_TIERS.map((tier) => {
               const def = PLANS[tier];
               const fits = withinOutletQuota(tier, outletCount);
               const isRec = suggested === tier;
+              const base =
+                tier === 'enterprise'
+                  ? priceForOutlets(outletCount)
+                  : def.priceMonthly;
+              const rate = monthlyRateForTerm(base, term);
+              const saving = savingForTerm(base, term);
               return (
                 <div
                   key={tier}
@@ -1565,11 +1747,13 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   <span className={styles.planSpine} aria-hidden />
                   {isRec && <span className={styles.planRecTag}>Disarankan</span>}
                   <strong className={styles.planCardName}>{def.name}</strong>
-                  <span className={styles.planPrice}>
-                    {tier === 'enterprise'
-                      ? `${fmtRp(priceForOutlets(outletCount))}/bln`
-                      : def.priceLabel}
-                  </span>
+                  <span className={styles.planPrice}>{fmtRp(rate)}/bln</span>
+                  {saving > 0 && (
+                    <span className={styles.planTermTotal}>
+                      {fmtRp(totalForTerm(base, term))} di muka · hemat{" "}
+                      {fmtRp(saving)}
+                    </span>
+                  )}
                   <small className={styles.planQuota}>
                     {def.maxOutlets < 0
                       ? 'Outlet tanpa batas'
@@ -1635,14 +1819,14 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
   );
 }
 
-/** Parse "Rp 49.000/bln" → 49000 for the invoice amount. */
-function parseAmount(priceLabel: string): number {
-  const digits = priceLabel.replace(/[^0-9]/g, '');
-  return digits ? Number(digits) : 0;
-}
 
 function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] }) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  // Kuota wallet (Solo 2, Pro 99) sudah lama ada di plans.ts tapi tidak
+  // pernah dibaca siapa pun. Dicek di sini terhadap jumlah SESUDAH
+  // penambahan, sama seperti kuota pengguna dan outlet.
+  const walletPlan = useSessionStore((s) => s.org?.planType ?? 'trial');
+  const canAddWallet = withinWalletQuota(walletPlan, wallets.length + 1);
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
   // Hybrid wallet (OQ Q2): a wallet is either shared org-wide (null) or tied
@@ -1659,6 +1843,10 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     id ? (outlets.find((o) => o.id === id)?.name ?? 'Cabang') : 'Bersama';
 
   const add = async () => {
+    if (!canAddWallet)
+      return toast.error(
+        `Paket ini dibatasi ${PLANS[walletPlan].maxWallets} wallet. Naik ke Pro untuk menambah.`,
+      );
     if (!name.trim()) return toast.error('Nama wallet wajib diisi');
     if (adding) return;
     setAdding(true);
@@ -1772,11 +1960,18 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
           <Button
             onClick={add}
             loading={adding}
+            disabled={!canAddWallet}
             iconLeft={<Icon name="plus" aria-hidden />}
           >
             Tambah
           </Button>
         </div>
+        {!canAddWallet && (
+          <ProNotice>
+            Paket ini dibatasi {PLANS[walletPlan].maxWallets} wallet. Pro membuka wallet
+            terpisah untuk tiap rekening, kasir, dan cabang.
+          </ProNotice>
+        )}
 
         {wallets.length >= 2 && (
           <div className={styles.tplGroup}>
@@ -2082,7 +2277,11 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
 function ExportDataCard() {
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Ekspor data adalah portabilitas: fitur Pro, dan sengaja juga dikunci
+  // selama Trial supaya masa coba tidak jadi jalan memanen data lalu pergi.
+  const canExport = useFeature('exportImport');
   const onExport = async (key: string, label: string) => {
+    if (!canExport) return;
     setBusy(key);
     try {
       const def = DATASETS.find((d) => d.key === key);
@@ -2099,19 +2298,28 @@ function ExportDataCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="download" aria-hidden />} title="Export Data" />
+      <CardHeader
+        icon={<Icon name="download" aria-hidden />}
+        title="Export Data"
+        action={canExport ? undefined : <ProBadge />}
+      />
       <CardBody>
         <p className={styles.dangerNote}>
           Unduh data sebagai CSV (bisa dibuka di Excel/Spreadsheet) — untuk cadangan,
           laporan, atau pindah sistem.
         </p>
+        {!canExport && (
+          <ProNotice>
+            Ekspor CSV membuat data Anda bisa dibawa ke Excel, akuntan, atau sistem lain.
+          </ProNotice>
+        )}
         <div className={styles.exportGrid}>
           {DATASETS.map((d) => (
             <button
               key={d.key}
               className={styles.exportBtn}
               onClick={() => onExport(d.key, d.label)}
-              disabled={busy !== null}
+              disabled={busy !== null || !canExport}
             >
               <Icon name={d.icon} aria-hidden />
               <span>{busy === d.key ? 'Menyiapkan…' : d.label}</span>
@@ -2147,6 +2355,49 @@ function BackupCard() {
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  // Backup otomatis (server-scheduled) — hanya ada di mode cloud.
+  const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
+  const [lastRun, setLastRun] = useState<BackupRun | null>(null);
+  const [loadingCloud, setLoadingCloud] = useState(false);
+
+  useEffect(() => {
+    if (!cloud || !org?.id) return;
+    let cancelled = false;
+    void (async () => {
+      // setState-nya di dalam closure async, bukan di badan effect: yang
+      // sinkron memicu render bertingkat (react-hooks/set-state-in-effect).
+      setLoadingCloud(true);
+      try {
+        const [files, run] = await Promise.all([
+          listCloudBackups(org.id),
+          latestBackupRun(org.id),
+        ]);
+        if (cancelled) return;
+        setCloudBackups(files);
+        setLastRun(run);
+      } catch {
+        // Kegagalan memuat daftar tidak boleh melumpuhkan kartu ini —
+        // backup manual tetap harus bisa dijalankan.
+      } finally {
+        if (!cancelled) setLoadingCloud(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud, org?.id]);
+
+  // Memulihkan dari salinan cloud memakai JALUR YANG SAMA dengan file
+  // lokal: ambil teksnya, lalu masuk ke dialog konfirmasi yang sudah ada.
+  // Satu format, satu jalur restore, satu tempat yang bisa salah.
+  const restoreFromCloud = async (backup: CloudBackup) => {
+    if (demoGuard('Restore tersedia di FixMaster versi penuh — daftar gratis.')) return;
+    try {
+      setPendingText(await readCloudBackup(backup.path));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membaca backup');
+    }
+  };
 
   const handleBackup = async () => {
     if (demoGuard('Backup tersedia di FixMaster versi penuh — daftar gratis.')) return;
@@ -2238,9 +2489,70 @@ function BackupCard() {
             {isDemo ? ' (Akun demo)' : ''}
           </p>
         )}
+        {cloud && (
+          <>
+            <hr className={styles.dangerDivider} />
+            <div className={styles.autoBackupHead}>
+              <span className={styles.autoBackupLabel}>Backup otomatis</span>
+              {lastRun && (
+                <span
+                  className={styles.autoBackupStatus}
+                  data-tone={lastRun.status === 'ok' ? 'ok' : 'failed'}
+                >
+                  <span className={styles.autoBackupLed} aria-hidden />
+                  {lastRun.status === 'ok' ? 'Berjalan' : 'Gagal'}
+                </span>
+              )}
+            </div>
+            <p className={styles.planNote}>
+              Server membuat salinan penuh tiap malam dan menyimpan 7 terakhir. Tidak
+              perlu membuka aplikasi — berbeda dari pengingat di bawah, yang hanya
+              menepuk bahu Anda saat aplikasi dibuka.
+            </p>
+            {/* Kegagalan ditampilkan, bukan disembunyikan: backup yang diam-diam
+                berhenti membuat pemilik merasa aman padahal tidak. */}
+            {lastRun?.status === 'failed' && (
+              <p className={styles.autoBackupError}>
+                <Icon name="triangle-exclamation" aria-hidden /> Backup terakhir gagal
+                pada {new Date(lastRun.startedAt).toLocaleString('id-ID')}
+                {lastRun.error ? ` — ${lastRun.error}` : ''}
+              </p>
+            )}
+            {loadingCloud && <p className={styles.planNote}>Memuat daftar…</p>}
+            {!loadingCloud && cloudBackups.length === 0 && (
+              <p className={styles.planNote}>
+                Belum ada salinan otomatis. Yang pertama dibuat pada jadwal malam
+                berikutnya.
+              </p>
+            )}
+            {cloudBackups.length > 0 && (
+              <ul className={styles.autoBackupList}>
+                {cloudBackups.map((b) => (
+                  <li key={b.path} className={styles.autoBackupItem}>
+                    <span className={styles.autoBackupWhen}>
+                      {b.createdAt
+                        ? new Date(b.createdAt).toLocaleString('id-ID')
+                        : b.name}
+                    </span>
+                    <span className={styles.autoBackupSize}>
+                      {Math.max(1, Math.round(b.sizeBytes / 1024))} KB
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.autoBackupAction}
+                      onClick={() => void restoreFromCloud(b)}
+                    >
+                      Pulihkan
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
         <hr className={styles.dangerDivider} />
         <Select
-          label="Pengingat backup"
+          label="Pengingat backup manual (perangkat ini)"
           value={frequency}
           onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
           options={[

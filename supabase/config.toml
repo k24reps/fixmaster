@@ -13,3 +13,11 @@ verify_jwt = false
 # the function (getUser) and only ever delete that id, so the platform gate is
 # disabled to keep the function reachable for all valid session tokens.
 verify_jwt = false
+
+[functions.auto-backup]
+# Dipanggil pg_cron, bukan browser, jadi tidak ada JWT pengguna yang bisa
+# diverifikasi. Gerbangnya header rahasia bersama (BACKUP_CRON_SECRET) yang
+# dicek di dalam fungsi. Menyerahkannya ke verify_jwt justru salah: JWT
+# pengguna biasa mana pun akan lolos, dan endpoint ini menyentuh data
+# SEMUA organisasi.
+verify_jwt = false

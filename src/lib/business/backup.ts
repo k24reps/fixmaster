@@ -184,3 +184,14 @@ export function isBackupDue(
   const elapsedDays = (now.getTime() - last) / 86_400_000;
   return elapsedDays >= FREQUENCY_DAYS[frequency];
 }
+/**
+ * Pemangkasan retensi auto-backup.
+ *
+ * Salinan asli logika ini hidup di Edge Function (`supabase/functions/
+ * auto-backup/index.ts`), yang berjalan di Deno dan tidak ikut suite ini.
+ * Yang diuji di sini adalah KONTRAKNYA — kalau perilaku di bawah berubah,
+ * fungsi itu ikut salah, dan kesalahannya berupa data yang terhapus.
+ */
+export function prunableBackups(names: string[], keep: number): string[] {
+  return [...names].sort().reverse().slice(keep);
+}
