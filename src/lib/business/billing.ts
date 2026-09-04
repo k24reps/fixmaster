@@ -1,5 +1,5 @@
 import type { PlanType } from '@/data/types';
-import { PLANS, withinOutletQuota } from '@/config/plans';
+import { PLANS, withinOutletQuota, BILLING_TERMS, type BillingTerm } from '@/config/plans';
 import { waLink } from './notify';
 
 /**
@@ -34,14 +34,18 @@ export function periodEnd(start: string, months = 1): string {
 /**
  * Subscription phase from expiry + now. A null expiry is treated as active
  * (e.g. not yet on a paid clock).
+ *
+ * `reminderDays` memanjang bersama termin (lihat BILLING_TERMS): tagihan
+ * tahunan hampir Rp 2 juta tidak boleh diumumkan tiga hari sebelumnya.
  */
 export function subscriptionPhase(
   expiry: string | null,
   now: Date = new Date(),
+  reminderDays: number = REMINDER_DAYS,
 ): SubscriptionPhase {
   if (!expiry) return 'active';
   const days = daysUntil(expiry, now);
-  if (days > REMINDER_DAYS) return 'active';
+  if (days > reminderDays) return 'active';
   if (days > 0) return 'reminder';
   if (days >= -GRACE_DAYS) return 'grace';
   return 'expired';
@@ -93,8 +97,13 @@ export interface ManualPaymentRequest {
   currentPlan: string;
   expiresAt: string | null;
   requestedPlan: string;
+  /** Tarif per bulan pada termin yang dipilih (sudah termasuk diskon). */
   amount: number;
   outletCount: number;
+  /** Termin yang dibeli; operator memakainya untuk menentukan masa aktif. */
+  term: BillingTerm;
+  /** Total yang benar-benar ditransfer di muka. */
+  total: number;
 }
 
 /**
@@ -112,11 +121,15 @@ export function manualPaymentWhatsAppLink(request: ManualPaymentRequest): string
         timeZone: 'Asia/Jakarta',
       })
     : 'belum ditentukan';
-  const amount = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(request.amount);
+  const rupiah = (value: number) =>
+    new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(value);
+  const amount = rupiah(request.amount);
+  const total = rupiah(request.total);
+  const term = BILLING_TERMS[request.term];
 
   return waLink(
     request.supportPhone,
@@ -128,8 +141,10 @@ export function manualPaymentWhatsAppLink(request: ManualPaymentRequest): string
       `Paket saat ini: ${request.currentPlan}`,
       `Aktif sampai: ${expiry}`,
       `Paket pilihan: ${request.requestedPlan}`,
+      `Termin: ${term.label} (${term.months} bulan di muka)`,
       `Jumlah outlet: ${request.outletCount}`,
-      `Nominal: ${amount} / bulan`,
+      `Tarif: ${amount} / bulan`,
+      `Total transfer: ${total}`,
       '',
       'Mohon kirim instruksi pembayaran. Setelah transfer, saya akan mengirim bukti bayar di chat ini.',
     ].join('\n'),

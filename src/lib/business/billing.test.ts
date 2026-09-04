@@ -96,23 +96,41 @@ describe('isOrgActive', () => {
 });
 
 describe('manualPaymentWhatsAppLink', () => {
+  const request = (over = {}) => ({
+    supportPhone: '0899-5318-638',
+    orgId: 'org-123',
+    orgName: 'Nuara Service',
+    currentPlan: 'Trial',
+    expiresAt: '2026-09-01T00:00:00.000Z',
+    requestedPlan: 'Pro',
+    amount: 199_000,
+    outletCount: 3,
+    term: 'monthly' as const,
+    total: 199_000,
+    ...over,
+  });
+
   it('encodes a traceable payment request without changing billing state', () => {
-    const link = manualPaymentWhatsAppLink({
-      supportPhone: '0899-5318-638',
-      orgId: 'org-123',
-      orgName: 'Nuara Service',
-      currentPlan: 'Trial',
-      expiresAt: '2026-09-01T00:00:00.000Z',
-      requestedPlan: 'Pro',
-      amount: 199_000,
-      outletCount: 3,
-    });
+    const link = manualPaymentWhatsAppLink(request());
 
     expect(link).toMatch(/^https:\/\/wa\.me\/628995318638\?text=/);
     const message = decodeURIComponent(link.split('?text=')[1]);
     expect(message).toContain('ID organisasi: org-123');
     expect(message).toContain('Paket pilihan: Pro');
-    expect(message).toContain('Nominal: Rp\u00a0199.000 / bulan');
+    expect(message).toContain('Tarif: Rp\u00a0199.000 / bulan');
     expect(message).toContain('bukti bayar');
+  });
+
+  // Operator memakai pesan ini untuk menentukan sampai kapan masa aktif
+  // diperpanjang. Tanpa termin dan total, perpanjangan tahunan gampang
+  // dicatat sebagai satu bulan.
+  it('menyebut termin dan total transfer, bukan hanya tarif bulanan', () => {
+    const link = manualPaymentWhatsAppLink(
+      request({ term: 'annual' as const, amount: 159_000, total: 1_908_000 }),
+    );
+    const message = decodeURIComponent(link.split('?text=')[1]);
+    expect(message).toContain('Termin: 12 bulan (12 bulan di muka)');
+    expect(message).toContain('Tarif: Rp\u00a0159.000 / bulan');
+    expect(message).toContain('Total transfer: Rp\u00a01.908.000');
   });
 });

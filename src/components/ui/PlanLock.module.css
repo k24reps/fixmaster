@@ -1,0 +1,46 @@
+/* Sama persis dengan gestur kanal terkunci di Sidebar: pil mono + LED merek,
+   bukan gembok. Nilainya sengaja tidak dibagi lewat token karena hanya dua
+   tempat yang memakainya, dan menyamakannya lewat token baru akan mengunci
+   dua komponen yang kebetulan mirip. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  border: 1px solid var(--border-brand);
+  color: var(--brand-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.led {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background: var(--brand);
+  box-shadow: 0 0 6px var(--brand);
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.link {
+  color: var(--brand-text);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.link:hover {
+  text-decoration: underline;
+}

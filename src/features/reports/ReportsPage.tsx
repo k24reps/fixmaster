@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button } from '@/components/ui';
+import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { fmtRp, fmtPercent } from '@/lib/format';
@@ -106,8 +107,14 @@ export function ReportsPage() {
   const maxOutletNet = Math.max(1, ...outletStats.map((o) => Math.abs(o.net)));
   const receivablesTotal = receivables.reduce((s, r) => s + r.outstanding, 0);
 
+  // Ekspor CSV = portabilitas data, fitur Pro (lihat plans.ts). Jalur kedua
+  // di luar kartu Export Data di Pengaturan; keduanya harus dikunci, kalau
+  // tidak gerbangnya cuma menggeser pintu.
+  const canExport = useFeature('exportImport');
+
   // Export the period's transactions (income + expense) as one CSV, newest first.
   const exportCsv = () => {
+    if (!canExport) return;
     if (txnRows.length === 0) {
       toast.error('Tidak ada transaksi pada periode ini');
       return;
@@ -138,14 +145,16 @@ export function ReportsPage() {
             <span className={styles.scopeTag} title="Cakupan laporan">
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
-            <Button
-              variant="secondary"
-              onClick={exportCsv}
-              iconLeft={<Icon name="download" aria-hidden />}
-              className={styles.exportBtn}
-            >
-              Ekspor CSV
-            </Button>
+            {canExport && (
+              <Button
+                variant="secondary"
+                onClick={exportCsv}
+                iconLeft={<Icon name="download" aria-hidden />}
+                className={styles.exportBtn}
+              >
+                Ekspor CSV
+              </Button>
+            )}
           </div>
         </CardBody>
       </Card>
