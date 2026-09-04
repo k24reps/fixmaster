@@ -43,9 +43,13 @@ describe('LandingPageV2 auth intent', () => {
 
     const proPlate = screen.getByRole('heading', { name: 'Pro' }).closest('article');
     expect(proPlate).not.toBeNull();
+    // Label CTA menyebut paketnya. Sebelumnya kedua tombol berbunyi identik,
+    // sehingga tes ini pun harus mencari lewat pelat induknya untuk tahu mana
+    // yang diklik — ambiguitas yang sama yang dihadapi pengunjung.
     fireEvent.click(
-      within(proPlate as HTMLElement).getByRole('button', { name: 'Mulai uji coba 14 hari' }),
+      within(proPlate as HTMLElement).getByRole('button', { name: 'Mulai uji coba Pro' }),
     );
+    expect(screen.getByRole('button', { name: 'Mulai uji coba Solo' })).toBeInTheDocument();
 
     expect(onStart).toHaveBeenCalledWith({
       mode: 'signup',
