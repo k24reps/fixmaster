@@ -197,6 +197,8 @@ export interface TrackServiceResult {
   orgPhone: string;
   orgAddress: string;
   orgLogoUrl: string | null;
+  /** Owner-written note shown on the public tracking page (settings.publicNote). */
+  orgNote: string;
   /** Warranty validity for a finished job (date strings, or null if unset). */
   warrantyServiceUntil: string | null;
   warrantyPartsUntil: string | null;
@@ -236,6 +238,7 @@ export async function trackService(
     orgPhone: row.org_phone ?? '',
     orgAddress: row.org_address ?? '',
     orgLogoUrl: row.org_logo_url ?? null,
+    orgNote: (row.org_public_note ?? '') as string,
     warrantyServiceUntil: row.warranty_service_until ?? null,
     warrantyPartsUntil: row.warranty_parts_until ?? null,
     pickedUp: row.picked_up ?? false,

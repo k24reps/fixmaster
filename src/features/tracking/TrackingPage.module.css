@@ -11,33 +11,13 @@
 
 .container {
   width: 100%;
-  max-width: 760px;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.kicker {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.12em;
-  color: var(--text-secondary);
-}
-.kicker > span:last-child {
-  margin-left: auto;
-  color: var(--text-muted);
-}
-.liveLed {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
+/* ---------- Kop: identitas toko ---------- */
 
 .header {
   display: flex;
@@ -45,14 +25,28 @@
   gap: var(--space-4);
   padding: var(--space-5);
   border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--brand);
   border-radius: var(--radius-lg);
   background: var(--surface-glass-strong);
   box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+/* Diagnostic spine sesuai spesifikasi: 3px, disisipkan dari atas dan bawah,
+   membulat hanya di ujung luarnya. Sebelumnya ini `border-left` setinggi
+   penuh — lebar yang sama, tapi bukan bentuk yang sama. */
+.header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--gradient-brand);
 }
 .logoMark {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: var(--radius-md);
   background: var(--gradient-brand);
   display: flex;
@@ -62,64 +56,82 @@
   font-size: 1.5rem;
   box-shadow: var(--shadow-brand);
   flex: 0 0 auto;
+  overflow: hidden;
+}
+/* Logo toko sungguhan mengganti seluruh ubin, termasuk latar amber-nya —
+   kalau tidak, logo bertema gelap tenggelam di atas gradien merek. */
+.logoMark:has(.logoImg) {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+.logoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .headerText {
   min-width: 0;
 }
 .title {
   font-size: var(--text-2xl);
+  text-wrap: balance;
 }
 .subtitle {
   color: var(--text-secondary);
   font-size: var(--text-base);
 }
 
+/* ---------- Pencarian ---------- */
+
+/* Kotak pencarian adalah kanal masukan, bukan pembacaan instrumen: ia memakai
+   perlakuan kartu + input dari sistem, bukan palet readout. Instrument well
+   satu-satunya di halaman ini dipakai oleh status — lihat .statusWell. */
+.searchPanel {
+  padding: var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.searchLabel {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 .searchBox {
   display: flex;
   gap: var(--space-2);
 }
-.searchPanel {
-  padding: var(--space-5);
-  background: var(--readout-base);
-  color: var(--readout-text);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.searchLabel {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--readout-muted);
-}
-.searchLabel span:last-child {
-  color: var(--accent-400);
-}
 .input {
   flex: 1;
   min-width: 0;
-  min-height: 52px;
+  min-height: var(--control-h);
   padding: 12px 16px;
-  background: var(--readout-surface);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: var(--radius-sm);
-  color: var(--readout-text);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: var(--text-md);
   text-transform: uppercase;
 }
+.input::placeholder {
+  color: var(--text-muted);
+  text-transform: none;
+}
 .input:focus {
   outline: none;
+  background: var(--bg-surface);
   border-color: var(--brand);
   box-shadow: var(--ring);
 }
 .searchBtn {
-  min-height: 52px;
+  min-height: var(--control-h);
   padding: 0 24px;
   display: inline-flex;
   align-items: center;
@@ -131,69 +143,78 @@
   font-weight: var(--fw-semibold);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-brand);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out);
+}
+.searchBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.searchBtn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+.searchBtn:disabled {
+  opacity: 0.55;
+  pointer-events: none;
 }
 .searchHint {
   margin-top: var(--space-3);
   font-size: var(--text-xs);
-  color: var(--readout-muted);
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 52ch;
 }
 
-.guide {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-.guideItem {
-  display: flex;
-  gap: var(--space-3);
-  min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-glass);
-}
-.guideItem > svg {
-  flex: 0 0 auto;
-  color: var(--brand);
-  font-size: 1.15rem;
-}
-.guideItem > span {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px var(--space-2);
-  min-width: 0;
-}
-.guideItem b {
-  grid-row: 1 / 3;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-}
-.guideItem strong {
+/* Pengganti panel pencarian setelah hasil ketemu: cukup satu tautan, supaya
+   status tidak terdorong ke bawah lipatan di layar ponsel. */
+.searchToggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--space-2) 0 0;
   font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
-.guideItem small {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+.searchToggle:hover {
+  color: var(--brand);
 }
-.searchBtn:disabled {
-  opacity: 0.6;
-}
+
+/* ---------- Galat & tidak ditemukan ---------- */
 
 .notFound {
   text-align: center;
-  padding: var(--space-8);
+  padding: var(--space-8) var(--space-5);
   color: var(--text-muted);
-  background: var(--surface-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
-.notFound i {
-  font-size: 2rem;
+.notFound > svg {
+  font-size: 1.75rem;
   margin-bottom: var(--space-3);
-  display: block;
+  color: var(--text-muted);
+}
+.notFoundNo {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  /* Kotak isian menampilkan nomor dalam huruf besar; gemanya di pesan galat
+     harus cocok, kalau tidak pelanggan mengira nomornya berubah. Pencarian
+     sendiri memang tidak peka huruf besar-kecil. */
+  text-transform: uppercase;
+}
+.notFoundHint {
+  margin: var(--space-2) auto 0;
+  max-width: 46ch;
+  font-size: var(--text-xs);
+  line-height: 1.6;
 }
 
+/* ---------- Hasil ---------- */
+
 .result {
+  position: relative;
   background: var(--surface-glass);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -201,31 +222,118 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
   animation: fm-slide-up var(--dur-normal) var(--ease-out);
 }
+/* Tanpa spine di kartu ini, dan itu disengaja: kartu hasil bisa setinggi
+   1500px, dan batang 3px sepanjang itu berhenti mengklasifikasi lalu jadi
+   rel hias. Status sudah dibawa LED di instrument well dan titik berwarna
+   di timeline — dua sinyal yang dibaca di tempat datanya berada. */
 .resultHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
   padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-4);
+  border-bottom: 1px dotted var(--border-strong);
+  margin-bottom: var(--space-5);
 }
 .resultNo {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
-  color: var(--brand-hover);
+  letter-spacing: 0.07em;
+  color: var(--brand-text);
 }
 .resultHead h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   margin-top: 2px;
+  text-wrap: balance;
 }
 .deviceMeta {
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* ---------- Instrument well: status ---------- */
+
+.statusWell {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--readout-text) 3%, transparent) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(120% 140% at 20% 0%, var(--readout-surface), var(--readout-base));
+  border: 1px solid var(--border-strong);
+}
+.wellLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--readout-muted);
+}
+.statusReadout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--readout-text);
+}
+.led {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  box-shadow: 0 0 9px var(--brand);
+}
+.led[data-tone='success'] { background: var(--success); box-shadow: 0 0 9px var(--success); }
+.led[data-tone='warning'] { background: var(--warning); box-shadow: 0 0 9px var(--warning); }
+.led[data-tone='danger'] { background: var(--danger); box-shadow: 0 0 9px var(--danger); }
+.led[data-tone='info'] { background: var(--info); box-shadow: 0 0 9px var(--info); }
+.lastUpdate {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--readout-muted);
+}
+/* "Lalu saya harus apa?" — satu kalimat yang berubah mengikuti status. */
+.nextStep {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dotted color-mix(in srgb, var(--readout-muted) 45%, transparent);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--readout-muted);
+}
+.nextStep > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  font-size: 1.05rem;
+  color: var(--readout-muted);
+}
+/* Menuntut pelanggan bergerak → naikkan ke teks penuh + ikon amber. */
+.nextStep[data-tone='action'] {
+  color: var(--readout-text);
+}
+.nextStep[data-tone='action'] > svg {
+  color: var(--brand);
+}
+.nextStep[data-tone='done'] > svg {
+  color: var(--success);
+}
+
+/* ---------- Riwayat ---------- */
 
 .timeline {
   display: flex;
@@ -255,10 +363,16 @@
 .timelineItem small {
   display: block;
   font-size: var(--text-xs);
+  line-height: 1.55;
   color: var(--text-muted);
 }
+/* Waktu adalah angka yang dibandingkan antar baris — mono, tabular. */
+.stamp {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
 .current strong {
-  color: var(--brand-hover);
+  color: var(--brand-text);
 }
 .dot {
   position: absolute;
@@ -276,6 +390,68 @@
 .dot[data-tone='success'] { background: var(--success); }
 .dot[data-tone='danger'] { background: var(--danger); }
 
+/* ---------- Blok bawah ---------- */
+
+.blockLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+.warranty,
+.contact,
+.shopNote {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px dotted var(--border-strong);
+}
+.warrantyRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.warrantyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.warrantyRow strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin: 0;
+}
+a.contactRow:hover {
+  color: var(--brand);
+}
+/* Teks milik pemilik toko: newline-nya dipertahankan, karena ia mengetik
+   jam operasional dan syarat garansi sebagai baris-baris terpisah. */
+.shopNoteBody {
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+
 .footer {
   text-align: center;
   font-size: var(--text-xs);
@@ -289,10 +465,11 @@
   }
   .header {
     align-items: flex-start;
+    padding: var(--space-4);
   }
   .logoMark {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
   }
   .title {
     font-size: var(--text-xl);
@@ -303,57 +480,13 @@
   .searchBtn {
     width: 100%;
   }
-  .guide {
-    grid-template-columns: 1fr;
+  .result {
+    padding: var(--space-4);
   }
-  .resultHead {
-    flex-direction: column;
+  .statusWell {
+    padding: var(--space-4);
   }
-}
-
-/* Warranty + store contact blocks (shown under the timeline). */
-.blockLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-mono, monospace);
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-3);
-}
-.warranty,
-.contact {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px dotted var(--border-strong);
-}
-.warrantyRows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.warrantyRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-.warrantyRow strong {
-  font-family: var(--font-mono, monospace);
-  color: var(--text-primary);
-}
-.contactRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  text-decoration: none;
-  margin: 0 0 var(--space-2);
-}
-a.contactRow:hover {
-  color: var(--brand);
+  .statusReadout {
+    font-size: var(--text-lg);
+  }
 }

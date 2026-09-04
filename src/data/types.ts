@@ -70,6 +70,14 @@ export interface Organization {
 export interface OrgSettings {
   /** Device categories offered in the "new service" dropdown. */
   deviceCategories?: string[];
+  /**
+   * Catatan bebas milik toko, tampil di nota cetak dan halaman lacak publik.
+   * Ini satu-satunya teks di kedua permukaan itu yang ditulis pemiliknya
+   * sendiri — jam operasional, syarat garansi, ketentuan pengambilan — jadi
+   * dokumen yang dipegang pelanggan terasa milik toko itu, bukan cetakan
+   * generik. Kosong berarti bloknya tidak dirender sama sekali.
+   */
+  publicNote?: string;
   /** Owner-defined paths for the four primary slots in mobile navigation. */
   mobileNavigation?: string[];
 }

@@ -90,6 +90,26 @@ export async function setMobileNavigation(paths: string[]): Promise<void> {
   useSessionStore.setState({ org: saved });
 }
 
+/** Batas catatan publik toko: cukup untuk jam buka + syarat garansi, tapi
+ *  masih muat di nota termal 58mm tanpa menghabiskan gulungan kertas. */
+export const PUBLIC_NOTE_MAX = 280;
+
+/** Catatan bebas toko yang tampil di nota cetak dan halaman lacak publik. */
+export function getPublicNote(): string {
+  return (useSessionStore.getState().org?.settings?.publicNote ?? '').trim();
+}
+
+/** Simpan catatan publik ke baris organisasi (ikut tersinkron antar perangkat). */
+export async function setPublicNote(note: string): Promise<void> {
+  const org = useSessionStore.getState().org;
+  if (!org) return;
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), publicNote: note.trim().slice(0, PUBLIC_NOTE_MAX) },
+  });
+  useSessionStore.setState({ org: saved });
+}
+
 /**
  * One-time migration helper: if the org has no cloud categories yet but this
  * device has a legacy localStorage list, copy it to the cloud. No-op when the
