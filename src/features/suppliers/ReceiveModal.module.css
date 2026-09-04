@@ -46,14 +46,17 @@
   font-size: var(--text-sm);
 }
 
-/* Finance block: received value readout + optional cash-payment controls. */
+/* Blok keuangan: nilai barang diterima + kontrol pembayaran tunai opsional.
+   Spine brand dilepas — blok ini tidak mengklasifikasi apa pun, dan amber-nya
+   bersaing dengan tombol terapkan di modal yang sama. Tepi 1px + langkah
+   permukaan sudah cukup memisahkannya, persis anjuran DESIGN.md:264 untuk
+   panel yang sekadar perlu terasa penting. */
 .finance {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
   border-radius: var(--radius-sm);
   background: var(--bg-surface-2);
 }

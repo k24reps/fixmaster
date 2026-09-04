@@ -109,10 +109,14 @@
   box-shadow: 0 0 9px var(--accent);
 }
 
+/* Garis pemisah netral, bukan spine. Spine (DESIGN.md:256) memakai warna
+   sinyal untuk MENGKLASIFIKASI baris atau kartu; blok ini cuma teks pendamping
+   maskot dan tidak mengklasifikasi apa pun. Brand di sini hanya bersaing
+   dengan tombol masuk — amber kedua di layar yang sama. */
 .voltCopy {
   min-width: 0;
   padding-left: var(--space-4);
-  border-left: 2px solid var(--brand);
+  border-left: 2px solid var(--border-strong);
 }
 
 .voltCopy > span,
@@ -268,7 +272,9 @@
   margin-bottom: var(--space-5);
   padding: 7px var(--space-3) 7px 8px;
   background: var(--bg-app);
-  border-left: 2px solid var(--brand);
+  /* Sekarang seragam dengan tepi atas & bawahnya sendiri, yang memang sudah
+     memakai --border-strong. Versi lamanya amber di satu sisi saja. */
+  border-left: 2px solid var(--border-strong);
   border-top: 1px dotted var(--border-strong);
   border-bottom: 1px dotted var(--border-strong);
 }

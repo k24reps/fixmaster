@@ -55,8 +55,12 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
+  /* Tiga kotak ringkasan berjajar, dulu ketiganya memakai spine brand yang
+     sama persis. Spine yang tidak pernah berubah warna tidak mengklasifikasi
+     apa pun — dan tiga amber sekaligus membuat tidak satu pun terbaca sebagai
+     jawaban (One Amber Rule). Kotaknya sudah punya tepi 1px + permukaan kaca;
+     spine-nya murni hiasan, jadi dilepas. */
   border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
   border-radius: var(--radius-sm);
   background: var(--surface-glass);
 }

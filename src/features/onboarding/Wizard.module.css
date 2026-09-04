@@ -21,11 +21,14 @@
   animation: fm-fade-in var(--dur-slow) var(--ease-out);
 }
 
+/* Judul halaman, bukan kartu atau baris — jadi bukan tempat spine. Amber di
+   sini bersaing dengan tombol lanjut, yang justru satu-satunya aksi di layar
+   onboarding (One Amber Rule, DESIGN.md:187). */
 .header {
   text-align: left;
   margin-bottom: var(--space-6);
   padding-left: var(--space-4);
-  border-left: 3px solid var(--brand);
+  border-left: 3px solid var(--border-strong);
 }
 .logo {
   display: inline-flex;

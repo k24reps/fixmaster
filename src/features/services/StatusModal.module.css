@@ -124,13 +124,16 @@
   border-radius: var(--radius-sm);
 }
 
-/* Contextual note for staff who can only take a DP (settlement is manager-only).
-   Bench motif: a brand "status spine" on the left edge + soft brand wash. */
+/* Catatan untuk staf yang hanya boleh menerima DP (pelunasan manager-only).
+   Dulu memakai spine brand DAN wash brand sekaligus — persis yang dilarang
+   Spine-Not-Fill (DESIGN.md:262): klasifikasi dibawa spine, bukan dengan
+   membanjiri permukaan. Dua sinyal amber untuk satu blok yang, lagi pula,
+   tidak mengklasifikasi apa-apa — ini catatan, bukan baris berstatus.
+   Wash-nya yang bertahan; --brand-soft memang permukaan yang sah. */
 .staffNote {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   background: var(--brand-soft);
-  border-left: 3px solid var(--brand);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
 }
