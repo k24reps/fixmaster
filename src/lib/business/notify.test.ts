@@ -11,6 +11,18 @@ import {
 } from './notify';
 import type { Service, Organization } from '@/data/types';
 
+/** Minimal Service builder — hanya field yang diuji yang perlu di-override. */
+const svc = (over: Partial<Service>): Service => ({
+  id: 's1', orgId: 'o1', outletId: null, serviceNo: 'FM-1', customerId: 'c1',
+  customerName: 'Andi', customerPhone: '08', category: 'Laptop', device: 'X',
+  complaint: '', accessories: '', status: 'selesai', technicianId: null, technicianName: '',
+  estimateCost: 0, finalCost: 0, downPayment: 0,
+  spareparts: [], warrantyServiceUntil: null, warrantyPartsUntil: null, pickedUp: false,
+  pickedUpAt: null, warrantyClaimOf: null, history: [], archived: false,
+  createdAt: '', updatedAt: '', deletedAt: null,
+  ...over,
+});
+
 describe('toWaNumber', () => {
   it('converts leading 0 to 62', () => {
     expect(toWaNumber('081234567890')).toBe('6281234567890');
@@ -61,20 +73,20 @@ describe('DEFAULT_WA_TEMPLATES', () => {
 });
 
 describe('serviceReceiptLines', () => {
-  const svc = (over: Partial<Service>): Service => ({
-    id: 's1', orgId: 'o1', outletId: null, serviceNo: 'FM-1', customerId: 'c1',
-    customerName: 'Andi', customerPhone: '08', category: 'Laptop', device: 'X',
-    complaint: '', accessories: '', status: 'selesai', technicianId: null, technicianName: '',
-    estimateCost: over.estimateCost ?? 0, finalCost: over.finalCost ?? 0, downPayment: over.downPayment ?? 0,
-    spareparts: [], warrantyServiceUntil: null, warrantyPartsUntil: null, pickedUp: false, pickedUpAt: null, warrantyClaimOf: null, history: [], archived: false,
-    createdAt: '', updatedAt: '', deletedAt: null,
-  });
   it('includes core fields', () => {
     const lines = serviceReceiptLines(svc({}));
     const labels = lines.map((l) => l.label);
     expect(labels).toContain('No. Servis');
     expect(labels).toContain('Perangkat');
   });
+  // Regresi: nota pernah mencetak timestamp ISO mentah ke tangan pelanggan.
+  it('memformat tanggal masuk, bukan mencetak timestamp mentah', () => {
+    const lines = serviceReceiptLines(svc({ createdAt: '2026-09-02T09:12:00.000Z' }));
+    const tanggal = lines.find((l) => l.label === 'Tanggal');
+    expect(tanggal?.value).not.toMatch(/Tdd:/);
+    expect(tanggal?.value).toMatch(/Sep 2026$/);
+  });
+
   it('adds DP + remaining when DP present', () => {
     const lines = serviceReceiptLines(svc({ finalCost: 500000, downPayment: 200000 }));
     const remaining = lines.find((l) => l.label === 'Sisa');
@@ -83,19 +95,72 @@ describe('serviceReceiptLines', () => {
 });
 
 describe('serviceVars', () => {
-  const svc = (over: Partial<Service>): Service => ({
-    id: 's1', orgId: 'o1', outletId: null, serviceNo: 'FM-1', customerId: 'c1',
-    customerName: 'Andi', customerPhone: '08', category: 'Laptop', device: 'X',
-    complaint: '', accessories: '', status: 'selesai', technicianId: null, technicianName: '',
-    estimateCost: over.estimateCost ?? 0, finalCost: over.finalCost ?? 0, downPayment: over.downPayment ?? 0,
-    spareparts: [], warrantyServiceUntil: null, warrantyPartsUntil: null, pickedUp: false, pickedUpAt: null, warrantyClaimOf: null, history: [], archived: false,
-    createdAt: '', updatedAt: '', deletedAt: null,
-  });
   const org = { name: 'Toko Servis' } as Organization;
 
   it('{biaya} maps to finalCost, {estimasi} to estimateCost (not swapped)', () => {
     const vars = serviceVars(svc({ finalCost: 500000, estimateCost: 300000 }), org);
     expect(vars.biaya).toContain('500.000');
     expect(vars.estimasi).toContain('300.000');
+  });
+});
+describe('serviceVars — baris opsional', () => {
+  const org = { name: 'Toko Servis', address: 'Jl. Merdeka 12' } as Organization;
+
+  it('tanpa DP hanya menulis satu baris total', () => {
+    const v = serviceVars(svc({ finalCost: 1500000 }), org);
+    expect(v.rincian_bayar).toBe('Total biaya: *Rp 1.500.000*');
+  });
+
+  // Cacat aslinya: pesan "selesai" menyebut TOTAL, jadi pelanggan yang sudah
+  // bayar DP datang membawa uang yang salah.
+  it('dengan DP menebalkan sisa, bukan total', () => {
+    const v = serviceVars(svc({ finalCost: 1500000, downPayment: 500000 }), org);
+    expect(v.rincian_bayar).toContain('Sudah dibayar (DP): Rp 500.000');
+    expect(v.rincian_bayar).toContain('*Sisa dibayar saat pengambilan: Rp 1.000.000*');
+  });
+
+  // Tiket belum ditutup: biaya akhir masih 0, tapi DP sudah masuk.
+  it('tanpa biaya akhir hanya menyebut DP yang sudah masuk', () => {
+    const v = serviceVars(svc({ finalCost: 0, downPayment: 200000 }), org);
+    expect(v.rincian_bayar).toBe('Sudah dibayar (DP): *Rp 200.000*');
+  });
+
+  it('sisa tidak pernah negatif walau DP melebihi total', () => {
+    const v = serviceVars(svc({ finalCost: 100000, downPayment: 300000 }), org);
+    expect(v.rincian_bayar).toContain('Rp 0');
+    expect(v.rincian_bayar).not.toContain('-');
+  });
+
+  it('baris opsional kosong total ketika datanya tidak ada', () => {
+    const v = serviceVars(svc({}), { name: 'Toko Servis' } as Organization);
+    expect(v.keluhan).toBe('');
+    expect(v.kelengkapan).toBe('');
+    expect(v.alamat).toBe('');
+    expect(v.garansi).toBe('');
+  });
+
+  it('baris opsional membawa newline sendiri ketika terisi', () => {
+    const v = serviceVars(svc({ complaint: 'Layar mati', accessories: 'Charger' }), org);
+    expect(v.keluhan).toBe('\nKeluhan: Layar mati');
+    expect(v.kelengkapan).toBe('\nKelengkapan: Charger');
+    expect(v.alamat).toBe('\nAlamat: Jl. Merdeka 12');
+  });
+
+  it('garansi memformat kedua tanggal, termasuk saat cloud mengirim timestamp', () => {
+    const v = serviceVars(
+      svc({ warrantyServiceUntil: '2026-10-02', warrantyPartsUntil: '2026-12-02T00:00:00Z' }),
+      org,
+    );
+    expect(v.garansi).toContain('Garansi jasa s/d *2 Okt 2026*');
+    expect(v.garansi).toContain('Garansi sparepart s/d *2 Des 2026*');
+  });
+
+  // Rendering nyata: tidak boleh ada baris kosong beruntun dari variabel
+  // yang menghilang, dan tidak boleh ada placeholder tersisa.
+  it('template selesai merender rapi tanpa data opsional', () => {
+    const v = { ...serviceVars(svc({ finalCost: 90000 }), { name: 'Toko' } as Organization), tautan: 'x' };
+    const out = interpolate(DEFAULT_WA_TEMPLATES.selesai, v);
+    expect(out).not.toMatch(/\{\w+\}/);
+    expect(out).not.toMatch(/\n\n\n/);
   });
 });
