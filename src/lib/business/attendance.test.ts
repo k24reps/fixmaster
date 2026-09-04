@@ -3,7 +3,8 @@ import {
   distanceMeters,
   hasGeofence,
   checkWithinGeofence,
-  monthlyHoursByEmployee,
+  hoursByEmployee,
+  withinRange,
   isWorkedDay,
 } from './attendance';
 import type { Outlet } from '@/data/types';
@@ -72,8 +73,8 @@ describe('isWorkedDay', () => {
   });
 });
 
-describe('monthlyHoursByEmployee', () => {
-  const rows: Parameters<typeof monthlyHoursByEmployee>[0] = [
+describe('hoursByEmployee', () => {
+  const rows: Parameters<typeof hoursByEmployee>[0] = [
     { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-01', status: 'hadir', checkIn: '08:00', totalHours: 8 },
     { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-02', status: 'hadir', checkIn: '08:00', totalHours: 7.5 },
     { employeeId: 'e1', employeeName: 'Budi', date: '2026-08-03', status: 'hadir', checkIn: '08:00', totalHours: 0 }, // shift terbuka
@@ -82,8 +83,8 @@ describe('monthlyHoursByEmployee', () => {
     { employeeId: 'e3', employeeName: 'Cici', date: '2026-08-04', status: 'izin', checkIn: null, totalHours: 0 },
   ];
 
-  it('sums hours per employee within the month only', () => {
-    const res = monthlyHoursByEmployee(rows, '2026-08');
+  it('sums hours per employee within the range only', () => {
+    const res = hoursByEmployee(rows, '2026-08-01', '2026-08-31');
     expect(res.map((r) => [r.employeeName, r.totalHours, r.days])).toEqual([
       ['Budi', 15.5, 3],
       ['Ani', 6, 1],
@@ -92,7 +93,7 @@ describe('monthlyHoursByEmployee', () => {
   });
 
   it('counts absences separately instead of folding them into work days', () => {
-    const res = monthlyHoursByEmployee(rows, '2026-08');
+    const res = hoursByEmployee(rows, '2026-08-01', '2026-08-31');
     const cici = res.find((r) => r.employeeName === 'Cici')!;
     expect([cici.days, cici.izin, cici.sakit, cici.alpha]).toEqual([0, 1, 0, 0]);
   });
@@ -101,17 +102,59 @@ describe('monthlyHoursByEmployee', () => {
     // Bug yang diperbaiki: rekap dulu memakai `if (r.checkIn)` saja, jadi baris
     // izin dengan jam sisa terhitung sebagai hari hadir — dan jamnya ikut
     // dijumlahkan. Angka rekapnya condong ke arah yang menguntungkan karyawan.
-    const res = monthlyHoursByEmployee(
+    const res = hoursByEmployee(
       [
         { employeeId: 'e9', employeeName: 'Dedi', date: '2026-08-05', status: 'izin', checkIn: '08:00', totalHours: 8 },
       ],
-      '2026-08',
+      '2026-08-01',
+      '2026-08-31',
     );
     expect([res[0].days, res[0].totalHours, res[0].izin]).toEqual([0, 0, 1]);
   });
 
-  it('returns nothing for a month with no rows', () => {
-    expect(monthlyHoursByEmployee(rows, '2026-01')).toEqual([]);
+  it('includes both endpoints', () => {
+    // Periode gaji 26–25 mengandalkan ini: kalau salah satu ujung terpotong,
+    // sehari upah hilang setiap bulan tanpa ada yang menyadarinya.
+    const res = hoursByEmployee(rows, '2026-08-01', '2026-08-01');
+    expect(res.map((r) => [r.employeeName, r.totalHours])).toEqual([
+      ['Budi', 8],
+      ['Ani', 6],
+    ]);
+  });
+
+  it('spans a month boundary — a payroll period is not a calendar month', () => {
+    // 31 Juli sampai 2 Agustus: Ani punya baris di kedua sisi batas bulan.
+    const res = hoursByEmployee(rows, '2026-07-31', '2026-08-02');
+    const ani = res.find((r) => r.employeeName === 'Ani')!;
+    expect([ani.days, ani.totalHours]).toEqual([2, 15]);
+  });
+
+  it('returns nothing for a range with no rows', () => {
+    expect(hoursByEmployee(rows, '2026-01-01', '2026-01-31')).toEqual([]);
+  });
+
+  it('returns nothing when the range is reversed', () => {
+    // Diam-diam menukar tanggalnya akan menghitung periode yang TIDAK diminta
+    // pemilik. Tabel kosong lebih jujur daripada angka gaji yang salah diam.
+    expect(hoursByEmployee(rows, '2026-08-31', '2026-08-01')).toEqual([]);
+  });
+});
+
+describe('withinRange', () => {
+  it('is inclusive on both ends', () => {
+    expect(withinRange('2026-08-01', '2026-08-01', '2026-08-31')).toBe(true);
+    expect(withinRange('2026-08-31', '2026-08-01', '2026-08-31')).toBe(true);
+  });
+
+  it('excludes the days just outside', () => {
+    expect(withinRange('2026-07-31', '2026-08-01', '2026-08-31')).toBe(false);
+    expect(withinRange('2026-09-01', '2026-08-01', '2026-08-31')).toBe(false);
+  });
+
+  it('orders correctly across year and month boundaries', () => {
+    // Perbandingan string hanya benar karena formatnya ISO dengan nol di depan.
+    expect(withinRange('2026-01-05', '2025-12-26', '2026-01-25')).toBe(true);
+    expect(withinRange('2025-12-25', '2025-12-26', '2026-01-25')).toBe(false);
   });
 });
 

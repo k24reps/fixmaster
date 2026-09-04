@@ -8,7 +8,8 @@ import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
 import {
   hasGeofence,
-  monthlyHoursByEmployee,
+  hoursByEmployee,
+  withinRange,
   isWorkedDay,
   STATUS_LABEL,
   IMPLAUSIBLE_HOURS,
@@ -45,16 +46,19 @@ export function AttendancePage() {
   const [editBusy, setEditBusy] = useState(false);
   const [toDelete, setToDelete] = useState<Attendance | null>(null);
 
-  // Bulan yang sedang dilihat — mengendalikan REKAP sekaligus RIWAYAT.
-  // Sebelumnya riwayat dipotong 30 baris terakhir tanpa filter apa pun, yang
-  // untuk tim 5 orang hanya enam hari; tidak ada cara mengaudit bulan lalu.
-  const [month, setMonth] = useState(() => today.slice(0, 7));
-  // Rekap kini terbuka untuk manager, bukan owner saja: admin sudah boleh
+  // Periode yang sedang dilihat — mengendalikan REKAP sekaligus RIWAYAT.
+  // Rentang bebas, bukan bulan kalender: periode gaji toko jarang jatuh persis
+  // tanggal 1 sampai akhir bulan; 26–25 dan per-dua-minggu sama umumnya.
+  // Bawaannya bulan berjalan, karena itu yang paling sering dilihat.
+  const [from, setFrom] = useState(() => `${today.slice(0, 7)}-01`);
+  const [to, setTo] = useState(today);
+  const rangeValid = from <= to;
+  // Rekap terbuka untuk manager, bukan owner saja: admin sudah boleh
   // mengoreksi baris absensi, jadi menahan angka totalnya tidak melindungi
   // apa pun — hanya membuatnya mengoreksi tanpa bisa memeriksa hasilnya.
-  const monthly = useMemo(
-    () => (isMgr ? monthlyHoursByEmployee(attendance, month) : []),
-    [attendance, month, isMgr],
+  const recap = useMemo(
+    () => (isMgr ? hoursByEmployee(attendance, from, to) : []),
+    [attendance, from, to, isMgr],
   );
 
   // Outlet whose geofence applies to this check-in: the active branch if one is
@@ -238,13 +242,16 @@ export function AttendancePage() {
     // yang sedang jaga adalah informasi shift biasa. Yang sensitif adalah
     // polanya sebulan: siapa sering telat, siapa sering absen.
     const scoped = isMgr ? attendance : attendance.filter((a) => a.employeeId === me?.id);
-    // Difilter per bulan, bukan dipotong 30 baris terakhir. Potongan lama
+    // Difilter per periode, bukan dipotong 30 baris terakhir. Potongan lama
     // membuat tim 5 orang hanya punya enam hari riwayat, dan tidak ada cara
     // sama sekali melihat bulan lalu.
+    // Rentangnya SAMA dengan rekap di atas: satu kontrol, supaya baris yang
+    // dilihat selalu baris yang dihitung.
+    if (!rangeValid) return [];
     return scoped
-      .filter((a) => a.date?.startsWith(month))
+      .filter((a) => a.date && withinRange(a.date, from, to))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.checkIn ?? '').localeCompare(a.checkIn ?? ''));
-  }, [attendance, isMgr, me, month]);
+  }, [attendance, isMgr, me, from, to, rangeValid]);
 
   const checkIn = async () => {
     if (!me) return;
@@ -341,23 +348,69 @@ export function AttendancePage() {
     }
   };
 
-  // Satu pemilih bulan, dua kartu. Rekap dan riwayat harus selalu menunjukkan
-  // periode yang sama — dua pemilih terpisah adalah cara termudah membuat
-  // pemilik membandingkan angka Agustus dengan baris September.
-  const monthPicker = (
-    <label className={styles.monthPicker}>
-      <span>{fmtLocaleDate(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</span>
-      <Icon name="calendar" aria-hidden />
-      <input
-        type="month"
-        max={today.slice(0, 7)}
-        value={month}
-        onChange={(e) => setMonth(e.target.value)}
-        className={styles.monthInput}
-        aria-label="Bulan yang ditampilkan"
-      />
-    </label>
+  // Lompatan cepat ke periode yang paling sering diminta. Mengetik dua tanggal
+  // untuk "bulan lalu" setiap kali gajian adalah gesekan yang tidak perlu.
+  const setPreset = (preset: 'thisMonth' | 'lastMonth' | 'last7') => {
+    const d = new Date(`${today}T00:00:00`);
+    if (preset === 'last7') {
+      const start = new Date(d);
+      start.setDate(start.getDate() - 6);
+      setFrom(localDateStr(start));
+      setTo(today);
+      return;
+    }
+    // setMonth() di JS menangani pergantian tahun sendiri: Januari − 1 = Desember
+    // tahun sebelumnya. Menghitungnya manual dari string adalah cara klasik
+    // kehilangan bulan Desember.
+    const base = preset === 'lastMonth' ? new Date(d.getFullYear(), d.getMonth() - 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+    // Hari ke-0 bulan berikutnya = hari terakhir bulan ini, termasuk Februari.
+    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    setFrom(localDateStr(base));
+    setTo(preset === 'thisMonth' ? today : localDateStr(end));
+  };
+
+  // Satu kontrol periode, dua kartu. Rekap dan riwayat harus selalu menunjukkan
+  // rentang yang sama — dua pemilih terpisah adalah cara termudah membuat
+  // pemilik membandingkan total Agustus dengan baris September.
+  const periodPicker = (
+    <div className={styles.period}>
+      <div className={styles.periodDates}>
+        <input
+          type="date"
+          max={to}
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className={styles.dateInput}
+          aria-label="Tanggal mulai"
+        />
+        <span className={styles.periodSep} aria-hidden>
+          &ndash;
+        </span>
+        <input
+          type="date"
+          min={from}
+          max={today}
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className={styles.dateInput}
+          aria-label="Tanggal akhir"
+        />
+      </div>
+      <div className={styles.periodPresets}>
+        <button type="button" className={styles.presetBtn} onClick={() => setPreset('thisMonth')}>
+          Bulan ini
+        </button>
+        <button type="button" className={styles.presetBtn} onClick={() => setPreset('lastMonth')}>
+          Bulan lalu
+        </button>
+        <button type="button" className={styles.presetBtn} onClick={() => setPreset('last7')}>
+          7 hari
+        </button>
+      </div>
+    </div>
   );
+
+  const periodLabel = `${fmtLocaleDate(`${from}T00:00:00`, { day: 'numeric', month: 'short' })} – ${fmtLocaleDate(`${to}T00:00:00`, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   return (
     <div className={styles.wrap}>
@@ -467,16 +520,28 @@ export function AttendancePage() {
         </CardBody>
       </Card>
 
+      {/* Kontrol periode berdiri sendiri di atas kedua kartu yang dikendalikannya.
+          Menaruhnya di dalam salah satu header akan menyiratkan ia hanya
+          mengatur kartu itu. */}
+      <Card glass>
+        <CardBody className={styles.periodBody}>
+          <span className={styles.periodLabel}>
+            <Icon name="calendar" aria-hidden /> Periode
+          </span>
+          {periodPicker}
+        </CardBody>
+      </Card>
+
       {isMgr && (
         <Card glass>
           <CardHeader
             icon={<Icon name="clock" aria-hidden />}
             title="Total Jam Kerja per Karyawan"
-            action={monthPicker}
+            action={<span className={styles.periodTag}>{periodLabel}</span>}
           />
           <CardBody className={styles.noPad}>
-            {monthly.length === 0 ? (
-              <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi bulan ini" />
+            {recap.length === 0 ? (
+              <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi pada periode ini" />
             ) : (
               <div className={styles.ledger}>
                 <div className={styles.recapHead}>
@@ -487,7 +552,7 @@ export function AttendancePage() {
                   <span className={styles.hours}>Alpha</span>
                   <span className={styles.hours}>Total Jam</span>
                 </div>
-                {monthly.map((r) => (
+                {recap.map((r) => (
                   <div key={r.employeeId} className={styles.recapRow}>
                     <span className={styles.ledgerName}>{r.employeeName}</span>
                     <span className={styles.hours}>{r.days}</span>
@@ -509,11 +574,11 @@ export function AttendancePage() {
         <CardHeader
           icon={<Icon name="clock-rotate-left" aria-hidden />}
           title="Riwayat Absensi"
-          action={monthPicker}
+          action={<span className={styles.periodTag}>{periodLabel}</span>}
         />
         <CardBody className={styles.noPad}>
           {recentByDay.length === 0 ? (
-            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat bulan ini" />
+            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat pada periode ini" />
           ) : (
             <div className={styles.ledger}>
               <div className={[styles.ledgerHead, isMgr ? styles.withActions : ''].join(' ')}>

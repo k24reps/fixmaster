@@ -282,36 +282,88 @@
 
 
 /* ---------- Monthly recap (owner) ---------- */
-.monthPicker {
-  position: relative;
-  display: inline-flex;
+/* ---------- Pemilih periode ---------- */
+.periodBody {
+  display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-3);
-  min-width: 170px;
+}
+.periodLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.periodLabel > svg {
+  color: var(--brand);
+}
+.period {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.periodDates {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.periodSep {
+  color: var(--text-muted);
+}
+/* Input tanggal native. Tidak disembunyikan di balik lapisan transparan
+   seperti pemilih bulan sebelumnya — dua tanggal harus bisa dibaca sekaligus,
+   dan nilai yang terlihat itulah yang membuat periode gaji bisa diperiksa. */
+.dateInput {
   min-height: var(--control-h);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  padding: 6px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   background: var(--bg-surface-2);
   color: var(--text-primary);
+  color-scheme: dark;
 }
-.monthPicker > svg {
-  color: var(--brand);
-}
-.monthInput {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  min-height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-.monthPicker:focus-within {
+.dateInput:focus-visible {
+  outline: none;
   border-color: var(--brand);
   box-shadow: var(--ring);
+}
+.periodPresets {
+  display: flex;
+  gap: var(--space-2);
+}
+.presetBtn {
+  min-height: var(--control-h);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  background: transparent;
+  white-space: nowrap;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.presetBtn:hover {
+  color: var(--brand-hover);
+  border-color: var(--brand);
+}
+/* Periode aktif, diulang di kepala tiap kartu yang dikendalikannya — supaya
+   angka yang dibaca tidak pernah terlepas dari rentang yang menghasilkannya. */
+.periodTag {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 /* Karyawan · Hadir · Izin · Sakit · Alpha · Total Jam */
 .recapHead,

@@ -72,7 +72,7 @@ export function isWorkedDay(
  */
 export const IMPLAUSIBLE_HOURS = 16;
 
-export interface EmployeeMonthHours {
+export interface EmployeeHours {
   employeeId: string;
   employeeName: string;
   /** Hari kerja betulan: berstatus `hadir` dan punya jam masuk. */
@@ -86,18 +86,38 @@ export interface EmployeeMonthHours {
 }
 
 /**
- * Rekap satu bulan ("YYYY-MM") per karyawan, jam terbanyak dulu.
+ * Apakah sebuah tanggal ("YYYY-MM-DD") berada di dalam rentang, inklusif.
+ *
+ * Perbandingan string bekerja karena formatnya ISO — nol di depan membuat
+ * urutan leksikografis sama dengan urutan kronologis. Tidak perlu Date(),
+ * dan karenanya tidak ada zona waktu yang bisa menggeser batas periode.
+ */
+export function withinRange(date: string, from: string, to: string): boolean {
+  return date >= from && date <= to;
+}
+
+/**
+ * Rekap jam kerja per karyawan untuk rentang tanggal, jam terbanyak dulu.
+ *
+ * Rentang, bukan bulan kalender: periode gaji toko jarang jatuh persis di
+ * tanggal 1–akhir bulan. Yang umum justru 26–25, atau per dua minggu.
+ *
  * Menjumlahkan `totalHours` yang tersimpan, jadi shift yang belum di-checkout
  * terhitung sebagai hari hadir dengan nol jam — persis seperti di tabel.
- * ponytail: karyawan tanpa baris bulan itu tidak muncul di hasil.
+ * ponytail: karyawan tanpa baris di rentang itu tidak muncul di hasil.
  */
-export function monthlyHoursByEmployee(
+export function hoursByEmployee(
   rows: Pick<Attendance, 'employeeId' | 'employeeName' | 'date' | 'status' | 'checkIn' | 'totalHours'>[],
-  month: string,
-): EmployeeMonthHours[] {
-  const acc = new Map<string, EmployeeMonthHours>();
+  from: string,
+  to: string,
+): EmployeeHours[] {
+  // Rentang terbalik menghasilkan nol baris, bukan seluruh riwayat. Kalau
+  // pemilik salah urut tanggalnya, tabel kosong itu jujur — angka gaji yang
+  // diam-diam mencakup periode salah jauh lebih mahal.
+  if (from > to) return [];
+  const acc = new Map<string, EmployeeHours>();
   for (const r of rows) {
-    if (!r.date?.startsWith(month)) continue;
+    if (!r.date || !withinRange(r.date, from, to)) continue;
     const cur = acc.get(r.employeeId) ?? {
       employeeId: r.employeeId,
       employeeName: r.employeeName,
