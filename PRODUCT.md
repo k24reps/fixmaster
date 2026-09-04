@@ -29,7 +29,20 @@ Berhasil kalau pemilik bisa menutup toko tanpa menghitung ulang apa pun, dan tek
 
 Satu unit masuk, semua bagian usaha ikut tercatat — tanpa entri ulang. Pemakaian sparepart pada satu tiket servis otomatis mengurangi stok dan masuk ke biaya serta margin tiket itu; tidak ada langkah rekonsiliasi terpisah.
 
-Berjalan **lokal lebih dulu** (IndexedDB). Toko tetap bisa bekerja saat internet mati, dan datanya tidak wajib menumpang server orang lain. Mode cloud (Supabase) opsional, bukan syarat.
+Produk yang dipakai pelanggan berbayar **berjalan di cloud** (Supabase) dan
+membutuhkan koneksi. `LocalAdapter` (IndexedDB) ada dan berfungsi penuh, tapi
+adapternya dipilih `createRepository()` dari **variabel env saat build** —
+tidak ada saklar runtime, sehingga build produksi selalu cloud. Saat koneksi
+putus, tulis gagal: tidak ada antrean, tidak ada cache, dan service worker
+tidak menyentuh `rest/v1`. Begitu online kembali, adapter melatch status
+`offline` lalu resync otomatis (`supabase-adapter.ts`), jadi pengguna tidak
+perlu login ulang.
+
+> **Diverifikasi 3 Sep 2026.** Dokumen ini sebelumnya menjanjikan "lokal lebih
+> dulu, toko tetap bisa bekerja saat internet mati" — itu menggambarkan
+> kemampuan yang ada di kode tapi **tidak bisa dicapai** pelanggan. Klaim itu
+> sempat dipakai untuk menilai halaman landing salah; ternyata landing-nya yang
+> benar. Jangan hidupkan kembali klaim ini tanpa saklar mode lokal yang nyata.
 
 ## Operating Context
 
@@ -50,9 +63,23 @@ Berjalan **lokal lebih dulu** (IndexedDB). Toko tetap bisa bekerja saat internet
 | | Solo (`standard`) | Pro (`enterprise`) |
 |---|---|---|
 | Harga | Rp 99.000/bln | Rp 199.000/bln |
+| 6 bulan di muka (−10%) | Rp 89.000/bln · Rp 534.000 | Rp 179.000/bln · Rp 1.074.000 |
+| 12 bulan di muka (−20%) | Rp 79.000/bln · Rp 948.000 | Rp 159.000/bln · Rp 1.908.000 |
 | Pengguna | 1 (pemicu upgrade terkuat: rekrutan kedua) | tak terbatas |
 | Outlet | 1 | 2 termasuk, +Rp 50.000/outlet |
-| Terkunci | supplier, absensi, tugas, multi-outlet, ekspor/impor, logo, template WA | — |
+| Wallet / kas | 2 | 99 |
+| Terkunci | supplier, absensi, multi-outlet, template WA | — |
+
+Diskon termin dikenakan ke **tarif bulanan** (termasuk add-on outlet Pro),
+dibulatkan ke ribuan terdekat — satu aturan, bukan tabel harga kedua.
+Penagihan masih manual lewat WhatsApp, jadi bayar di muka memangkas 12
+kejadian penagihan setahun jadi 1; itulah yang membenarkan diskon 20%.
+
+Sumbu pembedanya **satu**: jumlah orang dan jumlah tempat. Semua yang terkunci
+berkorelasi dengan itu, dan dijaga ganda oleh kuota pengguna/outlet/wallet.
+Logo toko, tugas internal, ekspor CSV, dan catatan toko sengaja **ada di Solo** —
+menahannya merugikan toko di mata pelanggannya sendiri tanpa menambah alasan
+nyata untuk naik paket.
 
 - Enum `plan_type` di Postgres terkunci (`free`,`standard`,`enterprise`,`trial`,`suspended`). `free` adalah nilai **legacy yang sengaja tidak ditawarkan** — jangan hidupkan tanpa migrasi.
 - **Dua mode auth:** lokal (tanpa akun) dan cloud (Supabase Auth email+password). Keduanya harus tetap jalan.
@@ -90,7 +117,11 @@ Yang boleh dipakai:
 ## Product Principles
 
 1. **Satu unit, satu pencatatan.** Data yang sudah masuk tidak pernah diminta ulang. Setiap fitur baru harus menjawab: apakah ini menambah entri manual? Kalau ya, cari jalan lain.
-2. **Toko tetap jalan saat internet mati.** Lokal-dulu bukan mode darurat; itu jalur utama. Fitur yang hanya bisa hidup online harus tetap membiarkan alur inti bekerja tanpanya.
+2. **Putusnya koneksi harus jujur dan pulih sendiri.** Produk ini cloud, dan
+   itu disebut apa adanya ke calon pelanggan. Yang wajib dijaga: kegagalan
+   tulis saat offline tidak boleh diam-diam, dan begitu jaringan kembali data
+   termuat ulang tanpa langkah manual. Kalau suatu saat mode lokal benar-benar
+   dibuka untuk pelanggan, prinsip ini yang diganti — bukan ditumpuk klaim.
 3. **Dua adegan, bobot setara.** Layar meja dan ponsel pemilik sama-sama jalur utama. Keputusan yang menguntungkan satu dengan mengorbankan yang lain harus disebut eksplisit, bukan diam-diam.
 4. **Kejujuran angka di atas kesan cepat.** Margin, stok, dan kas ditampilkan apa adanya termasuk saat buruk. Tidak ada status yang menyesatkan demi terlihat rapi.
 5. **Bench, bukan SaaS generik.** Kalau sebuah elemen bisa dipindah ke produk lain tanpa terasa aneh, ia belum selesai dirancang.
