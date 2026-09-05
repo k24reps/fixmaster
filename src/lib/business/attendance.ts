@@ -97,6 +97,31 @@ export function withinRange(date: string, from: string, to: string): boolean {
 }
 
 /**
+ * Baris absensi yang boleh DILIHAT seseorang di riwayat.
+ *
+ * Hanya pemilik yang melihat seluruh tim. Admin dan karyawan sama-sama
+ * melihat barisnya sendiri saja — admin memang manager untuk servis, stok,
+ * dan supplier, tapi kehadiran rekan kerjanya bukan urusan operasional.
+ *
+ * Dipisah ke sini, bukan ditulis inline di komponen, karena ini aturan
+ * kerahasiaan yang layak punya test sendiri: kalau `owner` suatu saat
+ * tergelincir jadi `isManager`, yang bocor adalah pola kehadiran orang.
+ *
+ * CATATAN PENTING: ini gerbang TAMPILAN, bukan batas keamanan. Policy
+ * `attendance_select` (0028) masih mengizinkan admin membaca semua baris
+ * lewat REST, karena `is_org_manager()` mencakup admin. Menutupnya betulan
+ * perlu migrasi tersendiri.
+ */
+export function visibleAttendance<T extends Pick<Attendance, 'employeeId'>>(
+  rows: T[],
+  viewer: { isOwner: boolean; employeeId: string | null | undefined },
+): T[] {
+  if (viewer.isOwner) return rows;
+  if (!viewer.employeeId) return [];
+  return rows.filter((r) => r.employeeId === viewer.employeeId);
+}
+
+/**
  * Rekap jam kerja per karyawan untuk rentang tanggal, jam terbanyak dulu.
  *
  * Rentang, bukan bulan kalender: periode gaji toko jarang jatuh persis di

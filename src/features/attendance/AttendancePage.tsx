@@ -3,13 +3,14 @@ import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Sel
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isSupabaseConfigured, clockIn, clockOut } from '@/data/supabase-client';
-import { isManager } from '@/config/plans';
+import { isOwner } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
 import {
   hasGeofence,
   hoursByEmployee,
   withinRange,
+  visibleAttendance,
   isWorkedDay,
   STATUS_LABEL,
   IMPLAUSIBLE_HOURS,
@@ -30,11 +31,16 @@ export function AttendancePage() {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const today = localDateStr();
-  const isMgr = me ? isManager(me.role) : false;
+  // Halaman ini sengaja TIDAK memakai isManager(). Absensi seluruh tim adalah
+  // data upah plus pola kehadiran orang lain, dan itu milik PEMILIK — bukan
+  // siapa pun yang kebetulan berperan manager. Admin memang manager untuk
+  // servis, stok, dan supplier; kehadiran rekan kerjanya bukan urusan
+  // operasional, itu urusan ketenagakerjaan.
+  const owner = me ? isOwner(me.role) : false;
   const { fmtDate: fmtLocaleDate } = useFormat();
 
-  // Manager correction: edit jam / status, or delete a row.
-  // Owner also gets manual entry (absenkan karyawan) — same modal, `creating`.
+  // Koreksi owner: ubah jam/status atau hapus baris; plus entri manual
+  // (absenkan karyawan) lewat modal yang sama, jalur `creating`.
   const [editRow, setEditRow] = useState<Attendance | null>(null);
   const [creating, setCreating] = useState(false);
   const [editEmp, setEditEmp] = useState('');
@@ -53,12 +59,14 @@ export function AttendancePage() {
   const [from, setFrom] = useState(() => `${today.slice(0, 7)}-01`);
   const [to, setTo] = useState(today);
   const rangeValid = from <= to;
-  // Rekap terbuka untuk manager, bukan owner saja: admin sudah boleh
-  // mengoreksi baris absensi, jadi menahan angka totalnya tidak melindungi
-  // apa pun — hanya membuatnya mengoreksi tanpa bisa memeriksa hasilnya.
+  // Rekap owner-only. Isinya jam kerja SELURUH karyawan sepanjang periode —
+  // dasar perhitungan upah dan sekaligus potret siapa yang sering telat.
+  // Sebelumnya saya buka untuk manager dengan alasan "admin boleh mengoreksi,
+  // jadi harus bisa memeriksa hasilnya". Itu keliru: yang perlu diperiksa
+  // admin adalah barisnya sendiri, bukan rekap satu toko.
   const recap = useMemo(
-    () => (isMgr ? hoursByEmployee(attendance, from, to) : []),
-    [attendance, from, to, isMgr],
+    () => (owner ? hoursByEmployee(attendance, from, to) : []),
+    [attendance, from, to, owner],
   );
 
   // Outlet whose geofence applies to this check-in: the active branch if one is
@@ -236,12 +244,16 @@ export function AttendancePage() {
   );
 
   const recentByDay = useMemo(() => {
-    // Manager (owner/admin) melihat riwayat seluruh tim; karyawan hanya
-    // barisnya sendiri. Batasnya soal RIWAYAT, bukan kehadiran hari ini:
-    // papan "Kehadiran Hari Ini" di atas memang terbuka untuk semua — siapa
-    // yang sedang jaga adalah informasi shift biasa. Yang sensitif adalah
-    // polanya sebulan: siapa sering telat, siapa sering absen.
-    const scoped = isMgr ? attendance : attendance.filter((a) => a.employeeId === me?.id);
+    // HANYA OWNER yang melihat riwayat seluruh tim. Admin dan karyawan sama:
+    // barisnya sendiri saja. Admin memang manager untuk servis, stok, dan
+    // supplier — tapi kehadiran rekan kerjanya bukan urusan operasional, itu
+    // urusan ketenagakerjaan, dan yang menggaji hanya satu orang.
+    //
+    // Batasnya soal RIWAYAT, bukan kehadiran hari ini: papan "Kehadiran Hari
+    // Ini" di atas tetap terbuka untuk semua — siapa yang sedang jaga adalah
+    // informasi shift biasa. Yang sensitif adalah polanya sepanjang periode:
+    // siapa sering telat, siapa sering absen.
+    const scoped = visibleAttendance(attendance, { isOwner: owner, employeeId: me?.id });
     // Difilter per periode, bukan dipotong 30 baris terakhir. Potongan lama
     // membuat tim 5 orang hanya punya enam hari riwayat, dan tidak ada cara
     // sama sekali melihat bulan lalu.
@@ -251,7 +263,7 @@ export function AttendancePage() {
     return scoped
       .filter((a) => a.date && withinRange(a.date, from, to))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.checkIn ?? '').localeCompare(a.checkIn ?? ''));
-  }, [attendance, isMgr, me, from, to, rangeValid]);
+  }, [attendance, owner, me, from, to, rangeValid]);
 
   const checkIn = async () => {
     if (!me) return;
@@ -470,10 +482,9 @@ export function AttendancePage() {
           icon={<Icon name="users" aria-hidden />}
           title="Kehadiran Hari Ini"
           action={
-            // Manager, bukan owner saja: admin sudah boleh mengedit dan
-            // MENGHAPUS baris absensi. Menahan tombol "buat" sementara tombol
-            // "hapus" terbuka adalah gerbang yang menjaga pintu yang salah.
-            isMgr && (
+            // Owner-only, sejalan dengan tombol edit/hapus di riwayat: yang
+            // boleh menulis absensi orang lain hanya yang menggajinya.
+            owner && (
               <Button size="sm" variant="secondary" onClick={openCreate} iconLeft={<Icon name="plus" aria-hidden />}>
                 Absenkan
               </Button>
@@ -532,7 +543,7 @@ export function AttendancePage() {
         </CardBody>
       </Card>
 
-      {isMgr && (
+      {owner && (
         <Card glass>
           <CardHeader
             icon={<Icon name="clock" aria-hidden />}
@@ -581,17 +592,17 @@ export function AttendancePage() {
             <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat pada periode ini" />
           ) : (
             <div className={styles.ledger}>
-              <div className={[styles.ledgerHead, isMgr ? styles.withActions : ''].join(' ')}>
+              <div className={[styles.ledgerHead, owner ? styles.withActions : ''].join(' ')}>
                 <span>Tanggal</span>
                 <span>Karyawan</span>
                 <span>Masuk</span>
                 <span>Keluar</span>
                 <span>Status</span>
                 <span className={styles.hours}>Total</span>
-                {isMgr && <span className={styles.actionsCol}>Aksi</span>}
+                {owner && <span className={styles.actionsCol}>Aksi</span>}
               </div>
               {recentByDay.map((a) => (
-                <div key={a.id} className={[styles.ledgerRow, isMgr ? styles.withActions : ''].join(' ')}>
+                <div key={a.id} className={[styles.ledgerRow, owner ? styles.withActions : ''].join(' ')}>
                   <span className={styles.punch}>{fmtDate(a.date)}</span>
                   <span className={styles.ledgerName}>
                     {a.employeeName}
@@ -618,7 +629,7 @@ export function AttendancePage() {
                       <span className={styles.muted}>—</span>
                     )}
                   </span>
-                  {isMgr && (
+                  {owner && (
                     <span className={styles.actionsCol}>
                       <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Edit absensi">
                         <Icon name="pen" aria-hidden />

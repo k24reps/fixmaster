@@ -5,6 +5,7 @@ import {
   checkWithinGeofence,
   hoursByEmployee,
   withinRange,
+  visibleAttendance,
   isWorkedDay,
 } from './attendance';
 import type { Outlet } from '@/data/types';
@@ -155,6 +156,41 @@ describe('withinRange', () => {
     // Perbandingan string hanya benar karena formatnya ISO dengan nol di depan.
     expect(withinRange('2026-01-05', '2025-12-26', '2026-01-25')).toBe(true);
     expect(withinRange('2025-12-25', '2025-12-26', '2026-01-25')).toBe(false);
+  });
+});
+
+describe('visibleAttendance', () => {
+  const rows = [
+    { employeeId: 'owner1' },
+    { employeeId: 'admin1' },
+    { employeeId: 'karyawan1' },
+    { employeeId: 'karyawan1' },
+  ];
+
+  it('pemilik melihat seluruh tim', () => {
+    expect(visibleAttendance(rows, { isOwner: true, employeeId: 'owner1' })).toHaveLength(4);
+  });
+
+  it('ADMIN hanya melihat barisnya sendiri', () => {
+    // Inti perbaikannya. Admin adalah manager untuk servis dan stok, dan
+    // gerbang ini dulu memakai isManager() — sehingga admin ikut melihat
+    // riwayat kehadiran seluruh rekan kerjanya.
+    const res = visibleAttendance(rows, { isOwner: false, employeeId: 'admin1' });
+    expect(res).toEqual([{ employeeId: 'admin1' }]);
+  });
+
+  it('karyawan hanya melihat barisnya sendiri', () => {
+    const res = visibleAttendance(rows, { isOwner: false, employeeId: 'karyawan1' });
+    expect(res).toHaveLength(2);
+    expect(res.every((r) => r.employeeId === 'karyawan1')).toBe(true);
+  });
+
+  it('tanpa identitas: tidak menampilkan apa pun', () => {
+    // Sesi yang belum termuat harus gagal ke arah TERTUTUP. Kalau ini
+    // mengembalikan semua baris, satu render sebelum sesi siap sudah cukup
+    // untuk memperlihatkan absensi satu toko.
+    expect(visibleAttendance(rows, { isOwner: false, employeeId: null })).toEqual([]);
+    expect(visibleAttendance(rows, { isOwner: false, employeeId: undefined })).toEqual([]);
   });
 });
 
