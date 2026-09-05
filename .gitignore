@@ -33,3 +33,6 @@ prod_public_schema.sql
 
 # Release worktree (git worktree add .tmp-release)
 .tmp-release/
+
+# Dump teks landing page untuk audit copy (dibuat ulang dari src/i18n/id.ts)
+landing-copy-audit.md
