@@ -158,8 +158,20 @@ d('Tier 2E — clock_in: siapa boleh mengabsenkan siapa', () => {
     expect(error).not.toBeNull();
   });
 
-  it('manager BOLEH mengabsenkan orang lain', async () => {
-    // Pengecualian yang disengaja: owner mengabsenkan staf yang lupa.
+  it('ADMIN tidak bisa mengabsenkan orang lain (0056)', async () => {
+    // Sampai 0056, penjagaannya `is_org_manager` — dan admin lolos.
+    const { error } = await ctx.adminA.client.rpc('clock_in', {
+      p_org_id: ctx.orgA,
+      p_outlet_id: outletA,
+      p_employee_id: ctx.karyawanA.membershipId,
+      p_lat: null,
+      p_lng: null,
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it('PEMILIK boleh mengabsenkan orang lain', async () => {
+    // Pengecualian yang disengaja: pemilik mengabsenkan staf yang lupa.
     const { data, error } = await ctx.ownerA.client.rpc('clock_in', {
       p_org_id: ctx.orgA,
       p_outlet_id: outletA,
@@ -169,6 +181,85 @@ d('Tier 2E — clock_in: siapa boleh mengabsenkan siapa', () => {
     });
     expect(error).toBeNull();
     expect(typeof data).toBe('string');
+  });
+});
+
+d('Tier 2E — absensi orang lain hanya untuk pemilik (0056)', () => {
+  it('ADMIN tidak bisa membaca riwayat rekan kerjanya', async () => {
+    // Batas sungguhan, bukan gerbang tampilan: UI sudah menyembunyikannya,
+    // tapi sampai 0056 admin masih bisa mengambilnya lewat REST langsung.
+    // Baris karyawanA dibuat HARI INI, jadi dikecualikan papan shift — yang
+    // diuji di sini adalah riwayatnya, maka kita pakai tanggal lampau.
+    const { data: old } = await ctx.admin
+      .from('attendance')
+      .insert({
+        org_id: ctx.orgA,
+        outlet_id: outletA,
+        employee_id: ctx.karyawanA.membershipId,
+        employee_name: 'Karyawan A',
+        date: '2026-01-15',
+        status: 'hadir',
+        check_in: '08:00',
+      })
+      .select('id')
+      .single();
+
+    const { data } = await ctx.adminA.client
+      .from('attendance')
+      .select('id')
+      .eq('id', old!.id);
+    expect(data ?? []).toHaveLength(0);
+
+    // Pemilik tetap melihatnya — kalau tidak, yang dibangun bukan gerbang
+    // melainkan dinding.
+    const { data: seenByOwner } = await ctx.ownerA.client
+      .from('attendance')
+      .select('id')
+      .eq('id', old!.id);
+    expect(seenByOwner ?? []).toHaveLength(1);
+  });
+
+  it('semua anggota tetap melihat kehadiran HARI INI (papan shift)', async () => {
+    // Sengaja dibiarkan terbuka: siapa yang sedang jaga adalah informasi
+    // kerja biasa. Yang ditutup adalah polanya sepanjang periode.
+    const { data } = await ctx.adminA.client
+      .from('attendance')
+      .select('id, employee_id')
+      .eq('employee_id', ctx.karyawanA.membershipId);
+    expect((data ?? []).length).toBeGreaterThan(0);
+  });
+
+  it('ADMIN tidak bisa menghapus absensi orang', async () => {
+    await ctx.adminA.client.from('attendance').delete().eq('id', selfRowId);
+    // RLS menolak DELETE dengan menyaring baris, bukan dengan melempar error,
+    // jadi yang diperiksa adalah AKIBATNYA: barisnya harus masih ada.
+    const { data } = await ctx.admin.from('attendance').select('id').eq('id', selfRowId);
+    expect(data ?? []).toHaveLength(1);
+  });
+
+  it('ADMIN tidak bisa mengubah jam pada barisnya SENDIRI', async () => {
+    // Admin yang bisa menulis ulang jam kerjanya sendiri adalah lubang yang
+    // sama persis dengan yang ditutup 0053 untuk karyawan — hanya berpindah
+    // satu peran ke atas.
+    const { data: mine } = await ctx.admin
+      .from('attendance')
+      .select('id, check_in')
+      .eq('employee_id', ctx.adminA.membershipId)
+      .limit(1)
+      .single();
+
+    const { error } = await ctx.adminA.client
+      .from('attendance')
+      .update({ check_in: '05:00' })
+      .eq('id', mine!.id);
+    expect(error).not.toBeNull();
+
+    const { data: after } = await ctx.admin
+      .from('attendance')
+      .select('check_in')
+      .eq('id', mine!.id)
+      .single();
+    expect(after?.check_in).toBe(mine!.check_in);
   });
 });
 
