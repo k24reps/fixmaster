@@ -5,7 +5,15 @@
    channels with proportion bars. Global tokens — bench identity.
    ============================================================ */
 
+/* Container, bukan viewport. Kontrol zoom aplikasi (80%-125%) menskala
+   dokumen TANPA menggeser media query, jadi pada zoom 125% wrap menyusut
+   ke ~777px sementara @media masih membaca 1440px: keempat angka utama
+   terpotong ellipsis sekaligus. Aturan Container Query di DESIGN.md sudah
+   ditulis untuk halaman ini — di .tableScroll — tapi tidak pernah dibawa
+   ke dua aturan yang menentukan apakah ANGKANYA muat. */
 .wrap {
+  container-type: inline-size;
+  container-name: laporan;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -146,9 +154,9 @@
   line-height: 1.15;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Tanpa ellipsis: "Rp 6.4..." lebih buruk daripada angka yang mengecil.
+     Prinsip 4 - angka ditampilkan apa adanya. */
+  min-width: 0;
 }
 .metric.success::before { background: linear-gradient(180deg, var(--green-500), var(--green-400)); }
 .metric.success .metricIcon { background: var(--success-soft); color: var(--green-400); }
@@ -282,11 +290,18 @@
   border-radius: inherit;
   transition: width var(--dur-slow) var(--ease-out);
 }
+/* Angka positif / negatif.
+   Dulu keduanya dipaku ke palet MENTAH (--green-400 / --red-400), yang hanya
+   dikalibrasi untuk tema gelap. Di tema terang setiap angka pemasukan di
+   halaman ini terukur 1,87:1 terhadap latar kartunya — AA butuh 4,5:1.
+   --success-text / --danger-text adalah token semantik yang memang sudah
+   di-rebind per tema (#036b4e / #b91c1c di terang); sistemnya sudah benar,
+   file inilah yang melewatinya. */
 .inc {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .exp {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .barFill.inc {
   background: linear-gradient(90deg, var(--green-500), var(--green-400));
@@ -323,7 +338,7 @@
 
 /* ---------- Extra bar fills + tones ---------- */
 .warn {
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .warnFill {
   background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
@@ -435,13 +450,13 @@
   color: var(--red-400);
 }
 
-@media (max-width: 1024px) {
+@container laporan (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 720px) {
+@container laporan (max-width: 720px) {
   /* Dipadatkan untuk grid dua kolom: ikon dan padding mengecil, dan nilai
      rupiah menyusut lewat clamp ber-vw. Tanpa ini "Rp 6.450.000" terpotong
      79px di 320px (terukur). */
@@ -556,4 +571,200 @@
       white-space: normal;
       overflow-wrap: anywhere;
     }
+}
+
+/* ============================================================
+   Perbaikan pasca-kritik (7 Sep 2026)
+   Ditaruh di AKHIR berkas dengan sengaja: beberapa aturan di bawah
+   menimpa deklarasi di atas pada spesifisitas yang sama, dan di CSS
+   urutan sumber yang memutuskan.
+   ============================================================ */
+
+/* Rentang tanggal terbalik. Dulu diterima diam-diam dan membuat tiga belas
+   kartu melapor nol — pemilik diberi tahu tokonya menghasilkan Rp 0, bukan
+   bahwa ia salah mengisi tanggal. */
+.rangeBad {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger-text);
+}
+
+/* "Tidak ada data periode lalu" — kekosongan yang dikatakan, bukan
+   disembunyikan di balik +100%. Redup dengan sengaja: ini ketiadaan
+   informasi, bukan sinyal. */
+.metricNoBase {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+/* Penanda bahwa kartu ini TIDAK mengikuti periode di header. */
+.liveTag {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---------- One Amber ----------
+   Terhitung 57 elemen beramber dalam satu viewport. Yang bisa dan BOLEH
+   diperbaiki dari berkas ini hanya elemen milik halaman ini sendiri.
+
+   Ikon header kartu sengaja TIDAK disentuh: DESIGN.md menetapkannya sebagai
+   spek kartu ("a 30px tile in --brand-soft with a --border-brand edge"), jadi
+   mencabutnya di sini akan membuat Laporan menyimpang dari seluruh aplikasi
+   demi menyelesaikan masalah yang akarnya bukan warna — melainkan tiga belas
+   kartu sebentuk yang meminta sepuluh ikon header. Kurangi kartunya, bukan
+   spek kartunya. */
+.scopeTag {
+  border-color: var(--border-strong);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+}
+
+/* ---------- Lit-Signal pada perbandingan outlet ----------
+   Untung vs rugi per cabang dulu dibedakan HANYA oleh hijau vs merah, pada
+   teks dan batang. Pemilik deuteranopia tidak melihat bedanya sama sekali. */
+.outletLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  margin-right: 6px;
+  display: inline-block;
+}
+.outletLed.inc {
+  background: var(--success-text);
+  box-shadow: 0 0 7px var(--success-text);
+}
+.outletLed.exp {
+  background: var(--danger-text);
+  box-shadow: 0 0 7px var(--danger-text);
+}
+
+/* ---------- Mono Numbers ----------
+   .channelName tidak menyetel font-family, jadi "2 unit · omzet Rp 2.700.000"
+   jatuh ke sans proporsional di empat kartu. Ini angka yang dibandingkan
+   antar-baris. */
+.channelMeta {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* ---------- Mounted-or-Flat ----------
+   .metric bukan tombol dan tidak punya handler: bayangan berarti terpasang,
+   melayang, atau baru terangkat — pembacaan instrumen bukan salah satunya.
+   Hover-nya juga menjanjikan drill-down yang tidak ada. */
+.metric:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border);
+}
+
+/* Judul tabel untuk pembaca layar. Di mode container-query mobile `thead`
+   disembunyikan — itu menghapus header untuk pembaca layar juga, jadi caption
+   inilah yang tersisa untuk menerangkan isi tabelnya. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Vonis: instrument well ----------
+   Palet readout bersifat theme-independent by design — enam nilai ini
+   didefinisikan sekali dan tidak pernah di-rebind per tema, dan itulah yang
+   membuat well terlihat identik di gelap maupun terang (DESIGN.md).
+   Satu-satunya well di halaman ini; budgetnya satu per viewport. */
+.verdict {
+  position: relative;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 140% at 12% 0%, var(--readout-surface), var(--readout-base) 62%);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+/* Tekstur scanline 3px — penanda "ini layar", bukan kartu gelap. */
+.verdict::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    var(--readout-text) 2px 3px
+  );
+  opacity: 0.03;
+  pointer-events: none;
+}
+.verdictLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--readout-muted);
+}
+.verdictLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.verdictLed.inc {
+  background: var(--green-400);
+  box-shadow: 0 0 8px var(--green-400);
+}
+.verdictLed.exp {
+  background: var(--red-400);
+  box-shadow: 0 0 8px var(--red-400);
+}
+.verdictIdle {
+  background: var(--readout-muted);
+}
+.verdictLine {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-xl);
+  line-height: 1.25;
+  color: var(--readout-text);
+  font-variant-numeric: tabular-nums;
+}
+/* Sumber angkanya, supaya vonis bisa diperiksa dan bukan dipercaya begitu
+   saja — pola yang sama dipakai bukti margin di halaman landing. */
+.verdictSource {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--readout-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@container laporan (max-width: 720px) {
+  .verdict {
+    padding: var(--space-4);
+  }
+  .verdictLine {
+    font-size: var(--text-lg);
+  }
+}
+
+/* Ikon kalender berdiri sendiri di barisnya saat sempit, karena label-label
+   di sebelahnya mengambil `flex: 1 1 100%`. Ia murni hiasan (aria-hidden),
+   jadi disembunyikan alih-alih dibiarkan melayang di atas ruang kosong. */
+@container laporan (max-width: 720px) {
+  .dateBar > svg {
+    display: none;
+  }
 }

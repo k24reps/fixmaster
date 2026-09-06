@@ -11,6 +11,7 @@ import {
   avgTurnaroundDays,
   ratioDelta,
   periodComparison,
+  previousWindow,
   outletComparison,
   receivablesAging,
 } from './reports';
@@ -268,7 +269,19 @@ describe('ratioDelta', () => {
   });
   it('guards divide-by-zero', () => {
     expect(ratioDelta(0, 0)).toBe(0);
-    expect(ratioDelta(100, 0)).toBe(1);
+  });
+
+  it('mengembalikan null saat tidak ada dasar pembanding', () => {
+    // Dulu ini `1`, yang tampil sebagai "+100,0%" dan tidak bisa dibedakan
+    // dari pertumbuhan dua kali lipat sungguhan. Periode setelah periode mati
+    // jadi terbaca seperti kabar baik.
+    expect(ratioDelta(100, 0)).toBeNull();
+  });
+
+  it('kehancuran ke nol tetap dilaporkan sebagai -100%', () => {
+    // Arah sebaliknya HARUS tetap berupa angka: ada dasarnya, dan kabar
+    // buruknya justru yang paling perlu terbaca (PRODUCT.md, Prinsip 4).
+    expect(ratioDelta(0, 100)).toBeCloseTo(-1);
   });
 });
 
@@ -280,6 +293,24 @@ describe('periodComparison', () => {
     expect(result.current.income).toBe(200);
     expect(result.previous.income).toBe(100);
     expect(result.incomeDelta).toBeCloseTo(1); // 100 → 200 = +100%
+  });
+
+  it('mengaku tidak punya dasar saat periode lalu kosong', () => {
+    // Regresi yang ditemukan saat kritik: pemanggil hanya mengambil periode
+    // terpilih, jadi `previous` selalu nol dan chip di layar cuma bisa 0%
+    // atau +100%. Fungsinya benar; yang salah adalah datanya tidak diberikan.
+    const result = periodComparison(
+      [inc('2026-06-10', 200)],
+      [],
+      '2026-06-08',
+      '2026-06-14',
+    );
+    expect(result.previous.income).toBe(0);
+    expect(result.incomeDelta).toBeNull();
+  });
+
+  it('menghitung jendela pembanding yang sama panjang', () => {
+    expect(previousWindow('2026-06-08', '2026-06-14')).toEqual(['2026-06-01', '2026-06-07']);
   });
 });
 

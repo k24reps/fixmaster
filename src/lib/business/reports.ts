@@ -282,14 +282,34 @@ export function avgTurnaroundDays(services: Service[]): number {
 export interface PeriodComparison {
   current: FinanceSummary;
   previous: FinanceSummary;
-  incomeDelta: number; // fraction, e.g. 0.25 = +25%; null-ish handled as 0 prev
-  expenseDelta: number;
-  netDelta: number;
+  /** Pecahan, mis. 0.25 = +25%. `null` = tidak ada dasar pembanding. */
+  incomeDelta: number | null;
+  expenseDelta: number | null;
+  netDelta: number | null;
 }
 
-/** Ratio delta vs previous; +1 = doubled, -1 = gone to zero. Guards /0. */
-export function ratioDelta(current: number, previous: number): number {
-  if (previous === 0) return current === 0 ? 0 : 1;
+/**
+ * Jendela pembanding: periode sepanjang yang sama, berakhir sehari sebelum
+ * `from`. Diekspor supaya pemanggil bisa MENGAMBIL data periode itu — dulu
+ * batas ini hanya hidup di dalam periodComparison, sehingga tidak ada yang
+ * sadar bahwa datanya tidak pernah ikut di-fetch.
+ */
+export function previousWindow(from: string, to: string): [string, string] {
+  const span = daysBetween(from, to);
+  return [addDays(from, -(span + 1)), addDays(from, -1)];
+}
+
+/**
+ * Delta rasio terhadap periode sebelumnya; +1 = dua kali lipat, -1 = jadi nol.
+ *
+ * `null` berarti TIDAK ADA DASAR PEMBANDING — periode lalu nol sementara
+ * periode ini tidak. Dulu kasus ini mengembalikan `1`, yang tampil sebagai
+ * "+100,0%" dan tidak bisa dibedakan dari pertumbuhan dua kali lipat yang
+ * sungguhan. Angka yang mengaku tidak punya dasar lebih berharga daripada
+ * angka yang mengarangnya (PRODUCT.md, Prinsip 4).
+ */
+export function ratioDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
   return (current - previous) / Math.abs(previous);
 }
 
@@ -303,9 +323,7 @@ export function periodComparison(
   from: string,
   to: string,
 ): PeriodComparison {
-  const span = daysBetween(from, to);
-  const prevTo = addDays(from, -1);
-  const prevFrom = addDays(from, -(span + 1));
+  const [prevFrom, prevTo] = previousWindow(from, to);
   const curInc = incomes.filter((i) => isInRange(i.date, from, to));
   const curExp = expenses.filter((e) => isInRange(e.date, from, to));
   const prevInc = incomes.filter((i) => isInRange(i.date, prevFrom, prevTo));
