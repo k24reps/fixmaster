@@ -473,17 +473,18 @@
   position: relative;
   overflow: hidden;
 }
-.licenseMeter::before {
-  /* faint blueprint grid wash */
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 22px 22px;
-  pointer-events: none;
-}
+/* Grid blueprint kedua di kartu ini DIHAPUS.
+   Bench ambient hidup di body::before dengan pitch 30px, dan Ambient Bench
+   Rule (DESIGN.md:246) menjadikannya satu-satunya kedalaman ambient sistem:
+   "Individual sections do not get their own decorative glow; they get a
+   tonal step or a border." Kartu ini sudah punya keduanya — --bg-input di
+   atas --bg-surface-2, plus 1px border.
+
+   Yang digambar di sini pitch-nya 22px sementara body 30px, jadi dua kisi
+   dari grid yang sama bertumpuk dengan langkah berbeda. Itu cacat yang sama
+   yang sudah diperbaiki di AuthPage (26px → 30px). Bedanya: panel AuthPage
+   MENUTUPI body, jadi menggambar ulang bench di sana adalah kelanjutan.
+   Kartu ini duduk di ATAS body — lapisan kedua, bukan kelanjutan. */
 .licenseTop {
   display: flex;
   align-items: center;

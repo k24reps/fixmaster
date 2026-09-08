@@ -65,6 +65,24 @@
         ],
         "createdAt": "2026-09-04T12:53:44.102Z",
         "reason": "L31 sudah dinetralkan ke --border-strong (garis pemisah, bukan aksen warna). L329 .inviteWarn adalah spine --warning semantik: DESIGN.md:289 mengizinkan diagnostic spine dalam brand/success/warning/danger/info, dan peringatan itu menandai kesalahan yang tak ada jalan mundurnya."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/settings/SettingsPage.module.css"
+        ],
+        "createdAt": "2026-09-08T00:44:24.513Z",
+        "reason": "tapeRow adalah spine diagnostik yang benar: 3px di tepi depan baris, diwarnai modifier per status (--success lunas / --warning menunggu / --text-muted batal). DESIGN.md:256+262 mendefinisikan dan mewajibkan pola ini; dasarnya --border-strong yang netral."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "src/features/reports/ReportsPage.module.css"
+        ],
+        "createdAt": "2026-09-08T00:44:46.053Z",
+        "reason": "beFill/barFill adalah div kosong position:absolute inset:0 di dalam wadah overflow:hidden, jadi layout terkurung di satu leaf tanpa subtree. Transisinya sekali per perubahan periode, bukan animasi berjalan. Alternatifnya scaleX merusak linear-gradient 90deg yang jadi isian bar."
       }
     ]
   }
