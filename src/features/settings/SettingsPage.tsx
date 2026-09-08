@@ -113,7 +113,7 @@ import {
   type CloudBackup,
   type BackupRun,
 } from '@/data/cloudBackup';
-import { type BackupFrequency } from '@/lib/business/backup';
+import { countRecords, parseBackup, type BackupFrequency } from '@/lib/business/backup';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -2354,6 +2354,25 @@ function BackupCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState<string | null>(null);
+  // Jumlah data di file yang menunggu konfirmasi. Dialog dulu memakai
+  // kalimat statis yang tidak pernah menyebut isi file, padahal
+  // countRecords() sudah ada dan diuji — hanya tidak pernah dipanggil.
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Satu pintu masuk untuk kedua sumber file (unggahan & backup cloud):
+  // validasi DULU, laporkan kegagalannya saat itu juga, dan baru buka
+  // dialog kalau filenya benar-benar bisa dipulihkan. Sebelumnya file
+  // rusak atau kosong tetap membuka dialog merah "SEMUA data akan
+  // DIGANTI", dan baru gagal setelah pengguna menekan Pulihkan.
+  const stageRestore = (text: string) => {
+    const parsed = parseBackup(text);
+    if (!parsed.ok) {
+      toast.error(parsed.error);
+      return;
+    }
+    setPendingCount(countRecords(parsed.backup));
+    setPendingText(text);
+  };
   const [restoring, setRestoring] = useState(false);
   // Backup otomatis (server-scheduled) — hanya ada di mode cloud.
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
@@ -2393,7 +2412,7 @@ function BackupCard() {
   const restoreFromCloud = async (backup: CloudBackup) => {
     if (demoGuard('Restore tersedia di FixMaster versi penuh — daftar gratis.')) return;
     try {
-      setPendingText(await readCloudBackup(backup.path));
+      stageRestore(await readCloudBackup(backup.path));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal membaca backup');
     }
@@ -2420,7 +2439,7 @@ function BackupCard() {
     input.value = ''; // allow re-picking the same file later
     if (!file) return;
     try {
-      setPendingText(await file.text());
+      stageRestore(await file.text());
     } catch {
       toast.error('Gagal membaca file');
     }
@@ -2572,7 +2591,7 @@ function BackupCard() {
       <ConfirmDialog
         open={pendingText !== null}
         title="Pulihkan dari Backup?"
-        message="SEMUA data saat ini akan DIGANTI dengan isi file backup. Tindakan ini tidak dapat dibatalkan. Disarankan backup data saat ini lebih dulu."
+        message={`File ini berisi ${pendingCount.toLocaleString('id-ID')} data. SEMUA data saat ini akan DIGANTI dengan isinya — yang tidak ada di file akan hilang. Tindakan ini tidak dapat dibatalkan; disarankan backup data saat ini lebih dulu.`}
         confirmLabel={restoring ? 'Memulihkan\u2026' : 'Ya, Ganti & Pulihkan'}
         danger
         onConfirm={handleRestore}

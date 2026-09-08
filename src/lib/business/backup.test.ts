@@ -29,10 +29,35 @@ describe('buildBackup + serialize', () => {
 
 describe('parseBackup', () => {
   it('accepts a valid backup', () => {
-    const b = buildBackup({ sales: [] }, null, 'o1');
+    const b = buildBackup({ sales: [{ id: 's1' }], customers: [] }, null, 'o1');
     const res = parseBackup(serializeBackup(b));
     expect(res.ok).toBe(true);
-    if (res.ok) expect(res.backup.collections.sales).toEqual([]);
+    if (res.ok) {
+      expect(res.backup.collections.sales).toHaveLength(1);
+      // Koleksi kosong di samping koleksi berisi tetap sah — yang ditolak
+      // hanya file yang SELURUHNYA kosong.
+      expect(res.backup.collections.customers).toEqual([]);
+    }
+  });
+
+  it('menolak backup yang tidak berisi data sama sekali', () => {
+    // Restore itu ganti-total: jalur cloud menghapus lima belas tabel sebelum
+    // membaca payload, jalur lokal memanggil clearAll() lebih dulu. File nol
+    // data karena itu menghapus segalanya lalu melapor "berhasil memulihkan
+    // 0 data" dengan toast hijau. Dulu berkas seperti ini lolos sebagai sah.
+    const res = parseBackup(serializeBackup(buildBackup({ sales: [] }, null, 'o1')));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain('tidak berisi data');
+  });
+
+  it('menolak koleksi yang isinya bukan daftar', () => {
+    // `{"services": "halo"}` dulu lolos, lalu masuk ke penulisan sebagai
+    // `as never` — tipe berbohong, runtime yang menanggung.
+    const res = parseBackup(
+      JSON.stringify({ app: BACKUP_APP, version: 1, collections: { services: 'halo' } }),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain('services');
   });
 
   it('rejects invalid JSON', () => {

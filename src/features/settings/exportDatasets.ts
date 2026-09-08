@@ -1,6 +1,7 @@
 import { repository } from '@/data';
 import { localDateOf } from '@/lib/time';
 import { buildCsv, csvFilename, type CsvColumn } from '@/lib/business/export';
+import { downloadCsvFile } from '@/lib/csv';
 import type {
   Service,
   Sale,
@@ -143,16 +144,11 @@ export const DATASETS: DatasetDef[] = [
   },
 ];
 
-/** Trigger a client-side download of a CSV string (browser-only). */
+/**
+ * Unduh satu dataset sebagai CSV bertanggal.
+ * Mekanisme unduhannya kini di `@/lib/csv`, dipakai bersama halaman Laporan —
+ * sebelumnya tiap permukaan punya salinannya sendiri.
+ */
 export function downloadCsv(dataset: string, csv: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = csvFilename(dataset);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Release the object URL on the next tick (after the click is handled).
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  downloadCsvFile(csvFilename(dataset), csv);
 }

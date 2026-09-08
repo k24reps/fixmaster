@@ -1,39 +1,42 @@
 /**
- * Minimal CSV export helper. Builds a CSV string from rows and triggers a
- * browser download. No deps. RFC-4180-ish quoting: fields containing comma,
- * quote, or newline are wrapped in double-quotes with quotes doubled.
+ * Unduhan CSV di browser — SATU-SATUNYA bagian CSV yang menyentuh DOM.
  *
- * A UTF-8 BOM is prepended so Excel (Windows/Indonesian locale) reads accents
- * and the rupiah text correctly instead of mojibake.
+ * Perakitan dan pelolosan (escaping) ada di `@/lib/business/export`, yang
+ * murni dan teruji. Pembagian itu disengaja dan disebutkan di sana: "the
+ * browser download itself lives in the UI layer".
+ *
+ * ------------------------------------------------------------
+ * KENAPA BERKAS INI DULU LEBIH BESAR
+ * ------------------------------------------------------------
+ * Berkas ini pernah memuat `toCsv()` + `escapeField()` sendiri — implementasi
+ * CSV KEDUA di repo ini, dan satu-satunya yang dipakai halaman Laporan.
+ * Pembagiannya berbahaya persis terbalik:
+ *
+ *   lib/business/export.ts  → punya penjaga formula injection, 12 tes
+ *   lib/csv.ts (yang ini)   → TANPA penjaga, TANPA satu tes pun
+ *
+ * Pelanggan bernama `=cmd|'/c calc'!A0` masuk ke kolom Keterangan lewat
+ * pencatatan biasa, lalu ditulis mentah ke CSV Laporan dan dibuka pemilik di
+ * Excel. Escaper duplikat itu dihapus; Laporan kini memakai `buildCsv` yang
+ * sama dengan Pengaturan.
  */
-
-/** Escape a single CSV field. */
-function escapeField(value: unknown): string {
-  const s = value == null ? '' : String(value);
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-/** Build a CSV string from a header row + data rows. */
-export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
-  const lines = [headers, ...rows].map((row) => row.map(escapeField).join(','));
-  return lines.join('\r\n');
-}
 
 /**
- * Trigger a browser download of `content` as a file named `filename`.
- * Prepends a UTF-8 BOM for spreadsheet compatibility.
+ * Memicu unduhan `csv` sebagai berkas bernama `filename`.
+ *
+ * TIDAK menambahkan BOM: `buildCsv()` sudah menyisipkannya, dan menambah lagi
+ * di sini akan menaruh dua BOM sehingga sel header pertama terbaca kotor di
+ * Excel. Berikan keluaran `buildCsv()`, bukan `rowsToCsv()`.
  */
-export function downloadCsv(filename: string, content: string): void {
-  const blob = new Blob(['\ufeff', content], { type: 'text/csv;charset=utf-8;' });
+export function downloadCsvFile(filename: string, csv: string): void {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Lepaskan object URL pada tick berikutnya, setelah klik tertangani.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

@@ -22,7 +22,8 @@ import {
 } from '@/lib/business/reports';
 import { getTarget } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
-import { toCsv, downloadCsv } from '@/lib/csv';
+import { buildCsv, csvFilename } from '@/lib/business/export';
+import { downloadCsvFile } from '@/lib/csv';
 import { toast } from '@/stores/toast';
 import { TrendChart } from './TrendChart';
 import styles from './ReportsPage.module.css';
@@ -173,11 +174,20 @@ export function ReportsPage() {
       toast.error('Tidak ada transaksi pada periode ini');
       return;
     }
-    const csv = toCsv(
-      ['Tanggal', 'Jenis', 'Kategori', 'Keterangan', 'Nominal'],
-      txnRows.map((r) => [r.date, r.type, r.category, r.description, r.amount]),
-    );
-    downloadCsv(`laporan_${scopeLabel.replace(/\s+/g, '-').toLowerCase()}_${from}_sd_${to}.csv`, csv);
+    // buildCsv, bukan perakit lokal: ia melolosi sel yang diawali `=`, `+`,
+    // `-`, atau `@` supaya nama pelanggan atau keterangan tidak dieksekusi
+    // sebagai rumus saat berkasnya dibuka di Excel. Perakit lama di halaman
+    // ini tidak punya penjagaan itu — dan tidak punya satu tes pun.
+    const csv = buildCsv(txnRows, [
+      { label: 'Tanggal', value: (r) => r.date },
+      { label: 'Jenis', value: (r) => r.type },
+      { label: 'Kategori', value: (r) => r.category },
+      { label: 'Keterangan', value: (r) => r.description },
+      { label: 'Nominal', value: (r) => r.amount },
+    ]);
+    // csvFilename menormalkan nama cabang (yang diketik pengguna) dan
+    // menempelkan tanggal ekspor, sama seperti ekspor di Pengaturan.
+    downloadCsvFile(csvFilename(`laporan-${scopeLabel}-${from}-sd-${to}`), csv);
     toast.success(`${txnRows.length} transaksi diekspor`);
   };
 

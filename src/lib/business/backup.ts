@@ -84,6 +84,39 @@ export function parseBackup(text: string): ParseResult {
   if (typeof obj.collections !== 'object' || obj.collections === null) {
     return { ok: false, error: 'Backup tidak memuat data koleksi.' };
   }
+
+  // Tiap koleksi HARUS array. Dulu tidak diperiksa: `{"services": "halo"}`
+  // lolos sebagai file sah, lalu masuk ke penulisan sebagai `as never`.
+  const collections = obj.collections as Record<string, unknown>;
+  for (const [name, rows] of Object.entries(collections)) {
+    if (!Array.isArray(rows)) {
+      return { ok: false, error: `Koleksi "${name}" rusak — isinya bukan daftar data.` };
+    }
+  }
+
+  // Backup nol data ditolak, bukan diterima lalu dijalankan.
+  //
+  // Restore itu GANTI TOTAL: jalur cloud (RPC restore_org_data, migrasi 0020)
+  // menghapus lima belas tabel sebelum membaca satu baris pun dari payload,
+  // dan jalur lokal memanggil clearAll() lebih dulu. File kosong karena itu
+  // menghapus segalanya lalu melapor "berhasil memulihkan 0 data" — dengan
+  // toast hijau. Tidak ada alasan sah memulihkan file nol data ke atas data
+  // hidup; kalau tujuannya mengosongkan toko, itu tindakan lain.
+  //
+  // Ini bukan skenario karangan: unduhan yang terpotong, atau backup otomatis
+  // yang gagal mengumpulkan baris, menghasilkan berkas yang persis begini —
+  // dan dipulihkan lewat jalur yang sama.
+  const total = Object.values(collections).reduce<number>(
+    (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
+    0,
+  );
+  if (total === 0) {
+    return {
+      ok: false,
+      error: 'File backup ini tidak berisi data sama sekali. Memulihkannya akan menghapus seluruh data Anda tanpa mengembalikan apa pun.',
+    };
+  }
+
   return { ok: true, backup: obj as unknown as BackupFile };
 }
 

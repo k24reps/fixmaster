@@ -36,6 +36,26 @@ describe('escapeCsvField', () => {
     expect(escapeCsvField('@cmd')).toBe("'@cmd");
   });
 
+  it('melindungi baris transaksi Laporan, bukan hanya ekspor Pengaturan', () => {
+    // Halaman Laporan dulu memakai perakit CSV keduanya sendiri di
+    // src/lib/csv.ts — tanpa penjagaan ini dan tanpa satu tes pun. Nama
+    // pelanggan masuk ke kolom Keterangan lewat pencatatan biasa, jadi
+    // inilah bentuk data yang benar-benar sampai ke berkasnya.
+    const rows = [
+      { date: '2026-09-01', type: 'Pemasukan', description: "=cmd|'/c calc'!A0", amount: 50000 },
+    ];
+    const csv = rowsToCsv(rows, [
+      { label: 'Tanggal', value: (r) => r.date },
+      { label: 'Jenis', value: (r) => r.type },
+      { label: 'Keterangan', value: (r) => r.description },
+      { label: 'Nominal', value: (r) => r.amount },
+    ]);
+    // Selnya tidak perlu dikutip (tak ada koma/kutip/baris baru di dalamnya);
+    // yang menentukan adalah awalannya sudah dilumpuhkan jadi `'=`.
+    expect(csv).toContain(`,'=cmd|'/c calc'!A0,`);
+    expect(csv).not.toContain(',=cmd');
+  });
+
   it('quotes AND defuses when a formula also contains a comma', () => {
     // leading '=' → apostrophe prefix, then comma forces quoting
     expect(escapeCsvField('=A,B')).toBe('"\'=A,B"');
