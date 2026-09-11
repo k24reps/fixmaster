@@ -172,3 +172,42 @@ d('Tier 3 — Outlet scope (RLS 0028)', () => {
     expect(error).toBeNull();
   });
 });
+
+d('Tier 3 — set_member_outlets menolak penugasan kosong (0057)', () => {
+  const assignedOutlets = async () => {
+    const { data } = await ctx.admin
+      .from('membership_outlets')
+      .select('outlet_id')
+      .eq('membership_id', ctx.karyawan.membershipId!);
+    return (data ?? []).map((r) => r.outlet_id as string);
+  };
+
+  it('daftar kosong DITOLAK, penugasan lama tetap utuh', async () => {
+    // Tanpa fallback di auth_outlet_ids(), simpan kosong = karyawan buta.
+    const { error } = await ctx.owner.client.rpc('set_member_outlets', {
+      p_member_id: ctx.karyawan.membershipId,
+      p_outlet_ids: [],
+    });
+    expect(error).not.toBeNull();
+    expect(await assignedOutlets()).toEqual([ctx.outlet1]);
+  });
+
+  it('daftar berisi outlet asing DITOLAK — hasil akhirnya sama-sama kosong', async () => {
+    // Loop lama melewati id yang bukan milik org tanpa suara.
+    const { error } = await ctx.owner.client.rpc('set_member_outlets', {
+      p_member_id: ctx.karyawan.membershipId,
+      p_outlet_ids: [crypto.randomUUID()],
+    });
+    expect(error).not.toBeNull();
+    expect(await assignedOutlets()).toEqual([ctx.outlet1]);
+  });
+
+  it('daftar berisi cabang sah DITERIMA (kontrol positif)', async () => {
+    const { error } = await ctx.owner.client.rpc('set_member_outlets', {
+      p_member_id: ctx.karyawan.membershipId,
+      p_outlet_ids: [ctx.outlet1],
+    });
+    expect(error).toBeNull();
+    expect(await assignedOutlets()).toEqual([ctx.outlet1]);
+  });
+});

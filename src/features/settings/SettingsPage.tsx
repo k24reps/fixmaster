@@ -1011,8 +1011,8 @@ const ROLE_LABEL: Record<string, string> = {
 /**
  * Inline editor to assign a staff member to one or more branches (outlets).
  * Loads the current assignment on open, toggles chips, and replaces the set
- * via the set_member_outlets RPC. Empty selection = access to no specific
- * branch (only org-wide rows) once RLS is tightened — so we warn on empty.
+ * via the set_member_outlets RPC. Empty selection is refused (0057): with no
+ * fallback in auth_outlet_ids(), it would leave the member seeing no branch.
  */
 function MemberOutletsEditor({
   memberId,
@@ -1092,15 +1092,15 @@ function MemberOutletsEditor({
       )}
       {!loading && selected.length === 0 && (
         <small className={styles.hint} role="note">
-          Tidak ada cabang terpilih — anggota ini tak akan melihat data transaksi cabang
-          mana pun.
+          Pilih minimal satu cabang — tanpa cabang, anggota ini tak akan melihat data
+          transaksi cabang mana pun.
         </small>
       )}
       <div className={styles.addRow}>
         <Button variant="secondary" size="sm" onClick={onClose}>
           Tutup
         </Button>
-        <Button size="sm" onClick={save} loading={busy}>
+        <Button size="sm" onClick={save} loading={busy} disabled={selected.length === 0}>
           Simpan
         </Button>
       </div>
