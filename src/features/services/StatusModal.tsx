@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
+import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { settleService, cancelService, recordDownPayment, isSupabaseConfigured } from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr, localDateOf } from '@/lib/time';
@@ -54,6 +55,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const role = me?.role ?? 'karyawan';
   const isManager = role === 'owner' || role === 'admin';
   const { data: wallets } = useCollection('wallets');
+  const history = useServiceHistory(service);
 
   const [mode, setMode] = useState<Mode>('status');
   // Status sub-action
@@ -207,7 +209,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         spareparts: updated,
         updatedAt: now,
         history: [
-          ...service.history,
+          ...(service.history ?? []),
           {
             at: now,
             status: target,
@@ -232,7 +234,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             orgId: service.orgId,
             serviceId: service.id,
             payments: legs,
-            history: updatedService.history,
+            history: updatedService.history ?? [],
             outletId: service.outletId,
           });
         } else {
@@ -269,7 +271,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           await cancelService({
             orgId: service.orgId,
             serviceId: service.id,
-            history: updatedService.history,
+            history: updatedService.history ?? [],
             outletId: service.outletId,
             refundAmount: refund,
             refundWalletId: refund > 0 ? refundWalletId : null,
@@ -447,7 +449,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         finalCost: newFinal,
         updatedAt: now,
         history: [
-          ...service.history,
+          ...(service.history ?? []),
           {
             at: now,
             status: 'edit',
@@ -751,7 +753,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         <div className={styles.history}>
           <span className={styles.label}>Riwayat</span>
           <ul className={styles.timeline}>
-            {[...service.history].reverse().map((h, i) => (
+            {[...history].reverse().map((h, i) => (
               <li key={i} className={styles.timelineItem}>
                 <span className={styles.dot} data-tone={h.status === 'edit' ? 'neutral' : STATUS_TONE[h.status as ServiceStatus]} />
                 <div>

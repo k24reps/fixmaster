@@ -286,9 +286,27 @@ export interface Service extends BaseEntity {
   pickedUpAt: ISODateTime | null;
   /** If this ticket is a warranty claim, links to the original ticket ID. */
   warrantyClaimOf: ID | null;
-  history: ServiceHistoryEntry[];
+  /**
+   * Append-only audit trail (server-enforced, migration 0058). ABSENT on rows
+   * from the cloud `list()` — it is ~78% of every row, so plain lists omit it.
+   * Show it with `useServiceHistory`; append with `[...(s.history ?? []), entry]`
+   * (the trigger keeps every existing entry either way).
+   */
+  history?: ServiceHistoryEntry[];
   archived: boolean;
 }
+
+/**
+ * Every `services` column EXCEPT `history`, for cloud list queries (egress:
+ * history is ~78% of a row). PostgREST has no "all columns but one", so the
+ * list is explicit — tier3e integration test asserts it still equals the
+ * table's columns minus history, so a new column can't silently go missing.
+ */
+export const SERVICE_LIST_COLUMNS: string =
+  'id,org_id,outlet_id,service_no,customer_id,customer_name,customer_phone,category,device,' +
+  'complaint,accessories,status,technician_id,technician_name,estimate_cost,final_cost,' +
+  'down_payment,spareparts,warranty_until,warranty_service_until,warranty_parts_until,' +
+  'picked_up,picked_up_at,warranty_claim_of,archived,created_at,updated_at,deleted_at';
 
 // ---------- POS Sales ----------
 export interface SaleLine {

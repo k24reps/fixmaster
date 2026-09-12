@@ -173,7 +173,7 @@ export function ServiceModal({
           estimateCost: parseRpInput(estimateCost),
           updatedAt: now,
           history: [
-            ...editing.history,
+            ...(editing.history ?? []),
             {
               at: now,
               status: 'edit',

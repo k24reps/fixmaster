@@ -11,6 +11,7 @@ import type {
   ChangeListener,
 } from './repository';
 import type { ID } from './types';
+import { SERVICE_LIST_COLUMNS } from './types';
 
 /** Map each repository collection to its Postgres table name. */
 const TABLE: Record<CollectionName, string> = {
@@ -225,10 +226,18 @@ export class SupabaseAdapter implements Repository {
     useRealtimeStore.getState().reset();
   }
 
-  async list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]> {
+  async list<K extends CollectionName>(
+    collection: K,
+    options?: { full?: boolean },
+  ): Promise<EntityMap[K][]> {
+    // services.history is ~78% of every row (measured on production) and is
+    // re-pulled on every ticket change, on every device. Lists skip it; the
+    // screens that show it fetch one row (useServiceHistory); backups pass
+    // `full`. Date-range queries below keep '*' — Laporan needs history.
+    const columns = collection === 'services' && !options?.full ? SERVICE_LIST_COLUMNS : '*';
     let query = this.client
       .from(TABLE[collection])
-      .select('*')
+      .select(columns)
       .eq('org_id', this.orgId)
       .is('deleted_at', null); // mirror LocalAdapter: hide soft-deleted rows
     // Outlet scoping (mirrors the local adapter): when a specific outlet is
@@ -244,7 +253,8 @@ export class SupabaseAdapter implements Repository {
     query = query.order('created_at', { ascending: false });
     const { data, error } = await query;
     if (error) throw error;
-    return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
+    // A runtime column string defeats supabase-js's select() type parser.
+    return (data ?? []).map((r) => fromRow<EntityMap[K]>(r as unknown as Record<string, unknown>));
   }
 
   async listByDateRange<K extends CollectionName>(

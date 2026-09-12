@@ -55,7 +55,9 @@ export async function createBackup(orgId: string | null): Promise<BackupFile> {
     const collections: Record<string, unknown[]> = {};
     await Promise.all(
       ALL_COLLECTIONS.map(async (name) => {
-        collections[name] = await repository.list(name);
+        // `full`: the cloud list omits services.history. A backup without it
+        // would restore every ticket with an empty audit trail.
+        collections[name] = await repository.list(name, { full: true });
       }),
     );
     const organization = await repository.getSingleton('organization');
@@ -118,7 +120,7 @@ export async function restoreBackup(text: string): Promise<RestoreResult> {
 
     const snapshot: Record<string, unknown[]> = {};
     for (const name of ALL_COLLECTIONS) {
-      snapshot[name] = await repository.list(name);
+      snapshot[name] = await repository.list(name, { full: true });
     }
     const prevOrg = await repository.getSingleton('organization');
 

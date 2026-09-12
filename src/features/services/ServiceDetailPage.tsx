@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCollection } from '@/hooks/useCollection';
+import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
@@ -77,6 +78,7 @@ export function ServiceDetailPage() {
   const [savingCost, setSavingCost] = useState(false);
 
   const service = useMemo(() => services.find((s) => s.id === id) ?? null, [services, id]);
+  const history = useServiceHistory(service);
 
   if (!service) {
     return (
@@ -101,8 +103,8 @@ export function ServiceDetailPage() {
   const putServiceSpareparts = async (
     mutate: (current: ServiceSparepart[]) => ServiceSparepart[],
   ) => {
-    const list = await repository.list('services');
-    const fresh = list.find((s) => s.id === service.id) ?? service;
+    // One row by id, not the whole services list, per sparepart edit.
+    const fresh = (await repository.get('services', service.id)) ?? service;
     await repository.put('services', {
       ...fresh,
       spareparts: mutate(fresh.spareparts),
@@ -351,11 +353,11 @@ export function ServiceDetailPage() {
 
   /** Latest history timestamp for a given stage. */
   const stageAt = (stage: ServiceStatus): string | null => {
-    const entry = [...service.history].reverse().find((h) => h.status === stage);
+    const entry = [...history].reverse().find((h) => h.status === stage);
     return entry ? fmtDateTime(entry.at) : null;
   };
 
-  const log = [...service.history].reverse();
+  const log = [...history].reverse();
   // Include the org param so the public /track page can scope the lookup
   // (mirrors the WhatsApp link). Without it, tracking returns "not found".
   const trackingLink = trackingUrl(window.location.origin, service.orgId, service.serviceNo);
@@ -397,7 +399,7 @@ export function ServiceDetailPage() {
         pickedUpAt: nowPicked ? now : null,
         updatedAt: now,
         history: [
-          ...service.history,
+          ...(service.history ?? []),
           {
             at: now,
             status: 'edit',

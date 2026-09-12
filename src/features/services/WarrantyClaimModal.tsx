@@ -113,7 +113,7 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
         ...origin,
         updatedAt: now,
         history: [
-          ...origin.history,
+          ...(origin.history ?? []),
           {
             at: now,
             status: 'edit',

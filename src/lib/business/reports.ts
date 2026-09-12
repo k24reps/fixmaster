@@ -256,9 +256,13 @@ export function serviceFunnel(services: Service[]): FunnelStage[] {
   }));
 }
 
-/** The LOCAL date a service first reached "selesai" (from history), else null. */
+/**
+ * The LOCAL date a service first reached "selesai" (from history), else null.
+ * Needs rows WITH history: Laporan feeds it from the date-range query, which
+ * selects every column. The plain cloud list omits history (supabase-adapter).
+ */
 export function completionDate(service: Service): string | null {
-  const entry = service.history.find((h) => h.status === 'selesai');
+  const entry = (service.history ?? []).find((h) => h.status === 'selesai');
   return entry ? localDateOf(entry.at) : null;
 }
 

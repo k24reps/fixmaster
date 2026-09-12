@@ -128,7 +128,7 @@ export function ServicesPage() {
         pickedUpAt: nowPicked ? now : null,
         updatedAt: now,
         history: [
-          ...s.history,
+          ...(s.history ?? []),
           {
             at: now,
             status: 'edit',

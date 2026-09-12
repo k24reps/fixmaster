@@ -69,7 +69,12 @@ export interface Repository {
   dispose?(): void;
 
   // ---- Collections ----
-  list<K extends CollectionName>(collection: K): Promise<EntityMap[K][]>;
+  /**
+   * `full`: every column. The cloud adapter omits heavy columns from plain
+   * lists (services.history); anything that must be lossless — backups —
+   * passes `full: true`.
+   */
+  list<K extends CollectionName>(collection: K, options?: { full?: boolean }): Promise<EntityMap[K][]>;
   /**
    * Like `list`, but only rows whose `dateField` falls within [from, to]
    * (inclusive). Pushes the date filter to the QUERY so time-series pages

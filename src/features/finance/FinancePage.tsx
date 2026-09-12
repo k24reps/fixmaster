@@ -229,7 +229,7 @@ export function FinancePage() {
               status: revert ? 'selesai' : svc.status,
               downPayment: nextDp,
               history: [
-                ...svc.history,
+                ...(svc.history ?? []),
                 {
                   at: new Date().toISOString(),
                   status: revert ? 'selesai' : 'edit',
