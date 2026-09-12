@@ -1,8 +1,31 @@
 import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { repository } from '@/data';
 import type { CollectionName, EntityMap } from '@/data/repository';
 import { useSessionStore } from '@/stores/session';
+
+const queuedInvalidations = new WeakMap<QueryClient, Set<string>>();
+
+/**
+ * One invalidation per collection per tick, however many hooks listen.
+ *
+ * Every mounted hook subscribes, and `repository.notify()` calls them all in
+ * one synchronous loop. Invalidating once per listener made TanStack cancel and
+ * restart the same fetch for each hook — but `queryFn` ignores the abort
+ * signal, so every cancelled request still downloaded the whole table. Sidebar
+ * and MobileBottomNav mount together on nearly every page, so one change on
+ * the Dashboard cost three full `services` pulls (measured in the test).
+ */
+export function invalidateCollection(queryClient: QueryClient, collection: string): void {
+  let queued = queuedInvalidations.get(queryClient);
+  if (!queued) queuedInvalidations.set(queryClient, (queued = new Set()));
+  if (queued.has(collection)) return;
+  queued.add(collection);
+  queueMicrotask(() => {
+    queued.delete(collection);
+    void queryClient.invalidateQueries({ queryKey: ['collection', collection] });
+  });
+}
 
 /**
  * Subscribe a React component to a repository collection via TanStack Query.
@@ -41,9 +64,7 @@ export function useCollection<K extends CollectionName>(
     if (!enabled) return;
     // Effect only sets up an external subscription (no synchronous setState).
     const unsub = repository.subscribe((changed) => {
-      if (changed === collection) {
-        void queryClient.invalidateQueries({ queryKey: ['collection', changed] });
-      }
+      if (changed === collection) invalidateCollection(queryClient, changed);
     });
     return unsub;
   }, [collection, queryClient, enabled]);

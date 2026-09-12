@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useCollection } from './useCollection';
+import { useCollectionRange } from './useCollectionRange';
 import { isActive } from '@/lib/business/services';
 import { isOverdue } from '@/lib/business/tasks';
 import { localDateStr } from '@/lib/time';
@@ -32,10 +33,13 @@ export function useNavSignals(): Record<string, NavSignal> {
   const { data: inventory } = useCollection('inventory');
   const { data: purchaseOrders } = useCollection('purchaseOrders');
   const { data: taskInstances } = useCollection('taskInstances');
-  const { data: attendance } = useCollection('attendance');
+  // Only today's rows matter here. The rail mounts on every page (twice, with
+  // MobileBottomNav), so pulling the whole attendance history — which grows
+  // every day — was paid on every page and again on every clock-in.
+  const today = localDateStr();
+  const { data: attendance } = useCollectionRange('attendance', 'date', today, today);
 
   return useMemo(() => {
-    const today = localDateStr();
 
     // Services: active units in the workshop; escalate if any await cost confirmation.
     const pending = services.filter((s) => isActive(s.status)).length;
@@ -81,5 +85,5 @@ export function useNavSignals(): Record<string, NavSignal> {
             : IDLE,
       '/attendance': working > 0 ? { count: working, tone: 'good', pulse: false } : IDLE,
     } as Record<string, NavSignal>;
-  }, [services, inventory, purchaseOrders, taskInstances, attendance]);
+  }, [services, inventory, purchaseOrders, taskInstances, attendance, today]);
 }

@@ -68,7 +68,9 @@ export function DashboardPage() {
   const expensesQuery = useCollectionRange('expenses', 'date', from, to);
   const walletsQuery = useCollection('wallets');
   const inventoryQuery = useCollection('inventory');
-  const attendanceQuery = useCollection('attendance');
+  // Hanya baris hari ini yang dipakai (activeStaff) — kunci query-nya sama
+  // dengan rail navigasi, jadi keduanya berbagi satu tarikan kecil.
+  const attendanceQuery = useCollectionRange('attendance', 'date', localDateStr(), localDateStr());
   const services = servicesQuery.data;
   const incomes = incomesQuery.data;
   const expenses = expensesQuery.data;

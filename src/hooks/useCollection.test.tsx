@@ -14,12 +14,16 @@ import type { ReactNode } from 'react';
  * Tes ini menjaga opsi `enabled` supaya tidak hilang tanpa sengaja.
  */
 const list = vi.fn(async () => []);
-const subscribe = vi.fn(() => () => {});
+const listeners = new Set<(collection: string) => void>();
+const subscribe = vi.fn((listener: (collection: string) => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+});
 
 vi.mock('@/data', () => ({
   repository: {
     list: (...args: unknown[]) => list(...(args as [])),
-    subscribe: (...args: unknown[]) => subscribe(...(args as [])),
+    subscribe: (listener: (collection: string) => void) => subscribe(listener),
   },
 }));
 
@@ -96,5 +100,41 @@ describe('useCollection — gerbang enabled (egress)', () => {
 
     rerender({ on: true });
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('useCollection — satu perubahan, satu fetch (egress)', () => {
+  afterEach(cleanup);
+
+  it('tiga hook untuk koleksi yang sama → satu fetch per perubahan, bukan tiga', async () => {
+    // Sidebar + MobileBottomNav + halaman: tiga pendengar untuk `services` di
+    // Dashboard. Dulu tiap pendengar meng-invalidate sendiri; TanStack
+    // membatalkan lalu mengulang fetch, dan karena queryFn tidak memakai abort
+    // signal, request yang "dibatalkan" tetap mengunduh tabel penuh. Terukur
+    // sebelum perbaikan: 3 pendengar → 3 fetch.
+    list.mockClear();
+    listeners.clear();
+    list.mockImplementation(() => new Promise<never[]>((r) => setTimeout(() => r([]), 20)));
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 5 * 60_000 } },
+    });
+    renderHook(
+      () => {
+        useCollection('services');
+        useCollection('services');
+        useCollection('services');
+      },
+      { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> },
+    );
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 40));
+    list.mockClear();
+
+    for (const listener of listeners) listener('services'); // = repository.notify
+    await new Promise((r) => setTimeout(r, 60));
+
+    expect(listeners.size).toBe(3);
+    expect(list).toHaveBeenCalledTimes(1);
+    list.mockImplementation(async () => []);
   });
 });

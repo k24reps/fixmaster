@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { repository } from '@/data';
 import type { CollectionName, EntityMap } from '@/data/repository';
 import { useSessionStore } from '@/stores/session';
+import { invalidateCollection } from './useCollection';
 
 /**
  * Like {@link useCollection}, but fetches ONLY rows whose `dateField` is within
@@ -33,10 +34,8 @@ export function useCollectionRange<K extends CollectionName>(
 
   useEffect(() => {
     const unsub = repository.subscribe((changed) => {
-      if (changed === collection) {
-        // Prefix match invalidates every ranged variant of this collection.
-        void queryClient.invalidateQueries({ queryKey: ['collection', changed] });
-      }
+      // Prefix match invalidates every ranged variant of this collection.
+      if (changed === collection) invalidateCollection(queryClient, changed);
     });
     return unsub;
   }, [collection, queryClient]);
