@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NAV_ITEMS } from '@/config/navigation';
 import { useT, type TranslationKey } from '@/i18n';
 import { useBackupStore } from '@/stores/backup';
+import { useSessionStore } from '@/stores/session';
 import { applyDeviceDensityDefault } from '@/stores/zoom';
 import { isBackupDue } from '@/lib/business/backup';
 import { toast } from '@/stores/toast';
@@ -32,14 +33,18 @@ function useDeviceDensityDefault() {
 
 let backupReminderShown = false;
 function useBackupReminder() {
+  const planType = useSessionStore((s) => s.org?.planType);
   useEffect(() => {
-    if (backupReminderShown) return;
+    // Tunggu org termuat. Trial tidak bisa backup (lihat BackupCard), jadi
+    // jangan disuruh melakukan sesuatu yang tombolnya terkunci.
+    if (backupReminderShown || !planType) return;
     backupReminderShown = true;
+    if (planType === 'trial') return;
     const { frequency, lastBackupAt } = useBackupStore.getState();
     if (isBackupDue(lastBackupAt, frequency)) {
       toast.warning('Waktunya backup data. Buka Pengaturan → Sistem → Backup & Restore.');
     }
-  }, []);
+  }, [planType]);
 }
 
 const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {

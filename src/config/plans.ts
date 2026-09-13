@@ -104,7 +104,9 @@ export const PLANS: Record<PlanType, PlanDef> = {
     name: 'Trial',
     priceMonthly: 0,
     priceLabel: '14 hari',
-    // Trial = Bisnis minus data portability, to encourage upgrade.
+    // Trial = Bisnis minus data portability, to encourage upgrade: ekspor CSV
+    // (gerbang `exportImport`) DAN backup JSON (dikunci khusus Trial di
+    // BackupCard, supaya paket `suspended` tetap bisa membawa datanya keluar).
     features: ENTERPRISE_FEATURES.filter((f) => f !== 'exportImport'),
     maxWallets: 99,
     maxOutlets: 10,

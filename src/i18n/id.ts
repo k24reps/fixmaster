@@ -307,7 +307,7 @@ export const id = {
     'FixMaster berjalan di cloud, jadi butuh koneksi internet agar data tetap sinkron antarperangkat dan antar-staf. Saat koneksi terputus aplikasi tidak bisa mencatat transaksi baru; begitu internet kembali, FixMaster otomatis memuat data terbaru tanpa perlu login ulang.',
   'landingV2.faq.safe.q': 'Siapa yang bisa melihat data toko saya?',
   'landingV2.faq.safe.a':
-    'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
+    'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik di paket berbayar juga bisa mengunduh backup kapan saja.',
   'landingV2.faq.pay.q': 'Bayarnya bagaimana?',
   'landingV2.faq.pay.a':
     'Transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih paket di aplikasi, kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit. Masa aktif hanya bertambah setelah pembayaran kami verifikasi.',

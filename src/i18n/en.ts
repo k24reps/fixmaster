@@ -305,7 +305,7 @@ export const en: Dictionary = {
     'FixMaster runs in the cloud, so it needs an internet connection to keep data in sync across devices and staff. While the connection is down you cannot record new transactions; once you are back online, FixMaster reloads the latest data automatically, with no new sign-in.',
   'landingV2.faq.safe.q': 'Who can see my shop’s data?',
   'landingV2.faq.safe.a':
-    'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
+    'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners on a paid plan can also download a backup anytime.',
   'landingV2.faq.pay.q': 'How do I pay?',
   'landingV2.faq.pay.a':
     'Bank transfer, confirmed over WhatsApp. You pick a plan in the app, we send payment instructions, then you send the transfer receipt in the same chat. No credit card and no auto-debit. Your subscription only extends once we verify the payment.',

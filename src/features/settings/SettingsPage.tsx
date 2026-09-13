@@ -2342,6 +2342,11 @@ function BackupCard() {
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(org?.isDemo);
+  // Backup JSON = SELURUH data dalam format lossless, jadi dikunci selama Trial
+  // bersama ekspor CSV — kalau tidak, gerbang CSV tidak menjaga apa pun. Hanya
+  // Trial: toko yang ditangguhkan tetap harus bisa membawa datanya keluar.
+  // Restore tetap terbuka; memulihkan ke toko sendiri bukan membawa data pergi.
+  const canBackup = (org?.planType ?? 'trial') !== 'trial';
   // Restore is available to every owner (this whole page is owner-only). The
   // server RPC restore_org_data (migration 0020) enforces owner + forces
   // org_id, so an owner can only ever replace THEIR OWN org's data.
@@ -2419,6 +2424,7 @@ function BackupCard() {
   };
 
   const handleBackup = async () => {
+    if (!canBackup) return;
     if (demoGuard('Backup tersedia di FixMaster versi penuh — daftar gratis.')) return;
     setBusy(true);
     try {
@@ -2475,10 +2481,17 @@ function BackupCard() {
           Backup menyimpan SELURUH data sebagai satu file JSON yang bisa dipulihkan utuh
           (berbeda dari Export CSV yang untuk laporan). Simpan file di tempat aman.
         </p>
+        {!canBackup && (
+          <ProNotice>
+            Backup JSON membawa seluruh data toko keluar dalam satu file, tersedia di
+            paket berbayar.
+          </ProNotice>
+        )}
         <div className={styles.backupRow}>
           <Button
             onClick={handleBackup}
             loading={busy}
+            disabled={!canBackup}
             iconLeft={<Icon name="download" aria-hidden />}
           >
             Backup Sekarang
@@ -2569,23 +2582,28 @@ function BackupCard() {
             )}
           </>
         )}
-        <hr className={styles.dangerDivider} />
-        <Select
-          label="Pengingat backup manual (perangkat ini)"
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
-          options={[
-            { value: 'off', label: 'Nonaktif' },
-            { value: 'daily', label: 'Harian' },
-            { value: 'weekly', label: 'Mingguan' },
-            { value: 'monthly', label: 'Bulanan' },
-          ]}
-          hint={
-            lastBackupAt
-              ? `Backup terakhir: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
-              : 'Belum pernah backup di perangkat ini'
-          }
-        />
+        {/* Pengingat untuk tombol yang terkunci hanya akan jadi omelan. */}
+        {canBackup && (
+          <>
+            <hr className={styles.dangerDivider} />
+            <Select
+              label="Pengingat backup manual (perangkat ini)"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
+              options={[
+                { value: 'off', label: 'Nonaktif' },
+                { value: 'daily', label: 'Harian' },
+                { value: 'weekly', label: 'Mingguan' },
+                { value: 'monthly', label: 'Bulanan' },
+              ]}
+              hint={
+                lastBackupAt
+                  ? `Backup terakhir: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
+                  : 'Belum pernah backup di perangkat ini'
+              }
+            />
+          </>
+        )}
       </CardBody>
 
       <ConfirmDialog
