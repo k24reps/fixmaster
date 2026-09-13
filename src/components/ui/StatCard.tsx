@@ -2,19 +2,21 @@ import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 import styles from './StatCard.module.css';
 
-type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-
 interface StatCardProps {
   label: string;
   value: ReactNode;
   icon: ReactNode;
-  tone?: Tone;
   trend?: { value: string; positive: boolean };
 }
 
-export function StatCard({ label, value, icon, tone = 'brand', trend }: StatCardProps) {
+/**
+ * One neutral readout. There is deliberately no `tone`: each card used to get
+ * its own signal color (spine, tinted icon), so a green meant "Selesai" in one
+ * card and nothing in the next. Status belongs to `trend`, which carries a value.
+ */
+export function StatCard({ label, value, icon, trend }: StatCardProps) {
   return (
-    <div className={[styles.card, styles[tone]].join(' ')}>
+    <div className={styles.card}>
       <div className={styles.iconWrap}>{icon}</div>
       <div className={styles.info}>
         <p className={styles.label}>{label}</p>

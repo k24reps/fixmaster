@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import { Icon } from '@/components/ui';
 import type { SelectHTMLAttributes } from 'react';
 import styles from './Select.module.css';
@@ -20,7 +20,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   { label, hint, error, options, placeholder, className, id, ...rest },
   ref,
 ) {
-  const selectId = id ?? rest.name;
+  const autoId = useId(); // lihat Input: label tanpa id tidak pernah terhubung
+  const selectId = id ?? rest.name ?? autoId;
   return (
     <div className={styles.group}>
       {label && (

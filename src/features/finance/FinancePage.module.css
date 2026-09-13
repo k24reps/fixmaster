@@ -58,15 +58,8 @@
 .walletCardActive .walletHint {
   opacity: 1;
 }
-.walletCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--gradient-brand-accent);
-}
+/* Tanpa strip gradien atas & LED per dompet: sama di semua kartu, jadi tidak
+   mengklasifikasi apa pun (Spine, Not the Fill; Lit-Signal). */
 .walletName {
   display: inline-flex;
   align-items: center;
@@ -76,14 +69,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-}
-.walletName::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 7px var(--accent);
 }
 .walletBalance {
   font-family: var(--font-mono);
@@ -134,32 +119,26 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
-.summaryCard.income {
-  background: var(--success-soft);
-}
+/* Spine, not fill: arah uang dibawa spine 3px + warna angka. Dulu ketiga kartu
+   juga dibanjiri tint (hijau/merah/amber) di atas spine-nya, dan angkanya
+   memakai rona 400 yang tidak berganti tema, jadi pudar di tema terang. */
 .summaryCard.income::before {
   background: var(--green-500);
 }
 .summaryCard.income strong {
-  color: var(--green-400);
-}
-.summaryCard.expense {
-  background: var(--danger-soft);
+  color: var(--success-text);
 }
 .summaryCard.expense::before {
   background: var(--red-500);
 }
 .summaryCard.expense strong {
-  color: var(--red-400);
-}
-.summaryCard.net {
-  background: var(--brand-soft);
+  color: var(--danger-text);
 }
 .summaryCard.net::before {
-  background: var(--gradient-brand);
+  background: var(--accent);
 }
 .summaryCard.net strong {
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 
 .actions {

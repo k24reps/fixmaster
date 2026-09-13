@@ -3,33 +3,12 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--text-primary) 2.5%, transparent), transparent 42%),
-    var(--surface-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Flat at rest and not clickable, so no hover lift (Mounted-or-Flat). */
+  background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   overflow: hidden;
-  transition:
-    transform var(--dur-normal) var(--ease-out),
-    box-shadow var(--dur-normal) var(--ease-out),
-    border-color var(--dur-normal) var(--ease-out);
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: var(--space-4);
-  left: 0;
-  bottom: var(--space-4);
-  width: 3px;
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
-}
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-strong);
 }
 
 .iconWrap {
@@ -41,6 +20,9 @@
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
 }
 
 .info {
@@ -79,50 +61,6 @@
   color: var(--danger-text);
 }
 
-/* ---------- Tones ---------- */
-.brand::before {
-  background: var(--gradient-brand);
-}
-.brand .iconWrap {
-  background: var(--brand-soft);
-  color: var(--brand-text);
-}
-.success::before {
-  background: linear-gradient(180deg, var(--green-500), var(--green-400));
-}
-.success .iconWrap {
-  background: var(--success-soft);
-  color: var(--success-text);
-}
-.warning::before {
-  background: linear-gradient(180deg, var(--amber-500), var(--amber-400));
-}
-.warning .iconWrap {
-  background: var(--warning-soft);
-  color: var(--warning-text);
-}
-.danger::before {
-  background: linear-gradient(180deg, var(--red-500), var(--red-400));
-}
-.danger .iconWrap {
-  background: var(--danger-soft);
-  color: var(--danger-text);
-}
-.info::before {
-  background: linear-gradient(180deg, var(--blue-500), var(--blue-400));
-}
-.info .iconWrap {
-  background: var(--info-soft);
-  color: var(--info-text);
-}
-.accent::before {
-  background: linear-gradient(180deg, var(--accent-500), var(--accent-400));
-}
-.accent .iconWrap {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}
-
 /* Di grid dua kolom mobile kartu ini hanya ~138px di 320px, sementara
    chrome-nya (ikon 40px + gap 12px + padding 16px x2) sudah memakan 84px —
    menyisakan ~54px untuk teks, yang memotong label seperti "Menunggu
@@ -133,10 +71,6 @@
   .card {
     padding: var(--space-3);
     gap: var(--space-2);
-  }
-  .card::before {
-    top: var(--space-3);
-    bottom: var(--space-3);
   }
   .iconWrap {
     width: 32px;

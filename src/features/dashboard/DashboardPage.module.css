@@ -44,20 +44,12 @@
   align-items: center;
   gap: var(--space-2);
 }
-.consolePulse {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-  animation: fm-pulse 1.8s var(--ease-in-out) infinite;
-}
 .consoleTitle {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.2em;
-  color: var(--accent);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .consoleReadouts {
@@ -87,7 +79,6 @@
 }
 .consoleClock {
   font-family: var(--font-mono);
-  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 .consoleFault {
@@ -183,7 +174,6 @@
   border-radius: var(--radius-lg);
   padding: 2px; /* gradient bezel */
   background: var(--gradient-brand-accent);
-  box-shadow: var(--shadow-md);
 }
 .heroScreen {
   position: relative;
@@ -288,32 +278,19 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
 }
+/* Lima KPI setara, satu rona. Dulu tiap kartu punya spine, ikon bertint, dan
+   LED warna sinyal sendiri, padahal "Pengeluaran" bukan kegagalan dan "Total
+   saldo" bukan status. Kartu juga tidak bisa diklik, jadi tidak terangkat. */
 .metric {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
-  background: var(--surface-glass);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast),
-    box-shadow var(--dur-fast);
-}
-/* tone spine on the left edge */
-.metric::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-}
-.metric:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
 }
 .metricTop {
   display: flex;
@@ -329,6 +306,8 @@
   justify-content: center;
   font-size: 1.05rem;
   flex-shrink: 0;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
   border: 1px solid var(--border);
 }
 .metricLabel {
@@ -342,12 +321,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-}
-.metricLed {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex: none;
 }
 /* Value sits on its own full-width row so long Rupiah figures show in
    full — responsive clamp + word-break instead of nowrap+ellipsis. */
@@ -366,25 +339,6 @@
   color: var(--text-muted);
   letter-spacing: 0.04em;
 }
-/* metric tones */
-.metric.brand::before { background: var(--gradient-brand); }
-.metric.brand .metricIcon { background: var(--brand-soft); color: var(--brand-text); }
-.metric.brand .metricLed { background: var(--brand-400); box-shadow: 0 0 7px var(--brand-400); }
-.metric.warning::before { background: linear-gradient(180deg, var(--amber-500), var(--amber-400)); }
-.metric.warning .metricIcon { background: var(--warning-soft); color: var(--warning-text); }
-.metric.warning .metricLed { background: var(--amber-400); box-shadow: 0 0 7px var(--amber-400); }
-.metric.success::before { background: linear-gradient(180deg, var(--green-500), var(--green-400)); }
-.metric.success .metricIcon { background: var(--success-soft); color: var(--success-text); }
-.metric.success .metricLed { background: var(--green-400); box-shadow: 0 0 7px var(--green-400); }
-.metric.danger::before { background: linear-gradient(180deg, var(--red-500), var(--red-400)); }
-.metric.danger .metricIcon { background: var(--danger-soft); color: var(--danger-text); }
-.metric.danger .metricLed { background: var(--red-400); box-shadow: 0 0 7px var(--red-400); }
-.metric.accent::before { background: linear-gradient(180deg, var(--accent-500), var(--accent-400)); }
-.metric.accent .metricIcon { background: var(--accent-soft); color: var(--accent-text); }
-.metric.accent .metricLed { background: var(--accent-400); box-shadow: 0 0 7px var(--accent-400); }
-.metric.info::before { background: linear-gradient(180deg, var(--blue-500), var(--blue-400)); }
-.metric.info .metricIcon { background: var(--info-soft); color: var(--info-text); }
-.metric.info .metricLed { background: var(--blue-400); box-shadow: 0 0 7px var(--blue-400); }
 
 /* ---------- Targets (tick gauges) ---------- */
 .targets {
@@ -410,7 +364,7 @@
   font-family: var(--font-mono);
   font-weight: var(--fw-bold);
   font-size: var(--text-md);
-  color: var(--brand-hover);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 .gauge {
@@ -425,7 +379,8 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--gradient-brand);
+  /* Progres berjalan = bacaan instrumen (cyan); amber milik aksi utama. */
+  background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
   transform-origin: left center;
   transition: transform var(--dur-slow) var(--ease-out);
 }
@@ -434,9 +389,6 @@
 }
 .gauge.warn .gaugeFill {
   background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
-}
-.gauge.live .gaugeFill {
-  background: var(--gradient-brand);
 }
 /* tick marks overlay */
 .gauge::after {
@@ -517,7 +469,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
-  color: var(--brand-hover);
+  color: var(--text-secondary);
   min-width: 76px;
   padding: 3px 7px;
   border: 1px solid var(--border);
@@ -549,14 +501,11 @@
 }
 .recentItem:hover .recentArrow,
 .recentItem:focus-visible .recentArrow {
-  color: var(--brand-hover);
+  color: var(--text-primary);
   transform: translateX(2px);
 }
 
 /* ---------- Action queue ---------- */
-.actionCard {
-  border-color: var(--border-brand);
-}
 .alertList {
   display: flex;
   flex-direction: column;
@@ -598,7 +547,6 @@
 .alertIcon.warning {
   background: var(--warning-soft);
   color: var(--warning-text);
-  border-color: var(--border-brand);
 }
 .alertIcon.danger {
   background: var(--danger-soft);
@@ -631,7 +579,7 @@
 }
 .alertItem:hover .alertArrow,
 .alertItem:focus-visible .alertArrow {
-  color: var(--brand-hover);
+  color: var(--text-primary);
   transform: translateX(2px);
 }
 .allClear {
@@ -695,9 +643,8 @@
   flex-shrink: 0;
 }
 .chan[data-rank='1'] {
-  background: var(--brand-soft);
-  border-color: var(--border-brand);
-  color: var(--brand-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 .leaderMain {
   flex: 1;
@@ -751,9 +698,6 @@
   background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
   transform-origin: left center;
   transition: transform var(--dur-slow) var(--ease-out);
-}
-.meterFill[data-rank='1'] {
-  background: var(--gradient-brand);
 }
 
 @container dashboard (max-width: 900px) {
@@ -815,10 +759,6 @@
   }
   .consoleTitle {
     display: none;
-  }
-  .consolePulse {
-    width: 7px;
-    height: 7px;
   }
   .consoleReadouts {
     display: grid;

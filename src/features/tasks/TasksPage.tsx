@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
@@ -26,8 +26,8 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export function TasksPage() {
-  const { data: templates } = useCollection('taskTemplates');
-  const { data: instances } = useCollection('taskInstances');
+  const { data: templates, ...templatesLoad } = useCollection('taskTemplates');
+  const { data: instances, ...instancesLoad } = useCollection('taskInstances');
   const { data: employees } = useCollection('employees');
   const { data: outlets } = useCollection('outlets');
   const org = useSessionStore((s) => s.org);
@@ -278,7 +278,9 @@ export function TasksPage() {
           <Card glass>
             <CardHeader icon={<Icon name="list-check" aria-hidden />} title="Perlu Dikerjakan" />
             <CardBody className={styles.noPad}>
-              {todayTasks.length === 0 ? (
+              {loadPending(templatesLoad, instancesLoad) ? (
+                <LoadState queries={[templatesLoad, instancesLoad]} />
+              ) : todayTasks.length === 0 ? (
                 <EmptyState
                   icon={<Icon name="circle-check" aria-hidden />}
                   title="Semua tugas selesai"
@@ -443,7 +445,9 @@ export function TasksPage() {
       ) : (
         <Card glass>
           <CardBody className={styles.noPad}>
-            {templates.length === 0 ? (
+            {loadPending(templatesLoad) ? (
+              <LoadState queries={[templatesLoad]} />
+            ) : templates.length === 0 ? (
               <EmptyState
                 icon={<Icon name="list-check" aria-hidden />}
                 title="Belum ada template tugas"

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, Button, Input, EmptyState, Icon } from '@/components/ui';
+import { Card, Button, Input, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
@@ -19,7 +19,7 @@ type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
 type ViewMode = 'grid' | 'list';
 
 export function CustomersPage() {
-  const { data: customers } = useCollection('customers');
+  const { data: customers, ...customersLoad } = useCollection('customers');
   const { data: services } = useCollection('services');
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
@@ -197,7 +197,11 @@ export function CustomersPage() {
         <span><strong>{rows.length}</strong> ditampilkan</span>
       </div>
 
-      {rows.length === 0 ? (
+      {loadPending(customersLoad) ? (
+        <Card glass>
+          <LoadState queries={[customersLoad]} />
+        </Card>
+      ) : rows.length === 0 ? (
         <Card glass>
           <EmptyState
             icon={<Icon name="users" aria-hidden />}

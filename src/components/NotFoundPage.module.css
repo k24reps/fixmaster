@@ -1,5 +1,5 @@
 .page {
-  min-height: 100vh;
+  min-height: var(--app-vh);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,7 +15,6 @@
   align-items: center;
   gap: var(--space-3);
   border: 1px solid var(--border-strong);
-  border-top: 3px solid var(--brand);
   border-radius: var(--radius-lg);
   background: var(--surface-glass-strong);
   box-shadow: var(--shadow-lg);
@@ -67,10 +66,8 @@
   font-size: clamp(4rem, 18vw, 7rem);
   font-weight: var(--fw-extra);
   font-family: var(--font-display);
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  /* Solid, not gradient text: emphasis comes from size and weight. */
+  color: var(--brand-text);
   line-height: 1;
 }
 .title {

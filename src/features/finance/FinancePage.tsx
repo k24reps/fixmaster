@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, CardHeader, CardBody, Button, EmptyState, Icon } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
@@ -75,9 +75,9 @@ export function FinancePage() {
     const d = new Date();
     return localDateStr(new Date(d.getFullYear(), d.getMonth() - monthsBack, 1));
   }, [monthsBack]);
-  const { data: wallets } = useCollection('wallets');
-  const { data: incomes } = useCollectionRange('incomes', 'date', fetchFrom, to);
-  const { data: expenses } = useCollectionRange('expenses', 'date', fetchFrom, to);
+  const { data: wallets, ...walletsLoad } = useCollection('wallets');
+  const { data: incomes, ...incomesLoad } = useCollectionRange('incomes', 'date', fetchFrom, to);
+  const { data: expenses, ...expensesLoad } = useCollectionRange('expenses', 'date', fetchFrom, to);
   // Transfer antar wallet tidak punya tabel sendiri — jejaknya cuma di activity
   // log (owner-only lewat RLS, jadi admin melihat daftar transfer kosong).
   // ponytail: kalau admin perlu lihat transfer, baru bikin tabel wallet_transfers.
@@ -278,7 +278,11 @@ export function FinancePage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.walletGrid}>
-        {wallets.length === 0 ? (
+        {loadPending(walletsLoad) ? (
+          <Card glass>
+            <LoadState queries={[walletsLoad]} />
+          </Card>
+        ) : wallets.length === 0 ? (
           <Card glass padding>
             <p className={styles.noWallet}>Belum ada wallet. Tambahkan di Pengaturan.</p>
           </Card>
@@ -407,7 +411,9 @@ export function FinancePage() {
           {/* Footer "muat bulan sebelumnya" ikut dirender saat kosong — kalau
               disembunyikan, filter wallet tanpa hasil jadi jalan buntu. */}
           <div className={styles.tape}>
-            {visibleLedger.length === 0 ? (
+            {loadPending(incomesLoad, expensesLoad) ? (
+              <LoadState queries={[incomesLoad, expensesLoad]} />
+            ) : visibleLedger.length === 0 ? (
               <EmptyState
                 icon={<Icon name="receipt" aria-hidden />}
                 title="Belum ada transaksi"

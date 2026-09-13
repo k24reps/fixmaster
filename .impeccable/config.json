@@ -155,6 +155,15 @@
         ],
         "createdAt": "2026-09-13T07:03:10.538Z",
         "reason": "Mobile hero display clamp; DESIGN.md Typography sanctions clamp() scaling for Display on marketing surfaces."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.9rem",
+        "files": [
+          "src/features/finance/FinancePage.module.css"
+        ],
+        "createdAt": "2026-09-13T07:33:27.019Z",
+        "reason": "Pre-existing clamp floor for mobile ledger amounts (14.4px, above the 12px floor); fluid readout, not a ramp step"
       }
     ]
   }

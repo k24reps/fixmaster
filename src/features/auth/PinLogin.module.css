@@ -20,7 +20,6 @@
   background: var(--surface-glass);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  border-top: 3px solid var(--brand);
   padding: var(--space-8);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);

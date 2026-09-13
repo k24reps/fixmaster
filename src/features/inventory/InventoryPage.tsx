@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, Button, Input, EmptyState, Icon } from '@/components/ui';
+import { Card, Button, Input, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
@@ -24,7 +24,7 @@ function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
 
 export function InventoryPage() {
   const [searchParams] = useSearchParams();
-  const { data: inventory } = useCollection('inventory');
+  const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   const { data: services } = useCollection('services');
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
@@ -146,7 +146,11 @@ export function InventoryPage() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {loadPending(inventoryLoad) ? (
+        <Card glass>
+          <LoadState queries={[inventoryLoad]} />
+        </Card>
+      ) : rows.length === 0 ? (
         <Card glass>
           <EmptyState
             icon={<Icon name="boxes-stacked" aria-hidden />}

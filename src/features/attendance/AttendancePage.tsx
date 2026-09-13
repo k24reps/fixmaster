@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isSupabaseConfigured, clockIn, clockOut } from '@/data/supabase-client';
@@ -24,7 +24,8 @@ import type { Attendance } from '@/data/types';
 import styles from './AttendancePage.module.css';
 
 export function AttendancePage() {
-  const { data: attendance, refetch } = useCollection('attendance');
+  const { data: attendance, refetch, ...attendanceRest } = useCollection('attendance');
+  const attendanceLoad = { ...attendanceRest, refetch };
   const { data: outlets } = useCollection('outlets');
   const { data: employees } = useCollection('employees');
   const me = useSessionStore((s) => s.currentEmployee);
@@ -492,7 +493,9 @@ export function AttendancePage() {
           }
         />
         <CardBody className={styles.noPad}>
-          {todayRecords.length === 0 ? (
+          {loadPending(attendanceLoad) ? (
+            <LoadState queries={[attendanceLoad]} />
+          ) : todayRecords.length === 0 ? (
             <EmptyState
               icon={<Icon name="user-clock" aria-hidden />}
               title="Belum ada check-in"
@@ -551,7 +554,9 @@ export function AttendancePage() {
             action={<span className={styles.periodTag}>{periodLabel}</span>}
           />
           <CardBody className={styles.noPad}>
-            {recap.length === 0 ? (
+            {loadPending(attendanceLoad) ? (
+              <LoadState queries={[attendanceLoad]} />
+            ) : recap.length === 0 ? (
               <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi pada periode ini" />
             ) : (
               <div className={styles.ledger}>
@@ -588,7 +593,9 @@ export function AttendancePage() {
           action={<span className={styles.periodTag}>{periodLabel}</span>}
         />
         <CardBody className={styles.noPad}>
-          {recentByDay.length === 0 ? (
+          {loadPending(attendanceLoad) ? (
+            <LoadState queries={[attendanceLoad]} />
+          ) : recentByDay.length === 0 ? (
             <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat pada periode ini" />
           ) : (
             <div className={styles.ledger}>

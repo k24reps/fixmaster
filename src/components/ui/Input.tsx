@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import type { InputHTMLAttributes, ReactNode, ChangeEvent } from 'react';
 import { capitalizeFirst, capitalizeWords } from '@/lib/text';
 import { Icon } from './Icon';
@@ -49,7 +49,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   },
   ref,
 ) {
-  const inputId = id ?? rest.name;
+  // Tanpa id/name, htmlFor dan id sama-sama undefined: labelnya tampil tapi
+  // tidak pernah terhubung (terukur: tiga field profil di Pengaturan tanpa
+  // nama aksesibel). useId menjamin pasangan itu selalu ada.
+  const autoId = useId();
+  const inputId = id ?? rest.name ?? autoId;
   const [revealed, setRevealed] = useState(false);
 
   // Auto-capitalize free-text fields. Skipped where casing matters

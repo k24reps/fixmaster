@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, Button, Badge, EmptyState, Icon } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository, isSupabaseConfigured } from '@/data';
@@ -19,8 +19,8 @@ import styles from './SuppliersPage.module.css';
 
 export function SuppliersPage() {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
-  const { data: suppliers } = useCollection('suppliers');
-  const { data: purchaseOrders } = useCollection('purchaseOrders');
+  const { data: suppliers, ...suppliersLoad } = useCollection('suppliers');
+  const { data: purchaseOrders, ...poLoad } = useCollection('purchaseOrders');
   const { data: inventory } = useCollection('inventory');
   const { data: wallets } = useCollection('wallets');
   const { data: outlets } = useCollection('outlets');
@@ -177,7 +177,11 @@ export function SuppliersPage() {
       )}
 
       {tab === 'po' ? (
-        sortedPOs.length === 0 ? (
+        loadPending(poLoad) ? (
+          <Card glass>
+            <LoadState queries={[poLoad]} />
+          </Card>
+        ) : sortedPOs.length === 0 ? (
           <Card glass>
             <EmptyState
               icon={<Icon name="file-invoice" aria-hidden />}
@@ -226,7 +230,11 @@ export function SuppliersPage() {
           </Card>
         )
       ) : (
-        suppliers.length === 0 ? (
+        loadPending(suppliersLoad) ? (
+          <Card glass>
+            <LoadState queries={[suppliersLoad]} />
+          </Card>
+        ) : suppliers.length === 0 ? (
           <Card glass>
             <EmptyState
               icon={<Icon name="truck-field" aria-hidden />}

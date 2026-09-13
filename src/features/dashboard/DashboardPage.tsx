@@ -164,7 +164,6 @@ export function DashboardPage() {
             <Mascot variant="face" size={30} animated={false} className={styles.consoleMascotImg} />
           </div>
           <div className={styles.consoleBrandText}>
-            <span className={styles.consolePulse} aria-hidden />
             <span className={styles.consoleTitle}>{t('dashboard.console')}</span>
           </div>
         </div>
@@ -250,7 +249,7 @@ export function DashboardPage() {
             </div>
           </section>
 
-          <Card glass className={styles.actionCard}>
+          <Card glass>
             <CardHeader icon={<Icon name="list-check" aria-hidden />} title={t('dashboard.actionsTitle')} />
             <CardBody className={styles.noPad}>
               {alerts.length === 0 ? (
@@ -292,13 +291,13 @@ export function DashboardPage() {
           </Card>
 
           <section className={styles.metrics} aria-label={t('dashboard.metricsAria')}>
-            <Metric label={t('dashboard.unitsIn')} value={kpis.unitsIn} unit={t('dashboard.thisMonth')} icon={<Icon name="download" aria-hidden />} tone="brand" />
-            <Metric label={t('dashboard.unfinished')} value={kpis.unitsPending} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} tone="warning" />
+            <Metric label={t('dashboard.unitsIn')} value={kpis.unitsIn} unit={t('dashboard.thisMonth')} icon={<Icon name="download" aria-hidden />} />
+            <Metric label={t('dashboard.unfinished')} value={kpis.unitsPending} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} />
             {isMgr && (
               <>
-                <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} tone="success" />
-                <Metric label={t('dashboard.expense')} value={fmtRpInline(kpis.expense)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-down" aria-hidden />} tone="danger" />
-                <Metric label={t('dashboard.totalBalance')} value={fmtRpInline(kpis.totalWallet)} unit={t('dashboard.allWallets')} icon={<Icon name="wallet" aria-hidden />} tone="info" />
+                <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} />
+                <Metric label={t('dashboard.expense')} value={fmtRpInline(kpis.expense)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-down" aria-hidden />} />
+                <Metric label={t('dashboard.totalBalance')} value={fmtRpInline(kpis.totalWallet)} unit={t('dashboard.allWallets')} icon={<Icon name="wallet" aria-hidden />} />
               </>
             )}
           </section>
@@ -369,7 +368,7 @@ export function DashboardPage() {
             )}
           </div>
 
-          <Card glass accent="brand">
+          <Card glass>
             <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('dashboard.technicianPerformance')} />
             <CardBody className={styles.noPad}>
               {leaderboard.length === 0 ? (
@@ -435,21 +434,17 @@ function Target({ label, pct, detail }: { label: string; pct: number; detail: st
   );
 }
 
-function Metric({ label, value, unit, icon, tone }: {
+function Metric({ label, value, unit, icon }: {
   label: string;
   value: ReactNode;
   unit?: string;
   icon: ReactNode;
-  tone: 'brand' | 'warning' | 'success' | 'danger' | 'accent' | 'info';
 }) {
   return (
-    <div className={[styles.metric, styles[tone]].join(' ')}>
+    <div className={styles.metric}>
       <div className={styles.metricTop}>
         <span className={styles.metricIcon}>{icon}</span>
-        <span className={styles.metricLabel}>
-          <span className={styles.metricLed} aria-hidden />
-          {label}
-        </span>
+        <span className={styles.metricLabel}>{label}</span>
       </div>
       <span className={styles.metricValue}>{value}</span>
       {unit && <span className={styles.metricUnit}>{unit}</span>}

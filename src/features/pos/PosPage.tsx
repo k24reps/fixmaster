@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, Input, Button, Badge, EmptyState, Icon, Modal } from '@/components/ui';
+import { Card, Input, Button, Badge, EmptyState, Icon, Modal, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { voidSale, processSale, isSupabaseConfigured } from '@/data/supabase-client';
@@ -24,9 +24,9 @@ import type { InventoryItem, Sale, PaymentAllocation } from '@/data/types';
 import styles from './PosPage.module.css';
 
 export function PosPage() {
-  const { data: inventory } = useCollection('inventory');
+  const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   const { data: wallets } = useCollection('wallets');
-  const { data: sales } = useCollection('sales');
+  const { data: sales, ...salesLoad } = useCollection('sales');
   const { data: outlets } = useCollection('outlets');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
@@ -321,7 +321,11 @@ export function PosPage() {
           onChange={(e) => setQuery(e.target.value)}
           iconLeft={<Icon name="magnifying-glass" aria-hidden />}
         />
-        {available.length === 0 ? (
+        {loadPending(inventoryLoad) ? (
+          <Card glass>
+            <LoadState queries={[inventoryLoad]} />
+          </Card>
+        ) : available.length === 0 ? (
           <Card glass>
             <EmptyState
               icon={<Icon name="boxes-stacked" aria-hidden />}
@@ -493,7 +497,9 @@ export function PosPage() {
               <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
             </h3>
           </div>
-          {recentSales.length === 0 ? (
+          {loadPending(salesLoad) ? (
+            <LoadState queries={[salesLoad]} />
+          ) : recentSales.length === 0 ? (
             <p className={styles.emptyCart}>Belum ada transaksi.</p>
           ) : (
             <ul className={styles.historyList}>

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Card, CardHeader, CardBody, EmptyState, Icon, Button } from '@/components/ui';
+import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending } from '@/components/ui';
 import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
@@ -43,9 +43,9 @@ export function ReportsPage() {
 
   // Server-side date filter (plan B): only the selected period is fetched, so
   // the report never pulls the whole history (which truncated at the row cap).
-  const { data: incomes } = useCollectionRange('incomes', 'date', from, to);
-  const { data: expenses } = useCollectionRange('expenses', 'date', from, to);
-  const { data: sales } = useCollectionRange('sales', 'date', from, to);
+  const { data: incomes, ...incomesLoad } = useCollectionRange('incomes', 'date', from, to);
+  const { data: expenses, ...expensesLoad } = useCollectionRange('expenses', 'date', from, to);
+  const { data: sales, ...salesLoad } = useCollectionRange('sales', 'date', from, to);
   // Periode pembanding diambil TERPISAH. Sebelumnya periodComparison dioper
   // array di atas — yang hanya memuat periode terpilih — sehingga `previous`
   // selalu nol dan chip "vs periode lalu" cuma bisa 0% atau +100%. Diambil
@@ -58,9 +58,13 @@ export function ReportsPage() {
   // services filters on createdAt (a UTC timestamp) but groups by LOCAL date,
   // so widen the query ±1 day; the exact localDateOf filter below trims edges.
   const [svcFrom, svcTo] = rangeForTimestamp(from, to);
-  const { data: services } = useCollectionRange('services', 'createdAt', svcFrom, svcTo);
+  const { data: services, ...servicesLoad } = useCollectionRange('services', 'createdAt', svcFrom, svcTo);
   const { data: outlets } = useCollection('outlets');
-  const { data: inventory } = useCollection('inventory');
+  const { data: inventory, ...inventoryLoad } = useCollection('inventory');
+  // Panel laporan menampilkan "Belum ada data" hanya setelah datanya benar-benar
+  // termuat; selama memuat atau gagal, kosong bukan fakta.
+  const reportLoad = [incomesLoad, expensesLoad, salesLoad, servicesLoad, inventoryLoad];
+  const reportPending = loadPending(...reportLoad);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const scopeLabel = activeOutletId
     ? (outlets.find((o) => o.id === activeOutletId)?.name ?? 'Cabang')
@@ -305,7 +309,9 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader icon={<Icon name="chart-line" aria-hidden />} title="Tren Pemasukan vs Pengeluaran" />
         <CardBody>
-          {trend.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : trend.length === 0 ? (
             <EmptyState icon={<Icon name="chart-line" aria-hidden />} title="Belum ada data periode ini" />
           ) : (
             <TrendChart points={trend} />
@@ -345,7 +351,9 @@ export function ReportsPage() {
         <Card glass>
           <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title="Pemasukan per Kategori" />
           <CardBody className={styles.noPad}>
-            {incomeByCategory.length === 0 ? (
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : incomeByCategory.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
             ) : (
               <ul className={styles.breakdown}>
@@ -368,7 +376,9 @@ export function ReportsPage() {
         <Card glass>
           <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title="Pengeluaran per Kategori" />
           <CardBody className={styles.noPad}>
-            {expenseByCategory.length === 0 ? (
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : expenseByCategory.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
             ) : (
               <ul className={styles.breakdown}>
@@ -393,7 +403,9 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader icon={<Icon name="microchip" aria-hidden />} title="Laba per Kategori Perangkat" />
         <CardBody className={styles.noPad}>
-          {catProfit.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : catProfit.length === 0 ? (
             <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada servis selesai" />
           ) : (
             <ul className={styles.breakdown}>
@@ -418,7 +430,9 @@ export function ReportsPage() {
         <Card glass>
           <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title="Sparepart Terlaris" />
           <CardBody className={styles.noPad}>
-            {partUsage.length === 0 ? (
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : partUsage.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada pemakaian sparepart periode ini" />
             ) : (
               <ul className={styles.breakdown}>
@@ -449,7 +463,9 @@ export function ReportsPage() {
             action={<span className={styles.liveTag}>Stok saat ini</span>}
           />
           <CardBody className={styles.noPad}>
-            {restock.length === 0 ? (
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : restock.length === 0 ? (
               <EmptyState icon={<Icon name="circle-check" aria-hidden />} title="Stok semua aman" />
             ) : (
               <ul className={styles.breakdown}>
@@ -505,7 +521,9 @@ export function ReportsPage() {
           }
         />
         <CardBody className={styles.noPad}>
-          {funnel.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : funnel.length === 0 ? (
             <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada servis periode ini" />
           ) : (
             <ul className={styles.breakdown}>
@@ -530,7 +548,9 @@ export function ReportsPage() {
         <Card glass>
           <CardHeader icon={<Icon name="store" aria-hidden />} title="Perbandingan Antar-Outlet" />
           <CardBody className={styles.noPad}>
-            {outletStats.length === 0 ? (
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : outletStats.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
             ) : (
               <ul className={styles.breakdown}>
@@ -569,7 +589,9 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader icon={<Icon name="trophy" aria-hidden />} title="Performa Teknisi (periode)" />
         <CardBody className={styles.noPad}>
-          {leaderboard.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : leaderboard.length === 0 ? (
             <EmptyState icon={<Icon name="users" aria-hidden />} title="Belum ada servis selesai" />
           ) : (
             <ul className={styles.breakdown}>
@@ -597,7 +619,9 @@ export function ReportsPage() {
           action={receivables.length > 0 ? <span className={styles.turnaround}>Total {fmtRp(receivablesTotal)}</span> : undefined}
         />
         <CardBody className={styles.noPad}>
-          {receivables.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : receivables.length === 0 ? (
             <EmptyState icon={<Icon name="circle-check" aria-hidden />} title="Tidak ada piutang" />
           ) : (
             <div className={styles.tableScroll}>
@@ -641,7 +665,9 @@ export function ReportsPage() {
           action={<span className={styles.turnaround}>{txnRows.length} baris</span>}
         />
         <CardBody className={styles.noPad}>
-          {txnRows.length === 0 ? (
+          {reportPending ? (
+            <LoadState queries={reportLoad} />
+          ) : txnRows.length === 0 ? (
             <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada transaksi periode ini" />
           ) : (
             <div className={styles.tableScroll}>

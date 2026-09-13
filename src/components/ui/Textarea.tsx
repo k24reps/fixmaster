@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import type { TextareaHTMLAttributes, ChangeEvent } from 'react';
 import { capitalizeLines } from '@/lib/text';
 import styles from './Textarea.module.css';
@@ -24,7 +24,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   { label, hint, error, className, id, noAutoCap, onChange, ...rest },
   ref,
 ) {
-  const areaId = id ?? rest.name;
+  const autoId = useId(); // lihat Input: label tanpa id tidak pernah terhubung
+  const areaId = id ?? rest.name ?? autoId;
   const autoCap = !noAutoCap;
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
