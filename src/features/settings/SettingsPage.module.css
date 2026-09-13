@@ -569,7 +569,7 @@
 }
 .tick {
   flex: 1;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--bg-surface);
   border: 1px solid var(--border);
   transition: background var(--dur-normal) var(--ease-out);
