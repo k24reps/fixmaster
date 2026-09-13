@@ -187,9 +187,9 @@ export const id = {
   'landingV2.heroKicker': 'Untuk konter HP, laptop & reparasi elektronik',
   'landingV2.heroTitle': 'Catat servis sekali. Stok dan margin ikut terhitung.',
   'landingV2.heroLead':
-    'Dari unit masuk sampai pembayaran, FixMaster menyambungkan tiket, sparepart, kas, dan laporan. Pemilik bisa melihat antrean, biaya, dan keuntungan tanpa menyalin buku, chat, atau Excel satu per satu.',
+    'Dari unit masuk sampai pembayaran, FixMaster menyambungkan tiket, sparepart, kas, dan laporan. Pemilik melihat antrean, biaya, dan keuntungan tanpa entri ulang.',
   'landingV2.startTrial': 'Mulai gratis 14 hari',
-  'landingV2.openDemo': 'Coba alur lengkap di demo',
+  'landingV2.openDemo': 'Buka demo tanpa akun',
   'landingV2.consoleLabel': 'Simulasi konsol operasional FixMaster',
   'landingV2.consoleTitle': 'Konsol Operasional // Hari Ini',
   'landingV2.online': 'Online',
@@ -254,7 +254,7 @@ export const id = {
   'landingV2.ticketUpdated': 'Diperbarui 14:32',
   'landingV2.productTitle': 'Operasional di meja. Pantau dari ponsel.',
   'landingV2.productLead':
-    'Demo ini memakai aplikasi FixMaster yang asli, bukan video. Coba terima unit, ubah status, pakai sparepart, lalu lihat dampaknya ke stok dan keuangan — tanpa akun; data contoh tidak disimpan.',
+    'Demo ini memakai aplikasi FixMaster yang asli, bukan video. Coba terima unit, ubah status, pakai sparepart, lalu lihat dampaknya ke stok dan keuangan. Tidak perlu akun, dan data contoh tidak disimpan.',
   'landingV2.productAlt':
     'Dashboard FixMaster dengan tiket servis, keuangan, inventori, dan aktivitas konter',
   'landingV2.productMobileAlt':
@@ -280,20 +280,20 @@ export const id = {
   'landingV2.termTotal12': 'untuk 12 bulan, dibayar di muka',
   'landingV2.soloTag': 'Untuk usaha satu orang',
   'landingV2.soloText':
-    'Seluruh alur toko — terima servis, jual, kelola stok, baca laporan — lengkap dengan logo Anda di dokumen yang dibawa pulang pelanggan.',
+    'Seluruh alur toko: terima servis, jual, kelola stok, dan baca laporan. Logo Anda tampil di dokumen yang dibawa pulang pelanggan.',
   'landingV2.soloFeature1': 'Tiket servis, pelanggan, kasir & stok',
   'landingV2.soloFeature2': 'Keuangan, laporan & ekspor CSV',
   'landingV2.soloFeature3': 'Logo toko di nota cetak & halaman lacak',
   'landingV2.soloFeature4': '1 pengguna · 1 outlet · 2 akun kas/bank',
-  'landingV2.chooseSolo': 'Mulai uji coba Solo',
+  'landingV2.chooseSolo': 'Mulai gratis dengan Solo',
   'landingV2.proTag': 'Untuk tim & multi-outlet',
   'landingV2.proText':
     'Saat pekerjaan mulai dibagi: staf bertambah, cabang bertambah, dan pembelian mulai lewat supplier.',
   'landingV2.proFeature1': 'Semua fitur Solo, tanpa kecuali',
-  'landingV2.proFeature2': 'Pengguna tak terbatas — tambah teknisi & kasir',
+  'landingV2.proFeature2': 'Tambah teknisi & kasir tanpa batas pengguna',
   'landingV2.proFeature3': 'Supplier, absensi & template WhatsApp sendiri',
   'landingV2.proFeature4': 'outlet termasuk',
-  'landingV2.choosePro': 'Mulai uji coba Pro',
+  'landingV2.choosePro': 'Mulai gratis dengan Pro',
   'landingV2.recommended': 'Untuk kerja tim',
   'landingV2.faqTitle': 'Pertanyaan sebelum mulai.',
   'landingV2.faq.device.q': 'Hanya untuk servis HP?',
@@ -310,10 +310,10 @@ export const id = {
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Pemilik juga bisa mengunduh backup kapan saja.',
   'landingV2.faq.pay.q': 'Bayarnya bagaimana?',
   'landingV2.faq.pay.a':
-    'Transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih paket di aplikasi, kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit — masa aktif hanya berubah setelah pembayaran kami verifikasi.',
+    'Transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih paket di aplikasi, kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit. Masa aktif hanya bertambah setelah pembayaran kami verifikasi.',
   'landingV2.faq.move.q': 'Bagaimana kalau data saya masih di Excel?',
   'landingV2.faq.move.a':
-    'Anda tidak perlu memindahkan semua riwayat lama sekaligus. Cukup mulai catat unit yang baru masuk di FixMaster mulai hari ini — file Excel lama tetap bisa dibuka sebagai arsip. Belum ada impor otomatis; kalau ingin dibantu memindahkan data pelanggan atau stok inti, tim FixMaster siap bantu lewat WhatsApp.',
+    'Anda tidak perlu memindahkan semua riwayat lama sekaligus. Cukup catat unit yang baru masuk di FixMaster mulai hari ini. File Excel lama tetap bisa dibuka sebagai arsip. Belum ada impor otomatis; kalau ingin dibantu memindahkan data pelanggan atau stok inti, tim FixMaster siap bantu lewat WhatsApp.',
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
   'landingV2.finalLead':
     'Gunakan FixMaster gratis selama 14 hari. Tidak perlu kartu kredit.',

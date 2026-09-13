@@ -48,7 +48,7 @@ check(new URL(page.url()).searchParams.get('auth') === 'signup',
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.locator('#pricing').scrollIntoViewIfNeeded();
 const proPlate = page.locator('#pricing article').filter({ hasText: 'Pro' }).last();
-await proPlate.getByRole('button', { name: 'Mulai uji coba 14 hari' }).click();
+await proPlate.getByRole('button', { name: 'Mulai gratis dengan Pro' }).click();
 await page.getByRole('heading', { name: 'Buka bench baru' }).waitFor();
 const proUrl = new URL(page.url());
 check(proUrl.searchParams.get('plan') === 'enterprise',

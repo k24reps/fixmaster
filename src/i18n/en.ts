@@ -184,9 +184,9 @@ export const en: Dictionary = {
   'landingV2.heroKicker': 'For phone, laptop & electronics repair shops',
   'landingV2.heroTitle': 'Record each repair once. Stock and margins update with it.',
   'landingV2.heroLead':
-    'From intake to payment, FixMaster connects tickets, parts, cash, and reports. Owners can see queues, costs, and profit without copying the same information between notebooks, chat, and spreadsheets.',
-  'landingV2.startTrial': 'Start 14-day free trial',
-  'landingV2.openDemo': 'Try the complete flow in the demo',
+    'From intake to payment, FixMaster connects tickets, parts, cash, and reports. Owners see queues, costs, and profit without entering anything twice.',
+  'landingV2.startTrial': 'Start free for 14 days',
+  'landingV2.openDemo': 'Open demo, no account needed',
   'landingV2.consoleLabel': 'FixMaster operations console simulation',
   'landingV2.consoleTitle': 'Operations Console // Today',
   'landingV2.online': 'Online',
@@ -252,7 +252,7 @@ export const en: Dictionary = {
   'landingV2.ticketUpdated': 'Updated 14:32',
   'landingV2.productTitle': 'Run the counter at the desk. Keep watch from your phone.',
   'landingV2.productLead':
-    'This demo uses the real FixMaster app, not a video. Receive a device, change its status, use a part, then see the effect on stock and finances—no account required; sample data is not saved.',
+    'This demo uses the real FixMaster app, not a video. Receive a device, change its status, use a part, then see the effect on stock and finances. No account needed, and sample data is not saved.',
   'landingV2.productAlt':
     'FixMaster dashboard with service tickets, finance, inventory, and repair shop activity',
   'landingV2.productMobileAlt':
@@ -278,20 +278,20 @@ export const en: Dictionary = {
   'landingV2.termTotal12': 'for 12 months, paid upfront',
   'landingV2.soloTag': 'For a one-person shop',
   'landingV2.soloText':
-    'The whole shop flow — take in repairs, sell, manage stock, read reports — with your own logo on what the customer takes home.',
+    'The whole shop flow: take in repairs, sell, manage stock, and read reports. Your logo appears on what the customer takes home.',
   'landingV2.soloFeature1': 'Repair tickets, customers, POS & stock',
   'landingV2.soloFeature2': 'Finance, reports & CSV export',
   'landingV2.soloFeature3': 'Your logo on printed receipts & the tracking page',
   'landingV2.soloFeature4': '1 user · 1 outlet · 2 cash/bank accounts',
-  'landingV2.chooseSolo': 'Start the Solo trial',
+  'landingV2.chooseSolo': 'Start free with Solo',
   'landingV2.proTag': 'For teams & multiple outlets',
   'landingV2.proText':
     'For when the work gets shared: more staff, more branches, and purchasing that runs through suppliers.',
   'landingV2.proFeature1': 'Everything in Solo, nothing held back',
-  'landingV2.proFeature2': 'Unlimited users — add technicians & cashiers',
+  'landingV2.proFeature2': 'Add technicians & cashiers with no user limit',
   'landingV2.proFeature3': 'Suppliers, attendance & your own WhatsApp templates',
   'landingV2.proFeature4': 'outlets included',
-  'landingV2.choosePro': 'Start the Pro trial',
+  'landingV2.choosePro': 'Start free with Pro',
   'landingV2.recommended': 'For team operations',
   'landingV2.faqTitle': 'Questions before you start.',
   'landingV2.faq.device.q': 'Is it only for phone repair?',
@@ -308,10 +308,10 @@ export const en: Dictionary = {
     'Access rules keep every shop’s data separate. Only accounts registered to your shop can open it. Owners can also download a backup anytime.',
   'landingV2.faq.pay.q': 'How do I pay?',
   'landingV2.faq.pay.a':
-    'Bank transfer, confirmed over WhatsApp. You pick a plan in the app, we send payment instructions, then you send the transfer receipt in the same chat. No credit card and no auto-debit — your subscription only extends once we verify the payment.',
+    'Bank transfer, confirmed over WhatsApp. You pick a plan in the app, we send payment instructions, then you send the transfer receipt in the same chat. No credit card and no auto-debit. Your subscription only extends once we verify the payment.',
   'landingV2.faq.move.q': 'What if my data is still in Excel?',
   'landingV2.faq.move.a':
-    'You don’t need to move all your old history at once. Just start logging new units in FixMaster today — your old Excel file still works as an archive. Automatic import isn’t available yet; if you’d like help moving core customer or stock data, the FixMaster team can help over WhatsApp.',
+    'You don’t need to move all your old history at once. Just start logging new units in FixMaster today. Your old Excel file still works as an archive. Automatic import isn’t available yet; if you’d like help moving core customer or stock data, the FixMaster team can help over WhatsApp.',
   'landingV2.finalTitle': 'Stop recording the same information in three places.',
   'landingV2.finalLead': 'Use FixMaster free for 14 days. No credit card needed.',
   'landingV2.finalVoltStatus': 'Your first service flow is ready to power on.',

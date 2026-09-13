@@ -47,9 +47,9 @@ describe('LandingPageV2 auth intent', () => {
     // sehingga tes ini pun harus mencari lewat pelat induknya untuk tahu mana
     // yang diklik — ambiguitas yang sama yang dihadapi pengunjung.
     fireEvent.click(
-      within(proPlate as HTMLElement).getByRole('button', { name: 'Mulai uji coba Pro' }),
+      within(proPlate as HTMLElement).getByRole('button', { name: 'Mulai gratis dengan Pro' }),
     );
-    expect(screen.getByRole('button', { name: 'Mulai uji coba Solo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mulai gratis dengan Solo' })).toBeInTheDocument();
 
     expect(onStart).toHaveBeenCalledWith({
       mode: 'signup',
