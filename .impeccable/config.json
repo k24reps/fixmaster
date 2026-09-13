@@ -92,6 +92,69 @@
         ],
         "createdAt": "2026-09-13T06:31:21.140Z",
         "reason": "Hero display clamp(2.1rem, 8cqw, 3.25rem): DESIGN.md Typography sanctions clamp() scaling for Display on marketing surfaces; bounds measured so the headline stays 2 lines (8cqw of the hero column)."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "1px",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:09.860Z",
+        "reason": "Signal-bar top corners on 4px-wide console bars; micro ornament below the machined radius scale."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "34px",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:09.976Z",
+        "reason": "Phone hardware mockup body radius (physical device silhouette), not a UI surface radius."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "36px",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:10.094Z",
+        "reason": "Phone hardware mockup body radius at <=760px (physical device silhouette), not a UI surface radius."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "23px",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:10.195Z",
+        "reason": "Phone mockup screen radius nested inside the 34px body; hardware geometry, not a UI radius."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.45rem",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:10.308Z",
+        "reason": "Icon glyph size inside the 74px flow step ring (Icon renders at 1em), not a text size."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.8rem",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:10.427Z",
+        "reason": "Plan price readout clamp(1.8rem, 7.6cqw, 2.45rem) sits inside the DESIGN.md Readout range 1.4rem-2.8rem."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.65rem",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T07:03:10.538Z",
+        "reason": "Mobile hero display clamp; DESIGN.md Typography sanctions clamp() scaling for Display on marketing surfaces."
       }
     ]
   }

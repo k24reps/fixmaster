@@ -261,9 +261,11 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             role="group"
             aria-label={t('landingV2.consoleLabel')}
           >
-            <span className={styles.consoleGlow} aria-hidden />
             <div className={styles.consoleTop}>
-              <span>{t('landingV2.consoleTitle')}</span>
+              <span className={styles.ticketHeading}>
+                <span>{t('landingV2.consoleTitle')}</span>
+                <small>{t('landingV2.ticketExample')}</small>
+              </span>
               <span className={styles.consoleOnline}>
                 <span className={styles.liveLed} aria-hidden /> {t('landingV2.online')}
               </span>
@@ -349,7 +351,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           <span className={styles.wellScan} aria-hidden />
           <div className={styles.workflowInner}>
             <div className={styles.sectionIntro}>
-              <span className={styles.sectionLabel}>{t('landingV2.workflowKicker')}</span>
               <h2>{t('landingV2.workflowTitle')}</h2>
               <p>{t('landingV2.workflowLead')}</p>
             </div>
@@ -392,7 +393,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             role="group"
             aria-label={t('landingV2.ticketLabel')}
           >
-            <article className={styles.ticketGhost} aria-hidden />
             <article className={styles.ticket}>
               <header>
                 <span className={styles.ticketHeading}>
@@ -711,7 +711,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             </div>
           </div>
           <div className={styles.finalCtaCopy}>
-            <span className={styles.sectionLabel}>{t('landingV2.finalKicker')}</span>
             <h2>{t('landingV2.finalTitle')}</h2>
             <p>{t('landingV2.finalLead')}</p>
           </div>
@@ -752,6 +751,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           </a>
           <a href="mailto:fixmaster.cs@gmail.com">fixmaster.cs@gmail.com</a>
         </div>
+        <span className={styles.location}>CIMAHI</span>
       </footer>
 
       {/* Hanya tampil di <=760px: satu pintasan ke harga, tujuan yang paling

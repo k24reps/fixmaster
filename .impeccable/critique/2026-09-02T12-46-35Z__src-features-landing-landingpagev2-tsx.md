@@ -7,6 +7,7 @@ p0_count: 1
 p1_count: 2
 timestamp: 2026-09-02T12-46-35Z
 slug: src-features-landing-landingpagev2-tsx
+closed: true
 ---
 Method: dual-agent (A: design review · B: detector + browser evidence)
 

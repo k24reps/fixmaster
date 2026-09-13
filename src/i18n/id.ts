@@ -211,7 +211,6 @@ export const id = {
   'landingV2.painStock': 'Sparepart terpakai, stok belum berkurang',
   'landingV2.painMargin': 'Margin baru dihitung saat tutup toko',
   'landingV2.painTeam': 'Pemilik masih harus cek staf',
-  'landingV2.workflowKicker': 'Satu alur',
   'landingV2.workflowTitle': 'Satu unit masuk. Semua bagian usaha ikut tercatat.',
   'landingV2.workflowLead':
     'Tak perlu menyalin data dari buku ke chat, lalu ke Excel. FixMaster menghubungkan pekerjaan dari meja penerimaan sampai tutup kas.',
@@ -312,7 +311,6 @@ export const id = {
   'landingV2.faq.move.q': 'Bagaimana kalau data saya masih di Excel?',
   'landingV2.faq.move.a':
     'Anda tidak perlu memindahkan semua riwayat lama sekaligus. Cukup mulai catat unit yang baru masuk di FixMaster mulai hari ini — file Excel lama tetap bisa dibuka sebagai arsip. Belum ada impor otomatis; kalau ingin dibantu memindahkan data pelanggan atau stok inti, tim FixMaster siap bantu lewat WhatsApp.',
-  'landingV2.finalKicker': 'Satu alur. Tanpa catat ulang.',
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
   'landingV2.finalLead':
     'Gunakan FixMaster gratis selama 14 hari. Tidak perlu kartu kredit.',

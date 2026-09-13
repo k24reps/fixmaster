@@ -208,7 +208,6 @@ export const en: Dictionary = {
   'landingV2.painStock': 'Parts get used before stock is updated',
   'landingV2.painMargin': 'Margins are calculated only at closing',
   'landingV2.painTeam': 'Owners still have to check with staff',
-  'landingV2.workflowKicker': 'One flow',
   'landingV2.workflowTitle':
     'One device comes in. Every part of the business is recorded.',
   'landingV2.workflowLead':
@@ -310,7 +309,6 @@ export const en: Dictionary = {
   'landingV2.faq.move.q': 'What if my data is still in Excel?',
   'landingV2.faq.move.a':
     'You don’t need to move all your old history at once. Just start logging new units in FixMaster today — your old Excel file still works as an archive. Automatic import isn’t available yet; if you’d like help moving core customer or stock data, the FixMaster team can help over WhatsApp.',
-  'landingV2.finalKicker': 'One flow. No duplicate entry.',
   'landingV2.finalTitle': 'Stop recording the same information in three places.',
   'landingV2.finalLead': 'Use FixMaster free for 14 days. No credit card needed.',
   'landingV2.finalVoltStatus': 'Your first service flow is ready to power on.',
