@@ -164,6 +164,33 @@
         ],
         "createdAt": "2026-09-13T07:33:27.019Z",
         "reason": "Pre-existing clamp floor for mobile ledger amounts (14.4px, above the 12px floor); fluid readout, not a ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.1rem",
+        "files": [
+          "src/features/dashboard/DashboardPage.module.css"
+        ],
+        "createdAt": "2026-09-13T07:34:50.532Z",
+        "reason": "Pre-existing fluid readout clamp endpoint sized by container (cqi), per the Container Query Rule; not a ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.05rem",
+        "files": [
+          "src/features/dashboard/DashboardPage.module.css"
+        ],
+        "createdAt": "2026-09-13T07:34:50.645Z",
+        "reason": "Pre-existing fluid readout clamp endpoint sized by container (cqi), per the Container Query Rule; not a ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.45rem",
+        "files": [
+          "src/features/dashboard/DashboardPage.module.css"
+        ],
+        "createdAt": "2026-09-13T07:34:50.768Z",
+        "reason": "Pre-existing fluid readout clamp endpoint sized by container (cqi), per the Container Query Rule; not a ramp step"
       }
     ]
   }
