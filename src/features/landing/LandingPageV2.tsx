@@ -227,7 +227,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             type="button"
             onClick={() => startAuth({ mode: 'login', source: 'header' }, 'header')}
           >
-            <span className={styles.liveLed} aria-hidden />
             {t('landingV2.signIn')}
           </button>
         </div>
@@ -237,7 +236,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <div className={styles.kicker}>
-              <span className={styles.liveLed} aria-hidden />
               {t('landingV2.heroKicker')}
             </div>
             <h1>{t('landingV2.heroTitle')}</h1>
@@ -256,7 +254,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 <Icon name="arrow-right" aria-hidden />
               </button>
             </div>
-            <p className={styles.heroFineprint}>{t('landingV2.heroFineprint')}</p>
           </div>
 
           <div
@@ -481,8 +478,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 <i />
                 <i />
                 <i />
-                <b>{t('landingV2.productDesktop')} // fixmaster.app/demo</b>
-                <em>{t('landingV2.online')}</em>
               </span>
               <img
                 className={styles.productShotDark}
@@ -712,10 +707,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             <Mascot variant="full" size={150} />
             <div className={styles.voltBayStatus}>
               <span className={styles.liveLed} aria-hidden />
-              <span>
-                <small>{t('landingV2.finalVoltLabel')}</small>
-                <strong>{t('landingV2.finalVoltStatus')}</strong>
-              </span>
+              <strong>{t('landingV2.finalVoltStatus')}</strong>
             </div>
           </div>
           <div className={styles.finalCtaCopy}>
@@ -760,7 +752,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           </a>
           <a href="mailto:fixmaster.cs@gmail.com">fixmaster.cs@gmail.com</a>
         </div>
-        <span className={styles.serial}>FX-{new Date().getFullYear()} // CIMAHI</span>
       </footer>
 
       {/* Hanya tampil di <=760px: satu pintasan ke harga, tujuan yang paling
@@ -794,7 +785,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
           })
         }
       >
-        <span className={styles.liveLed} aria-hidden />
         <Icon name="whatsapp" aria-hidden />
         <span>{t('landingV2.whatsapp')}</span>
       </a>

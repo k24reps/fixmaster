@@ -184,7 +184,6 @@ export const en: Dictionary = {
     'From intake to payment, FixMaster connects tickets, parts, cash, and reports. Owners can see queues, costs, and profit without copying the same information between notebooks, chat, and spreadsheets.',
   'landingV2.startTrial': 'Start 14-day free trial',
   'landingV2.openDemo': 'Try the complete flow in the demo',
-  'landingV2.heroFineprint': 'No demo account · sample data · nothing is saved',
   'landingV2.consoleLabel': 'FixMaster operations console simulation',
   'landingV2.consoleTitle': 'Operations Console // Today',
   'landingV2.online': 'Online',
@@ -252,8 +251,6 @@ export const en: Dictionary = {
   'landingV2.productTitle': 'Run the counter at the desk. Keep watch from your phone.',
   'landingV2.productLead':
     'This demo uses the real FixMaster app, not a video. Receive a device, change its status, use a part, then see the effect on stock and finances—no account required; sample data is not saved.',
-  'landingV2.productDesktop': 'Desktop',
-  'landingV2.productMobile': 'Mobile',
   'landingV2.productAlt':
     'FixMaster dashboard with service tickets, finance, inventory, and repair shop activity',
   'landingV2.productMobileAlt':
@@ -316,7 +313,6 @@ export const en: Dictionary = {
   'landingV2.finalKicker': 'One flow. No duplicate entry.',
   'landingV2.finalTitle': 'Stop recording the same information in three places.',
   'landingV2.finalLead': 'Use FixMaster free for 14 days. No credit card needed.',
-  'landingV2.finalVoltLabel': 'VOLT // Bench ready',
   'landingV2.finalVoltStatus': 'Your first service flow is ready to power on.',
   'landingV2.footerTagline': 'Gadget & electronics repair operations',
   'landingV2.privacy': 'Privacy Policy',

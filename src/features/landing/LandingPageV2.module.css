@@ -205,7 +205,7 @@
   margin: 0 auto;
   padding: 96px 0 76px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(480px, 1fr);
   align-items: center;
   gap: clamp(48px, 5vw, 72px);
 }
@@ -231,19 +231,20 @@
   text-transform: uppercase;
 }
 
-/* Ukurannya diikat ke lebar KOLOM (cqw), bukan viewport (vw).
-   Dengan `6vw` hurufnya terus tumbuh sementara kolomnya berhenti di 554px
-   (grid dua kolom di dalam --content-max), jadi rasionya justru memburuk makin
-   lebar monitor: terukur 5 baris dengan 10 karakter per baris di 1440 DAN di
-   1920 — dan di atas 1480px clamp mentok sehingga rasio terburuknya membeku.
-   11.5cqw menjaga ~8,7em kolom per baris di semua lebar: 554px -> 64px -> 3
-   baris, 17 karakter. Batas atas 4.4rem hanya jaring pengaman; kolom hero tak
-   pernah cukup lebar untuk menyentuhnya. */
+/* Ukurannya diikat ke lebar KOLOM (cqw), bukan viewport (vw): kolom hero
+   berhenti tumbuh di atas ~1212px, jadi `vw` terus membesarkan huruf sementara
+   ruangnya tetap (dulu terukur 5 baris di 1440 dan 1920).
+   Target: judul muat 2 baris di desktop. Terukur di 1440, font terbesar yang
+   masih 2 baris: 46px pada kolom 554px, 50px pada 593px, 52px pada 616px.
+   Rasionya stabil ~8,4% lebar kolom, jadi 8cqw menjaga 2 baris di semua lebar
+   dengan cadangan beberapa px. Kolom teks dilebarkan ke 1.15fr (.hero) supaya
+   judul cukup ~47px, bukan 44px; konsol tetap di atas batas 480px-nya.
+   Batas bawah 2.1rem = 8cqw pada kolom tersempit (~420px di lebar 981px). */
 .hero h1 {
   max-width: 720px;
   margin: var(--space-5) 0 var(--space-5);
   font-family: var(--font-display);
-  font-size: clamp(2.35rem, 11.5cqw, 4.4rem);
+  font-size: clamp(2.1rem, 8cqw, 3.25rem);
   font-weight: var(--fw-bold);
   line-height: 0.96;
   letter-spacing: -0.035em;
@@ -291,13 +292,6 @@
 
 .demoButton:hover {
   border-color: var(--border-brand);
-}
-
-.heroFineprint {
-  margin: var(--space-4) 0 0;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
 }
 
 .heroConsole {
@@ -1268,24 +1262,6 @@
 .frameBar i:nth-child(2) { background: var(--warning); opacity: 1; }
 .frameBar i:nth-child(3) { background: var(--success); opacity: 1; }
 
-.frameBar b {
-  margin-left: var(--space-2);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-normal);
-  letter-spacing: 0.06em;
-}
-
-.frameBar em {
-  margin-left: auto;
-  color: var(--accent-text);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-style: normal;
-  letter-spacing: 0.08em;
-}
-
 .mobileFrame {
   position: absolute;
   right: 0;
@@ -1896,24 +1872,15 @@
   padding-top: var(--space-3);
 }
 
-.voltBayStatus > span:last-child,
-.voltBayStatus small,
+/* LED di tengah baris pertama: (1.4 × 12px − 8px) / 2. Dulu labelnya yang
+   menyejajarkan; tanpa label, LED menempel di tepi atas teks (terukur 4px). */
+.voltBayStatus .liveLed {
+  margin-top: 4px;
+}
+
 .voltBayStatus strong {
   display: block;
-}
-
-.voltBayStatus small {
-  color: var(--brand-text);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.voltBayStatus strong {
   max-width: 24ch;
-  margin-top: 3px;
   color: var(--text-secondary);
   font-size: var(--text-xs);
   line-height: 1.4;
@@ -1926,7 +1893,7 @@
 .footer {
   padding: var(--space-8) 0 var(--space-10);
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--space-8);
   border-top: 1px dotted var(--border-strong);
@@ -1949,13 +1916,6 @@
 }
 
 .footerLinks a:hover { color: var(--brand-text); }
-
-.serial {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-}
 
 .whatsapp {
   position: fixed;
@@ -2094,7 +2054,6 @@
   .kicker,
   .sectionLabel,
   .signInButton,
-  .heroFineprint,
   .consoleTop,
   .jobNo,
   .jobStatus,
@@ -2109,13 +2068,10 @@
   .ticket header,
   .ticket dt,
   .ticket footer,
-  .frameBar b,
-  .frameBar em,
   .recommended,
   .priceHead span,
   .footerBrand small,
-  .footerLinks a,
-  .serial {
+  .footerLinks a {
     font-size: var(--text-sm);
   }
 
@@ -2242,7 +2198,6 @@
 
   .voltBayStatus { text-align: left; }
 
-  .voltBayStatus small,
   .voltBayStatus strong {
     font-size: var(--text-sm);
   }

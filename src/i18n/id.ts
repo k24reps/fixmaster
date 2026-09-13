@@ -187,7 +187,6 @@ export const id = {
     'Dari unit masuk sampai pembayaran, FixMaster menyambungkan tiket, sparepart, kas, dan laporan. Pemilik bisa melihat antrean, biaya, dan keuntungan tanpa menyalin buku, chat, atau Excel satu per satu.',
   'landingV2.startTrial': 'Mulai gratis 14 hari',
   'landingV2.openDemo': 'Coba alur lengkap di demo',
-  'landingV2.heroFineprint': 'Demo tanpa akun · data contoh · tidak tersimpan',
   'landingV2.consoleLabel': 'Simulasi konsol operasional FixMaster',
   'landingV2.consoleTitle': 'Konsol Operasional // Hari Ini',
   'landingV2.online': 'Online',
@@ -254,8 +253,6 @@ export const id = {
   'landingV2.productTitle': 'Operasional di meja. Pantau dari ponsel.',
   'landingV2.productLead':
     'Demo ini memakai aplikasi FixMaster yang asli, bukan video. Coba terima unit, ubah status, pakai sparepart, lalu lihat dampaknya ke stok dan keuangan — tanpa akun; data contoh tidak disimpan.',
-  'landingV2.productDesktop': 'Desktop',
-  'landingV2.productMobile': 'Mobile',
   'landingV2.productAlt':
     'Dashboard FixMaster dengan tiket servis, keuangan, inventori, dan aktivitas konter',
   'landingV2.productMobileAlt':
@@ -319,7 +316,6 @@ export const id = {
   'landingV2.finalTitle': 'Berhenti mencatat data yang sama di tiga tempat.',
   'landingV2.finalLead':
     'Gunakan FixMaster gratis selama 14 hari. Tidak perlu kartu kredit.',
-  'landingV2.finalVoltLabel': 'VOLT // Bench siap',
   'landingV2.finalVoltStatus': 'Alur servis pertama siap dinyalakan.',
   'landingV2.footerTagline': 'Operasional reparasi gadget & elektronik',
   'landingV2.privacy': 'Kebijakan Privasi',

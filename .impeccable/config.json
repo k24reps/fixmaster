@@ -83,6 +83,15 @@
         ],
         "createdAt": "2026-09-08T00:44:46.053Z",
         "reason": "beFill/barFill adalah div kosong position:absolute inset:0 di dalam wadah overflow:hidden, jadi layout terkurung di satu leaf tanpa subtree. Transisinya sekali per perubahan periode, bukan animasi berjalan. Alternatifnya scaleX merusak linear-gradient 90deg yang jadi isian bar."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.1rem",
+        "files": [
+          "src/features/landing/LandingPageV2.module.css"
+        ],
+        "createdAt": "2026-09-13T06:31:21.140Z",
+        "reason": "Hero display clamp(2.1rem, 8cqw, 3.25rem): DESIGN.md Typography sanctions clamp() scaling for Display on marketing surfaces; bounds measured so the headline stays 2 lines (8cqw of the hero column)."
       }
     ]
   }
