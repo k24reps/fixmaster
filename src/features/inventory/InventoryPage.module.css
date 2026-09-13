@@ -93,14 +93,9 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast),
-    box-shadow var(--dur-fast);
 }
-.bin:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
-}
+/* Tanpa hover-lift: .bin bukan tombol (aksinya di tombol di dalamnya), dan
+   kartu yang terangkat menjanjikan klik yang tidak ada (Mounted-or-Flat). */
 /* state spine on the left edge — drawer label color */
 .bin::before {
   content: '';
@@ -194,7 +189,7 @@
 .stockNum {
   font-family: var(--font-mono);
   font-weight: var(--fw-bold);
-  font-size: 1.7rem;
+  font-size: var(--text-2xl);
   line-height: 1;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -226,7 +221,6 @@
 .gaugeFill {
   position: absolute;
   inset: 0;
-  transform-origin: left;
   border-radius: inherit;
   transition: width var(--dur-slow) var(--ease-out);
 }

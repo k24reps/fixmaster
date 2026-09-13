@@ -20,7 +20,10 @@ type ViewMode = 'grid' | 'list';
 
 export function CustomersPage() {
   const { data: customers, ...customersLoad } = useCollection('customers');
-  const { data: services } = useCollection('services');
+  const { data: services, ...servicesLoad } = useCollection('services');
+  // Hitungan per pelanggan berasal dari servis. Selama servis belum termuat /
+  // gagal, "0x · Rp 0 · Belum servis" adalah angka palsu, jadi tampil "—".
+  const servicesPending = loadPending(servicesLoad);
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
   const isMgr = me ? isManager(me.role) : false;
@@ -193,7 +196,7 @@ export function CustomersPage() {
 
       <div className={styles.summary}>
         <span><strong>{customers.length}</strong> pelanggan</span>
-        <span><strong>{repeatCount}</strong> pelanggan berulang</span>
+        <span><strong>{servicesPending ? '—' : repeatCount}</strong> pelanggan berulang</span>
         <span><strong>{rows.length}</strong> ditampilkan</span>
       </div>
 
@@ -255,18 +258,20 @@ export function CustomersPage() {
                 <div className={styles.activity}>
                   <div className={styles.activityBlock}>
                     <span className={styles.activityLabel}>Servis</span>
-                    <span className={[styles.activityValue, st.count > 0 ? styles.brand : styles.idle].join(' ')}>
-                      {st.count}x
+                    <span className={[styles.activityValue, !servicesPending && st.count > 0 ? styles.brand : styles.idle].join(' ')}>
+                      {servicesPending ? '—' : `${st.count}x`}
                     </span>
                   </div>
                   <div className={styles.activityBlock}>
                     <span className={styles.activityLabel}>Total Transaksi</span>
-                    <span className={styles.activityValue}>{fmtRp(st.total)}</span>
+                    <span className={styles.activityValue}>{servicesPending ? '—' : fmtRp(st.total)}</span>
                   </div>
                 </div>
 
                 <div className={styles.foot}>
-                  {st.count > 1 ? (
+                  {servicesPending ? (
+                    <span className={styles.newcomer}>—</span>
+                  ) : st.count > 1 ? (
                     <span className={styles.repeat}>Pelanggan Setia</span>
                   ) : (
                     <span className={styles.newcomer}>{st.count === 1 ? 'Pernah servis' : 'Belum servis'}</span>
@@ -327,6 +332,7 @@ export function CustomersPage() {
         onClose={() => setHistoryCustomer(null)}
         customer={historyCustomer}
         services={services}
+        servicesLoad={servicesLoad}
       />
       <ConfirmDialog
         open={!!toDelete}

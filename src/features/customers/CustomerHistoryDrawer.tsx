@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Badge, Icon, EmptyState } from '@/components/ui';
+import { Badge, Icon, EmptyState, LoadState, loadPending } from '@/components/ui';
+import type { LoadQuery } from '@/components/ui/loadPending';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
 import { fmtRp } from '@/lib/format';
 import { useFormat } from '@/lib/useFormat';
@@ -13,6 +14,7 @@ interface Props {
   onClose: () => void;
   customer: Customer | null;
   services: Service[];
+  servicesLoad: LoadQuery;
 }
 
 /**
@@ -20,8 +22,10 @@ interface Props {
  * Data already lives on the Customers page; this just surfaces the tickets
  * behind the per-customer count. Each row links to the ticket detail.
  */
-export function CustomerHistoryDrawer({ open, onClose, customer, services }: Props) {
+export function CustomerHistoryDrawer({ open, onClose, customer, services, servicesLoad }: Props) {
   const { fmtDate } = useFormat();
+  // Servis belum termuat / gagal: "Belum ada servis · Rp 0" di sini bohong.
+  const pending = loadPending(servicesLoad);
 
   useEffect(() => {
     if (!open) return;
@@ -73,15 +77,17 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services }: Pro
 
         <div className={styles.statStrip}>
           <span>
-            <strong>{tickets.length}</strong> servis
+            <strong>{pending ? '—' : tickets.length}</strong> servis
           </span>
           <span>
-            Total <strong>{fmtRp(total)}</strong>
+            Total <strong>{pending ? '—' : fmtRp(total)}</strong>
           </span>
         </div>
 
         <div className={styles.body}>
-          {tickets.length === 0 ? (
+          {pending ? (
+            <LoadState queries={[servicesLoad]} />
+          ) : tickets.length === 0 ? (
             <EmptyState
               icon={<Icon name="screwdriver-wrench" aria-hidden />}
               title="Belum ada servis"
