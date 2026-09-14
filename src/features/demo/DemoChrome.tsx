@@ -9,19 +9,26 @@ interface DemoChromeProps {
 /**
  * Persistent demo faceplate that sits above the running app. Styled as a bench
  * instrument header (live status LED + mono readout) rather than a generic SaaS
- * banner. Always offers the two demo affordances: re-seed ("Reset Demo") and
- * the conversion CTA ("Daftar Gratis"), which breaks out of the iframe when
- * embedded on the landing page.
+ * banner. Always offers the demo affordances: the way back to the landing page,
+ * re-seed ("Reset Demo") and the conversion CTA ("Daftar Gratis"). Both exits
+ * break out of the iframe when embedded on the landing page (`target="_top"`
+ * for the link, `window.top` for signup).
  */
 export function DemoChrome({ onReset }: DemoChromeProps) {
   return (
     <header className={styles.bar}>
       <span className={styles.screw} aria-hidden />
 
-      <div className={styles.status}>
-        <span className={styles.led} aria-hidden />
-        <span className={styles.statusText}>MODE DEMO</span>
-        <span className={styles.statusSub}>data contoh · tidak tersimpan</span>
+      <div className={styles.lead}>
+        <a href="/" target="_top" className={styles.backBtn} aria-label="Kembali ke beranda">
+          <Icon name="arrow-left" aria-hidden />
+          <span>Beranda</span>
+        </a>
+        <div className={styles.status}>
+          <span className={styles.led} aria-hidden />
+          <span className={styles.statusText}>MODE DEMO</span>
+          <span className={styles.statusSub}>data contoh · tidak tersimpan</span>
+        </div>
       </div>
 
       <div className={styles.actions}>

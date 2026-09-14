@@ -35,11 +35,19 @@
 }
 
 /* ---------- Status cluster ---------- */
+/* Jalan keluar ke landing + status, sebagai satu kelompok di tepi kiri. */
+.lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: var(--space-3);
+  min-width: 0;
+}
 .status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-left: var(--space-3);
+  min-width: 0;
 }
 .led {
   width: 9px;
@@ -54,13 +62,19 @@
   50% { opacity: 0.4; }
 }
 .statusText {
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--fw-bold);
   letter-spacing: 0.1em;
   color: var(--text-primary);
 }
+/* Yang boleh mengalah saat bar sempit: keterangan dipotong, tombol tidak. */
 .statusSub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
@@ -73,9 +87,15 @@
   align-items: center;
   gap: var(--space-2);
   margin-right: var(--space-3);
+  flex-shrink: 0;
 }
-.resetBtn {
+.resetBtn,
+.backBtn {
   display: inline-flex;
+  justify-content: center;
+  /* Di ponsel keduanya tinggal ikon: tetap target sentuh 44px. */
+  min-width: var(--control-h);
+  text-decoration: none;
   align-items: center;
   gap: 6px;
   min-height: var(--control-h);
@@ -90,11 +110,13 @@
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
-.resetBtn:hover {
+.resetBtn:hover,
+.backBtn:hover {
   color: var(--text-primary);
   border-color: var(--text-muted);
 }
 .signupBtn {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -129,7 +151,23 @@
   .statusSub {
     display: none;
   }
-  .resetBtn span {
+  .resetBtn span,
+  .backBtn span {
     display: none;
+  }
+  /* Ruang untuk tombol Beranda: ornamen mengalah sebelum label terlipat. */
+  .screw,
+  .signupLed {
+    display: none;
+  }
+  .lead {
+    margin-left: 0;
+    gap: var(--space-2);
+  }
+  .actions {
+    margin-right: 0;
+  }
+  .signupBtn {
+    padding: 8px 12px;
   }
 }
