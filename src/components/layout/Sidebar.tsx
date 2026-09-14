@@ -4,12 +4,8 @@ import { Icon } from '@/components/ui';
 import { PLANS } from '@/config/plans';
 import { getVisibleNavigation } from '@/lib/business/navigation';
 import { useSessionStore } from '@/stores/session';
-import { useAuthStore } from '@/stores/auth';
-import { demoGuard } from '@/stores/demo';
-import { isSupabaseConfigured } from '@/data/supabase-client';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
-import { useSettingsStore } from '@/stores/settings';
 import { useNavSignals } from '@/hooks/useNavSignals';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
@@ -21,11 +17,6 @@ interface SidebarProps {
   onCloseMobile: () => void;
 }
 
-const ROLE_LABEL: Record<string, Record<string, string>> = {
-  id: { owner: 'Pemilik', admin: 'Admin', karyawan: 'Karyawan' },
-  en: { owner: 'Owner', admin: 'Admin', karyawan: 'Staff' },
-};
-
 export function Sidebar({
   collapsed,
   mobileOpen,
@@ -34,23 +25,14 @@ export function Sidebar({
 }: SidebarProps) {
   const org = useSessionStore((s) => s.org);
   const employee = useSessionStore((s) => s.currentEmployee);
-  const signOut = useSessionStore((s) => s.signOutEmployee);
-  const authSignOut = useAuthStore((s) => s.signOut);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const setActiveOutlet = useSessionStore((s) => s.setActiveOutlet);
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   const { data: outlets } = useCollection('outlets');
   const t = useT();
-  const language = useSettingsStore((s) => s.language);
   const signals = useNavSignals();
-
-  // Cloud: true sign-out of the Supabase account (→ AuthPage).
-  // Local: switch user (re-enter PIN) — there is no cloud account.
-  const handleLogout = () => {
-    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akunmu sendiri.')) return;
-    if (isSupabaseConfigured) void authSignOut();
-    else signOut();
-  };
+  // Nama, peran, dan Keluar kini di menu akun Topbar (AccountMenu), bukan kartu
+  // di dasar rail: sidebar hanya navigasi dan unit usaha.
 
   const plan = org?.planType ?? 'trial';
   // Role-gating (managerOnly/ownerOnly) HIDES items — it mirrors server RLS,
@@ -186,30 +168,6 @@ export function Sidebar({
               onSelect={setActiveOutlet}
             />
           )}
-        </div>
-
-        {/* ---------- Operator module ---------- */}
-        <div className={styles.footer}>
-          <div className={styles.user}>
-            <div className={styles.avatar}>
-              {employee ? employee.name.charAt(0).toUpperCase() : <Icon name="user" aria-hidden />}
-              <span className={styles.onlineLed} aria-hidden />
-            </div>
-            <div className={styles.userInfo}>
-              <p className={styles.userName}>{employee?.name ?? '—'}</p>
-              <p className={styles.userRole}>
-                {employee ? ROLE_LABEL[language][employee.role] : ''}
-              </p>
-            </div>
-            <button
-              className={styles.logoutBtn}
-              onClick={handleLogout}
-              title={t('auth.logout')}
-              aria-label={t('auth.logout')}
-            >
-              <Icon name="right-from-bracket" aria-hidden />
-            </button>
-          </div>
         </div>
       </aside>
     </>

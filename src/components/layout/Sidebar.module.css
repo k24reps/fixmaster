@@ -351,14 +351,17 @@
 }
 
 /* ---------- Business unit (shop identity + branch selector) ---------- */
+/* Unit usaha + cabang + operator dulu memakan 208px (134 + 74) di bawah kanal
+   48px — tiga readout yang terasa lebih berat dari menu yang mereka layani.
+   Dirapatkan tanpa membuang label: padding 12, logo/avatar 32, cabang 44px. */
 .bizBlock {
   flex-shrink: 0;
-  padding: var(--space-4);
+  padding: var(--space-3);
   border-top: 1px solid var(--rail-divider);
   background: var(--rail-panel);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   position: relative;
 }
 .bizIdentity {
@@ -368,8 +371,8 @@
   min-width: 0;
 }
 .bizLogo {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   overflow: hidden;
@@ -386,7 +389,7 @@
 }
 .bizLogoFallback {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: var(--text-sm);
   font-weight: var(--fw-extra);
   color: var(--brand-text);
 }
@@ -422,8 +425,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 48px;
-  padding: 8px 11px;
+  min-height: var(--control-h);
+  padding: 6px 10px;
   border-radius: var(--radius-md);
   border: 1px solid var(--rail-divider);
   background: var(--rail-control);
@@ -560,88 +563,6 @@
   flex-shrink: 0;
 }
 
-/* ---------- Operator module ---------- */
-.footer {
-  padding: var(--space-4);
-  border-top: 1px solid var(--rail-divider);
-  background: var(--rail-panel);
-  flex-shrink: 0;
-  position: relative;
-}
-.user {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.avatar {
-  position: relative;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  background: var(--brand-soft);
-  color: var(--brand-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  flex-shrink: 0;
-  border: 1px solid var(--border-brand);
-}
-.onlineLed {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--green-400);
-  box-shadow: 0 0 6px var(--green-400);
-  border: 2px solid var(--bg-surface);
-}
-.userInfo {
-  min-width: 0;
-  overflow: hidden;
-}
-.userName {
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.userRole {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.collapsed .userInfo {
-  display: none;
-}
-.logoutBtn {
-  margin-left: auto;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-.logoutBtn:hover {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.collapsed .logoutBtn {
-  display: none;
-}
-
 /* ---------- Collapsed: LED status tower ---------- */
 /* Stack the mark over the (rotated) expand button so there's always a
    visible way to re-open the rail. */
@@ -676,9 +597,6 @@
 .collapsed .tone_idle {
   display: none;
 }
-.collapsed .avatar {
-  margin: 0 auto;
-}
 /* collapsed: business block shrinks to just the centered logo; the
    branch selector hides its text and shows only the status LED. */
 .collapsed .bizBlock {
@@ -710,8 +628,7 @@
 }
 
 @media (max-width: 1024px) {
-  .collapseBtn,
-  .logoutBtn {
+  .collapseBtn {
     width: var(--control-h);
     height: var(--control-h);
   }
@@ -734,8 +651,6 @@
   .collapsed .brandText,
   .collapsed .navLabel,
   .collapsed .readoutNum,
-  .collapsed .userInfo,
-  .collapsed .logoutBtn,
   .collapsed .collapseBtn,
   .collapsed .bizInfo,
   .collapsed .branchMain,
