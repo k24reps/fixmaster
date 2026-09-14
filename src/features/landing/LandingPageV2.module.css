@@ -1,7 +1,9 @@
 .page {
   container-name: landing;
   container-type: inline-size;
-  min-height: 100vh;
+  /* --app-vh, bukan 100vh: landing kini memakai zoom kelas perangkat, dan
+     `zoom` pada :root ikut menskala unit viewport. */
+  min-height: var(--app-vh);
   /* Yang dibutuhkan penjaga overflow hanya sumbu X. `overflow: clip` penuh
      menjadikan .page clip container pada KEDUA sumbu, dan itu tersangka
      utama matinya navigasi fragment (#workflow / #product / #pricing). */
@@ -286,6 +288,8 @@
   border-color: var(--border-brand);
 }
 
+/* Konsol, tiket, dan bingkai produk sedikit dimiringkan: objek yang diletakkan
+   di meja, bukan panel yang ditempel rata. Rata kembali di kolom tunggal. */
 .heroConsole {
   position: relative;
   z-index: 1;
@@ -295,6 +299,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-bench-tight);
+  transform: rotate(1.25deg);
 }
 
 .heroConsole::before,
@@ -903,6 +908,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-bench-tight);
+  transform: rotate(-1.5deg);
 }
 
 .ticket header,
@@ -1104,12 +1110,14 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-bench-tight);
   text-decoration: none;
+  transform: perspective(1200px) rotateY(-3deg) rotateX(1deg);
   transition: transform var(--dur-normal) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
+/* Hover meluruskan bingkai: layar "diangkat" menghadap pengunjung. */
 .productFrame:hover {
   border-color: var(--border-brand);
-  transform: translateY(-2px);
+  transform: perspective(1200px) rotateY(0) rotateX(0) translateY(-4px);
 }
 
 .frameBar {
@@ -1825,6 +1833,7 @@
   }
 
   .productCopy { max-width: 720px; }
+  .productFrame { transform: none; }
   .productVisuals {
     width: min(860px, 100%);
     margin-inline: auto;
@@ -1882,6 +1891,8 @@
   }
 
   .heroLead { font-size: var(--text-md); }
+  .heroConsole,
+  .ticket { transform: none; }
 
   .kicker,
   .signInButton,

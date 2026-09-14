@@ -106,9 +106,9 @@ export function initZoom() {
 /**
  * Kerapatan awal untuk shell APLIKASI, dipanggil sekali saat AppLayout mount.
  *
- * Sengaja TIDAK di `initZoom()`: itu berjalan untuk seluruh dokumen, termasuk
- * landing, demo, dan halaman legal yang komposisinya dirancang di 100%.
- * Hanya app shell yang punya masalah kanvas ini.
+ * Sengaja TIDAK di `initZoom()`: itu berjalan untuk seluruh dokumen. Landing
+ * dan demo publik menyematkan kerapatan kelas perangkat sebagai zoom sementara
+ * (lihat deviceDensityZoom), jadi zoom tersimpan dari app tidak bocor ke sana.
  *
  * `pointer: fine` = ada mouse = meja kerja. Kerapatan dasar produk ini
  * dibentuk ergonomi counter (kontrol 44px, baris 54px, lantai teks 12px) dan

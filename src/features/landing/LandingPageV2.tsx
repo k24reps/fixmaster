@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon, Mascot, type IconName } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
@@ -16,6 +16,7 @@ import { useT, type TranslationKey } from '@/i18n';
 import { waLink } from '@/lib/business/notify';
 import { fmtRp, fmtRpInput } from '@/lib/format';
 import { useThemeStore } from '@/stores/theme';
+import { deviceDensityZoom, useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
 import {
   authIntentHref,
@@ -150,6 +151,12 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
   const t = useT();
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
+
+  // Kerapatan landing = kelas perangkat (mouse 80%, sentuh 100%), sama untuk
+  // semua pengunjung. Tanpa ini zoom yang tersimpan dari app di origin yang
+  // sama bocor ke sini: pengunjung lama melihat 80%, pengunjung baru 100%.
+  // Sementara (preferensi app tak ditimpa); layout effect = sebelum paint.
+  useLayoutEffect(() => useZoomStore.getState().beginTransientZoom(deviceDensityZoom()), []);
   const solo = PLANS.standard;
   const pro = PLANS.enterprise;
   // Termin yang sedang dilihat. Default bulanan: angka termurah di muka
