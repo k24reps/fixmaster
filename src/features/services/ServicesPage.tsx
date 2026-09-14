@@ -49,11 +49,11 @@ import styles from './ServicesPage.module.css';
 /**
  * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
  * tiket sejak toko berdiri — untuk bengkel yang sudah lama jalan itu ribuan
- * baris (dua kali: tabel desktop + kartu mobile), dan browser-nya tersendat.
- * Angka & pola tombol "Tampilkan lebih banyak" sama dengan Keuangan
- * (FinancePage) supaya perilakunya konsisten.
+ * baris, dan browser-nya tersendat. Pola tombol "Tampilkan lebih banyak" sama
+ * dengan Keuangan (FinancePage); potongannya 50, bukan 100, karena satu tiket
+ * servis jauh lebih padat daripada satu baris transaksi.
  */
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 
 export function ServicesPage() {
   const [searchParams] = useSearchParams();
