@@ -59,6 +59,7 @@ export function AttendancePage() {
   // Bawaannya bulan berjalan, karena itu yang paling sering dilihat.
   const [from, setFrom] = useState(() => `${today.slice(0, 7)}-01`);
   const [to, setTo] = useState(today);
+  const [historyEmp, setHistoryEmp] = useState('all');
   const rangeValid = from <= to;
   // Rekap owner-only. Isinya jam kerja SELURUH karyawan sepanjang periode —
   // dasar perhitungan upah dan sekaligus potret siapa yang sering telat.
@@ -265,6 +266,28 @@ export function AttendancePage() {
       .filter((a) => a.date && withinRange(a.date, from, to))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.checkIn ?? '').localeCompare(a.checkIn ?? ''));
   }, [attendance, owner, me, from, to, rangeValid]);
+
+  // Owner bisa menyempitkan riwayat tim ke satu karyawan. Pilihannya diambil dari
+  // SEMUA baris yang boleh ia lihat (mantan karyawan yang punya riwayat tetap
+  // bisa dipilih), dengan jumlah barisnya di periode ini. Pilihan tetap bertahan
+  // saat periode diganti, supaya "belum ada riwayat Sari" terbaca jujur alih-alih
+  // diam-diam kembali ke seluruh tim.
+  const historyPeople = useMemo(() => {
+    const people = new Map<string, { name: string; count: number }>();
+    for (const a of visibleAttendance(attendance, { isOwner: owner, employeeId: me?.id })) {
+      if (!people.has(a.employeeId)) people.set(a.employeeId, { name: a.employeeName, count: 0 });
+    }
+    for (const a of recentByDay) {
+      const person = people.get(a.employeeId);
+      if (person) person.count += 1;
+    }
+    return [...people.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name));
+  }, [attendance, owner, me, recentByDay]);
+  const historyEmpName =
+    historyEmp === 'all' ? null : (historyPeople.find(([id]) => id === historyEmp)?.[1].name ?? null);
+  const activeHistoryEmp = historyEmpName ? historyEmp : 'all';
+  const historyRows =
+    activeHistoryEmp === 'all' ? recentByDay : recentByDay.filter((a) => a.employeeId === activeHistoryEmp);
 
   const checkIn = async () => {
     if (!me) return;
@@ -590,13 +613,39 @@ export function AttendancePage() {
         <CardHeader
           icon={<Icon name="clock-rotate-left" aria-hidden />}
           title="Riwayat Absensi"
-          action={<span className={styles.periodTag}>{periodLabel}</span>}
+          action={
+            <span className={styles.historyAction}>
+              {owner && historyPeople.length > 1 && (
+                <select
+                  className={styles.empSelect}
+                  value={activeHistoryEmp}
+                  onChange={(e) => setHistoryEmp(e.target.value)}
+                  aria-label="Tampilkan riwayat karyawan"
+                >
+                  <option value="all">Semua karyawan ({recentByDay.length})</option>
+                  {historyPeople.map(([id, person]) => (
+                    <option key={id} value={id}>
+                      {person.name} ({person.count})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <span className={styles.periodTag}>{periodLabel}</span>
+            </span>
+          }
         />
         <CardBody className={styles.noPad}>
           {loadPending(attendanceLoad) ? (
             <LoadState queries={[attendanceLoad]} />
-          ) : recentByDay.length === 0 ? (
-            <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada riwayat pada periode ini" />
+          ) : historyRows.length === 0 ? (
+            <EmptyState
+              icon={<Icon name="calendar" aria-hidden />}
+              title={
+                historyEmpName
+                  ? `Belum ada riwayat ${historyEmpName} pada periode ini`
+                  : 'Belum ada riwayat pada periode ini'
+              }
+            />
           ) : (
             <div className={styles.ledger}>
               <div className={[styles.ledgerHead, owner ? styles.withActions : ''].join(' ')}>
@@ -608,7 +657,7 @@ export function AttendancePage() {
                 <span className={styles.hours}>Total</span>
                 {owner && <span className={styles.actionsCol}>Aksi</span>}
               </div>
-              {recentByDay.map((a) => (
+              {historyRows.map((a) => (
                 <div key={a.id} className={[styles.ledgerRow, owner ? styles.withActions : ''].join(' ')}>
                   <span className={styles.punch}>{fmtDate(a.date)}</span>
                   <span className={styles.ledgerName}>

@@ -365,6 +365,32 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
+/* Pemilih karyawan di kepala Riwayat: owner menyempitkan riwayat tim ke satu
+   orang tanpa meninggalkan periode yang sama. */
+.historyAction {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.empSelect {
+  min-height: var(--control-h);
+  max-width: 240px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.empSelect:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: var(--ring);
+}
 /* Karyawan · Hadir · Izin · Sakit · Alpha · Total Jam */
 .recapHead,
 .recapRow {
