@@ -210,7 +210,7 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 
 **The 12px Floor Rule.** No leaf text that carries information or an action goes below 12px at the default 16px root. Non-interactive ornament may be smaller. This is an ergonomic contract, not a suggestion — the operator is reading at arm's length under shop lighting.
 
-The floor governs the **touch/counter scene**, which is what it was written for. It binds every `px`/`rem` value a component chooses, and it binds the shipped default on touch devices. It does **not** bind the app-wide zoom control: on a pointer-precise device the shell starts at 80% (`applyDeviceDensityDefault` in `src/stores/zoom.ts`), which scales the whole document and takes mono labels to 9.6px. That is a deliberate product decision for the desk scene — closer reading distance, mouse instead of glove — and the zoom control is the escape hatch in both directions. Never design a component *to* the zoomed size; design to the floor, then let zoom scale it.
+The floor governs the **touch/counter scene**, which is what it was written for. It binds every `px`/`rem` value a component chooses, and it binds the shipped default on touch devices. It does **not** bind the app-wide zoom control: on a pointer-precise device the shell starts at 80% (`applyDeviceDensityDefault` in `src/stores/zoom.ts`), which scales the whole document and takes mono labels to 9.6px. The landing page and the public demo pin that same device density as a transient zoom (`deviceDensityZoom`), so every desk visitor sees the same compact composition regardless of any zoom saved by the app on that origin. That is a deliberate product decision for the desk scene — closer reading distance, mouse instead of glove — and the zoom control is the escape hatch in both directions. Never design a component *to* the zoomed size; design to the floor, then let zoom scale it.
 
 ## Layout
 
@@ -218,7 +218,7 @@ The app shell is a **floating chassis**: a fixed instrument rail on the left (`-
 
 Spacing runs on a 4px base (`--space-1` 4px → `--space-16` 64px). Density is hybrid: controls are 44px (`--control-h`), table rows 54px (`--row-h`) or 44px compact (`--row-h-compact`).
 
-Responsive behavior is task-driven rather than width-driven. At ≤720px the four primary destinations plus a **Lainnya** control live in a safe-area-aware bottom navigation and the hamburger disappears, so there is never more than one navigation model on screen. At 721–1024px the sidebar becomes a floating drawer. A service table is used only when every important column is legible; below that it becomes job cards — two columns on tablet, one on phone.
+Responsive behavior is task-driven rather than width-driven. At ≤720px the four primary destinations plus a **Lainnya** control live in a safe-area-aware bottom navigation and the hamburger disappears, so there is never more than one navigation model on screen. At 721–1024px the sidebar becomes a floating drawer. The service list offers the same three views as Kasir, Inventori, and Pelanggan: list rows (a column header on wide layouts; segments follow the column settings and fold into two lanes, with inline labels, when their container narrows), job cards, and compact tiles — cards and tiles reflow by width.
 
 ### Named Rules
 

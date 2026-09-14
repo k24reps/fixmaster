@@ -218,6 +218,60 @@
         ],
         "createdAt": "2026-09-13T09:01:38.196Z",
         "reason": "Monogram fallback glyph sized to the fixed logo preview tile, not a type ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.85rem",
+        "files": [
+          "src/components/layout/Sidebar.module.css"
+        ],
+        "createdAt": "2026-09-13T13:06:36.569Z",
+        "reason": "Pre-existing caret icon glyph size in the branch selector, not a type ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.35rem",
+        "files": [
+          "src/features/pos/PosPage.module.css"
+        ],
+        "createdAt": "2026-09-13T13:15:27.449Z",
+        "reason": "Pre-existing LCD register readout display size (the one numeric hero of the POS), not a text ramp step"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "1px",
+        "files": [
+          "src/features/pos/PosPage.module.css"
+        ],
+        "createdAt": "2026-09-13T13:15:27.591Z",
+        "reason": "Pre-existing 6px component-tag notch on product cards; 1px is the machined corner of a tiny indicator, not a surface radius"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.4rem",
+        "files": [
+          "src/features/attendance/AttendancePage.module.css"
+        ],
+        "createdAt": "2026-09-13T13:41:35.677Z",
+        "reason": "Pre-existing live clock readout (the one display number of the attendance bench), not a text ramp step"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px)",
+        "files": [
+          "src/features/services/StatusModal.module.css"
+        ],
+        "createdAt": "2026-09-13T14:48:45.225Z",
+        "reason": "Pre-existing concentric inner radius calc(var(--radius-sm) - 2px) for the segmented mode tabs inside a --radius-sm track; derived from the token, not an off-scale value"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.2rem",
+        "files": [
+          "src/components/layout/Topbar.module.css"
+        ],
+        "createdAt": "2026-09-14T01:56:24.778Z",
+        "reason": "Pre-existing glyph size of the hamburger icon button (.mobileToggle), not body type on the ramp"
       }
     ]
   }
