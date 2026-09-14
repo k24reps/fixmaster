@@ -62,6 +62,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const [target, setTarget] = useState<ServiceStatus | ''>('');
   const [finalCost, setFinalCost] = useState('');
   const [note, setNote] = useState('');
+  // Penanganan: tindakan perbaikan, wajib saat Selesai; tampil di daftar Servis.
+  const [handling, setHandling] = useState('');
   const [warrantyService, setWarrantyService] = useState('');
   const [warrantyParts, setWarrantyParts] = useState('');
   // Settlement payment legs ("split payment"): each leg = wallet + amount.
@@ -106,6 +108,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setTarget('');
       setFinalCost(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
       setNote('');
+      setHandling('');
       setWarrantyService('');
       setWarrantyParts('');
       setSplits([]);
@@ -121,9 +124,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
   const needsCost = target === 'konfirmasi' || target === 'selesai' || target === 'lunas';
   const needsWarranty = target === 'selesai';
-  // Note is mandatory only for the two outcomes that MUST be documented:
-  // completion (what was done) and cancellation (why). Optional elsewhere.
-  const noteRequired = target === 'selesai' || target === 'batal';
+  // Cancellation must say why. Completion documents what was done in its own
+  // required "Penanganan" field, so its note is optional like everywhere else.
+  const noteRequired = target === 'batal';
+  const needsHandling = target === 'selesai';
   const warrantyPresets = getWarrantyPresets();
   const walletOptions = wallets.map((w) => ({ value: w.id, label: w.name }));
 
@@ -165,6 +169,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     if (!target) return toast.warning('Pilih status tujuan');
     if (noteRequired && !note.trim()) {
       return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS[target]}`);
+    }
+    if (needsHandling && !handling.trim()) {
+      return toast.warning('Penanganan wajib diisi untuk status Selesai');
     }
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
     const partsDays = Math.max(0, Math.round(Number(warrantyParts) || 0));
@@ -208,6 +215,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         warrantyPartsUntil,
         spareparts: updated,
         updatedAt: now,
+        // Penanganan disimpan di kolomnya sendiri (0059, `completion_note`), supaya
+        // tabel Servis bisa menampilkannya tanpa memuat riwayat.
+        completionNote: needsHandling ? handling.trim() : service.completionNote,
         history: [
           ...(service.history ?? []),
           {
@@ -215,7 +225,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             status: target,
             by: me?.id ?? '',
             byName: me?.name ?? '',
-            note: note.trim() || STATUS_LABELS[target],
+            // Riwayat (juga tampil di halaman lacak pelanggan) tetap memuat penanganannya.
+            note: [needsHandling ? handling.trim() : '', note.trim()].filter(Boolean).join(' · ') || STATUS_LABELS[target],
             internal: false,
           },
         ],
@@ -684,6 +695,14 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 </p>
               </div>
             )}
+            {needsHandling && (
+              <Input
+                label="Penanganan (wajib)"
+                value={handling}
+                onChange={(e) => setHandling(e.target.value)}
+                placeholder="Contoh: ganti LCD, unit sudah dites normal"
+              />
+            )}
             <Input
               label={noteRequired ? 'Catatan (wajib)' : 'Catatan (opsional)'}
               value={note}
@@ -692,7 +711,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 target === 'batal'
                   ? 'Contoh: pelanggan menolak biaya, unit tidak bisa diperbaiki'
                   : target === 'selesai'
-                    ? 'Contoh: ganti LCD, unit sudah dites normal'
+                    ? 'Contoh: casing lama dikembalikan ke pelanggan'
                     : 'Contoh: unit sudah dicek, menunggu sparepart'
               }
             />

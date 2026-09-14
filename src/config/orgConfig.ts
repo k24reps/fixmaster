@@ -2,6 +2,7 @@ import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
 import type { MonthlyTarget } from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
+import { resolveServiceColumns, type ServiceColumnId } from '@/lib/business/serviceColumns';
 
 /**
  * Org-scoped config. Most keys are persisted locally (per-device localStorage),
@@ -66,6 +67,18 @@ export async function setCategories(categories: string[]): Promise<void> {
   const saved = await repository.setSingleton('organization', {
     ...org,
     settings: { ...(org.settings ?? {}), deviceCategories: categories },
+  });
+  // setOrg() would reset the outlet scope; update the org slice directly.
+  useSessionStore.setState({ org: saved });
+}
+
+/** Simpan kolom tabel Servis ke baris organisasi (tersinkron antar perangkat). */
+export async function saveServiceColumns(columns: ServiceColumnId[]): Promise<void> {
+  const org = useSessionStore.getState().org;
+  if (!org) return;
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), serviceColumns: resolveServiceColumns(columns) },
   });
   // setOrg() would reset the outlet scope; update the org slice directly.
   useSessionStore.setState({ org: saved });

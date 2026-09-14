@@ -17,17 +17,105 @@
   gap: var(--space-3);
   flex-wrap: wrap;
 }
-.filters {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  flex: 1;
-}
 .search {
   min-width: 240px;
   flex: 1;
-  max-width: 360px;
+  max-width: 520px;
+}
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------- Baris filter ---------- */
+.filterBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dateRange {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}
+.dateInput {
+  min-height: var(--control-h);
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.dateInput:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: var(--ring);
+}
+/* Toggle filter: tombol, bukan select, karena nilainya hanya nyala/mati. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.toggle:hover {
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
+.toggleOn,
+.toggleOn:hover {
+  border-color: var(--border-brand);
+  background: var(--brand-soft);
+  color: var(--text-primary);
+}
+.toggleLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+.toggleCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.resetBtn {
+  min-height: var(--control-h);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.resetBtn:hover {
+  color: var(--text-primary);
+}
+/* Panel "Filter lainnya": filter yang jarang dipakai, dibuka dari tombolnya. */
+.morePanel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-sm);
 }
 .select {
   min-height: var(--control-h);
@@ -44,14 +132,11 @@
   border-color: var(--brand);
 }
 
-.tableWrap {
-  overflow-x: auto;
-}
-
-/* ---------- Mobile job cards (hidden on desktop) ---------- */
+/* ---------- Tampilan Kartu: kisi mengikuti lebar ---------- */
+/* min(…, 100%) supaya satu kartu tak pernah lebih lebar dari layar ponsel 320px. */
 .cardList {
-  display: none;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: var(--space-3);
   padding: var(--space-3);
 }
@@ -131,8 +216,13 @@
   color: var(--text-muted);
   font-size: 0.85em;
 }
+/* Biaya + profit + empat tombol 44px butuh ~430px; kartu ponsel hanya ~288px.
+   Tanpa wrap, angka terlipat jadi tiga baris dan tombol Edit meluap keluar
+   kartu (terukur 31px). Angka tetap satu baris; aksi turun ke baris sendiri,
+   rata kanan, hanya bila tidak muat. */
 .jobFoot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
@@ -140,19 +230,23 @@
   padding-top: var(--space-2);
   border-top: 1px dotted var(--border);
 }
-.jobCost {
+/* Biaya di kartu & ubin memakai blok yang sama dengan Daftar (renderCost):
+   angka utama, lalu rincian modal/profit pemilik di bawahnya, rata kiri. */
+.jobCost,
+.tileCost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  white-space: nowrap;
+}
+.jobCost .cost {
   font-family: var(--font-display, var(--font-mono));
   font-weight: var(--fw-bold);
   color: var(--text-primary);
 }
-.jobProfit {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-bold);
-  color: var(--success);
-}
-.jobProfit[data-loss='true'] {
-  color: var(--danger);
+.jobCost .breakdown,
+.tileCost .breakdown {
+  justify-content: flex-start;
 }
 .profit {
   font-family: var(--font-mono);
@@ -176,6 +270,7 @@
   gap: var(--space-2);
   margin-top: 2px;
   font-size: var(--text-xs);
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
 .breakdown .modal,
@@ -188,6 +283,14 @@
   font-family: var(--font-mono);
   font-weight: var(--fw-semibold);
   color: var(--brand-hover);
+}
+/* Estimasi: tampil selama biaya final belum ada, diredam supaya tidak terbaca
+   sebagai tagihan. */
+.estimate {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 .modal {
   font-family: var(--font-mono);
@@ -221,54 +324,216 @@
 .jobActions {
   display: flex;
   gap: var(--space-1);
+  margin-left: auto;
 }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
+/* ---------- Tampilan Daftar: baris, bukan tabel (konsep sama dengan Inventori & Kasir) ---------- */
+/* Tanpa kepala tabel: segmen yang butuh konteks membawa labelnya sendiri.
+   Segmen opsional mengikuti Pengaturan > kolom Servis; lajurnya (--row-cols)
+   dibentuk dari segmen yang aktif, jadi segmen antar baris tetap sejajar. Semua
+   lajur segmen minmax(0, …) dan teksnya dipotong atau dijepit, sehingga baris
+   tak pernah meluap: tak perlu lagi mengukur lebar lalu jatuh ke kartu. */
+.rowList {
+  container: svcRows / inline-size;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.table thead th {
-  /* 6px sides (not 16, not 12): with 10 owner columns the table's natural
-     width exceeded its wrapper by 103px at 1440px. AKSI is
-     `position: sticky; right: 0` with an opaque background (below) — when
-     the table overflows, sticky pins AKSI to the wrapper's edge REGARDLESS
-     of the table's own layout, so its solid background painted on top of
-     whatever sat there, silently covering the tail of the STATUS badge text
-     (confirmed via measured DOM rects: badge and AKSI cell overlapped by up
-     to 97px). The real fix is making the table's natural width fit so sticky
-     never has to shift left. 6px closes the 103px gap exactly (verified:
-     0px overflow, 0px badge/AKSI overlap on every status at 1440px). */
-  padding: 12px 6px;
-  text-align: left;
-  font-size: var(--text-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: var(--bg-surface-2);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.table tbody tr {
-  border-bottom: 1px solid var(--border);
+.row {
+  display: grid;
+  /* Aksi 7.5rem = tiga tombol 40px; lajur tetap supaya judul & baris sejajar. */
+  grid-template-columns: minmax(0, 1fr) 11rem 9rem 7.5rem;
+  grid-template-areas: 'main status cost actions';
+  align-items: center;
+  column-gap: var(--space-4);
+  min-height: 56px;
+  /* Kanan 4px: kotak ikon 40px sudah menyisakan 12px di kanan glyph-nya. */
+  padding: 8px var(--space-1) 8px var(--space-4);
   transition: background var(--dur-fast) var(--ease-out);
 }
-.table tbody tr:last-child {
-  border-bottom: none;
+.rowNoCost {
+  grid-template-columns: minmax(0, 1fr) 11rem 7.5rem;
+  grid-template-areas: 'main status actions';
 }
-.table tbody tr:hover {
+.row + .row {
+  border-top: 1px dotted var(--border);
+}
+.row:hover {
   background: var(--bg-hover);
 }
-.table tbody td {
-  padding: 12px 6px;
-  vertical-align: middle;
+/* Judul kolom (tata letak lebar saja): gaya label sistem, lajur sama dengan
+   baris karena memakai .row dan --row-cols yang sama. */
+.rowHead,
+.rowHead:hover {
+  min-height: 0;
+  padding-block: 10px;
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
-.table tbody td strong {
-  font-weight: var(--fw-semibold);
+.rowHead .rowMain > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* "AKSI" rata dengan glyph ikon terakhir, bukan tepi kotak 40px-nya. */
+.rowHead .rowActions {
+  padding-right: 12px;
+}
+/* Saat judul kolom tampil, label & ikon di dalam segmen hanya mengulang. */
+@container svcRows (min-width: 1181px) {
+  .rows .clamp b,
+  .rows .rowTech svg {
+    display: none;
+  }
+}
+.rowMain {
+  grid-area: main;
+  display: grid;
+  grid-template-columns: var(--row-cols);
+  align-items: center;
+  column-gap: var(--space-4);
+  min-width: 0;
+}
+.rowCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.rowCell > strong,
+.rowCell > .sub,
+.rowTitle {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowTitle {
+  color: var(--text-primary);
+}
+/* Nama teknisi boleh dua baris supaya terbaca utuh di lajur yang sempit. */
+.rowTech {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  max-width: 100%;
+  color: var(--text-secondary);
+}
+.rowTech > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.rowTech svg {
+  flex-shrink: 0;
+  margin-top: 0.25em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.rowStatus {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.rowCost {
+  grid-area: cost;
+  text-align: right;
+  white-space: nowrap;
+}
+.rowActions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+}
+/* Ruang menyempit, bertahap (ambang dari lebar kontainer, jadi zoom aplikasi
+   ikut dihitung). ≤1180px: lajur status/biaya/aksi tetap, segmen mengalir dan
+   membungkus di kiri alih-alih diperas jadi potongan sempit. */
+@container svcRows (max-width: 1180px) {
+  /* Segmen tak lagi berbaris dalam lajur: judul tak bisa sejajar, label di
+     dalam segmen yang mengambil alih. */
+  .rowHead {
+    display: none;
+  }
+  .rowMain {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px var(--space-4);
+  }
+  .rowMain > .rowCell {
+    flex: 1 1 9rem;
+  }
+}
+/* ≤860px: biaya dan aksi turun ke baris kedua, seperti Inventori. */
+@container svcRows (max-width: 860px) {
+  .row,
+  .rowNoCost {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'main status'
+      'cost actions';
+    row-gap: 2px;
+  }
+  /* 6px: tombol status bermargin -6px, jadi lencananya menempel tepi kanan
+     kontainer tanpa meluap keluar baris. */
+  .rowStatus {
+    align-self: start;
+    align-items: flex-end;
+    padding-right: 6px;
+  }
+  .rowCost {
+    text-align: left;
+  }
+  .rowCost .breakdown {
+    justify-content: flex-start;
+  }
+}
+/* Ponsel: daftar tetap ringkas, hanya nomor, perangkat, dan pelanggan.
+   Keluhan, penanganan, dan teknisi tetap ada di tampilan Kartu. */
+@container svcRows (max-width: 520px) {
+  /* flex-start: align-items center dari tata letak lebar akan memusatkan
+     segmen secara horizontal di susunan kolom ini. */
+  .rowMain {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .rowMain > .rowCell {
+    flex: none;
+  }
+  .rowCell[data-seg='id'] {
+    flex-direction: row;
+    gap: var(--space-2);
+  }
+  .rowCell[data-seg='complaint'],
+  .rowCell[data-seg='completionNote'],
+  .rowCell[data-seg='technician'],
+  .rowCell > .sub {
+    display: none;
+  }
+  .rowCell[data-seg='id'] > .sub {
+    display: block;
+  }
 }
 .sub {
   display: block;
   font-size: var(--text-xs);
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
@@ -283,7 +548,9 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
+  line-height: 1.4;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .pickupWait {
   color: var(--warning);
@@ -299,10 +566,42 @@
 .pickupDone {
   color: var(--text-muted);
 }
-/* Quick-action button reflecting the collected state (mirrors detail page). */
-.pickedActive {
-  color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+/* Tertahan: LED + jumlah hari tanpa aktivitas (status + nilai, bukan hiasan). */
+.stallTag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+  color: var(--warning);
+  white-space: nowrap;
+}
+.stallTag::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--warning);
+}
+/* Label status ambil yang bisa diklik (manajer): tetap terbaca sebagai label,
+   dengan umpan balik hover seperti lencana status. Margin negatif menjaga
+   teksnya sejajar dengan baris di atasnya. */
+.pickupBtn {
+  padding: 2px 6px;
+  margin-inline: -6px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.pickupBtn:hover {
+  background: var(--brand-soft);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 /* Loading readout while the collection hydrates (distinguishes "memuat" from
    a genuinely empty list — avoids the post-login empty-state flash). */
@@ -340,29 +639,37 @@
 .muted {
   color: var(--text-muted);
 }
-.num {
-  text-align: right;
-  white-space: nowrap;
+/* Keluhan & penanganan: teks bebas, dijepit dua baris supaya satu teks panjang
+   tidak meninggikan baris. Teks lengkap ada di title. */
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-secondary);
 }
-.actionsCol {
-  text-align: right;
-  white-space: nowrap;
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  background: var(--bg-surface);
-  box-shadow: -10px 0 18px color-mix(in srgb, var(--bg-base) 12%, transparent);
+.clamp b {
+  margin-right: 4px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
 }
-/* `.table thead th` (0,1,2) menang atas `.num`/`.actionsCol` (0,1,0), jadi
-   header kolom angka rata kiri sementara selnya rata kanan — judulnya tidak
-   berdiri di atas angkanya. Dinaikkan spesifisitasnya, bukan dipindah urutan. */
-.table thead th.num,
-.table thead th.actionsCol {
-  text-align: right;
+/* Penanganan tiga baris: ringkasan pekerjaan, jadi diberi ruang lebih. */
+.clamp3 {
+  -webkit-line-clamp: 3;
 }
-.table thead .actionsCol {
-  z-index: 2;
-  background: var(--bg-surface-2);
+.jobNote {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.jobNote b {
+  margin-right: 4px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
 }
 .iconBtn {
   display: inline-flex;
@@ -381,57 +688,6 @@
   color: var(--brand-hover);
 }
 
-/* ---------- Responsive: table → cards ---------- */
-/* ---------- Ambang tabel -> kartu: @container, BUKAN @media ---------- */
-/* Tabel ini punya min-content 919px untuk 8 kolom. Dulu 1056px dengan 10
-   kolom, sebelum Biaya/Modal/Profit disatukan jadi satu sel: tiga kolom uang
-   itu memakan 252px, satu sel dengan sub-baris cukup ~117px (terukur -137px
-   pada data yang sama, +30px lagi kalau nilainya selebar "Rp 12.500.000"
-   dengan modal aktif). Sekarang pemilik dan karyawan sama-sama 8 kolom —
-   bedanya hanya sub-baris di dalam sel, bukan jumlah kolom, jadi ambang ini
-   tidak lagi konservatif untuk karyawan seperti dulu.
-
-   Yang dibeli oleh 137px itu: di laptop 1366px pada zoom 100% ruang konten
-   ~1050px, dulu jatuh ke kartu, sekarang tetap tabel.
-
-   Kalau ruangnya kurang, ia overflow — dan
-   kolom AKSI yang `position: sticky; right: 0` dengan background opaque MENIMPA
-   isi sel di bawahnya alih-alih sekadar menggeser. Terukur pada versi @media
-   lama: +315px di 1101, +264px di 1152, +136px di 1280, +50px di 1366 (dan
-   1366px adalah lebar laptop umum — ini bukan kasus pinggiran).
-
-   Kenapa container, bukan media query: properti CSS `zoom` (dipakai pengaturan
-   zoom aplikasi, lihat src/stores/zoom.ts) MENAMBAH ruang layout tapi TIDAK
-   menggeser media query. Terukur pada viewport 1152px, `zoom: 0.8` menaikkan
-   ruang <main> 858px -> 1146px sementara `matchMedia('(max-width: 1415px)')`
-   tetap true — jadi tabel yang sebenarnya sudah muat akan tetap tersembunyi,
-   dan sebaliknya di zoom 1.25 tabel yang tak lagi muat akan tetap dirender
-   lalu overflow. Media query ber-satuan `em` tidak menolong: `em` di media
-   query selalu resolve ke font-size awal, bukan ke root. Container query
-   mengukur elemen dalam koordinat layout yang SUDAH ter-zoom, jadi ia satu-
-   satunya yang benar di kedua arah (terverifikasi lewat scripts/audit-zoom.mjs).
-
-   Kedua peran kini memakai ambang yang sama karena jumlah kolomnya sama.
-   Sub-baris modal/profit milik pemilik menambah lebar di dalam sel Biaya,
-   bukan kolom baru, dan sudah ikut terhitung di 919px.
-
-   Padding sel TIDAK bisa jadi jalan keluar: tiap +1px padding samping menambah
-   16px kebutuhan ruang (8 kolom x 2 sisi), jadi 12px menuntut ~1050px. */
-.listArea {
-  container-type: inline-size;
-  container-name: servisList;
-}
-
-@container servisList (max-width: 918px) {
-  .tableWrap {
-    display: none;
-  }
-  .cardList {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 720px) {
   .stats {
     /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
@@ -444,25 +700,48 @@
   .stats > *:last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
-  .toolbar,
-  .filters {
+  .toolbar {
     align-items: stretch;
+  }
+  /* Pilihan tampilan di kiri, "Servis Baru" mengisi sisa baris. */
+  .toolbarActions {
+    width: 100%;
+  }
+  .toolbarActions > :last-child {
+    flex: 1;
   }
   .search,
   .select {
     width: 100%;
     max-width: none;
   }
+  /* Dua kolom memotong tinggi baris filter & panel "Filter lainnya" separuhnya. */
+  .filterBar,
+  .morePanel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .filterBar .toggle {
+    justify-content: center;
+  }
+  .filterBar .select,
+  .morePanel .select {
+    padding-inline: 10px;
+  }
+  /* "Semua Pembayaran" (132px) lebih lebar dari kolom 129px: satu baris penuh. */
+  .morePanel .wideSelect {
+    grid-column: 1 / -1;
+  }
+  .dateRange {
+    grid-column: 1 / -1;
+  }
+  .dateInput {
+    flex: 1;
+    min-width: 0;
+  }
   .iconBtn {
     min-width: var(--control-h);
     min-height: var(--control-h);
-  }
-  .tableWrap {
-    display: none;
-  }
-  .cardList {
-    display: grid;
-    grid-template-columns: 1fr;
   }
 }
 
@@ -481,4 +760,46 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+/* ---------- Tampilan Ringkas (konsep sama dengan Kasir, Inventori, Pelanggan) ---------- */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+/* Ubin memakai .jobCard (spine status, latar) dengan isi dan jarak yang dipadatkan. */
+.tile {
+  gap: 4px;
+  padding: 10px 12px;
+  padding-left: calc(12px + 3px);
+  border-radius: var(--radius-sm);
+}
+/* "KONFIRMASI BIAYA" + nomor tidak selalu muat sebaris di ubin 240px. */
+.tile .jobTop {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.tileDevice,
+.tileSub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tileDevice {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.tileSub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.tileCost {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
 }

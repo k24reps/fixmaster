@@ -18,6 +18,7 @@ import type {
   Customer,
   InventoryItem,
   Service,
+  ServiceHistoryEntry,
   ServiceSparepart,
   ServiceStatus,
   Supplier,
@@ -122,6 +123,19 @@ export async function seedDemoWorkspace(): Promise<void> {
 
   // 5) Services on 4 June — mix of paid (lunas) + still-active, per outlet.
   const tech = 'Rizal Pratama';
+  const entry = (status: ServiceHistoryEntry['status'], note: string): ServiceHistoryEntry => ({
+    at: now,
+    status,
+    by: owner.id,
+    byName: owner.name,
+    note,
+    internal: false,
+  });
+  /**
+   * Tiket yang sudah Selesai/Lunas membawa jejak lengkapnya: dikerjakan →
+   * selesai (dengan catatan WAJIB, yang juga tampil di tabel Servis) → lunas,
+   * plus tanda ambil bila barangnya sudah diserahkan.
+   */
   const mkService = (
     outletId: string,
     n: number,
@@ -133,34 +147,48 @@ export async function seedDemoWorkspace(): Promise<void> {
     finalCost: number,
     downPayment: number,
     spareparts: ServiceSparepart[] = [],
-  ): Service => ({
-    ...at(outletId),
-    id: newId(),
-    serviceNo: `FM-${String(n).padStart(4, '0')}`,
-    customerId: cust.id,
-    customerName: cust.name,
-    customerPhone: cust.phone,
-    category,
-    device,
-    complaint,
-    accessories: 'Charger',
-    status,
-    technicianId: null,
-    technicianName: tech,
-    estimateCost: finalCost || 500_000,
-    finalCost,
-    downPayment,
-    spareparts,
-    warrantyServiceUntil: status === 'lunas' || status === 'selesai' ? addDays(today, 30) : null,
-    warrantyPartsUntil: status === 'lunas' || status === 'selesai' ? addDays(today, 7) : null,
-    pickedUp: false,
-    pickedUpAt: null,
-    warrantyClaimOf: null,
-    history: [
-      { at: now, status: 'diterima', by: owner.id, byName: owner.name, note: 'Unit diterima', internal: false },
-    ],
-    archived: false,
-  });
+    opts: { handling?: string; pickedUp?: boolean; idleDays?: number } = {},
+  ): Service => {
+    const done = status === 'selesai' || status === 'lunas';
+    const pickedUp = opts.pickedUp ?? false;
+    // `idleDays`: tiket yang sudah lama tanpa aktivitas, supaya filter
+    // "Tertahan" di halaman Servis punya contoh nyata di demo.
+    const stamp = opts.idleDays ? new Date(Date.now() - opts.idleDays * 86_400_000).toISOString() : now;
+    return {
+      ...at(outletId),
+      createdAt: stamp,
+      updatedAt: stamp,
+      id: newId(),
+      serviceNo: `FM-${String(n).padStart(4, '0')}`,
+      customerId: cust.id,
+      customerName: cust.name,
+      customerPhone: cust.phone,
+      category,
+      device,
+      complaint,
+      completionNote: done ? (opts.handling ?? '') : '',
+      accessories: 'Charger',
+      status,
+      technicianId: null,
+      technicianName: tech,
+      estimateCost: finalCost || 500_000,
+      finalCost,
+      downPayment,
+      spareparts,
+      warrantyServiceUntil: done ? addDays(today, 30) : null,
+      warrantyPartsUntil: done ? addDays(today, 7) : null,
+      pickedUp,
+      pickedUpAt: pickedUp ? now : null,
+      warrantyClaimOf: null,
+      history: [
+        entry('diterima', 'Unit diterima'),
+        ...(done ? [entry('pengerjaan', 'Mulai dikerjakan'), entry('selesai', opts.handling ?? 'Selesai')] : []),
+        ...(status === 'lunas' ? [entry('lunas', 'Lunas')] : []),
+        ...(pickedUp ? [entry('edit', 'Barang diambil pelanggan')] : []),
+      ],
+      archived: false,
+    };
+  };
   /**
    * Sparepart terpakai pada satu tiket — sumber modal & margin tiket itu.
    * `deducted: true` karena kedua tiket pemakainya sudah lunas, jadi stoknya
@@ -181,21 +209,41 @@ export async function seedDemoWorkspace(): Promise<void> {
   // Tiga tiket lunas sengaja beda profil modalnya, supaya kolom Biaya di
   // halaman Servis memperlihatkan ketiga keadaannya: modal besar, modal tipis,
   // dan tanpa modal sama sekali (jasa murni -> tak ada rincian di bawah biaya).
+  // FM-0001 & FM-0005 sudah lunas DAN diambil (tuntas), jadi turun ke dasar
+  // daftar Servis; FM-0003 lunas tapi belum diambil, FM-0007 selesai tapi belum
+  // dibayar — keduanya tetap di atas bersama tiket yang masih dikerjakan.
   const services: Service[] = [
     // Modal besar: 850.000 dari 1.500.000 -> profit 650.000.
     mkService(oPusat, 1, customers[0], 'Laptop', 'MacBook Pro 13" 2019', 'Keyboard mati total', 'lunas', 1_500_000, 0, [
       partUsed(inventory[0], 1),
-    ]),
+    ], { handling: 'Ganti keyboard A1989, semua tombol dites normal', pickedUp: true }),
     mkService(oPusat, 2, customers[0], 'HP / Smartphone', 'iPhone 12', 'LCD retak', 'pengerjaan', 0, 200_000),
     // Modal tipis: pekerjaan bersih-bersih, hanya pasta -> profit 1.155.000.
     mkService(oDago, 3, customers[1], 'Laptop', 'Asus ROG G14', 'Overheat & mati sendiri', 'lunas', 1_200_000, 0, [
       partUsed(inventory[3], 1),
-    ]),
-    mkService(oDago, 4, customers[1], 'HP / Smartphone', 'Samsung A52', 'Baterai cepat habis', 'konfirmasi', 0, 0),
-    mkService(oCimahi, 5, customers[2], 'Printer', 'Epson L3110', 'Hasil cetak bergaris', 'lunas', 850_000, 0),
+    ], { handling: 'Bersihkan kipas & ganti thermal paste, suhu idle 45°C', idleDays: 9 }),
+    mkService(oDago, 4, customers[1], 'HP / Smartphone', 'Samsung A52', 'Baterai cepat habis', 'konfirmasi', 0, 0, [], {
+      idleDays: 3,
+    }),
+    mkService(oCimahi, 5, customers[2], 'Printer', 'Epson L3110', 'Hasil cetak bergaris', 'lunas', 850_000, 0, [], {
+      handling: 'Cuci head & kalibrasi, hasil cetak uji bersih',
+      pickedUp: true,
+    }),
     mkService(oCimahi, 6, customers[2], 'PC / Komputer', 'PC Rakitan', 'Tidak mau menyala', 'diterima', 0, 0),
+    mkService(oPusat, 7, customers[0], 'HP / Smartphone', 'Oppo Reno 8', 'Tidak mengisi daya', 'selesai', 350_000, 0, [], {
+      handling: 'Ganti port charger, pengisian daya normal kembali',
+    }),
   ];
-  await repository.putMany('services', services);
+  // Adapter selalu mengisi updatedAt = sekarang (jejak audit yang benar untuk
+  // penulisan dari aplikasi). Khusus data contoh, kembalikan waktu aktivitas
+  // tiket yang sengaja dibuat "tertahan" (idleDays). In-memory adapter (demo)
+  // menyimpan objek yang sama dengan yang dikembalikan; adapter lain
+  // menyimpan salinan, jadi baris ini tak berpengaruh di sana.
+  const intendedUpdatedAt = services.map((s) => s.updatedAt);
+  const savedServices = await repository.putMany('services', services);
+  savedServices.forEach((s, i) => {
+    s.updatedAt = intendedUpdatedAt[i];
+  });
 
   // 6) Suppliers + one open PO (so the suppliers docket isn't empty).
   const supSumber = newId();

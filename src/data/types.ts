@@ -80,6 +80,8 @@ export interface OrgSettings {
   publicNote?: string;
   /** Owner-defined paths for the four primary slots in mobile navigation. */
   mobileNavigation?: string[];
+  /** Kolom opsional yang tampil di tabel Servis (lihat lib/business/serviceColumns). */
+  serviceColumns?: string[];
 }
 
 export interface Employee extends BaseEntity {
@@ -268,6 +270,13 @@ export interface Service extends BaseEntity {
   category: string; // device type
   device: string;
   complaint: string;
+  /**
+   * Penanganan (tindakan perbaikan), wajib saat status Selesai (migrasi 0059,
+   * kolom `completion_note`). Kolom sendiri, bukan hanya
+   * di `history`, supaya daftar servis bisa menampilkannya tanpa memuat riwayat.
+   * Opsional: baris lokal lama belum membawanya.
+   */
+  completionNote?: string;
   accessories: string;
   status: ServiceStatus;
   technicianId: ID | null;
@@ -304,7 +313,7 @@ export interface Service extends BaseEntity {
  */
 export const SERVICE_LIST_COLUMNS: string =
   'id,org_id,outlet_id,service_no,customer_id,customer_name,customer_phone,category,device,' +
-  'complaint,accessories,status,technician_id,technician_name,estimate_cost,final_cost,' +
+  'complaint,completion_note,accessories,status,technician_id,technician_name,estimate_cost,final_cost,' +
   'down_payment,spareparts,warranty_until,warranty_service_until,warranty_parts_until,' +
   'picked_up,picked_up_at,warranty_claim_of,archived,created_at,updated_at,deleted_at';
 

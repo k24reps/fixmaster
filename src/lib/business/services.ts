@@ -248,6 +248,15 @@ export function isAwaitingPickup(
 }
 
 /**
+ * Tuntas = lunas atau batal DAN barangnya sudah diambil. Tak ada lagi yang perlu
+ * dikerjakan, ditagih, atau diserahkan, jadi tiket ini turun ke dasar daftar
+ * Servis di bawah tiket yang masih menunggu sesuatu.
+ */
+export function isClosedOut(service: Pick<Service, 'status' | 'pickedUp'>): boolean {
+  return service.pickedUp && (service.status === 'lunas' || service.status === 'batal');
+}
+
+/**
  * Latest warranty expiry across service & parts (null if neither set).
  * Used to decide overall coverage and to display "garansi s/d".
  */

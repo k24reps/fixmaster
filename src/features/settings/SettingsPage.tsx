@@ -114,6 +114,12 @@ import {
   type BackupRun,
 } from '@/data/cloudBackup';
 import { countRecords, parseBackup, type BackupFrequency } from '@/lib/business/backup';
+import { saveServiceColumns } from '@/config/orgConfig';
+import {
+  SERVICE_COLUMNS,
+  resolveServiceColumns,
+  type ServiceColumnId,
+} from '@/lib/business/serviceColumns';
 import styles from './SettingsPage.module.css';
 
 /**
@@ -244,6 +250,7 @@ export function SettingsPage() {
         <>
           <ServiceTemplatesCard />
           <DeviceCategoriesCard />
+          <ServiceColumnsCard />
           <WarrantyCard />
           <WhatsAppTemplatesCard />
           <PublicNoteCard />
@@ -637,6 +644,56 @@ function ServiceTemplatesCard() {
  * dropdown when creating a service. Stored on the organization row
  * (settings.deviceCategories, migration 0032) so they sync across devices.
  */
+/**
+ * Kolom tabel Servis yang ditampilkan. Tersimpan di baris organisasi, jadi semua
+ * perangkat toko melihat tabel yang sama. No. Servis, Status, dan Aksi selalu ada.
+ */
+function ServiceColumnsCard() {
+  const org = useSessionStore((s) => s.org);
+  const columns = resolveServiceColumns(org?.settings?.serviceColumns);
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async (id: ServiceColumnId) => {
+    const next = columns.includes(id) ? columns.filter((c) => c !== id) : [...columns, id];
+    setBusy(true);
+    try {
+      await saveServiceColumns(next);
+    } catch {
+      toast.error('Gagal menyimpan kolom tabel');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="clipboard-list" aria-hidden />} title="Kolom Tabel Servis" />
+      <CardBody>
+        <p className={styles.tplHint}>
+          Pilih kolom yang tampil di tabel Servis. No. Servis, Status, dan Aksi selalu tampil.
+          Tersinkron di semua perangkat.
+        </p>
+        <div className={styles.columnList}>
+          {SERVICE_COLUMNS.map((c) => (
+            <label key={c.id} className={styles.columnOption}>
+              <input
+                type="checkbox"
+                checked={columns.includes(c.id)}
+                onChange={() => void toggle(c.id)}
+                disabled={busy}
+              />
+              <span className={styles.columnText}>
+                <strong>{c.label}</strong>
+                <small>{c.hint}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function DeviceCategoriesCard() {
   // Read reactively from the org slice so a save here (and realtime updates
   // from other devices) re-render the list immediately.

@@ -559,6 +559,48 @@
   animation: fm-pulse 1.4s var(--ease-in-out) infinite;
 }
 
+/* Pilihan kolom tabel Servis */
+.columnList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+.columnOption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.columnOption:hover {
+  border-color: var(--border-strong);
+}
+.columnOption input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--brand);
+}
+.columnText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.columnText strong {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.columnText small {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
 /* Charge gauge — tick segments showing remaining subscription "power" */
 .chargeGauge {
   display: flex;
