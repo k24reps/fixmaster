@@ -38,6 +38,9 @@ import {
   Link as LinkIcon,
   Receipt,
   ListChecks,
+  SquaresFour,
+  Rows,
+  GridNine,
   Trophy,
   Printer,
   Cpu,
@@ -129,6 +132,9 @@ export type IconName =
   | 'link'
   | 'receipt'
   | 'list-check'
+  | 'view-cards'
+  | 'view-list'
+  | 'view-tiles'
   | 'trophy'
   | 'print'
   | 'microchip'
@@ -218,6 +224,9 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   link: LinkIcon,
   receipt: Receipt,
   'list-check': ListChecks,
+  'view-cards': SquaresFour,
+  'view-list': Rows,
+  'view-tiles': GridNine,
   trophy: Trophy,
   print: Printer,
   microchip: Cpu,

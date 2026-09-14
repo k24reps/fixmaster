@@ -1,5 +1,20 @@
 import { useMemo, useState } from 'react';
-import { Card, Input, Button, Badge, EmptyState, Icon, Modal, LoadState, loadPending } from '@/components/ui';
+import {
+  Card,
+  Input,
+  Button,
+  Badge,
+  EmptyState,
+  Icon,
+  Modal,
+  LoadState,
+  loadPending,
+  ViewToggle,
+  CategoryChips,
+  usePersistedView,
+  countCategories,
+  categoryOf,
+} from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { voidSale, processSale, isSupabaseConfigured } from '@/data/supabase-client';
@@ -33,6 +48,8 @@ export function PosPage() {
   const isMgr = me ? isManager(me.role) : false;
 
   const [query, setQuery] = useState('');
+  const [view, chooseView] = usePersistedView('fixmaster-pos-view');
+  const [category, setCategory] = useState('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState('');
   const [discountType, setDiscountType] = useState<DiscountType>('amount');
@@ -97,13 +114,24 @@ export function PosPage() {
     }
   };
 
+  // Kategori dari barang yang BISA dijual (stok > 0), dengan jumlahnya.
+  const categoryCounts = useMemo(
+    () => countCategories(inventory.filter((i) => i.stock > 0)),
+    [inventory],
+  );
+  const inStockCount = categoryCounts.reduce((n, [, count]) => n + count, 0);
+  // Kategori yang stoknya habis semua tak lagi punya chip; pilihan lama jangan
+  // sampai mengunci katalog di daftar kosong.
+  const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
+
   const available = useMemo(() => {
     const q = query.trim().toLowerCase();
     return inventory
       .filter((i) => i.stock > 0)
+      .filter((i) => activeCategory === 'all' || categoryOf(i.category) === activeCategory)
       .filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
       .slice(0, 50);
-  }, [inventory, query]);
+  }, [inventory, query, activeCategory]);
 
   const subtotal = cartSubtotal(cart);
   const discountValue = resolveDiscount(subtotal, parseRpInput(discount), discountType);
@@ -315,11 +343,21 @@ export function PosPage() {
       {tab === 'pos' && (
       <div className={styles.layout}>
         <div className={styles.products}>
-        <Input
-          placeholder="Cari produk untuk ditambahkan…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          iconLeft={<Icon name="magnifying-glass" aria-hidden />}
+        <div className={styles.toolbar}>
+          <Input
+            placeholder="Cari produk untuk ditambahkan…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            iconLeft={<Icon name="magnifying-glass" aria-hidden />}
+          />
+          <ViewToggle value={view} onChange={chooseView} label="Tampilan produk" />
+        </div>
+        <CategoryChips
+          categories={categoryCounts}
+          total={inStockCount}
+          value={activeCategory}
+          onChange={setCategory}
+          label="Kategori produk"
         />
         {loadPending(inventoryLoad) ? (
           <Card glass>
@@ -327,12 +365,60 @@ export function PosPage() {
           </Card>
         ) : available.length === 0 ? (
           <Card glass>
-            <EmptyState
-              icon={<Icon name="boxes-stacked" aria-hidden />}
-              title="Tidak ada produk tersedia"
-              description="Tambahkan stok di menu Inventori terlebih dahulu."
-            />
+            {inStockCount > 0 ? (
+              <EmptyState
+                icon={<Icon name="magnifying-glass" aria-hidden />}
+                title="Tidak ada produk yang cocok"
+                description="Coba kata kunci atau kategori lain."
+              />
+            ) : (
+              <EmptyState
+                icon={<Icon name="boxes-stacked" aria-hidden />}
+                title="Tidak ada produk tersedia"
+                description="Tambahkan stok di menu Inventori terlebih dahulu."
+              />
+            )}
           </Card>
+        ) : view === 'list' ? (
+          <div className={styles.productList}>
+            {available.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={styles.productRow}
+                onClick={() => addToCart(item)}
+              >
+                <span className={styles.productRowMain}>
+                  <strong>{item.name}</strong>
+                  <small>{categoryOf(item.category)}</small>
+                </span>
+                <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>
+                  stok {item.stock}
+                </Badge>
+                <span className={styles.productRowPrice}>{fmtRp(item.sellPrice)}</span>
+              </button>
+            ))}
+          </div>
+        ) : view === 'tiles' ? (
+          <div className={styles.tileGrid}>
+            {available.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={styles.productTile}
+                onClick={() => addToCart(item)}
+                title={item.name}
+              >
+                <span className={styles.tileName}>{item.name}</span>
+                <span className={styles.tileMeta}>
+                  <strong>{fmtRp(item.sellPrice)}</strong>
+                  <span className={item.stock <= item.minStock ? styles.tileLow : undefined}>
+                    stok {item.stock}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         ) : (
           <div className={styles.productGrid}>
             {available.map((item) => (

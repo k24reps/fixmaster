@@ -33,6 +33,7 @@
   flex-wrap: wrap;
 }
 .sortSelect {
+  min-height: var(--control-h);
   padding: 9px 14px;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
@@ -71,34 +72,7 @@
   font-size: var(--text-md);
 }
 
-/* ---------- View-mode toggle (grid ↔ list) ---------- */
-.viewToggle {
-  display: inline-flex;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg-input);
-}
-.viewBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--control-h);
-  height: var(--control-h);
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast);
-}
-.viewBtn:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
-}
-.viewActive {
-  background: var(--gradient-brand);
-  color: var(--on-brand);
-}
+/* Tombol tampilan & chip kategori: komponen bersama components/ui/CatalogControls. */
 
 /* ---------- Registry grid ---------- */
 .grid {
@@ -378,4 +352,71 @@
   .listView .activity .activityBlock:first-child {
     display: none;
   }
+}
+
+/* ---------- Tampilan Ringkas (konsep sama dengan Kasir & Inventori) ---------- */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.tile:hover {
+  border-color: var(--border-brand);
+  background: var(--bg-hover);
+}
+.tile:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.tileHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.tilePlate {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-sm);
+}
+.tileName {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Statistik + sampai tiga aksi tidak selalu muat sebaris; aksi yang turun
+   baris, bukan meluap keluar ubin. */
+.tileFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 6px;
+}
+.tileStat {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.tile .iconBtn {
+  width: 36px;
+  height: 36px;
 }

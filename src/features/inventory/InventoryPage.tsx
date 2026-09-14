@@ -1,6 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, Button, Input, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
+import {
+  Card,
+  Button,
+  Input,
+  EmptyState,
+  Icon,
+  LoadState,
+  loadPending,
+  ViewToggle,
+  CategoryChips,
+  usePersistedView,
+  countCategories,
+  categoryOf,
+} from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
@@ -15,6 +28,8 @@ import styles from './InventoryPage.module.css';
 
 type SortKey = 'low_first' | 'name_asc' | 'stock_desc';
 type StockFilter = 'all' | 'low' | 'out';
+
+const STATE_LABEL = { out: 'HABIS', low: 'MENIPIS', ok: 'AMAN' } as const;
 
 function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
   if (item.stock <= 0) return 'out';
@@ -35,6 +50,7 @@ export function InventoryPage() {
     requestedStock === 'low' || requestedStock === 'out' ? requestedStock : 'all',
   );
   const [sort, setSort] = useState<SortKey>('low_first');
+  const [view, chooseView] = usePersistedView('fixmaster-inventory-view');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [toDelete, setToDelete] = useState<InventoryItem | null>(null);
@@ -52,11 +68,16 @@ export function InventoryPage() {
     return { total, low, out, value };
   }, [inventory]);
 
+  // Chip kategori seperti di Kasir. Di sini SEMUA sparepart dihitung, termasuk
+  // yang habis, karena inventori justru tempat mengurus stok kosong.
+  const categoryCounts = useMemo(() => countCategories(inventory), [inventory]);
+  const activeCategory = categoryCounts.some(([c]) => c === categoryFilter) ? categoryFilter : 'all';
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const order = { out: 0, low: 1, ok: 2 };
     return inventory
-      .filter((i) => categoryFilter === 'all' || i.category === categoryFilter)
+      .filter((i) => activeCategory === 'all' || categoryOf(i.category) === activeCategory)
       .filter((i) => stockFilter === 'all' || stockState(i) === stockFilter)
       .filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
       .sort((a, b) => {
@@ -64,7 +85,7 @@ export function InventoryPage() {
         if (sort === 'stock_desc') return b.stock - a.stock;
         return order[stockState(a)] - order[stockState(b)] || a.stock - b.stock;
       });
-  }, [inventory, query, categoryFilter, stockFilter, sort]);
+  }, [inventory, query, activeCategory, stockFilter, sort]);
 
   const openNew = () => {
     setEditing(null);
@@ -100,6 +121,19 @@ export function InventoryPage() {
     setToDelete(item);
   };
 
+  // Aksi yang sama di ketiga tampilan.
+  const renderActions = (i: InventoryItem) =>
+    isMgr && (
+      <>
+        <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label="Edit">
+          <Icon name="pen" aria-hidden />
+        </button>
+        <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label="Hapus">
+          <Icon name="trash" aria-hidden />
+        </button>
+      </>
+    );
+
   return (
     <div className={styles.wrap}>
       <div className={styles.statsBar}>
@@ -119,12 +153,6 @@ export function InventoryPage() {
           />
         </div>
         <div className={styles.actions}>
-          <select className={styles.select} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="all">Semua Kategori</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
           <select
             className={styles.select}
             value={stockFilter}
@@ -140,11 +168,20 @@ export function InventoryPage() {
             <option value="name_asc">Nama A-Z</option>
             <option value="stock_desc">Stok Terbanyak</option>
           </select>
+          <ViewToggle value={view} onChange={chooseView} label="Tampilan sparepart" />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />} hidden={!isMgr} style={isMgr ? undefined : { display: 'none' }}>
             Tambah Sparepart
           </Button>
         </div>
       </div>
+
+      <CategoryChips
+        categories={categoryCounts}
+        total={inventory.length}
+        value={activeCategory}
+        onChange={setCategoryFilter}
+        label="Kategori sparepart"
+      />
 
       {loadPending(inventoryLoad) ? (
         <Card glass>
@@ -165,6 +202,61 @@ export function InventoryPage() {
             }
           />
         </Card>
+      ) : view === 'list' ? (
+        <div className={styles.itemList}>
+          {rows.map((i) => {
+            const st = stockState(i);
+            return (
+              <div key={i.id} className={[styles.itemRow, styles[st]].join(' ')}>
+                <div className={styles.itemMain}>
+                  <span className={styles.ledDot} aria-hidden />
+                  <div className={styles.itemText}>
+                    <span className={styles.itemName}>{i.name}</span>
+                    <span className={styles.itemSub}>
+                      {categoryOf(i.category)}
+                      {i.sku ? ` · ${i.sku}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.itemStock}>
+                  <span className={styles.stockNum}>{i.stock}</span>
+                  <span>
+                    min {i.minStock} · {STATE_LABEL[st]}
+                  </span>
+                </div>
+                <div className={styles.itemPrice}>
+                  <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
+                  <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>
+                </div>
+                <div className={styles.binActions}>{renderActions(i)}</div>
+              </div>
+            );
+          })}
+        </div>
+      ) : view === 'tiles' ? (
+        <div className={styles.itemTiles}>
+          {rows.map((i) => {
+            const st = stockState(i);
+            return (
+              <div key={i.id} className={[styles.itemTile, styles[st]].join(' ')}>
+                <span className={styles.led}>
+                  <span className={styles.ledDot} aria-hidden />
+                  {STATE_LABEL[st]}
+                </span>
+                <span className={styles.tileName} title={i.name}>
+                  {i.name}
+                </span>
+                <div className={styles.tileFoot}>
+                  <span className={styles.itemStock}>
+                    <span className={styles.stockNum}>{i.stock}</span>
+                    <span>min {i.minStock}</span>
+                  </span>
+                  <div className={styles.binActions}>{renderActions(i)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className={styles.binGrid}>
           {rows.map((i) => {
@@ -200,18 +292,7 @@ export function InventoryPage() {
                     <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
                     <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>
                   </div>
-                  <div className={styles.binActions}>
-                    {isMgr && (
-                      <>
-                        <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label="Edit">
-                          <Icon name="pen" aria-hidden />
-                        </button>
-                        <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label="Hapus">
-                          <Icon name="trash" aria-hidden />
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <div className={styles.binActions}>{renderActions(i)}</div>
                 </div>
               </div>
             );

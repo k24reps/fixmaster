@@ -1,0 +1,80 @@
+/* Kontrol katalog bersama — Kasir dan Inventori. */
+
+/* ---------- Pilihan tampilan ---------- */
+.viewToggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  color: var(--text-muted);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.viewBtn + .viewBtn {
+  border-left: 1px dotted var(--border-strong);
+}
+.viewBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.viewActive,
+.viewActive:hover {
+  color: var(--brand-text);
+  background: var(--brand-soft);
+}
+
+/* ---------- Kategori: satu ketukan, bisa digeser di layar sempit ---------- */
+.categoryBar {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: var(--control-h);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.chipActive,
+.chipActive:hover {
+  border-color: var(--border-brand);
+  background: var(--brand-soft);
+  color: var(--text-primary);
+}
+.chipCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.chipActive .chipCount {
+  color: var(--brand-text);
+}

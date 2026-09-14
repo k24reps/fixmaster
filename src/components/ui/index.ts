@@ -12,6 +12,14 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { EmptyState } from './EmptyState';
 export { LoadState } from './LoadState';
 export { loadPending } from './loadPending';
+export { ViewToggle, CategoryChips } from './CatalogControls';
+export {
+  usePersistedView,
+  countCategories,
+  categoryOf,
+  CATALOG_VIEWS,
+  type CatalogView,
+} from './catalogView';
 export { ToastContainer } from './ToastContainer';
 export { Icon, type IconName, type IconProps } from './Icon';
 export { Mascot } from './Mascot';

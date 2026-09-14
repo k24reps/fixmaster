@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Card, Button, Input, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
+import {
+  Card,
+  Button,
+  Input,
+  EmptyState,
+  Icon,
+  LoadState,
+  loadPending,
+  ViewToggle,
+  CategoryChips,
+  usePersistedView,
+} from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
@@ -16,7 +27,6 @@ import type { Customer } from '@/data/types';
 import styles from './CustomersPage.module.css';
 
 type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
-type ViewMode = 'grid' | 'list';
 
 export function CustomersPage() {
   const { data: customers, ...customersLoad } = useCollection('customers');
@@ -29,7 +39,7 @@ export function CustomersPage() {
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('svc_desc');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [view, chooseView] = usePersistedView('fixmaster-customers-view');
   const [category, setCategory] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -62,20 +72,22 @@ export function CustomersPage() {
     return map;
   }, [services]);
 
-  const allCategories = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of services) {
-      const cat = (s.category || '').trim();
-      if (cat) set.add(cat);
+  // Chip perangkat seperti di Kasir & Inventori. Jumlahnya = pelanggan (yang
+  // masih ada) yang pernah membawa kategori itu; satu pelanggan bisa di beberapa.
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of customers) {
+      for (const cat of custCategories.get(c.id) ?? []) counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [services]);
+    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [customers, custCategories]);
+  const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = customers.filter((c) => {
       if (q && !(c.name.toLowerCase().includes(q) || c.phone.includes(q))) return false;
-      if (category !== 'all' && !custCategories.get(c.id)?.has(category)) return false;
+      if (activeCategory !== 'all' && !custCategories.get(c.id)?.has(activeCategory)) return false;
       return true;
     });
     list = [...list].sort((a, b) => {
@@ -86,7 +98,8 @@ export function CustomersPage() {
       return sb.count - sa.count;
     });
     return list;
-  }, [customers, query, sort, stats, category, custCategories]);
+  }, [customers, query, sort, stats, activeCategory, custCategories]);
+  const filtered = Boolean(query) || activeCategory !== 'all';
 
   const repeatCount = useMemo(
     () => customers.filter((c) => (stats.get(c.id)?.count ?? 0) > 1).length,
@@ -130,6 +143,55 @@ export function CustomersPage() {
     }
   };
 
+  // Seluruh kartu/ubin membuka riwayat servis; tombol di dalamnya tidak.
+  const openOnKey = (c: Customer) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setHistoryCustomer(c);
+    }
+  };
+
+  // Aksi yang sama di ketiga tampilan.
+  const renderActions = (c: Customer) => (
+    <>
+      {c.phone && (
+        <button
+          className={[styles.iconBtn, styles.wa].join(' ')}
+          onClick={(e) => {
+            e.stopPropagation();
+            sendWa(c);
+          }}
+          aria-label="Kirim WhatsApp"
+          title="Kirim WhatsApp"
+        >
+          <Icon name="whatsapp" aria-hidden />
+        </button>
+      )}
+      <button
+        className={styles.iconBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          openEdit(c);
+        }}
+        aria-label="Edit"
+      >
+        <Icon name="pen" aria-hidden />
+      </button>
+      {isMgr && (
+        <button
+          className={[styles.iconBtn, styles.danger].join(' ')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setToDelete(c);
+          }}
+          aria-label="Hapus"
+        >
+          <Icon name="trash" aria-hidden />
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className={styles.wrap}>
       <div className={styles.toolbar}>
@@ -142,57 +204,30 @@ export function CustomersPage() {
           />
         </div>
         <div className={styles.actions}>
-          {allCategories.length > 0 && (
-            <select
-              className={styles.sortSelect}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              aria-label="Filter kategori perangkat"
-            >
-              <option value="all">Semua Perangkat</option>
-              {allCategories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          )}
           <select
             className={styles.sortSelect}
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
+            aria-label="Urutkan pelanggan"
           >
             <option value="svc_desc">Servis Terbanyak</option>
             <option value="trx_desc">Transaksi Tertinggi</option>
             <option value="name_asc">Nama A-Z</option>
           </select>
-          <div className={styles.viewToggle} role="group" aria-label="Ubah tampilan">
-            <button
-              type="button"
-              className={[styles.viewBtn, viewMode === 'grid' ? styles.viewActive : ''].join(' ')}
-              onClick={() => setViewMode('grid')}
-              aria-label="Tampilan kartu"
-              aria-pressed={viewMode === 'grid'}
-              title="Tampilan kartu"
-            >
-              <Icon name="boxes-stacked" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={[styles.viewBtn, viewMode === 'list' ? styles.viewActive : ''].join(' ')}
-              onClick={() => setViewMode('list')}
-              aria-label="Tampilan daftar"
-              aria-pressed={viewMode === 'list'}
-              title="Tampilan daftar"
-            >
-              <Icon name="list-check" aria-hidden />
-            </button>
-          </div>
+          <ViewToggle value={view} onChange={chooseView} label="Tampilan pelanggan" />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
             Pelanggan Baru
           </Button>
         </div>
       </div>
+
+      <CategoryChips
+        categories={categoryCounts}
+        total={customers.length}
+        value={activeCategory}
+        onChange={setCategory}
+        label="Kategori perangkat"
+      />
 
       <div className={styles.summary}>
         <span><strong>{customers.length}</strong> pelanggan</span>
@@ -208,12 +243,12 @@ export function CustomersPage() {
         <Card glass>
           <EmptyState
             icon={<Icon name="users" aria-hidden />}
-            title={query ? 'Tidak ada hasil' : 'Belum ada pelanggan'}
+            title={filtered ? 'Tidak ada hasil' : 'Belum ada pelanggan'}
             description={
-              query ? 'Coba kata kunci lain.' : 'Tambahkan pelanggan pertama Anda.'
+              filtered ? 'Coba kata kunci atau kategori lain.' : 'Tambahkan pelanggan pertama Anda.'
             }
             action={
-              !query && (
+              !filtered && (
                 <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
                   Pelanggan Baru
                 </Button>
@@ -221,8 +256,41 @@ export function CustomersPage() {
             }
           />
         </Card>
+      ) : view === 'tiles' ? (
+        <div className={styles.tileGrid}>
+          {rows.map((c) => {
+            const st = stats.get(c.id) ?? { count: 0, total: 0 };
+            return (
+              <div
+                key={c.id}
+                className={styles.tile}
+                role="button"
+                tabIndex={0}
+                onClick={() => setHistoryCustomer(c)}
+                onKeyDown={openOnKey(c)}
+                title="Lihat riwayat servis"
+              >
+                <div className={styles.tileHead}>
+                  <span className={[styles.plate, styles.tilePlate].join(' ')}>
+                    {c.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className={styles.ident}>
+                    <div className={styles.tileName}>{c.name}</div>
+                    <div className={styles.idTag}>{c.phone || 'tanpa nomor'}</div>
+                  </div>
+                </div>
+                <div className={styles.tileFoot}>
+                  <span className={styles.tileStat}>
+                    {servicesPending ? '—' : `${st.count}x · ${fmtRp(st.total)}`}
+                  </span>
+                  <div className={styles.cardActions}>{renderActions(c)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        <div className={[styles.grid, viewMode === 'list' ? styles.listView : ''].join(' ')}>
+        <div className={[styles.grid, view === 'list' ? styles.listView : ''].join(' ')}>
           {rows.map((c) => {
             const st = stats.get(c.id) ?? { count: 0, total: 0 };
             return (
@@ -276,43 +344,7 @@ export function CustomersPage() {
                   ) : (
                     <span className={styles.newcomer}>{st.count === 1 ? 'Pernah servis' : 'Belum servis'}</span>
                   )}
-                  <div className={styles.cardActions}>
-                    {c.phone && (
-                      <button
-                        className={[styles.iconBtn, styles.wa].join(' ')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sendWa(c);
-                        }}
-                        aria-label="Kirim WhatsApp"
-                        title="Kirim WhatsApp"
-                      >
-                        <Icon name="whatsapp" aria-hidden />
-                      </button>
-                    )}
-                    <button
-                      className={styles.iconBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(c);
-                      }}
-                      aria-label="Edit"
-                    >
-                      <Icon name="pen" aria-hidden />
-                    </button>
-                    {isMgr && (
-                      <button
-                        className={[styles.iconBtn, styles.danger].join(' ')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setToDelete(c);
-                        }}
-                        aria-label="Hapus"
-                      >
-                        <Icon name="trash" aria-hidden />
-                      </button>
-                    )}
-                  </div>
+                  <div className={styles.cardActions}>{renderActions(c)}</div>
                 </div>
               </div>
             );
