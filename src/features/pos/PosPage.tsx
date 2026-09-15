@@ -17,7 +17,8 @@ import {
 } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
-import { voidSale, processSale, isSupabaseConfigured } from '@/data/supabase-client';
+import { voidSale, processSale } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
@@ -72,7 +73,7 @@ export function PosPage() {
     if (!voidTarget) return;
     setVoidBusy(true);
     try {
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         await voidSale(voidTarget.id, voidReason.trim());
       } else {
         const inv = await repository.list('inventory');
@@ -215,7 +216,7 @@ export function PosPage() {
       const saleNo = nextDocNumber('INV', sales.map((s) => s.saleNo));
       let saleId: string;
 
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         // Cloud: atomic, server-side RPC. This is the ONLY path that lets a
         // staff cashier complete a sale, since wallet/inventory writes are
         // manager-only under RLS. Stock re-validation + deduction, wallet

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { toast } from './toast';
 import { authIntentHref } from '@/features/auth/auth-intent';
 import { trackEvent } from '@/lib/analytics';
+import { isSupabaseConfigured } from '@/data/supabase-client';
 
 /**
  * Public-demo session flag. Set true only while the landing-page demo
@@ -21,6 +22,16 @@ export const useDemoStore = create<DemoState>((set) => ({
   enter: () => set({ isDemo: true }),
   exit: () => set({ isDemo: false }),
 }));
+
+/**
+ * Tulis lewat RPC cloud? Hanya bila Supabase terkonfigurasi DAN bukan demo.
+ * Demo memakai adapter di memori, sedangkan `isSupabaseConfigured` tetap true
+ * (env) — tanpa pengecekan ini RPC menembak database sungguhan dengan org demo
+ * yang tidak ada di sana, jadi aksinya gagal.
+ */
+export function isCloudMode(): boolean {
+  return isSupabaseConfigured && !useDemoStore.getState().isDemo;
+}
 
 /**
  * Guard a real action while in demo mode. Returns `true` when the action was

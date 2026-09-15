@@ -6,7 +6,8 @@ import { transfer } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
-import { isSupabaseConfigured, transferWallet } from '@/data/supabase-client';
+import { transferWallet } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import type { Wallet } from '@/data/types';
 
 interface TransferModalProps {
@@ -61,7 +62,7 @@ export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
 
     setBusy(true);
     try {
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         await transferWallet({ orgId, fromWalletId: fromId, toWalletId: toId, amount: value });
       } else {
         const now = new Date().toISOString();

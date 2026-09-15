@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Card, Button, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
-import { repository, isSupabaseConfigured } from '@/data';
+import { repository } from '@/data';
+import { isCloudMode } from '@/stores/demo';
 import { voidPurchaseOrder } from '@/data/supabase-client';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
@@ -91,7 +92,7 @@ export function SuppliersPage() {
     const now = new Date().toISOString();
     try {
       const txOutletId = resolveCreateOutlet(outlets);
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         await voidPurchaseOrder({ orgId, poId: voidTarget.id, outletId: txOutletId });
       } else {
         // Reverse received stock.

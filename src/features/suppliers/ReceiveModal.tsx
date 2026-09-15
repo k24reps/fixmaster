@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Input, Button, Badge, Select } from '@/components/ui';
-import { repository, isSupabaseConfigured } from '@/data';
+import { repository } from '@/data';
+import { isCloudMode } from '@/stores/demo';
 import { receiveGoodsWithFinance } from '@/data/supabase-client';
 import { receiveGoods, receivedValue, PO_STATUS_LABELS } from '@/lib/business/purchase';
 import { applyBalance } from '@/lib/business/finance';
@@ -72,7 +73,7 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
       const txOutletId = resolveCreateOutlet(outlets);
       const payWalletId = payFromWallet && amount > 0 ? walletId : null;
 
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         // Cloud: one atomic RPC (stock + PO + expense + optional wallet debit).
         await receiveGoodsWithFinance({
           orgId,

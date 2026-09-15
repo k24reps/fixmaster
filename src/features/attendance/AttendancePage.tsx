@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
-import { isSupabaseConfigured, clockIn, clockOut } from '@/data/supabase-client';
+import { clockIn, clockOut } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import { isOwner } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { getCurrentPosition } from '@/lib/geo';
@@ -305,7 +306,7 @@ export function AttendancePage() {
       // Cloud + geofenced outlet → request GPS and let the server re-validate
       // the radius (the real security boundary). The RPC bypasses the adapter
       // change-subscription, so we refetch manually afterward.
-      if (isSupabaseConfigured && targetOutlet && hasGeofence(targetOutlet)) {
+      if (isCloudMode() && targetOutlet && hasGeofence(targetOutlet)) {
         const pos = await getCurrentPosition();
         await clockIn({
           orgId,
@@ -358,7 +359,7 @@ export function AttendancePage() {
       // server juga. Sebelumnya masuk dijaga GPS + jam server sementara pulang
       // ditulis langsung dari perangkat — separuh catatan jam kerja tidak
       // bisa dipercaya, dan separuh itulah yang menentukan upah.
-      if (isSupabaseConfigured && targetOutlet && hasGeofence(targetOutlet)) {
+      if (isCloudMode() && targetOutlet && hasGeofence(targetOutlet)) {
         const pos = await getCurrentPosition();
         await clockOut({ attendanceId: myToday.id, lat: pos.lat, lng: pos.lng });
         await refetch();

@@ -77,7 +77,7 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
-import { demoGuard } from '@/stores/demo';
+import { demoGuard, isCloudMode } from '@/stores/demo';
 import { isValidInviteEmail } from '@/lib/business/team';
 import { transfer } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
@@ -1941,7 +1941,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     if (!result.ok) return toast.error(result.error ?? 'Transfer gagal');
     setTransferring(true);
     try {
-      if (isSupabaseConfigured) {
+      if (isCloudMode()) {
         await transferWallet({ orgId, fromWalletId: fromId, toWalletId: toId, amount });
       } else {
         await repository.put('wallets', {
