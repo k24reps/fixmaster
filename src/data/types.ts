@@ -280,6 +280,8 @@ export interface ClaimItem {
   name: string;
   /** Akhir garansi bagian ini saat klaim dibuat. */
   until: ISODate;
+  /** Diisi otomatis untuk klaim lama (0068) dari garansi yang berlaku saat itu — perkiraan. */
+  inferred?: boolean;
 }
 
 export interface Service extends BaseEntity {

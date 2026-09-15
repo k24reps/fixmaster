@@ -5,8 +5,18 @@ import {
   matchesPayment,
   matchesQuery,
   matchesTechnician,
+  serviceSearchFilter,
   stalledDays,
 } from './serviceFilters';
+
+describe('serviceSearchFilter', () => {
+  it('kosong → null; karakter sintaks filter dibuang; nomor HP juga dicocokkan per digit', () => {
+    expect(serviceSearchFilter('   ')).toBeNull();
+    expect(serviceSearchFilter('a),outlet_id.is.null')).not.toMatch(/[()]/);
+    expect(serviceSearchFilter('0812-3456')).toContain('customer_phone.ilike."%0%8%1%2%3%4%5%6%"');
+    expect(serviceSearchFilter('reno')).not.toContain('%r%e%');
+  });
+});
 
 const svc = {
   serviceNo: 'FM-0007',

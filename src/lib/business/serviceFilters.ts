@@ -41,9 +41,17 @@ export function matchesQuery(
 export function serviceSearchFilter(term: string): string | null {
   const clean = term.replace(/[,()*%"\\]/g, ' ').trim();
   if (!clean) return null;
-  return ['service_no', 'customer_name', 'customer_phone', 'device', 'complaint']
-    .map((column) => `${column}.ilike."%${clean}%"`)
-    .join(',');
+  const filters = ['service_no', 'customer_name', 'customer_phone', 'device', 'complaint'].map(
+    (column) => `${column}.ilike."%${clean}%"`,
+  );
+  // Nomor HP tersimpan dengan pemisah apa saja ("0812-3456", "0812 3456"):
+  // cocokkan digitnya berurutan. Bisa kelebihan cocok — hasilnya tetap disaring
+  // matchesQuery di klien, yang membandingkan digit secara utuh.
+  const digits = term.replace(/\D/g, '');
+  if (/^[\d\s+().-]+$/.test(term.trim()) && digits.length >= 3) {
+    filters.push(`customer_phone.ilike."%${digits.split('').join('%')}%"`);
+  }
+  return filters.join(',');
 }
 
 /**

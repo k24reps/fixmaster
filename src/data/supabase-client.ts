@@ -490,6 +490,26 @@ export async function createWarrantyClaim(args: {
 }
 
 /**
+ * Hapus satu transaksi Keuangan via `delete_finance_entry` (0068, owner/admin):
+ * saldo wallet, baris terkait (semua kaki pelunasan, koreksinya), dan tiket
+ * servis (status, DP, biaya final, riwayat) dibalik dalam satu transaksi.
+ */
+export async function deleteFinanceEntry(args: {
+  orgId: string;
+  kind: 'income' | 'expense';
+  id: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('delete_finance_entry', {
+    p_org_id: args.orgId,
+    p_kind: args.kind,
+    p_id: args.id,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Ringkasan servis dari SELURUH tiket via `service_summary` (0063). Daftar
  * servis cloud dipotong 1000 baris terbaru, jadi hitungan tak boleh dari sana.
  * `from`/`to` = batas timestamp [from, to).

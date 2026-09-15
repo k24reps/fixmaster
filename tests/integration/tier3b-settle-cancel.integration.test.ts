@@ -754,6 +754,65 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     const later = await search(tag, new Date(Date.now() + 86400000).toISOString());
     expect(later.error).toBeNull();
     expect(later.data ?? []).toHaveLength(0);
+
+    // Nomor HP dicari tanpa pemisah → tetap ketemu walau tersimpan dengan tanda hubung.
+    const phone = `0877-${String(Date.now()).slice(-4)}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const byPhone = await seedService({ status: 'diterima', customer_phone: phone, device: 'Tablet' });
+    const phoneHit = await search(phone.replace(/\D/g, ''));
+    expect(phoneHit.error).toBeNull();
+    expect((phoneHit.data ?? []).map((r) => (r as unknown as { id: string }).id)).toContain(byPhone.id);
+  });
+
+  it('0068: hapus transaksi keuangan atomik — koreksi, pelunasan & refund koreksi; karyawan ditolak', async () => {
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletA);
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletB);
+    const del = (client: SupabaseClient, kind: string, id: string) =>
+      client.rpc('delete_finance_entry', { p_org_id: ctx.orgId, p_kind: kind, p_id: id });
+    const statusOf = async (id: string) =>
+      (await ctx.admin.from('services').select('status, final_cost').eq('id', id).single()).data as {
+        status: string;
+        final_cost: number;
+      };
+
+    const svc = await seedService({ status: 'selesai', final_cost: 300000 });
+    const incomesOf = async () =>
+      (await ctx.admin.from('incomes').select('id, description').eq('service_id', svc.id)).data ?? [];
+    expect(
+      (await settle(svc.id, [
+        { walletId: ctx.walletA, amount: 200000 },
+        { walletId: ctx.walletB, amount: 100000 },
+      ])).error,
+    ).toBeNull();
+    expect((await correct(ctx.ownerClient, svc.id, 350000, ctx.walletA)).error).toBeNull(); // +50.000
+
+    // Selisih koreksi dihapus → biaya final kembali, pelunasan tetap.
+    const corr = (await incomesOf()).find((i) => i.description.startsWith('Koreksi'))!;
+    expect((await del(ctx.karyawan.client, 'income', corr.id)).error).not.toBeNull(); // owner/admin saja
+    expect((await del(ctx.ownerClient, 'income', corr.id)).error).toBeNull();
+    let row = await statusOf(svc.id);
+    expect([row.status, Number(row.final_cost)]).toEqual(['lunas', 300000]);
+    expect(await balanceOf(ctx.walletA)).toBe(200000);
+
+    // Satu kaki pelunasan dihapus → SEMUA kaki dibalik & tiket kembali Selesai.
+    expect((await del(ctx.ownerClient, 'income', (await incomesOf())[0].id)).error).toBeNull();
+    expect(await incomesOf()).toHaveLength(0);
+    row = await statusOf(svc.id);
+    expect(row.status).toBe('selesai');
+    expect([await balanceOf(ctx.walletA), await balanceOf(ctx.walletB)]).toEqual([0, 0]);
+
+    // Refund koreksi (pengeluaran) dihapus → biaya final naik lagi.
+    const paid = await seedService({ status: 'lunas', final_cost: 200000 });
+    await ctx.admin.from('wallets').update({ balance: 100000 }).eq('id', ctx.walletB);
+    expect((await correct(ctx.ownerClient, paid.id, 150000, ctx.walletB)).error).toBeNull();
+    const { data: refund } = await ctx.admin
+      .from('expenses')
+      .select('id')
+      .eq('org_id', ctx.orgId)
+      .eq('description', `Koreksi biaya servis ${paid.service_no}`)
+      .single();
+    expect((await del(ctx.ownerClient, 'expense', refund!.id)).error).toBeNull();
+    expect(Number((await statusOf(paid.id)).final_cost)).toBe(200000);
+    expect(await balanceOf(ctx.walletB)).toBe(100000);
   });
 
   it('owner (manager) BISA transfer_wallet: saldo pindah antar wallet', async () => {

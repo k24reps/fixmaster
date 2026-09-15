@@ -23,6 +23,8 @@ import {
   serviceNoFromCorrection,
 } from '@/lib/business/services';
 import { logActivity } from '@/lib/activity';
+import { deleteFinanceEntry } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
 import { TransferModal } from './TransferModal';
@@ -187,7 +189,19 @@ export function FinancePage() {
     if (!toDelete) return;
     const wallet = wallets.find((w) => w.id === toDelete.walletId);
     try {
-      if (toDelete.kind === 'income') {
+      if (isCloudMode() && toDelete.kind !== 'transfer') {
+        // Cloud: satu transaksi server (0068) — wallet, baris terkait, dan tiket
+        // servis dibalik bersama. Jalur di bawah ini untuk lokal/demo.
+        const rec = toDelete.record as Income | Expense;
+        await deleteFinanceEntry({ orgId: rec.orgId, kind: toDelete.kind, id: toDelete.id });
+        logActivity({
+          action: toDelete.kind === 'income' ? 'income.delete' : 'expense.delete',
+          entityType: toDelete.kind,
+          entityId: toDelete.id,
+          entityLabel: rec.description || rec.category,
+          meta: { amount: rec.amount, category: rec.category },
+        });
+      } else if (toDelete.kind === 'income') {
         const inc = toDelete.record as Income;
         // Service-linked income needs type-aware reversal: a DP delete must
         // also shrink the ticket's downPayment (else the next settlement
@@ -315,10 +329,8 @@ export function FinancePage() {
       toast.success('Transaksi dihapus & saldo dikembalikan');
       setToDelete(null);
     } catch (e) {
-      // Surface the failing step — this flow is multi-write (wallets → incomes
-      // → services) and a generic message hides which one needs manual fixing.
-      // ponytail: true atomicity needs a server RPC (delete_finance_entry);
-      // add one if partial failures show up in the field.
+      // Surface the failing step — the local/demo path is multi-write (wallets →
+      // incomes → services); cloud is atomic via delete_finance_entry (0068).
       toast.error(e instanceof Error ? e.message : 'Gagal menghapus transaksi');
     }
   };

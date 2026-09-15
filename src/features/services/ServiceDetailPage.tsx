@@ -449,7 +449,8 @@ export function ServiceDetailPage() {
             .
             {service.claimedItems && service.claimedItems.length > 0 && (
               <>
-                {' '}Diklaim:{' '}
+                {' '}Diklaim
+                {service.claimedItems.some((item) => item.inferred) ? ' (perkiraan, klaim lama)' : ''}:{' '}
                 <strong>
                   {service.claimedItems.map((item) => `${item.name} (s/d ${fmtDate(item.until)})`).join(', ')}
                 </strong>
