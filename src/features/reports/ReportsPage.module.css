@@ -121,7 +121,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
   flex-shrink: 0;
   border: 1px solid var(--border);
 }
@@ -150,7 +150,7 @@
 .metricValue {
   font-family: var(--font-mono);
   font-weight: var(--fw-bold);
-  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
   line-height: 1.15;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -475,7 +475,7 @@
     height: 32px;
   }
   .metricValue {
-    font-size: clamp(0.9rem, 4.4vw, 1.4rem);
+    font-size: clamp(var(--text-base), 4.4vw, var(--text-xl));
   }
   /* nowrap pada baris sepanjang "Cabang Cimahi - masuk Rp 2.500.000"
      menyembunyikan 247px dari 320px teksnya di balik ellipsis — praktis

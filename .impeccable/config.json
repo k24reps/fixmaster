@@ -272,6 +272,69 @@
         ],
         "createdAt": "2026-09-14T01:56:24.778Z",
         "reason": "Pre-existing glyph size of the hamburger icon button (.mobileToggle), not body type on the ramp"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.5rem",
+        "files": [
+          "src/features/tracking/TrackingPage.module.css"
+        ],
+        "createdAt": "2026-09-14T12:56:07.460Z",
+        "reason": "Pre-existing icon glyph size on the public tracking page (brand tile / not-found / next-step icons), not a text ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.75rem",
+        "files": [
+          "src/features/tracking/TrackingPage.module.css"
+        ],
+        "createdAt": "2026-09-14T12:56:07.596Z",
+        "reason": "Pre-existing icon glyph size on the public tracking page (brand tile / not-found / next-step icons), not a text ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.05rem",
+        "files": [
+          "src/features/tracking/TrackingPage.module.css"
+        ],
+        "createdAt": "2026-09-14T12:56:07.707Z",
+        "reason": "Pre-existing icon glyph size on the public tracking page (brand tile / not-found / next-step icons), not a text ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "26px",
+        "files": [
+          "src/features/services/ServiceDetailPage.module.css"
+        ],
+        "createdAt": "2026-09-14T12:58:26.027Z",
+        "reason": "Pre-existing QR icon glyph size in the tracking tile, not a text ramp step"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "3rem",
+        "files": [
+          "src/features/services/ServiceDetailPage.module.css"
+        ],
+        "createdAt": "2026-09-14T12:58:26.155Z",
+        "reason": "Pre-existing 404 display code (.nfCode), a display numeral, not body text"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px)",
+        "files": [
+          "src/features/dashboard/DashboardPage.module.css"
+        ],
+        "createdAt": "2026-09-15T00:31:22.920Z",
+        "reason": "Pre-existing concentric inner radius calc(var(--radius-lg) - 2px) derived from the token, not an off-scale value"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.8rem",
+        "files": [
+          "src/features/dashboard/DashboardPage.module.css"
+        ],
+        "createdAt": "2026-09-15T00:31:23.085Z",
+        "reason": "Pre-existing fluid display numeral for the net-profit readout (clamp lower bound), not body text"
       }
     ]
   }
