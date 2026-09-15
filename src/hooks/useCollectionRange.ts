@@ -34,11 +34,13 @@ export function useCollectionRange<K extends CollectionName>(
 
   useEffect(() => {
     const unsub = repository.subscribe((changed) => {
-      // Prefix match invalidates every ranged variant of this collection.
-      if (changed === collection) invalidateCollection(queryClient, changed);
+      // Prefix match invalidates every ranged variant of the changed collection —
+      // any collection, so unmounted pages don't keep stale "fresh" caches (see
+      // useCollection).
+      invalidateCollection(queryClient, changed);
     });
     return unsub;
-  }, [collection, queryClient]);
+  }, [queryClient]);
 
   return {
     data: query.data ?? [],

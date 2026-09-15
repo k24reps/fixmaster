@@ -118,4 +118,17 @@ export interface Repository {
    * `payload` keys are snake_case table names → arrays of snake_case rows.
    */
   restoreOrgData?(orgId: ID, payload: Record<string, unknown[]>): Promise<number>;
+
+  /**
+   * Cloud-only: cari tiket di SELURUH tabel services, bukan hanya potongan
+   * terbaru yang dimuat `list()` (dibatasi PostgREST). Kata kunci mencocokkan
+   * nomor, pelanggan, HP, perangkat, dan keluhan; `createdFrom`/`createdTo` =
+   * batas timestamp [from, to). Adapter lokal tidak membutuhkannya — daftarnya lengkap.
+   */
+  queryServices?(opts: {
+    term?: string;
+    createdFrom?: string;
+    createdTo?: string;
+    limit: number;
+  }): Promise<EntityMap['services'][]>;
 }

@@ -132,7 +132,8 @@ describe('serviceVars — baris opsional', () => {
   });
 
   it('baris opsional kosong total ketika datanya tidak ada', () => {
-    const v = serviceVars(svc({}), { name: 'Toko Servis' } as Organization);
+    // Belum Selesai: garansi belum ditetapkan, jadi bloknya kosong total.
+    const v = serviceVars(svc({ status: 'pengerjaan' }), { name: 'Toko Servis' } as Organization);
     expect(v.keluhan).toBe('');
     expect(v.kelengkapan).toBe('');
     expect(v.alamat).toBe('');
@@ -153,6 +154,29 @@ describe('serviceVars — baris opsional', () => {
     );
     expect(v.garansi).toContain('Garansi jasa s/d *2 Okt 2026*');
     expect(v.garansi).toContain('Garansi sparepart s/d *2 Des 2026*');
+  });
+
+  it('garansi per sparepart, dan 0 hari tertulis "tanpa garansi" di pesan & nota', () => {
+    const s = svc({
+      warrantyServiceUntil: null,
+      warrantyPartsUntil: '2026-12-02',
+      spareparts: [
+        { itemId: 'i1', name: 'Baterai', qty: 1, costPrice: 1, sellPrice: 2, deducted: true, warrantyDays: 90, warrantyUntil: '2026-12-02' },
+        { itemId: null, name: 'Lem', qty: 1, costPrice: 1, sellPrice: 0, deducted: false, kind: 'manual', warrantyDays: 0, warrantyUntil: null },
+      ],
+    });
+    const v = serviceVars(s, org);
+    expect(v.garansi).toContain('Garansi jasa: tanpa garansi');
+    expect(v.garansi).toContain('Garansi Baterai s/d *2 Des 2026*');
+    expect(v.garansi).toContain('Garansi Lem: tanpa garansi');
+    expect(v.garansi).not.toContain('Garansi sparepart');
+
+    const garansi = serviceReceiptLines(s).filter((l) => l.group === 'garansi');
+    expect(garansi.map((l) => [l.label, l.value])).toEqual([
+      ['Jasa', 'Tanpa garansi'],
+      ['Baterai', 's/d 2 Des 2026'],
+      ['Lem', 'Tanpa garansi'],
+    ]);
   });
 
   // Rendering nyata: tidak boleh ada baris kosong beruntun dari variabel

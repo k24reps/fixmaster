@@ -86,8 +86,8 @@ export const en: Dictionary = {
   'dashboard.errorStale':
     'Last known data remains visible. Retry to retrieve the latest figures.',
   'dashboard.retry': 'Try again',
-  'dashboard.netProfit': 'Net Profit · This Month',
-  'dashboard.netProfitAria': 'Net profit this month',
+  'dashboard.netProfit': 'Net Cash Flow · This Month',
+  'dashboard.netProfitAria': 'Net cash flow this month',
   'dashboard.surplus': 'SURPLUS',
   'dashboard.deficit': 'DEFICIT',
   'dashboard.margin': 'Margin',

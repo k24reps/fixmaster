@@ -200,25 +200,13 @@
   flex-direction: column;
   gap: var(--space-2);
 }
-.presetRow {
+/* Daftar garansi per sparepart di bawah garansi jasa, dipisah garis titik. */
+.partWarranty {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-.presetChip {
-  font-size: var(--text-xs);
-  padding: 3px 10px;
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-.presetChip:hover {
-  border-color: var(--border-brand);
-  color: var(--text-primary);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px dotted var(--border);
 }
 
 .history {

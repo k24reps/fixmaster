@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { repository, isSupabaseConfigured } from '@/data';
 import { trackService } from '@/data/supabase-client';
-import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
+import { STATUS_LABELS, STATUS_TONE, partWarranties } from '@/lib/business/services';
 import { nextStepFor, relativeSince } from '@/lib/business/tracking';
 import { waLink } from '@/lib/business/notify';
 import { slidingWindowAllow } from '@/lib/rate-limit';
@@ -29,6 +29,8 @@ interface TrackResult {
     status: string;
     warrantyServiceUntil: string | null;
     warrantyPartsUntil: string | null;
+    /** Garansi per sparepart; kosong untuk tiket lama → pakai warrantyPartsUntil. */
+    partWarranties: { name: string; until: string | null }[];
     pickedUp: boolean;
   } | null;
   publicHistory: { status: string; at: string; note?: string }[];
@@ -122,6 +124,7 @@ export function TrackingPage() {
                 status: r.status,
                 warrantyServiceUntil: r.warrantyServiceUntil,
                 warrantyPartsUntil: r.warrantyPartsUntil,
+                partWarranties: r.partWarranties ?? [],
                 pickedUp: r.pickedUp,
               }
             : null,
@@ -159,6 +162,7 @@ export function TrackingPage() {
               status: svc.status,
               warrantyServiceUntil: svc.warrantyServiceUntil,
               warrantyPartsUntil: svc.warrantyPartsUntil,
+              partWarranties: partWarranties(svc.spareparts ?? []),
               pickedUp: svc.pickedUp,
             }
           : null,
@@ -173,6 +177,8 @@ export function TrackingPage() {
   const orgLogoUrl = data?.orgLogoUrl ?? null;
   const orgNote = data?.orgNote ?? '';
   const service = data?.service ?? null;
+  // Setelah Selesai, garansi kosong berarti "tanpa garansi" yang disengaja.
+  const warrantyDecided = service?.status === 'selesai' || service?.status === 'lunas';
   const publicHistory = data?.publicHistory ?? [];
   const notFound = isFetched && !isFetching && !service;
 
@@ -317,24 +323,35 @@ export function TrackingPage() {
               ))}
             </ul>
 
-            {(service.warrantyServiceUntil || service.warrantyPartsUntil) && (
+            {(warrantyDecided || service.warrantyServiceUntil || service.warrantyPartsUntil) && (
               <div className={styles.warranty}>
                 <span className={styles.blockLabel}>
                   <Icon name="shield-halved" aria-hidden /> Garansi
                 </span>
                 <div className={styles.warrantyRows}>
-                  {service.warrantyServiceUntil && (
+                  {(service.warrantyServiceUntil || warrantyDecided) && (
                     <div className={styles.warrantyRow}>
                       <span>Jasa</span>
-                      <strong>s/d {fmtDate(service.warrantyServiceUntil.slice(0, 10))}</strong>
+                      <strong>
+                        {service.warrantyServiceUntil
+                          ? `s/d ${fmtDate(service.warrantyServiceUntil.slice(0, 10))}`
+                          : 'Tanpa garansi'}
+                      </strong>
                     </div>
                   )}
-                  {service.warrantyPartsUntil && (
-                    <div className={styles.warrantyRow}>
-                      <span>Sparepart</span>
-                      <strong>s/d {fmtDate(service.warrantyPartsUntil.slice(0, 10))}</strong>
-                    </div>
-                  )}
+                  {service.partWarranties.length > 0
+                    ? service.partWarranties.map((p, i) => (
+                        <div key={`${p.name}-${i}`} className={styles.warrantyRow}>
+                          <span>{p.name}</span>
+                          <strong>{p.until ? `s/d ${fmtDate(p.until.slice(0, 10))}` : 'Tanpa garansi'}</strong>
+                        </div>
+                      ))
+                    : service.warrantyPartsUntil && (
+                        <div className={styles.warrantyRow}>
+                          <span>Sparepart</span>
+                          <strong>s/d {fmtDate(service.warrantyPartsUntil.slice(0, 10))}</strong>
+                        </div>
+                      )}
                 </div>
               </div>
             )}

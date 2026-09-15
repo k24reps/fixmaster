@@ -89,8 +89,8 @@ export const id = {
   'dashboard.errorStale':
     'Data terakhir tetap ditampilkan. Coba muat ulang untuk memperoleh angka terbaru.',
   'dashboard.retry': 'Coba lagi',
-  'dashboard.netProfit': 'Laba Bersih · Bulan Ini',
-  'dashboard.netProfitAria': 'Laba bersih bulan ini',
+  'dashboard.netProfit': 'Arus Kas Bersih · Bulan Ini',
+  'dashboard.netProfitAria': 'Arus kas bersih bulan ini',
   'dashboard.surplus': 'SURPLUS',
   'dashboard.deficit': 'DEFISIT',
   'dashboard.margin': 'Margin',

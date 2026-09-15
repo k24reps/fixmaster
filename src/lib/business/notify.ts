@@ -6,7 +6,7 @@
 import type { Service, Organization } from '@/data/types';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
-import { STATUS_LABELS } from './services';
+import { STATUS_LABELS, partWarranties, warrantyDecided } from './services';
 
 /** Normalize an Indonesian phone to wa.me format (62xxxxxxxxxx, digits only). */
 export function toWaNumber(phone: string): string {
@@ -51,10 +51,23 @@ function optionalLine(label: string, value: string | null | undefined): string {
  */
 function warrantyBlock(service: Service): string {
   const lines: string[] = [];
+  // Setelah Selesai, garansi kosong = "tanpa garansi" yang disengaja, dan
+  // pelanggan perlu membacanya, bukan menebak tokonya lupa mengisi.
   if (service.warrantyServiceUntil)
     lines.push(`Garansi jasa s/d *${fmtDate(service.warrantyServiceUntil.slice(0, 10))}*`);
-  if (service.warrantyPartsUntil)
+  else if (warrantyDecided(service)) lines.push('Garansi jasa: tanpa garansi');
+  const parts = partWarranties(service.spareparts ?? []);
+  if (parts.length) {
+    for (const p of parts)
+      lines.push(
+        p.until
+          ? `Garansi ${p.name} s/d *${fmtDate(p.until.slice(0, 10))}*`
+          : `Garansi ${p.name}: tanpa garansi`,
+      );
+  } else if (service.warrantyPartsUntil) {
+    // Tiket lama: satu tanggal untuk semua sparepart.
     lines.push(`Garansi sparepart s/d *${fmtDate(service.warrantyPartsUntil.slice(0, 10))}*`);
+  }
   return lines.length ? `\n\n${lines.join('\n')}` : '';
 }
 
@@ -279,14 +292,27 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
   }
   // Warranty (auto-filled from the shop's default when a service is marked
   // 'selesai'). Printed so the customer has proof of coverage on the nota.
+  // Garansi jasa + per sparepart. Setelah Selesai, 0 hari tercetak "Tanpa
+  // garansi" supaya pelanggan tahu itu disengaja, bukan lupa diisi.
   if (service.warrantyServiceUntil) {
     lines.push({
       label: 'Jasa',
       value: 's/d ' + fmtDate(service.warrantyServiceUntil.slice(0, 10)),
       group: 'garansi',
     });
+  } else if (warrantyDecided(service)) {
+    lines.push({ label: 'Jasa', value: 'Tanpa garansi', group: 'garansi' });
   }
-  if (service.warrantyPartsUntil) {
+  const parts = partWarranties(service.spareparts ?? []);
+  if (parts.length) {
+    for (const p of parts) {
+      lines.push({
+        label: p.name,
+        value: p.until ? 's/d ' + fmtDate(p.until.slice(0, 10)) : 'Tanpa garansi',
+        group: 'garansi',
+      });
+    }
+  } else if (service.warrantyPartsUntil) {
     lines.push({
       label: 'Sparepart',
       value: 's/d ' + fmtDate(service.warrantyPartsUntil.slice(0, 10)),

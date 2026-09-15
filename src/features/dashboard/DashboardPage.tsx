@@ -3,15 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
+import { useServiceSummary } from '@/hooks/useServiceSummary';
 import { fmtRp } from '@/lib/format';
-import { localDateStr, localDateOf, fmtDate } from '@/lib/time';
-import {
-  computeKpis,
-  technicianLeaderboard,
-  computeAlerts,
-  type Alert,
-} from '@/lib/business/dashboard';
-import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
+import { localDateStr, localDateOf, fmtDate, monthRange } from '@/lib/time';
+import { computeKpis, computeAlerts, type Alert } from '@/lib/business/dashboard';
+import { STATUS_LABELS, STATUS_TONE, visibleServices } from '@/lib/business/services';
 import { getTarget } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
@@ -42,14 +38,6 @@ const ALERT_COPY: Record<
   },
 };
 
-function monthRange(): { from: string; to: string } {
-  const now = new Date();
-  return {
-    from: localDateStr(new Date(now.getFullYear(), now.getMonth(), 1)),
-    to: localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-  };
-}
-
 function fmtRpInline(value: number): string {
   return fmtRp(value).replace(' ', '\u00a0');
 }
@@ -64,6 +52,8 @@ export function DashboardPage() {
   const { from, to } = monthRange();
 
   const servicesQuery = useCollection('services');
+  // Hitungan & papan teknisi dari SEMUA tiket (daftar di atas maks 1000 terbaru).
+  const summaryQuery = useServiceSummary(from, to);
   const incomesQuery = useCollectionRange('incomes', 'date', from, to);
   const expensesQuery = useCollectionRange('expenses', 'date', from, to);
   const walletsQuery = useCollection('wallets');
@@ -71,7 +61,9 @@ export function DashboardPage() {
   // Hanya baris hari ini yang dipakai (activeStaff) — kunci query-nya sama
   // dengan rail navigasi, jadi keduanya berbagi satu tarikan kecil.
   const attendanceQuery = useCollectionRange('attendance', 'date', localDateStr(), localDateStr());
-  const services = servicesQuery.data;
+  // Tiket arsip disembunyikan seperti di menu Servis, supaya angka & peringatan
+  // di sini sama dengan yang tampil saat tautannya diklik.
+  const services = useMemo(() => visibleServices(servicesQuery.data), [servicesQuery.data]);
   const incomes = incomesQuery.data;
   const expenses = expensesQuery.data;
   const wallets = walletsQuery.data;
@@ -80,6 +72,7 @@ export function DashboardPage() {
 
   const queryStates = [
     servicesQuery,
+    summaryQuery,
     incomesQuery,
     expensesQuery,
     walletsQuery,
@@ -96,6 +89,7 @@ export function DashboardPage() {
   const retryDashboard = async () => {
     await Promise.allSettled([
       servicesQuery.refetch(),
+      summaryQuery.refetch(),
       incomesQuery.refetch(),
       expensesQuery.refetch(),
       walletsQuery.refetch(),
@@ -112,18 +106,23 @@ export function DashboardPage() {
 
   const target = getTarget();
   const kpis = useMemo(
-    () => computeKpis(services, incomes, expenses, wallets, from, to),
-    [services, incomes, expenses, wallets, from, to],
+    () => computeKpis(incomes, expenses, wallets, from, to),
+    [incomes, expenses, wallets, from, to],
   );
-  const leaderboard = useMemo(() => technicianLeaderboard(services), [services]);
-  const alerts = useMemo(() => computeAlerts(services, inventory), [services, inventory]);
+  const summary = summaryQuery.data;
+  const unitsIn = summary?.unitsIn ?? 0;
+  const leaderboard = summary?.leaderboard ?? [];
+  const alerts = useMemo(
+    () => computeAlerts(summary ?? { confirmation: 0, awaitingPickup: 0 }, inventory),
+    [summary, inventory],
+  );
   const recent = useMemo(
     () => [...services].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
     [services],
   );
   const revenuePct = target.revenue > 0 ? Math.min(100, (kpis.revenue / target.revenue) * 100) : 0;
   const servicePct = target.serviceCount > 0
-    ? Math.min(100, (kpis.unitsIn / target.serviceCount) * 100)
+    ? Math.min(100, (unitsIn / target.serviceCount) * 100)
     : 0;
   const empty = services.length === 0;
   const maxRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
@@ -151,8 +150,8 @@ export function DashboardPage() {
         : updatedTime
           ? `${t('dashboard.updated')} ${updatedTime}`
           : t('dashboard.ready');
-  const profitState = kpis.netProfit > 0 ? 'ok' : kpis.netProfit < 0 ? 'crit' : 'warn';
-  const margin = kpis.revenue > 0 ? (kpis.netProfit / kpis.revenue) * 100 : 0;
+  const profitState = kpis.netCashFlow > 0 ? 'ok' : kpis.netCashFlow < 0 ? 'crit' : 'warn';
+  const margin = kpis.revenue > 0 ? (kpis.netCashFlow / kpis.revenue) * 100 : 0;
   const costRatio = kpis.revenue > 0 ? (kpis.expense / kpis.revenue) * 100 : 0;
   const hasTarget = (isMgr && target.revenue > 0) || target.serviceCount > 0;
 
@@ -231,9 +230,9 @@ export function DashboardPage() {
                   <span className={styles.heroLed} aria-hidden />
                   {t('dashboard.netProfit')}
                 </span>
-                <span className={styles.heroValue}>{fmtRpInline(kpis.netProfit)}</span>
+                <span className={styles.heroValue}>{fmtRpInline(kpis.netCashFlow)}</span>
                 <span className={styles.heroTag}>
-                  {kpis.netProfit >= 0 ? t('dashboard.surplus') : t('dashboard.deficit')}
+                  {kpis.netCashFlow >= 0 ? t('dashboard.surplus') : t('dashboard.deficit')}
                 </span>
               </div>
               <div className={styles.heroAside}>
@@ -291,8 +290,8 @@ export function DashboardPage() {
           </Card>
 
           <section className={styles.metrics} aria-label={t('dashboard.metricsAria')}>
-            <Metric label={t('dashboard.unitsIn')} value={kpis.unitsIn} unit={t('dashboard.thisMonth')} icon={<Icon name="download" aria-hidden />} />
-            <Metric label={t('dashboard.unfinished')} value={kpis.unitsPending} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} />
+            <Metric label={t('dashboard.unitsIn')} value={unitsIn} unit={t('dashboard.thisMonth')} icon={<Icon name="download" aria-hidden />} />
+            <Metric label={t('dashboard.unfinished')} value={summary?.unfinished ?? 0} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} />
             {isMgr && (
               <>
                 <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} />
@@ -360,7 +359,7 @@ export function DashboardPage() {
                       <Target label={t('dashboard.revenueTarget')} pct={revenuePct} detail={`${fmtRpInline(kpis.revenue)} / ${fmtRpInline(target.revenue)}`} />
                     )}
                     {target.serviceCount > 0 && (
-                      <Target label={t('dashboard.serviceTarget')} pct={servicePct} detail={`${kpis.unitsIn} / ${target.serviceCount} ${t('dashboard.units')}`} />
+                      <Target label={t('dashboard.serviceTarget')} pct={servicePct} detail={`${unitsIn} / ${target.serviceCount} ${t('dashboard.units')}`} />
                     )}
                   </div>
                 </CardBody>
@@ -379,7 +378,7 @@ export function DashboardPage() {
                     const rank = index + 1;
                     const pct = Math.max(8, (tech.revenue / maxRev) * 100);
                     return (
-                      <li key={tech.name} className={styles.leaderItem}>
+                      <li key={tech.key} className={styles.leaderItem}>
                         <span className={styles.chan} data-rank={rank}>{rank}</span>
                         <div className={styles.leaderMain}>
                           <div className={styles.leaderTop}>

@@ -12,7 +12,11 @@ import {
   serviceProfit,
   walletDeltasForModalEdit,
   settlementAmount,
-  settlementCorrectionDelta,
+  costCorrectionDescription,
+  partsStockDelta,
+  openClaimFor,
+  claimableItems,
+  serviceNoFromCorrection,
   splitTotal,
   normalizeSplits,
   validateSplit,
@@ -30,6 +34,9 @@ describe('status machine', () => {
   it('allows valid transitions', () => {
     expect(canTransition('diterima', 'diagnosa')).toBe(true);
     expect(canTransition('selesai', 'lunas')).toBe(true);
+    // Salah tandai Selesai bisa dibuka lagi; unit yang tak ditebus bisa dibatalkan.
+    expect(canTransition('selesai', 'pengerjaan')).toBe(true);
+    expect(canTransition('selesai', 'batal')).toBe(true);
     expect(canTransition('konfirmasi', 'pengerjaan')).toBe(true);
   });
   it('rejects invalid transitions', () => {
@@ -197,22 +204,72 @@ describe('walletDeltasForModalEdit (edit modal dadakan)', () => {
   });
 });
 
+describe('partsStockDelta', () => {
+  const part = (itemId: string | null, qty: number, over: Partial<ServiceSparepart> = {}): ServiceSparepart => ({
+    itemId,
+    name: itemId ?? 'Modal',
+    qty,
+    costPrice: 0,
+    sellPrice: 0,
+    deducted: true,
+    ...over,
+  });
+  it('tambah baris = ambil dari rak, hapus baris = kembali ke rak', () => {
+    expect(partsStockDelta([], [part('a', 2)])).toEqual([{ itemId: 'a', delta: -2 }]);
+    expect(partsStockDelta([part('a', 2), part('b', 1)], [part('b', 1)])).toEqual([{ itemId: 'a', delta: 2 }]);
+  });
+  it('baris lama baru mengambil stok saat ditandai deducted; baris modal tidak menyentuh stok', () => {
+    expect(partsStockDelta([part('a', 3, { deducted: false })], [part('a', 3)])).toEqual([{ itemId: 'a', delta: -3 }]);
+    expect(partsStockDelta([], [part(null, 1, { kind: 'manual', deducted: false })])).toEqual([]);
+  });
+});
+
+describe('claimableItems', () => {
+  it('hanya jasa & part yang garansinya masih berlaku; part lama memakai garansi part tiket', () => {
+    const part = (name: string, over: Partial<ServiceSparepart> = {}): ServiceSparepart => ({
+      itemId: null,
+      name,
+      qty: 1,
+      costPrice: 0,
+      sellPrice: 0,
+      deducted: false,
+      ...over,
+    });
+    const items = claimableItems(
+      {
+        warrantyServiceUntil: '2026-09-10', // sudah habis
+        warrantyPartsUntil: '2026-10-01',
+        spareparts: [
+          part('Baterai', { warrantyDays: 90, warrantyUntil: '2026-12-01' }),
+          part('LCD', { warrantyDays: 7, warrantyUntil: '2026-09-01' }), // sudah habis
+          part('Konektor'), // tiket lama tanpa garansi per part
+        ],
+      },
+      '2026-09-15',
+    );
+    expect(items).toEqual([
+      { kind: 'part', name: 'Baterai', until: '2026-12-01' },
+      { kind: 'part', name: 'Konektor', until: '2026-10-01' },
+    ]);
+  });
+});
+
+describe('openClaimFor', () => {
+  it('hanya klaim yang belum Lunas/Batal yang menghalangi klaim baru', () => {
+    const claims = [
+      { warrantyClaimOf: 'o1', status: 'lunas' as const, serviceNo: 'K1' },
+      { warrantyClaimOf: 'o1', status: 'pengerjaan' as const, serviceNo: 'K2' },
+    ];
+    expect(openClaimFor(claims, 'o1')?.serviceNo).toBe('K2');
+    expect(openClaimFor(claims.slice(0, 1), 'o1')).toBeUndefined();
+  });
+});
+
 describe('DP & settlement helpers', () => {
   it('settlementAmount = final − DP, floored at 0', () => {
     expect(settlementAmount(500000, 200000)).toBe(300000);
     expect(settlementAmount(150000, 150000)).toBe(0);
     expect(settlementAmount(100000, 150000)).toBe(0); // DP over-covers → no negative
-  });
-  it('settlementCorrectionDelta credits when final rises', () => {
-    // 300k → 500k, DP 100k: owed 200k → 400k, delta +200k.
-    expect(settlementCorrectionDelta(300000, 500000, 100000)).toBe(200000);
-  });
-  it('settlementCorrectionDelta refunds when final drops', () => {
-    expect(settlementCorrectionDelta(500000, 300000, 100000)).toBe(-200000);
-  });
-  it('settlementCorrectionDelta clamps when DP exceeds the new final', () => {
-    // old owed = 400k (final 500k − DP 100k); new final 80k < DP → owed 0.
-    expect(settlementCorrectionDelta(500000, 80000, 100000)).toBe(-400000);
   });
   it('splitTotal sums leg amounts', () => {
     expect(splitTotal([{ walletId: 'a', amount: 100000 }, { walletId: 'b', amount: 50000 }])).toBe(150000);
@@ -240,6 +297,10 @@ describe('DP & settlement helpers', () => {
   it('canonical income descriptions are distinct & service-scoped', () => {
     expect(dpIncomeDescription('SRV-1')).toBe('DP servis SRV-1');
     expect(settlementIncomeDescription('SRV-1')).toBe('Pelunasan servis SRV-1');
+    // Dicocokkan RPC correct_service_cost (0063) — string yang sama persis.
+    expect(costCorrectionDescription('SRV-1')).toBe('Koreksi biaya servis SRV-1');
+    expect(serviceNoFromCorrection('Koreksi biaya servis SRV-1')).toBe('SRV-1');
+    expect(serviceNoFromCorrection('Pelunasan servis SRV-1')).toBeNull();
     expect(dpIncomeDescription('SRV-1')).not.toBe(settlementIncomeDescription('SRV-1'));
   });
 });

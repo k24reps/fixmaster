@@ -138,3 +138,31 @@ describe('useCollection — satu perubahan, satu fetch (egress)', () => {
     list.mockImplementation(async () => []);
   });
 });
+
+describe('useCollection — cache halaman yang tidak terbuka', () => {
+  afterEach(cleanup);
+
+  it('perubahan koleksi lain menandai cache-nya basi, tanpa memicu fetch', async () => {
+    // Refund dicatat dari detail servis (tak ada hook `expenses` terbuka). Dulu
+    // cache Keuangan/Dashboard tetap dianggap segar sampai staleTime habis, jadi
+    // barisnya tak muncul saat halaman itu dibuka.
+    list.mockClear();
+    listeners.clear();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 5 * 60_000 } },
+    });
+    const expensesKey = ['collection', 'expenses', null, 'date', '2026-09-01', '2026-09-30'];
+    client.setQueryData(expensesKey, []);
+    renderHook(() => useCollection('services'), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    list.mockClear();
+
+    for (const listener of listeners) listener('expenses'); // = repository.notify('expenses')
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(client.getQueryState(expensesKey)?.isInvalidated).toBe(true);
+    expect(list).not.toHaveBeenCalled(); // query tak aktif: ditandai basi, bukan di-fetch
+  });
+});

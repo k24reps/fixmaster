@@ -11,21 +11,26 @@ import {
   CategoryChips,
   ViewToggle,
   usePersistedView,
+  ConfirmDialog,
 } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
+import { useServiceSummary } from '@/hooks/useServiceSummary';
+import { SERVICE_LIST_CAP, useServiceArchive } from '@/hooks/useServiceArchive';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
 import { fmtNumber, fmtRp } from '@/lib/format';
-import { fmtDate, localDateOf, localDateStr } from '@/lib/time';
+import { fmtDate, localDateOf, localDateStr, localDayStartISO, monthRange } from '@/lib/time';
+import { serviceSummary } from '@/lib/business/dashboard';
 import {
   STATUS_LABELS,
   STATUS_TONE,
-  isActive,
+  visibleServices,
   isAwaitingPickup,
   serviceProfit,
   serviceModalTotal,
   isClosedOut,
+  outstandingBalance,
 } from '@/lib/business/services';
 import { resolveServiceColumns } from '@/lib/business/serviceColumns';
 import {
@@ -100,6 +105,7 @@ export function ServicesPage() {
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [pickupConfirm, setPickupConfirm] = useState<Service | null>(null);
 
   // Subscribe to the org slice so the category filter reflects cloud-synced
   // edits (and updates from other devices) without a manual reload.
@@ -109,19 +115,35 @@ export function ServicesPage() {
   const savedColumns = useSessionStore((s) => s.org?.settings?.serviceColumns);
   const cols = useMemo(() => new Set(resolveServiceColumns(savedColumns)), [savedColumns]);
 
-  const visible = useMemo(() => services.filter((s) => !s.archived), [services]);
   const today = localDateStr();
+  // Daftar cloud maks 1000 tiket terbaru. Bila terpotong, pencarian & rentang
+  // tanggal yang lebih tua ikut ditanyakan ke server, lalu digabung ke daftar.
+  const capped = services.length >= SERVICE_LIST_CAP;
+  const dateRange = createdRange(dateFilter, today, { from: customFrom, to: customTo });
+  const oldestLoaded = useMemo(
+    () => (capped ? Math.min(...services.map((s) => Date.parse(s.createdAt))) : 0),
+    [capped, services],
+  );
+  const archive = useServiceArchive({
+    enabled: capped,
+    term: query,
+    range: dateRange && Date.parse(localDayStartISO(dateRange.from)) < oldestLoaded ? dateRange : null,
+  });
+  const allServices = useMemo(() => {
+    if (archive.length === 0) return services;
+    const loaded = new Set(services.map((s) => s.id));
+    return [...services, ...archive.filter((s) => !loaded.has(s.id))];
+  }, [services, archive]);
+  const visible = useMemo(() => visibleServices(allServices), [allServices]);
 
-  const stats = useMemo(() => {
-    const total = visible.length;
-    const inProcess = visible.filter((s) => isActive(s.status) && s.status !== 'diterima').length;
-    const done = visible.filter((s) => s.status === 'selesai' || s.status === 'lunas').length;
-    const awaitingPickup = visible.filter(isAwaitingPickup).length;
-    const revenue = visible
-      .filter((s) => s.status === 'lunas')
-      .reduce((sum, s) => sum + s.finalCost, 0);
-    return { total, inProcess, done, awaitingPickup, revenue };
-  }, [visible]);
+  // Hitungan dari SEMUA tiket — daftar cloud maks 1000 tiket terbaru, jadi
+  // dihitung server (service_summary, 0063). Selama dimuat, pakai daftar yang ada.
+  const { from: monthFrom, to: monthTo } = monthRange();
+  const summaryQuery = useServiceSummary(monthFrom, monthTo);
+  const stats = useMemo(
+    () => summaryQuery.data ?? serviceSummary(services, monthFrom, monthTo),
+    [summaryQuery.data, services, monthFrom, monthTo],
+  );
 
   const closedCount = useMemo(() => visible.filter(isClosedOut).length, [visible]);
   const stalledCount = useMemo(
@@ -219,8 +241,8 @@ export function ServicesPage() {
     });
 
   // Hanya potongan ini yang dirender. `stats` di atas SENGAJA tetap dihitung
-  // dari `visible` (seluruh tiket), bukan dari sini — kalau tidak, angka
-  // "Total Servis"/"Pendapatan Aktual" akan berubah mengikuti seberapa banyak
+  // dari seluruh tiket, bukan dari sini — kalau tidak, angka
+  // "Total Servis"/"Nilai Tiket Lunas" akan berubah mengikuti seberapa banyak
   // baris yang kebetulan sudah dimuat, dan itu laporan yang menyesatkan.
   const shownRows = useMemo(() => rows.slice(0, limit), [rows, limit]);
 
@@ -246,7 +268,12 @@ export function ServicesPage() {
 
   // Toggle physical collection (manager-only). Mirrors ServiceDetailPage so the
   // list and detail stay consistent; pickup is independent of payment status.
-  const togglePickup = async (s: Service) => {
+  const togglePickup = async (s: Service, confirmed = false) => {
+    // Unit keluar sebelum lunas boleh, tapi harus disengaja.
+    if (!s.pickedUp && !confirmed && s.status === 'selesai' && outstandingBalance(s) > 0) {
+      setPickupConfirm(s);
+      return;
+    }
     const now = new Date().toISOString();
     const nowPicked = !s.pickedUp;
     try {
@@ -409,12 +436,29 @@ export function ServicesPage() {
 
   return (
     <div className={styles.wrap}>
+      <ConfirmDialog
+        open={!!pickupConfirm}
+        title="Unit belum lunas"
+        message={
+          pickupConfirm
+            ? `${pickupConfirm.serviceNo} masih ada tagihan ${fmtRp(outstandingBalance(pickupConfirm))}. Tandai sudah diambil pelanggan?`
+            : ''
+        }
+        confirmLabel="Ya, sudah diambil"
+        onCancel={() => setPickupConfirm(null)}
+        onConfirm={() => {
+          const s = pickupConfirm;
+          setPickupConfirm(null);
+          if (s) void togglePickup(s, true);
+        }}
+      />
       <div className={styles.stats}>
         <StatCard label="Total Servis" value={stats.total} icon={<Icon name="clipboard-list" aria-hidden />} />
         <StatCard label="Dalam Proses" value={stats.inProcess} icon={<Icon name="spinner" aria-hidden />} />
         <StatCard label="Menunggu Diambil" value={stats.awaitingPickup} icon={<Icon name="box" aria-hidden />} />
         <StatCard label="Selesai / Lunas" value={stats.done} icon={<Icon name="check-double" aria-hidden />} />
-        <StatCard label="Pendapatan Aktual" value={fmtRp(stats.revenue)} icon={<Icon name="coins" aria-hidden />} />
+        {/* Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan). */}
+        <StatCard label="Nilai Tiket Lunas" value={fmtRp(stats.lunasValue)} icon={<Icon name="coins" aria-hidden />} />
       </div>
 
       <div className={styles.toolbar}>
@@ -803,6 +847,7 @@ export function ServicesPage() {
                 {shownRows.length} dari {rows.length} tiket
                 {rows.length !== stats.total && ` · ${stats.total} total`}
                 {hideClosed && closedCount > 0 && ` · ${closedCount} tuntas disembunyikan`}
+                {capped && ' · tiket lebih lama: cari nomor/nama atau pilih tanggal'}
               </span>
             </div>
           </div>

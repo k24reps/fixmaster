@@ -6,6 +6,7 @@ import {
   HEALTH_IDLE_MS,
 } from '@/lib/business/realtime-timing';
 import { mapAuthError } from '@/lib/business/authError';
+import type { ServiceSummary } from '@/lib/business/dashboard';
 
 /**
  * Supabase client singleton. Reads credentials from Vite env vars:
@@ -225,6 +226,8 @@ export interface TrackServiceResult {
   /** Warranty validity for a finished job (date strings, or null if unset). */
   warrantyServiceUntil: string | null;
   warrantyPartsUntil: string | null;
+  /** Garansi per sparepart (0060): nama + tanggal akhir, null = tanpa garansi. Tanpa harga. */
+  partWarranties: { name: string; until: string | null }[];
   pickedUp: boolean;
   /** History entries already filtered server-side to non-internal only. */
   publicHistory: { status: string; at: string; note?: string; internal?: boolean }[];
@@ -264,6 +267,8 @@ export async function trackService(
     orgNote: (row.org_public_note ?? '') as string,
     warrantyServiceUntil: row.warranty_service_until ?? null,
     warrantyPartsUntil: row.warranty_parts_until ?? null,
+    // Kosong sampai migrasi 0060 diterapkan; halaman lacak lalu memakai tanggal tunggal.
+    partWarranties: (row.part_warranties ?? []) as TrackServiceResult['partWarranties'],
     pickedUp: row.picked_up ?? false,
     publicHistory: (row.public_history ?? []) as TrackServiceResult['publicHistory'],
   };
@@ -318,6 +323,15 @@ export async function settleService(args: {
   payments: { walletId: string; amount: number }[];
   history: unknown[];
   outletId: string | null;
+  /**
+   * Biaya final yang ditetapkan saat pelunasan (0061). RPC menulis status,
+   * biaya final, riwayat, dan uang dalam satu transaksi, dan menghitung ulang
+   * sisa tagihan dari angka ini — klien tidak menyimpan status lebih dulu.
+   */
+  finalCost?: number;
+  /** Refund kelebihan DP (DP > biaya final), dibukukan di transaksi yang sama (0062). */
+  refundAmount?: number;
+  refundWalletId?: string | null;
 }): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -327,6 +341,11 @@ export async function settleService(args: {
     p_payments: args.payments,
     p_history: args.history,
     p_outlet_id: args.outletId,
+    p_final_cost: args.finalCost ?? null,
+    // Hanya dikirim bila ada refund, supaya pelunasan biasa tetap cocok dengan RPC 0061.
+    ...(args.refundAmount
+      ? { p_refund_amount: args.refundAmount, p_refund_wallet_id: args.refundWalletId ?? null }
+      : {}),
   });
   if (error) throw new Error(error.message);
 }
@@ -388,6 +407,125 @@ export async function recordDownPayment(args: {
     p_outlet_id: args.outletId,
   });
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Koreksi biaya final tiket Lunas via `correct_service_cost` (0063, owner/admin).
+ * Hanya SELISIHNYA yang dibukukan hari ini (naik → pemasukan, turun → refund
+ * dari `walletId`) bersama biaya final & riwayat dalam satu transaksi. Pelunasan
+ * lama tidak disentuh, jadi laporan bulan sebelumnya tetap.
+ */
+export async function correctServiceCost(args: {
+  orgId: string;
+  serviceId: string;
+  finalCost: number;
+  walletId: string;
+  history: unknown[];
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('correct_service_cost', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_final_cost: args.finalCost,
+    p_wallet_id: args.walletId,
+    p_history: args.history,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Tulis daftar sparepart tiket + stok inventori dalam satu transaksi via
+ * `update_service_parts` (0064). Server menghitung selisih stok dari baris yang
+ * `deducted` dan mengunci baris inventori, jadi aman terhadap penjualan kasir
+ * yang bersamaan — dan karyawan tak butuh akses tulis inventori.
+ */
+export async function updateServiceParts(args: {
+  orgId: string;
+  serviceId: string;
+  spareparts: unknown[];
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('update_service_parts', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_spareparts: args.spareparts,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Buka klaim garansi via `create_warranty_claim` (0064): tiket klaim, catatan di
+ * tiket asli, dan kerugian garansi (opsional) dalam satu transaksi. Ditolak bila
+ * klaim lain untuk tiket asli yang sama masih berjalan.
+ */
+export async function createWarrantyClaim(args: {
+  orgId: string;
+  originId: string;
+  serviceNo: string;
+  complaint: string;
+  by: string;
+  byName: string;
+  lossAmount: number;
+  lossWalletId: string | null;
+  /** Bagian yang diklaim ({kind, name}); tanggal garansinya divalidasi & diisi server (0065). */
+  claimedItems: { kind: 'service' | 'part'; name: string }[];
+}): Promise<{ id: string; serviceNo: string }> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('create_warranty_claim', {
+    p_org_id: args.orgId,
+    p_origin_id: args.originId,
+    p_service_no: args.serviceNo,
+    p_complaint: args.complaint,
+    p_by: args.by,
+    p_by_name: args.byName,
+    p_loss_amount: args.lossAmount,
+    p_loss_wallet_id: args.lossWalletId,
+    p_claimed_items: args.claimedItems,
+  });
+  if (error) throw new Error(error.message);
+  return data as { id: string; serviceNo: string };
+}
+
+/**
+ * Ringkasan servis dari SELURUH tiket via `service_summary` (0063). Daftar
+ * servis cloud dipotong 1000 baris terbaru, jadi hitungan tak boleh dari sana.
+ * `from`/`to` = batas timestamp [from, to).
+ */
+export async function fetchServiceSummary(args: {
+  orgId: string;
+  outletId: string | null;
+  from: string;
+  to: string;
+}): Promise<ServiceSummary> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('service_summary', {
+    p_org_id: args.orgId,
+    p_outlet_id: args.outletId,
+    p_from: args.from,
+    p_to: args.to,
+  });
+  if (error) throw new Error(error.message);
+  const r = data as Record<string, unknown>;
+  return {
+    total: Number(r.total),
+    unfinished: Number(r.unfinished),
+    inProcess: Number(r.in_process),
+    confirmation: Number(r.confirmation),
+    awaitingPickup: Number(r.awaiting_pickup),
+    done: Number(r.done),
+    lunasValue: Number(r.lunas_value),
+    unitsIn: Number(r.units_in),
+    leaderboard: ((r.leaderboard ?? []) as Record<string, unknown>[]).map((t) => ({
+      key: String(t.key),
+      name: String(t.name),
+      completed: Number(t.completed),
+      revenue: Number(t.revenue),
+    })),
+  };
 }
 
 /**

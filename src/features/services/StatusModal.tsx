@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Modal, Select, Input, Button, Badge } from '@/components/ui';
+import { Modal, Select, Input, Button, Badge, ConfirmDialog } from '@/components/ui';
+import { PartWarrantyFields, WarrantyPresets } from './PartWarrantyFields';
 import { repository } from '@/data';
+import { saveServiceParts } from '@/data/serviceParts';
 import { useCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
-import { settleService, cancelService, recordDownPayment, isSupabaseConfigured } from '@/data/supabase-client';
+import {
+  settleService,
+  cancelService,
+  recordDownPayment,
+  correctServiceCost,
+} from '@/data/supabase-client';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { fmtDate, addDays, localDateStr, localDateOf } from '@/lib/time';
 import { newId } from '@/lib/id';
@@ -21,6 +28,11 @@ import {
   validateSplit,
   settlementIncomeDescription,
   dpIncomeDescription,
+  applyPartWarranty,
+  latestPartWarranty,
+  overpaidAmount,
+  overpaidRefundDescription,
+  costCorrectionDescription,
 } from '@/lib/business/services';
 import type { PaymentSplit } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
@@ -29,6 +41,7 @@ import { toast } from '@/stores/toast';
 import { getWarrantyServiceDays, getWarrantyPartsDays, getWarrantyPresets } from '@/config/orgConfig';
 import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
+import { isCloudMode } from '@/stores/demo';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './StatusModal.module.css';
 
@@ -65,7 +78,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // Penanganan: tindakan perbaikan, wajib saat Selesai; tampil di daftar Servis.
   const [handling, setHandling] = useState('');
   const [warrantyService, setWarrantyService] = useState('');
-  const [warrantyParts, setWarrantyParts] = useState('');
+  // Garansi per sparepart (hari), sejajar indeks service.spareparts; 0 = tanpa garansi.
+  const [partDays, setPartDays] = useState<string[]>([]);
+  const [confirmNoWarranty, setConfirmNoWarranty] = useState(false);
+  const [confirmZeroCost, setConfirmZeroCost] = useState(false);
   // Settlement payment legs ("split payment"): each leg = wallet + amount.
   // A single-wallet payment is just one leg.
   const [splits, setSplits] = useState<{ walletId: string; amount: string }[]>([]);
@@ -77,6 +93,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const [refundWalletId, setRefundWalletId] = useState('');
   // Koreksi sub-action
   const [correctAmount, setCorrectAmount] = useState('');
+  const [correctWalletId, setCorrectWalletId] = useState('');
 
   const [busy, setBusy] = useState(false);
 
@@ -110,20 +127,26 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setNote('');
       setHandling('');
       setWarrantyService('');
-      setWarrantyParts('');
+      setPartDays(service.spareparts.map((p) => (p.warrantyDays != null ? String(p.warrantyDays) : '')));
+      setConfirmNoWarranty(false);
+      setConfirmZeroCost(false);
       setSplits([]);
       setDpAmount('');
       setDpWalletId(defaultWallet());
       setRefundAmount('');
       setRefundWalletId(defaultWallet());
       setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
+      setCorrectWalletId(defaultWallet());
     }
   }
 
   if (!service) return null;
 
   const needsCost = target === 'konfirmasi' || target === 'selesai' || target === 'lunas';
-  const needsWarranty = target === 'selesai';
+  // Tiket klaim tidak memberi garansi baru — yang berlaku tetap garansi tiket asli.
+  const needsWarranty = target === 'selesai' && !service.warrantyClaimOf;
+  // Dibuka lagi dari Selesai (salah tandai): garansi yang ditetapkan saat Selesai dihapus.
+  const reopening = service.status === 'selesai' && target === 'pengerjaan';
   // Cancellation must say why. Completion documents what was done in its own
   // required "Penanganan" field, so its note is optional like everywhere else.
   const noteRequired = target === 'batal';
@@ -133,18 +156,32 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
   // Amount still owed at settlement given the (possibly edited) final cost.
   const settleDue = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
+  // DP melebihi biaya final (mis. DP 300rb, biaya ternyata 250rb).
+  const effectiveCost = parseRpInput(finalCost) || service.finalCost;
+  const lunasExcess = effectiveCost > 0 ? overpaidAmount(effectiveCost, service.downPayment) : 0;
+  // Koreksi: + diterima ke wallet, − dikembalikan dari wallet.
+  const correctDelta = correctAmount.trim() ? parseRpInput(correctAmount) - service.finalCost : 0;
 
   const onTargetChange = (next: ServiceStatus | '') => {
     setTarget(next);
     if (next === 'selesai') {
       setWarrantyService((v) => (v === '' ? String(getWarrantyServiceDays()) : v));
-      setWarrantyParts((v) => (v === '' ? String(getWarrantyPartsDays()) : v));
+      setPartDays((prev) =>
+        // Garansi bawaan item inventori (0067) lebih dulu, lalu garansi part toko.
+        service.spareparts.map((p, i) => (prev[i] ? prev[i] : String(p.defaultWarrantyDays ?? getWarrantyPartsDays()))),
+      );
     }
     if (next === 'lunas') {
       // Seed a single payment leg covering the full balance (the common case);
       // the user can split it across wallets from there.
       const due = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
       setSplits([{ walletId: defaultWallet(), amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+      // Kelebihan DP: tawarkan refund selisih penuh (bisa dikurangi).
+      const excess = overpaidAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
+      if (excess > 0) {
+        setRefundAmount(fmtRpInput(String(excess)));
+        setRefundWalletId((w) => w || defaultWallet());
+      }
     }
     if (next === 'batal' && service.downPayment > 0) {
       // Default to refunding the full DP; the owner can lower it (the shop keeps
@@ -165,7 +202,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const splitPaid = splitsAsNumbers().reduce((sum, s) => sum + s.amount, 0);
 
   // ---- Sub-action: change status ----
-  const applyStatus = async () => {
+  const applyStatus = async (opts?: { noWarrantyOk?: boolean; zeroCostOk?: boolean }) => {
     if (!target) return toast.warning('Pilih status tujuan');
     if (noteRequired && !note.trim()) {
       return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS[target]}`);
@@ -174,11 +211,18 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       return toast.warning('Penanganan wajib diisi untuk status Selesai');
     }
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
-    const partsDays = Math.max(0, Math.round(Number(warrantyParts) || 0));
-    if (needsWarranty && svcDays <= 0 && partsDays <= 0) {
-      return toast.warning('Isi minimal salah satu garansi (jasa atau sparepart)');
+    const partsDays = service.spareparts.map((_, i) => Math.max(0, Math.round(Number(partDays[i]) || 0)));
+    // Tanpa garansi sama sekali boleh (mis. unit kena air), tapi harus disengaja.
+    if (needsWarranty && !opts?.noWarrantyOk && svcDays === 0 && partsDays.every((d) => d === 0)) {
+      setConfirmNoWarranty(true);
+      return;
     }
     const cost = needsCost ? parseRpInput(finalCost) : service.finalCost;
+    // Rp 0 boleh (mis. digratiskan), tapi harus disengaja — kecuali tiket klaim garansi.
+    if (needsCost && cost === 0 && !service.warrantyClaimOf && !opts?.zeroCostOk) {
+      setConfirmZeroCost(true);
+      return;
+    }
     const settle = settlementAmount(cost, service.downPayment);
     if (target === 'lunas' && settle > 0) {
       const err = validateSplit(splitsAsNumbers(), settle);
@@ -186,26 +230,33 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       if (err === 'mismatch')
         return toast.warning(`Total pembayaran (${fmtRp(splitPaid)}) harus sama dengan sisa tagihan (${fmtRp(settle)})`);
     }
+    // Kelebihan DP dikembalikan saat pelunasan, bukan hilang diam-diam.
+    const excess = target === 'lunas' ? overpaidAmount(cost, service.downPayment) : 0;
+    const excessRefund = excess > 0 ? parseRpInput(refundAmount) : 0;
+    if (excessRefund > excess) {
+      return toast.warning(`Refund melebihi kelebihan DP (${fmtRp(excess)})`);
+    }
+    if (excessRefund > 0 && !refundWalletId) return toast.warning('Pilih wallet asal refund');
     setBusy(true);
     const now = new Date().toISOString();
     try {
       const { deductions, updated } = computeStockDeduction(service.spareparts, target);
-      if (deductions.length) {
-        const inventory = await repository.list('inventory');
-        const toUpdate = inventory
-          .filter((item) => deductions.some((d) => d.itemId === item.id))
-          .map((item) => {
-            const d = deductions.find((x) => x.itemId === item.id)!;
-            return { ...item, stock: Math.max(0, item.stock - d.qty) };
-          });
-        if (toUpdate.length) await repository.putMany('inventory', toUpdate);
-      }
+      // Baris lama yang belum dipotong: stok & tanda `deducted` ditulis bersama (0064).
+      if (deductions.length) await saveServiceParts(service, updated);
 
       const finishDate = localDateStr();
-      const warrantyServiceUntil =
-        target === 'selesai' ? (svcDays > 0 ? addDays(finishDate, svcDays) : null) : service.warrantyServiceUntil;
-      const warrantyPartsUntil =
-        target === 'selesai' ? (partsDays > 0 ? addDays(finishDate, partsDays) : null) : service.warrantyPartsUntil;
+      const warrantyServiceUntil = needsWarranty
+        ? (svcDays > 0 ? addDays(finishDate, svcDays) : null)
+        : (reopening ? null : service.warrantyServiceUntil);
+      // Garansi per part ditetapkan saat Selesai; tanggal tiket = part paling akhir.
+      const partsWithWarranty = needsWarranty
+        ? applyPartWarranty(updated, partsDays, finishDate)
+        : reopening
+          ? updated.map(({ warrantyDays: _days, warrantyUntil: _until, ...sp }) => sp)
+          : updated;
+      const warrantyPartsUntil = needsWarranty
+        ? latestPartWarranty(partsWithWarranty)
+        : (reopening ? null : service.warrantyPartsUntil);
 
       const updatedService: Service = {
         ...service,
@@ -213,7 +264,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         finalCost: cost,
         warrantyServiceUntil,
         warrantyPartsUntil,
-        spareparts: updated,
+        spareparts: partsWithWarranty,
         updatedAt: now,
         // Penanganan disimpan di kolomnya sendiri (0059, `completion_note`), supaya
         // tabel Servis bisa menampilkannya tanpa memuat riwayat.
@@ -231,22 +282,32 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           },
         ],
       };
-      await repository.put('services', updatedService);
+      // Cloud: pelunasan & pembatalan ditulis SELURUHNYA oleh RPC dalam satu
+      // transaksi (status, biaya final, riwayat, uang, stok — 0061). Dulu status
+      // disimpan lebih dulu, sehingga RPC yang gagal meninggalkan tiket Lunas
+      // tanpa pemasukan atau Batal tanpa stok kembali, dan tak bisa diulang.
+      // Demo memakai adapter di memori, jadi ikut jalur lokal.
+      const cloud = isCloudMode();
+      if (!(cloud && (target === 'lunas' || target === 'batal'))) {
+        await repository.put('services', updatedService);
+      }
 
       // Settle ("lunas"): book income for the bill still owed after DP, split
       // across one or more wallets. Cloud uses the atomic settle_service RPC
-      // (member-allowed; direct wallet/income writes are manager-only under RLS
-      // 0028) with ALL legs; local mirrors it per-leg directly. DP-covered
-      // (settle 0) → nothing booked. Income tagged to the service's outlet.
-      if (target === 'lunas' && settle > 0) {
-        const legs = normalizeSplits(splitsAsNumbers());
-        if (isSupabaseConfigured) {
+      // (member-allowed) with ALL legs — also when DP covers the bill (no legs),
+      // so the status change itself is validated server-side; local mirrors it
+      // per-leg directly. Income tagged to the service's outlet.
+      if (target === 'lunas' && (settle > 0 || cloud)) {
+        const legs = settle > 0 ? normalizeSplits(splitsAsNumbers()) : [];
+        if (cloud) {
           await settleService({
             orgId: service.orgId,
             serviceId: service.id,
             payments: legs,
             history: updatedService.history ?? [],
             outletId: service.outletId,
+            finalCost: cost,
+            ...(excessRefund > 0 ? { refundAmount: excessRefund, refundWalletId } : {}),
           });
         } else {
           for (const leg of legs) {
@@ -271,6 +332,26 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         }
         if (legs[0]) setLastExpenseWallet(legs[0].walletId);
       }
+      // Lokal/demo: refund kelebihan DP sebagai pengeluaran (cloud: di RPC yang sama).
+      if (!cloud && excessRefund > 0) {
+        const wallet = wallets.find((w) => w.id === refundWalletId);
+        if (wallet) {
+          await repository.put('expenses', {
+            id: newId(),
+            orgId: service.orgId,
+            outletId: service.outletId,
+            date: localDateStr(),
+            category: 'Lainnya',
+            amount: excessRefund,
+            walletId: wallet.id,
+            description: overpaidRefundDescription(service.serviceNo),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          });
+          await repository.put('wallets', applyBalance(wallet, -excessRefund));
+        }
+      }
 
       // Cancel ("batal"): give back deducted stock AND optionally refund a CHOSEN
       // part of the DP. Cloud uses the atomic cancel_service RPC (member-allowed).
@@ -278,7 +359,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       // as an expense — local mirrors that so reports match across modes.
       if (target === 'batal') {
         const refund = service.downPayment > 0 ? Math.min(parseRpInput(refundAmount), service.downPayment) : 0;
-        if (isSupabaseConfigured) {
+        if (cloud) {
           await cancelService({
             orgId: service.orgId,
             serviceId: service.id,
@@ -359,7 +440,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       // record_down_payment RPC (member-allowed) since direct wallet/income
       // writes are manager-only under RLS 0028; local mirrors it directly.
       const incomeId = newId();
-      if (isSupabaseConfigured) {
+      // Demo memakai adapter di memori, jadi DP-nya dicatat lokal.
+      if (isCloudMode()) {
         await recordDownPayment({
           orgId: service.orgId,
           serviceId: service.id,
@@ -409,68 +491,63 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   };
 
   // ---- Sub-action: correct final cost after settlement (owner/admin) ----
+  // Hanya selisihnya yang dibukukan, hari ini. Pelunasan lama tidak disentuh,
+  // jadi pendapatan bulan lalu tidak pindah ke bulan ini (dulu dihapus & dibukukan ulang).
   const applyKoreksi = async () => {
+    if (!correctAmount.trim()) return toast.warning('Isi biaya final');
     const newFinal = parseRpInput(correctAmount);
-    if (newFinal < 0) return toast.warning('Biaya final tidak valid');
-    if (newFinal < service.downPayment) return toast.warning('Biaya final tidak boleh kurang dari DP yang sudah diterima');
     const oldFinal = service.finalCost;
-    if (newFinal === oldFinal) {
+    const delta = newFinal - oldFinal;
+    if (delta === 0) {
       onClose();
       return;
     }
+    const wallet = wallets.find((w) => w.id === correctWalletId);
+    if (!wallet) return toast.warning('Pilih wallet');
+    if (delta < 0 && wallet.balance < -delta) {
+      return toast.warning(`Saldo ${wallet.name} tidak cukup untuk mengembalikan ${fmtRp(-delta)}`);
+    }
     setBusy(true);
     const now = new Date().toISOString();
+    const history = [
+      ...(service.history ?? []),
+      {
+        at: now,
+        status: 'edit' as const,
+        by: me?.id ?? '',
+        byName: me?.name ?? '',
+        note: `Koreksi biaya final: ${fmtRp(oldFinal)} → ${fmtRp(newFinal)}`,
+        internal: true,
+      },
+    ];
     try {
-      const newSettle = settlementAmount(newFinal, service.downPayment);
-      const incomes = await repository.list('incomes');
-      // All settlement income rows for this ticket (split payment → several).
-      const settleIncomes = incomes.filter(
-        (i) => i.serviceId === service.id && !i.deletedAt && i.description === settlementIncomeDescription(service.serviceNo),
-      );
-      // Reverse every existing settlement row: refund its wallet, then remove it.
-      for (const inc of settleIncomes) {
-        const wallet = wallets.find((w) => w.id === inc.walletId);
-        if (wallet) await repository.put('wallets', applyBalance(wallet, -inc.amount));
-        await repository.remove('incomes', inc.id);
-      }
-      // Rebook the corrected balance (if any) to a single wallet. Prefer the
-      // wallet of the first prior settlement leg; else last-used. Split is not
-      // re-prompted on correction — owner adjusts the number, cash stays sane.
-      const targetWalletId = settleIncomes[0]?.walletId ?? defaultWallet();
-      if (newSettle > 0 && targetWalletId) {
-        const wallet = wallets.find((w) => w.id === targetWalletId);
-        if (wallet) await repository.put('wallets', applyBalance(wallet, newSettle));
-        await repository.put('incomes', {
+      if (isCloudMode()) {
+        await correctServiceCost({
+          orgId: service.orgId,
+          serviceId: service.id,
+          finalCost: newFinal,
+          walletId: wallet.id,
+          history,
+        });
+      } else {
+        const row = {
           id: newId(),
           orgId: service.orgId,
           outletId: service.outletId,
           date: localDateStr(),
-          category: 'Servis',
-          amount: newSettle,
-          walletId: targetWalletId,
-          description: settlementIncomeDescription(service.serviceNo),
-          serviceId: service.id,
+          amount: Math.abs(delta),
+          walletId: wallet.id,
+          description: costCorrectionDescription(service.serviceNo),
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
-        });
+        };
+        if (delta > 0) await repository.put('incomes', { ...row, category: 'Servis', serviceId: service.id });
+        else await repository.put('expenses', { ...row, category: 'Lainnya' });
+        await repository.put('wallets', applyBalance(wallet, delta));
+        await repository.put('services', { ...service, finalCost: newFinal, updatedAt: now, history });
       }
-      await repository.put('services', {
-        ...service,
-        finalCost: newFinal,
-        updatedAt: now,
-        history: [
-          ...(service.history ?? []),
-          {
-            at: now,
-            status: 'edit',
-            by: me?.id ?? '',
-            byName: me?.name ?? '',
-            note: `Koreksi biaya final: ${fmtRp(oldFinal)} → ${fmtRp(newFinal)}`,
-            internal: true,
-          },
-        ],
-      });
+      setLastExpenseWallet(wallet.id);
       logActivity({
         action: 'service.status',
         entityType: 'service',
@@ -478,7 +555,11 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         entityLabel: service.serviceNo,
         meta: { correctFinalCost: true, from: oldFinal, to: newFinal },
       });
-      toast.success('Biaya final dikoreksi');
+      toast.success(
+        delta > 0
+          ? `Biaya dikoreksi · selisih ${fmtRp(delta)} masuk ${wallet.name}`
+          : `Biaya dikoreksi · ${fmtRp(-delta)} dikembalikan dari ${wallet.name}`,
+      );
       onSaved();
       onClose();
     } catch (e) {
@@ -488,11 +569,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     }
   };
 
-  const apply = mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : applyStatus;
+  const apply = mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : () => applyStatus();
   const applyLabel = mode === 'dp' ? 'Simpan DP' : mode === 'koreksi' ? 'Perbarui Biaya' : 'Terapkan';
   const noActions = modes.length === 0;
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -565,6 +647,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               options={allowed.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
               placeholder="Pilih status…"
             />
+            {reopening && (
+              <p className={styles.dp}>
+                Tiket dibuka lagi untuk dikerjakan. Garansi yang ditetapkan saat Selesai dihapus dan diisi ulang saat
+                Selesai berikutnya.
+              </p>
+            )}
             {needsCost && (
               <Input
                 label="Biaya Final"
@@ -617,59 +705,63 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             )}
             {needsWarranty && (
               <div className={styles.warranty}>
-                <span className={styles.warrantyLabel}>Garansi (isi minimal salah satu)</span>
-                <div className={styles.warrantyRow}>
-                  <div className={styles.warrantyField}>
-                    <Input
-                      label="Garansi Jasa (hari)"
-                      type="number"
-                      inputMode="numeric"
-                      value={warrantyService}
-                      onChange={(e) => setWarrantyService(e.target.value)}
-                      placeholder="30"
-                    />
-                    {warrantyPresets.length > 0 && (
-                      <div className={styles.presetRow}>
-                        {warrantyPresets.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            className={styles.presetChip}
-                            onClick={() => setWarrantyService(String(d))}
-                            title={`Garansi jasa ${d} hari`}
-                          >
-                            {d} hari
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.warrantyField}>
-                    <Input
-                      label="Garansi Sparepart (hari)"
-                      type="number"
-                      inputMode="numeric"
-                      value={warrantyParts}
-                      onChange={(e) => setWarrantyParts(e.target.value)}
-                      placeholder="7"
-                    />
-                    {warrantyPresets.length > 0 && (
-                      <div className={styles.presetRow}>
-                        {warrantyPresets.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            className={styles.presetChip}
-                            onClick={() => setWarrantyParts(String(d))}
-                            title={`Garansi sparepart ${d} hari`}
-                          >
-                            {d} hari
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <span className={styles.warrantyLabel}>Garansi · isi 0 untuk tanpa garansi</span>
+                <div className={styles.warrantyField}>
+                  <Input
+                    label="Garansi Jasa (hari)"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={warrantyService}
+                    onChange={(e) => setWarrantyService(e.target.value)}
+                    placeholder="30"
+                  />
+                  <WarrantyPresets
+                    presets={warrantyPresets}
+                    onPick={(d) => setWarrantyService(String(d))}
+                    what="jasa"
+                  />
                 </div>
+                {service.spareparts.length > 0 && (
+                  <div className={styles.partWarranty}>
+                    <span className={styles.warrantyLabel}>Garansi Sparepart (hari)</span>
+                    <PartWarrantyFields
+                      parts={service.spareparts}
+                      values={partDays}
+                      onChange={(i, v) =>
+                        setPartDays((prev) =>
+                          service.spareparts.map((_, j) => (j === i ? v : prev[j] ?? '')),
+                        )
+                      }
+                      presets={warrantyPresets}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {target === 'lunas' && lunasExcess > 0 && (
+              <div className={styles.warranty}>
+                <span className={styles.warrantyLabel}>
+                  Kelebihan DP {fmtRp(lunasExcess)} (DP {fmtRp(service.downPayment)} melebihi biaya final)
+                </span>
+                <div className={styles.warrantyRow}>
+                  <Input
+                    label="Refund ke pelanggan"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(fmtRpInput(e.target.value))}
+                    placeholder="0"
+                  />
+                  <Select
+                    label="Dari wallet"
+                    value={refundWalletId}
+                    onChange={(e) => setRefundWalletId(e.target.value)}
+                    options={walletOptions}
+                    placeholder="Pilih wallet…"
+                  />
+                </div>
+                <p className={styles.dp}>
+                  Isi 0 bila kelebihan tidak dikembalikan (jadi pendapatan toko). Refund dicatat sebagai pengeluaran; income DP tetap tersimpan.
+                </p>
               </div>
             )}
             {target === 'batal' && service.downPayment > 0 && (
@@ -717,8 +809,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             />
             {service.downPayment > 0 && (
               <p className={styles.dp}>
-                DP diterima: {fmtRp(service.downPayment)} · Sisa:{' '}
-                {fmtRp(outstandingBalance({ ...service, finalCost: parseRpInput(finalCost) || service.finalCost }))}
+                DP diterima: {fmtRp(service.downPayment)} ·{' '}
+                {needsCost && lunasExcess > 0
+                  ? `Kelebihan DP: ${fmtRp(lunasExcess)}${target === 'lunas' ? '' : ' — dikembalikan saat pelunasan'}`
+                  : `Sisa: ${fmtRp(outstandingBalance({ ...service, finalCost: parseRpInput(finalCost) || service.finalCost }))}`}
               </p>
             )}
           </>
@@ -762,9 +856,20 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               onChange={(e) => setCorrectAmount(fmtRpInput(e.target.value))}
               placeholder="0"
             />
+            <Select
+              label={correctDelta < 0 ? 'Kembalikan selisih dari wallet' : 'Terima selisih ke wallet'}
+              value={correctWalletId}
+              onChange={(e) => setCorrectWalletId(e.target.value)}
+              options={walletOptions}
+              placeholder="Pilih wallet…"
+            />
             <p className={styles.dp}>
-              Menyesuaikan pendapatan pelunasan & saldo wallet tanpa membatalkan tiket. Tercatat di log internal.
-              {service.downPayment > 0 && ` DP diterima: ${fmtRp(service.downPayment)}.`}
+              {correctDelta > 0
+                ? `Selisih ${fmtRp(correctDelta)} dicatat sebagai pemasukan hari ini.`
+                : correctDelta < 0
+                  ? `Selisih ${fmtRp(-correctDelta)} dicatat sebagai pengeluaran (refund) hari ini.`
+                  : `Biaya final saat ini ${fmtRp(service.finalCost)}.`}{' '}
+              Pelunasan lama tidak diubah, jadi laporan bulan sebelumnya tetap. Tercatat di log internal.
             </p>
           </>
         )}
@@ -788,5 +893,28 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         </div>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={confirmNoWarranty}
+      title="Selesai tanpa garansi?"
+      message="Garansi jasa dan semua sparepart bernilai 0 hari. Nota dan halaman lacak akan menulis “Tanpa garansi”."
+      confirmLabel="Ya, tanpa garansi"
+      onCancel={() => setConfirmNoWarranty(false)}
+      onConfirm={() => {
+        setConfirmNoWarranty(false);
+        void applyStatus({ noWarrantyOk: true });
+      }}
+    />
+    <ConfirmDialog
+      open={confirmZeroCost}
+      title="Biaya final Rp 0?"
+      message="Tiket tercatat gratis: tidak ada tagihan dan tidak ada pemasukan. Lanjutkan hanya bila memang tidak dikenakan biaya."
+      confirmLabel="Ya, gratis"
+      onCancel={() => setConfirmZeroCost(false)}
+      onConfirm={() => {
+        setConfirmZeroCost(false);
+        void applyStatus({ noWarrantyOk: true, zeroCostOk: true });
+      }}
+    />
+    </>
   );
 }

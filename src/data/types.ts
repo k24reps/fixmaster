@@ -125,6 +125,8 @@ export interface InventoryItem extends BaseEntity {
   costPrice: number; // HPP
   sellPrice: number;
   supplierId: ID | null;
+  /** Garansi bawaan (hari) saat item ini dipasang di tiket (0067); kosong = garansi part toko. */
+  warrantyDays?: number | null;
 }
 
 export interface Supplier extends BaseEntity {
@@ -246,10 +248,20 @@ export interface ServiceSparepart {
    * Optional so legacy rows (no field) read as 'inventory'.
    */
   kind?: 'inventory' | 'manual';
+  /** Garansi bawaan item inventori saat baris ini diambil — isian awal garansi part saat Selesai. */
+  defaultWarrantyDays?: number | null;
   /** For 'manual' lines: the linked Expense id, so it can be reversed on delete. */
   expenseId?: ID | null;
   /** For 'manual' lines: wallet the cash came out of (for the linked Expense). */
   walletId?: ID | null;
+  /**
+   * Garansi part ini (hari), ditetapkan saat tiket masuk Selesai. `undefined` =
+   * belum diatur (tiket lama, atau part ditambahkan setelah Selesai); 0 = tanpa
+   * garansi. Tetap di JSONB `spareparts`, jadi tanpa migrasi tabel.
+   */
+  warrantyDays?: number;
+  /** Tanggal akhir garansi part (YYYY-MM-DD) bila warrantyDays > 0, selain itu null. */
+  warrantyUntil?: ISODate | null;
 }
 
 export interface ServiceHistoryEntry {
@@ -260,6 +272,14 @@ export interface ServiceHistoryEntry {
   note: string;
   /** Internal "edit" entries are hidden from the public tracking page. */
   internal: boolean;
+}
+
+/** Bagian tiket asli yang diklaim garansinya (migrasi 0065, kolom `claimed_items`). */
+export interface ClaimItem {
+  kind: 'service' | 'part';
+  name: string;
+  /** Akhir garansi bagian ini saat klaim dibuat. */
+  until: ISODate;
 }
 
 export interface Service extends BaseEntity {
@@ -295,6 +315,8 @@ export interface Service extends BaseEntity {
   pickedUpAt: ISODateTime | null;
   /** If this ticket is a warranty claim, links to the original ticket ID. */
   warrantyClaimOf: ID | null;
+  /** Tiket klaim: bagian tiket asli yang diklaim. Kosong untuk tiket biasa & klaim lama. */
+  claimedItems?: ClaimItem[] | null;
   /**
    * Append-only audit trail (server-enforced, migration 0058). ABSENT on rows
    * from the cloud `list()` — it is ~78% of every row, so plain lists omit it.
@@ -315,7 +337,7 @@ export const SERVICE_LIST_COLUMNS: string =
   'id,org_id,outlet_id,service_no,customer_id,customer_name,customer_phone,category,device,' +
   'complaint,completion_note,accessories,status,technician_id,technician_name,estimate_cost,final_cost,' +
   'down_payment,spareparts,warranty_until,warranty_service_until,warranty_parts_until,' +
-  'picked_up,picked_up_at,warranty_claim_of,archived,created_at,updated_at,deleted_at';
+  'picked_up,picked_up_at,warranty_claim_of,claimed_items,archived,created_at,updated_at,deleted_at';
 
 // ---------- POS Sales ----------
 export interface SaleLine {

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
+import { saveServiceParts } from '@/data/serviceParts';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useFormat } from '@/lib/useFormat';
@@ -18,6 +20,8 @@ import {
   canSetStatus,
   canClaimWarranty,
   isAwaitingPickup,
+  warrantyDecided,
+  openClaimFor,
 } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
@@ -26,13 +30,14 @@ import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { trackingUrl } from '@/lib/business/notify';
-import { Button, Icon, Input, Select } from '@/components/ui';
+import { Button, ConfirmDialog, Icon, Input, Select } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import { printServiceReceipt } from './printReceipt';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
+import { PartWarrantyModal } from './PartWarrantyModal';
 import type { ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
 
@@ -53,7 +58,7 @@ export function ServiceDetailPage() {
   const t = useT();
   const { fmtMoney, fmtDate, fmtDateTime } = useFormat();
 
-  const { data: services } = useCollection('services');
+  const { data: services, loading: servicesLoading } = useCollection('services');
   const { data: customers } = useCollection('customers');
   const { data: wallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
@@ -68,6 +73,8 @@ export function ServiceDetailPage() {
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [partWarrantyOpen, setPartWarrantyOpen] = useState(false);
+  const [confirmPickup, setConfirmPickup] = useState(false);
   // Ad-hoc "modal dadakan" entry form (inline in the cost panel).
   const [modalFormOpen, setModalFormOpen] = useState(false);
   // Index of the manual line being edited; null = adding a new line.
@@ -77,10 +84,18 @@ export function ServiceDetailPage() {
   const [modalWalletId, setModalWalletId] = useState('');
   const [savingCost, setSavingCost] = useState(false);
 
-  const service = useMemo(() => services.find((s) => s.id === id) ?? null, [services, id]);
+  const listed = useMemo(() => services.find((s) => s.id === id) ?? null, [services, id]);
+  // Tiket di luar 1000 terbaru (cloud) tidak ada di daftar — ambil barisnya sendiri.
+  const oneQuery = useQuery({
+    queryKey: ['collection', 'services', 'one', id],
+    queryFn: () => repository.get('services', id ?? ''),
+    enabled: !!id && !servicesLoading && !listed,
+  });
+  const service = listed ?? oneQuery.data ?? null;
   const history = useServiceHistory(service);
 
   if (!service) {
+    if (servicesLoading || oneQuery.isFetching) return null;
     return (
       <div className={styles.notFound}>
         <span className={styles.nfCode}>404</span>
@@ -105,11 +120,8 @@ export function ServiceDetailPage() {
   ) => {
     // One row by id, not the whole services list, per sparepart edit.
     const fresh = (await repository.get('services', service.id)) ?? service;
-    await repository.put('services', {
-      ...fresh,
-      spareparts: mutate(fresh.spareparts),
-      updatedAt: new Date().toISOString(),
-    });
+    // Stok inventori ikut disesuaikan dalam transaksi yang sama (0064).
+    await saveServiceParts(fresh, mutate(fresh.spareparts));
   };
 
   const cancelled = service.status === 'batal';
@@ -123,7 +135,9 @@ export function ServiceDetailPage() {
         : { label: 'Sisa tagihan', value: fmtMoney(outstanding) };
   const profit = serviceProfit(service);
   const modalTotal = serviceModalTotal(service.spareparts);
-  const claimable = canClaimWarranty(service, localDateStr());
+  // Satu klaim berjalan per tiket asli (juga dijaga server, 0064).
+  const openClaim = openClaimFor(services, service.id);
+  const claimable = canClaimWarranty(service, localDateStr()) && !openClaim;
   // When the only thing this role can do is take a DP (no allowed status
   // transitions, but the ticket isn't terminal), label the action accordingly
   // instead of the misleading "Update Status" — e.g. staff on a finished unit.
@@ -136,26 +150,21 @@ export function ServiceDetailPage() {
   /**
    * Append an inventory sparepart line AND deduct its stock immediately
    * (stock leaves the shelf the moment the part is committed to the ticket).
-   * Re-reads the item as the authoritative guard against insufficient stock
-   * (the picker's check uses cached state). The line is stored `deducted:true`
-   * so the later "pengerjaan" transition won't deduct it again, and cancelling
-   * the ticket gives the stock back (see computeStockRestore).
+   * The stock check runs against the live row in the same transaction
+   * (update_service_parts, 0064) — the picker's check uses cached state. The
+   * line is stored `deducted:true` so the later "pengerjaan" transition won't
+   * deduct it again, and cancelling the ticket gives the stock back.
    */
   const addSparepartLine = async (line: ServiceSparepart) => {
-    if (line.itemId) {
-      const inventory = await repository.list('inventory');
-      const item = inventory.find((i) => i.id === line.itemId);
-      if (!item) return toast.error('Item inventory tidak ditemukan');
-      if (item.stock < line.qty) {
-        return toast.warning(`Stok ${item.name} hanya ${item.stock}, tidak cukup untuk ×${line.qty}`);
-      }
-      await repository.put('inventory', { ...item, stock: item.stock - line.qty });
+    try {
+      await putServiceSpareparts((sp) => [
+        ...sp,
+        { ...line, deducted: line.itemId ? true : line.deducted },
+      ]);
+      toast.success('Sparepart ditambahkan & stok dipotong');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menambah sparepart');
     }
-    await putServiceSpareparts((sp) => [
-      ...sp,
-      { ...line, deducted: line.itemId ? true : line.deducted },
-    ]);
-    toast.success('Sparepart ditambahkan & stok dipotong');
   };
 
   /** Open the ad-hoc modal form for a NEW line, wallet defaults to last-used. */
@@ -338,12 +347,8 @@ export function ServiceDetailPage() {
             if (wallet) await repository.put('wallets', applyBalance(wallet, exp.amount));
           }
         }
-      } else if (line.deducted && line.itemId) {
-        // Return previously-deducted stock to inventory.
-        const inventory = await repository.list('inventory');
-        const item = inventory.find((i) => i.id === line.itemId);
-        if (item) await repository.put('inventory', { ...item, stock: item.stock + line.qty });
       }
+      // Stok baris inventori yang sudah dipotong kembali lewat selisih di sini.
       await putServiceSpareparts((sp) => sp.filter((_, i) => i !== index));
       toast.success('Baris dihapus');
     } catch (e) {
@@ -389,7 +394,12 @@ export function ServiceDetailPage() {
   };
 
   // Toggle physical collection of the device — independent of payment.
-  const togglePickup = async () => {
+  const togglePickup = async (confirmed = false) => {
+    // Unit keluar sebelum lunas boleh, tapi harus disengaja.
+    if (!service.pickedUp && !confirmed && service.status === 'selesai' && outstandingBalance(service) > 0) {
+      setConfirmPickup(true);
+      return;
+    }
     const now = new Date().toISOString();
     const nowPicked = !service.pickedUp;
     try {
@@ -437,6 +447,15 @@ export function ServiceDetailPage() {
               ' (tiket asli tidak ditemukan)'
             )}
             .
+            {service.claimedItems && service.claimedItems.length > 0 && (
+              <>
+                {' '}Diklaim:{' '}
+                <strong>
+                  {service.claimedItems.map((item) => `${item.name} (s/d ${fmtDate(item.until)})`).join(', ')}
+                </strong>
+                .
+              </>
+            )}
           </span>
         </div>
       )}
@@ -460,11 +479,18 @@ export function ServiceDetailPage() {
                   Teknisi <strong>{service.technicianName}</strong>
                 </>
               )}
-              {service.warrantyServiceUntil && (
+              {service.warrantyServiceUntil ? (
                 <>
                   <span className={styles.dot} />
                   Garansi jasa s/d {fmtDate(service.warrantyServiceUntil)}
                 </>
+              ) : (
+                warrantyDecided(service) && (
+                  <>
+                    <span className={styles.dot} />
+                    Jasa tanpa garansi
+                  </>
+                )
               )}
               {service.warrantyPartsUntil && (
                 <>
@@ -567,6 +593,13 @@ export function ServiceDetailPage() {
             <div className={styles.panelLabel}>SPAREPART · BILL OF MATERIALS</div>
             {!cancelled && (
               <div className={styles.bomActions}>
+                {/* Garansi per part ditetapkan saat Selesai; tombol ini untuk part
+                    yang ditambahkan belakangan atau koreksi. */}
+                {warrantyDecided(service) && service.spareparts.length > 0 && (
+                  <button className={styles.bomAddBtn} onClick={() => setPartWarrantyOpen(true)}>
+                    <Icon name="shield-halved" aria-hidden /> Garansi part
+                  </button>
+                )}
                 <button className={styles.bomAddBtn} onClick={() => setPickerOpen(true)}>
                   <Icon name="plus" aria-hidden /> Sparepart
                 </button>
@@ -632,7 +665,18 @@ export function ServiceDetailPage() {
                     <span className={styles.bomIcon}>
                       <Icon name={manual ? 'money-bill-wave' : 'microchip'} aria-hidden />
                     </span>
-                    <span className={styles.bomName}>{p.name}</span>
+                    <span className={styles.bomName}>
+                      {p.name}
+                      {warrantyDecided(service) && (
+                        <small className={styles.bomWarranty}>
+                          {p.warrantyDays == null
+                            ? 'Garansi belum diatur'
+                            : p.warrantyUntil
+                              ? `Garansi s/d ${fmtDate(p.warrantyUntil)}`
+                              : 'Tanpa garansi'}
+                        </small>
+                      )}
+                    </span>
                     <span className={styles.bomQty}>{manual ? '' : `×${p.qty}`}</span>
                     <span className={styles.bomCost}>
                       {manual ? fmtMoney(p.costPrice) : fmtMoney(p.sellPrice * p.qty)}
@@ -754,7 +798,7 @@ export function ServiceDetailPage() {
                 service.status === 'lunas' && !service.pickedUp ? styles.primaryBtn : styles.secondaryBtn,
                 service.pickedUp ? styles.pickedActive : '',
               ].join(' ')}
-              onClick={togglePickup}
+              onClick={() => void togglePickup()}
             >
               <Icon name={service.pickedUp ? 'circle-check' : 'box'} aria-hidden />{' '}
               {service.pickedUp ? 'Diambil ✓' : 'Tandai Diambil'}
@@ -767,6 +811,11 @@ export function ServiceDetailPage() {
             >
               <Icon name="shield-halved" aria-hidden /> Klaim Garansi
             </button>
+          )}
+          {openClaim && (
+            <Link className={styles.secondaryBtn} to={`/services/${openClaim.id}`}>
+              <Icon name="shield-halved" aria-hidden /> Klaim {openClaim.serviceNo} berjalan
+            </Link>
           )}
           {!isTerminal(service.status) && (
             <button className={styles.primaryBtn} onClick={() => setStatusOpen(true)}>
@@ -813,11 +862,28 @@ export function ServiceDetailPage() {
         services={services}
         onSaved={() => {}}
       />
+      <PartWarrantyModal
+        open={partWarrantyOpen}
+        onClose={() => setPartWarrantyOpen(false)}
+        service={service}
+        history={history}
+      />
       <SparepartPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         existingItemIds={service.spareparts.map((p) => p.itemId).filter((x): x is string => !!x)}
         onPick={addSparepartLine}
+      />
+      <ConfirmDialog
+        open={confirmPickup}
+        title="Unit belum lunas"
+        message={`Masih ada tagihan ${fmtMoney(outstanding)}. Tandai sudah diambil pelanggan?`}
+        confirmLabel="Ya, sudah diambil"
+        onCancel={() => setConfirmPickup(false)}
+        onConfirm={() => {
+          setConfirmPickup(false);
+          void togglePickup(true);
+        }}
       />
     </div>
   );

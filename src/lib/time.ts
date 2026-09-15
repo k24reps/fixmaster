@@ -104,6 +104,22 @@ export function addDays(iso: string, days: number): string {
   return localDateStr(d);
 }
 
+/** Awal & akhir bulan berjalan (lokal) sebagai "YYYY-MM-DD". */
+export function monthRange(now: Date = new Date()): { from: string; to: string } {
+  return {
+    from: localDateStr(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+/** Tengah malam lokal dari "YYYY-MM-DD" sebagai timestamp ISO (batas rentang timestamptz). */
+export function localDayStartISO(iso: string): string {
+  const d = parseISODate(iso);
+  if (!d) return iso;
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
 /** Difference in whole days between two date strings (to - from). */
 export function daysBetween(from: string, to: string): number {
   const f = parseISODate(from);

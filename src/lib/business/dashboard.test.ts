@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   computeKpis,
   technicianLeaderboard,
+  serviceSummary,
   computeAlerts,
   revenueSeries,
 } from './dashboard';
-import type { Service, Income, Expense, Wallet, InventoryItem } from '@/data/types';
+import type { Service, Income, Expense, Wallet, InventoryItem, ServiceHistoryEntry } from '@/data/types';
 
 const baseSvc = (over: Partial<Service>): Service => ({
   id: over.id ?? 's1',
@@ -36,6 +37,7 @@ const baseSvc = (over: Partial<Service>): Service => ({
   createdAt: over.createdAt ?? '2026-06-02T08:00:00.000Z',
   updatedAt: '',
   deletedAt: null,
+  ...over,
 });
 
 const income = (
@@ -74,8 +76,14 @@ const expense = (
   deletedAt: null,
 });
 
+/** [from, to) bulan Juni 2026. */
+const JUNE = ['2026-06-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z'] as const;
+const doneAt = (at: string): ServiceHistoryEntry[] => [
+  { at, status: 'selesai', by: '', byName: '', note: '', internal: false },
+];
+
 describe('computeKpis', () => {
-  it('aggregates revenue, expense, profit, and wallet totals', () => {
+  it('aggregates revenue, expense, net cash flow, and wallet totals', () => {
     const wallets: Wallet[] = [
       {
         id: 'w1',
@@ -90,7 +98,6 @@ describe('computeKpis', () => {
       },
     ];
     const kpis = computeKpis(
-      [baseSvc({ status: 'pengerjaan' })],
       [income('2026-06-02', 500000)],
       [expense('2026-06-02', 200000)],
       wallets,
@@ -99,34 +106,60 @@ describe('computeKpis', () => {
     );
     expect(kpis.revenue).toBe(500000);
     expect(kpis.expense).toBe(200000);
-    expect(kpis.netProfit).toBe(300000);
+    expect(kpis.netCashFlow).toBe(300000);
     expect(kpis.totalWallet).toBe(1000);
-    expect(kpis.unitsPending).toBe(1);
   });
 
   it('excludes out-of-range income', () => {
-    const kpis = computeKpis(
-      [],
-      [income('2026-05-01', 999)],
-      [],
-      [],
-      '2026-06-01',
-      '2026-06-30',
-    );
+    const kpis = computeKpis([income('2026-05-01', 999)], [], [], '2026-06-01', '2026-06-30');
     expect(kpis.revenue).toBe(0);
   });
 });
 
+describe('serviceSummary', () => {
+  it('"belum selesai" tidak menghitung tiket Selesai, dan tiket arsip tidak dihitung', () => {
+    const summary = serviceSummary(
+      [
+        baseSvc({ id: '1', status: 'pengerjaan' }),
+        baseSvc({ id: '2', status: 'selesai' }),
+        baseSvc({ id: '3', status: 'lunas', finalCost: 300 }),
+        baseSvc({ id: '4', status: 'diterima', createdAt: '2026-05-20T08:00:00.000Z' }),
+        baseSvc({ id: '5', status: 'lunas', finalCost: 999, archived: true }),
+      ],
+      ...JUNE,
+    );
+    expect(summary).toMatchObject({
+      total: 4,
+      unfinished: 2,
+      inProcess: 1,
+      done: 2,
+      awaitingPickup: 2,
+      confirmation: 0,
+      lunasValue: 300,
+      unitsIn: 3,
+    });
+  });
+});
+
 describe('technicianLeaderboard', () => {
-  it('ranks technicians by completed jobs', () => {
-    const board = technicianLeaderboard([
-      baseSvc({ id: '1', technicianName: 'Budi', status: 'lunas', finalCost: 100 }),
-      baseSvc({ id: '2', technicianName: 'Budi', status: 'selesai', finalCost: 200 }),
-      baseSvc({ id: '3', technicianName: 'Ani', status: 'lunas', finalCost: 50 }),
-      baseSvc({ id: '4', technicianName: 'Ani', status: 'pengerjaan' }), // not counted
+  it('tiket yang selesai dalam periode, per teknisi; nilai hanya dari Lunas; tanpa klaim garansi', () => {
+    const board = technicianLeaderboard(
+      [
+        baseSvc({ id: '1', technicianId: 't1', technicianName: 'Budi', status: 'lunas', finalCost: 100, history: doneAt('2026-06-05T02:00:00.000Z') }),
+        // Belum dibayar: dihitung selesai, nilainya belum. Nama terbaru dipakai.
+        baseSvc({ id: '2', technicianId: 't1', technicianName: 'Budi S.', status: 'selesai', finalCost: 200, history: doneAt('2026-06-10T02:00:00.000Z') }),
+        baseSvc({ id: '3', technicianId: 't2', technicianName: 'Ani', status: 'lunas', finalCost: 50, history: doneAt('2026-06-03T02:00:00.000Z') }),
+        // Selesai bulan lalu, walau dilunasi bulan ini.
+        baseSvc({ id: '4', technicianId: 't2', technicianName: 'Ani', status: 'lunas', finalCost: 500, history: doneAt('2026-05-28T02:00:00.000Z') }),
+        baseSvc({ id: '5', technicianId: 't2', technicianName: 'Ani', status: 'lunas', warrantyClaimOf: '3', history: doneAt('2026-06-04T02:00:00.000Z') }),
+        baseSvc({ id: '6', technicianId: 't2', technicianName: 'Ani', status: 'pengerjaan' }),
+      ],
+      ...JUNE,
+    );
+    expect(board).toEqual([
+      { key: 't1', name: 'Budi S.', completed: 2, revenue: 100 },
+      { key: 't2', name: 'Ani', completed: 1, revenue: 50 },
     ]);
-    expect(board[0]).toEqual({ name: 'Budi', completed: 2, revenue: 300 });
-    expect(board[1]).toEqual({ name: 'Ani', completed: 1, revenue: 50 });
   });
 });
 
@@ -167,12 +200,15 @@ describe('computeAlerts', () => {
       },
     ];
     const alerts = computeAlerts(
-      [
-        baseSvc({ id: '1', status: 'konfirmasi' }),
-        baseSvc({ id: '2', status: 'selesai' }),
-        // Already collected → must NOT count toward "menunggu diambil".
-        baseSvc({ id: '3', status: 'lunas', pickedUp: true }),
-      ],
+      serviceSummary(
+        [
+          baseSvc({ id: '1', status: 'konfirmasi' }),
+          baseSvc({ id: '2', status: 'selesai' }),
+          // Already collected → must NOT count toward "menunggu diambil".
+          baseSvc({ id: '3', status: 'lunas', pickedUp: true }),
+        ],
+        ...JUNE,
+      ),
       inv,
     );
     expect(alerts).toEqual([
@@ -200,14 +236,13 @@ describe('computeAlerts', () => {
   });
 
   it('returns no alerts when all clear', () => {
-    expect(computeAlerts([], [])).toHaveLength(0);
+    expect(computeAlerts({ confirmation: 0, awaitingPickup: 0 }, [])).toHaveLength(0);
   });
 });
 
 describe('capital flows are never counted as business performance', () => {
   it('computeKpis ignores Modal and Prive', () => {
     const kpis = computeKpis(
-      [],
       [income('2026-06-02', 500000), income('2026-06-03', 13500000, 'Modal')],
       [expense('2026-06-02', 200000), expense('2026-06-04', 9000000, 'Prive')],
       [],
@@ -216,7 +251,7 @@ describe('capital flows are never counted as business performance', () => {
     );
     expect(kpis.revenue).toBe(500000);
     expect(kpis.expense).toBe(200000);
-    expect(kpis.netProfit).toBe(300000);
+    expect(kpis.netCashFlow).toBe(300000);
   });
 
   it('revenueSeries ignores Modal', () => {

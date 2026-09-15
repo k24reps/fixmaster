@@ -154,6 +154,12 @@ export function ServiceModal({
           deletedAt: null,
         };
         await repository.put('customers', customer);
+      } else if (editing && customer.id === editing.customerId && customer.name !== customerName.trim()) {
+        // Nama dikoreksi dari tiket → kartu pelanggannya ikut, supaya tidak berbeda
+        // dengan menu Pelanggan. Hanya pelanggan tiket ini sendiri: nomor yang
+        // ternyata milik pelanggan lain tidak diganti namanya.
+        customer = { ...customer, name: customerName.trim(), updatedAt: now };
+        await repository.put('customers', customer);
       }
 
       const tech = employees.find((e) => e.id === technicianId);
@@ -230,7 +236,9 @@ export function ServiceModal({
           updatedAt: now,
           deletedAt: null,
         };
-        await repository.put('services', record);
+        // Nomor usulan bisa diganti server bila bentrok (0061), jadi pesan & log
+        // memakai nomor yang benar-benar tersimpan.
+        const saved = await repository.put('services', record);
         if (services.length === 0 && !useDemoStore.getState().isDemo) {
           trackEvent('first_service_created', {
             workspace_mode: isSupabaseConfigured ? 'cloud' : 'local',
@@ -240,10 +248,10 @@ export function ServiceModal({
           action: 'service.create',
           entityType: 'service',
           entityId: record.id,
-          entityLabel: serviceNo,
+          entityLabel: saved.serviceNo,
           meta: { device: record.device, customer: record.customerName },
         });
-        toast.success(`Servis ${serviceNo} dibuat`);
+        toast.success(`Servis ${saved.serviceNo} dibuat`);
       }
       onSaved();
       onClose();

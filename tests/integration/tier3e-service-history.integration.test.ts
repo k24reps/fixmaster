@@ -115,7 +115,8 @@ d('Tier 3E — history hanya bisa ditambah', () => {
   it('settle_service dengan p_history berisi entri baru saja mempertahankan riwayat', async () => {
     const before = await notes();
     await ctx.admin.from('services').update({ status: 'selesai' }).eq('id', serviceId);
-    const { error } = await ctx.karyawanA.client.rpc('settle_service', {
+    // Pelunasan owner/admin-only sejak 0065.
+    const { error } = await ctx.ownerA.client.rpc('settle_service', {
       p_org_id: ctx.orgA,
       p_service_id: serviceId,
       p_payments: [],

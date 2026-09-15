@@ -192,6 +192,10 @@ d('Tier 2 — track_service (publik, anon) membocorkan hanya field aman', () => 
     expect(row).toBeTruthy();
     const serialized = JSON.stringify(row.public_history);
     expect(serialized).not.toContain('CATATAN-RAHASIA-INTERNAL'); // internal disaring
+    // 0060: garansi per sparepart ikut dikirim, tapi hanya nama + tanggal — tanpa harga.
+    expect(Array.isArray((row as unknown as { part_warranties: unknown }).part_warranties)).toBe(true);
+    const whole = JSON.stringify(row);
+    expect(whole).not.toMatch(/costPrice|sellPrice|cost_price|sell_price|final_cost/);
   });
 
   it('anon TIDAK bisa SELECT tabel services langsung', async () => {

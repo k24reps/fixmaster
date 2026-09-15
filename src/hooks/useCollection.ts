@@ -63,11 +63,17 @@ export function useCollection<K extends CollectionName>(
   useEffect(() => {
     if (!enabled) return;
     // Effect only sets up an external subscription (no synchronous setState).
+    // Invalidate WHATEVER collection changed, not just this hook's: a page that
+    // isn't mounted (Keuangan, Dashboard) keeps its cached query "fresh" for the
+    // whole staleTime otherwise, so a refund booked from the service detail page
+    // stayed invisible there for minutes. Inactive queries are only marked stale
+    // (no fetch until they mount again), and invalidateCollection still collapses
+    // every listener into one invalidation per collection per tick.
     const unsub = repository.subscribe((changed) => {
-      if (changed === collection) invalidateCollection(queryClient, changed);
+      invalidateCollection(queryClient, changed);
     });
     return unsub;
-  }, [collection, queryClient, enabled]);
+  }, [queryClient, enabled]);
 
   return {
     data: query.data ?? [],

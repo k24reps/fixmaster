@@ -6,7 +6,7 @@ import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRang
 import { fmtRp, fmtPercent } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, isInRange } from '@/lib/time';
 import { summarize } from '@/lib/business/finance';
-import { technicianLeaderboard } from '@/lib/business/dashboard';
+import { useServiceSummary } from '@/hooks/useServiceSummary';
 import {
   trendSeries,
   transactionRows,
@@ -63,7 +63,10 @@ export function ReportsPage() {
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   // Panel laporan menampilkan "Belum ada data" hanya setelah datanya benar-benar
   // termuat; selama memuat atau gagal, kosong bukan fakta.
-  const reportLoad = [incomesLoad, expensesLoad, salesLoad, servicesLoad, inventoryLoad];
+  // Performa teknisi = tiket yang SELESAI dikerjakan dalam periode (bukan yang
+  // masuk), dihitung dari semua tiket — lihat service_summary (0063).
+  const summaryQuery = useServiceSummary(from, to);
+  const reportLoad = [incomesLoad, expensesLoad, salesLoad, servicesLoad, inventoryLoad, summaryQuery];
   const reportPending = loadPending(...reportLoad);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const scopeLabel = activeOutletId
@@ -81,7 +84,7 @@ export function ReportsPage() {
   const fSales = useMemo(() => sales.filter((s) => isInRange(s.date, from, to) && !s.voided), [sales, from, to]);
 
   const summary = useMemo(() => summarize(fIncomes, fExpenses), [fIncomes, fExpenses]);
-  const leaderboard = useMemo(() => technicianLeaderboard(fServices), [fServices]);
+  const leaderboard = summaryQuery.data?.leaderboard ?? [];
 
   // New aggregations (all pure, from reports.ts).
   const trend = useMemo(() => trendSeries(incomes, expenses, from, to), [incomes, expenses, from, to]);
@@ -126,17 +129,17 @@ export function ReportsPage() {
     const src = `${fmtRp(summary.income)} − ${fmtRp(summary.expense)} = ${net}`;
     if (noBaseline) {
       return {
-        headline: summary.net >= 0 ? `Laba bersih ${net}.` : `Rugi ${fmtRp(Math.abs(summary.net))}.`,
+        headline: `Arus kas bersih ${net}.`,
         source: `${src} · tidak ada data periode lalu untuk dibandingkan`,
       };
     }
     const d = comparison.netDelta;
     if (d === null || !Number.isFinite(d)) {
-      return { headline: `Laba bersih ${net}.`, source: src };
+      return { headline: `Arus kas bersih ${net}.`, source: src };
     }
     const arah = d >= 0 ? 'lebih baik' : 'lebih buruk';
     return {
-      headline: `Laba bersih ${net} — ${arah} ${fmtPercent(Math.abs(d))} dari periode lalu.`,
+      headline: `Arus kas bersih ${net} — ${arah} ${fmtPercent(Math.abs(d))} dari periode lalu.`,
       source: `${src} · periode lalu ${fmtRp(comparison.previous.net)}`,
     };
   }, [rangeValid, summary, noBaseline, comparison]);
@@ -290,7 +293,7 @@ export function ReportsPage() {
           noBaseline={noBaseline}
         />
         <Metric
-          label="Laba Bersih"
+          label="Arus Kas Bersih"
           value={fmtRp(summary.net)}
           icon={<Icon name="chart-line" aria-hidden />}
           tone="brand"
@@ -325,7 +328,7 @@ export function ReportsPage() {
           <CardBody>
             <div className={styles.breakEven}>
               <div>
-                <span className={styles.beLabel}>Laba bersih vs Overhead Budget</span>
+                <span className={styles.beLabel}>Arus kas bersih vs Overhead Budget</span>
                 <strong className={styles.beValue}>
                   {fmtRp(summary.net)} / {fmtRp(target.overheadBudget)}
                 </strong>
@@ -341,7 +344,7 @@ export function ReportsPage() {
               />
             </div>
             <small className={styles.beNote}>
-              <Icon name="info-circle" aria-hidden /> Overhead budget hanya target, tidak dipotong otomatis dari laba.
+              <Icon name="info-circle" aria-hidden /> Overhead budget hanya target, tidak dipotong otomatis dari arus kas.
             </small>
           </CardBody>
         </Card>
@@ -596,7 +599,7 @@ export function ReportsPage() {
           ) : (
             <ul className={styles.breakdown}>
               {leaderboard.map((t) => (
-                <li key={t.name} className={styles.channel}>
+                <li key={t.key} className={styles.channel}>
                   <div className={styles.channelTop}>
                     <span className={styles.channelName}>{t.name} · {t.completed} selesai</span>
                     <span className={styles.channelValue}>{fmtRp(t.revenue)}</span>

@@ -4,11 +4,13 @@
  * calls these to compute next states, then persists via the repository.
  */
 import type {
+  ClaimItem,
   Service,
   ServiceStatus,
   ServiceSparepart,
   Role,
 } from '@/data/types';
+import { addDays } from '@/lib/time';
 
 /** Allowed status transitions (state machine). */
 const TRANSITIONS: Record<ServiceStatus, ServiceStatus[]> = {
@@ -17,7 +19,8 @@ const TRANSITIONS: Record<ServiceStatus, ServiceStatus[]> = {
   konfirmasi: ['tunggu', 'pengerjaan', 'batal'],
   tunggu: ['pengerjaan', 'batal'],
   pengerjaan: ['selesai', 'batal'],
-  selesai: ['lunas'],
+  // Pengerjaan = buka lagi (salah tandai Selesai); batal = unit tak ditebus.
+  selesai: ['lunas', 'pengerjaan', 'batal'],
   lunas: [],
   batal: [],
 };
@@ -105,6 +108,30 @@ export function computeStockRestore(
   return { restorations, updated };
 }
 
+/**
+ * Selisih stok saat daftar sparepart tiket berubah. Stok yang dipegang tiket =
+ * qty baris inventori yang `deducted`; delta > 0 kembali ke rak, delta < 0
+ * diambil dari rak. Cermin dari RPC update_service_parts (0064).
+ */
+export function partsStockDelta(
+  before: ServiceSparepart[],
+  after: ServiceSparepart[],
+): { itemId: string; delta: number }[] {
+  const held = (parts: ServiceSparepart[]) => {
+    const qty = new Map<string, number>();
+    for (const sp of parts) {
+      if (sp.kind === 'manual' || !sp.itemId || !sp.deducted) continue;
+      qty.set(sp.itemId, (qty.get(sp.itemId) ?? 0) + sp.qty);
+    }
+    return qty;
+  };
+  const b = held(before);
+  const a = held(after);
+  return [...new Set([...b.keys(), ...a.keys()])]
+    .map((itemId) => ({ itemId, delta: (b.get(itemId) ?? 0) - (a.get(itemId) ?? 0) }))
+    .filter((d) => d.delta !== 0);
+}
+
 /** Outstanding balance a customer still owes (final cost minus DP). */
 export function outstandingBalance(service: Pick<Service, 'finalCost' | 'downPayment'>): number {
   return Math.max(0, service.finalCost - service.downPayment);
@@ -164,6 +191,17 @@ export function dpIncomeDescription(serviceNo: string): string {
 export function settlementIncomeDescription(serviceNo: string): string {
   return `Pelunasan servis ${serviceNo}`;
 }
+/** Selisih Koreksi Biaya (0063): pemasukan bila biaya naik, pengeluaran bila turun. */
+export function costCorrectionDescription(serviceNo: string): string {
+  return `Koreksi biaya servis ${serviceNo}`;
+}
+/** Nomor servis dari deskripsi selisih Koreksi Biaya, atau null bila bukan baris koreksi. */
+export function serviceNoFromCorrection(description: string): string | null {
+  const prefix = costCorrectionDescription('');
+  return description.startsWith(prefix) && description.length > prefix.length
+    ? description.slice(prefix.length)
+    : null;
+}
 
 /**
  * Income recorded at settlement ("lunas") = the amount still owed after any
@@ -174,20 +212,6 @@ export function settlementIncomeDescription(serviceNo: string): string {
  */
 export function settlementAmount(finalCost: number, downPayment: number): number {
   return Math.max(0, finalCost - downPayment);
-}
-
-/**
- * Wallet delta when correcting the final cost AFTER settlement (DP unchanged):
- * how much to add to (or subtract from) the settlement wallet. Positive = the
- * customer owed/paid more, so credit the wallet; negative = refund. Pure →
- * unit-testable; the UI applies it and rewrites the linked settlement income.
- */
-export function settlementCorrectionDelta(
-  oldFinal: number,
-  newFinal: number,
-  downPayment: number,
-): number {
-  return settlementAmount(newFinal, downPayment) - settlementAmount(oldFinal, downPayment);
 }
 
 /** One leg of a split settlement payment: a wallet and the amount paid into it. */
@@ -226,6 +250,30 @@ export function isTerminal(status: ServiceStatus): boolean {
 /** Whether a ticket counts as "in progress" for dashboards. */
 export function isActive(status: ServiceStatus): boolean {
   return !['lunas', 'batal'].includes(status);
+}
+
+/**
+ * Masih dikerjakan: belum Selesai, Lunas, atau Batal. Tiket Selesai menunggu
+ * bayar/ambil, bukan antrean kerja — dulu ikut `isActive`, sehingga satu tiket
+ * Selesai terhitung "dalam proses" sekaligus "selesai".
+ */
+export function isUnfinished(status: ServiceStatus): boolean {
+  return !['selesai', 'lunas', 'batal'].includes(status);
+}
+
+/** Tiket yang tampil di daftar & dashboard: yang diarsipkan disembunyikan. */
+export function visibleServices<T extends Pick<Service, 'archived'>>(services: T[]): T[] {
+  return services.filter((s) => !s.archived);
+}
+
+/** Kelebihan bayar ketika DP melebihi biaya final (0 bila tidak ada). */
+export function overpaidAmount(finalCost: number, downPayment: number): number {
+  return Math.max(0, downPayment - finalCost);
+}
+
+/** Deskripsi baku pengeluaran refund kelebihan DP (dicocokkan RPC 0062). */
+export function overpaidRefundDescription(serviceNo: string): string {
+  return `Refund kelebihan DP servis ${serviceNo}`;
 }
 
 /**
@@ -270,6 +318,43 @@ export function warrantyEndDate(
   return dates.reduce((a, b) => (a >= b ? a : b));
 }
 
+/**
+ * Garansi sudah DITETAPKAN (termasuk "tanpa garansi") setelah tiket melewati
+ * Selesai. Sebelum itu tanggal kosong berarti "belum ada", bukan "tanpa".
+ */
+export function warrantyDecided(service: Pick<Service, 'status'>): boolean {
+  return service.status === 'selesai' || service.status === 'lunas';
+}
+
+/** Tetapkan garansi tiap part dari jumlah hari (`days[i]` milik part ke-i; 0 = tanpa garansi). */
+export function applyPartWarranty(
+  spareparts: ServiceSparepart[],
+  days: number[],
+  finishDate: string,
+): ServiceSparepart[] {
+  return spareparts.map((sp, i) => {
+    const d = Math.max(0, Math.round(days[i] ?? 0));
+    return { ...sp, warrantyDays: d, warrantyUntil: d > 0 ? addDays(finishDate, d) : null };
+  });
+}
+
+/** Garansi part paling akhir, dipakai sebagai `warrantyPartsUntil` tiket (klaim, lacak lama). */
+export function latestPartWarranty(spareparts: ServiceSparepart[]): string | null {
+  return spareparts.reduce<string | null>(
+    (latest, sp) => (sp.warrantyUntil && (!latest || sp.warrantyUntil > latest) ? sp.warrantyUntil : latest),
+    null,
+  );
+}
+
+/** Part yang garansinya sudah ditetapkan: nama + tanggal akhir (null = tanpa garansi). */
+export function partWarranties(
+  spareparts: ServiceSparepart[],
+): { name: string; until: string | null }[] {
+  return spareparts
+    .filter((sp) => sp.warrantyDays != null)
+    .map((sp) => ({ name: sp.name, until: sp.warrantyUntil ?? null }));
+}
+
 /** Whether any warranty (service or parts) is still valid on `today` (inclusive). */
 export function isUnderWarranty(
   service: Pick<Service, 'warrantyServiceUntil' | 'warrantyPartsUntil'>,
@@ -294,6 +379,38 @@ export function canClaimWarranty(
     service.status === 'lunas' &&
     !service.warrantyClaimOf &&
     isUnderWarranty(service, today)
+  );
+}
+
+/**
+ * Bagian tiket yang masih bergaransi pada `today` — pilihan saat klaim.
+ * Part dengan garansi per part memakai tanggalnya sendiri, part lama memakai
+ * garansi part tiket. Cermin dari validasi create_warranty_claim (0065).
+ */
+export function claimableItems(
+  service: Pick<Service, 'warrantyServiceUntil' | 'warrantyPartsUntil' | 'spareparts'>,
+  today: string,
+): ClaimItem[] {
+  const items: ClaimItem[] = [];
+  if (service.warrantyServiceUntil && service.warrantyServiceUntil >= today) {
+    items.push({ kind: 'service', name: 'Jasa servis', until: service.warrantyServiceUntil });
+  }
+  for (const sp of service.spareparts) {
+    const until = sp.warrantyDays != null ? sp.warrantyUntil : service.warrantyPartsUntil;
+    if (!until || until < today) continue;
+    if (items.some((i) => i.kind === 'part' && i.name === sp.name)) continue;
+    items.push({ kind: 'part', name: sp.name, until });
+  }
+  return items;
+}
+
+/** Klaim garansi yang masih berjalan (belum Lunas/Batal) untuk tiket asli ini. */
+export function openClaimFor<T extends Pick<Service, 'warrantyClaimOf' | 'status'>>(
+  services: T[],
+  originId: string,
+): T | undefined {
+  return services.find(
+    (s) => s.warrantyClaimOf === originId && s.status !== 'lunas' && s.status !== 'batal',
   );
 }
 

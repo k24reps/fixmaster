@@ -5,7 +5,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
 import { fmtRp } from '@/lib/format';
-import { fmtDate, localDateStr } from '@/lib/time';
+import { fmtDate, localDateStr, monthRange } from '@/lib/time';
 import {
   summarize,
   applyBalance,
@@ -19,6 +19,8 @@ import {
 import {
   dpIncomeDescription,
   settlementIncomeDescription,
+  costCorrectionDescription,
+  serviceNoFromCorrection,
 } from '@/lib/business/services';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
@@ -42,16 +44,16 @@ interface LedgerRow {
   record: Income | Expense | ActivityLog;
 }
 
+/** Tiket menurut nomornya. Cloud: cari di seluruh tabel (daftar hanya potongan terbaru). */
+async function findServiceByNo(serviceNo: string) {
+  const rows = repository.queryServices
+    ? await repository.queryServices({ term: serviceNo, limit: 20 })
+    : await repository.list('services');
+  return rows.find((s) => s.serviceNo === serviceNo) ?? null;
+}
+
 /** How many ledger rows to render at once; grows via "Tampilkan lebih banyak". */
 const PAGE_SIZE = 100;
-
-function monthRange() {
-  const now = new Date();
-  return {
-    from: localDateStr(new Date(now.getFullYear(), now.getMonth(), 1)),
-    to: localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-  };
-}
 
 export function FinancePage() {
   const [modalKind, setModalKind] = useState<'income' | 'expense' | null>(null);
@@ -96,7 +98,7 @@ export function FinancePage() {
     [incomes, expenses, from, to],
   );
 
-  // Arus kas pemilik bulan ini, dihitung TERPISAH dari laba. Ditampilkan supaya
+  // Arus kas pemilik bulan ini, dihitung TERPISAH dari arus kas operasional. Ditampilkan supaya
   // turunnya Pemasukan setelah re-kategorisasi ada penjelasannya — bukan angka
   // yang hilang diam-diam.
   const capital = useMemo(() => {
@@ -199,35 +201,56 @@ export function FinancePage() {
         const isSettle = svc
           ? inc.description === settlementIncomeDescription(svc.serviceNo)
           : false;
-        const legs = isSettle
-          ? incomes.filter(
-              (i) =>
-                i.serviceId === inc.serviceId &&
-                !i.deletedAt &&
-                i.description === inc.description,
-            )
-          : [inc];
+        // Selisih Koreksi Biaya (0063): menghapusnya tidak membatalkan pelunasan,
+        // tapi biaya final tiketnya kembali sebesar selisih itu.
+        const correctionDesc = svc ? costCorrectionDescription(svc.serviceNo) : '';
+        const isCorrection = !!svc && inc.description === correctionDesc;
+        const revert = !!svc && svc.status === 'lunas' && !isDp && !isCorrection;
+        const legs = [
+          ...(isSettle
+            ? incomes.filter(
+                (i) =>
+                  i.serviceId === inc.serviceId &&
+                  !i.deletedAt &&
+                  i.description === inc.description,
+              )
+            : [inc]),
+          // Pelunasan dibatalkan → koreksinya ikut dibatalkan. Pelunasan ulang
+          // menagih biaya final hasil koreksi, jadi selisihnya tak boleh tercatat dua kali.
+          ...(revert
+            ? incomes.filter(
+                (i) => i.serviceId === inc.serviceId && !i.deletedAt && i.description === correctionDesc,
+              )
+            : []),
+        ];
+        const correctionRefunds = revert
+          ? expenses.filter((e) => !e.deletedAt && e.description === correctionDesc)
+          : [];
         // Net per wallet first — two legs on the same wallet must not both
         // apply against the same stale cached balance.
         const deltas = new Map<string, number>();
         for (const leg of legs)
           deltas.set(leg.walletId, (deltas.get(leg.walletId) ?? 0) - leg.amount);
+        for (const exp of correctionRefunds)
+          deltas.set(exp.walletId, (deltas.get(exp.walletId) ?? 0) + exp.amount);
         for (const [wid, d] of deltas) {
           const w = wallets.find((x) => x.id === wid);
           if (w) await repository.put('wallets', applyBalance(w, d));
         }
         for (const leg of legs) await repository.remove('incomes', leg.id);
+        for (const exp of correctionRefunds) await repository.remove('expenses', exp.id);
 
         if (svc) {
           const nextDp = isDp
             ? Math.max(0, svc.downPayment - inc.amount)
             : svc.downPayment;
-          const revert = svc.status === 'lunas' && !isDp;
-          if (revert || nextDp !== svc.downPayment) {
+          const nextFinal = isCorrection ? Math.max(0, svc.finalCost - inc.amount) : svc.finalCost;
+          if (revert || nextDp !== svc.downPayment || nextFinal !== svc.finalCost) {
             await repository.put('services', {
               ...svc,
               status: revert ? 'selesai' : svc.status,
               downPayment: nextDp,
+              finalCost: nextFinal,
               history: [
                 ...(svc.history ?? []),
                 {
@@ -237,7 +260,9 @@ export function FinancePage() {
                   byName: 'Sistem',
                   note: revert
                     ? 'Pelunasan dibatalkan (pemasukan dihapus)'
-                    : `DP ${fmtRp(inc.amount)} dihapus dari keuangan`,
+                    : isCorrection
+                      ? `Koreksi biaya ${fmtRp(inc.amount)} dihapus dari keuangan: biaya final ${fmtRp(svc.finalCost)} → ${fmtRp(nextFinal)}`
+                      : `DP ${fmtRp(inc.amount)} dihapus dari keuangan`,
                   internal: !revert,
                 },
               ],
@@ -253,9 +278,32 @@ export function FinancePage() {
         });
       } else {
         const exp = toDelete.record as Expense;
+        // Refund Koreksi Biaya (biaya diturunkan) dihapus → biaya final tiketnya
+        // naik lagi sebesar refund itu. Pengeluaran tak punya service_id, jadi
+        // tiketnya dicari dari nomor di deskripsi.
+        const correctedNo = serviceNoFromCorrection(exp.description);
+        const corrected = correctedNo ? await findServiceByNo(correctedNo) : null;
         if (wallet)
           await repository.put('wallets', applyBalance(wallet, reverseExpenseDelta(exp)));
         await repository.remove('expenses', toDelete.id);
+        if (corrected) {
+          const nextFinal = corrected.finalCost + exp.amount;
+          await repository.put('services', {
+            ...corrected,
+            finalCost: nextFinal,
+            history: [
+              ...(corrected.history ?? []),
+              {
+                at: new Date().toISOString(),
+                status: 'edit',
+                by: '',
+                byName: 'Sistem',
+                note: `Refund koreksi biaya ${fmtRp(exp.amount)} dihapus dari keuangan: biaya final ${fmtRp(corrected.finalCost)} → ${fmtRp(nextFinal)}`,
+                internal: true,
+              },
+            ],
+          });
+        }
         logActivity({
           action: 'expense.delete',
           entityType: 'expense',
@@ -321,7 +369,7 @@ export function FinancePage() {
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
         <div className={[styles.summaryCard, styles.net].join(' ')}>
-          <span>Laba Bersih</span>
+          <span>Arus Kas Bersih</span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
       </div>
@@ -342,8 +390,8 @@ export function FinancePage() {
               prive <strong>{fmtRp(capital.prive)}</strong>
             </>
           )}
-          . Saldo wallet sudah termasuk ini, tapi tidak dihitung sebagai omzet maupun
-          laba.
+          . Saldo wallet sudah termasuk ini, tapi tidak dihitung sebagai pemasukan,
+          pengeluaran, maupun arus kas bersih di atas.
         </p>
       )}
 

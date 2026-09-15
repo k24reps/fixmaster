@@ -12,6 +12,7 @@ import type {
 } from './repository';
 import type { ID } from './types';
 import { SERVICE_LIST_COLUMNS } from './types';
+import { serviceSearchFilter } from '@/lib/business/serviceFilters';
 
 /** Map each repository collection to its Postgres table name. */
 const TABLE: Record<CollectionName, string> = {
@@ -66,15 +67,16 @@ const OUTLET_SCOPED: ReadonlySet<CollectionName> = new Set<CollectionName>([
 
 /**
  * Translate a Supabase write error. A row-level-security violation (Postgres
- * 42501) on a write almost always means the org's subscription has lapsed
- * (is_org_active = false, migration 0010) — surface that in plain Indonesian
- * instead of the raw "row-level security policy" message. Other errors pass
- * through unchanged.
+ * 42501) means EITHER the org's subscription has lapsed (is_org_active, 0010)
+ * OR the role may not write this table (manager-only policies, 0017) — the
+ * policy can't tell us which, so the message names both instead of blaming the
+ * subscription (dulu karyawan yang ditolak mengira langganannya habis). Other
+ * errors pass through unchanged.
  */
 function rethrowWrite(error: { code?: string; message?: string }): never {
   if (error.code === '42501') {
     throw new Error(
-      'Langganan kedaluwarsa atau melebihi kuota — perpanjang di Pengaturan → Langganan untuk melanjutkan.',
+      'Ditolak: tindakan ini butuh peran owner/admin, atau langganan sudah kedaluwarsa (cek Pengaturan → Langganan).',
     );
   }
   throw error;
@@ -278,6 +280,31 @@ export class SupabaseAdapter implements Repository {
     const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
+  }
+
+  async queryServices(opts: {
+    term?: string;
+    createdFrom?: string;
+    createdTo?: string;
+    limit: number;
+  }): Promise<EntityMap['services'][]> {
+    let query = this.client
+      .from(TABLE.services)
+      .select(SERVICE_LIST_COLUMNS)
+      .eq('org_id', this.orgId)
+      .is('deleted_at', null);
+    if (this.outletId) {
+      query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
+    }
+    const search = serviceSearchFilter(opts.term ?? '');
+    if (search) query = query.or(search);
+    if (opts.createdFrom) query = query.gte('created_at', opts.createdFrom);
+    if (opts.createdTo) query = query.lt('created_at', opts.createdTo);
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(opts.limit);
+    if (error) throw error;
+    return (data ?? []).map((r) =>
+      fromRow<EntityMap['services']>(r as unknown as Record<string, unknown>),
+    );
   }
 
   async get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null> {

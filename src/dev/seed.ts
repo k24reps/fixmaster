@@ -115,7 +115,7 @@ export async function seedDemoWorkspace(): Promise<void> {
   const inventory: InventoryItem[] = [
     { ...at(oPusat), id: newId(), name: 'Keyboard MacBook A1989', category: 'Sparepart', sku: 'KB-A1989', stock: 3, minStock: 2, costPrice: 850_000, sellPrice: 1_250_000, supplierId: null },
     { ...at(oPusat), id: newId(), name: 'SSD NVMe 512GB', category: 'Sparepart', sku: 'SSD-512', stock: 10, minStock: 4, costPrice: 620_000, sellPrice: 950_000, supplierId: null },
-    { ...at(oDago), id: newId(), name: 'Baterai A1964 58Wh', category: 'Sparepart', sku: 'BT-A1964', stock: 1, minStock: 3, costPrice: 720_000, sellPrice: 1_100_000, supplierId: null },
+    { ...at(oDago), id: newId(), name: 'Baterai A1964 58Wh', category: 'Sparepart', sku: 'BT-A1964', stock: 1, minStock: 3, costPrice: 720_000, sellPrice: 1_100_000, supplierId: null, warrantyDays: 90 },
     { ...at(oDago), id: newId(), name: 'Thermal Paste MX-4', category: 'Consumable', sku: 'TP-MX4', stock: 24, minStock: 5, costPrice: 45_000, sellPrice: 90_000, supplierId: null },
     { ...at(oCimahi), id: newId(), name: 'LCD iPhone 12', category: 'Sparepart', sku: 'LCD-IP12', stock: 2, minStock: 2, costPrice: 1_350_000, sellPrice: 1_950_000, supplierId: null },
   ];
@@ -174,7 +174,10 @@ export async function seedDemoWorkspace(): Promise<void> {
       estimateCost: finalCost || 500_000,
       finalCost,
       downPayment,
-      spareparts,
+      // Tiket yang sudah Selesai membawa garansi per part, seperti tiket nyata.
+      spareparts: done
+        ? spareparts.map((sp) => ({ ...sp, warrantyDays: 7, warrantyUntil: addDays(today, 7) }))
+        : spareparts,
       warrantyServiceUntil: done ? addDays(today, 30) : null,
       warrantyPartsUntil: done ? addDays(today, 7) : null,
       pickedUp,

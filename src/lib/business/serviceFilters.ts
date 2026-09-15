@@ -34,6 +34,19 @@ export function matchesQuery(
 }
 
 /**
+ * Filter `or(...)` PostgREST untuk mencari tiket di server, dipakai menu Servis
+ * saat daftarnya terpotong. Karakter sintaks filter dibuang supaya kata kunci
+ * tidak bisa menyisipkan filter lain. null bila kata kuncinya kosong.
+ */
+export function serviceSearchFilter(term: string): string | null {
+  const clean = term.replace(/[,()*%"\\]/g, ' ').trim();
+  if (!clean) return null;
+  return ['service_no', 'customer_name', 'customer_phone', 'device', 'complaint']
+    .map((column) => `${column}.ilike."%${clean}%"`)
+    .join(',');
+}
+
+/**
  * `filter`: 'all' | 'me' | 'none' | id karyawan. Tiket lama (dan data contoh)
  * kadang hanya menyimpan nama teknisi tanpa id, jadi nama jadi cadangan.
  */
