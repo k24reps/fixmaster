@@ -11,11 +11,17 @@
  *  - CACHE name is versioned; bump CACHE_VERSION on shell changes.
  *  - activate → delete all caches that don't match → no "stuck" old shells.
  *  - skipWaiting + clients.claim → updates take effect on next load.
- *  - Vite assets under /assets/ are content-hashed, so cache-first is safe.
  *  - Navigations use network-first, falling back to cached index.html offline.
+ *  - /assets/ TIDAK disentuh SW (v4). Dulu cache-first di sini: setelah deploy
+ *    14 Sep, halaman yang dikendalikan SW memuat index.html baru tetapi skrip
+ *    entry & vendor-nya gagal `net::ERR_FAILED` — padahal fetch SW sendiri
+ *    untuk file yang sama menjawab 200 — dan React tak pernah terpasang
+ *    (halaman kosong sampai dibuka ulang). Aset ber-hash sudah `immutable`
+ *    1 tahun di cache HTTP (vercel.json), jadi SW tidak menambah apa pun selain
+ *    titik gagal — dan cache-nya menumpuk semua versi aset tiap deploy.
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE = `fixmaster-shell-${CACHE_VERSION}`;
 
 /**
@@ -32,24 +38,6 @@ function putIfOk(request, response) {
   if (!response || !response.ok || response.status === 206) return;
   const copy = response.clone();
   caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
-}
-
-/**
- * Aset ber-hash yang hilang tidak selalu menjawab 404. Server yang memakai
- * fallback SPA menjawab 200 dengan index.html — lolos dari pemeriksaan
- * `response.ok` di atas, lalu diawetkan cache-first dan disajikan sebagai
- * JavaScript selamanya. Browser menolaknya dengan "Expected a
- * JavaScript-or-Wasm module script but the server responded with a MIME
- * type of text/html", dan memuat ulang halaman TIDAK menolong karena
- * jawabannya datang dari cache, bukan jaringan.
- *
- * Produksi saat ini menjawab 404 yang benar (vercel.json memakai daftar
- * rute eksplisit, bukan catch-all), tetapi `vite preview` tidak — dan satu
- * perubahan konfigurasi cukup untuk mengembalikan perilaku itu. Murah untuk
- * dijaga di sini.
- */
-function looksLikeSpaFallback(response) {
-  return (response.headers.get('content-type') || '').toLowerCase().includes('text/html');
 }
 
 // Minimal shell precache. Hashed assets are cached lazily on first fetch.
@@ -106,20 +94,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Hashed build assets: cache-first (immutable, content-hashed by Vite).
-  if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(
-      caches.match(req).then(
-        (cached) =>
-          cached ||
-          fetch(req).then((res) => {
-            if (!looksLikeSpaFallback(res)) putIfOk(req, res);
-            return res;
-          }),
-      ),
-    );
-    return;
-  }
+  // Hashed build assets: langsung ke jaringan/cache HTTP browser (lihat header).
+  if (url.pathname.startsWith('/assets/')) return;
 
   // Other same-origin GETs (icons, og-image): stale-while-revalidate.
   event.respondWith(
