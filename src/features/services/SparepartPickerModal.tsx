@@ -62,6 +62,7 @@ export function SparepartPickerModal({
       sellPrice: item.sellPrice,
       deducted: false,
       kind: 'inventory',
+      defaultWarrantyDays: item.warrantyDays ?? null,
     };
     onPick(line);
     onClose();

@@ -24,6 +24,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const [minStock, setMinStock] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
+  const [warrantyDays, setWarrantyDays] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -35,6 +36,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     setMinStock(editing ? String(editing.minStock) : '');
     setCostPrice(editing?.costPrice ? fmtRpInput(String(editing.costPrice)) : '');
     setSellPrice(editing?.sellPrice ? fmtRpInput(String(editing.sellPrice)) : '');
+    setWarrantyDays(editing?.warrantyDays != null ? String(editing.warrantyDays) : '');
     setError('');
   });
 
@@ -60,6 +62,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
       costPrice: parseRpInput(costPrice),
       sellPrice: parseRpInput(sellPrice),
       supplierId: editing?.supplierId ?? null,
+      warrantyDays: warrantyDays.trim() === '' ? null : Math.max(0, Math.round(Number(warrantyDays) || 0)),
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
@@ -127,6 +130,16 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
           <Input label="Harga Modal (HPP)" value={costPrice} onChange={(e) => setCostPrice(fmtRpInput(e.target.value))} placeholder="60.000" />
           <Input label="Harga Jual" value={sellPrice} onChange={(e) => setSellPrice(fmtRpInput(e.target.value))} placeholder="100.000" />
         </FormRow>
+        <Input
+          label="Garansi Bawaan (hari)"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={warrantyDays}
+          onChange={(e) => setWarrantyDays(e.target.value)}
+          placeholder="Kosongkan = garansi part toko"
+          hint="Isian awal garansi saat part ini dipasang di tiket; tetap bisa diubah saat Selesai"
+        />
       </FormFields>
     </Modal>
   );
