@@ -14,6 +14,12 @@ interface TransferModalProps {
   open: boolean;
   onClose: () => void;
   wallets: Wallet[];
+  /**
+   * Isian awal — dipakai "Balikkan transfer" di Buku Kas. Transfer tidak
+   * membukukan baris kas, jadi membatalkannya = membuat transfer kebalikannya,
+   * bukan menghapus jejak.
+   */
+  initial?: { fromId: string; toId: string; amount: number } | null;
 }
 
 /**
@@ -22,7 +28,7 @@ interface TransferModalProps {
  * moves balance. Mirrors the tested helper `transfer` + cloud RPC used in
  * Settings, surfaced here where managers actually manage cash.
  */
-export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
+export function TransferModal({ open, onClose, wallets, initial = null }: TransferModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
@@ -36,11 +42,11 @@ export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
     // Default both selects to real wallets so the displayed option matches
     // state. A native <select> with an unmatched value silently shows the
     // first option while state stays empty → misleading "pick wallet" error.
-    const first = wallets[0]?.id ?? '';
-    const second = wallets.find((w) => w.id !== first)?.id ?? '';
+    const first = initial?.fromId || wallets[0]?.id || '';
+    const second = initial?.toId || wallets.find((w) => w.id !== first)?.id || '';
     setFromId(first);
     setToId(second);
-    setAmount('');
+    setAmount(initial ? fmtRpInput(String(initial.amount)) : '');
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
@@ -69,13 +75,18 @@ export function TransferModal({ open, onClose, wallets }: TransferModalProps) {
         await repository.put('wallets', { ...result.fromWallet!, updatedAt: now });
         await repository.put('wallets', { ...result.toWallet!, updatedAt: now });
       }
-      logActivity({
-        action: 'wallet.transfer',
-        entityType: 'wallet',
-        entityId: fromId,
-        entityLabel: `${from.name} → ${to.name}`,
-        meta: { amount: value, toWalletId: toId },
-      });
+      // Cloud: transfer_wallet mencatat jejaknya sendiri (0073). Transfer tak
+      // membukukan baris kas apa pun, jadi log itu satu-satunya buktinya dan
+      // tidak boleh bergantung pada browser yang masih hidup.
+      if (!isCloudMode()) {
+        logActivity({
+          action: 'wallet.transfer',
+          entityType: 'wallet',
+          entityId: fromId,
+          entityLabel: `${from.name} → ${to.name}`,
+          meta: { amount: value, toWalletId: toId },
+        });
+      }
       toast.success(`Transfer ${fmtRp(value)}: ${from.name} → ${to.name}`);
       onClose();
     } catch (e) {

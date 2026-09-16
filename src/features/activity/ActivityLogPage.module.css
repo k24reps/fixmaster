@@ -335,7 +335,7 @@
 }
 .actorIcon {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 .time {
   font-family: var(--font-mono);

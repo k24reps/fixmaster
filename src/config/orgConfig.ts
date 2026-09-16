@@ -1,6 +1,6 @@
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
-import type { MonthlyTarget } from '@/data/types';
+import type { MonthlyTarget, OrgSettings } from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
 import { resolveServiceColumns, type ServiceColumnId } from '@/lib/business/serviceColumns';
 
@@ -137,48 +137,85 @@ export async function seedCategoriesFromLocal(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Tulis sebagian setelan ke BARIS ORGANISASI, lalu segarkan sesi supaya
+ * pembacanya (form servis, StatusModal, NotifyModal) langsung ikut berubah.
+ * Salinan localStorage tetap ditulis pemanggil sebagai cadangan mode lokal.
+ */
+async function patchSettings(patch: Partial<OrgSettings>): Promise<void> {
+  const org = useSessionStore.getState().org;
+  if (!org) return;
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), ...patch },
+  });
+  useSessionStore.setState({ org: saved });
+}
+
+function settings(): OrgSettings {
+  return useSessionStore.getState().org?.settings ?? {};
+}
+
 /** Default service/labor warranty length (days) prefilled when a job is finished. */
 export function getWarrantyServiceDays(): number {
+  const cloud = settings().warrantyServiceDays;
+  if (typeof cloud === 'number' && cloud >= 0) return cloud;
   const raw = localStorage.getItem(`fixmaster-warranty-service-days-${orgId()}`);
   const n = raw ? Number(raw) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : 30;
 }
-export function setWarrantyServiceDays(days: number): void {
-  localStorage.setItem(`fixmaster-warranty-service-days-${orgId()}`, String(Math.max(0, Math.round(days))));
+export async function setWarrantyServiceDays(days: number): Promise<void> {
+  const clean = Math.max(0, Math.round(days));
+  localStorage.setItem(`fixmaster-warranty-service-days-${orgId()}`, String(clean));
+  await patchSettings({ warrantyServiceDays: clean });
 }
 
 /** Default spare-part warranty length (days) prefilled when a job is finished. */
 export function getWarrantyPartsDays(): number {
+  const cloud = settings().warrantyPartsDays;
+  if (typeof cloud === 'number' && cloud >= 0) return cloud;
   const raw = localStorage.getItem(`fixmaster-warranty-parts-days-${orgId()}`);
   const n = raw ? Number(raw) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : 7;
 }
-export function setWarrantyPartsDays(days: number): void {
-  localStorage.setItem(`fixmaster-warranty-parts-days-${orgId()}`, String(Math.max(0, Math.round(days))));
+export async function setWarrantyPartsDays(days: number): Promise<void> {
+  const clean = Math.max(0, Math.round(days));
+  localStorage.setItem(`fixmaster-warranty-parts-days-${orgId()}`, String(clean));
+  await patchSettings({ warrantyPartsDays: clean });
 }
+
+const DEFAULT_WARRANTY_PRESETS = [3, 7, 14, 30, 90];
 
 /** Quick-pick warranty duration presets (days), shown as chips in StatusModal. */
 export function getWarrantyPresets(): number[] {
+  const cloud = settings().warrantyPresets;
+  if (Array.isArray(cloud) && cloud.length > 0) return cloud;
   const raw = localStorage.getItem(`fixmaster-warranty-presets-${orgId()}`);
-  if (!raw) return [3, 7, 14, 30, 90];
+  if (!raw) return DEFAULT_WARRANTY_PRESETS;
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (Array.isArray(parsed)) {
       const nums = parsed.map(Number).filter((n) => Number.isFinite(n) && n >= 0);
-      return nums.length ? Array.from(new Set(nums)).sort((a, b) => a - b) : [3, 7, 14, 30, 90];
+      return nums.length
+        ? Array.from(new Set(nums)).sort((a, b) => a - b)
+        : DEFAULT_WARRANTY_PRESETS;
     }
   } catch {
     /* fall through */
   }
-  return [3, 7, 14, 30, 90];
+  return DEFAULT_WARRANTY_PRESETS;
 }
-export function setWarrantyPresets(presets: number[]): void {
-  const clean = Array.from(new Set(presets.map((n) => Math.max(0, Math.round(n))))).sort((a, b) => a - b);
+export async function setWarrantyPresets(presets: number[]): Promise<void> {
+  const clean = Array.from(new Set(presets.map((n) => Math.max(0, Math.round(n))))).sort(
+    (a, b) => a - b,
+  );
   localStorage.setItem(`fixmaster-warranty-presets-${orgId()}`, JSON.stringify(clean));
+  await patchSettings({ warrantyPresets: clean });
 }
 
-/** Generic list-of-strings getter for org-scoped config keys. */
-function getStringList(key: string): string[] {
+/** Daftar teks org-scoped: baris organisasi dulu, localStorage sebagai cadangan. */
+function getStringList(key: string, cloud: string[] | undefined): string[] {
+  if (Array.isArray(cloud) && cloud.length > 0) return cloud;
   const raw = localStorage.getItem(`fixmaster-${key}-${orgId()}`);
   if (!raw) return [];
   try {
@@ -189,24 +226,22 @@ function getStringList(key: string): string[] {
   }
 }
 
-function setStringList(key: string, list: string[]): void {
-  localStorage.setItem(`fixmaster-${key}-${orgId()}`, JSON.stringify(list));
-}
-
 /** Reusable complaint templates shown as quick-picks in the service form. */
 export function getComplaintTemplates(): string[] {
-  return getStringList('complaints');
+  return getStringList('complaints', settings().complaintTemplates);
 }
-export function setComplaintTemplates(list: string[]): void {
-  setStringList('complaints', list);
+export async function setComplaintTemplates(list: string[]): Promise<void> {
+  localStorage.setItem(`fixmaster-complaints-${orgId()}`, JSON.stringify(list));
+  await patchSettings({ complaintTemplates: list });
 }
 
 /** Reusable accessory/kelengkapan templates for the service form. */
 export function getAccessoryTemplates(): string[] {
-  return getStringList('accessories');
+  return getStringList('accessories', settings().accessoryTemplates);
 }
-export function setAccessoryTemplates(list: string[]): void {
-  setStringList('accessories', list);
+export async function setAccessoryTemplates(list: string[]): Promise<void> {
+  localStorage.setItem(`fixmaster-accessories-${orgId()}`, JSON.stringify(list));
+  await patchSettings({ accessoryTemplates: list });
 }
 
 /**
@@ -214,6 +249,8 @@ export function setAccessoryTemplates(list: string[]): void {
  * stored; missing keys fall back to DEFAULT_WA_TEMPLATES via resolveWaTemplates.
  */
 export function getWaTemplateOverrides(): Record<string, string> {
+  const cloud = settings().waTemplates;
+  if (cloud && Object.keys(cloud).length > 0) return cloud;
   const raw = localStorage.getItem(`fixmaster-wa-templates-${orgId()}`);
   if (!raw) return {};
   try {
@@ -230,22 +267,44 @@ export function getWaTemplateOverrides(): Record<string, string> {
   }
   return {};
 }
-export function setWaTemplateOverrides(overrides: Record<string, string>): void {
+export async function setWaTemplateOverrides(
+  overrides: Record<string, string>,
+): Promise<void> {
   localStorage.setItem(`fixmaster-wa-templates-${orgId()}`, JSON.stringify(overrides));
+  await patchSettings({ waTemplates: overrides });
 }
 
+const NO_TARGET: MonthlyTarget = { revenue: 0, serviceCount: 0, overheadBudget: 0 };
+
+/**
+ * Target bulanan & overhead budget. Dibaca dari baris organisasi supaya sama di
+ * semua perangkat; salinan localStorage lama tetap dipakai sebagai cadangan
+ * untuk toko yang belum sempat menyimpan ulang. Dulu HANYA localStorage, jadi
+ * Indikator Break-Even di Laporan berbeda antara laptop dan HP — dan hilang
+ * begitu data browser dibersihkan.
+ */
 export function getTarget(): MonthlyTarget {
+  const cloud = useSessionStore.getState().org?.settings?.monthlyTarget;
+  if (cloud) return cloud;
   const raw = localStorage.getItem(`fixmaster-target-${orgId()}`);
-  if (!raw) return { revenue: 0, serviceCount: 0, overheadBudget: 0 };
+  if (!raw) return NO_TARGET;
   try {
     return JSON.parse(raw) as MonthlyTarget;
   } catch {
-    return { revenue: 0, serviceCount: 0, overheadBudget: 0 };
+    return NO_TARGET;
   }
 }
 
-export function setTarget(target: MonthlyTarget): void {
+/** Simpan target ke baris organisasi (tersinkron), dengan cadangan lokal. */
+export async function setTarget(target: MonthlyTarget): Promise<void> {
   localStorage.setItem(`fixmaster-target-${orgId()}`, JSON.stringify(target));
+  const org = useSessionStore.getState().org;
+  if (!org) return;
+  const saved = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), monthlyTarget: target },
+  });
+  useSessionStore.setState({ org: saved });
 }
 
 /**

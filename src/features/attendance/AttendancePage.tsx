@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
+import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
 import { clockIn, clockOut } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
@@ -25,14 +26,23 @@ import type { Attendance } from '@/data/types';
 import styles from './AttendancePage.module.css';
 
 export function AttendancePage() {
-  const { data: attendance, refetch, ...attendanceRest } = useCollection('attendance');
+  const today = localDateStr();
+  // Papan hari ini: satu hari saja. Dulu halaman ini menarik SELURUH tabel
+  // absensi lewat daftar biasa, yang diam-diam terpotong 1.000 baris — untuk
+  // tim lima orang itu sekitar enam bulan, dan sesudahnya rekap gaji periode
+  // lama tampil kosong tanpa satu pun tanda bahwa datanya tidak lengkap.
+  const { data: todayRows, refetch, ...attendanceRest } = useCollectionRange(
+    'attendance',
+    'date',
+    today,
+    today,
+  );
   const attendanceLoad = { ...attendanceRest, refetch };
   const { data: outlets } = useCollection('outlets');
   const { data: employees } = useCollection('employees');
   const me = useSessionStore((s) => s.currentEmployee);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
-  const today = localDateStr();
   // Halaman ini sengaja TIDAK memakai isManager(). Absensi seluruh tim adalah
   // data upah plus pola kehadiran orang lain, dan itu milik PEMILIK — bukan
   // siapa pun yang kebetulan berperan manager. Admin memang manager untuk
@@ -46,6 +56,10 @@ export function AttendancePage() {
   const [editRow, setEditRow] = useState<Attendance | null>(null);
   const [creating, setCreating] = useState(false);
   const [editEmp, setEditEmp] = useState('');
+  // Cabang absensi manual dipilih eksplisit. Dulu selalu memakai cabang yang
+  // sedang AKTIF di layar pemilik — jadi absensi bisa tercatat ke cabang yang
+  // bukan tempat orangnya bekerja.
+  const [editOutlet, setEditOutlet] = useState('');
   const [editDate, setEditDate] = useState(today);
   const [editIn, setEditIn] = useState('');
   const [editOut, setEditOut] = useState('');
@@ -62,14 +76,22 @@ export function AttendancePage() {
   const [to, setTo] = useState(today);
   const [historyEmp, setHistoryEmp] = useState('all');
   const rangeValid = from <= to;
+  // Rekap & riwayat mengambil PERSIS periode yang dipilih dari server, jadi
+  // periode setahun lalu sama lengkapnya dengan bulan ini.
+  const { data: periodRows, ...periodLoad } = useCollectionRange(
+    'attendance',
+    'date',
+    rangeValid ? from : to,
+    to,
+  );
   // Rekap owner-only. Isinya jam kerja SELURUH karyawan sepanjang periode —
   // dasar perhitungan upah dan sekaligus potret siapa yang sering telat.
   // Sebelumnya saya buka untuk manager dengan alasan "admin boleh mengoreksi,
   // jadi harus bisa memeriksa hasilnya". Itu keliru: yang perlu diperiksa
   // admin adalah barisnya sendiri, bukan rekap satu toko.
   const recap = useMemo(
-    () => (owner ? hoursByEmployee(attendance, from, to) : []),
-    [attendance, from, to, owner],
+    () => (owner ? hoursByEmployee(periodRows, from, to) : []),
+    [periodRows, from, to, owner],
   );
 
   // Outlet whose geofence applies to this check-in: the active branch if one is
@@ -98,6 +120,7 @@ export function AttendancePage() {
     setEditRow(null);
     setCreating(true);
     setEditEmp('');
+    setEditOutlet(targetOutlet?.id ?? '');
     setEditDate(today);
     setEditIn(localTimeStr());
     setEditOut('');
@@ -120,8 +143,12 @@ export function AttendancePage() {
 
   const saveEdit = async () => {
     if (!editRow && !creating) return;
-    const checkIn = editIn.trim() || null;
-    const checkOut = editOut.trim() || null;
+    // Izin/sakit/alpha bukan shift: jamnya dikosongkan di sini supaya yang
+    // tersimpan sama dengan yang dibaca semua penghitung (server menegakkan
+    // aturan yang sama, 0076).
+    const absent = editStatus !== 'hadir';
+    const checkIn = absent ? null : editIn.trim() || null;
+    const checkOut = absent ? null : editOut.trim() || null;
     // Input-nya kini type="time", tapi nilai bisa datang dari paste atau
     // browser lama. Tanpa penjagaan ini "8" tersimpan apa adanya dan
     // calcHours mengembalikan 0 — sehari upah hilang tanpa satu peringatan.
@@ -144,7 +171,9 @@ export function AttendancePage() {
           return;
         }
         // One row per employee per day — a second one would double-count hours.
-        if (attendance.some((a) => a.employeeId === emp.id && a.date === editDate)) {
+        // Pemeriksaan ramah di klien; indeks unik di database (0054) yang
+        // benar-benar menjaminnya, termasuk untuk tanggal di luar periode ini.
+        if ([...todayRows, ...periodRows].some((a) => a.employeeId === emp.id && a.date === editDate)) {
           toast.error(`${emp.name} sudah punya absensi ${fmtDate(editDate)}`);
           return;
         }
@@ -152,7 +181,7 @@ export function AttendancePage() {
         await repository.put('attendance', {
           id: newId(),
           orgId,
-          outletId: targetOutlet?.id ?? null,
+          outletId: editOutlet || targetOutlet?.id || null,
           employeeId: emp.id,
           employeeName: emp.name,
           date: editDate,
@@ -231,8 +260,8 @@ export function AttendancePage() {
   // (dijamin indeks di migrasi 0054). Tiga turunan di bawah dibaca darinya,
   // bukan dari tiga pencarian terpisah yang bisa saling bertentangan.
   const myRow = useMemo(
-    () => attendance.find((a) => a.employeeId === me?.id && a.date === today) ?? null,
-    [attendance, me, today],
+    () => todayRows.find((a) => a.employeeId === me?.id && a.date === today) ?? null,
+    [todayRows, me, today],
   );
   // Izin/sakit/alpha bukan shift. Dulu ketiganya lolos ke myTodayDone dan
   // membuat papan jam menampilkan "Selesai · 8.75 jam" untuk orang yang
@@ -242,8 +271,8 @@ export function AttendancePage() {
   const myTodayDone = myRow && !myAbsent && myRow.checkIn && myRow.checkOut ? myRow : null;
 
   const todayRecords = useMemo(
-    () => attendance.filter((a) => a.date === today).sort((a, b) => (a.checkIn ?? '').localeCompare(b.checkIn ?? '')),
-    [attendance, today],
+    () => [...todayRows].sort((a, b) => (a.checkIn ?? '').localeCompare(b.checkIn ?? '')),
+    [todayRows],
   );
 
   const recentByDay = useMemo(() => {
@@ -256,7 +285,7 @@ export function AttendancePage() {
     // Ini" di atas tetap terbuka untuk semua — siapa yang sedang jaga adalah
     // informasi shift biasa. Yang sensitif adalah polanya sepanjang periode:
     // siapa sering telat, siapa sering absen.
-    const scoped = visibleAttendance(attendance, { isOwner: owner, employeeId: me?.id });
+    const scoped = visibleAttendance(periodRows, { isOwner: owner, employeeId: me?.id });
     // Difilter per periode, bukan dipotong 30 baris terakhir. Potongan lama
     // membuat tim 5 orang hanya punya enam hari riwayat, dan tidak ada cara
     // sama sekali melihat bulan lalu.
@@ -266,7 +295,7 @@ export function AttendancePage() {
     return scoped
       .filter((a) => a.date && withinRange(a.date, from, to))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.checkIn ?? '').localeCompare(a.checkIn ?? ''));
-  }, [attendance, owner, me, from, to, rangeValid]);
+  }, [periodRows, owner, me, from, to, rangeValid]);
 
   // Owner bisa menyempitkan riwayat tim ke satu karyawan. Pilihannya diambil dari
   // SEMUA baris yang boleh ia lihat (mantan karyawan yang punya riwayat tetap
@@ -275,7 +304,7 @@ export function AttendancePage() {
   // diam-diam kembali ke seluruh tim.
   const historyPeople = useMemo(() => {
     const people = new Map<string, { name: string; count: number }>();
-    for (const a of visibleAttendance(attendance, { isOwner: owner, employeeId: me?.id })) {
+    for (const a of visibleAttendance(periodRows, { isOwner: owner, employeeId: me?.id })) {
       if (!people.has(a.employeeId)) people.set(a.employeeId, { name: a.employeeName, count: 0 });
     }
     for (const a of recentByDay) {
@@ -283,7 +312,7 @@ export function AttendancePage() {
       if (person) person.count += 1;
     }
     return [...people.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name));
-  }, [attendance, owner, me, recentByDay]);
+  }, [periodRows, owner, me, recentByDay]);
   const historyEmpName =
     historyEmp === 'all' ? null : (historyPeople.find(([id]) => id === historyEmp)?.[1].name ?? null);
   const activeHistoryEmp = historyEmpName ? historyEmp : 'all';
@@ -297,27 +326,29 @@ export function AttendancePage() {
     // atau satu yang belum sempat refetch, menghasilkan dua baris dan rekap
     // yang menggelembung. Server menolaknya juga (migrasi 0053); ini hanya
     // supaya pesannya ramah, bukan lemparan RPC.
-    if (attendance.some((a) => a.employeeId === me.id && a.date === today)) {
+    if (todayRows.some((a) => a.employeeId === me.id && a.date === today)) {
       toast.error('Anda sudah tercatat absen hari ini');
       return;
     }
     setBusy(true);
     try {
-      // Cloud + geofenced outlet → request GPS and let the server re-validate
-      // the radius (the real security boundary). The RPC bypasses the adapter
-      // change-subscription, so we refetch manually afterward.
-      if (isCloudMode() && targetOutlet && hasGeofence(targetOutlet)) {
-        const pos = await getCurrentPosition();
+      // Cloud: SELALU lewat server, bukan hanya saat outletnya berpagar. Jalur
+      // tulis langsung memakai jam PERANGKAT — dan jam kerja adalah upah, jadi
+      // mengubah jam HP tidak boleh mengubah absensi. GPS hanya diminta kalau
+      // outletnya memang punya radius; servernya yang memvalidasi ulang.
+      if (isCloudMode() && targetOutlet) {
+        const pos = hasGeofence(targetOutlet) ? await getCurrentPosition() : null;
         await clockIn({
           orgId,
           outletId: targetOutlet.id,
           employeeId: me.id,
-          lat: pos.lat,
-          lng: pos.lng,
+          lat: pos?.lat ?? null,
+          lng: pos?.lng ?? null,
         });
+        // RPC melewati change-subscription adapter, jadi muat ulang manual.
         await refetch();
       } else {
-        // Legacy path: no geofence configured (or local mode) → direct write.
+        // Lokal/demo (atau toko tanpa outlet sama sekali) → tulis langsung.
         const now = new Date().toISOString();
         await repository.put('attendance', {
           id: newId(),
@@ -341,7 +372,8 @@ export function AttendancePage() {
         action: 'attendance.checkin',
         entityType: 'attendance',
         entityLabel: me.name,
-        meta: { time: localTimeStr(), outletId: targetOutlet?.id ?? null },
+        meta: { time: localTimeStr() },
+        outletId: targetOutlet?.id ?? null,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal check-in');
@@ -359,9 +391,13 @@ export function AttendancePage() {
       // server juga. Sebelumnya masuk dijaga GPS + jam server sementara pulang
       // ditulis langsung dari perangkat — separuh catatan jam kerja tidak
       // bisa dipercaya, dan separuh itulah yang menentukan upah.
-      if (isCloudMode() && targetOutlet && hasGeofence(targetOutlet)) {
-        const pos = await getCurrentPosition();
-        await clockOut({ attendanceId: myToday.id, lat: pos.lat, lng: pos.lng });
+      if (isCloudMode() && targetOutlet) {
+        const pos = hasGeofence(targetOutlet) ? await getCurrentPosition() : null;
+        await clockOut({
+          attendanceId: myToday.id,
+          lat: pos?.lat ?? null,
+          lng: pos?.lng ?? null,
+        });
         await refetch();
       } else {
         await repository.put('attendance', {
@@ -578,8 +614,8 @@ export function AttendancePage() {
             action={<span className={styles.periodTag}>{periodLabel}</span>}
           />
           <CardBody className={styles.noPad}>
-            {loadPending(attendanceLoad) ? (
-              <LoadState queries={[attendanceLoad]} />
+            {loadPending(periodLoad) ? (
+              <LoadState queries={[periodLoad]} />
             ) : recap.length === 0 ? (
               <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi pada periode ini" />
             ) : (
@@ -595,7 +631,20 @@ export function AttendancePage() {
                 {recap.map((r) => (
                   <div key={r.employeeId} className={styles.recapRow}>
                     <span className={styles.ledgerName}>{r.employeeName}</span>
-                    <span className={styles.hours}>{r.days}</span>
+                    {/* Hari hadir yang jam keluarnya tak pernah tercatat
+                        terhitung 0 jam. Tanpa penanda ini, kekurangan upah
+                        hanya ketahuan bila barisnya diperiksa satu per satu. */}
+                    <span className={styles.hours}>
+                      {r.days}
+                      {r.openShifts > 0 && (
+                        <small
+                          className={styles.openShift}
+                          title="Hari hadir yang jam keluarnya belum tercatat — hari itu terhitung 0 jam"
+                        >
+                          {r.openShifts} blm tutup
+                        </small>
+                      )}
+                    </span>
                     {/* Nol ditulis samar, bukan nol tebal: yang perlu terbaca
                         sekilas adalah kolom yang BERISI. */}
                     <span className={[styles.hours, r.izin ? '' : styles.muted].join(' ')}>{r.izin}</span>
@@ -636,8 +685,8 @@ export function AttendancePage() {
           }
         />
         <CardBody className={styles.noPad}>
-          {loadPending(attendanceLoad) ? (
-            <LoadState queries={[attendanceLoad]} />
+          {loadPending(periodLoad) ? (
+            <LoadState queries={[periodLoad]} />
           ) : historyRows.length === 0 ? (
             <EmptyState
               icon={<Icon name="calendar" aria-hidden />}
@@ -666,6 +715,19 @@ export function AttendancePage() {
                     {/* Catatan dulu bisa diisi tapi tidak pernah tampil di mana
                         pun — alasan sebuah koreksi hilang begitu modal ditutup. */}
                     {a.note && <small className={styles.rowNote}>{a.note}</small>}
+                    {/* Bukti lokasi (0076). Hanya pemilik yang melihatnya, dan
+                        hanya bila perangkat memang mengirimkannya. */}
+                    {owner && a.checkInLat != null && a.checkInLng != null && (
+                      <a
+                        className={styles.rowNote}
+                        href={`https://www.google.com/maps?q=${a.checkInLat},${a.checkInLng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Lokasi check-in
+                      </a>
+                    )}
                   </span>
                   <span className={styles.punch}>{a.checkIn ?? '—'}</span>
                   <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}>—</span>}</span>
@@ -734,6 +796,15 @@ export function AttendancePage() {
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
               />
+              {outlets.length > 1 && (
+                <Select
+                  label="Cabang"
+                  value={editOutlet}
+                  onChange={(e) => setEditOutlet(e.target.value)}
+                  options={outlets.map((o) => ({ value: o.id, label: o.name }))}
+                  hint="Cabang tempat orang ini bekerja hari itu"
+                />
+              )}
             </>
           )}
           {/* type="time" — pemilih jam bawaan browser. Sebelumnya ini teks

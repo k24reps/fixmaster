@@ -63,6 +63,13 @@ export function FinancePage() {
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [ledgerTab, setLedgerTab] = useState<'all' | LedgerKind>('all');
   const [transferOpen, setTransferOpen] = useState(false);
+  // Isian awal untuk "Balikkan transfer": transfer tak membukukan baris kas,
+  // jadi membatalkannya berarti membuat transfer kebalikannya.
+  const [transferInitial, setTransferInitial] = useState<{
+    fromId: string;
+    toId: string;
+    amount: number;
+  } | null>(null);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
   // How many past months of ledger to also load. 0 = current month only.
   const [monthsBack, setMonthsBack] = useState(0);
@@ -194,13 +201,9 @@ export function FinancePage() {
         // servis dibalik bersama. Jalur di bawah ini untuk lokal/demo.
         const rec = toDelete.record as Income | Expense;
         await deleteFinanceEntry({ orgId: rec.orgId, kind: toDelete.kind, id: toDelete.id });
-        logActivity({
-          action: toDelete.kind === 'income' ? 'income.delete' : 'expense.delete',
-          entityType: toDelete.kind,
-          entityId: toDelete.id,
-          entityLabel: rec.description || rec.category,
-          meta: { amount: rec.amount, category: rec.category },
-        });
+        // Penghapusan dicatat oleh database (0073) — nominal & keterangannya
+        // terekam dari baris yang dihapus, bukan dari browser yang mungkin
+        // sudah tertutup saat servernya selesai.
       } else if (toDelete.kind === 'income') {
         const inc = toDelete.record as Income;
         // Service-linked income needs type-aware reversal: a DP delete must
@@ -424,7 +427,10 @@ export function FinancePage() {
         {wallets.length >= 2 && (
           <Button
             variant="secondary"
-            onClick={() => setTransferOpen(true)}
+            onClick={() => {
+              setTransferInitial(null);
+              setTransferOpen(true);
+            }}
             iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
           >
             Transfer
@@ -509,7 +515,23 @@ export function FinancePage() {
                         {dir}
                         {fmtRp(r.amount)}
                       </span>
-                      <span className={styles.tapeBtns} />
+                      <span className={styles.tapeBtns}>
+                        <button
+                          className={styles.iconBtn}
+                          onClick={() => {
+                            setTransferInitial({
+                              fromId: r.toWalletId ?? '',
+                              toId: r.walletId,
+                              amount: r.amount,
+                            });
+                            setTransferOpen(true);
+                          }}
+                          aria-label="Balikkan transfer"
+                          title="Balikkan transfer — buat transfer kebalikannya"
+                        >
+                          <Icon name="arrow-right-arrow-left" aria-hidden />
+                        </button>
+                      </span>
                     </div>
                   );
                 }
@@ -526,6 +548,9 @@ export function FinancePage() {
                   r.kind === 'expense' &&
                   (!!(r.record as Expense).poId ||
                     r.description.startsWith('Modal servis '));
+                // Bulan lalu terkunci (0071), sama seperti pembatalan penjualan:
+                // laporannya sudah berjalan, jadi koreksinya dicatat bulan ini.
+                const closedMonth = r.date < from;
                 return (
                   <div
                     key={`${r.kind}-${r.id}`}
@@ -555,8 +580,17 @@ export function FinancePage() {
                     {/* One grid cell for ALL action buttons — loose siblings
                         overflowed the single `auto` column and wrapped to a new
                         implicit grid row (trash icon stranded bottom-left). */}
-                    <span className={styles.tapeBtns}>
-                      {r.kind === 'expense' && (
+                    <span
+                      className={styles.tapeBtns}
+                      title={
+                        closedMonth
+                          ? 'Transaksi bulan lalu terkunci — catat koreksinya sebagai transaksi bulan ini'
+                          : lockedExpense
+                            ? 'Pengeluaran ini terikat PO / tiket servis — ubah dari halaman asalnya'
+                            : undefined
+                      }
+                    >
+                      {r.kind === 'expense' && !lockedExpense && !closedMonth && (
                         <button
                           className={styles.iconBtn}
                           onClick={() => {
@@ -573,6 +607,7 @@ export function FinancePage() {
                           OR a POS sale is locked — editing it would desync the
                           source record (settlement legs / sale total). */}
                       {r.kind === 'income' &&
+                        !closedMonth &&
                         !(r.record as Income).serviceId &&
                         !(r.record as Income).saleId && (
                           <button
@@ -587,7 +622,7 @@ export function FinancePage() {
                             <Icon name="pen" aria-hidden />
                           </button>
                         )}
-                      {!lockedExpense && (
+                      {!lockedExpense && !closedMonth && (
                         <button
                           className={[styles.iconBtn, styles.danger].join(' ')}
                           onClick={() => setToDelete(r)}
@@ -642,13 +677,17 @@ export function FinancePage() {
       />
       <TransferModal
         open={transferOpen}
-        onClose={() => setTransferOpen(false)}
+        onClose={() => {
+          setTransferOpen(false);
+          setTransferInitial(null);
+        }}
         wallets={wallets}
+        initial={transferInitial}
       />
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Transaksi?"
-        message="Saldo wallet akan dikembalikan. Jika ini pelunasan servis, status servis kembali ke 'Selesai'."
+        message="Saldo wallet akan dikembalikan. Jika ini pelunasan servis, status servis kembali ke 'Selesai'. Hanya transaksi bulan berjalan yang bisa dihapus."
         confirmLabel="Hapus"
         danger
         onConfirm={confirmDelete}

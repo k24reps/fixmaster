@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Card, CardBody, Button, EmptyState, Icon, Input, Select, Badge } from '@/components/ui';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { actionMeta, roleLabel, filterActivity, ACTION_META } from '@/lib/business/activity';
 import { fmtDate, localDateOf, localDateStr, localTimeStr } from '@/lib/time';
+import { purgeActivityLogs } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
+import { useSessionStore } from '@/stores/session';
+import { toast } from '@/stores/toast';
 import type { Role } from '@/data/types';
 import styles from './ActivityLogPage.module.css';
 
@@ -23,6 +28,14 @@ const ACTION_OPTIONS: { value: string; label: string }[] = [
 
 /** DOM cap: only the newest rows are rendered (matches FinancePage's cap). */
 const MAX_RENDERED = 300;
+
+/**
+ * Berapa lama jejak audit disimpan saat pemilik memangkasnya. Tabel ini
+ * append-only dan tumbuh selamanya; pemangkasannya sengaja tindakan sadar
+ * pemilik, bukan pembersihan otomatis di belakangnya (server menolak di bawah
+ * 90 hari, dan mencatat pemangkasannya sendiri — 0076).
+ */
+const KEEP_DAYS = 365;
 
 const ROLE_OPTIONS: { value: Role | 'all'; label: string }[] = [
   { value: 'all', label: 'Semua peran' },
@@ -59,7 +72,29 @@ export function ActivityLogPage() {
     () => rangeForTimestamp(fetchFrom, localDateStr(new Date())),
     [fetchFrom],
   );
-  const { data: logs, loading } = useCollectionRange('activity', 'createdAt', actFrom, actTo);
+  const { data: logs, loading, refetch } = useCollectionRange('activity', 'createdAt', actFrom, actTo);
+
+  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const [confirmPurge, setConfirmPurge] = useState(false);
+  const [purging, setPurging] = useState(false);
+
+  const purge = async () => {
+    setConfirmPurge(false);
+    setPurging(true);
+    try {
+      const removed = await purgeActivityLogs({ orgId, keepDays: KEEP_DAYS });
+      toast.success(
+        removed > 0
+          ? `${removed} event lama dipangkas`
+          : `Tidak ada event lebih lama dari ${KEEP_DAYS} hari`,
+      );
+      await refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memangkas log');
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const filtered = useMemo(
     () => filterActivity(logs, { query, role, action }),
@@ -236,6 +271,19 @@ export function ActivityLogPage() {
               >
                 Muat bulan sebelumnya
               </Button>
+              {/* Pemangkasan hanya di cloud: di mode lokal jejaknya ada di
+                  perangkat ini saja, dan menghapusnya tak punya lawan biaya. */}
+              {isCloudMode() && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setConfirmPurge(true)}
+                  loading={purging}
+                  iconLeft={<Icon name="trash" aria-hidden />}
+                >
+                  Pangkas log lama
+                </Button>
+              )}
               <span className={styles.loadMoreHint}>
                 {monthsBack === 0 ? 'Bulan ini' : `${monthsBack + 1} bulan terakhir`} ·{' '}
                 {logs.length} event termuat
@@ -244,6 +292,16 @@ export function ActivityLogPage() {
           )}
         </CardBody>
       </Card>
+
+      <ConfirmDialog
+        open={confirmPurge}
+        title="Pangkas log lama?"
+        message={`Event yang lebih tua dari ${KEEP_DAYS} hari akan dihapus permanen. Jejak ${KEEP_DAYS} hari terakhir tetap utuh, dan pemangkasan ini sendiri ikut tercatat di log.`}
+        confirmLabel="Pangkas"
+        danger
+        onConfirm={purge}
+        onCancel={() => setConfirmPurge(false)}
+      />
     </div>
   );
 }

@@ -608,6 +608,174 @@ export async function fetchServiceSummary(args: {
  * optionally debits a wallet (cash purchase) — all server-side. Keeps Finance
  * in sync with stock purchases. `amount` is the value received in THIS event.
  */
+/**
+ * Catat pemasukan/pengeluaran manual (0071): baris ledger + saldo wallet dalam
+ * SATU transaksi server. Dulu dua penulisan terpisah dari browser — gagal di
+ * tengah membuat buku kas dan saldo berbeda tanpa pesan apa pun.
+ */
+export async function recordFinanceEntry(args: {
+  orgId: string;
+  kind: 'income' | 'expense';
+  date: string;
+  category: string;
+  amount: number;
+  walletId: string;
+  description: string;
+  outletId: string | null;
+}): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('record_finance_entry', {
+    p_org_id: args.orgId,
+    p_kind: args.kind,
+    p_date: args.date,
+    p_category: args.category,
+    p_amount: args.amount,
+    p_wallet_id: args.walletId,
+    p_description: args.description,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/** Ubah transaksi keuangan manual + rekonsiliasi saldo, satu transaksi (0071). */
+export async function updateFinanceEntry(args: {
+  orgId: string;
+  kind: 'income' | 'expense';
+  id: string;
+  date: string;
+  category: string;
+  amount: number;
+  walletId: string;
+  description: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('update_finance_entry', {
+    p_org_id: args.orgId,
+    p_kind: args.kind,
+    p_id: args.id,
+    p_date: args.date,
+    p_category: args.category,
+    p_amount: args.amount,
+    p_wallet_id: args.walletId,
+    p_description: args.description,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Pangkas log aktivitas lama (0076). Sengaja tindakan sadar pemilik, bukan
+ * pembersihan otomatis: sistem audit tidak boleh menghapus jejaknya sendiri di
+ * belakang pemiliknya. Minimal menyimpan 90 hari; pemangkasannya ikut tercatat.
+ */
+export async function purgeActivityLogs(args: {
+  orgId: string;
+  keepDays: number;
+}): Promise<number> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('purge_activity_logs', {
+    p_org_id: args.orgId,
+    p_keep_days: args.keepDays,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+/**
+ * Piutang: servis selesai yang masih ada sisa, dari SELURUH tabel (0074).
+ * Daftar servis di Laporan hanya memuat tiket yang dibuat pada periode yang
+ * dilihat — piutang justru keadaan sekarang, dan yang paling tua pasti di luar
+ * jendela itu.
+ */
+export async function fetchServiceReceivables(args: {
+  orgId: string;
+  outletId: string | null;
+}): Promise<{ serviceId: string; serviceNo: string; customerName: string; outstanding: number; since: string }[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('service_receivables', {
+    p_org_id: args.orgId,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    serviceId: String(r.service_id),
+    serviceNo: String(r.service_no ?? ''),
+    customerName: String(r.customer_name ?? ''),
+    outstanding: Number(r.outstanding ?? 0),
+    since: String(r.since ?? '').slice(0, 10),
+  }));
+}
+
+/** Laba per kategori perangkat menurut tanggal SELESAI (0074), sama seperti leaderboard. */
+export async function fetchCategoryProfit(args: {
+  orgId: string;
+  from: string;
+  to: string;
+  outletId: string | null;
+}): Promise<{ category: string; count: number; revenue: number; profit: number }[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('category_profit', {
+    p_org_id: args.orgId,
+    p_from: args.from,
+    p_to: args.to,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    category: String(r.category ?? 'Lainnya'),
+    count: Number(r.units ?? 0),
+    revenue: Number(r.revenue ?? 0),
+    profit: Number(r.profit ?? 0),
+  }));
+}
+
+/** Buat PO dengan nomor yang ditetapkan server (0071). */
+export async function createPurchaseOrder(args: {
+  orgId: string;
+  supplierId: string;
+  lines: unknown[];
+  note: string;
+  outletId: string | null;
+}): Promise<{ id: string; poNumber: string }> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('create_purchase_order', {
+    p_org_id: args.orgId,
+    p_supplier_id: args.supplierId,
+    p_lines: args.lines,
+    p_note: args.note,
+    p_outlet_id: args.outletId,
+  });
+  if (error) throw new Error(error.message);
+  const row = data as { id: string; poNumber: string };
+  return { id: row.id, poNumber: row.poNumber };
+}
+
+/** Perbaiki PO selama belum ada barang yang diterima (0071). */
+export async function updatePurchaseOrder(args: {
+  orgId: string;
+  poId: string;
+  supplierId: string;
+  lines: unknown[];
+  note: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('update_purchase_order', {
+    p_org_id: args.orgId,
+    p_po_id: args.poId,
+    p_supplier_id: args.supplierId,
+    p_lines: args.lines,
+    p_note: args.note,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function receiveGoodsWithFinance(args: {
   orgId: string;
   poId: string;

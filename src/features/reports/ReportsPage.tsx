@@ -10,7 +10,6 @@ import { useServiceSummary } from '@/hooks/useServiceSummary';
 import {
   trendSeries,
   transactionRows,
-  profitByDeviceCategory,
   sparepartUsage,
   restockSuggestions,
   serviceFunnel,
@@ -18,8 +17,8 @@ import {
   periodComparison,
   previousWindow,
   outletComparison,
-  receivablesAging,
 } from '@/lib/business/reports';
+import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
 import { getTarget } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
 import { buildCsv, csvFilename } from '@/lib/business/export';
@@ -66,7 +65,20 @@ export function ReportsPage() {
   // Performa teknisi = tiket yang SELESAI dikerjakan dalam periode (bukan yang
   // masuk), dihitung dari semua tiket — lihat service_summary (0063).
   const summaryQuery = useServiceSummary(from, to);
-  const reportLoad = [incomesLoad, expensesLoad, salesLoad, servicesLoad, inventoryLoad, summaryQuery];
+  // Dua kartu ini tidak boleh dibatasi jendela yang dimuat halaman: piutang
+  // adalah keadaan sekarang, dan laba per kategori memakai tanggal SELESAI.
+  const receivablesQuery = useReceivables();
+  const catProfitQuery = useCategoryProfit(from, to);
+  const reportLoad = [
+    incomesLoad,
+    expensesLoad,
+    salesLoad,
+    servicesLoad,
+    inventoryLoad,
+    summaryQuery,
+    receivablesQuery,
+    catProfitQuery,
+  ];
   const reportPending = loadPending(...reportLoad);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const scopeLabel = activeOutletId
@@ -89,7 +101,7 @@ export function ReportsPage() {
   // New aggregations (all pure, from reports.ts).
   const trend = useMemo(() => trendSeries(incomes, expenses, from, to), [incomes, expenses, from, to]);
   const txnRows = useMemo(() => transactionRows(fIncomes, fExpenses), [fIncomes, fExpenses]);
-  const catProfit = useMemo(() => profitByDeviceCategory(fServices), [fServices]);
+  const catProfit = catProfitQuery.data;
   const partUsage = useMemo(() => sparepartUsage(fServices), [fServices]);
   const restock = useMemo(() => restockSuggestions(inventory), [inventory]);
   const funnel = useMemo(() => serviceFunnel(fServices), [fServices]);
@@ -108,7 +120,7 @@ export function ReportsPage() {
     () => outletComparison(incomes, expenses, outlets, from, to),
     [incomes, expenses, outlets, from, to],
   );
-  const receivables = useMemo(() => receivablesAging(fServices), [fServices]);
+  const receivables = receivablesQuery.data;
 
   // Periode lalu benar-benar kosong — bukan "tidak berubah". Dibedakan supaya
   // tile bisa mengatakannya alih-alih menampilkan angka yang dikarang.
@@ -196,6 +208,25 @@ export function ReportsPage() {
     // menempelkan tanggal ekspor, sama seperti ekspor di Pengaturan.
     downloadCsvFile(csvFilename(`laporan-${scopeLabel}-${from}-sd-${to}`), csv);
     toast.success(`${txnRows.length} transaksi diekspor`);
+  };
+
+  // Piutang punya ekspornya sendiri: daftar inilah yang dibawa saat menagih,
+  // dan ia tidak mengikuti periode — jadi tak bisa ikut di ekspor transaksi.
+  const exportReceivables = () => {
+    if (!canExport) return;
+    if (receivables.length === 0) {
+      toast.error('Tidak ada piutang untuk diekspor');
+      return;
+    }
+    const csv = buildCsv(receivables, [
+      { label: 'No. Servis', value: (r) => r.serviceNo },
+      { label: 'Pelanggan', value: (r) => r.customerName },
+      { label: 'Sisa', value: (r) => r.outstanding },
+      { label: 'Umur (hari)', value: (r) => r.ageDays },
+      { label: 'Kelompok Umur', value: (r) => r.bucket },
+    ]);
+    downloadCsvFile(csvFilename(`piutang-${scopeLabel}`), csv);
+    toast.success(`${receivables.length} piutang diekspor`);
   };
 
   return (
@@ -305,6 +336,9 @@ export function ReportsPage() {
           value={fmtRp(salesTotal)}
           icon={<Icon name="cash-register" aria-hidden />}
           tone="accent"
+          /* Pembayaran penjualan sudah membukukan pemasukan, jadi angka ini
+             BAGIAN dari Pemasukan di kiri — bukan tambahannya. */
+          note="Sudah termasuk di Pemasukan"
         />
       </div>
 
@@ -404,7 +438,13 @@ export function ReportsPage() {
 
       {/* 3. Profit by device category */}
       <Card glass>
-        <CardHeader icon={<Icon name="microchip" aria-hidden />} title="Laba per Kategori Perangkat" />
+        <CardHeader
+          icon={<Icon name="microchip" aria-hidden />}
+          title="Laba per Kategori Perangkat"
+          /* Periode kartu ini dihitung dari tanggal SELESAI, sama seperti
+             Performa Teknisi di bawah — dulu ia memakai tanggal tiket masuk. */
+          action={<span className={styles.liveTag}>Selesai periode ini</span>}
+        />
         <CardBody className={styles.noPad}>
           {reportPending ? (
             <LoadState queries={reportLoad} />
@@ -508,7 +548,7 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="filter" aria-hidden />}
-          title="Funnel Servis"
+          title="Funnel Servis (tiket masuk periode ini)"
           action={
             /* `avgTurnaroundDays` mengembalikan 0 untuk himpunan kosong, jadi
                toko yang tidak menyelesaikan apa pun diberi tahu rata-ratanya
@@ -553,6 +593,13 @@ export function ReportsPage() {
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
+            ) : activeOutletId ? (
+              /* Datanya sudah tersaring cabang aktif, jadi kartu ini hanya akan
+                 menampilkan satu batang — pembanding yang tidak membandingkan. */
+              <p className={styles.tableNote}>
+                Sedang menampilkan satu cabang ({scopeLabel}). Pilih &ldquo;Semua Outlet&rdquo; di
+                selektor cabang untuk membandingkan antar-cabang.
+              </p>
             ) : outletStats.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
             ) : (
@@ -619,7 +666,24 @@ export function ReportsPage() {
         <CardHeader
           icon={<Icon name="coins" aria-hidden />}
           title="Piutang (Servis Selesai Belum Lunas)"
-          action={receivables.length > 0 ? <span className={styles.turnaround}>Total {fmtRp(receivablesTotal)}</span> : undefined}
+          /* Satu-satunya kartu selain Saran Restok yang TIDAK mengikuti periode
+             di header: piutang adalah keadaan sekarang, dan yang paling tua
+             justru selalu di luar periode yang sedang dilihat. */
+          action={
+            <span className={styles.turnaround}>
+              {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}semua periode
+              {canExport && receivables.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={exportReceivables}
+                  iconLeft={<Icon name="download" aria-hidden />}
+                >
+                  Ekspor
+                </Button>
+              )}
+            </span>
+          }
         />
         <CardBody className={styles.noPad}>
           {reportPending ? (
@@ -729,6 +793,7 @@ function Metric({
   delta,
   deltaInverse,
   noBaseline,
+  note,
 }: {
   label: string;
   value: ReactNode;
@@ -736,6 +801,8 @@ function Metric({
   tone: 'success' | 'danger' | 'brand' | 'accent';
   delta?: number | null;
   deltaInverse?: boolean;
+  /** Keterangan tetap di bawah angka (mis. "sudah termasuk di Pemasukan"). */
+  note?: string;
   /** `true` saat kartu ini memang membandingkan periode, tapi periode lalu
    *  tidak punya data sama sekali. Dibedakan dari "kartu tanpa perbandingan"
    *  (delta `undefined`) supaya kekosongan itu dikatakan, bukan disembunyikan. */
@@ -764,6 +831,9 @@ function Metric({
           <span className={[styles.metricDelta, styles.metricNoBase].join(' ')}>
             Tidak ada data periode lalu
           </span>
+        )}
+        {note && (
+          <span className={[styles.metricDelta, styles.metricNoBase].join(' ')}>{note}</span>
         )}
       </div>
     </div>

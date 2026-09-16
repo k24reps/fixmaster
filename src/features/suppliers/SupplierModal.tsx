@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Input, Button, FormFields, FormRow, FormError } from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
+import { normalizePhone } from '@/lib/business/customers';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
@@ -11,9 +12,11 @@ interface SupplierModalProps {
   open: boolean;
   onClose: () => void;
   editing: Supplier | null;
+  /** Supplier yang sudah ada, untuk mencegah data ganda. */
+  suppliers: Supplier[];
 }
 
-export function SupplierModal({ open, onClose, editing }: SupplierModalProps) {
+export function SupplierModal({ open, onClose, editing, suppliers }: SupplierModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -34,6 +37,22 @@ export function SupplierModal({ open, onClose, editing }: SupplierModalProps) {
 
   const save = async () => {
     if (!name.trim()) return setError('Nama supplier wajib diisi');
+    // Data ganda supplier menyebar ke PO dan laporan belanja: nomor yang sama
+    // diblokir (database menolaknya juga, 0072), nama yang sama diblokir hanya
+    // untuk entri baru — mengubah nama supplier lama tetap bebas.
+    const others = suppliers.filter((s) => s.id !== editing?.id && !s.deletedAt);
+    const phoneNorm = normalizePhone(phone);
+    if (phoneNorm) {
+      const dup = others.find((s) => normalizePhone(s.phone) === phoneNorm);
+      if (dup) return setError(`No. telepon sudah terdaftar atas supplier "${dup.name}"`);
+    }
+    if (!editing) {
+      const sameName = others.find(
+        (s) => s.name.trim().toLowerCase() === name.trim().toLowerCase(),
+      );
+      if (sameName) return setError(`Supplier "${sameName.name}" sudah ada`);
+    }
+
     setBusy(true);
     const now = new Date().toISOString();
     const record: Supplier = {

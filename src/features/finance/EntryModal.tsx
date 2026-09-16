@@ -13,6 +13,8 @@ import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { applyBalance } from '@/lib/business/finance';
+import { recordFinanceEntry, updateFinanceEntry } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
@@ -103,6 +105,54 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     const wallet = wallets.find((w) => w.id === walletId);
     const txOutletId = resolveCreateOutlet(outlets);
     try {
+      // Cloud: satu transaksi server (0071) — baris ledger dan saldo wallet
+      // bergerak bersama. Jalur di bawahnya untuk lokal/demo, yang memang tak
+      // punya transaksi.
+      if (isCloudMode()) {
+        const label = description.trim() || (category as string);
+        if (editing) {
+          await updateFinanceEntry({
+            orgId,
+            kind,
+            id: editing.id,
+            date,
+            category,
+            amount: value,
+            walletId,
+            description: description.trim(),
+          });
+          logActivity({
+            action: kind === 'income' ? 'income.update' : 'expense.update',
+            entityType: kind,
+            entityId: editing.id,
+            entityLabel: label,
+            meta: { amount: value, prevAmount: editing.amount, category },
+          });
+          toast.success(kind === 'income' ? 'Pemasukan diperbarui' : 'Pengeluaran diperbarui');
+        } else {
+          const id = await recordFinanceEntry({
+            orgId,
+            kind,
+            date,
+            category,
+            amount: value,
+            walletId,
+            description: description.trim(),
+            outletId: txOutletId,
+          });
+          logActivity({
+            action: kind === 'income' ? 'income.create' : 'expense.create',
+            entityType: kind,
+            entityId: id,
+            entityLabel: label,
+            meta: { amount: value, category },
+          });
+          toast.success(kind === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat');
+        }
+        onClose();
+        return;
+      }
+
       if (editing) {
         // ----- Edit existing record (income or expense) + reconcile wallet. -----
         // The caller (FinancePage) always sets `kind` to match the record being

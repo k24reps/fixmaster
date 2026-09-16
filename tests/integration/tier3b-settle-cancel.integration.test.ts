@@ -1147,4 +1147,509 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     });
     expect(ghost.error).not.toBeNull();
   });
+
+  // ---- 0071: supplier & keuangan ----
+  const today = () => new Date().toISOString().slice(0, 10);
+  const lastMonthDay = () => {
+    const d = new Date();
+    d.setDate(1);
+    d.setDate(0); // hari terakhir bulan lalu
+    return d.toISOString().slice(0, 10);
+  };
+  const seedSupplier = async () => {
+    const { data } = await ctx.admin
+      .from('suppliers')
+      .insert({ org_id: ctx.orgId, name: `Supplier ${Math.random().toString(36).slice(2, 6)}` })
+      .select('id')
+      .single();
+    return data!.id as string;
+  };
+  const makePo = (supplierId: string, lines: unknown[]) =>
+    ctx.ownerClient.rpc('create_purchase_order', {
+      p_org_id: ctx.orgId,
+      p_supplier_id: supplierId,
+      p_lines: lines,
+      p_note: '',
+      p_outlet_id: ctx.outlet1,
+    });
+
+  it('0071: transaksi keuangan atomik; bulan lalu terkunci; karyawan ditolak', async () => {
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletA);
+
+    const rec = await ctx.ownerClient.rpc('record_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_date: today(), p_category: 'Operasional',
+      p_amount: 50000, p_wallet_id: ctx.walletA, p_description: 'Uji 0071', p_outlet_id: ctx.outlet1,
+    });
+    expect(rec.error).toBeNull();
+    expect(await balanceOf(ctx.walletA)).toBe(-50000);
+
+    const upd = await ctx.ownerClient.rpc('update_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_id: rec.data as string, p_date: today(),
+      p_category: 'Operasional', p_amount: 20000, p_wallet_id: ctx.walletA, p_description: 'Diubah',
+    });
+    expect(upd.error).toBeNull();
+    expect(await balanceOf(ctx.walletA)).toBe(-20000); // sekali kurang, bukan dobel
+
+    // Karyawan bukan manager: keuangan ditolak.
+    const staff = await ctx.karyawan.client.rpc('record_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'income', p_date: today(), p_category: 'Lainnya',
+      p_amount: 1000, p_wallet_id: ctx.walletA, p_description: '', p_outlet_id: ctx.outlet1,
+    });
+    expect(staff.error).not.toBeNull();
+
+    // Bulan lalu: ubah & hapus ditolak.
+    const { data: old } = await ctx.admin
+      .from('expenses')
+      .insert({
+        org_id: ctx.orgId, outlet_id: ctx.outlet1, date: lastMonthDay(), category: 'Operasional',
+        amount: 1000, wallet_id: ctx.walletA, description: 'Bulan lalu',
+      })
+      .select('id')
+      .single();
+    const updOld = await ctx.ownerClient.rpc('update_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_id: old!.id, p_date: lastMonthDay(),
+      p_category: 'Operasional', p_amount: 5000, p_wallet_id: ctx.walletA, p_description: '',
+    });
+    expect(updOld.error).not.toBeNull();
+    const delOld = await ctx.ownerClient.rpc('delete_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_id: old!.id,
+    });
+    expect(delOld.error).not.toBeNull();
+  });
+
+  it('0071: pengeluaran milik PO tidak bisa diubah/dihapus dari Keuangan', async () => {
+    const supplier = await seedSupplier();
+    const item = await seedItem({ stock: 0, cost_price: 1000 });
+    const po = await makePo(supplier, [{ itemId: item, qty: 2, costPrice: 1000 }]);
+    expect(po.error).toBeNull();
+    const poId = (po.data as { id: string }).id;
+
+    const recv = await ctx.ownerClient.rpc('receive_goods_v2', {
+      p_org_id: ctx.orgId, p_po_id: poId,
+      p_lines: [{ itemId: item, name: 'X', qty: 2, costPrice: 1000, receivedQty: 2 }],
+      p_deltas: [{ itemId: item, delta: 2 }],
+      p_status: 'received', p_outlet_id: ctx.outlet1, p_wallet_id: ctx.walletA, p_amount: 2000,
+    });
+    expect(recv.error).toBeNull();
+
+    const { data: exp } = await ctx.admin
+      .from('expenses').select('id').eq('po_id', poId).single();
+    // Tulis langsung (lolos RLS manager) tetap ditolak trigger.
+    const edit = await ctx.ownerClient.from('expenses').update({ amount: 1 }).eq('id', exp!.id);
+    expect(edit.error).not.toBeNull();
+    const del = await ctx.ownerClient.rpc('delete_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_id: exp!.id,
+    });
+    expect(del.error).not.toBeNull();
+  });
+
+  it('0071: PO — nomor dari server, qty bulat, dan terkunci setelah barang masuk', async () => {
+    const supplier = await seedSupplier();
+    const item = await seedItem({ stock: 0, cost_price: 1000 });
+
+    expect((await makePo(supplier, [{ itemId: item, qty: 2.5, costPrice: 1000 }])).error).not.toBeNull();
+    expect((await makePo(supplier, [{ itemId: item, qty: 0, costPrice: 1000 }])).error).not.toBeNull();
+
+    const ok = await makePo(supplier, [{ itemId: item, qty: 3, costPrice: 1000 }]);
+    expect(ok.error).toBeNull();
+    const po = ok.data as { id: string; poNumber: string };
+    expect(po.poNumber).toMatch(/^PO-\d{4}$/);
+
+    const edit = await ctx.ownerClient.rpc('update_purchase_order', {
+      p_org_id: ctx.orgId, p_po_id: po.id, p_supplier_id: supplier,
+      p_lines: [{ itemId: item, qty: 5, costPrice: 1200 }], p_note: 'revisi',
+    });
+    expect(edit.error).toBeNull();
+
+    await ctx.ownerClient.rpc('receive_goods_v2', {
+      p_org_id: ctx.orgId, p_po_id: po.id,
+      p_lines: [{ itemId: item, name: 'X', qty: 5, costPrice: 1200, receivedQty: 5 }],
+      p_deltas: [{ itemId: item, delta: 5 }],
+      p_status: 'received', p_outlet_id: ctx.outlet1, p_wallet_id: null, p_amount: 0,
+    });
+    const editAfter = await ctx.ownerClient.rpc('update_purchase_order', {
+      p_org_id: ctx.orgId, p_po_id: po.id, p_supplier_id: supplier,
+      p_lines: [{ itemId: item, qty: 9, costPrice: 1200 }], p_note: '',
+    });
+    expect(editAfter.error).not.toBeNull();
+  });
+
+  it('0071: batal PO ditolak bila stok sudah terpakai; terima barang menolak item terhapus', async () => {
+    const supplier = await seedSupplier();
+    const item = await seedItem({ stock: 0, cost_price: 1000 });
+    const po = (await makePo(supplier, [{ itemId: item, qty: 5, costPrice: 1000 }])).data as { id: string };
+    await ctx.ownerClient.rpc('receive_goods_v2', {
+      p_org_id: ctx.orgId, p_po_id: po.id,
+      p_lines: [{ itemId: item, name: 'X', qty: 5, costPrice: 1000, receivedQty: 5 }],
+      p_deltas: [{ itemId: item, delta: 5 }],
+      p_status: 'received', p_outlet_id: ctx.outlet1, p_wallet_id: null, p_amount: 0,
+    });
+    expect(await stockOf(item)).toBe(5);
+
+    // Empat terpakai → membatalkan PO akan membuat stok minus.
+    await ctx.ownerClient.rpc('adjust_inventory_stock', {
+      p_org_id: ctx.orgId, p_item_id: item, p_delta: -4,
+    });
+    const blocked = await ctx.ownerClient.rpc('void_po', {
+      p_org_id: ctx.orgId, p_po_id: po.id, p_outlet_id: ctx.outlet1,
+    });
+    expect(blocked.error).not.toBeNull();
+    expect(await stockOf(item)).toBe(1); // tidak jadi minus
+
+    // Barang dihapus dari inventori → penerimaan menolak, bukan lewat diam-diam.
+    const gone = await seedItem({ stock: 0, cost_price: 1000 });
+    const po2 = (await makePo(supplier, [{ itemId: gone, qty: 2, costPrice: 1000 }])).data as { id: string };
+    await ctx.admin.from('inventory_items').delete().eq('id', gone);
+    const recv = await ctx.ownerClient.rpc('receive_goods_v2', {
+      p_org_id: ctx.orgId, p_po_id: po2.id,
+      p_lines: [{ itemId: gone, name: 'X', qty: 2, costPrice: 1000, receivedQty: 2 }],
+      p_deltas: [{ itemId: gone, delta: 2 }],
+      p_status: 'received', p_outlet_id: ctx.outlet1, p_wallet_id: null, p_amount: 0,
+    });
+    expect(recv.error).not.toBeNull();
+  });
+
+  // ---- 0072: transfer & supplier ----
+  it('0072: supplier — nomor ganda ditolak, dan supplier ber-PO tidak bisa dihapus', async () => {
+    const phone = `08${Date.now().toString().slice(-9)}`;
+    const { data: first } = await ctx.admin
+      .from('suppliers')
+      .insert({ org_id: ctx.orgId, name: 'Supplier Satu', phone })
+      .select('id')
+      .single();
+
+    // Nomor sama (format berbeda) → ditolak trigger.
+    const dup = await ctx.ownerClient
+      .from('suppliers')
+      .insert({ org_id: ctx.orgId, name: 'Supplier Dua', phone: `+62${phone.slice(1)}` });
+    expect(dup.error).not.toBeNull();
+
+    // Belum punya PO → boleh dihapus.
+    const { data: spare } = await ctx.admin
+      .from('suppliers')
+      .insert({ org_id: ctx.orgId, name: 'Supplier Sekali Pakai' })
+      .select('id')
+      .single();
+    expect((await ctx.admin.from('suppliers').delete().eq('id', spare!.id)).error).toBeNull();
+
+    // Punya PO → ditolak, supaya riwayat PO tidak kehilangan nama supplier.
+    const item = await seedItem({ stock: 0, cost_price: 1000 });
+    const po = await ctx.ownerClient.rpc('create_purchase_order', {
+      p_org_id: ctx.orgId, p_supplier_id: first!.id,
+      p_lines: [{ itemId: item, qty: 1, costPrice: 1000 }], p_note: '', p_outlet_id: ctx.outlet1,
+    });
+    expect(po.error).toBeNull();
+    const blocked = await ctx.admin.from('suppliers').delete().eq('id', first!.id);
+    expect(blocked.error).not.toBeNull();
+  });
+
+  it('0072: admin membaca jejak transfer di log, tapi tidak aktivitas lain', async () => {
+    const runId = Date.now().toString(36);
+    const email = `fmtest+${runId}-adm@example.com`;
+    const password = `Tst!${runId}Ad9`;
+    const userId = await createUser(ctx.admin, email, password);
+    ctx.userIds.push(userId); // dibersihkan afterAll bersama yang lain
+    await ctx.admin
+      .from('memberships')
+      .insert({ org_id: ctx.orgId, user_id: userId, name: 'Admin Uji', role: 'admin', active: true });
+    const adminClient = await signIn(email, password);
+
+    await ctx.admin.from('activity_logs').insert([
+      {
+        org_id: ctx.orgId, actor_name: 'Owner', action: 'wallet.transfer',
+        entity_type: 'wallet', entity_label: 'Tunai → QRIS', meta: { amount: 1000 },
+      },
+      {
+        org_id: ctx.orgId, actor_name: 'Owner', action: 'sale.create',
+        entity_type: 'sale', entity_label: 'INV-9999', meta: {},
+      },
+    ]);
+
+    const { data: rows, error } = await adminClient
+      .from('activity_logs')
+      .select('action')
+      .eq('org_id', ctx.orgId);
+    expect(error).toBeNull();
+    const actions = (rows ?? []).map((r) => r.action as string);
+    expect(actions).toContain('wallet.transfer');
+    expect(actions).not.toContain('sale.create');
+
+    // Karyawan tetap tidak melihat apa pun.
+    const { data: staffRows } = await ctx.karyawan.client
+      .from('activity_logs')
+      .select('action')
+      .eq('org_id', ctx.orgId);
+    expect(staffRows ?? []).toHaveLength(0);
+  });
+
+  // ---- 0073/0074: jejak audit & laporan ----
+  it('0073: pelaku log ditetapkan server, bukan yang dikirim klien', async () => {
+    const label = `uji-0073-${Date.now().toString(36)}`;
+    const forged = await ctx.karyawan.client.from('activity_logs').insert({
+      org_id: ctx.orgId,
+      actor_name: 'Owner Palsu',
+      actor_role: 'owner',
+      action: 'auth.login',
+      entity_type: 'test',
+      entity_label: label,
+    });
+    expect(forged.error).toBeNull();
+
+    const { data: row } = await ctx.admin
+      .from('activity_logs')
+      .select('actor_name, actor_role, actor_id')
+      .eq('org_id', ctx.orgId)
+      .eq('entity_label', label)
+      .single();
+    expect(row!.actor_name).toBe('Karyawan S');
+    expect(row!.actor_role).toBe('karyawan');
+    expect(row!.actor_id).toBe(ctx.karyawan.membershipId);
+  });
+
+  it('0073: pembatalan penjualan, hapus transaksi & transfer dicatat database sendiri', async () => {
+    const logsFor = async (action: string) => {
+      const { data } = await ctx.admin
+        .from('activity_logs')
+        .select('entity_id, meta')
+        .eq('org_id', ctx.orgId)
+        .eq('action', action);
+      return data ?? [];
+    };
+
+    // Penjualan → dibatalkan.
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletA);
+    const item = await seedItem({ stock: 3, sell_price: 10000 });
+    const sold = await ctx.karyawan.client.rpc('process_sale', {
+      p_org_id: ctx.orgId, p_sale_no: 'INV-0001',
+      p_lines: [{ itemId: item, name: 'X', qty: 1, sellPrice: 10000, costPrice: 1 }],
+      p_payments: [{ walletId: ctx.walletA, amount: 10000 }],
+      p_subtotal: 10000, p_discount: 0, p_discount_type: 'amount', p_total: 10000,
+      p_outlet_id: ctx.outlet1,
+    });
+    expect(sold.error).toBeNull();
+    const saleId = sold.data as string;
+    expect((await ctx.ownerClient.rpc('void_sale', { p_sale_id: saleId, p_reason: 'uji' })).error).toBeNull();
+    expect((await logsFor('sale.void')).some((l) => l.entity_id === saleId)).toBe(true);
+
+    // Pengeluaran → dihapus.
+    const rec = await ctx.ownerClient.rpc('record_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_date: today(), p_category: 'Operasional',
+      p_amount: 5000, p_wallet_id: ctx.walletA, p_description: 'Uji log', p_outlet_id: ctx.outlet1,
+    });
+    expect(rec.error).toBeNull();
+    expect((await ctx.ownerClient.rpc('delete_finance_entry', {
+      p_org_id: ctx.orgId, p_kind: 'expense', p_id: rec.data as string,
+    })).error).toBeNull();
+    expect((await logsFor('expense.delete')).some((l) => l.entity_id === (rec.data as string))).toBe(true);
+
+    // Transfer saldo.
+    await ctx.admin.from('wallets').update({ balance: 100000 }).eq('id', ctx.walletA);
+    expect((await ctx.ownerClient.rpc('transfer_wallet', {
+      p_org_id: ctx.orgId, p_from_wallet_id: ctx.walletA, p_to_wallet_id: ctx.walletB, p_amount: 25000,
+    })).error).toBeNull();
+    expect((await logsFor('wallet.transfer')).length).toBeGreaterThan(0);
+  });
+
+  it('0074: piutang dari seluruh tabel, dan laba per kategori menurut tanggal selesai', async () => {
+    const no = `SVC-R-${Date.now().toString(36)}`;
+    const old = new Date();
+    old.setMonth(old.getMonth() - 3);
+    const doneAt = old.toISOString();
+    await ctx.admin.from('services').insert({
+      org_id: ctx.orgId, outlet_id: ctx.outlet1, service_no: no, device: 'HP', category: 'HP',
+      status: 'selesai', final_cost: 300000, down_payment: 100000, customer_name: 'Pelanggan Lama',
+      spareparts: [{ itemId: null, name: 'LCD', qty: 1, costPrice: 50000, sellPrice: 0, deducted: true }],
+      history: [{ at: doneAt, status: 'selesai', by: '', byName: 'Sistem', note: '', internal: false }],
+      created_at: doneAt,
+    });
+
+    // Tiket ini dibuat & selesai TIGA BULAN lalu — dulu tak pernah muncul di
+    // laporan piutang, karena laporannya hanya melihat tiket periode berjalan.
+    const receivables = await ctx.ownerClient.rpc('service_receivables', {
+      p_org_id: ctx.orgId, p_outlet_id: null,
+    });
+    expect(receivables.error).toBeNull();
+    const mine = (receivables.data as { service_no: string; outstanding: number }[]).find(
+      (r) => r.service_no === no,
+    );
+    expect(mine).toBeTruthy();
+    expect(Number(mine!.outstanding)).toBe(200000);
+
+    // Laba masuk ke bulan SELESAI-nya, bukan bulan ini.
+    const winFrom = new Date(old.getFullYear(), old.getMonth(), 1).toISOString();
+    const winTo = new Date(old.getFullYear(), old.getMonth() + 1, 1).toISOString();
+    const cats = await ctx.ownerClient.rpc('category_profit', {
+      p_org_id: ctx.orgId, p_from: winFrom, p_to: winTo, p_outlet_id: null,
+    });
+    expect(cats.error).toBeNull();
+    const hp = (cats.data as { category: string; profit: number; revenue: number }[]).find(
+      (c) => c.category === 'HP',
+    );
+    expect(hp).toBeTruthy();
+    expect(Number(hp!.profit)).toBe(250000); // 300.000 − 50.000 modal
+  });
+
+  // ---- 0076: bukti absensi & cakupan log ----
+  it('0076: absensi — tanggal depan ditolak, baris non-hadir dikosongkan, lokasi tersimpan', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const future = await ctx.admin.from('attendance').insert({
+      org_id: ctx.orgId, outlet_id: ctx.outlet1, employee_id: ctx.karyawan.membershipId,
+      employee_name: 'Karyawan S', date: tomorrow.toISOString().slice(0, 10), status: 'hadir',
+      check_in: '08:00',
+    });
+    expect(future.error).not.toBeNull();
+
+    // Izin kemarin: jam yang terlanjur dikirim dibersihkan server.
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const { data: izin, error: izinErr } = await ctx.admin
+      .from('attendance')
+      .insert({
+        org_id: ctx.orgId, outlet_id: ctx.outlet1, employee_id: ctx.karyawan.membershipId,
+        employee_name: 'Karyawan S', date: yesterday.toISOString().slice(0, 10), status: 'izin',
+        check_in: '08:00', check_out: '17:00',
+      })
+      .select('check_in, check_out, total_hours')
+      .single();
+    expect(izinErr).toBeNull();
+    expect(izin!.check_in).toBeNull();
+    expect(izin!.check_out).toBeNull();
+    expect(Number(izin!.total_hours)).toBe(0);
+
+    // Lokasi ikut tersimpan saat absen masuk.
+    const clocked = await ctx.karyawan.client.rpc('clock_in', {
+      p_org_id: ctx.orgId, p_outlet_id: ctx.outlet1, p_employee_id: ctx.karyawan.membershipId,
+      p_lat: -6.9, p_lng: 107.6,
+    });
+    expect(clocked.error).toBeNull();
+    const { data: row } = await ctx.admin
+      .from('attendance')
+      .select('check_in_lat, check_in_lng')
+      .eq('id', clocked.data as string)
+      .single();
+    expect(Number(row!.check_in_lat)).toBeCloseTo(-6.9, 5);
+    expect(Number(row!.check_in_lng)).toBeCloseTo(107.6, 5);
+  });
+
+  it('0076: pangkas log — pemilik saja, minimal 90 hari, dan tercatat', async () => {
+    expect((await ctx.karyawan.client.rpc('purge_activity_logs', {
+      p_org_id: ctx.orgId, p_keep_days: 365,
+    })).error).not.toBeNull();
+    expect((await ctx.ownerClient.rpc('purge_activity_logs', {
+      p_org_id: ctx.orgId, p_keep_days: 30,
+    })).error).not.toBeNull();
+
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const label = `lama-${Date.now().toString(36)}`;
+    await ctx.admin.from('activity_logs').insert({
+      org_id: ctx.orgId, actor_name: 'Lama', action: 'auth.login',
+      entity_type: 'test', entity_label: label, created_at: twoYearsAgo.toISOString(),
+    });
+
+    const purged = await ctx.ownerClient.rpc('purge_activity_logs', {
+      p_org_id: ctx.orgId, p_keep_days: 365,
+    });
+    expect(purged.error).toBeNull();
+    expect(Number(purged.data)).toBeGreaterThan(0);
+
+    const { data: gone } = await ctx.admin
+      .from('activity_logs').select('id').eq('org_id', ctx.orgId).eq('entity_label', label);
+    expect(gone ?? []).toHaveLength(0);
+
+    // Pemangkasannya sendiri meninggalkan jejak.
+    const { data: trace } = await ctx.admin
+      .from('activity_logs').select('id').eq('org_id', ctx.orgId).eq('action', 'activity.purge');
+    expect((trace ?? []).length).toBeGreaterThan(0);
+  });
+
+  // ---- 0077: kuota paket, penjaga hapus, jejak pemulihan ----
+  it('0077: kuota paket dijaga server — outlet, wallet, dan undangan', async () => {
+    const { data: before } = await ctx.admin
+      .from('organizations').select('plan_type, plan_expired_at').eq('id', ctx.orgId).single();
+    // Paket Solo: 1 pengguna, 1 outlet, 2 wallet. Org uji sudah punya 2 outlet
+    // dan 2 wallet (dibuat service-role, yang memang dikecualikan).
+    const far = new Date();
+    far.setFullYear(far.getFullYear() + 1);
+    await ctx.admin
+      .from('organizations')
+      .update({ plan_type: 'standard', plan_expired_at: far.toISOString() })
+      .eq('id', ctx.orgId);
+
+    try {
+      const outlet = await ctx.ownerClient
+        .from('outlets').insert({ org_id: ctx.orgId, name: 'Cabang Ketiga' });
+      expect(outlet.error).not.toBeNull();
+
+      const wallet = await ctx.ownerClient
+        .from('wallets').insert({ org_id: ctx.orgId, name: 'Kas Ketiga', balance: 0 });
+      expect(wallet.error).not.toBeNull();
+
+      const invite = await ctx.ownerClient.rpc('create_invite', {
+        p_org_id: ctx.orgId,
+        p_email: `fmtest+kuota-${Date.now().toString(36)}@example.com`,
+        p_name: 'Calon Anggota',
+        p_role: 'karyawan',
+        p_outlet_ids: [],
+      });
+      expect(invite.error).not.toBeNull();
+    } finally {
+      await ctx.admin
+        .from('organizations')
+        .update({
+          plan_type: before!.plan_type,
+          plan_expired_at: before!.plan_expired_at,
+        })
+        .eq('id', ctx.orgId);
+    }
+  });
+
+  it('0077: wallet & cabang tidak bisa dihapus saat masih dipakai', async () => {
+    const { data: wallet } = await ctx.ownerClient
+      .from('wallets')
+      .insert({ org_id: ctx.orgId, name: `Kas Uji ${Date.now().toString(36)}`, balance: 0 })
+      .select('id')
+      .single();
+
+    // Saldo nol & belum dipakai → boleh hilang.
+    expect((await ctx.ownerClient.from('wallets').delete().eq('id', wallet!.id)).error).toBeNull();
+
+    // Masih memegang saldo → ditolak.
+    const { data: funded } = await ctx.ownerClient
+      .from('wallets')
+      .insert({ org_id: ctx.orgId, name: `Kas Isi ${Date.now().toString(36)}`, balance: 0 })
+      .select('id')
+      .single();
+    await ctx.admin.from('wallets').update({ balance: 50000 }).eq('id', funded!.id);
+    expect((await ctx.ownerClient.from('wallets').delete().eq('id', funded!.id)).error).not.toBeNull();
+
+    // Cabang utama tidak bisa dihapus.
+    await ctx.admin.from('outlets').update({ is_primary: true }).eq('id', ctx.outlet1);
+    expect((await ctx.ownerClient.from('outlets').delete().eq('id', ctx.outlet1)).error).not.toBeNull();
+  });
+
+  it('0077: pemulihan data mempertahankan jejak audit dan mencatat dirinya', async () => {
+    const label = `sebelum-restore-${Date.now().toString(36)}`;
+    await ctx.admin.from('activity_logs').insert({
+      org_id: ctx.orgId, actor_name: 'Uji', action: 'auth.login',
+      entity_type: 'test', entity_label: label,
+    });
+
+    const restored = await ctx.ownerClient.rpc('restore_org_data', {
+      p_org_id: ctx.orgId,
+      p_payload: {},
+    });
+    expect(restored.error).toBeNull();
+
+    // Jejak lama TIDAK ikut terhapus — dulu seluruh log org dibuang.
+    const { data: kept } = await ctx.admin
+      .from('activity_logs').select('id').eq('org_id', ctx.orgId).eq('entity_label', label);
+    expect(kept ?? []).toHaveLength(1);
+
+    // Dan pemulihannya sendiri tercatat.
+    const { data: trace } = await ctx.admin
+      .from('activity_logs').select('id').eq('org_id', ctx.orgId).eq('action', 'data.restore');
+    expect((trace ?? []).length).toBeGreaterThan(0);
+  });
 });

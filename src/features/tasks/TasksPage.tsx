@@ -12,6 +12,7 @@ import {
   reorder,
   bySortOrder,
   templateItems,
+  taskVisibleTo,
 } from '@/lib/business/tasks';
 import { roleAllows } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
@@ -32,6 +33,7 @@ export function TasksPage() {
   const { data: outlets } = useCollection('outlets');
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   const orgId = org?.id ?? '';
   const canManage = me ? roleAllows(me.role, '*') || me.role === 'admin' : false;
 
@@ -44,13 +46,16 @@ export function TasksPage() {
   const today = localDateStr();
   // Templates render in manual SOP order — this is what seeds each new day.
   const orderedTemplates = useMemo(() => [...templates].sort(bySortOrder), [templates]);
+  const templateById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates]);
 
   // Auto-generate due instances for a rolling window [today-7, today+1].
   useEffect(() => {
     if (!orgId || templates.length === 0) return;
+    // 30 hari ke belakang: dengan 7 hari, toko yang tutup seminggu lebih (atau
+    // tugas bulanan yang tanggalnya sudah lewat) kehilangan tugasnya permanen.
     const from = (() => {
       const d = new Date();
-      d.setDate(d.getDate() - 7);
+      d.setDate(d.getDate() - 30);
       return localDateStr(d);
     })();
     const to = (() => {
@@ -60,7 +65,15 @@ export function TasksPage() {
     })();
     const missing = generateInstances(templates, instances, from, to, orgId);
     if (missing.length) {
-      void repository.putMany('taskInstances', missing);
+      // Kegagalan di sini dulu ditelan diam-diam: karyawan yang ditolak aturan
+      // cabang tidak pernah melihat tugasnya, tanpa satu pun pesan.
+      void repository.putMany('taskInstances', missing).catch((e: unknown) => {
+        toast.error(
+          e instanceof Error
+            ? `Tugas hari ini gagal disiapkan: ${e.message}`
+            : 'Tugas hari ini gagal disiapkan',
+        );
+      });
     }
   }, [templates, instances, orgId]);
 
@@ -69,8 +82,21 @@ export function TasksPage() {
   // urgency is carried by the red "Telat" badge + highlighted row instead.
   /** Every pending task due today or earlier (overdue carries a red badge). */
   const pending = useMemo(
-    () => instances.filter((i) => i.dueDate <= today && i.status === 'pending'),
-    [instances, today],
+    () =>
+      instances.filter(
+        (i) =>
+          i.dueDate <= today &&
+          i.status === 'pending' &&
+          // "Tugaskan Ke" sekarang benar-benar menyaring: karyawan hanya melihat
+          // tugas yang ditujukan kepadanya. Manager tetap melihat semuanya.
+          taskVisibleTo(
+            i.templateId ? templateById.get(i.templateId) : undefined,
+            { id: me?.id ?? '', role: me?.role ?? 'karyawan' },
+            allowedOutletIds,
+            canManage,
+          ),
+      ),
+    [instances, today, templateById, me, allowedOutletIds, canManage],
   );
 
   /**
@@ -93,9 +119,14 @@ export function TasksPage() {
   );
 
   /** Ad-hoc quick tasks — their own zone below the groups, own ordering. */
+  // Termasuk tugas yang templatenya sudah hilang: tanpa ini baris itu tak muncul
+  // di grup mana pun, tapi tetap terhitung di badge — tugas hantu.
   const adhocTasks = useMemo(
-    () => pending.filter((i) => !i.templateId).sort(bySortOrder),
-    [pending],
+    () =>
+      pending
+        .filter((i) => !i.templateId || !templateById.has(i.templateId))
+        .sort(bySortOrder),
+    [pending, templateById],
   );
   const todayTasks = pending;
   const doneToday = useMemo(
@@ -125,6 +156,15 @@ export function TasksPage() {
   };
 
   const uncomplete = async (inst: TaskInstance) => {
+    // Membatalkan centang orang lain menghapus catatan siapa yang mengerjakan.
+    // Manager boleh (merekalah yang mengoreksi); selain itu hanya orang yang
+    // mencentangnya sendiri.
+    if (!canManage && inst.completedById && inst.completedById !== me?.id) {
+      toast.warning(
+        `Tugas ini diselesaikan ${inst.completedByName || 'orang lain'} — minta manager untuk membatalkannya.`,
+      );
+      return;
+    }
     try {
       await repository.put('taskInstances', {
         ...inst,
@@ -132,6 +172,15 @@ export function TasksPage() {
         completedAt: null,
         completedById: null,
         completedByName: '',
+      });
+      // Dulu tidak tercatat sama sekali: tugas bisa "selesai" lalu dibatalkan
+      // tanpa jejak siapa pun.
+      logActivity({
+        action: 'task.uncomplete',
+        entityType: 'task',
+        entityId: inst.id,
+        entityLabel: inst.title,
+        meta: { sebelumnyaOleh: inst.completedByName },
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal membatalkan tanda selesai');
@@ -217,6 +266,12 @@ export function TasksPage() {
     if (!toDelete) return;
     try {
       await repository.remove('taskTemplates', toDelete.id);
+      // Tugas yang belum selesai dari template ini ikut dihapus. Tanpa itu baris
+      // tersebut kehilangan induknya: tak tampil di daftar, tapi tetap dihitung.
+      const orphans = instances.filter(
+        (i) => i.templateId === toDelete.id && i.status === 'pending',
+      );
+      for (const o of orphans) await repository.remove('taskInstances', o.id);
       toast.success('Template dihapus');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menghapus template');
@@ -530,7 +585,7 @@ export function TasksPage() {
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Template?"
-        message={`Template "${toDelete?.name || toDelete?.title}" beserta ${toDelete?.items?.length ?? 0} tugas di dalamnya akan dihapus. Instance tugas yang sudah dibuat tetap ada.`}
+        message={`Template "${toDelete?.name || toDelete?.title}" beserta ${toDelete?.items?.length ?? 0} tugas di dalamnya akan dihapus. Tugas hari ini yang belum selesai ikut dihapus; yang sudah selesai tetap tersimpan sebagai riwayat. Untuk menghentikan sementara, ubah statusnya jadi Nonaktif.`}
         confirmLabel="Hapus"
         danger
         onConfirm={confirmDeleteTemplate}

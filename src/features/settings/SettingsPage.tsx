@@ -78,8 +78,9 @@ import {
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
 import { demoGuard, isCloudMode } from '@/stores/demo';
-import { isValidInviteEmail } from '@/lib/business/team';
-import { transfer } from '@/lib/business/finance';
+import { isValidInviteEmail, canChangeRole, canDeactivate } from '@/lib/business/team';
+import { transfer, applyBalance } from '@/lib/business/finance';
+import { localDateStr } from '@/lib/time';
 import { logActivity } from '@/lib/activity';
 import { useSessionStore } from '@/stores/session';
 import {
@@ -93,6 +94,7 @@ import {
   getOrgMemberOutlets,
   deactivateMember,
   deleteMember,
+  recordFinanceEntry,
   listInvoices,
   subscribeOrgBilling,
   deleteAccountCredential,
@@ -168,6 +170,12 @@ type Tab =
   | 'langganan'
   | 'navigasi'
   | 'sistem';
+
+/**
+ * Batas atas radius geofence. Di atas ini "pagar"-nya tidak menjaga apa pun —
+ * ia hanya membuat absensi terlihat terjaga sambil meloloskan siapa saja.
+ */
+const MAX_GEOFENCE_M = 5000;
 
 const TAB_IDS: Tab[] = [
   'usaha',
@@ -283,7 +291,7 @@ export function SettingsPage() {
         title="Reset Seluruh Data?"
         message={
           isSupabaseConfigured
-            ? 'SEMUA data operasional (servis, transaksi, stok, keuangan) akan dihapus permanen. Tim, langganan, dan profil usaha TETAP. Workspace jadi kosong. Tindakan ini tidak dapat dibatalkan.'
+            ? 'SEMUA data operasional (servis, transaksi, stok, keuangan) akan dihapus permanen — TERMASUK wallet beserta saldonya, jadi kasir tidak bisa dipakai sampai wallet dibuat ulang. Tim, langganan, profil usaha, dan log aktivitas TETAP. Tindakan ini tidak dapat dibatalkan.'
             : 'SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan.'
         }
         confirmLabel="Ya, Reset Semua"
@@ -453,6 +461,13 @@ function BusinessTab() {
     try {
       await repository.setSingleton('organization', updated);
       setOrg(updated);
+      logActivity({
+        action: 'settings.update',
+        entityType: 'organization',
+        entityId: org.id,
+        entityLabel: updated.name,
+        meta: { address: updated.address, phone: updated.phone },
+      });
       toast.success('Profil usaha disimpan');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan profil');
@@ -588,27 +603,30 @@ function BusinessTab() {
 function ServiceTemplatesCard() {
   const [complaints, setComplaints] = useState<string[]>(() => getComplaintTemplates());
   const [accessories, setAccessories] = useState<string[]>(() => getAccessoryTemplates());
+  const [busy, setBusy] = useState(false);
 
-  const addComplaint = (value: string) => {
-    const next = [...complaints, value];
-    setComplaintTemplates(next);
-    setComplaints(next);
+  // Template kini tersimpan di baris organisasi (tersinkron), jadi penyimpanan
+  // bisa gagal — daftar di layar hanya berubah setelah servernya menerima.
+  const persist = async (next: string[], save: (v: string[]) => Promise<void>, apply: (v: string[]) => void) => {
+    setBusy(true);
+    try {
+      await save(next);
+      apply(next);
+    } catch {
+      toast.error('Gagal menyimpan template');
+    } finally {
+      setBusy(false);
+    }
   };
-  const removeComplaint = (value: string) => {
-    const next = complaints.filter((c) => c !== value);
-    setComplaintTemplates(next);
-    setComplaints(next);
-  };
-  const addAccessory = (value: string) => {
-    const next = [...accessories, value];
-    setAccessoryTemplates(next);
-    setAccessories(next);
-  };
-  const removeAccessory = (value: string) => {
-    const next = accessories.filter((a) => a !== value);
-    setAccessoryTemplates(next);
-    setAccessories(next);
-  };
+
+  const addComplaint = (value: string) =>
+    void persist([...complaints, value], setComplaintTemplates, setComplaints);
+  const removeComplaint = (value: string) =>
+    void persist(complaints.filter((c) => c !== value), setComplaintTemplates, setComplaints);
+  const addAccessory = (value: string) =>
+    void persist([...accessories, value], setAccessoryTemplates, setAccessories);
+  const removeAccessory = (value: string) =>
+    void persist(accessories.filter((a) => a !== value), setAccessoryTemplates, setAccessories);
 
   return (
     <Card glass>
@@ -626,6 +644,7 @@ function ServiceTemplatesCard() {
           items={complaints}
           onAdd={addComplaint}
           onRemove={removeComplaint}
+          disabled={busy}
         />
         <StringListEditor
           label="Template Kelengkapan"
@@ -633,6 +652,7 @@ function ServiceTemplatesCard() {
           items={accessories}
           onAdd={addAccessory}
           onRemove={removeAccessory}
+          disabled={busy}
         />
       </CardBody>
     </Card>
@@ -822,26 +842,43 @@ function WarrantyCard() {
   const [presets, setPresets] = useState<number[]>(() => getWarrantyPresets());
   const [presetInput, setPresetInput] = useState('');
 
-  const saveDefaults = () => {
-    // Clamp to non-negative: a "number" input still accepts "-5".
-    setWarrantyServiceDays(Math.max(0, Math.round(Number(svcDays) || 0)));
-    setWarrantyPartsDays(Math.max(0, Math.round(Number(partsDays) || 0)));
-    toast.success('Default garansi disimpan');
+  const [saving, setSaving] = useState(false);
+
+  const saveDefaults = async () => {
+    setSaving(true);
+    try {
+      // Clamp to non-negative: a "number" input still accepts "-5".
+      await setWarrantyServiceDays(Math.max(0, Math.round(Number(svcDays) || 0)));
+      await setWarrantyPartsDays(Math.max(0, Math.round(Number(partsDays) || 0)));
+      toast.success('Default garansi disimpan');
+    } catch {
+      toast.error('Gagal menyimpan default garansi');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const addPreset = () => {
+  const addPreset = async () => {
     const n = Math.max(0, Math.round(Number(presetInput) || 0));
     if (!n) return toast.warning('Masukkan jumlah hari yang valid');
     if (presets.includes(n)) return toast.warning('Preset sudah ada');
     const next = [...presets, n].sort((a, b) => a - b);
-    setWarrantyPresets(next);
-    setPresets(next);
-    setPresetInput('');
+    try {
+      await setWarrantyPresets(next);
+      setPresets(next);
+      setPresetInput('');
+    } catch {
+      toast.error('Gagal menyimpan preset');
+    }
   };
-  const removePreset = (n: number) => {
+  const removePreset = async (n: number) => {
     const next = presets.filter((p) => p !== n);
-    setWarrantyPresets(next);
-    setPresets(next);
+    try {
+      await setWarrantyPresets(next);
+      setPresets(next);
+    } catch {
+      toast.error('Gagal menyimpan preset');
+    }
   };
 
   return (
@@ -868,7 +905,9 @@ function WarrantyCard() {
             onChange={(e) => setPartsDays(e.target.value)}
           />
         </div>
-        <Button onClick={saveDefaults}>Simpan Default</Button>
+        <Button onClick={saveDefaults} loading={saving}>
+          Simpan Default
+        </Button>
 
         <div className={styles.tplGroup}>
           <span className={styles.tplLabel}>Preset Durasi (quick-pick)</span>
@@ -878,7 +917,7 @@ function WarrantyCard() {
                 <span key={p} className={styles.tplChip}>
                   {p} hari
                   <button
-                    onClick={() => removePreset(p)}
+                    onClick={() => void removePreset(p)}
                     aria-label={`Hapus ${p} hari`}
                     title="Hapus"
                   >
@@ -895,9 +934,9 @@ function WarrantyCard() {
               inputMode="numeric"
               value={presetInput}
               onChange={(e) => setPresetInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addPreset()}
+              onKeyDown={(e) => e.key === 'Enter' && void addPreset()}
             />
-            <Button onClick={addPreset} iconLeft={<Icon name="plus" aria-hidden />}>
+            <Button onClick={() => void addPreset()} iconLeft={<Icon name="plus" aria-hidden />}>
               Tambah
             </Button>
           </div>
@@ -980,7 +1019,9 @@ function WhatsAppTemplatesCard() {
     return init;
   });
 
-  const save = () => {
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
     if (!canEdit) return;
     const next: Record<string, string> = {};
     for (const k of keys) {
@@ -988,8 +1029,15 @@ function WhatsAppTemplatesCard() {
       // Only persist as override if it differs from default & is non-empty.
       if (v && v !== DEFAULT_WA_TEMPLATES[k]) next[k] = v;
     }
-    setWaTemplateOverrides(next);
-    toast.success('Template WhatsApp disimpan');
+    setSaving(true);
+    try {
+      await setWaTemplateOverrides(next);
+      toast.success('Template WhatsApp disimpan');
+    } catch {
+      toast.error('Gagal menyimpan template WhatsApp');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetKey = (k: WaTemplateKey) => {
@@ -1047,7 +1095,9 @@ function WhatsAppTemplatesCard() {
           </div>
         ))}
         {canEdit ? (
-          <Button onClick={save}>Simpan Template</Button>
+          <Button onClick={save} loading={saving}>
+            Simpan Template
+          </Button>
         ) : (
           <ProNotice>
             Template bawaan tetap terkirim seperti biasa. Pro membuka penyuntingannya,
@@ -1250,7 +1300,11 @@ function TeamTab({
 
   // Solo is single-user (the owner). Inviting anyone exceeds the quota and
   // forces an upgrade to Pro. Active members + outstanding invites both count.
-  const seatsUsed = employees.length + invites.length;
+  // Anggota NONAKTIF tidak memakai kursi: menonaktifkan orang yang keluar
+  // dulu tidak mengembalikan kursinya, jadi toko Solo yang berganti karyawan
+  // terkunci meski penggunanya tetap satu. Server menghitung dengan aturan
+  // yang sama (0077).
+  const seatsUsed = employees.filter((e) => e.active).length + invites.length;
   const canInvite = withinUserQuota(plan, seatsUsed + 1);
 
   const invite = async () => {
@@ -1263,6 +1317,13 @@ function TeamTab({
     setBusy(true);
     try {
       await inviteMember({ orgId, email, name, role, outletIds: inviteOutlets });
+      // Tindakan kewenangan dicatat: siapa menambah siapa, dengan peran apa.
+      logActivity({
+        action: 'member.invite',
+        entityType: 'member',
+        entityLabel: name.trim(),
+        meta: { email: email.trim(), role },
+      });
       toast.success(`Undangan untuk ${email.trim()} dibuat`);
       setName('');
       setEmail('');
@@ -1278,7 +1339,15 @@ function TeamTab({
 
   const revoke = async (id: string) => {
     try {
+      const target = invites.find((i) => i.id === id);
       await revokeInvite(id);
+      logActivity({
+        action: 'invite.revoke',
+        entityType: 'invite',
+        entityId: id,
+        entityLabel: target?.email ?? '',
+        meta: { name: target?.name ?? '', role: target?.role ?? null },
+      });
       await loadInvites();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal membatalkan undangan');
@@ -1288,6 +1357,13 @@ function TeamTab({
   const changeRole = async (memberId: string, newRole: Role) => {
     try {
       await setMemberRole(memberId, newRole);
+      logActivity({
+        action: 'member.role',
+        entityType: 'member',
+        entityId: memberId,
+        entityLabel: employees.find((e) => e.id === memberId)?.name ?? '',
+        meta: { role: newRole },
+      });
       toast.success('Peran diperbarui');
       refetch();
     } catch (err) {
@@ -1299,6 +1375,12 @@ function TeamTab({
     setConfirmOff(null);
     try {
       await deactivateMember(memberId);
+      logActivity({
+        action: 'member.deactivate',
+        entityType: 'member',
+        entityId: memberId,
+        entityLabel: employees.find((e) => e.id === memberId)?.name ?? '',
+      });
       toast.success('Anggota dinonaktifkan');
       refetch();
     } catch (err) {
@@ -1309,7 +1391,15 @@ function TeamTab({
   const deleteMemberAction = async (memberId: string) => {
     setConfirmDelete(null);
     try {
+      const gone = employees.find((e) => e.id === memberId);
       await deleteMember(memberId);
+      logActivity({
+        action: 'member.delete',
+        entityType: 'member',
+        entityId: memberId,
+        entityLabel: gone?.name ?? '',
+        meta: { role: gone?.role ?? null },
+      });
       toast.success('Anggota dihapus permanen');
       refetch();
     } catch (err) {
@@ -1447,11 +1537,21 @@ function TeamTab({
                       loose siblings squeezed into the 390px row). */}
                   {isSupabaseConfigured && !isSelf && e.active ? (
                     <span className={styles.itemActions}>
+                      {/* Penjaga "owner terakhir" sudah lama ada di lib dan di
+                          server, tapi layar tetap membiarkan tombolnya ditekan
+                          lalu menampilkan penolakan. Sekarang kontrolnya yang
+                          mati, dengan alasannya. */}
                       <select
                         className={styles.roleSelect}
                         value={e.role}
                         onChange={(ev) => void changeRole(e.id, ev.target.value as Role)}
                         aria-label={`Peran ${e.name}`}
+                        disabled={e.role === 'owner' && !canChangeRole(e, 'karyawan', employees)}
+                        title={
+                          e.role === 'owner' && !canChangeRole(e, 'karyawan', employees)
+                            ? 'Owner terakhir tidak bisa diturunkan perannya — angkat owner lain dulu'
+                            : undefined
+                        }
                       >
                         <option value="owner">Owner</option>
                         <option value="admin">Admin</option>
@@ -1480,14 +1580,23 @@ function TeamTab({
                           </span>
                         )
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmOff(e.id)}
-                        iconLeft={<Icon name="user-minus" aria-hidden />}
+                      <span
+                        title={
+                          canDeactivate(e, employees)
+                            ? undefined
+                            : 'Owner terakhir tidak bisa dinonaktifkan — angkat owner lain dulu'
+                        }
                       >
-                        Nonaktifkan
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmOff(e.id)}
+                          disabled={!canDeactivate(e, employees)}
+                          iconLeft={<Icon name="user-minus" aria-hidden />}
+                        >
+                          Nonaktifkan
+                        </Button>
+                      </span>
                     </span>
                   ) : (
                     <span className={styles.itemActions}>
@@ -1908,19 +2017,59 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     if (adding) return;
     setAdding(true);
     const now = new Date().toISOString();
+    const initial = parseRpInput(balance);
     try {
+      const walletId = newId();
+      // Wallet SELALU lahir bersaldo nol. Saldo awal adalah uang yang benar-benar
+      // masuk ke kas, jadi ia dicatat sebagai setoran Modal — dulu angkanya
+      // langsung ditulis ke saldo dan Buku Kas tak pernah bisa menjelaskan
+      // dari mana uang itu datang.
       await repository.put('wallets', {
-        id: newId(),
+        id: walletId,
         orgId,
         outletId: outletId || null,
         name: name.trim(),
-        balance: parseRpInput(balance),
+        balance: 0,
         sortOrder: wallets.length,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
       });
-      toast.success('Wallet ditambahkan');
+      if (initial > 0) {
+        const description = `Saldo awal ${name.trim()}`;
+        if (isCloudMode()) {
+          await recordFinanceEntry({
+            orgId,
+            kind: 'income',
+            date: localDateStr(),
+            category: 'Modal',
+            amount: initial,
+            walletId,
+            description,
+            outletId: outletId || null,
+          });
+        } else {
+          await repository.put('incomes', {
+            id: newId(),
+            orgId,
+            outletId: outletId || null,
+            date: localDateStr(),
+            category: 'Modal',
+            amount: initial,
+            walletId,
+            description,
+            serviceId: null,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          });
+          const fresh = (await repository.list('wallets')).find((w) => w.id === walletId);
+          if (fresh) await repository.put('wallets', applyBalance(fresh, initial));
+        }
+      }
+      toast.success(
+        initial > 0 ? 'Wallet ditambahkan, saldo awal dicatat sebagai Modal' : 'Wallet ditambahkan',
+      );
       setName('');
       setBalance('');
       setOutletId('');
@@ -1953,13 +2102,17 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
           updatedAt: new Date().toISOString(),
         });
       }
-      logActivity({
-        action: 'wallet.transfer',
-        entityType: 'wallet',
-        entityId: fromId,
-        entityLabel: `${from.name} → ${to.name}`,
-        meta: { amount, toWalletId: toId },
-      });
+      // Cloud: transfer_wallet mencatat jejaknya sendiri (0073). Tanpa
+      // penjagaan ini satu transfer meninggalkan DUA baris log bernominal sama.
+      if (!isCloudMode()) {
+        logActivity({
+          action: 'wallet.transfer',
+          entityType: 'wallet',
+          entityId: fromId,
+          entityLabel: `${from.name} → ${to.name}`,
+          meta: { amount, toWalletId: toId },
+        });
+      }
       toast.success(`Transfer ${fmtRp(amount)}: ${from.name} → ${to.name}`);
       setTransferAmount('');
       setFromId('');
@@ -1981,15 +2134,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         </p>
         <ul className={styles.walletList}>
           {wallets.map((w) => (
-            <li key={w.id} className={styles.walletItem}>
-              <span>
-                {w.name}
-                <Badge tone={w.outletId ? 'info' : 'neutral'}>
-                  {outletName(w.outletId)}
-                </Badge>
-              </span>
-              <strong>{fmtRp(w.balance)}</strong>
-            </li>
+            <WalletRow key={w.id} wallet={w} outletLabel={outletName(w.outletId)} />
           ))}
         </ul>
         <div className={styles.addRow}>
@@ -2074,6 +2219,121 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         )}
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * Satu baris wallet: ganti nama dan hapus. Sebelumnya kas hanya bisa DITAMBAH —
+ * salah ketik nama menetap selamanya, dan kas yang tak dipakai lagi tetap
+ * muncul di setiap form pembayaran. Penghapusan dijaga server (0077): kas yang
+ * masih memegang saldo atau masih dipakai baris kas tidak boleh hilang.
+ */
+function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: string }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(wallet.name);
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+
+  const rename = async () => {
+    if (!name.trim()) return toast.error('Nama wallet wajib diisi');
+    setBusy(true);
+    try {
+      await repository.put('wallets', {
+        ...wallet,
+        name: name.trim(),
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success('Nama wallet diperbarui');
+      setEditing(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengganti nama wallet');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setConfirm(false);
+    // Cermin penjagaan server, supaya alasannya muncul sebelum permintaan dikirim.
+    if (wallet.balance !== 0) {
+      return toast.error(
+        `"${wallet.name}" masih memegang ${fmtRp(wallet.balance)}. Pindahkan saldonya dulu lewat transfer.`,
+      );
+    }
+    setBusy(true);
+    try {
+      await repository.remove('wallets', wallet.id);
+      toast.success('Wallet dihapus');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus wallet');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li className={styles.walletItem}>
+      {editing ? (
+        <>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label={`Nama ${wallet.name}`}
+          />
+          <span className={styles.itemActions}>
+            <Button size="sm" onClick={rename} loading={busy}>
+              Simpan
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setName(wallet.name);
+                setEditing(false);
+              }}
+            >
+              Batal
+            </Button>
+          </span>
+        </>
+      ) : (
+        <>
+          <span>
+            {wallet.name}
+            <Badge tone={wallet.outletId ? 'info' : 'neutral'}>{outletLabel}</Badge>
+          </span>
+          <strong>{fmtRp(wallet.balance)}</strong>
+          <span className={styles.itemActions}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(true)}
+              iconLeft={<Icon name="pen" aria-hidden />}
+            >
+              Ganti nama
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirm(true)}
+              disabled={busy}
+              iconLeft={<Icon name="trash" aria-hidden />}
+            >
+              Hapus
+            </Button>
+          </span>
+        </>
+      )}
+      <ConfirmDialog
+        open={confirm}
+        title="Hapus wallet?"
+        message={`"${wallet.name}" akan dihapus. Hanya bisa dihapus bila saldonya nol dan belum pernah dipakai di pemasukan atau pengeluaran.`}
+        confirmLabel="Hapus"
+        danger
+        onConfirm={remove}
+        onCancel={() => setConfirm(false)}
+      />
+    </li>
   );
 }
 
@@ -2175,6 +2435,12 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
   );
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
+  // Nama & alamat cabang dulu tidak bisa diubah sama sekali setelah dibuat,
+  // dan cabang yang tutup tidak bisa dihapus — keduanya menetap di semua
+  // pemilih cabang selamanya.
+  const [name, setName] = useState(outlet.name);
+  const [address, setAddress] = useState(outlet.address ?? '');
+  const [confirm, setConfirm] = useState(false);
 
   const geofenceOn =
     outlet.lat != null && outlet.lng != null && (outlet.geofenceRadiusM ?? 0) > 0;
@@ -2185,7 +2451,16 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       const pos = await getCurrentPosition();
       setLat(pos.lat.toFixed(6));
       setLng(pos.lng.toFixed(6));
-      toast.success(`Lokasi terdeteksi (akurasi ±${Math.round(pos.accuracyM)}m)`);
+      const radN = Number(radius) || 0;
+      // Akurasi yang lebih lebar dari radius berarti titik ini bisa meleset
+      // keluar pagar — dikatakan sekarang, bukan setelah absensi ditolak.
+      if (radN > 0 && pos.accuracyM > radN) {
+        toast.warning(
+          `Akurasi GPS ±${Math.round(pos.accuracyM)}m lebih lebar dari radius ${radN}m. Ambil ulang di tempat terbuka, atau perbesar radiusnya.`,
+        );
+      } else {
+        toast.success(`Lokasi terdeteksi (akurasi ±${Math.round(pos.accuracyM)}m)`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal mengambil lokasi');
     } finally {
@@ -2206,16 +2481,26 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
     if (radN != null && (Number.isNaN(radN) || radN <= 0)) {
       return toast.error('Radius harus lebih dari 0 meter');
     }
+    // Radius sebesar satu kota bukan pagar: ia meloloskan siapa pun sambil
+    // tetap terlihat seperti penjagaan.
+    if (radN != null && radN > MAX_GEOFENCE_M) {
+      return toast.error(
+        `Radius maksimal ${MAX_GEOFENCE_M.toLocaleString('id-ID')} m — lebih dari itu absensi bisa dilakukan dari mana saja`,
+      );
+    }
+    if (!name.trim()) return toast.error('Nama cabang wajib diisi');
     setBusy(true);
     try {
       await repository.put('outlets', {
         ...outlet,
+        name: name.trim(),
+        address: address.trim(),
         lat: latN,
         lng: lngN,
         geofenceRadiusM: radN,
         updatedAt: new Date().toISOString(),
       });
-      toast.success('Geofence outlet disimpan');
+      toast.success('Cabang disimpan');
       setOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan geofence');
@@ -2273,10 +2558,19 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
 
       {open && (
         <div className={styles.geofenceBox}>
+          <div className={styles.geofenceRow}>
+            <Input label="Nama Cabang" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              label="Alamat"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
           <p className={styles.geofenceHint}>
             <Icon name="info-circle" aria-hidden /> Isi koordinat + radius untuk
             mewajibkan absensi dari lokasi outlet. Kosongkan untuk absensi bebas lokasi.
-            Set saat Anda sedang berada di outlet.
+            Set saat Anda sedang berada di outlet. Radius maksimal{' '}
+            {MAX_GEOFENCE_M.toLocaleString('id-ID')} m.
           </p>
           <div className={styles.geofenceRow}>
             <Input
@@ -2310,6 +2604,17 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
               Gunakan lokasi saya
             </Button>
             <span className={styles.geofenceSpacer} />
+            {!outlet.isPrimary && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirm(true)}
+                disabled={busy}
+                iconLeft={<Icon name="trash" aria-hidden />}
+              >
+                Hapus cabang
+              </Button>
+            )}
             {geofenceOn && (
               <Button variant="ghost" size="sm" onClick={clear} disabled={busy}>
                 Matikan
@@ -2326,6 +2631,27 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirm}
+        title="Hapus cabang?"
+        message={`"${outlet.name}" akan dihapus. Hanya bisa dihapus bila belum pernah dipakai transaksi, absensi, kas, atau penugasan anggota — cabang utama tidak bisa dihapus.`}
+        confirmLabel="Hapus"
+        danger
+        onConfirm={async () => {
+          setConfirm(false);
+          setBusy(true);
+          try {
+            await repository.remove('outlets', outlet.id);
+            toast.success('Cabang dihapus');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Gagal menghapus cabang');
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onCancel={() => setConfirm(false)}
+      />
     </li>
   );
 }

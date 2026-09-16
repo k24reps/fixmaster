@@ -7,7 +7,7 @@ import { isCloudMode } from '@/stores/demo';
 import { voidPurchaseOrder } from '@/data/supabase-client';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
-import { poTotal, PO_STATUS_LABELS, PO_STATUS_TONE } from '@/lib/business/purchase';
+import { poTotal, poReceivedQty, PO_STATUS_LABELS, PO_STATUS_TONE } from '@/lib/business/purchase';
 import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
@@ -31,6 +31,7 @@ export function SuppliersPage() {
   const [supplierModal, setSupplierModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [poModal, setPoModal] = useState(false);
+  const [editingPo, setEditingPo] = useState<PurchaseOrder | null>(null);
   const [receiveTarget, setReceiveTarget] = useState<PurchaseOrder | null>(null);
   const [deleteSupplier, setDeleteSupplier] = useState<Supplier | null>(null);
   const [voidTarget, setVoidTarget] = useState<PurchaseOrder | null>(null);
@@ -57,13 +58,13 @@ export function SuppliersPage() {
 
   const confirmDeleteSupplier = async () => {
     if (!deleteSupplier) return;
-    const openPo = purchaseOrders.filter(
-      (p) => p.supplierId === deleteSupplier.id && p.status !== 'received' && p.status !== 'cancelled',
-    ).length;
-    if (openPo > 0) {
-      // BLOCK, don't just warn — deleting now would orphan the active POs.
-      // Finish (terima) or void the POs first, then delete the supplier.
-      toast.error(`Supplier punya ${openPo} PO aktif. Selesaikan atau batalkan PO-nya dulu.`);
+    // Bukan hanya PO aktif: PO yang sudah selesai pun kehilangan nama
+    // suppliernya (tampil "—") kalau suppliernya dihapus. Server menolak juga (0072).
+    const linkedPo = purchaseOrders.filter((p) => p.supplierId === deleteSupplier.id).length;
+    if (linkedPo > 0) {
+      toast.error(
+        `Supplier punya ${linkedPo} PO — riwayatnya akan kehilangan nama supplier. Perbarui datanya saja.`,
+      );
       setDeleteSupplier(null);
       return;
     }
@@ -122,13 +123,17 @@ export function SuppliersPage() {
           updatedAt: now,
         });
       }
-      logActivity({
-        action: 'expense.delete',
-        entityType: 'purchaseOrder',
-        entityId: voidTarget.id,
-        entityLabel: `Batal PO ${voidTarget.poNumber}`,
-        meta: { poId: voidTarget.id },
-      });
+      // Cloud: dicatat database sendiri (0073), termasuk bila PO dibatalkan
+      // lewat jalur lain. Lokal/demo tidak punya trigger, jadi tetap dicatat di sini.
+      if (!isCloudMode()) {
+        logActivity({
+          action: 'po.void',
+          entityType: 'purchaseOrder',
+          entityId: voidTarget.id,
+          entityLabel: voidTarget.poNumber,
+          meta: { poId: voidTarget.id, total: poTotal(voidTarget.lines) },
+        });
+      }
       toast.success('PO dibatalkan, stok & keuangan dikembalikan');
       setVoidTarget(null);
     } catch (e) {
@@ -150,7 +155,10 @@ export function SuppliersPage() {
         <div className={styles.spacer} />
         {tab === 'po' ? (
           <Button
-            onClick={() => setPoModal(true)}
+            onClick={() => {
+              setEditingPo(null);
+              setPoModal(true);
+            }}
             disabled={suppliers.length === 0 || inventory.length === 0}
             iconLeft={<Icon name="plus" aria-hidden />}
           >
@@ -212,6 +220,21 @@ export function SuppliersPage() {
                     {(po.status === 'ordered' || po.status === 'partial') && (
                       <button className={styles.receiveBtn} onClick={() => setReceiveTarget(po)}>
                         <Icon name="box-open" aria-hidden /> Terima
+                      </button>
+                    )}
+                    {/* Salah ketik qty/harga tak lagi memaksa batal + buat ulang —
+                        selama belum ada barang masuk, PO-nya masih bisa diperbaiki. */}
+                    {po.status !== 'cancelled' && poReceivedQty(po.lines) === 0 && (
+                      <button
+                        className={styles.voidBtn}
+                        onClick={() => {
+                          setEditingPo(po);
+                          setPoModal(true);
+                        }}
+                        aria-label={`Perbaiki ${po.poNumber}`}
+                        title="Perbaiki PO (belum ada barang diterima)"
+                      >
+                        <Icon name="pen" aria-hidden />
                       </button>
                     )}
                     {po.status !== 'cancelled' && po.status !== 'draft' && (
@@ -298,13 +321,22 @@ export function SuppliersPage() {
         )
       )}
 
-      <SupplierModal open={supplierModal} onClose={() => setSupplierModal(false)} editing={editingSupplier} />
+      <SupplierModal
+        open={supplierModal}
+        onClose={() => setSupplierModal(false)}
+        editing={editingSupplier}
+        suppliers={suppliers}
+      />
       <PurchaseOrderModal
         open={poModal}
-        onClose={() => setPoModal(false)}
+        onClose={() => {
+          setPoModal(false);
+          setEditingPo(null);
+        }}
         suppliers={suppliers}
         inventory={inventory}
         purchaseOrders={purchaseOrders}
+        editing={editingPo}
       />
       <ReceiveModal
         open={!!receiveTarget}
@@ -315,7 +347,7 @@ export function SuppliersPage() {
       <ConfirmDialog
         open={!!deleteSupplier}
         title="Hapus Supplier?"
-        message={`"${deleteSupplier?.name}" akan dihapus.`}
+        message={`"${deleteSupplier?.name}" akan dihapus permanen. Hanya bisa dihapus bila belum pernah dipakai di purchase order.`}
         confirmLabel="Hapus"
         danger
         onConfirm={confirmDeleteSupplier}
@@ -324,7 +356,7 @@ export function SuppliersPage() {
       <ConfirmDialog
         open={!!voidTarget}
         title="Batalkan PO?"
-        message={`PO ${voidTarget?.poNumber ?? ''} akan dibatalkan. Stok yang sudah diterima dikembalikan, pengeluaran terkait dihapus, dan saldo wallet dikembalikan. Tindakan ini tidak bisa diurungkan.`}
+        message={`PO ${voidTarget?.poNumber ?? ''} akan dibatalkan. Stok yang sudah diterima dikembalikan, pengeluaran terkait dihapus, dan saldo wallet dikembalikan. HPP rata-rata TIDAK ikut kembali ke nilai sebelumnya — periksa harga modal barangnya setelah ini. Hanya bisa dibatalkan bila stoknya masih utuh dan pengeluarannya masih bulan ini.`}
         confirmLabel={voiding ? 'Membatalkan…' : 'Batalkan PO'}
         danger
         onConfirm={confirmVoid}

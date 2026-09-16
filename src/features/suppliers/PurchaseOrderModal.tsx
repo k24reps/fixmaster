@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Modal, Input, Select, Button, Icon } from '@/components/ui';
 import { repository } from '@/data';
+import { useCollection } from '@/hooks/useCollection';
+import { isCloudMode } from '@/stores/demo';
+import { createPurchaseOrder, updatePurchaseOrder } from '@/data/supabase-client';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { poTotal } from '@/lib/business/purchase';
 import { toast } from '@/stores/toast';
-import { useSessionStore } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import type {
   PurchaseOrder,
   PurchaseOrderLine,
@@ -21,6 +24,8 @@ interface PurchaseOrderModalProps {
   suppliers: Supplier[];
   inventory: InventoryItem[];
   purchaseOrders: PurchaseOrder[];
+  /** PO yang sedang diperbaiki (hanya boleh selama belum ada barang diterima). */
+  editing?: PurchaseOrder | null;
 }
 
 export function PurchaseOrderModal({
@@ -29,8 +34,10 @@ export function PurchaseOrderModal({
   suppliers,
   inventory,
   purchaseOrders,
+  editing = null,
 }: PurchaseOrderModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const { data: outlets } = useCollection('outlets');
   const [supplierId, setSupplierId] = useState('');
   const [lines, setLines] = useState<PurchaseOrderLine[]>([]);
   const [note, setNote] = useState('');
@@ -40,9 +47,9 @@ export function PurchaseOrderModal({
   const [lastOpen, setLastOpen] = useState(false);
   if (open && !lastOpen) {
     setLastOpen(true);
-    setSupplierId(suppliers[0]?.id ?? '');
-    setLines([]);
-    setNote('');
+    setSupplierId(editing?.supplierId ?? suppliers[0]?.id ?? '');
+    setLines(editing ? editing.lines.map((l) => ({ ...l })) : []);
+    setNote(editing?.note ?? '');
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
@@ -67,32 +74,65 @@ export function PurchaseOrderModal({
   const save = async () => {
     if (!supplierId) return setError('Pilih supplier');
     if (lines.length === 0) return setError('Tambahkan minimal 1 barang');
-    if (lines.some((l) => l.qty <= 0)) return setError('Qty setiap barang harus lebih dari 0');
+    // Qty bilangan bulat: kolom stok integer, jadi "2,5 pcs" dulu dibulatkan
+    // diam-diam saat barang diterima (server menolaknya sejak 0071).
+    if (lines.some((l) => l.qty <= 0 || !Number.isInteger(l.qty)))
+      return setError('Qty setiap barang harus bilangan bulat lebih dari 0');
+    // PO dicap ke cabang, sama seperti pengeluaran saat barang diterima.
+    if (!editing && mustPickOutlet(outlets.length))
+      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum membuat PO');
 
     setBusy(true);
     const now = new Date().toISOString();
-    const poNumber = nextDocNumber('PO', purchaseOrders.map((p) => p.poNumber));
-    const record: PurchaseOrder = {
-      id: newId(),
-      orgId,
-      outletId: null,
-      poNumber,
-      supplierId,
-      status: 'ordered',
-      lines,
-      orderedAt: localDateStr(),
-      receivedAt: null,
-      note: note.trim(),
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    };
     try {
+      if (isCloudMode()) {
+        // Nomor PO ditetapkan server (0071): dua perangkat tidak lagi bentrok,
+        // dan daftar yang terpotong 1000 baris tak lagi mengulang nomor lama.
+        if (editing) {
+          await updatePurchaseOrder({
+            orgId,
+            poId: editing.id,
+            supplierId,
+            lines,
+            note: note.trim(),
+          });
+          toast.success(`PO ${editing.poNumber} diperbarui`);
+        } else {
+          const { poNumber } = await createPurchaseOrder({
+            orgId,
+            supplierId,
+            lines,
+            note: note.trim(),
+            outletId: resolveCreateOutlet(outlets),
+          });
+          toast.success(`PO ${poNumber} dibuat`);
+        }
+        onClose();
+        return;
+      }
+
+      const poNumber =
+        editing?.poNumber ?? nextDocNumber('PO', purchaseOrders.map((p) => p.poNumber));
+      const record: PurchaseOrder = {
+        id: editing?.id ?? newId(),
+        orgId,
+        outletId: editing?.outletId ?? resolveCreateOutlet(outlets),
+        poNumber,
+        supplierId,
+        status: editing?.status ?? 'ordered',
+        lines,
+        orderedAt: editing?.orderedAt ?? localDateStr(),
+        receivedAt: editing?.receivedAt ?? null,
+        note: note.trim(),
+        createdAt: editing?.createdAt ?? now,
+        updatedAt: now,
+        deletedAt: null,
+      };
       await repository.put('purchaseOrders', record);
-      toast.success(`PO ${poNumber} dibuat`);
+      toast.success(editing ? `PO ${poNumber} diperbarui` : `PO ${poNumber} dibuat`);
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal membuat PO');
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan PO');
     } finally {
       setBusy(false);
     }
@@ -104,7 +144,7 @@ export function PurchaseOrderModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Purchase Order Baru"
+      title={editing ? `Perbaiki ${editing.poNumber}` : 'Purchase Order Baru'}
       size="lg"
       footer={
         <>
@@ -112,7 +152,7 @@ export function PurchaseOrderModal({
             Batal
           </Button>
           <Button onClick={save} loading={busy}>
-            Buat PO
+            {editing ? 'Simpan Perubahan' : 'Buat PO'}
           </Button>
         </>
       }
@@ -145,7 +185,9 @@ export function PurchaseOrderModal({
                 <Input
                   type="number"
                   value={String(l.qty)}
-                  onChange={(e) => updateLine(l.itemId, { qty: Math.max(0, Number(e.target.value)) })}
+                  onChange={(e) =>
+                    updateLine(l.itemId, { qty: Math.max(0, Math.round(Number(e.target.value))) })
+                  }
                   className={styles.qtyInput}
                 />
                 <Input

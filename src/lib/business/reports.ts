@@ -207,11 +207,18 @@ export interface PartUsage {
   cost: number;
 }
 
-/** Most-used spareparts across services (counts deducted inventory parts). */
+/**
+ * Sparepart yang benar-benar TERPAKAI: hanya baris inventori yang stoknya
+ * sudah dipotong. Dulu setiap baris dihitung — termasuk yang baru direncanakan
+ * dan baris biaya dadakan (manual) yang bukan barang stok — sehingga laporan
+ * pemakaian selalu lebih besar dari kenyataan, dan dipakai untuk memutuskan
+ * pembelian.
+ */
 export function sparepartUsage(services: Service[]): PartUsage[] {
   const map = new Map<string, PartUsage>();
   for (const s of services) {
     for (const p of s.spareparts) {
+      if (!p.deducted || p.kind === 'manual') continue;
       const key = p.name;
       const cur = map.get(key) ?? { name: key, qty: 0, cost: 0 };
       cur.qty += p.qty;
@@ -407,6 +414,31 @@ function agingBucket(ageDays: number): AgingBucket {
   return '31+';
 }
 
+/** Satu piutang sebelum umurnya dihitung — bentuk yang sama dari server (0074) maupun dari daftar tiket lokal. */
+export interface ReceivableRow {
+  serviceId: string;
+  serviceNo: string;
+  customerName: string;
+  outstanding: number;
+  /** Tanggal lokal mulai dihitung umurnya: tanggal selesai, atau tanggal masuk. */
+  since: string;
+}
+
+/**
+ * Umur piutang dari baris yang sudah disaring. Satu aturan umur untuk dua
+ * sumber: RPC service_receivables (cloud — SELURUH tiket, bukan hanya yang
+ * dibuat pada periode yang sedang dilihat) dan daftar tiket lokal.
+ */
+export function agingFromRows(rows: ReceivableRow[], today: Date = new Date()): Receivable[] {
+  const todayStr = localDateStr(today);
+  return rows
+    .map((r) => {
+      const ageDays = Math.max(0, daysBetween(r.since, todayStr));
+      return { ...r, ageDays, bucket: agingBucket(ageDays) };
+    })
+    .sort((a, b) => b.ageDays - a.ageDays);
+}
+
 /**
  * Services where work is done ("selesai") but a balance is still owed
  * (finalCost > downPayment). Aged from completion date (fallback intake).
@@ -415,24 +447,20 @@ export function receivablesAging(
   services: Service[],
   today: Date = new Date(),
 ): Receivable[] {
-  const todayStr = localDateStr(today);
-  const out: Receivable[] = [];
+  const rows: ReceivableRow[] = [];
   for (const s of services) {
     if (s.status !== 'selesai') continue;
     const outstanding = outstandingBalance(s);
     if (outstanding <= 0) continue;
-    const since = completionDate(s) ?? localDateOf(s.createdAt);
-    const ageDays = Math.max(0, daysBetween(since, todayStr));
-    out.push({
+    rows.push({
       serviceId: s.id,
       serviceNo: s.serviceNo,
       customerName: s.customerName,
       outstanding,
-      ageDays,
-      bucket: agingBucket(ageDays),
+      since: completionDate(s) ?? localDateOf(s.createdAt),
     });
   }
-  return out.sort((a, b) => b.ageDays - a.ageDays);
+  return agingFromRows(rows, today);
 }
 
 /** Re-export for callers that want the inventory cost of a service's parts. */

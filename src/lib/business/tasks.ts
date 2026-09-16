@@ -5,7 +5,7 @@
  * fully unit-testable. This is the core differentiator vs FixNova, which
  * has no internal task management at all.
  */
-import type { TaskTemplate, TaskInstance, TaskTemplateItem } from '@/data/types';
+import type { TaskTemplate, TaskInstance, TaskTemplateItem, Role } from '@/data/types';
 import { parseISODate, localDateStr } from '@/lib/time';
 import { newId } from '@/lib/id';
 
@@ -31,8 +31,15 @@ export function isDueOn(template: TaskTemplate, isoDate: string): boolean {
       return true;
     case 'weekly':
       return template.weekdays.includes(date.getDay());
-    case 'monthly':
-      return template.monthDays.includes(date.getDate());
+    case 'monthly': {
+      const day = date.getDate();
+      if (template.monthDays.includes(day)) return true;
+      // Tanggal 29-31 tidak ada di setiap bulan. Tanpa ini tugas "tiap tanggal
+      // 31" hilang sama sekali di Februari, April, Juni, September, November —
+      // jadi jadwalnya jatuh ke hari terakhir bulan itu.
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return day === lastDay && template.monthDays.some((d) => d > lastDay);
+    }
     default:
       return false;
   }
@@ -167,6 +174,37 @@ export function describeRecurrence(template: TaskTemplate): string {
     default:
       return '';
   }
+}
+
+/** Bagian template yang menentukan siapa pemilik tugasnya. */
+export type TaskAssignee = Pick<
+  TaskTemplate,
+  'assigneeType' | 'assigneeRole' | 'assigneeEmployeeId' | 'assigneeOutletId'
+>;
+
+/**
+ * Apakah tugas dari template ini ditujukan untuk orang yang sedang login.
+ *
+ * Sebelumnya "Tugaskan Ke" hanya jadi label: semua orang melihat semua tugas,
+ * jadi daftar harian seorang teknisi penuh dengan pekerjaan admin. Manager tetap
+ * melihat semuanya (`seesAll`) karena merekalah yang mengawasi, dan tugas tanpa
+ * template (tugas cepat, atau tugas yang templatenya sudah dihapus) tetap milik
+ * bersama — kalau tidak, tugas itu tak akan terlihat siapa pun.
+ */
+export function taskVisibleTo(
+  template: TaskAssignee | undefined,
+  me: { id: string; role: Role },
+  outletIds: readonly string[],
+  seesAll: boolean,
+): boolean {
+  if (seesAll || !template) return true;
+  if (template.assigneeType === 'employee') return template.assigneeEmployeeId === me.id;
+  if (template.assigneeType === 'outlet') {
+    // Tanpa outlet terpilih, atau pengguna tanpa batasan cabang: tetap terlihat.
+    if (!template.assigneeOutletId || outletIds.length === 0) return true;
+    return outletIds.includes(template.assigneeOutletId);
+  }
+  return (template.assigneeRole ?? 'karyawan') === me.role;
 }
 
 /** Whether a pending instance is overdue relative to today. */

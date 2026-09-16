@@ -222,3 +222,17 @@ describe('checkWithinGeofence', () => {
     expect(checkWithinGeofence(outlet, NEARBY).ok).toBe(true);
   });
 });
+
+describe('hoursByEmployee — shift yang belum ditutup', () => {
+  it('menghitungnya sebagai hari hadir nol jam, dan menandainya', () => {
+    const [row] = hoursByEmployee(
+      [
+        { employeeId: 'e1', employeeName: 'Sari', date: '2026-06-02', status: 'hadir', checkIn: '08:00', checkOut: '17:00', totalHours: 9 },
+        { employeeId: 'e1', employeeName: 'Sari', date: '2026-06-03', status: 'hadir', checkIn: '08:00', checkOut: null, totalHours: 0 },
+      ],
+      '2026-06-01',
+      '2026-06-30',
+    );
+    expect(row).toMatchObject({ days: 2, totalHours: 9, openShifts: 1 });
+  });
+});

@@ -67,6 +67,11 @@ export function TaskTemplateModal({
   const [assigneeRole, setAssigneeRole] = useState<Role>('karyawan');
   const [assigneeEmployeeId, setAssigneeEmployeeId] = useState('');
   const [assigneeOutletId, setAssigneeOutletId] = useState('');
+  // Nonaktif & tanggal berakhir sudah lama ada di data (dan badge "Nonaktif"
+  // ikut ditampilkan), tapi tak ada satu pun kendali untuk mengubahnya — jadi
+  // satu-satunya cara menghentikan template adalah menghapusnya.
+  const [active, setActive] = useState(true);
+  const [endDate, setEndDate] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -83,6 +88,8 @@ export function TaskTemplateModal({
     setAssigneeRole(editing?.assigneeRole ?? 'karyawan');
     setAssigneeEmployeeId(editing?.assigneeEmployeeId ?? '');
     setAssigneeOutletId(editing?.assigneeOutletId ?? '');
+    setActive(editing?.active ?? true);
+    setEndDate(editing?.endDate ?? '');
     setError('');
   });
 
@@ -152,9 +159,9 @@ export function TaskTemplateModal({
       assigneeRole: assigneeType === 'role' ? assigneeRole : null,
       assigneeEmployeeId: assigneeType === 'employee' ? assigneeEmployeeId : null,
       assigneeOutletId: assigneeType === 'outlet' ? assigneeOutletId : null,
-      active: editing?.active ?? true,
+      active,
       startDate: editing?.startDate ?? localDateStr(),
-      endDate: editing?.endDate ?? null,
+      endDate: endDate || null,
       sortOrder: editing?.sortOrder ?? nextSortOrder,
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
@@ -369,6 +376,26 @@ export function TaskTemplateModal({
             onChange={(e) => setOnceDate(e.target.value)}
           />
         )}
+
+        <Input
+          label="Berakhir Pada (opsional)"
+          name="template-end"
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          hint="Kosongkan bila template ini berjalan terus"
+        />
+
+        <Select
+          label="Status"
+          value={active ? 'aktif' : 'nonaktif'}
+          onChange={(e) => setActive(e.target.value === 'aktif')}
+          options={[
+            { value: 'aktif', label: 'Aktif — tugas dibuat sesuai jadwal' },
+            { value: 'nonaktif', label: 'Nonaktif — berhenti membuat tugas baru' },
+          ]}
+          hint="Menonaktifkan tidak menghapus tugas yang sudah ada"
+        />
 
         <Select
           label="Tugaskan Ke"

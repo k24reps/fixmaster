@@ -83,6 +83,12 @@ export interface EmployeeHours {
   sakit: number;
   alpha: number;
   totalHours: number;
+  /**
+   * Hari hadir yang jam keluarnya tidak pernah tercatat. Hari itu terhitung
+   * hadir dengan NOL jam, jadi tanpa angka ini kekurangan upah hanya ketahuan
+   * bila pemilik memeriksa baris satu per satu.
+   */
+  openShifts: number;
 }
 
 /**
@@ -132,7 +138,11 @@ export function visibleAttendance<T extends Pick<Attendance, 'employeeId'>>(
  * ponytail: karyawan tanpa baris di rentang itu tidak muncul di hasil.
  */
 export function hoursByEmployee(
-  rows: Pick<Attendance, 'employeeId' | 'employeeName' | 'date' | 'status' | 'checkIn' | 'totalHours'>[],
+  rows: (Pick<
+    Attendance,
+    'employeeId' | 'employeeName' | 'date' | 'status' | 'checkIn' | 'totalHours'
+  > &
+    Partial<Pick<Attendance, 'checkOut'>>)[],
   from: string,
   to: string,
 ): EmployeeHours[] {
@@ -151,11 +161,13 @@ export function hoursByEmployee(
       sakit: 0,
       alpha: 0,
       totalHours: 0,
+      openShifts: 0,
     };
     cur.employeeName = r.employeeName; // baris terbaru menang saat ganti nama
     if (isWorkedDay(r)) {
       cur.days += 1;
       cur.totalHours += r.totalHours || 0;
+      if (!r.checkOut) cur.openShifts += 1;
     } else if (r.status === 'izin') cur.izin += 1;
     else if (r.status === 'sakit') cur.sakit += 1;
     else if (r.status === 'alpha') cur.alpha += 1;

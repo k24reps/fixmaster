@@ -36,6 +36,18 @@ export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'attendance.checkout': { label: 'Check-out', icon: 'right-from-bracket', tone: 'info' },
   'task.create': { label: 'Tambah tugas', icon: 'list-check', tone: 'success' },
   'task.complete': { label: 'Selesaikan tugas', icon: 'circle-check', tone: 'success' },
+  'task.uncomplete': { label: 'Batalkan tanda selesai', icon: 'clock-rotate-left', tone: 'warning' },
+  'po.void': { label: 'Batalkan PO', icon: 'circle-xmark', tone: 'danger' },
+  // Tindakan kewenangan: justru ini yang paling perlu bisa ditelusuri, dan
+  // dulu tak satu pun tercatat.
+  'member.invite': { label: 'Undang anggota', icon: 'users', tone: 'success' },
+  'member.role': { label: 'Ubah peran anggota', icon: 'pen', tone: 'warning' },
+  'member.deactivate': { label: 'Nonaktifkan anggota', icon: 'users', tone: 'warning' },
+  'member.delete': { label: 'Hapus anggota', icon: 'trash', tone: 'danger' },
+  'settings.update': { label: 'Ubah profil usaha', icon: 'pen', tone: 'neutral' },
+  'activity.purge': { label: 'Pangkas log lama', icon: 'trash', tone: 'warning' },
+  'invite.revoke': { label: 'Batalkan undangan', icon: 'times', tone: 'warning' },
+  'data.restore': { label: 'Pulihkan data dari backup', icon: 'clock-rotate-left', tone: 'danger' },
   'service.create': { label: 'Servis baru', icon: 'screwdriver-wrench', tone: 'success' },
   'service.status': { label: 'Ubah status servis', icon: 'wrench', tone: 'info' },
   'wallet.transfer': { label: 'Transfer saldo', icon: 'arrow-right-arrow-left', tone: 'info' },

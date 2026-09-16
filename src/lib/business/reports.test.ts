@@ -14,6 +14,7 @@ import {
   previousWindow,
   outletComparison,
   receivablesAging,
+  agingFromRows,
 } from './reports';
 import type {
   Service,
@@ -444,5 +445,34 @@ describe('capital flows are excluded from every reporting aggregate', () => {
     expect(rows).toHaveLength(3);
     expect(rows.some((r) => r.category === 'Modal')).toBe(true);
     expect(rows.some((r) => r.category === 'Prive')).toBe(true);
+  });
+});
+
+describe('sparepartUsage — hanya yang benar-benar terpakai', () => {
+  it('mengabaikan baris yang belum dipotong stok dan baris biaya dadakan', () => {
+    const result = sparepartUsage([
+      svc({
+        spareparts: [
+          part({ name: 'LCD', qty: 2, costPrice: 50000 }),
+          part({ name: 'Baterai', qty: 5, costPrice: 30000, deducted: false }),
+          part({ name: 'Ongkos kirim', qty: 3, costPrice: 10000, kind: 'manual' }),
+        ],
+      }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: 'LCD', qty: 2, cost: 100000 });
+  });
+});
+
+describe('agingFromRows', () => {
+  it('menghitung umur dari tanggal selesai dan mengelompokkannya, tertua dulu', () => {
+    const rows = [
+      { serviceId: 'a', serviceNo: 'FM-1', customerName: 'Andi', outstanding: 50000, since: '2026-06-20' },
+      { serviceId: 'b', serviceNo: 'FM-2', customerName: 'Budi', outstanding: 10000, since: '2026-05-01' },
+    ];
+    const out = agingFromRows(rows, new Date('2026-06-25T00:00:00'));
+    expect(out.map((r) => r.serviceNo)).toEqual(['FM-2', 'FM-1']);
+    expect(out[0].bucket).toBe('31+');
+    expect(out[1]).toMatchObject({ ageDays: 5, bucket: '0-7' });
   });
 });

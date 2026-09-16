@@ -118,13 +118,17 @@ export function PosPage() {
         });
       }
       toast.success(`Transaksi ${voidTarget.saleNo} dibatalkan`);
-      logActivity({
-        action: 'sale.void',
-        entityType: 'sale',
-        entityId: voidTarget.id,
-        entityLabel: voidTarget.saleNo,
-        meta: { total: voidTarget.total, reason: voidReason.trim() },
-      });
+      // Di cloud, database yang mencatat pembatalan ini sendiri (0073) — jadi
+      // jejaknya tetap ada meski jaringan putus tepat setelah server selesai.
+      if (!isCloudMode()) {
+        logActivity({
+          action: 'sale.void',
+          entityType: 'sale',
+          entityId: voidTarget.id,
+          entityLabel: voidTarget.saleNo,
+          meta: { total: voidTarget.total, reason: voidReason.trim() },
+        });
+      }
       setVoidTarget(null);
       setVoidReason('');
     } catch (e) {
@@ -343,6 +347,7 @@ export function PosPage() {
         entityId: saleId,
         entityLabel: savedNo,
         meta: { total, items: cart.length },
+        outletId: txOutletId,
       });
       reset();
     } catch (e) {

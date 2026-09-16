@@ -82,6 +82,24 @@ export interface OrgSettings {
   mobileNavigation?: string[];
   /** Kolom opsional yang tampil di tabel Servis (lihat lib/business/serviceColumns). */
   serviceColumns?: string[];
+  /**
+   * Target bulanan & overhead budget. Dulu hanya di localStorage per perangkat,
+   * sehingga Indikator Break-Even di Laporan berbeda antara laptop dan HP, dan
+   * hilang begitu data browser dibersihkan.
+   */
+  monthlyTarget?: MonthlyTarget;
+  /**
+   * Setelan operasional yang membentuk SETIAP tiket baru. Dulu semuanya hanya
+   * di localStorage: teknisi di HP dan kasir di laptop memakai default garansi
+   * berbeda, dan membersihkan data browser menghapusnya — termasuk template
+   * WhatsApp yang justru dijual sebagai fitur Pro.
+   */
+  complaintTemplates?: string[];
+  accessoryTemplates?: string[];
+  warrantyServiceDays?: number;
+  warrantyPartsDays?: number;
+  warrantyPresets?: number[];
+  waTemplates?: Record<string, string>;
 }
 
 export interface Employee extends BaseEntity {
@@ -386,6 +404,14 @@ export interface Attendance extends BaseEntity {
   checkOut: string | null; // "HH:MM"
   totalHours: number;
   note: string;
+  /**
+   * Lokasi saat absen, bila dikirim perangkat (0076). Satu-satunya bukti selain
+   * angka jam itu sendiri ketika jam kerja dipersoalkan.
+   */
+  checkInLat?: number | null;
+  checkInLng?: number | null;
+  checkOutLat?: number | null;
+  checkOutLng?: number | null;
 }
 
 // ---------- Internal Tasks (NEW — not in FixNova) ----------
@@ -487,6 +513,16 @@ export type ActivityAction =
   | 'attendance.checkout'
   | 'task.create'
   | 'task.complete'
+  | 'task.uncomplete'
+  | 'po.void'
+  | 'member.invite'
+  | 'member.role'
+  | 'member.deactivate'
+  | 'member.delete'
+  | 'settings.update'
+  | 'activity.purge'
+  | 'invite.revoke'
+  | 'data.restore'
   | 'service.create'
   | 'service.status'
   | 'wallet.transfer';

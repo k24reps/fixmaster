@@ -7,6 +7,7 @@ import {
   isOverdue,
   reorder,
   bySortOrder,
+  taskVisibleTo,
 } from './tasks';
 import type { TaskTemplate, TaskInstance } from '@/data/types';
 
@@ -66,6 +67,14 @@ describe('isDueOn', () => {
     expect(isDueOn(monthly, '2026-06-01')).toBe(true);
     expect(isDueOn(monthly, '2026-06-15')).toBe(true);
     expect(isDueOn(monthly, '2026-06-16')).toBe(false);
+  });
+
+  it('tanggal 29-31 jatuh ke hari terakhir di bulan yang lebih pendek', () => {
+    const monthly = tpl({ recurrence: 'monthly', monthDays: [31], startDate: '2026-01-01' });
+    expect(isDueOn(monthly, '2026-02-28')).toBe(true); // Februari 2026: 28 hari
+    expect(isDueOn(monthly, '2026-02-27')).toBe(false);
+    expect(isDueOn(monthly, '2026-03-31')).toBe(true); // bulan penuh: tanggal aslinya
+    expect(isDueOn(monthly, '2026-03-30')).toBe(false);
   });
 
   it('once matches only the exact date', () => {
@@ -256,5 +265,38 @@ describe('generateInstances — items (0041)', () => {
     });
     const out = generateInstances([multi], [], '2026-06-15', '2026-06-15', 'o1');
     expect(out.map((i) => i.title)).toEqual(['Pertama', 'Kedua']);
+  });
+});
+
+describe('taskVisibleTo', () => {
+  const me = { id: 'e1', role: 'karyawan' as const };
+  const assign = (over: Partial<Parameters<typeof taskVisibleTo>[0]>) => ({
+    assigneeType: 'role' as const,
+    assigneeRole: null,
+    assigneeEmployeeId: null,
+    assigneeOutletId: null,
+    ...over,
+  });
+
+  it('manager melihat semua, dan tugas tanpa template milik bersama', () => {
+    expect(taskVisibleTo(assign({ assigneeType: 'employee', assigneeEmployeeId: 'e9' }), me, [], true)).toBe(true);
+    expect(taskVisibleTo(undefined, me, [], false)).toBe(true);
+  });
+
+  it('per karyawan: hanya yang ditunjuk', () => {
+    expect(taskVisibleTo(assign({ assigneeType: 'employee', assigneeEmployeeId: 'e1' }), me, [], false)).toBe(true);
+    expect(taskVisibleTo(assign({ assigneeType: 'employee', assigneeEmployeeId: 'e9' }), me, [], false)).toBe(false);
+  });
+
+  it('per peran: cocok dengan peran sendiri', () => {
+    expect(taskVisibleTo(assign({ assigneeRole: 'karyawan' }), me, [], false)).toBe(true);
+    expect(taskVisibleTo(assign({ assigneeRole: 'admin' }), me, [], false)).toBe(false);
+  });
+
+  it('per outlet: hanya cabang yang boleh diakses; tanpa batasan tetap terlihat', () => {
+    const o = assign({ assigneeType: 'outlet' as const, assigneeOutletId: 'o2' });
+    expect(taskVisibleTo(o, me, ['o1'], false)).toBe(false);
+    expect(taskVisibleTo(o, me, ['o1', 'o2'], false)).toBe(true);
+    expect(taskVisibleTo(o, me, [], false)).toBe(true);
   });
 });

@@ -21,17 +21,24 @@ export interface LogInput {
   entityId?: string | null;
   entityLabel?: string;
   meta?: Record<string, unknown>;
+  /**
+   * Cabang OBJEK yang diubah. Dulu baris log selalu memakai cabang yang sedang
+   * aktif di layar penulisnya — yang bisa sama sekali berbeda dari cabang
+   * transaksinya, dan membuat penyaringan per cabang berbohong. Kosong = tidak
+   * terikat cabang.
+   */
+  outletId?: string | null;
 }
 
 export function logActivity(input: LogInput): void {
   try {
-    const { org, currentEmployee, activeOutletId } = useSessionStore.getState();
+    const { org, currentEmployee } = useSessionStore.getState();
     if (!org || !currentEmployee) return; // no actor/org context → skip
     const now = new Date().toISOString();
     const record: ActivityLog = {
       id: newId(),
       orgId: org.id,
-      outletId: activeOutletId,
+      outletId: input.outletId ?? null,
       actorId: currentEmployee.id,
       actorName: currentEmployee.name,
       actorRole: currentEmployee.role,

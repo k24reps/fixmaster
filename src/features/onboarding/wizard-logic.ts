@@ -229,19 +229,22 @@ export async function commitWizard(
     }));
   if (fixedCosts.length) await repository.putMany('fixedCosts', fixedCosts);
 
-  // Targets stay per-device (localStorage); categories already persisted on the
-  // org row above (settings.deviceCategories) so they sync across devices.
-  localStorage.setItem(
-    `fixmaster-target-${orgId}`,
-    JSON.stringify({
-      revenue: data.targetRevenue,
-      serviceCount: data.targetServiceCount,
-      overheadBudget: data.overheadBudget,
-    }),
-  );
+  // Target ikut ke baris organisasi (settings.monthlyTarget) supaya sama di
+  // semua perangkat — dulu hanya localStorage, jadi Indikator Break-Even
+  // berbeda antara laptop dan HP. Salinan lokal disimpan sebagai cadangan.
+  const monthlyTarget = {
+    revenue: data.targetRevenue,
+    serviceCount: data.targetServiceCount,
+    overheadBudget: data.overheadBudget,
+  };
+  localStorage.setItem(`fixmaster-target-${orgId}`, JSON.stringify(monthlyTarget));
+  const orgWithTarget = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), monthlyTarget },
+  });
 
   const owner = employees.find((e) => e.role === 'owner') ?? employees[0];
-  return { org, owner };
+  return { org: orgWithTarget, owner };
 }
 
 /**
@@ -311,15 +314,14 @@ async function commitWizardCloud(
     }));
   if (fixedCosts.length) await repository.putMany('fixedCosts', fixedCosts);
 
-  // Targets stay per-device (localStorage); revisit with an org_config table.
-  localStorage.setItem(
-    `fixmaster-target-${newOrgId}`,
-    JSON.stringify({
-      revenue: data.targetRevenue,
-      serviceCount: data.targetServiceCount,
-      overheadBudget: data.overheadBudget,
-    }),
-  );
+  // Target ikut ke baris organisasi bersama kategori di bawah (satu penulisan),
+  // supaya sama di semua perangkat. Salinan lokal tetap ditulis sebagai cadangan.
+  const monthlyTarget = {
+    revenue: data.targetRevenue,
+    serviceCount: data.targetServiceCount,
+    overheadBudget: data.overheadBudget,
+  };
+  localStorage.setItem(`fixmaster-target-${newOrgId}`, JSON.stringify(monthlyTarget));
 
   // Device categories live on the org row (settings.deviceCategories, 0032) so
   // they sync across devices. Write the owner's chosen list to the cloud column
@@ -329,7 +331,7 @@ async function commitWizardCloud(
   if (!created) throw new Error('Gagal memuat organisasi yang baru dibuat');
   const org = await repository.setSingleton('organization', {
     ...created,
-    settings: { ...(created.settings ?? {}), deviceCategories: data.categories },
+    settings: { ...(created.settings ?? {}), deviceCategories: data.categories, monthlyTarget },
   });
   const employees = await repository.list('employees');
   const owner = employees.find((e) => e.role === 'owner') ?? employees[0];

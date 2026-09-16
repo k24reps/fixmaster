@@ -493,3 +493,12 @@
     height: var(--control-h);
   }
 }
+
+/* Penanda "shift belum ditutup" di kolom Hadir pada rekap. */
+.openShift {
+  display: block;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  color: var(--warning);
+  white-space: nowrap;
+}
