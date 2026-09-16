@@ -79,6 +79,7 @@ import {
 import { toast } from '@/stores/toast';
 import { demoGuard, isCloudMode } from '@/stores/demo';
 import { isValidInviteEmail, canChangeRole, canDeactivate } from '@/lib/business/team';
+import { normalizePhone } from '@/lib/business/customers';
 import { transfer, applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
 import { logActivity } from '@/lib/activity';
@@ -116,7 +117,7 @@ import {
   type BackupRun,
 } from '@/data/cloudBackup';
 import { countRecords, parseBackup, type BackupFrequency } from '@/lib/business/backup';
-import { saveServiceColumns } from '@/config/orgConfig';
+import { saveServiceColumns, getLastBackupAt, setLastBackupAt } from '@/config/orgConfig';
 import {
   SERVICE_COLUMNS,
   resolveServiceColumns,
@@ -142,6 +143,14 @@ async function fileToLogoBlob(file: File): Promise<Blob> {
     el.onerror = reject;
     el.src = dataUrl;
   });
+  // Logo yang sangat memanjang dikecilkan jadi seutas garis di nota dan di
+  // sidebar — ukurannya lolos (≤500KB), hasilnya yang tidak terbaca.
+  const ratio = Math.max(img.width, img.height) / Math.max(1, Math.min(img.width, img.height));
+  if (ratio > 4) {
+    throw new Error(
+      'Logo terlalu memanjang (perbandingan sisi lebih dari 4:1). Pakai gambar yang lebih persegi supaya tidak terpotong di nota.',
+    );
+  }
   const MAX = 256;
   const scale = Math.min(1, MAX / Math.max(img.width, img.height));
   const w = Math.round(img.width * scale);
@@ -451,6 +460,16 @@ function BusinessTab() {
 
   const save = async () => {
     if (!org) return;
+    // Nama, alamat, dan telepon ini tercetak di nota yang dibawa pulang
+    // pelanggan dan tampil di halaman lacak publik — dulu ketiganya diterima
+    // apa adanya, termasuk nomor yang jelas bukan nomor.
+    if (!name.trim()) return toast.error('Nama usaha wajib diisi');
+    if (name.trim().length > 60) return toast.error('Nama usaha terlalu panjang (maks 60 karakter)');
+    if (address.trim().length > 160)
+      return toast.error('Alamat terlalu panjang untuk nota (maks 160 karakter)');
+    if (phone.trim() && normalizePhone(phone).length < 8)
+      return toast.error('No. telepon tidak valid — minimal 8 angka');
+
     setBusy(true);
     const updated = {
       ...org,
@@ -1488,7 +1507,17 @@ function TeamTab({
                     </span>
                     <div className={styles.itemInfo}>
                       <strong>{inv.email}</strong>
-                      <small>{ROLE_LABEL[inv.role]} · menunggu pendaftaran</small>
+                      {/* Undangan kini punya masa berlaku 14 hari (0078) —
+                          sebelumnya email salah ketik pun bisa diklaim setahun
+                          kemudian dan langsung membuka seluruh data toko. */}
+                      <small>
+                        {ROLE_LABEL[inv.role]} ·{' '}
+                        {inv.expiresAt && new Date(inv.expiresAt) < new Date()
+                          ? 'kedaluwarsa — undang ulang untuk memperbarui'
+                          : inv.expiresAt
+                            ? `berlaku s/d ${new Date(inv.expiresAt).toLocaleDateString('id-ID')}`
+                            : 'menunggu pendaftaran'}
+                      </small>
                     </div>
                     <span className={styles.itemActions}>
                       <Button
@@ -2814,6 +2843,11 @@ function BackupCard() {
       const backup = await createBackup(org?.id ?? null);
       downloadBackup(backup);
       markBackedUp();
+      // Waktunya juga disimpan di baris organisasi: "kapan terakhir toko ini
+      // di-backup" adalah fakta tentang TOKO, bukan tentang browser ini.
+      await setLastBackupAt(new Date().toISOString()).catch(() => {
+        /* pengingat lokal sudah tercatat; sinkronisasi bukan syarat backup */
+      });
       toast.success('Backup berhasil diunduh');
     } catch {
       toast.error('Gagal membuat backup');
@@ -2979,11 +3013,16 @@ function BackupCard() {
                 { value: 'weekly', label: 'Mingguan' },
                 { value: 'monthly', label: 'Bulanan' },
               ]}
-              hint={
-                lastBackupAt
-                  ? `Backup terakhir: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
-                  : 'Belum pernah backup di perangkat ini'
-              }
+              hint={(() => {
+                // Waktu dari baris organisasi menang: ia berlaku untuk seluruh
+                // toko, bukan hanya browser yang sedang dipakai.
+                const shared = getLastBackupAt();
+                if (shared)
+                  return `Backup terakhir toko ini: ${new Date(shared).toLocaleString('id-ID')}`;
+                if (lastBackupAt)
+                  return `Backup terakhir di perangkat ini: ${new Date(lastBackupAt).toLocaleString('id-ID')}`;
+                return 'Belum pernah backup';
+              })()}
             />
           </>
         )}

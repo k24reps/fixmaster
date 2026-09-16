@@ -100,6 +100,12 @@ export interface OrgSettings {
   warrantyPartsDays?: number;
   warrantyPresets?: number[];
   waTemplates?: Record<string, string>;
+  /**
+   * Kapan backup manual terakhir diunduh. Dulu hanya di perangkat masing-masing,
+   * jadi pemilik dengan dua perangkat melihat dua kebenaran berbeda tentang
+   * kapan terakhir ia mengamankan datanya.
+   */
+  lastBackupAt?: string;
 }
 
 export interface Employee extends BaseEntity {

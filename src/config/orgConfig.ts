@@ -274,6 +274,19 @@ export async function setWaTemplateOverrides(
   await patchSettings({ waTemplates: overrides });
 }
 
+/**
+ * Kapan backup manual terakhir diunduh. Disimpan di baris organisasi supaya
+ * pemilik dengan dua perangkat tidak melihat dua kebenaran berbeda tentang
+ * kapan terakhir ia mengamankan datanya. Pengingat backup-nya sendiri tetap
+ * per-perangkat — itu memang preferensi alat, bukan fakta tentang toko.
+ */
+export function getLastBackupAt(): string | null {
+  return settings().lastBackupAt ?? null;
+}
+export async function setLastBackupAt(at: string): Promise<void> {
+  await patchSettings({ lastBackupAt: at });
+}
+
 const NO_TARGET: MonthlyTarget = { revenue: 0, serviceCount: 0, overheadBudget: 0 };
 
 /**

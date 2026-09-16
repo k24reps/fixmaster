@@ -1652,4 +1652,35 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
       .from('activity_logs').select('id').eq('org_id', ctx.orgId).eq('action', 'data.restore');
     expect((trace ?? []).length).toBeGreaterThan(0);
   });
+
+  it('0078: undangan punya masa berlaku, dan diundang ulang memperbaruinya', async () => {
+    const email = `fmtest+expiry-${Date.now().toString(36)}@example.com`;
+    const invite = await ctx.ownerClient.rpc('create_invite', {
+      p_org_id: ctx.orgId, p_email: email, p_name: 'Calon', p_role: 'karyawan', p_outlet_ids: [],
+    });
+    expect(invite.error).toBeNull();
+
+    const { data: fresh } = await ctx.admin
+      .from('pending_invites').select('id, expires_at').eq('org_id', ctx.orgId)
+      .eq('email', email).single();
+    expect(fresh!.expires_at).not.toBeNull();
+    expect(new Date(fresh!.expires_at as string).getTime()).toBeGreaterThan(Date.now());
+
+    // Dipaksa kedaluwarsa → klaim ditolak.
+    const past = new Date();
+    past.setDate(past.getDate() - 1);
+    await ctx.admin
+      .from('pending_invites').update({ expires_at: past.toISOString() }).eq('id', fresh!.id);
+    const claim = await ctx.admin
+      .from('pending_invites').update({ claimed_at: new Date().toISOString() }).eq('id', fresh!.id);
+    expect(claim.error).not.toBeNull();
+
+    // Diundang ulang → masa berlakunya dihitung ulang dari sekarang.
+    expect((await ctx.ownerClient.rpc('create_invite', {
+      p_org_id: ctx.orgId, p_email: email, p_name: 'Calon', p_role: 'karyawan', p_outlet_ids: [],
+    })).error).toBeNull();
+    const { data: renewed } = await ctx.admin
+      .from('pending_invites').select('expires_at').eq('id', fresh!.id).single();
+    expect(new Date(renewed!.expires_at as string).getTime()).toBeGreaterThan(Date.now());
+  });
 });

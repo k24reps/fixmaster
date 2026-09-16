@@ -860,6 +860,8 @@ export interface PendingInvite {
   role: string;
   createdAt: string;
   claimedAt: string | null;
+  /** Batas klaim undangan (0078). Lewat dari ini, undangannya ditolak server. */
+  expiresAt: string | null;
 }
 
 /** Manager creates a pending invite for an email + role (+ assigned outlets). */
@@ -892,6 +894,7 @@ export async function inviteMember(args: {
     role: data.role,
     createdAt: data.created_at,
     claimedAt: data.claimed_at,
+    expiresAt: data.expires_at ?? null,
   };
 }
 
@@ -963,6 +966,7 @@ export async function listPendingInvites(orgId: string): Promise<PendingInvite[]
     role: d.role,
     createdAt: d.created_at,
     claimedAt: d.claimed_at,
+    expiresAt: d.expires_at ?? null,
   }));
 }
 

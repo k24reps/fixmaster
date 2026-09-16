@@ -18,11 +18,11 @@ import {
  *
  * Restore semantics depend on the active mode:
  *   - Local-first: REPLACE everything (clearAll + putMany).
- *   - Cloud: delegate to the atomic, demo-only RPC `restore_org_data`
- *     (migration 0020) via repository.restoreOrgData. Team (memberships) and
- *     the org profile/billing are excluded; the server enforces owner +
- *     is_demo and forces org_id (cross-tenant safety). Non-demo cloud orgs
- *     rely on Supabase backups/PITR instead.
+ *   - Cloud: delegate to the atomic RPC `restore_org_data` (0020, diperketat
+ *     di 0077) via repository.restoreOrgData. Team (memberships), org
+ *     profile/billing, dan log aktivitas dikecualikan; server mensyaratkan
+ *     OWNER dan memaksa org_id (aman lintas-tenant). Berlaku untuk semua org
+ *     cloud — bukan hanya akun demo, seperti yang tertulis di sini dulu.
  */
 
 /** All persisted collections (mirrors EntityMap). */
@@ -98,10 +98,10 @@ export async function restoreBackup(text: string): Promise<RestoreResult> {
   const backup = parsed.backup;
 
   try {
-    // Cloud mode: delegate to the atomic, demo-only server RPC. Team
-    // (memberships) + org profile/billing are excluded by buildRestorePayload,
-    // and the server enforces owner + is_demo. The active org's id wins over
-    // whatever the file claims (cross-tenant safety).
+    // Cloud mode: delegate to the atomic server RPC. Team (memberships) + org
+    // profile/billing are excluded by buildRestorePayload, dan server
+    // mensyaratkan OWNER. Id org yang aktif menang atas apa pun yang diklaim
+    // file (aman lintas-tenant). Jejak audit tidak ikut diganti (0077).
     if (isSupabaseConfigured && repository.restoreOrgData) {
       const orgId = useSessionStore.getState().org?.id;
       if (!orgId) return { ok: false, error: 'Tidak ada organisasi aktif.' };
