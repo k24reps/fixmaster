@@ -2,7 +2,7 @@
  * Pure customer business logic: phone-based dedup + normalization.
  * No DOM/repository dependencies → unit-testable.
  */
-import type { Customer } from '@/data/types';
+import type { Customer, Service } from '@/data/types';
 
 /** Normalize an Indonesian phone number for comparison (digits only, leading 0/62 unified). */
 export function normalizePhone(phone: string): string {
@@ -30,8 +30,9 @@ export interface DedupCheck {
 }
 
 /**
- * Validate that saving a customer won't create a phone collision with a
- * *different* name. Same phone + same name is treated as the same person.
+ * Validate that saving a customer won't reuse a phone already held by ANOTHER
+ * record. Dulu nomor + nama yang sama dianggap "orang yang sama" lalu tetap
+ * dibuatkan data baru — hasilnya pelanggan ganda. Database juga menolaknya (0069).
  */
 export function checkDuplicate(
   customers: Customer[],
@@ -39,13 +40,41 @@ export function checkDuplicate(
 ): DedupCheck {
   const existing = findByPhone(customers, candidate.phone, candidate.id);
   if (!existing) return { ok: true };
-  if (existing.name.trim().toLowerCase() === candidate.name.trim().toLowerCase()) {
-    return { ok: true };
-  }
+  const sameName = existing.name.trim().toLowerCase() === candidate.name.trim().toLowerCase();
   return {
     ok: false,
-    reason: `No. HP sudah terdaftar atas nama "${existing.name}"`,
+    reason: sameName
+      ? `Pelanggan "${existing.name}" dengan No. HP ini sudah terdaftar`
+      : `No. HP sudah terdaftar atas nama "${existing.name}"`,
   };
+}
+
+export interface CustomerStat {
+  /** Tiket servis, tanpa yang dibatalkan. */
+  count: number;
+  /** Jumlah biaya final tiket Lunas. */
+  paidTotal: number;
+  /** Kategori perangkat yang pernah dibawa. */
+  categories: string[];
+}
+
+export const EMPTY_CUSTOMER_STAT: CustomerStat = { count: 0, paidTotal: 0, categories: [] };
+
+/** Statistik per pelanggan dari daftar tiket. Cermin customer_service_stats (0069). */
+export function customerServiceStats(
+  services: Pick<Service, 'customerId' | 'status' | 'finalCost' | 'category'>[],
+): Map<string, CustomerStat> {
+  const map = new Map<string, CustomerStat>();
+  for (const s of services) {
+    if (!s.customerId) continue;
+    const cur = map.get(s.customerId) ?? { count: 0, paidTotal: 0, categories: [] };
+    if (s.status !== 'batal') cur.count += 1;
+    if (s.status === 'lunas') cur.paidTotal += s.finalCost;
+    const cat = (s.category || '').trim();
+    if (cat && !cur.categories.includes(cat)) cur.categories.push(cat);
+    map.set(s.customerId, cur);
+  }
+  return map;
 }
 
 /**
@@ -59,56 +88,21 @@ export function searchCustomers(
   query: string,
   limit = 5,
 ): Customer[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const qPhone = normalizePhone(query);
-  const matches = customers.filter((c) => {
-    if (c.deletedAt) return false;
-    const byName = c.name.toLowerCase().includes(q);
-    const byPhone = qPhone.length >= 3 && normalizePhone(c.phone).includes(qPhone);
-    return byName || byPhone;
-  });
+  if (!query.trim()) return [];
+  const matches = customers.filter((c) => !c.deletedAt && matchesCustomer(c, query));
   matches.sort((a, b) => a.name.localeCompare(b.name));
   return matches.slice(0, limit);
 }
 
-export interface CsvImportResult {
-  toAdd: { name: string; phone: string }[];
-  toUpdate: { id: string; name: string }[];
-  skipped: number;
-}
-
 /**
- * Plan a CSV import against existing customers:
- * - new phone → add
- * - existing phone + different name → update name
- * - existing phone + same name → skip
+ * Cocok untuk pencarian pelanggan: nama (tanpa beda huruf besar) atau No. HP
+ * yang dinormalkan — "0812-3456", "+62 812 3456", dan "08123456" sama saja.
+ * Kueri kosong cocok dengan semua.
  */
-export function planCsvImport(
-  existing: Customer[],
-  rows: { name: string; phone: string }[],
-): CsvImportResult {
-  const result: CsvImportResult = { toAdd: [], toUpdate: [], skipped: 0 };
-  const seen = new Set<string>();
-  for (const row of rows) {
-    const norm = normalizePhone(row.phone);
-    if (!norm || !row.name.trim()) {
-      result.skipped++;
-      continue;
-    }
-    if (seen.has(norm)) {
-      result.skipped++;
-      continue;
-    }
-    seen.add(norm);
-    const match = findByPhone(existing, row.phone);
-    if (!match) {
-      result.toAdd.push({ name: row.name.trim(), phone: row.phone.trim() });
-    } else if (match.name.trim().toLowerCase() !== row.name.trim().toLowerCase()) {
-      result.toUpdate.push({ id: match.id, name: row.name.trim() });
-    } else {
-      result.skipped++;
-    }
-  }
-  return result;
+export function matchesCustomer(c: Pick<Customer, 'name' | 'phone'>, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (c.name.toLowerCase().includes(q)) return true;
+  const qPhone = normalizePhone(query);
+  return qPhone.length >= 3 && normalizePhone(c.phone).includes(qPhone);
 }

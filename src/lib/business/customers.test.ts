@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePhone, findByPhone, checkDuplicate, planCsvImport, searchCustomers } from './customers';
+import {
+  normalizePhone,
+  findByPhone,
+  checkDuplicate,
+  matchesCustomer,
+  searchCustomers,
+  customerServiceStats,
+} from './customers';
 import type { Customer } from '@/data/types';
 
 const mk = (over: Partial<Customer>): Customer => ({
@@ -42,8 +49,13 @@ describe('checkDuplicate', () => {
     const r = checkDuplicate(list, { name: 'Budi', phone: '08123456789' });
     expect(r.ok).toBe(false);
   });
-  it('allows same phone with same name', () => {
-    const r = checkDuplicate(list, { name: 'Andi', phone: '08123456789' });
+  it('blocks same phone with the same name too (would be a second record)', () => {
+    const r = checkDuplicate(list, { name: 'Andi', phone: '+62 812-3456-789' });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain('sudah terdaftar');
+  });
+  it('allows editing the record that owns the phone', () => {
+    const r = checkDuplicate(list, { id: 'c1', name: 'Andi W', phone: '08123456789' });
     expect(r.ok).toBe(true);
   });
   it('allows a brand new phone', () => {
@@ -52,26 +64,27 @@ describe('checkDuplicate', () => {
   });
 });
 
-describe('planCsvImport', () => {
-  const existing = [mk({ id: 'c1', name: 'Andi', phone: '08123456789' })];
-  it('classifies add / update / skip correctly', () => {
-    const result = planCsvImport(existing, [
-      { name: 'Budi', phone: '08555' }, // new → add
-      { name: 'Andi Baru', phone: '08123456789' }, // exists, diff name → update
-      { name: 'Andi', phone: '+628123456789' }, // exists, same name → skip
-      { name: '', phone: '08777' }, // invalid → skip
+describe('customerServiceStats', () => {
+  it('menghitung tiket tanpa yang batal, nilai hanya dari Lunas, dan kategori unik', () => {
+    const stats = customerServiceStats([
+      { customerId: 'c1', status: 'lunas', finalCost: 150000, category: 'Laptop' },
+      { customerId: 'c1', status: 'selesai', finalCost: 90000, category: 'Laptop' },
+      { customerId: 'c1', status: 'batal', finalCost: 50000, category: 'HP' },
+      { customerId: '', status: 'lunas', finalCost: 1, category: 'X' },
     ]);
-    expect(result.toAdd).toHaveLength(1);
-    expect(result.toUpdate).toHaveLength(1);
-    expect(result.skipped).toBe(2);
+    expect(stats.get('c1')).toEqual({ count: 2, paidTotal: 150000, categories: ['Laptop', 'HP'] });
+    expect(stats.size).toBe(1);
   });
-  it('dedups repeated phones within the same import', () => {
-    const result = planCsvImport([], [
-      { name: 'X', phone: '0811' },
-      { name: 'Y', phone: '0811' },
-    ]);
-    expect(result.toAdd).toHaveLength(1);
-    expect(result.skipped).toBe(1);
+});
+
+describe('matchesCustomer', () => {
+  const c = mk({ name: 'Andi Wijaya', phone: '0812-3456-789' });
+  it('nama tanpa beda huruf besar; No. HP tanpa peduli pemisah atau awalan 62', () => {
+    expect(matchesCustomer(c, 'wijaya')).toBe(true);
+    expect(matchesCustomer(c, '08123456')).toBe(true);
+    expect(matchesCustomer(c, '+62 812 3456')).toBe(true);
+    expect(matchesCustomer(c, '0899')).toBe(false);
+    expect(matchesCustomer(c, '   ')).toBe(true);
   });
 });
 

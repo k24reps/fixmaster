@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   cartSubtotal,
   resolveDiscount,
+  discountLimit,
   cartTotal,
   cartCogs,
   validateCart,
@@ -82,6 +83,13 @@ describe('validatePayments', () => {
     const r = validatePayments([{ walletId: 'w1', amount: 80000 }], 100000);
     expect(r.ok).toBe(false);
     expect(r.diff).toBe(-20000);
+  });
+});
+
+describe('discountLimit', () => {
+  it('karyawan dibatasi 10% dari subtotal; manager bebas', () => {
+    expect(discountLimit(200000, false)).toBe(20000);
+    expect(discountLimit(200000, true)).toBe(200000);
   });
 });
 

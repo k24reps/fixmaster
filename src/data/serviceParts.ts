@@ -19,6 +19,8 @@ export async function saveServiceParts(service: Service, next: ServiceSparepart[
   const items: InventoryItem[] = [];
   for (const { itemId, delta } of partsStockDelta(fresh.spareparts, next)) {
     const item = await repository.get('inventory', itemId);
+    // Barang sudah dihapus: stok yang dikembalikan dilewati (cermin 0069).
+    if (!item && delta > 0) continue;
     if (!item) throw new Error('Item inventory tidak ditemukan');
     if (item.stock + delta < 0) throw new Error(`Stok ${item.name} hanya ${item.stock}, tidak cukup`);
     items.push({ ...item, stock: item.stock + delta });

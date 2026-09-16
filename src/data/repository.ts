@@ -129,6 +129,8 @@ export interface Repository {
     term?: string;
     createdFrom?: string;
     createdTo?: string;
+    /** Semua tiket satu pelanggan (riwayat di menu Pelanggan). */
+    customerId?: string;
     limit: number;
   }): Promise<EntityMap['services'][]>;
 }

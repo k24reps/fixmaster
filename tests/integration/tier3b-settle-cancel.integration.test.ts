@@ -815,6 +815,182 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     expect(await balanceOf(ctx.walletB)).toBe(100000);
   });
 
+  // ---- 0069: kasir, inventori & pelanggan ----
+  const seedItem = async (over: Record<string, unknown>) => {
+    const { data, error } = await ctx.admin
+      .from('inventory_items')
+      .insert({
+        org_id: ctx.orgId,
+        outlet_id: ctx.outlet1,
+        name: `Item ${Math.random().toString(36).slice(2, 6)}`,
+        stock: 5,
+        cost_price: 6000,
+        sell_price: 10000,
+        ...over,
+      })
+      .select('id')
+      .single();
+    if (error) throw new Error(`seed item: ${error.message}`);
+    return data!.id as string;
+  };
+  const stockOf = async (id: string) =>
+    Number((await ctx.admin.from('inventory_items').select('stock').eq('id', id).single()).data!.stock);
+  const sale = (lines: unknown[], total: number, payments: unknown[]) =>
+    ctx.karyawan.client.rpc('process_sale', {
+      p_org_id: ctx.orgId,
+      p_sale_no: 'INV-0001',
+      p_lines: lines,
+      p_payments: payments,
+      p_subtotal: total,
+      p_discount: 0,
+      p_discount_type: 'amount',
+      p_total: total,
+      p_outlet_id: ctx.outlet1,
+    });
+
+  it('0069: process_sale menolak qty tidak valid, baris ganda, harga/total & pembayaran yang tidak cocok', async () => {
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletA);
+    const item = await seedItem({ stock: 5 });
+    const line = (qty: number, sellPrice = 10000) => ({ itemId: item, name: 'X', qty, sellPrice, costPrice: 1 });
+    const pay = (amount: number) => [{ walletId: ctx.walletA, amount }];
+
+    expect((await sale([line(-5)], -50000, [])).error).not.toBeNull(); // qty negatif
+    expect((await sale([line(1.5)], 15000, pay(15000))).error).not.toBeNull(); // pecahan
+    expect((await sale([line(3), line(3)], 60000, pay(60000))).error).not.toBeNull(); // 6 > stok 5
+    expect((await sale([line(2, 1)], 2, pay(2))).error).not.toBeNull(); // harga dipalsukan
+    expect((await sale([line(2)], 20000, pay(10000))).error).not.toBeNull(); // bayar kurang
+    expect(
+      (await sale([line(2)], 20000, [{ walletId: crypto.randomUUID(), amount: 20000 }])).error,
+    ).not.toBeNull(); // wallet bukan milik toko
+    expect(await stockOf(item)).toBe(5);
+
+    const ok = await sale([line(1), line(1)], 20000, pay(20000));
+    expect(ok.error).toBeNull();
+    expect(await stockOf(item)).toBe(3);
+    const { data: row } = await ctx.admin.from('sales').select('lines, total').eq('id', ok.data as string).single();
+    expect(Number(row!.total)).toBe(20000);
+    expect(
+      (row!.lines as { qty: number; sellPrice: number; costPrice: number }[]).map((l) => [
+        Number(l.qty),
+        Number(l.sellPrice),
+        Number(l.costPrice),
+      ]),
+    ).toEqual([[2, 10000, 6000]]); // digabung, harga & HPP dari inventori
+    expect(await balanceOf(ctx.walletA)).toBe(20000);
+  });
+
+  it('0069: void_sale sekali saja & bukan penjualan bulan lalu; karyawan tak bisa ubah/tambah penjualan langsung', async () => {
+    await ctx.admin.from('wallets').update({ balance: 0 }).eq('id', ctx.walletA);
+    const item = await seedItem({ stock: 4 });
+    const made = await sale(
+      [{ itemId: item, name: 'X', qty: 2, sellPrice: 10000, costPrice: 6000 }],
+      20000,
+      [{ walletId: ctx.walletA, amount: 20000 }],
+    );
+    expect(made.error).toBeNull();
+    const saleId = made.data as string;
+
+    await ctx.karyawan.client.from('sales').update({ voided: true, total: 1 }).eq('id', saleId);
+    const row = (await ctx.admin.from('sales').select('voided, total').eq('id', saleId).single()).data!;
+    expect([row.voided, Number(row.total)]).toEqual([false, 20000]);
+    const fake = await ctx.karyawan.client.from('sales').insert({
+      org_id: ctx.orgId,
+      outlet_id: ctx.outlet1,
+      sale_no: `FAKE-${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      total: 999,
+    });
+    expect(fake.error).not.toBeNull();
+
+    const voidIt = () => ctx.ownerClient.rpc('void_sale', { p_sale_id: saleId, p_reason: 'salah input' });
+    expect((await voidIt()).error).toBeNull();
+    expect((await voidIt()).error).toBeNull(); // kedua kalinya tidak membalik lagi
+    expect(await stockOf(item)).toBe(4);
+    expect(await balanceOf(ctx.walletA)).toBe(0);
+
+    const { data: old } = await ctx.admin
+      .from('sales')
+      .insert({ org_id: ctx.orgId, outlet_id: ctx.outlet1, sale_no: `OLD-${Date.now()}`, date: '2026-01-15', total: 5000 })
+      .select('id')
+      .single();
+    expect((await ctx.ownerClient.rpc('void_sale', { p_sale_id: old!.id, p_reason: 'x' })).error).not.toBeNull();
+  });
+
+  it('0069: stok tak bisa ditimpa lewat update biasa; koreksi stok lewat selisih; barang terhapus tak bikin tiket macet', async () => {
+    const item = await seedItem({ stock: 5 });
+    await ctx.ownerClient.from('inventory_items').update({ stock: 99, name: 'Nama Baru' }).eq('id', item);
+    const { data: inv } = await ctx.admin.from('inventory_items').select('stock, name').eq('id', item).single();
+    expect([Number(inv!.stock), inv!.name]).toEqual([5, 'Nama Baru']);
+
+    const adjust = (client: SupabaseClient, delta: number) =>
+      client.rpc('adjust_inventory_stock', { p_org_id: ctx.orgId, p_item_id: item, p_delta: delta });
+    expect((await adjust(ctx.karyawan.client, 3)).error).not.toBeNull(); // owner/admin saja
+    expect((await adjust(ctx.ownerClient, 3)).data).toBe(8);
+    expect((await adjust(ctx.ownerClient, -100)).error).not.toBeNull();
+
+    const svc = await seedService({ status: 'pengerjaan', spareparts: [] });
+    const held = [{ itemId: item, name: 'Nama Baru', qty: 2, costPrice: 6000, sellPrice: 10000, deducted: true, kind: 'inventory' }];
+    const parts = (sp: unknown[]) =>
+      ctx.karyawan.client.rpc('update_service_parts', { p_org_id: ctx.orgId, p_service_id: svc.id, p_spareparts: sp });
+    expect((await parts(held)).error).toBeNull();
+    await ctx.admin.from('inventory_items').delete().eq('id', item);
+    expect((await parts([])).error).toBeNull();
+  });
+
+  it('0069: No. HP pelanggan unik, sinkron nama ke tiket, statistik dari server, HPP rata-rata saat terima barang', async () => {
+    const digits = String(Date.now()).slice(-8);
+    const { data: cust, error: cErr } = await ctx.karyawan.client
+      .from('customers')
+      .insert({ org_id: ctx.orgId, name: 'Rina', phone: `0857-${digits}` })
+      .select('id')
+      .single();
+    expect(cErr).toBeNull();
+    const dup = await ctx.karyawan.client.from('customers').insert({ org_id: ctx.orgId, name: 'Rina', phone: `+62857${digits}` });
+    expect(dup.error).not.toBeNull();
+
+    const svc = await seedService({ status: 'lunas', final_cost: 150000, customer_id: cust!.id, customer_name: 'Rina', category: 'Laptop' });
+    await seedService({ status: 'batal', final_cost: 90000, customer_id: cust!.id, customer_name: 'Rina', category: 'Laptop' });
+    await ctx.admin.from('customers').update({ name: 'Rina Wati' }).eq('id', cust!.id);
+    expect(
+      (await ctx.karyawan.client.rpc('sync_customer_to_services', { p_org_id: ctx.orgId, p_customer_id: cust!.id })).error,
+    ).toBeNull();
+    const { data: svcRow } = await ctx.admin.from('services').select('customer_name, status').eq('id', svc.id).single();
+    expect(svcRow).toMatchObject({ customer_name: 'Rina Wati', status: 'lunas' });
+
+    const { data: stats, error: sErr } = await ctx.karyawan.client.rpc('customer_service_stats', { p_org_id: ctx.orgId });
+    expect(sErr).toBeNull();
+    const mine = (stats as { customer_id: string; services: number; paid_total: number; categories: string[] }[]).find(
+      (s) => s.customer_id === cust!.id,
+    )!;
+    expect([Number(mine.services), Number(mine.paid_total), mine.categories]).toEqual([1, 150000, ['Laptop']]);
+
+    const item = await seedItem({ stock: 10, cost_price: 5000 });
+    const { data: po, error: poErr } = await ctx.admin
+      .from('purchase_orders')
+      .insert({
+        org_id: ctx.orgId,
+        po_number: `PO-${Date.now().toString(36)}`,
+        status: 'ordered',
+        lines: [{ itemId: item, name: 'X', qty: 10, costPrice: 7000, receivedQty: 0 }],
+      })
+      .select('id')
+      .single();
+    expect(poErr).toBeNull();
+    const { error: rErr } = await ctx.ownerClient.rpc('receive_goods_v2', {
+      p_org_id: ctx.orgId,
+      p_po_id: po!.id,
+      p_lines: [{ itemId: item, name: 'X', qty: 10, costPrice: 7000, receivedQty: 10 }],
+      p_deltas: [{ itemId: item, delta: 10 }],
+      p_status: 'received',
+      p_outlet_id: ctx.outlet1,
+      p_wallet_id: null,
+      p_amount: 0,
+    });
+    expect(rErr).toBeNull();
+    const { data: after } = await ctx.admin.from('inventory_items').select('stock, cost_price').eq('id', item).single();
+    expect([Number(after!.stock), Number(after!.cost_price)]).toEqual([20, 6000]);
+  });
+
   it('owner (manager) BISA transfer_wallet: saldo pindah antar wallet', async () => {
     // Seed walletA with a known balance, then move 40k → walletB.
     await ctx.admin.from('wallets').update({ balance: 100000 }).eq('id', ctx.walletA);
@@ -865,5 +1041,110 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
       p_amount: 1000,
     });
     expect(error).not.toBeNull(); // ditolak: bukan manager
+  });
+
+  // ---- 0070: diskon, pelanggan & stok per cabang ----
+  const saleWith = (client: SupabaseClient, over: Record<string, unknown>) =>
+    client.rpc('process_sale', {
+      p_org_id: ctx.orgId,
+      p_sale_no: 'INV-0001',
+      p_lines: [],
+      p_payments: [],
+      p_subtotal: 0,
+      p_discount: 0,
+      p_discount_type: 'amount',
+      p_total: 0,
+      p_outlet_id: ctx.outlet1,
+      ...over,
+    });
+
+  it('0070: diskon karyawan dibatasi 10%, manager bebas', async () => {
+    const item = await seedItem({ stock: 10, sell_price: 10000 });
+    const line = (qty: number) => [{ itemId: item, name: 'X', qty, sellPrice: 10000, costPrice: 1 }];
+    const pay = (amount: number) => [{ walletId: ctx.walletA, amount }];
+
+    // Subtotal 100.000 → batas karyawan 10.000.
+    const over = await saleWith(ctx.karyawan.client, {
+      p_lines: line(10), p_discount: 20000, p_total: 80000, p_payments: pay(80000),
+    });
+    expect(over.error).not.toBeNull();
+    expect(await stockOf(item)).toBe(10); // tak ada stok terpotong
+
+    const ok = await saleWith(ctx.karyawan.client, {
+      p_lines: line(10), p_discount: 10000, p_total: 90000, p_payments: pay(90000),
+    });
+    expect(ok.error).toBeNull();
+
+    // Manager boleh diskon besar atas barang yang sama.
+    const item2 = await seedItem({ stock: 10, sell_price: 10000 });
+    const big = await saleWith(ctx.ownerClient, {
+      p_lines: [{ itemId: item2, name: 'X', qty: 10, sellPrice: 10000, costPrice: 1 }],
+      p_discount: 50000, p_total: 50000, p_payments: pay(50000),
+    });
+    expect(big.error).toBeNull();
+  });
+
+  it('0070: barang milik cabang lain tidak bisa dijual; stok bersama tetap bisa', async () => {
+    const pay = (amount: number) => [{ walletId: ctx.walletA, amount }];
+    const other = await seedItem({ stock: 5, sell_price: 10000, outlet_id: ctx.outlet2 });
+    const shared = await seedItem({ stock: 5, sell_price: 10000, outlet_id: null });
+
+    const wrong = await saleWith(ctx.ownerClient, {
+      p_lines: [{ itemId: other, name: 'X', qty: 1, sellPrice: 10000, costPrice: 1 }],
+      p_total: 10000, p_payments: pay(10000),
+    });
+    expect(wrong.error).not.toBeNull();
+    expect(await stockOf(other)).toBe(5);
+
+    const okShared = await saleWith(ctx.ownerClient, {
+      p_lines: [{ itemId: shared, name: 'X', qty: 1, sellPrice: 10000, costPrice: 1 }],
+      p_total: 10000, p_payments: pay(10000),
+    });
+    expect(okShared.error).toBeNull();
+    expect(await stockOf(shared)).toBe(4);
+  });
+
+  it('0070: penjualan menyimpan pelanggan, dan pelanggan bertiket tidak bisa dihapus', async () => {
+    const item = await seedItem({ stock: 3, sell_price: 10000 });
+    const { data: cust } = await ctx.admin
+      .from('customers')
+      .insert({ org_id: ctx.orgId, name: 'Pembeli Tetap', phone: `08${Date.now().toString().slice(-9)}` })
+      .select('id')
+      .single();
+
+    const sold = await saleWith(ctx.karyawan.client, {
+      p_lines: [{ itemId: item, name: 'X', qty: 1, sellPrice: 10000, costPrice: 1 }],
+      p_total: 10000,
+      p_payments: [{ walletId: ctx.walletA, amount: 10000 }],
+      p_customer_id: cust!.id,
+    });
+    expect(sold.error).toBeNull();
+    const { data: row } = await ctx.admin
+      .from('sales')
+      .select('customer_id, customer_name')
+      .eq('id', sold.data as string)
+      .single();
+    expect([row!.customer_id, row!.customer_name]).toEqual([cust!.id, 'Pembeli Tetap']);
+
+    // Punya penjualan → dihapus ditolak (service role pun kena trigger).
+    const blocked = await ctx.admin.from('customers').delete().eq('id', cust!.id);
+    expect(blocked.error).not.toBeNull();
+
+    // Pelanggan tanpa riwayat tetap bisa dihapus.
+    const { data: fresh } = await ctx.admin
+      .from('customers')
+      .insert({ org_id: ctx.orgId, name: 'Sekali Lewat', phone: `07${Date.now().toString().slice(-9)}` })
+      .select('id')
+      .single();
+    expect((await ctx.admin.from('customers').delete().eq('id', fresh!.id)).error).toBeNull();
+
+    // Pelanggan tak dikenal ditolak.
+    const ghost = await saleWith(ctx.karyawan.client, {
+      p_lines: [{ itemId: item, name: 'X', qty: 1, sellPrice: 10000, costPrice: 1 }],
+      p_total: 10000,
+      p_payments: [{ walletId: ctx.walletA, amount: 10000 }],
+      p_customer_id: crypto.randomUUID(),
+    });
+    expect(ghost.error).not.toBeNull();
   });
 });

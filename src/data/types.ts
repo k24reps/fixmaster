@@ -366,6 +366,10 @@ export interface Sale extends BaseEntity {
   payments: PaymentAllocation[];
   cashierId: ID;
   cashierName: string;
+  /** Pelanggan yang membeli, bila kasir mengaitkannya (0070). Null = pembeli umum. */
+  customerId?: ID | null;
+  /** Nama pelanggan saat transaksi — tetap terbaca meski datanya berubah kemudian. */
+  customerName?: string;
   voided: boolean;
   voidedReason: string;
 }

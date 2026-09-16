@@ -23,10 +23,12 @@ import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { localDateStr, fmtDate } from '@/lib/time';
+import { localDateStr, fmtDate, monthRange } from '@/lib/time';
 import {
   cartSubtotal,
   resolveDiscount,
+  discountLimit,
+  STAFF_MAX_DISCOUNT_PCT,
   cartTotal,
   validateCart,
   validatePayments,
@@ -34,9 +36,11 @@ import {
   type CartItem,
   type DiscountType,
 } from '@/lib/business/pos';
+import { searchCustomers } from '@/lib/business/customers';
+import { printSaleReceipt } from './printSaleReceipt';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
-import type { InventoryItem, Sale, PaymentAllocation } from '@/data/types';
+import type { Customer, InventoryItem, Sale, PaymentAllocation } from '@/data/types';
 import styles from './PosPage.module.css';
 
 export function PosPage() {
@@ -44,9 +48,13 @@ export function PosPage() {
   const { data: wallets } = useCollection('wallets');
   const { data: sales, ...salesLoad } = useCollection('sales');
   const { data: outlets } = useCollection('outlets');
+  const { data: customers } = useCollection('customers');
   const me = useSessionStore((s) => s.currentEmployee);
-  const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const org = useSessionStore((s) => s.org);
+  const orgId = org?.id ?? '';
   const isMgr = me ? isManager(me.role) : false;
+  // Penjualan bulan lalu tidak bisa dibatalkan (0069): laporan bulan itu sudah berjalan.
+  const monthStart = monthRange().from;
 
   const [query, setQuery] = useState('');
   const [view, chooseView] = usePersistedView('fixmaster-pos-view');
@@ -60,17 +68,28 @@ export function PosPage() {
   const [voidReason, setVoidReason] = useState('');
   const [voidBusy, setVoidBusy] = useState(false);
   const [tab, setTab] = useState<'pos' | 'history'>('pos');
+  // Pelanggan transaksi (opsional): belanja sparepart pun jadi bagian riwayat
+  // orangnya, bukan penjualan anonim yang tak bisa ditelusuri lagi.
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [custQuery, setCustQuery] = useState('');
 
-  // Most recent transactions (newest first) for the correction panel.
+  // Transaksi terbaru (terbaru dulu): untuk cetak ulang struk & pembatalan.
+  // Delapan baris tidak cukup bahkan untuk satu hari kasir yang ramai.
   const recentSales = useMemo(
-    () => [...sales].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')).slice(0, 8),
+    () => [...sales].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')).slice(0, 30),
     [sales],
   );
+
+  const custMatches = useMemo(() => searchCustomers(customers, custQuery), [customers, custQuery]);
 
   // Void a sale (manager-only). Cloud → atomic RPC; local → mirror the
   // reversal (restore stock, reverse wallet, delete linked income, mark void).
   const confirmVoid = async () => {
     if (!voidTarget) return;
+    if (voidTarget.date < monthStart) {
+      toast.error('Penjualan bulan lalu tidak bisa dibatalkan — catat pengembaliannya sebagai pengeluaran');
+      return;
+    }
     setVoidBusy(true);
     try {
       if (isCloudMode()) {
@@ -138,6 +157,10 @@ export function PosPage() {
   const discountValue = resolveDiscount(subtotal, parseRpInput(discount), discountType);
   const total = cartTotal(cart, parseRpInput(discount), discountType);
   const paymentCheck = validatePayments(payments, total);
+  // Diskon besar = uang toko keluar tanpa persetujuan. Karyawan dibatasi;
+  // server menolaknya juga (0070), ini hanya supaya batasnya terbaca lebih awal.
+  const maxDiscount = discountLimit(subtotal, isMgr);
+  const discountOver = discountValue > maxDiscount;
   const totalQty = cart.reduce((n, c) => n + c.qty, 0);
   const nextNo = useMemo(() => nextDocNumber('INV', sales.map((s) => s.saleNo)), [sales]);
   const totalText = fmtRp(total);
@@ -187,6 +210,8 @@ export function PosPage() {
     setCart([]);
     setDiscount('');
     setPayments([]);
+    setCustomer(null);
+    setCustQuery('');
   };
 
   const autoFillSingleWallet = () => {
@@ -203,6 +228,12 @@ export function PosPage() {
       toast.error('Total pembayaran harus sama dengan total transaksi');
       return;
     }
+    if (discountOver) {
+      toast.error(
+        `Diskon karyawan maksimal ${STAFF_MAX_DISCOUNT_PCT}% (${fmtRp(maxDiscount)}) — minta owner/admin untuk diskon lebih besar`,
+      );
+      return;
+    }
     // OQ-C: a user who can reach multiple outlets must pick a specific branch
     // first, so the sale is tagged to the right outlet (not guessed).
     if (mustPickOutlet(outlets.length)) {
@@ -215,13 +246,16 @@ export function PosPage() {
     try {
       const saleNo = nextDocNumber('INV', sales.map((s) => s.saleNo));
       let saleId: string;
+      let savedNo = saleNo;
 
       if (isCloudMode()) {
         // Cloud: atomic, server-side RPC. This is the ONLY path that lets a
         // staff cashier complete a sale, since wallet/inventory writes are
         // manager-only under RLS. Stock re-validation + deduction, wallet
         // credit, and income insert all happen in one transaction.
-        saleId = await processSale({
+        // Harga, HPP, total & pembayaran divalidasi ulang di server (0069);
+        // nomornya juga ditetapkan server — tampilkan yang tersimpan.
+        ({ id: saleId, saleNo: savedNo } = await processSale({
           orgId,
           saleNo,
           lines: toSaleLines(cart),
@@ -231,7 +265,8 @@ export function PosPage() {
           discountType,
           total,
           outletId: txOutletId,
-        });
+          customerId: customer?.id ?? null,
+        }));
       } else {
         // Local: re-validate stock against latest inventory (multi-device safety).
         const fresh = await repository.list('inventory');
@@ -258,6 +293,8 @@ export function PosPage() {
           payments,
           cashierId: me?.id ?? '',
           cashierName: me?.name ?? '',
+          customerId: customer?.id ?? null,
+          customerName: customer?.name ?? '',
           voided: false,
           voidedReason: '',
           createdAt: now,
@@ -299,12 +336,12 @@ export function PosPage() {
         }
       }
 
-      toast.success(`Transaksi ${saleNo} berhasil`);
+      toast.success(`Transaksi ${savedNo} berhasil`);
       logActivity({
         action: 'sale.create',
         entityType: 'sale',
         entityId: saleId,
-        entityLabel: saleNo,
+        entityLabel: savedNo,
         meta: { total, items: cart.length },
       });
       reset();
@@ -327,18 +364,18 @@ export function PosPage() {
         >
           <Icon name="cart-shopping" aria-hidden /> Kasir
         </button>
-        {isMgr && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'history'}
-            className={[styles.tab, tab === 'history' ? styles.tabActive : ''].join(' ')}
-            onClick={() => setTab('history')}
-          >
-            <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
-            {recentSales.length > 0 && <span className={styles.tabCount}>{recentSales.length}</span>}
-          </button>
-        )}
+        {/* Kasir juga perlu tab ini — di situlah struk dicetak ulang. Pembatalan
+            tetap milik manager (tombolnya di bawah). */}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'history'}
+          className={[styles.tab, tab === 'history' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('history')}
+        >
+          <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
+          {recentSales.length > 0 && <span className={styles.tabCount}>{recentSales.length}</span>}
+        </button>
       </div>
 
       {tab === 'pos' && (
@@ -489,6 +526,44 @@ export function PosPage() {
           <>
             <div className={styles.tearLine} aria-hidden />
             <div className={styles.checkout}>
+            <div className={styles.customerBox}>
+              {customer ? (
+                <div className={styles.customerChip}>
+                  <Icon name="users" aria-hidden />
+                  <span>{customer.name}</span>
+                  <button onClick={() => setCustomer(null)} aria-label="Lepas pelanggan">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Pelanggan (opsional)"
+                    value={custQuery}
+                    onChange={(e) => setCustQuery(e.target.value)}
+                    iconLeft={<Icon name="magnifying-glass" aria-hidden />}
+                  />
+                  {custMatches.length > 0 && (
+                    <ul className={styles.custSuggest}>
+                      {custMatches.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            onClick={() => {
+                              setCustomer(c);
+                              setCustQuery('');
+                            }}
+                          >
+                            <strong>{c.name}</strong>
+                            <small>{c.phone || 'tanpa nomor'}</small>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+
             <div className={styles.discountRow}>
               <Input
                 placeholder="Diskon"
@@ -510,6 +585,13 @@ export function PosPage() {
                 </button>
               </div>
             </div>
+
+            {discountOver && (
+              <p className={styles.discountWarn}>
+                Diskon karyawan maksimal {STAFF_MAX_DISCOUNT_PCT}% ({fmtRp(maxDiscount)}). Untuk
+                lebih besar, transaksi diproses owner/admin.
+              </p>
+            )}
 
             <div className={styles.summary}>
               <div><span>Subtotal</span><span>{fmtRp(subtotal)}</span></div>
@@ -552,7 +634,7 @@ export function PosPage() {
               </div>
             </div>
 
-            <Button fullWidth onClick={checkout} loading={busy} disabled={!paymentCheck.ok}>
+            <Button fullWidth onClick={checkout} loading={busy} disabled={!paymentCheck.ok || discountOver}>
               <Icon name="circle-check" aria-hidden /> Proses Transaksi
             </Button>
             </div>
@@ -577,7 +659,7 @@ export function PosPage() {
         </button>
       )}
 
-      {tab === 'history' && isMgr && (
+      {tab === 'history' && (
         <Card glass className={styles.history}>
           <div className={styles.historyHead}>
             <h3>
@@ -594,12 +676,25 @@ export function PosPage() {
                 <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
                   <div className={styles.historyInfo}>
                     <strong>{s.saleNo}</strong>
-                    <small>{fmtDate(s.date)} · {s.lines.length} item</small>
+                    <small>
+                      {fmtDate(s.date)} · {s.lines.length} item
+                      {s.customerName ? ` · ${s.customerName}` : ''}
+                    </small>
                   </div>
                   <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
+                  {org && (
+                    <button
+                      className={styles.iconBtn}
+                      onClick={() => printSaleReceipt(s, org)}
+                      aria-label={`Cetak struk ${s.saleNo}`}
+                      title="Cetak struk"
+                    >
+                      <Icon name="receipt" aria-hidden />
+                    </button>
+                  )}
                   {s.voided ? (
                     <Badge tone="danger">Dibatalkan</Badge>
-                  ) : (
+                  ) : !isMgr || s.date < monthStart ? null : (
                     <button
                       className={styles.voidBtn}
                       onClick={() => { setVoidTarget(s); setVoidReason(''); }}

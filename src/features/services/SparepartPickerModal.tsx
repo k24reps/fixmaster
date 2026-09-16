@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Modal, Input, Button, Icon } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
+import { useSessionStore } from '@/stores/session';
+import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import type { ServiceSparepart } from '@/data/types';
@@ -29,6 +31,10 @@ export function SparepartPickerModal({
   onPick,
 }: SparepartPickerModalProps) {
   const { data: inventory } = useCollection('inventory');
+  // HPP adalah margin toko; karyawan tidak perlu — dan tidak boleh biasa —
+  // melihatnya saat memasang part (audit #14).
+  const me = useSessionStore((s) => s.currentEmployee);
+  const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [qtyById, setQtyById] = useState<Record<string, string>>({});
 
@@ -98,8 +104,12 @@ export function SparepartPickerModal({
                       <span className={styles.sku}>{item.sku || '—'}</span>
                       <span className={styles.dot} />
                       Stok {item.stock}
-                      <span className={styles.dot} />
-                      HPP {fmtRp(item.costPrice)}
+                      {isMgr && (
+                        <>
+                          <span className={styles.dot} />
+                          HPP {fmtRp(item.costPrice)}
+                        </>
+                      )}
                     </span>
                   </div>
                   <input

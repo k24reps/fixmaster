@@ -33,6 +33,18 @@ export function resolveDiscount(
   return Math.min(Math.max(0, Math.round(value)), subtotal);
 }
 
+/**
+ * Batas diskon untuk karyawan, persen dari subtotal. Diskon besar adalah uang
+ * toko yang keluar tanpa jejak persetujuan, jadi di atas batas ini transaksinya
+ * harus diproses owner/admin. Cermin process_sale (0070) — server yang menolak.
+ */
+export const STAFF_MAX_DISCOUNT_PCT = 10;
+
+/** Diskon rupiah tertinggi yang boleh diberikan peran ini. */
+export function discountLimit(subtotal: number, isManager: boolean): number {
+  return isManager ? subtotal : Math.round((subtotal * STAFF_MAX_DISCOUNT_PCT) / 100);
+}
+
 /** Final total after discount. */
 export function cartTotal(items: CartItem[], discount: number, type: DiscountType): number {
   const subtotal = cartSubtotal(items);

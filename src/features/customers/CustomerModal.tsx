@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Modal, Input, Button, FormFields, FormError } from '@/components/ui';
 import { repository } from '@/data';
+import { syncCustomerToServices } from '@/data/supabase-client';
 import { newId } from '@/lib/id';
 import { checkDuplicate } from '@/lib/business/customers';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
+import { isCloudMode } from '@/stores/demo';
 import type { Customer } from '@/data/types';
 
 interface CustomerModalProps {
@@ -64,17 +66,24 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
       await repository.put('customers', record);
       // Back-sync: update customer name/phone on related services.
       if (editing && (editing.name !== record.name || editing.phone !== record.phone)) {
-        const services = await repository.list('services');
-        const related = services.filter((s) => s.customerId === editing.id);
-        if (related.length) {
-          await repository.putMany(
-            'services',
-            related.map((s) => ({
-              ...s,
-              customerName: record.name,
-              customerPhone: record.phone,
-            })),
-          );
+        if (isCloudMode()) {
+          // Server menyalin nama & HP ke SEMUA tiketnya — hanya dua kolom itu (0069).
+          // Dulu baris tiket dari daftar (maks 1000, bisa basi) ditulis ulang utuh,
+          // sehingga status yang baru berubah bisa tertimpa.
+          await syncCustomerToServices({ orgId: record.orgId, customerId: record.id });
+        } else {
+          const services = await repository.list('services');
+          const related = services.filter((s) => s.customerId === editing.id);
+          if (related.length) {
+            await repository.putMany(
+              'services',
+              related.map((s) => ({
+                ...s,
+                customerName: record.name,
+                customerPhone: record.phone,
+              })),
+            );
+          }
         }
       }
       toast.success(editing ? 'Pelanggan diperbarui' : 'Pelanggan ditambahkan');

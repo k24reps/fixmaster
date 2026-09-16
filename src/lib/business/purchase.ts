@@ -83,6 +83,21 @@ export function receivedValue(
   }, 0);
 }
 
+/**
+ * HPP rata-rata tertimbang setelah barang masuk: (stok × HPP lama + qty × harga
+ * beli) / (stok + qty). Stok kosong/minus → harga beli. Cermin receive_goods_v2 (0069).
+ */
+export function averageCost(
+  stock: number,
+  cost: number,
+  qty: number,
+  unitCost: number | undefined,
+): number {
+  if (qty <= 0 || unitCost == null) return cost;
+  if (stock <= 0) return unitCost;
+  return Math.round(((stock * cost + qty * unitCost) / (stock + qty)) * 100) / 100;
+}
+
 export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   draft: 'Draft',
   ordered: 'Dipesan',

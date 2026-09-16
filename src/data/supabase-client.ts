@@ -280,7 +280,7 @@ export async function trackService(
  * and records income — all server-side. This is the ONLY write path that lets
  * a staff cashier complete a sale in cloud mode (direct wallet/inventory writes
  * are manager-only under RLS). `outletId` tags the sale + income to a branch.
- * Returns the new sale id.
+ * Returns the new sale id and the number the server assigned.
  */
 export async function processSale(args: {
   orgId: string;
@@ -292,7 +292,9 @@ export async function processSale(args: {
   discountType: string;
   total: number;
   outletId: string | null;
-}): Promise<string> {
+  /** Pelanggan yang dikaitkan ke transaksi ini (0070); null = pembeli umum. */
+  customerId?: string | null;
+}): Promise<{ id: string; saleNo: string }> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
   const { data, error } = await c.rpc('process_sale', {
@@ -305,9 +307,61 @@ export async function processSale(args: {
     p_discount_type: args.discountType,
     p_total: args.total,
     p_outlet_id: args.outletId,
+    p_customer_id: args.customerId ?? null,
   });
   if (error) throw new Error(error.message);
-  return data as string;
+  const id = data as string;
+  // Nomor ditetapkan server (bisa berbeda dari usulan saat bentrok) — ambil yang tersimpan.
+  const { data: row } = await c.from('sales').select('sale_no').eq('id', id).maybeSingle();
+  return { id, saleNo: (row?.sale_no as string | undefined) ?? args.saleNo };
+}
+
+/**
+ * Koreksi stok manual (0069, owner/admin): SELISIH diterapkan di atas stok
+ * terkini secara atomik, bukan menulis ulang angka dari form yang bisa basi.
+ * Mengembalikan stok baru.
+ */
+export async function adjustInventoryStock(args: {
+  orgId: string;
+  itemId: string;
+  delta: number;
+}): Promise<number> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('adjust_inventory_stock', {
+    p_org_id: args.orgId,
+    p_item_id: args.itemId,
+    p_delta: args.delta,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data);
+}
+
+/** Salin nama & HP pelanggan ke tiket-tiketnya (0069) — hanya dua kolom itu. */
+export async function syncCustomerToServices(args: { orgId: string; customerId: string }): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('sync_customer_to_services', {
+    p_org_id: args.orgId,
+    p_customer_id: args.customerId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Statistik servis per pelanggan dari SEMUA tiket (0069). */
+export async function fetchCustomerServiceStats(
+  orgId: string,
+): Promise<{ customerId: string; count: number; paidTotal: number; categories: string[] }[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('customer_service_stats', { p_org_id: orgId });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    customerId: String(r.customer_id),
+    count: Number(r.services),
+    paidTotal: Number(r.paid_total),
+    categories: (r.categories as string[] | null) ?? [],
+  }));
 }
 
 /**

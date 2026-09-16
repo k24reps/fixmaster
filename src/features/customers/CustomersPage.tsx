@@ -12,6 +12,8 @@ import {
   usePersistedView,
 } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
+import { useCustomerServices, useCustomerStats } from '@/hooks/useCustomerStats';
+import { EMPTY_CUSTOMER_STAT, matchesCustomer } from '@/lib/business/customers';
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
@@ -30,10 +32,10 @@ type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
 
 export function CustomersPage() {
   const { data: customers, ...customersLoad } = useCollection('customers');
-  const { data: services, ...servicesLoad } = useCollection('services');
-  // Hitungan per pelanggan berasal dari servis. Selama servis belum termuat /
-  // gagal, "0x · Rp 0 · Belum servis" adalah angka palsu, jadi tampil "—".
-  const servicesPending = loadPending(servicesLoad);
+  // Hitungan per pelanggan dari SEMUA tiket (server; daftar servis dipotong 1000).
+  // Selama belum termuat / gagal, "0x · Rp 0 · Belum servis" adalah angka palsu, jadi tampil "—".
+  const statsQuery = useCustomerStats();
+  const servicesPending = loadPending(statsQuery);
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
   const isMgr = me ? isManager(me.role) : false;
@@ -45,32 +47,15 @@ export function CustomersPage() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [toDelete, setToDelete] = useState<Customer | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  // Riwayat diambil per pelanggan dari server — pelanggan lama punya tiket di luar 1000 terbaru.
+  const historyQuery = useCustomerServices(historyCustomer?.id ?? null);
 
-  // Per-customer service count + total transaction value.
-  const stats = useMemo(() => {
-    const map = new Map<string, { count: number; total: number }>();
-    for (const s of services) {
-      const cur = map.get(s.customerId) ?? { count: 0, total: 0 };
-      cur.count += 1;
-      cur.total += s.finalCost;
-      map.set(s.customerId, cur);
-    }
-    return map;
-  }, [services]);
-
-  // Device categories each customer has ever brought in (derived from their
-  // service history), plus the full set of categories for the filter dropdown.
-  const custCategories = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const s of services) {
-      const cat = (s.category || '').trim();
-      if (!cat) continue;
-      const set = map.get(s.customerId) ?? new Set<string>();
-      set.add(cat);
-      map.set(s.customerId, set);
-    }
-    return map;
-  }, [services]);
+  // Per pelanggan: jumlah tiket (tanpa batal), nilai tiket Lunas, kategori perangkat.
+  const stats = statsQuery.data;
+  const custCategories = useMemo(
+    () => new Map([...stats].map(([id, stat]) => [id, new Set(stat.categories)] as const)),
+    [stats],
+  );
 
   // Chip perangkat seperti di Kasir & Inventori. Jumlahnya = pelanggan (yang
   // masih ada) yang pernah membawa kategori itu; satu pelanggan bisa di beberapa.
@@ -84,17 +69,16 @@ export function CustomersPage() {
   const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = customers.filter((c) => {
-      if (q && !(c.name.toLowerCase().includes(q) || c.phone.includes(q))) return false;
+      if (!matchesCustomer(c, query)) return false;
       if (activeCategory !== 'all' && !custCategories.get(c.id)?.has(activeCategory)) return false;
       return true;
     });
     list = [...list].sort((a, b) => {
       if (sort === 'name_asc') return a.name.localeCompare(b.name);
-      const sa = stats.get(a.id) ?? { count: 0, total: 0 };
-      const sb = stats.get(b.id) ?? { count: 0, total: 0 };
-      if (sort === 'trx_desc') return sb.total - sa.total;
+      const sa = stats.get(a.id) ?? EMPTY_CUSTOMER_STAT;
+      const sb = stats.get(b.id) ?? EMPTY_CUSTOMER_STAT;
+      if (sort === 'trx_desc') return sb.paidTotal - sa.paidTotal;
       return sb.count - sa.count;
     });
     return list;
@@ -123,6 +107,18 @@ export function CustomersPage() {
     const greeting = toko ? `Halo ${c.name}, ${toko} di sini. ` : `Halo ${c.name}, `;
     window.open(waLink(c.phone, greeting), '_blank');
     toast.success('Membuka WhatsApp…');
+  };
+
+  // Pelanggan yang punya tiket tidak dihapus: tiketnya kehilangan pemilik dan
+  // riwayat + statistiknya ikut hilang. Server menolaknya juga (0070) — cek di
+  // sini supaya alasannya terbaca sebelum dialog konfirmasi muncul.
+  const requestDelete = (c: Customer) => {
+    const used = stats.get(c.id)?.count ?? 0;
+    if (used > 0) {
+      toast.warning(`"${c.name}" punya ${used} tiket servis — perbarui datanya saja, jangan dihapus.`);
+      return;
+    }
+    setToDelete(c);
   };
 
   const confirmDelete = async () => {
@@ -182,7 +178,7 @@ export function CustomersPage() {
           className={[styles.iconBtn, styles.danger].join(' ')}
           onClick={(e) => {
             e.stopPropagation();
-            setToDelete(c);
+            requestDelete(c);
           }}
           aria-label="Hapus"
         >
@@ -211,7 +207,7 @@ export function CustomersPage() {
             aria-label="Urutkan pelanggan"
           >
             <option value="svc_desc">Servis Terbanyak</option>
-            <option value="trx_desc">Transaksi Tertinggi</option>
+            <option value="trx_desc">Nilai Servis Tertinggi</option>
             <option value="name_asc">Nama A-Z</option>
           </select>
           <ViewToggle value={view} onChange={chooseView} label="Tampilan pelanggan" />
@@ -259,7 +255,7 @@ export function CustomersPage() {
       ) : view === 'tiles' ? (
         <div className={styles.tileGrid}>
           {rows.map((c) => {
-            const st = stats.get(c.id) ?? { count: 0, total: 0 };
+            const st = stats.get(c.id) ?? EMPTY_CUSTOMER_STAT;
             return (
               <div
                 key={c.id}
@@ -281,7 +277,7 @@ export function CustomersPage() {
                 </div>
                 <div className={styles.tileFoot}>
                   <span className={styles.tileStat}>
-                    {servicesPending ? '—' : `${st.count}x · ${fmtRp(st.total)}`}
+                    {servicesPending ? '—' : `${st.count}x · ${fmtRp(st.paidTotal)}`}
                   </span>
                   <div className={styles.cardActions}>{renderActions(c)}</div>
                 </div>
@@ -292,7 +288,7 @@ export function CustomersPage() {
       ) : (
         <div className={[styles.grid, view === 'list' ? styles.listView : ''].join(' ')}>
           {rows.map((c) => {
-            const st = stats.get(c.id) ?? { count: 0, total: 0 };
+            const st = stats.get(c.id) ?? EMPTY_CUSTOMER_STAT;
             return (
               <div
                 key={c.id}
@@ -331,8 +327,8 @@ export function CustomersPage() {
                     </span>
                   </div>
                   <div className={styles.activityBlock}>
-                    <span className={styles.activityLabel}>Total Transaksi</span>
-                    <span className={styles.activityValue}>{servicesPending ? '—' : fmtRp(st.total)}</span>
+                    <span className={styles.activityLabel}>Servis Lunas</span>
+                    <span className={styles.activityValue}>{servicesPending ? '—' : fmtRp(st.paidTotal)}</span>
                   </div>
                 </div>
 
@@ -363,13 +359,13 @@ export function CustomersPage() {
         open={historyCustomer !== null}
         onClose={() => setHistoryCustomer(null)}
         customer={historyCustomer}
-        services={services}
-        servicesLoad={servicesLoad}
+        services={historyQuery.data}
+        servicesLoad={historyQuery}
       />
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Pelanggan?"
-        message={`"${toDelete?.name}" akan dihapus. Tindakan ini tidak menghapus riwayat servis terkait.`}
+        message={`"${toDelete?.name}" belum punya tiket servis dan akan dihapus permanen.`}
         confirmLabel="Hapus"
         danger
         onConfirm={confirmDelete}

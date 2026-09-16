@@ -52,7 +52,11 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services, servi
       );
   }, [customer, services]);
 
-  const total = useMemo(() => tickets.reduce((sum, s) => sum + s.finalCost, 0), [tickets]);
+  // Sama dengan kartu pelanggan: nilai tiket yang sudah Lunas saja.
+  const total = useMemo(
+    () => tickets.reduce((sum, s) => sum + (s.status === 'lunas' ? s.finalCost : 0), 0),
+    [tickets],
+  );
 
   if (!open || !customer) return null;
 
@@ -80,7 +84,7 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services, servi
             <strong>{pending ? '—' : tickets.length}</strong> servis
           </span>
           <span>
-            Total <strong>{pending ? '—' : fmtRp(total)}</strong>
+            Lunas <strong>{pending ? '—' : fmtRp(total)}</strong>
           </span>
         </div>
 

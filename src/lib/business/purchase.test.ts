@@ -6,8 +6,18 @@ import {
   deriveStatus,
   receiveGoods,
   receivedValue,
+  averageCost,
 } from './purchase';
 import type { PurchaseOrder, PurchaseOrderLine } from '@/data/types';
+
+describe('averageCost', () => {
+  it('rata-rata tertimbang; stok kosong memakai harga beli; tanpa harga beli HPP tetap', () => {
+    expect(averageCost(10, 5000, 10, 7000)).toBe(6000);
+    expect(averageCost(0, 5000, 4, 7000)).toBe(7000);
+    expect(averageCost(3, 5000, 0, 7000)).toBe(5000);
+    expect(averageCost(3, 5000, 2, undefined)).toBe(5000);
+  });
+});
 
 const line = (over: Partial<PurchaseOrderLine>): PurchaseOrderLine => ({
   itemId: over.itemId ?? 'i1',

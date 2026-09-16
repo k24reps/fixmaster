@@ -5,7 +5,7 @@ import { demoGuard } from '@/stores/demo';
 import type { Service, Organization } from '@/data/types';
 
 /** Escape user/org text before injecting into the print window markup. */
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -24,7 +24,7 @@ function escapeHtml(s: string): string {
  * adalah data dan nominal yang dibaca berkolom, persis kasus yang Mono Numbers
  * Rule maksudkan.
  */
-const PRINT_STYLE = `
+export const PRINT_STYLE = `
   @page { margin: 6mm; }
   * { box-sizing: border-box; }
   body {

@@ -56,14 +56,30 @@ export const REALTIME_TABLES: readonly string[] = [
 /**
  * Collections whose Postgres table has an `outlet_id` column AND should be
  * filtered by the active outlet scope. Transactional data + Hybrid wallets.
- * Shared config (customers, inventory, suppliers, employees, outlets) is
- * intentionally org-wide (OQ-A), so it is NOT outlet-filtered here. Filtering a
- * table without the column would raise a Postgres error, so this set is exact.
+ * Shared config (customers, suppliers, employees, outlets) is intentionally
+ * org-wide (OQ-A), so it is NOT outlet-filtered here. Filtering a table without
+ * the column would raise a Postgres error, so this set is exact.
+ *
+ * `inventory` ikut di sini sejak 0070: barang boleh dimiliki satu cabang, dan
+ * yang tanpa cabang (outlet_id null — semua data lama) tetap muncul di mana
+ * pun. Jadi stok bersama tetap perilaku bawaan; memisahkan stok per cabang
+ * cukup dengan mengisi cabang pada barangnya.
  */
 const OUTLET_SCOPED: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'services', 'sales', 'incomes', 'expenses',
-  'attendance', 'purchaseOrders', 'taskInstances', 'wallets',
+  'attendance', 'purchaseOrders', 'taskInstances', 'wallets', 'inventory',
 ]);
+
+/**
+ * Katalog & data master yang WAJIB utuh: dimuat per halaman, bukan dipotong
+ * max_rows PostgREST. Terpotong 1000 baris, Kasir tak menampilkan barang lama
+ * dan pelanggan lama tak ditemukan (lalu dibuat ganda). Tabel transaksi tetap
+ * dipotong / pakai rentang tanggal.
+ */
+const FULL_LIST: ReadonlySet<CollectionName> = new Set<CollectionName>([
+  'inventory', 'customers', 'suppliers',
+]);
+const LIST_PAGE = 1000;
 
 /**
  * Translate a Supabase write error. A row-level-security violation (Postgres
@@ -79,7 +95,9 @@ function rethrowWrite(error: { code?: string; message?: string }): never {
       'Ditolak: tindakan ini butuh peran owner/admin, atau langganan sudah kedaluwarsa (cek Pengaturan → Langganan).',
     );
   }
-  throw error;
+  // Error sungguhan (bukan objek polos), supaya pesan dari server — mis. trigger
+  // "No. HP sudah terdaftar" — sampai ke toast alih-alih pesan umum.
+  throw Object.assign(new Error(error.message ?? 'Gagal menyimpan data'), { code: error.code });
 }
 
 const camelToSnake = (s: string) => s.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
@@ -237,26 +255,42 @@ export class SupabaseAdapter implements Repository {
     // screens that show it fetch one row (useServiceHistory); backups pass
     // `full`. Date-range queries below keep '*' — Laporan needs history.
     const columns = collection === 'services' && !options?.full ? SERVICE_LIST_COLUMNS : '*';
-    let query = this.client
-      .from(TABLE[collection])
-      .select(columns)
-      .eq('org_id', this.orgId)
-      .is('deleted_at', null); // mirror LocalAdapter: hide soft-deleted rows
-    // Outlet scoping (mirrors the local adapter): when a specific outlet is
-    // active, return that outlet's rows PLUS org-wide rows (outlet_id null).
-    // Only applied to tables that actually have an outlet_id column.
-    if (this.outletId && OUTLET_SCOPED.has(collection)) {
-      query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
-    }
-    // Newest-first, ALWAYS ordered: PostgREST caps responses (max_rows, default
-    // 1000) and without ORDER BY the truncated subset is unspecified — an
-    // append-only table like activity_logs would show an arbitrary slice,
-    // possibly missing the NEWEST events. Ordered, the cap drops oldest rows.
-    query = query.order('created_at', { ascending: false });
-    const { data, error } = await query;
-    if (error) throw error;
+    const build = () => {
+      let query = this.client
+        .from(TABLE[collection])
+        .select(columns)
+        .eq('org_id', this.orgId)
+        .is('deleted_at', null); // mirror LocalAdapter: hide soft-deleted rows
+      // Outlet scoping (mirrors the local adapter): when a specific outlet is
+      // active, return that outlet's rows PLUS org-wide rows (outlet_id null).
+      // Only applied to tables that actually have an outlet_id column.
+      if (this.outletId && OUTLET_SCOPED.has(collection)) {
+        query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
+      }
+      // Newest-first, ALWAYS ordered: PostgREST caps responses (max_rows, default
+      // 1000) and without ORDER BY the truncated subset is unspecified — an
+      // append-only table like activity_logs would show an arbitrary slice,
+      // possibly missing the NEWEST events. Ordered, the cap drops oldest rows.
+      // `id` breaks ties so FULL_LIST pages never overlap or skip a row.
+      return query.order('created_at', { ascending: false }).order('id', { ascending: true });
+    };
     // A runtime column string defeats supabase-js's select() type parser.
-    return (data ?? []).map((r) => fromRow<EntityMap[K]>(r as unknown as Record<string, unknown>));
+    const toEntities = (rows: unknown[] | null) =>
+      (rows ?? []).map((r) => fromRow<EntityMap[K]>(r as unknown as Record<string, unknown>));
+
+    if (!FULL_LIST.has(collection)) {
+      const { data, error } = await build();
+      if (error) throw error;
+      return toEntities(data);
+    }
+    const rows: unknown[] = [];
+    for (;;) {
+      const { data, error } = await build().range(rows.length, rows.length + LIST_PAGE - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < LIST_PAGE) break;
+    }
+    return toEntities(rows);
   }
 
   async listByDateRange<K extends CollectionName>(
@@ -286,6 +320,7 @@ export class SupabaseAdapter implements Repository {
     term?: string;
     createdFrom?: string;
     createdTo?: string;
+    customerId?: string;
     limit: number;
   }): Promise<EntityMap['services'][]> {
     let query = this.client
@@ -300,6 +335,7 @@ export class SupabaseAdapter implements Repository {
     if (search) query = query.or(search);
     if (opts.createdFrom) query = query.gte('created_at', opts.createdFrom);
     if (opts.createdTo) query = query.lt('created_at', opts.createdTo);
+    if (opts.customerId) query = query.eq('customer_id', opts.customerId);
     const { data, error } = await query.order('created_at', { ascending: false }).limit(opts.limit);
     if (error) throw error;
     return (data ?? []).map((r) =>

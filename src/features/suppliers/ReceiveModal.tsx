@@ -3,7 +3,7 @@ import { Modal, Input, Button, Badge, Select } from '@/components/ui';
 import { repository } from '@/data';
 import { isCloudMode } from '@/stores/demo';
 import { receiveGoodsWithFinance } from '@/data/supabase-client';
-import { receiveGoods, receivedValue, PO_STATUS_LABELS } from '@/lib/business/purchase';
+import { receiveGoods, receivedValue, averageCost, PO_STATUS_LABELS } from '@/lib/business/purchase';
 import { applyBalance } from '@/lib/business/finance';
 import { newId } from '@/lib/id';
 import { localDateStr } from '@/lib/time';
@@ -92,7 +92,9 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
           .filter((i) => stockDeltas.some((d) => d.itemId === i.id))
           .map((i) => {
             const d = stockDeltas.find((x) => x.itemId === i.id)!;
-            return { ...i, stock: i.stock + d.delta };
+            const unit = po.lines.find((l) => l.itemId === i.id)?.costPrice;
+            // HPP rata-rata tertimbang (cermin receive_goods_v2, 0069).
+            return { ...i, stock: i.stock + d.delta, costPrice: averageCost(i.stock, i.costPrice, d.delta, unit) };
           });
         if (updates.length) await repository.putMany('inventory', updates);
 

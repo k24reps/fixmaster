@@ -140,7 +140,8 @@ export function InventoryPage() {
         <span><strong>{stats.total}</strong> item</span>
         <span className={styles.low}><strong>{stats.low}</strong> menipis</span>
         <span className={styles.out}><strong>{stats.out}</strong> habis</span>
-        <span><strong>{fmtRp(stats.value)}</strong> nilai stok</span>
+        {/* Nilai stok & HPP = modal dan margin toko; hanya owner/admin (audit #14). */}
+        {isMgr && <span><strong>{fmtRp(stats.value)}</strong> nilai stok</span>}
       </div>
 
       <div className={styles.toolbar}>
@@ -226,7 +227,7 @@ export function InventoryPage() {
                 </div>
                 <div className={styles.itemPrice}>
                   <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
-                  <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>
+                  {isMgr && <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>}
                 </div>
                 <div className={styles.binActions}>{renderActions(i)}</div>
               </div>
@@ -290,7 +291,7 @@ export function InventoryPage() {
                 <div className={styles.binFooter}>
                   <div className={styles.prices}>
                     <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
-                    <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>
+                    {isMgr && <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>}
                   </div>
                   <div className={styles.binActions}>{renderActions(i)}</div>
                 </div>
