@@ -66,6 +66,13 @@
 .exportBtn {
   flex-shrink: 0;
 }
+/* Kedua tombol ekspor berpindah baris BERSAMA. Sebagai saudara lepas di
+   .dateBar, PDF tertinggal di baris filter dan CSV turun sendirian. */
+.exportGroup {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
 /* Branch scope badge — which outlet the figures cover. */
 .scopeTag {
   display: inline-flex;

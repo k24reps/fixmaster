@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   trendMode,
   trendSeries,
+  trendGeometry,
   transactionRows,
   profitByDeviceCategory,
   sparepartUsage,
@@ -150,6 +151,52 @@ describe('trendSeries', () => {
     expect(series).toHaveLength(13);
     expect(series[0].income).toBe(100);
     expect(series[2].income).toBe(200);
+  });
+});
+
+// Grafik di layar dan grafik di laporan PDF menggambar dari fungsi ini. Kalau
+// ia berbeda di antara keduanya, pemilik mengarsipkan bentuk yang bukan yang
+// ia lihat — dan kertas tidak bisa memperbaiki diri.
+describe('trendGeometry', () => {
+  const pts = [
+    { label: 'A', income: 0, expense: 50, net: -50 },
+    { label: 'B', income: 100, expense: 0, net: 100 },
+  ];
+
+  it('memetakan nilai tertinggi ke atas plot dan nol ke garis dasar', () => {
+    const g = trendGeometry(pts);
+    expect(g.max).toBe(100);
+    expect(g.y(100)).toBeCloseTo(g.pad.top);
+    expect(g.y(0)).toBeCloseTo(g.pad.top + g.plotH);
+    expect(g.x(0)).toBeCloseTo(g.pad.left);
+    expect(g.x(1)).toBeCloseTo(g.pad.left + g.plotW);
+  });
+
+  it('menutup arsiran pemasukan ke garis dasar', () => {
+    expect(trendGeometry(pts).incArea.endsWith('Z')).toBe(true);
+    expect(trendGeometry([]).incArea).toBe('');
+  });
+
+  it('menjarangkan label sumbu X maksimal 8 dan tidak pernah bagi nol', () => {
+    const many = Array.from({ length: 31 }, (_, i) => ({
+      label: String(i),
+      income: 0,
+      expense: 0,
+      net: 0,
+    }));
+    expect(trendGeometry(many).xLabels.length).toBeLessThanOrEqual(8);
+    // Semua nilai nol: max dipaksa 1, jadi y() tetap angka sah.
+    expect(Number.isFinite(trendGeometry(many).y(0))).toBe(true);
+    // Satu titik diletakkan di tengah, bukan NaN dari pembagian (n-1) = 0.
+    expect(trendGeometry([pts[0]]).x(0)).toBeCloseTo(
+      trendGeometry([pts[0]]).pad.left + trendGeometry([pts[0]]).plotW / 2,
+    );
+  });
+
+  it('menghormati ukuran khusus dokumen cetak', () => {
+    const g = trendGeometry(pts, { width: 760, height: 200 });
+    expect(g.width).toBe(760);
+    expect(g.plotH).toBe(200 - g.pad.top - g.pad.bottom);
   });
 });
 

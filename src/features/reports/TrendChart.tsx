@@ -1,57 +1,31 @@
 import { useMemo, useState } from 'react';
 import { fmtRp, fmtRpCompact } from '@/lib/format';
-import type { TrendPoint } from '@/lib/business/reports';
+import { trendGeometry, type TrendPoint } from '@/lib/business/reports';
 import styles from './TrendChart.module.css';
 
 interface TrendChartProps {
   points: TrendPoint[];
 }
 
-const W = 720;
-const H = 240;
-const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
-
 /**
  * Pure-SVG dual line chart (income vs expense) with a hover crosshair. No chart
  * library — keeps the bundle lean and matches the bench aesthetic (mono
  * readouts, tick gauge, brand spine). Responsive via viewBox.
+ *
+ * Geometrinya datang dari `trendGeometry`, yang juga dipakai grafik di laporan
+ * PDF — supaya keduanya tidak bisa menggambar bentuk yang berbeda.
  */
 export function TrendChart({ points }: TrendChartProps) {
   const [hover, setHover] = useState<number | null>(null);
-
-  const { incPath, expPath, max, plotW, plotH, x, yInc, yExp } = useMemo(() => {
-    const plotW = W - PAD.left - PAD.right;
-    const plotH = H - PAD.top - PAD.bottom;
-    const max = Math.max(1, ...points.map((p) => Math.max(p.income, p.expense)));
-    const n = points.length;
-    const x = (i: number) => PAD.left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
-    const yInc = (v: number) => PAD.top + plotH - (v / max) * plotH;
-    const yExp = yInc;
-    const toPath = (sel: (p: TrendPoint) => number) =>
-      points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${yInc(sel(p)).toFixed(1)}`).join(' ');
-    return {
-      incPath: toPath((p) => p.income),
-      expPath: toPath((p) => p.expense),
-      max,
-      plotW,
-      plotH,
-      x,
-      yInc,
-      yExp,
-    };
-  }, [points]);
+  const g = useMemo(() => trendGeometry(points), [points]);
 
   if (points.length === 0) return null;
 
-  // Horizontal gridlines at 0/25/50/75/100% of max. Compact labels ("2,45 jt")
-  // — full "Rp 2.450.000" overflows PAD.left and rendered clipped.
-  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
-    y: PAD.top + plotH - f * plotH,
-    label: fmtRpCompact(Math.round(max * f)),
-  }));
-
-  // Show at most ~8 x-axis labels to avoid crowding.
-  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const { width: W, height: H, pad: PAD, plotW, plotH, x, y: yInc } = g;
+  const yExp = yInc;
+  // Compact gridline labels ("2,45 jt") — full "Rp 2.450.000" overflows
+  // PAD.left and renders clipped.
+  const gridYs = g.gridYs.map((row) => ({ y: row.y, label: fmtRpCompact(row.value) }));
 
   const active = hover != null ? points[hover] : null;
 
@@ -76,23 +50,18 @@ export function TrendChart({ points }: TrendChartProps) {
         ))}
 
         {/* x labels */}
-        {points.map((p, i) =>
-          i % labelStep === 0 ? (
-            <text key={i} x={x(i)} y={H - 8} className={styles.xLabel} textAnchor="middle">
-              {p.label}
-            </text>
-          ) : null,
-        )}
+        {g.xLabels.map((l) => (
+          <text key={l.x} x={l.x} y={H - 8} className={styles.xLabel} textAnchor="middle">
+            {l.label}
+          </text>
+        ))}
 
         {/* Area under income for depth */}
-        <path
-          d={`${incPath} L ${x(points.length - 1)} ${PAD.top + plotH} L ${x(0)} ${PAD.top + plotH} Z`}
-          className={styles.incArea}
-        />
+        <path d={g.incArea} className={styles.incArea} />
 
         {/* Lines */}
-        <path d={expPath} className={styles.expLine} fill="none" />
-        <path d={incPath} className={styles.incLine} fill="none" />
+        <path d={g.expPath} className={styles.expLine} fill="none" />
+        <path d={g.incPath} className={styles.incLine} fill="none" />
 
         {/* Hover hit areas + crosshair */}
         {points.map((_, i) => (

@@ -1,24 +1,13 @@
 import { serviceReceiptLines, trackingUrl, type ReceiptLine } from '@/lib/business/notify';
 import { qrSvg } from '@/lib/qr';
-import { toast } from '@/stores/toast';
-import { demoGuard } from '@/stores/demo';
+import { openPrintWindow, escapeHtml } from '@/lib/print';
 import type { Service, Organization } from '@/data/types';
 
-/** Escape user/org text before injecting into the print window markup. */
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+export { escapeHtml };
 
 /**
- * Nota dicetak dari dokumen terpisah yang dibuka lewat `window.open`, jadi ia
- * tidak bisa menjangkau `tokens.css` maupun webfont aplikasi. Nilai di bawah
- * ini adalah satu-satunya tempat di produk yang boleh menulis warna literal:
- * bukan pelanggaran Token-Only Rule, melainkan konsekuensi media — tinta di
- * kertas tidak punya tema gelap dan tidak punya `var()`.
+ * Gaya kertas termal 58mm. Warna literal di sini disengaja dan dijelaskan di
+ * `@/lib/print`: dokumen cetak tidak mewarisi apa pun dari aplikasi.
  *
  * Monospace di sini juga bukan kostum "biar terlihat teknis": seluruh isi nota
  * adalah data dan nominal yang dibaca berkolom, persis kasus yang Mono Numbers
@@ -95,75 +84,90 @@ export const PRINT_STYLE = `
   .by { text-align: center; font-size: 8.5px; letter-spacing: 0.14em; color: #8a8a8a; margin-top: 10px; }
 `;
 
+/** Satu baris label→nilai pada nota. `cls` = 'strong' untuk baris total. */
+export function receiptRow(label: string, value: string, cls = ''): string {
+  return `<tr class="${cls}"><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`;
+}
+
 function rowsFor(lines: ReceiptLine[], group: ReceiptLine['group'], extraClass = ''): string {
   const rows = lines
     .filter((l) => l.group === group)
-    .map(
-      (l) =>
-        `<tr class="${l.emphasis ? 'strong' : ''}"><td>${escapeHtml(l.label)}</td>` +
-        `<td>${escapeHtml(l.value)}</td></tr>`,
-    )
+    .map((l) => receiptRow(l.label, l.value, l.emphasis ? 'strong' : ''))
     .join('');
   return rows ? `<table class="${extraClass}">${rows}</table>` : '';
+}
+
+/**
+ * Kertas yang sama untuk setiap dokumen yang dibawa pulang pelanggan: kepala
+ * toko (logo, nama, kontak), baris jenis+nomor+tanggal, kaki ucapan terima
+ * kasih, atribusi, dan pemicu cetak. Pemanggil hanya mengisi `body` — isi di
+ * antara tanggal dan kaki.
+ *
+ * Nota dan struk adalah satu-satunya artefak FixMaster yang keluar dari toko,
+ * jadi yang dominan di atasnya adalah identitas TOKO; FixMaster hanya menempel
+ * sebagai satu baris atribusi di kaki. Keduanya harus tetap identik — karena
+ * itu badannya satu fungsi, bukan dua dokumen yang kebetulan mirip.
+ */
+export function openReceiptWindow(
+  org: Organization,
+  o: { demoMessage: string; title: string; kind: string; no: string; date: string; body: string },
+): void {
+  const contact = [org.address, org.phone].filter(Boolean).join(' · ');
+
+  openPrintWindow({
+    demoMessage: o.demoMessage,
+    title: `${o.title} ${o.no} — ${org.name}`,
+    style: PRINT_STYLE,
+    body: `
+  <div class="brand">
+    ${
+      org.logoDataUrl
+        ? `<img class="logo" src="${escapeHtml(org.logoDataUrl)}" alt="" onerror="this.remove()"/>`
+        : ''
+    }
+    <h1 class="shop">${escapeHtml(org.name)}</h1>
+    ${contact ? `<p class="contact">${escapeHtml(contact)}</p>` : ''}
+  </div>
+  <hr class="seam"/>
+  <div class="docline">
+    <span class="kind">${escapeHtml(o.kind)}</span>
+    <span class="no">${escapeHtml(o.no)}</span>
+  </div>
+  ${o.date ? `<div class="date">${escapeHtml(o.date)}</div>` : ''}
+  ${o.body}
+  <hr class="seam"/>
+  <div class="foot">
+    Terima kasih atas kepercayaan Anda.<br/>
+    Senang bisa membantu — sampai jumpa kembali!
+  </div>
+  <div class="by">DICETAK DENGAN FIXMASTER</div>`,
+  });
 }
 
 /**
  * Open a thermal-style receipt for a service ticket in a new window and trigger
  * the browser print dialog. Shared by NotifyModal and the ticket detail action
  * bar so both produce an identical nota. Guarded in demo mode.
- *
- * Nota ini adalah satu-satunya artefak FixMaster yang keluar dari toko dan
- * dibawa pulang pelanggan, jadi yang dominan di atasnya adalah identitas TOKO
- * — logo, nama, kontak, catatan miliknya sendiri. FixMaster hanya menempel
- * sebagai satu baris atribusi di kaki.
  */
 export function printServiceReceipt(service: Service, org: Organization): void {
-  if (demoGuard('Cetak nota aktif di FixMaster versi penuh — daftar gratis.')) return;
-  const win = window.open('', '_blank', 'width=380,height=640');
-  if (!win) {
-    toast.error('Popup diblokir browser');
-    return;
-  }
-
   const lines = serviceReceiptLines(service);
   const pick = (label: string) => lines.find((l) => l.label === label)?.value ?? '';
   const track = trackingUrl(window.location.origin, org.id, service.serviceNo);
   const note = (org.settings?.publicNote ?? '').trim();
-  const contact = [org.address, org.phone].filter(Boolean).join(' · ');
   const garansi = rowsFor(lines, 'garansi');
 
-  const head = `
-    <div class="brand">
-      ${
-        org.logoDataUrl
-          ? `<img class="logo" src="${escapeHtml(org.logoDataUrl)}" alt="" onerror="this.remove()"/>`
-          : ''
-      }
-      <h1 class="shop">${escapeHtml(org.name)}</h1>
-      ${contact ? `<p class="contact">${escapeHtml(contact)}</p>` : ''}
-    </div>`;
-
-  win.document.write(`<!doctype html>
-<html lang="id"><head><meta charset="utf-8"/>
-<title>Nota ${escapeHtml(service.serviceNo)} — ${escapeHtml(org.name)}</title>
-<style>${PRINT_STYLE}</style>
-</head><body>
-  ${head}
-  <hr class="seam"/>
-  <div class="docline">
-    <span class="kind">NOTA SERVIS</span>
-    <span class="no">${escapeHtml(service.serviceNo)}</span>
-  </div>
-  ${pick('Tanggal') ? `<div class="date">${escapeHtml(pick('Tanggal'))}</div>` : ''}
+  openReceiptWindow(org, {
+    demoMessage: 'Cetak nota aktif di FixMaster versi penuh — daftar gratis.',
+    title: 'Nota',
+    kind: 'NOTA SERVIS',
+    no: service.serviceNo,
+    date: pick('Tanggal'),
+    body: `
   <hr class="seam"/>
   ${rowsFor(lines, 'unit')}
   <hr class="seam"/>
   ${rowsFor(lines, 'uang', 'money')}
-  ${
-    garansi
-      ? `<hr class="seam"/><p class="block-label">GARANSI</p>${garansi}`
-      : ''
-  }
+  ${garansi ? `<hr class="seam"/><p class="block-label">GARANSI</p>${garansi}` : ''}
   <hr class="seam"/>
   <p class="block-label">LACAK STATUS</p>
   <div class="track">
@@ -178,22 +182,6 @@ export function printServiceReceipt(service: Service, org: Organization): void {
   <div class="fine">
     Simpan nota ini sebagai bukti pengambilan unit dan klaim garansi.
     Pengambilan di luar jam operasional harap dikonfirmasi lebih dulu.
-  </div>
-  <hr class="seam"/>
-  <div class="foot">
-    Terima kasih atas kepercayaan Anda.<br/>
-    Senang bisa membantu — sampai jumpa kembali!
-  </div>
-  <div class="by">DICETAK DENGAN FIXMASTER</div>
-  <script>
-    // Logo toko bisa berupa URL Storage yang lambat. window.onload sudah
-    // menunggu gambar, tapi jaringan yang menggantung tidak boleh menyandera
-    // dialog cetak — mana pun yang lebih dulu, itu yang jalan.
-    var done = false;
-    function go() { if (!done) { done = true; window.print(); } }
-    window.onload = go;
-    setTimeout(go, 3000);
-  </script>
-</body></html>`);
-  win.document.close();
+  </div>`,
+  });
 }

@@ -25,6 +25,7 @@ import { buildCsv, csvFilename } from '@/lib/business/export';
 import { downloadCsvFile } from '@/lib/csv';
 import { toast } from '@/stores/toast';
 import { TrendChart } from './TrendChart';
+import { printReport } from './printReport';
 import styles from './ReportsPage.module.css';
 
 function monthRange() {
@@ -81,6 +82,7 @@ export function ReportsPage() {
   ];
   const reportPending = loadPending(...reportLoad);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  const org = useSessionStore((s) => s.org);
   const scopeLabel = activeOutletId
     ? (outlets.find((o) => o.id === activeOutletId)?.name ?? 'Cabang')
     : 'Semua Outlet';
@@ -210,6 +212,52 @@ export function ReportsPage() {
     toast.success(`${txnRows.length} transaksi diekspor`);
   };
 
+  // Laporan A4 untuk dicetak atau disimpan sebagai PDF. Jalur ketiga di gerbang
+  // `exportImport` yang sama: berkas yang keluar dari aplikasi, sama seperti CSV.
+  const exportPdf = () => {
+    if (!canExport) return;
+    if (!org) return;
+    if (!rangeValid) {
+      toast.error('Perbaiki rentang tanggal dulu');
+      return;
+    }
+    // Laporan yang dicetak selagi angkanya masih dimuat akan membekukan nol
+    // sebagai fakta di atas kertas — dan kertas tidak bisa memperbarui diri.
+    if (reportPending) {
+      toast.error('Data laporan belum selesai dimuat — tunggu sebentar');
+      return;
+    }
+    const opened = printReport({
+      org,
+      from,
+      to,
+      scopeLabel,
+      verdict,
+      summary,
+      comparison,
+      noBaseline,
+      salesTotal,
+      target,
+      breakEvenPct,
+      trend,
+      incomeByCategory,
+      expenseByCategory,
+      catProfit,
+      partUsage,
+      restock,
+      funnel,
+      turnaround,
+      leaderboard,
+      outletStats,
+      receivables,
+      txnRows,
+    });
+    // Tujuan "Simpan sebagai PDF" ada di dalam dialog cetak, dan tidak semua
+    // pemilik tahu itu — tanpa kalimat ini tombol bernama "Ekspor PDF" terasa
+    // seperti salah membuka dialog printer.
+    if (opened) toast.success('Pilih "Simpan sebagai PDF" di tujuan cetak');
+  };
+
   // Piutang punya ekspornya sendiri: daftar inilah yang dibawa saat menagih,
   // dan ia tidak mengikuti periode — jadi tak bisa ikut di ekspor transaksi.
   const exportReceivables = () => {
@@ -270,14 +318,24 @@ export function ReportsPage() {
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
             {canExport && (
-              <Button
-                variant="secondary"
-                onClick={exportCsv}
-                iconLeft={<Icon name="download" aria-hidden />}
-                className={styles.exportBtn}
-              >
-                Ekspor CSV
-              </Button>
+              <span className={styles.exportGroup}>
+                <Button
+                  variant="secondary"
+                  onClick={exportPdf}
+                  iconLeft={<Icon name="file-invoice" aria-hidden />}
+                  className={styles.exportBtn}
+                >
+                  Ekspor PDF
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={exportCsv}
+                  iconLeft={<Icon name="download" aria-hidden />}
+                  className={styles.exportBtn}
+                >
+                  Ekspor CSV
+                </Button>
+              </span>
             )}
           </div>
         </CardBody>

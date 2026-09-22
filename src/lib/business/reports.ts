@@ -56,6 +56,80 @@ export interface TrendPoint {
   net: number;
 }
 
+export interface TrendGeometry {
+  width: number;
+  height: number;
+  pad: { top: number; right: number; bottom: number; left: number };
+  plotW: number;
+  plotH: number;
+  /** Nilai tertinggi pada sumbu Y (minimal 1, supaya tidak pernah bagi nol). */
+  max: number;
+  /** Titik ke-i → koordinat X. */
+  x: (i: number) => number;
+  /** Nominal → koordinat Y. Sama untuk pemasukan dan pengeluaran (satu skala). */
+  y: (value: number) => number;
+  incPath: string;
+  expPath: string;
+  /** `incPath` yang ditutup ke garis dasar, untuk arsiran di bawah pemasukan. */
+  incArea: string;
+  gridYs: { y: number; value: number }[];
+  /** Label sumbu X yang lolos penjarangan (maksimal ~8 supaya tidak berdesakan). */
+  xLabels: { x: number; label: string }[];
+}
+
+const TREND_SIZE = { width: 720, height: 240 };
+const TREND_PAD = { top: 16, right: 16, bottom: 28, left: 56 };
+
+/**
+ * Geometri grafik tren: jalur, gridline, dan posisi label — murni, tanpa DOM.
+ *
+ * Dipakai `TrendChart` di layar DAN dokumen cetak laporan. Rumusnya hanya boleh
+ * hidup sekali: dua salinan berarti grafik di PDF bisa diam-diam menggambar
+ * bentuk yang berbeda dari yang dilihat pemilik di layar, dan tidak ada yang
+ * akan menyadarinya.
+ */
+export function trendGeometry(
+  points: TrendPoint[],
+  size: { width?: number; height?: number } = {},
+): TrendGeometry {
+  const width = size.width ?? TREND_SIZE.width;
+  const height = size.height ?? TREND_SIZE.height;
+  const pad = TREND_PAD;
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const max = Math.max(1, ...points.map((p) => Math.max(p.income, p.expense)));
+  const n = points.length;
+
+  const x = (i: number) => pad.left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = (v: number) => pad.top + plotH - (v / max) * plotH;
+  const toPath = (sel: (p: TrendPoint) => number) =>
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(sel(p)).toFixed(1)}`).join(' ');
+
+  const incPath = toPath((p) => p.income);
+  const labelStep = Math.max(1, Math.ceil(n / 8));
+
+  return {
+    width,
+    height,
+    pad,
+    plotW,
+    plotH,
+    max,
+    x,
+    y,
+    incPath,
+    expPath: toPath((p) => p.expense),
+    incArea: n === 0 ? '' : `${incPath} L ${x(n - 1)} ${pad.top + plotH} L ${x(0)} ${pad.top + plotH} Z`,
+    gridYs: [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+      y: pad.top + plotH - f * plotH,
+      value: Math.round(max * f),
+    })),
+    xLabels: points
+      .map((p, i) => ({ x: x(i), label: p.label, i }))
+      .filter(({ i }) => i % labelStep === 0),
+  };
+}
+
 type TrendMode = 'day' | 'week' | 'month';
 
 /** Pick bucket granularity from the span so the chart never gets too dense. */
