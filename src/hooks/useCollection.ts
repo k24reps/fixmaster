@@ -28,6 +28,41 @@ export function invalidateCollection(queryClient: QueryClient, collection: strin
 }
 
 /**
+ * A query DERIVED from a collection: a server aggregate (RPC) in cloud mode, the
+ * same figure computed from `repository.list` locally. Same contract as
+ * `useCollection` — key under ['collection', name, …] so repository changes
+ * invalidate it, and the caller gets the identical loading/refreshing shape.
+ *
+ * Exists because every aggregate hook (ringkasan servis, piutang, laba per
+ * kategori, statistik pelanggan) repeated this body verbatim, and the one copy
+ * that forgot the subscription refreshed only because a sibling hook on the same
+ * page happened to install one.
+ */
+export function useDerivedQuery<T>(
+  queryKey: readonly unknown[],
+  queryFn: () => Promise<T>,
+  fallback: T,
+  enabled = true,
+) {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey, queryFn, enabled });
+
+  useEffect(() => {
+    if (!enabled) return;
+    return repository.subscribe((changed) => invalidateCollection(queryClient, changed));
+  }, [queryClient, enabled]);
+
+  return {
+    data: query.data ?? fallback,
+    loading: enabled && query.isPending,
+    refreshing: query.isFetching && !query.isPending,
+    error: query.error instanceof Error ? query.error : null,
+    updatedAt: query.dataUpdatedAt,
+    refetch: query.refetch,
+  };
+}
+
+/**
  * Subscribe a React component to a repository collection via TanStack Query.
  * The query fetches the collection; a repository change-subscription
  * invalidates the matching query so the UI re-fetches automatically.

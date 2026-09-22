@@ -31,13 +31,6 @@ export function AttendancePage() {
   // absensi lewat daftar biasa, yang diam-diam terpotong 1.000 baris — untuk
   // tim lima orang itu sekitar enam bulan, dan sesudahnya rekap gaji periode
   // lama tampil kosong tanpa satu pun tanda bahwa datanya tidak lengkap.
-  const { data: todayRows, refetch, ...attendanceRest } = useCollectionRange(
-    'attendance',
-    'date',
-    today,
-    today,
-  );
-  const attendanceLoad = { ...attendanceRest, refetch };
   const { data: outlets } = useCollection('outlets');
   const { data: employees } = useCollection('employees');
   const me = useSessionStore((s) => s.currentEmployee);
@@ -77,12 +70,22 @@ export function AttendancePage() {
   const [historyEmp, setHistoryEmp] = useState('all');
   const rangeValid = from <= to;
   // Rekap & riwayat mengambil PERSIS periode yang dipilih dari server, jadi
-  // periode setahun lalu sama lengkapnya dengan bulan ini.
-  const { data: periodRows, ...periodLoad } = useCollectionRange(
+  // periode setahun lalu sama lengkapnya dengan bulan ini. Papan hari ini ikut
+  // di dalam rentang yang sama: satu permintaan untuk satu halaman — dua kueri
+  // yang saling tumpang tindih berarti setiap absen memicu dua kali muat ulang.
+  const lo = rangeValid ? from : to;
+  const { data: rows, refetch, ...rangeLoad } = useCollectionRange(
     'attendance',
     'date',
-    rangeValid ? from : to,
-    to,
+    lo < today ? lo : today,
+    to > today ? to : today,
+  );
+  const attendanceLoad = { ...rangeLoad, refetch };
+  const periodLoad = attendanceLoad;
+  const todayRows = useMemo(() => rows.filter((a) => a.date === today), [rows, today]);
+  const periodRows = useMemo(
+    () => rows.filter((a) => a.date >= lo && a.date <= to),
+    [rows, lo, to],
   );
   // Rekap owner-only. Isinya jam kerja SELURUH karyawan sepanjang periode —
   // dasar perhitungan upah dan sekaligus potret siapa yang sering telat.
@@ -173,7 +176,7 @@ export function AttendancePage() {
         // One row per employee per day — a second one would double-count hours.
         // Pemeriksaan ramah di klien; indeks unik di database (0054) yang
         // benar-benar menjaminnya, termasuk untuk tanggal di luar periode ini.
-        if ([...todayRows, ...periodRows].some((a) => a.employeeId === emp.id && a.date === editDate)) {
+        if (rows.some((a) => a.employeeId === emp.id && a.date === editDate)) {
           toast.error(`${emp.name} sudah punya absensi ${fmtDate(editDate)}`);
           return;
         }

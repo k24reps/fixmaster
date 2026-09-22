@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { useCollection } from './useCollection';
 import { useCollectionRange } from './useCollectionRange';
 import { isActive } from '@/lib/business/services';
-import { isOverdue } from '@/lib/business/tasks';
+import { isOverdue, visibleInstances } from '@/lib/business/tasks';
 import { localDateStr } from '@/lib/time';
+import { roleAllows } from '@/config/plans';
+import { useSessionStore } from '@/stores/session';
 
 /**
  * Live status tone for a sidebar nav item's diagnostic readout.
@@ -33,6 +35,11 @@ export function useNavSignals(): Record<string, NavSignal> {
   const { data: inventory } = useCollection('inventory');
   const { data: purchaseOrders } = useCollection('purchaseOrders');
   const { data: taskInstances } = useCollection('taskInstances');
+  // Tugas disaring dengan aturan yang sama seperti halamannya. Tanpa ini
+  // karyawan melihat badge berisi tugas orang lain yang tak pernah ia temukan.
+  const { data: taskTemplates } = useCollection('taskTemplates');
+  const me = useSessionStore((s) => s.currentEmployee);
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   // Only today's rows matter here. The rail mounts on every page (twice, with
   // MobileBottomNav), so pulling the whole attendance history — which grows
   // every day — was paid on every page and again on every clock-in.
@@ -55,8 +62,15 @@ export function useNavSignals(): Record<string, NavSignal> {
     ).length;
 
     // Tasks: overdue pending is critical; due-today pending is a warning.
-    const overdue = taskInstances.filter((t) => isOverdue(t, today)).length;
-    const dueToday = taskInstances.filter(
+    const myTasks = visibleInstances(
+      taskInstances,
+      new Map(taskTemplates.map((t) => [t.id, t])),
+      { id: me?.id ?? '', role: me?.role ?? 'karyawan' },
+      allowedOutletIds,
+      me ? roleAllows(me.role, '*') || me.role === 'admin' : false,
+    );
+    const overdue = myTasks.filter((t) => isOverdue(t, today)).length;
+    const dueToday = myTasks.filter(
       (t) => t.status === 'pending' && t.dueDate === today,
     ).length;
 
@@ -85,5 +99,15 @@ export function useNavSignals(): Record<string, NavSignal> {
             : IDLE,
       '/attendance': working > 0 ? { count: working, tone: 'good', pulse: false } : IDLE,
     } as Record<string, NavSignal>;
-  }, [services, inventory, purchaseOrders, taskInstances, attendance, today]);
+  }, [
+    services,
+    inventory,
+    purchaseOrders,
+    taskInstances,
+    taskTemplates,
+    me,
+    allowedOutletIds,
+    attendance,
+    today,
+  ]);
 }

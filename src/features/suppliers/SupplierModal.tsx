@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Input, Button, FormFields, FormRow, FormError } from '@/components/ui';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
-import { normalizePhone } from '@/lib/business/customers';
+import { findByPhone } from '@/lib/business/customers';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
@@ -41,11 +41,8 @@ export function SupplierModal({ open, onClose, editing, suppliers }: SupplierMod
     // diblokir (database menolaknya juga, 0072), nama yang sama diblokir hanya
     // untuk entri baru — mengubah nama supplier lama tetap bebas.
     const others = suppliers.filter((s) => s.id !== editing?.id && !s.deletedAt);
-    const phoneNorm = normalizePhone(phone);
-    if (phoneNorm) {
-      const dup = others.find((s) => normalizePhone(s.phone) === phoneNorm);
-      if (dup) return setError(`No. telepon sudah terdaftar atas supplier "${dup.name}"`);
-    }
+    const dup = findByPhone(others, phone);
+    if (dup) return setError(`No. telepon sudah terdaftar atas supplier "${dup.name}"`);
     if (!editing) {
       const sameName = others.find(
         (s) => s.name.trim().toLowerCase() === name.trim().toLowerCase(),

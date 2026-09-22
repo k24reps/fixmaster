@@ -52,26 +52,26 @@ export function CustomersPage() {
 
   // Per pelanggan: jumlah tiket (tanpa batal), nilai tiket Lunas, kategori perangkat.
   const stats = statsQuery.data;
-  const custCategories = useMemo(
-    () => new Map([...stats].map(([id, stat]) => [id, new Set(stat.categories)] as const)),
-    [stats],
-  );
 
   // Chip perangkat seperti di Kasir & Inventori. Jumlahnya = pelanggan (yang
   // masih ada) yang pernah membawa kategori itu; satu pelanggan bisa di beberapa.
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const c of customers) {
-      for (const cat of custCategories.get(c.id) ?? []) counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      for (const cat of stats.get(c.id)?.categories ?? []) {
+        counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      }
     }
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [customers, custCategories]);
+  }, [customers, stats]);
   const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
 
   const rows = useMemo(() => {
     let list = customers.filter((c) => {
       if (!matchesCustomer(c, query)) return false;
-      if (activeCategory !== 'all' && !custCategories.get(c.id)?.has(activeCategory)) return false;
+      if (activeCategory !== 'all' && !stats.get(c.id)?.categories.includes(activeCategory)) {
+        return false;
+      }
       return true;
     });
     list = [...list].sort((a, b) => {
@@ -82,7 +82,7 @@ export function CustomersPage() {
       return sb.count - sa.count;
     });
     return list;
-  }, [customers, query, sort, stats, activeCategory, custCategories]);
+  }, [customers, query, sort, stats, activeCategory]);
   const filtered = Boolean(query) || activeCategory !== 'all';
 
   const repeatCount = useMemo(
@@ -113,6 +113,12 @@ export function CustomersPage() {
   // riwayat + statistiknya ikut hilang. Server menolaknya juga (0070) — cek di
   // sini supaya alasannya terbaca sebelum dialog konfirmasi muncul.
   const requestDelete = (c: Customer) => {
+    // Statistik belum termuat = setiap pelanggan terbaca "0 tiket", dan dialog
+    // konfirmasi menyatakan hal yang belum tentu benar sebagai fakta.
+    if (statsQuery.loading) {
+      toast.warning('Statistik servis belum selesai dimuat — tunggu sebentar.');
+      return;
+    }
     const used = stats.get(c.id)?.count ?? 0;
     if (used > 0) {
       toast.warning(`"${c.name}" punya ${used} tiket servis — perbarui datanya saja, jangan dihapus.`);

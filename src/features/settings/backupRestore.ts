@@ -119,9 +119,11 @@ export async function restoreBackup(text: string): Promise<RestoreResult> {
     if (orgId) repository.setScope(orgId, null);
 
     const snapshot: Record<string, unknown[]> = {};
-    for (const name of ALL_COLLECTIONS) {
-      snapshot[name] = await repository.list(name, { full: true });
-    }
+    await Promise.all(
+      ALL_COLLECTIONS.map(async (name) => {
+        snapshot[name] = await repository.list(name, { full: true });
+      }),
+    );
     const prevOrg = await repository.getSingleton('organization');
 
     try {

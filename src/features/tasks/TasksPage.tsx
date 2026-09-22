@@ -12,7 +12,7 @@ import {
   reorder,
   bySortOrder,
   templateItems,
-  taskVisibleTo,
+  visibleInstances,
 } from '@/lib/business/tasks';
 import { roleAllows } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
@@ -83,18 +83,14 @@ export function TasksPage() {
   /** Every pending task due today or earlier (overdue carries a red badge). */
   const pending = useMemo(
     () =>
-      instances.filter(
-        (i) =>
-          i.dueDate <= today &&
-          i.status === 'pending' &&
-          // "Tugaskan Ke" sekarang benar-benar menyaring: karyawan hanya melihat
-          // tugas yang ditujukan kepadanya. Manager tetap melihat semuanya.
-          taskVisibleTo(
-            i.templateId ? templateById.get(i.templateId) : undefined,
-            { id: me?.id ?? '', role: me?.role ?? 'karyawan' },
-            allowedOutletIds,
-            canManage,
-          ),
+      // "Tugaskan Ke" sekarang benar-benar menyaring: karyawan hanya melihat
+      // tugas yang ditujukan kepadanya. Manager tetap melihat semuanya.
+      visibleInstances(
+        instances.filter((i) => i.dueDate <= today && i.status === 'pending'),
+        templateById,
+        { id: me?.id ?? '', role: me?.role ?? 'karyawan' },
+        allowedOutletIds,
+        canManage,
       ),
     [instances, today, templateById, me, allowedOutletIds, canManage],
   );
@@ -271,7 +267,9 @@ export function TasksPage() {
       const orphans = instances.filter(
         (i) => i.templateId === toDelete.id && i.status === 'pending',
       );
-      for (const o of orphans) await repository.remove('taskInstances', o.id);
+      // Berbarengan: jendela pembuatan 30 hari bisa meninggalkan ratusan baris,
+      // dan satu-per-satu berarti ratusan round-trip + ratusan refetch.
+      await Promise.all(orphans.map((o) => repository.remove('taskInstances', o.id)));
       toast.success('Template dihapus');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menghapus template');

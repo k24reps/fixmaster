@@ -123,17 +123,15 @@ export function SuppliersPage() {
           updatedAt: now,
         });
       }
-      // Cloud: dicatat database sendiri (0073), termasuk bila PO dibatalkan
-      // lewat jalur lain. Lokal/demo tidak punya trigger, jadi tetap dicatat di sini.
-      if (!isCloudMode()) {
-        logActivity({
-          action: 'po.void',
-          entityType: 'purchaseOrder',
-          entityId: voidTarget.id,
-          entityLabel: voidTarget.poNumber,
-          meta: { poId: voidTarget.id, total: poTotal(voidTarget.lines) },
-        });
-      }
+      // Cloud: dicatat database sendiri (0073, SERVER_LOGGED), termasuk bila PO
+      // dibatalkan lewat jalur lain.
+      logActivity({
+        action: 'po.void',
+        entityType: 'purchaseOrder',
+        entityId: voidTarget.id,
+        entityLabel: voidTarget.poNumber,
+        meta: { poId: voidTarget.id, total: poTotal(voidTarget.lines) },
+      });
       toast.success('PO dibatalkan, stok & keuangan dikembalikan');
       setVoidTarget(null);
     } catch (e) {

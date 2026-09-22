@@ -11,17 +11,19 @@ export function normalizePhone(phone: string): string {
   return digits;
 }
 
-/** Find an existing customer with the same normalized phone (excluding a given id). */
-export function findByPhone(
-  customers: Customer[],
+/**
+ * Find an existing record with the same normalized phone (excluding a given id).
+ * Generic over the row: pelanggan dan supplier memakai aturan nomor yang sama,
+ * dan yang satu tidak boleh punya salinan normalisasi sendiri.
+ */
+export function findByPhone<T extends { id: string; phone: string }>(
+  rows: readonly T[],
   phone: string,
   excludeId?: string,
-): Customer | null {
+): T | null {
   const target = normalizePhone(phone);
   if (!target) return null;
-  return (
-    customers.find((c) => c.id !== excludeId && normalizePhone(c.phone) === target) ?? null
-  );
+  return rows.find((c) => c.id !== excludeId && normalizePhone(c.phone) === target) ?? null;
 }
 
 export interface DedupCheck {

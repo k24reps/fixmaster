@@ -8,6 +8,7 @@ import {
   reorder,
   bySortOrder,
   taskVisibleTo,
+  visibleInstances,
 } from './tasks';
 import type { TaskTemplate, TaskInstance } from '@/data/types';
 
@@ -298,5 +299,24 @@ describe('taskVisibleTo', () => {
     expect(taskVisibleTo(o, me, ['o1'], false)).toBe(false);
     expect(taskVisibleTo(o, me, ['o1', 'o2'], false)).toBe(true);
     expect(taskVisibleTo(o, me, [], false)).toBe(true);
+  });
+
+  // Halaman Tugas dan lampu rel navigasi harus menyaring dari fungsi yang sama;
+  // kalau tidak, karyawan melihat badge berisi tugas yang tak pernah ia temukan.
+  it('visibleInstances menyaring daftar dengan aturan yang sama', () => {
+    const templates = new Map([
+      ['mine', assign({ assigneeType: 'employee' as const, assigneeEmployeeId: 'e1' })],
+      ['theirs', assign({ assigneeType: 'employee' as const, assigneeEmployeeId: 'e9' })],
+    ]);
+    const rows = [
+      { templateId: 'mine' },
+      { templateId: 'theirs' },
+      { templateId: null },
+    ];
+    expect(visibleInstances(rows, templates, me, [], false)).toEqual([
+      { templateId: 'mine' },
+      { templateId: null },
+    ]);
+    expect(visibleInstances(rows, templates, me, [], true)).toHaveLength(3);
   });
 });

@@ -11,6 +11,7 @@
  * may INSERT, only the owner may SELECT.
  */
 import { repository } from '@/data';
+import { isCloudMode } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { newId } from '@/lib/id';
 import type { ActivityAction, ActivityLog } from '@/data/types';
@@ -30,7 +31,29 @@ export interface LogInput {
   outletId?: string | null;
 }
 
+/**
+ * Peristiwa yang DATABASE catat sendiri di cloud (trigger & RPC 0073/0076/0077).
+ * Klien tidak ikut mencatatnya di sana: barisnya akan dobel, dan yang lebih
+ * penting — jejak ini tidak boleh bergantung pada browser yang masih hidup
+ * sesudah server selesai. Di lokal/demo tidak ada trigger, jadi klien tetap
+ * yang mencatat.
+ *
+ * Satu daftar, bukan `if (!isCloudMode())` yang tersebar di tiap layar: menambah
+ * trigger berikutnya cukup satu baris di sini, dan tidak ada pemanggil yang
+ * ketinggalan atau berlebihan.
+ */
+const SERVER_LOGGED: ReadonlySet<ActivityAction> = new Set<ActivityAction>([
+  'sale.void',
+  'po.void',
+  'wallet.transfer',
+  'income.delete',
+  'expense.delete',
+  'data.restore',
+  'activity.purge',
+]);
+
 export function logActivity(input: LogInput): void {
+  if (isCloudMode() && SERVER_LOGGED.has(input.action)) return;
   try {
     const { org, currentEmployee } = useSessionStore.getState();
     if (!org || !currentEmployee) return; // no actor/org context → skip

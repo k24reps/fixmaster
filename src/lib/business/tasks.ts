@@ -207,6 +207,29 @@ export function taskVisibleTo(
   return (template.assigneeRole ?? 'karyawan') === me.role;
 }
 
+/**
+ * Tugas yang boleh dilihat orang ini. Dipakai halaman Tugas DAN lampu rel nav —
+ * kalau hanya halamannya yang menyaring, karyawan melihat badge "7" tapi hanya
+ * dua baris, dan angka di rel berhenti berarti apa-apa.
+ */
+export function visibleInstances<T extends { templateId?: string | null }>(
+  instances: readonly T[],
+  templateById: ReadonlyMap<string, TaskAssignee>,
+  me: { id: string; role: Role },
+  outletIds: readonly string[],
+  seesAll: boolean,
+): T[] {
+  if (seesAll) return instances as T[];
+  return instances.filter((i) =>
+    taskVisibleTo(
+      i.templateId ? templateById.get(i.templateId) : undefined,
+      me,
+      outletIds,
+      seesAll,
+    ),
+  );
+}
+
 /** Whether a pending instance is overdue relative to today. */
 export function isOverdue(instance: TaskInstance, today: string): boolean {
   return instance.status === 'pending' && instance.dueDate < today;

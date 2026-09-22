@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge, Icon, EmptyState, LoadState, loadPending } from '@/components/ui';
 import type { LoadQuery } from '@/components/ui/loadPending';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/business/services';
+import { customerServiceStats } from '@/lib/business/customers';
 import { fmtRp } from '@/lib/format';
 import { useFormat } from '@/lib/useFormat';
 import type { Customer, Service } from '@/data/types';
@@ -52,10 +53,13 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services, servi
       );
   }, [customer, services]);
 
-  // Sama dengan kartu pelanggan: nilai tiket yang sudah Lunas saja.
-  const total = useMemo(
-    () => tickets.reduce((sum, s) => sum + (s.status === 'lunas' ? s.finalCost : 0), 0),
-    [tickets],
+  // Angka di strip ini HARUS sama dengan kartu yang dipakai membukanya: aturan
+  // "batal tidak dihitung, hanya Lunas yang menambah nilai" tinggal di satu
+  // tempat. Dulu strip memakai tickets.length, jadi pelanggan dengan satu tiket
+  // batal terbaca "3x" di kartu dan "4 servis" di sini.
+  const stat = useMemo(
+    () => (customer ? customerServiceStats(tickets).get(customer.id) : undefined),
+    [customer, tickets],
   );
 
   if (!open || !customer) return null;
@@ -81,10 +85,10 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services, servi
 
         <div className={styles.statStrip}>
           <span>
-            <strong>{pending ? '—' : tickets.length}</strong> servis
+            <strong>{pending ? '—' : (stat?.count ?? 0)}</strong> servis
           </span>
           <span>
-            Lunas <strong>{pending ? '—' : fmtRp(total)}</strong>
+            Lunas <strong>{pending ? '—' : fmtRp(stat?.paidTotal ?? 0)}</strong>
           </span>
         </div>
 

@@ -50,9 +50,8 @@ import {
   getAccessoryTemplates,
   setAccessoryTemplates,
   getWarrantyServiceDays,
-  setWarrantyServiceDays,
   getWarrantyPartsDays,
-  setWarrantyPartsDays,
+  setWarrantyDays,
   getWarrantyPresets,
   setWarrantyPresets,
   getWaTemplateOverrides,
@@ -80,7 +79,8 @@ import { toast } from '@/stores/toast';
 import { demoGuard, isCloudMode } from '@/stores/demo';
 import { isValidInviteEmail, canChangeRole, canDeactivate } from '@/lib/business/team';
 import { normalizePhone } from '@/lib/business/customers';
-import { transfer, applyBalance } from '@/lib/business/finance';
+import { transfer } from '@/lib/business/finance';
+import { createFinanceEntry } from '@/data/financeEntry';
 import { localDateStr } from '@/lib/time';
 import { logActivity } from '@/lib/activity';
 import { useSessionStore } from '@/stores/session';
@@ -95,7 +95,6 @@ import {
   getOrgMemberOutlets,
   deactivateMember,
   deleteMember,
-  recordFinanceEntry,
   listInvoices,
   subscribeOrgBilling,
   deleteAccountCredential,
@@ -867,8 +866,7 @@ function WarrantyCard() {
     setSaving(true);
     try {
       // Clamp to non-negative: a "number" input still accepts "-5".
-      await setWarrantyServiceDays(Math.max(0, Math.round(Number(svcDays) || 0)));
-      await setWarrantyPartsDays(Math.max(0, Math.round(Number(partsDays) || 0)));
+      await setWarrantyDays(Number(svcDays) || 0, Number(partsDays) || 0);
       toast.success('Default garansi disimpan');
     } catch {
       toast.error('Gagal menyimpan default garansi');
@@ -1543,6 +1541,12 @@ function TeamTab({
           <ul className={styles.list}>
             {employees.map((e) => {
               const isSelf = me?.id === e.id;
+              // Sekali saja per baris: tombol dan tooltip-nya harus menjawab
+              // dari pemeriksaan YANG SAMA, bukan dua panggilan yang bisa
+              // berbeda — kontrol hidup dengan tooltip "terkunci" persis bug
+              // yang blok ini perbaiki.
+              const lockedOwner = e.role === 'owner' && !canChangeRole(e, 'karyawan', employees);
+              const canTurnOff = canDeactivate(e, employees);
               return (
                 <li key={e.id} className={styles.listItem}>
                   <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
@@ -1575,9 +1579,9 @@ function TeamTab({
                         value={e.role}
                         onChange={(ev) => void changeRole(e.id, ev.target.value as Role)}
                         aria-label={`Peran ${e.name}`}
-                        disabled={e.role === 'owner' && !canChangeRole(e, 'karyawan', employees)}
+                        disabled={lockedOwner}
                         title={
-                          e.role === 'owner' && !canChangeRole(e, 'karyawan', employees)
+                          lockedOwner
                             ? 'Owner terakhir tidak bisa diturunkan perannya — angkat owner lain dulu'
                             : undefined
                         }
@@ -1611,7 +1615,7 @@ function TeamTab({
                       )}
                       <span
                         title={
-                          canDeactivate(e, employees)
+                          canTurnOff
                             ? undefined
                             : 'Owner terakhir tidak bisa dinonaktifkan — angkat owner lain dulu'
                         }
@@ -1620,7 +1624,7 @@ function TeamTab({
                           variant="ghost"
                           size="sm"
                           onClick={() => setConfirmOff(e.id)}
-                          disabled={!canDeactivate(e, employees)}
+                          disabled={!canTurnOff}
                           iconLeft={<Icon name="user-minus" aria-hidden />}
                         >
                           Nonaktifkan
@@ -2065,36 +2069,16 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         deletedAt: null,
       });
       if (initial > 0) {
-        const description = `Saldo awal ${name.trim()}`;
-        if (isCloudMode()) {
-          await recordFinanceEntry({
-            orgId,
-            kind: 'income',
-            date: localDateStr(),
-            category: 'Modal',
-            amount: initial,
-            walletId,
-            description,
-            outletId: outletId || null,
-          });
-        } else {
-          await repository.put('incomes', {
-            id: newId(),
-            orgId,
-            outletId: outletId || null,
-            date: localDateStr(),
-            category: 'Modal',
-            amount: initial,
-            walletId,
-            description,
-            serviceId: null,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
-          });
-          const fresh = (await repository.list('wallets')).find((w) => w.id === walletId);
-          if (fresh) await repository.put('wallets', applyBalance(fresh, initial));
-        }
+        await createFinanceEntry({
+          orgId,
+          kind: 'income',
+          date: localDateStr(),
+          category: 'Modal',
+          amount: initial,
+          walletId,
+          description: `Saldo awal ${name.trim()}`,
+          outletId: outletId || null,
+        });
       }
       toast.success(
         initial > 0 ? 'Wallet ditambahkan, saldo awal dicatat sebagai Modal' : 'Wallet ditambahkan',
@@ -2133,15 +2117,13 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
       }
       // Cloud: transfer_wallet mencatat jejaknya sendiri (0073). Tanpa
       // penjagaan ini satu transfer meninggalkan DUA baris log bernominal sama.
-      if (!isCloudMode()) {
-        logActivity({
-          action: 'wallet.transfer',
-          entityType: 'wallet',
-          entityId: fromId,
-          entityLabel: `${from.name} → ${to.name}`,
-          meta: { amount, toWalletId: toId },
-        });
-      }
+      logActivity({
+        action: 'wallet.transfer',
+        entityType: 'wallet',
+        entityId: fromId,
+        entityLabel: `${from.name} → ${to.name}`,
+        meta: { amount, toWalletId: toId },
+      });
       toast.success(`Transfer ${fmtRp(amount)}: ${from.name} → ${to.name}`);
       setTransferAmount('');
       setFromId('');
@@ -2887,6 +2869,15 @@ function BackupCard() {
     }
   };
 
+  // Waktu dari baris organisasi menang: ia berlaku untuk seluruh toko, bukan
+  // hanya browser yang sedang dipakai.
+  const sharedBackupAt = getLastBackupAt();
+  const backupHint = sharedBackupAt
+    ? `Backup terakhir toko ini: ${new Date(sharedBackupAt).toLocaleString('id-ID')}`
+    : lastBackupAt
+      ? `Backup terakhir di perangkat ini: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
+      : 'Belum pernah backup';
+
   return (
     <Card glass>
       <CardHeader
@@ -3013,16 +3004,7 @@ function BackupCard() {
                 { value: 'weekly', label: 'Mingguan' },
                 { value: 'monthly', label: 'Bulanan' },
               ]}
-              hint={(() => {
-                // Waktu dari baris organisasi menang: ia berlaku untuk seluruh
-                // toko, bukan hanya browser yang sedang dipakai.
-                const shared = getLastBackupAt();
-                if (shared)
-                  return `Backup terakhir toko ini: ${new Date(shared).toLocaleString('id-ID')}`;
-                if (lastBackupAt)
-                  return `Backup terakhir di perangkat ini: ${new Date(lastBackupAt).toLocaleString('id-ID')}`;
-                return 'Belum pernah backup';
-              })()}
+              hint={backupHint}
             />
           </>
         )}

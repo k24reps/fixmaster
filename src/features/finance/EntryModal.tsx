@@ -9,17 +9,18 @@ import {
   FormError,
 } from '@/components/ui';
 import { repository } from '@/data';
-import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { applyBalance } from '@/lib/business/finance';
-import { recordFinanceEntry, updateFinanceEntry } from '@/data/supabase-client';
+import { createFinanceEntry } from '@/data/financeEntry';
+import { updateFinanceEntry } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import type {
+  ActivityAction,
   Wallet,
   IncomeCategory,
   ExpenseCategory,
@@ -55,6 +56,66 @@ const CATEGORY_HINT: Record<string, string> = {
   Prive:
     'Uang usaha ditarik untuk pemilik. Saldo berkurang, tapi TIDAK dihitung sebagai biaya usaha.',
 };
+
+interface EditArgs {
+  orgId: string;
+  kind: 'income' | 'expense';
+  date: string;
+  category: string;
+  value: number;
+  walletId: string;
+  note: string;
+  wallets: Wallet[];
+}
+
+/**
+ * Ubah satu baris keuangan yang sudah ada. Cloud: satu transaksi server (0071).
+ * Lokal/demo: baris ditulis, lalu saldo wallet lama & baru direkonsiliasi —
+ * tanda (+/−) adalah satu-satunya yang membedakan pemasukan dari pengeluaran.
+ *
+ * `kind` datang dari pemanggil (FinancePage) dan selalu cocok dengan baris yang
+ * diedit — jangan menebaknya dari isi baris (pemasukan lama tanpa `serviceId`
+ * akan tertulis ke `expenses`).
+ */
+async function saveEdit(editing: Income | Expense, a: EditArgs): Promise<string> {
+  const { kind, walletId, value, note, wallets } = a;
+  if (isCloudMode()) {
+    await updateFinanceEntry({
+      orgId: a.orgId,
+      kind,
+      id: editing.id,
+      date: a.date,
+      category: a.category,
+      amount: value,
+      walletId,
+      description: note,
+    });
+    return editing.id;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const fields = { date: a.date, amount: value, walletId, description: note, updatedAt };
+  if (kind === 'income') {
+    const inc = editing as Income;
+    await repository.put('incomes', { ...inc, ...fields, category: a.category as IncomeCategory });
+  } else {
+    const exp = editing as Expense;
+    await repository.put('expenses', { ...exp, ...fields, category: a.category as ExpenseCategory });
+  }
+
+  const sign = kind === 'income' ? 1 : -1;
+  const wallet = wallets.find((w) => w.id === walletId);
+  if (editing.walletId === walletId) {
+    if (wallet) {
+      await repository.put('wallets', applyBalance(wallet, sign * (value - editing.amount)));
+    }
+  } else {
+    const oldWallet = wallets.find((w) => w.id === editing.walletId);
+    if (oldWallet) await repository.put('wallets', applyBalance(oldWallet, -sign * editing.amount));
+    if (wallet) await repository.put('wallets', applyBalance(wallet, sign * value));
+  }
+  return editing.id;
+}
 
 export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
@@ -101,173 +162,31 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     }
 
     setBusy(true);
-    const now = new Date().toISOString();
-    const wallet = wallets.find((w) => w.id === walletId);
-    const txOutletId = resolveCreateOutlet(outlets);
+    const note = description.trim();
     try {
-      // Cloud: satu transaksi server (0071) — baris ledger dan saldo wallet
-      // bergerak bersama. Jalur di bawahnya untuk lokal/demo, yang memang tak
-      // punya transaksi.
-      if (isCloudMode()) {
-        const label = description.trim() || (category as string);
-        if (editing) {
-          await updateFinanceEntry({
-            orgId,
-            kind,
-            id: editing.id,
-            date,
-            category,
-            amount: value,
-            walletId,
-            description: description.trim(),
-          });
-          logActivity({
-            action: kind === 'income' ? 'income.update' : 'expense.update',
-            entityType: kind,
-            entityId: editing.id,
-            entityLabel: label,
-            meta: { amount: value, prevAmount: editing.amount, category },
-          });
-          toast.success(kind === 'income' ? 'Pemasukan diperbarui' : 'Pengeluaran diperbarui');
-        } else {
-          const id = await recordFinanceEntry({
+      const entryId = editing
+        ? await saveEdit(editing, { orgId, kind, date, category, value, walletId, note, wallets })
+        : await createFinanceEntry({
             orgId,
             kind,
             date,
             category,
             amount: value,
             walletId,
-            description: description.trim(),
-            outletId: txOutletId,
+            description: note,
+            outletId: resolveCreateOutlet(outlets),
           });
-          logActivity({
-            action: kind === 'income' ? 'income.create' : 'expense.create',
-            entityType: kind,
-            entityId: id,
-            entityLabel: label,
-            meta: { amount: value, category },
-          });
-          toast.success(kind === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat');
-        }
-        onClose();
-        return;
-      }
 
-      if (editing) {
-        // ----- Edit existing record (income or expense) + reconcile wallet. -----
-        // The caller (FinancePage) always sets `kind` to match the record being
-        // edited — don't sniff fields like serviceId to tell them apart (a
-        // legacy income without that field would be written into `expenses`).
-        if (kind === 'income') {
-          const inc = editing as Income;
-          await repository.put('incomes', {
-            ...inc,
-            date,
-            category: category as IncomeCategory,
-            amount: value,
-            walletId,
-            description: description.trim(),
-            updatedAt: now,
-          });
-          // Reconcile wallets.
-          if (inc.walletId === walletId) {
-            if (wallet)
-              await repository.put('wallets', applyBalance(wallet, value - inc.amount));
-          } else {
-            const oldWallet = wallets.find((w) => w.id === inc.walletId);
-            if (oldWallet)
-              await repository.put('wallets', applyBalance(oldWallet, -inc.amount));
-            if (wallet) await repository.put('wallets', applyBalance(wallet, value));
-          }
-          logActivity({
-            action: 'income.update',
-            entityType: 'income',
-            entityId: inc.id,
-            entityLabel: description.trim() || (category as string),
-            meta: { amount: value, prevAmount: inc.amount, category },
-          });
-          toast.success('Pemasukan diperbarui');
-        } else {
-          const exp = editing as Expense;
-          await repository.put('expenses', {
-            ...exp,
-            date,
-            category: category as ExpenseCategory,
-            amount: value,
-            walletId,
-            description: description.trim(),
-            updatedAt: now,
-          });
-          if (exp.walletId === walletId) {
-            if (wallet)
-              await repository.put('wallets', applyBalance(wallet, exp.amount - value));
-          } else {
-            const oldWallet = wallets.find((w) => w.id === exp.walletId);
-            if (oldWallet)
-              await repository.put('wallets', applyBalance(oldWallet, exp.amount));
-            if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
-          }
-          logActivity({
-            action: 'expense.update',
-            entityType: 'expense',
-            entityId: exp.id,
-            entityLabel: description.trim() || (category as string),
-            meta: { amount: value, prevAmount: exp.amount, category },
-          });
-          toast.success('Pengeluaran diperbarui');
-        }
-        onClose();
-        return;
-      }
-      if (kind === 'income') {
-        const id = newId();
-        await repository.put('incomes', {
-          id,
-          orgId,
-          outletId: txOutletId,
-          date,
-          category: category as IncomeCategory,
-          amount: value,
-          walletId,
-          description: description.trim(),
-          serviceId: null,
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        });
-        if (wallet) await repository.put('wallets', applyBalance(wallet, value));
-        logActivity({
-          action: 'income.create',
-          entityType: 'income',
-          entityId: id,
-          entityLabel: description.trim() || (category as string),
-          meta: { amount: value, category },
-        });
-      } else {
-        const id = newId();
-        await repository.put('expenses', {
-          id,
-          orgId,
-          outletId: txOutletId,
-          date,
-          category: category as ExpenseCategory,
-          amount: value,
-          walletId,
-          description: description.trim(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        });
-        if (wallet) await repository.put('wallets', applyBalance(wallet, -value));
-        logActivity({
-          action: 'expense.create',
-          entityType: 'expense',
-          entityId: id,
-          entityLabel: description.trim() || (category as string),
-          meta: { amount: value, category },
-        });
-      }
-      toast.success(kind === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat');
+      logActivity({
+        action: `${kind}.${editing ? 'update' : 'create'}` as ActivityAction,
+        entityType: kind,
+        entityId: entryId,
+        entityLabel: note || category,
+        meta: { amount: value, category, ...(editing ? { prevAmount: editing.amount } : {}) },
+      });
+      toast.success(
+        `${kind === 'income' ? 'Pemasukan' : 'Pengeluaran'} ${editing ? 'diperbarui' : 'dicatat'}`,
+      );
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan');

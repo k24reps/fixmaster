@@ -75,18 +75,16 @@ export function TransferModal({ open, onClose, wallets, initial = null }: Transf
         await repository.put('wallets', { ...result.fromWallet!, updatedAt: now });
         await repository.put('wallets', { ...result.toWallet!, updatedAt: now });
       }
-      // Cloud: transfer_wallet mencatat jejaknya sendiri (0073). Transfer tak
-      // membukukan baris kas apa pun, jadi log itu satu-satunya buktinya dan
-      // tidak boleh bergantung pada browser yang masih hidup.
-      if (!isCloudMode()) {
-        logActivity({
-          action: 'wallet.transfer',
-          entityType: 'wallet',
-          entityId: fromId,
-          entityLabel: `${from.name} → ${to.name}`,
-          meta: { amount: value, toWalletId: toId },
-        });
-      }
+      // Cloud: transfer_wallet mencatat jejaknya sendiri (0073, SERVER_LOGGED).
+      // Transfer tak membukukan baris kas apa pun, jadi log itu satu-satunya
+      // buktinya dan tidak boleh bergantung pada browser yang masih hidup.
+      logActivity({
+        action: 'wallet.transfer',
+        entityType: 'wallet',
+        entityId: fromId,
+        entityLabel: `${from.name} → ${to.name}`,
+        meta: { amount: value, toWalletId: toId },
+      });
       toast.success(`Transfer ${fmtRp(value)}: ${from.name} → ${to.name}`);
       onClose();
     } catch (e) {

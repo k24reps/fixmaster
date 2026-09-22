@@ -58,30 +58,17 @@ export function getCategories(): string[] {
  * Manager-only at the data layer (RLS on organizations UPDATE).
  */
 export async function setCategories(categories: string[]): Promise<void> {
-  const org = useSessionStore.getState().org;
-  if (!org) {
+  if (!useSessionStore.getState().org) {
     // No active org (shouldn't happen in-app); keep a local copy as fallback.
     localStorage.setItem(`fixmaster-categories-${orgId()}`, JSON.stringify(categories));
     return;
   }
-  const saved = await repository.setSingleton('organization', {
-    ...org,
-    settings: { ...(org.settings ?? {}), deviceCategories: categories },
-  });
-  // setOrg() would reset the outlet scope; update the org slice directly.
-  useSessionStore.setState({ org: saved });
+  await patchSettings({ deviceCategories: categories });
 }
 
 /** Simpan kolom tabel Servis ke baris organisasi (tersinkron antar perangkat). */
 export async function saveServiceColumns(columns: ServiceColumnId[]): Promise<void> {
-  const org = useSessionStore.getState().org;
-  if (!org) return;
-  const saved = await repository.setSingleton('organization', {
-    ...org,
-    settings: { ...(org.settings ?? {}), serviceColumns: resolveServiceColumns(columns) },
-  });
-  // setOrg() would reset the outlet scope; update the org slice directly.
-  useSessionStore.setState({ org: saved });
+  await patchSettings({ serviceColumns: resolveServiceColumns(columns) });
 }
 
 /** Mobile primary navigation shared by every device in this organization. */
@@ -91,16 +78,7 @@ export function getMobileNavigation(): string[] {
 
 /** Persist the owner's four-slot mobile navigation layout to the org row. */
 export async function setMobileNavigation(paths: string[]): Promise<void> {
-  const org = useSessionStore.getState().org;
-  if (!org) return;
-  const saved = await repository.setSingleton('organization', {
-    ...org,
-    settings: {
-      ...(org.settings ?? {}),
-      mobileNavigation: sanitizeMobileNavPaths(paths),
-    },
-  });
-  useSessionStore.setState({ org: saved });
+  await patchSettings({ mobileNavigation: sanitizeMobileNavPaths(paths) });
 }
 
 /** Batas catatan publik toko: cukup untuk jam buka + syarat garansi, tapi
@@ -114,13 +92,7 @@ export function getPublicNote(): string {
 
 /** Simpan catatan publik ke baris organisasi (ikut tersinkron antar perangkat). */
 export async function setPublicNote(note: string): Promise<void> {
-  const org = useSessionStore.getState().org;
-  if (!org) return;
-  const saved = await repository.setSingleton('organization', {
-    ...org,
-    settings: { ...(org.settings ?? {}), publicNote: note.trim().slice(0, PUBLIC_NOTE_MAX) },
-  });
-  useSessionStore.setState({ org: saved });
+  await patchSettings({ publicNote: note.trim().slice(0, PUBLIC_NOTE_MAX) });
 }
 
 /**
@@ -142,7 +114,7 @@ export async function seedCategoriesFromLocal(): Promise<boolean> {
  * pembacanya (form servis, StatusModal, NotifyModal) langsung ikut berubah.
  * Salinan localStorage tetap ditulis pemanggil sebagai cadangan mode lokal.
  */
-async function patchSettings(patch: Partial<OrgSettings>): Promise<void> {
+export async function patchSettings(patch: Partial<OrgSettings>): Promise<void> {
   const org = useSessionStore.getState().org;
   if (!org) return;
   const saved = await repository.setSingleton('organization', {
@@ -164,11 +136,6 @@ export function getWarrantyServiceDays(): number {
   const n = raw ? Number(raw) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : 30;
 }
-export async function setWarrantyServiceDays(days: number): Promise<void> {
-  const clean = Math.max(0, Math.round(days));
-  localStorage.setItem(`fixmaster-warranty-service-days-${orgId()}`, String(clean));
-  await patchSettings({ warrantyServiceDays: clean });
-}
 
 /** Default spare-part warranty length (days) prefilled when a job is finished. */
 export function getWarrantyPartsDays(): number {
@@ -178,10 +145,17 @@ export function getWarrantyPartsDays(): number {
   const n = raw ? Number(raw) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : 7;
 }
-export async function setWarrantyPartsDays(days: number): Promise<void> {
-  const clean = Math.max(0, Math.round(days));
-  localStorage.setItem(`fixmaster-warranty-parts-days-${orgId()}`, String(clean));
-  await patchSettings({ warrantyPartsDays: clean });
+/**
+ * Kedua default garansi disimpan bersama: keduanya diubah dari satu tombol,
+ * dan dua tulisan berurutan berarti dua kali menulis seluruh baris organisasi
+ * plus satu jeda di mana hanya separuh pasangannya tersimpan.
+ */
+export async function setWarrantyDays(service: number, parts: number): Promise<void> {
+  const svc = Math.max(0, Math.round(service));
+  const prt = Math.max(0, Math.round(parts));
+  localStorage.setItem(`fixmaster-warranty-service-days-${orgId()}`, String(svc));
+  localStorage.setItem(`fixmaster-warranty-parts-days-${orgId()}`, String(prt));
+  await patchSettings({ warrantyServiceDays: svc, warrantyPartsDays: prt });
 }
 
 const DEFAULT_WARRANTY_PRESETS = [3, 7, 14, 30, 90];
@@ -226,12 +200,16 @@ function getStringList(key: string, cloud: string[] | undefined): string[] {
   }
 }
 
+function setStringList(key: string, list: string[]): void {
+  localStorage.setItem(`fixmaster-${key}-${orgId()}`, JSON.stringify(list));
+}
+
 /** Reusable complaint templates shown as quick-picks in the service form. */
 export function getComplaintTemplates(): string[] {
   return getStringList('complaints', settings().complaintTemplates);
 }
 export async function setComplaintTemplates(list: string[]): Promise<void> {
-  localStorage.setItem(`fixmaster-complaints-${orgId()}`, JSON.stringify(list));
+  setStringList('complaints', list);
   await patchSettings({ complaintTemplates: list });
 }
 
@@ -240,7 +218,7 @@ export function getAccessoryTemplates(): string[] {
   return getStringList('accessories', settings().accessoryTemplates);
 }
 export async function setAccessoryTemplates(list: string[]): Promise<void> {
-  localStorage.setItem(`fixmaster-accessories-${orgId()}`, JSON.stringify(list));
+  setStringList('accessories', list);
   await patchSettings({ accessoryTemplates: list });
 }
 
@@ -297,7 +275,7 @@ const NO_TARGET: MonthlyTarget = { revenue: 0, serviceCount: 0, overheadBudget: 
  * begitu data browser dibersihkan.
  */
 export function getTarget(): MonthlyTarget {
-  const cloud = useSessionStore.getState().org?.settings?.monthlyTarget;
+  const cloud = settings().monthlyTarget;
   if (cloud) return cloud;
   const raw = localStorage.getItem(`fixmaster-target-${orgId()}`);
   if (!raw) return NO_TARGET;
@@ -306,18 +284,6 @@ export function getTarget(): MonthlyTarget {
   } catch {
     return NO_TARGET;
   }
-}
-
-/** Simpan target ke baris organisasi (tersinkron), dengan cadangan lokal. */
-export async function setTarget(target: MonthlyTarget): Promise<void> {
-  localStorage.setItem(`fixmaster-target-${orgId()}`, JSON.stringify(target));
-  const org = useSessionStore.getState().org;
-  if (!org) return;
-  const saved = await repository.setSingleton('organization', {
-    ...org,
-    settings: { ...(org.settings ?? {}), monthlyTarget: target },
-  });
-  useSessionStore.setState({ org: saved });
 }
 
 /**
