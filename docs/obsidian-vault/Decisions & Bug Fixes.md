@@ -2136,3 +2136,109 @@ Web Analytics perlu diaktifkan di dashboard Vercel setelah deploy; custom events
 tersedia bila paket hosting Vercel mendukungnya.
 
 #decision #landing #auth #analytics #seo #ai-seo #accessibility #vercel #impeccable
+
+## Audit logika bisnis seluruh menu — `0069`–`0079` (21 Sep 2026)
+
+Audit menu-per-menu atas logika bisnis, dikerjakan dalam lima gelombang: Kasir/Inventori/
+Pelanggan (20 temuan), Supplier/Keuangan/Tugas (21), Absensi/Laporan/Log (19), Pengaturan
+(17), melanjutkan Dashboard/Servis (`0060`–`0068`). Seluruh temuan diimplementasikan.
+
+**Pola yang dipakai di semua temuan:** server menegakkan, klien mencerminkan hanya untuk
+pesan yang ramah sebelum round-trip. Cermin klien TIDAK pernah jadi satu-satunya penjaga.
+
+**Migrasi:**
+- `0069`–`0070` Kasir/Inventori/Pelanggan — `process_sale` divalidasi ulang server (harga,
+  HPP, total, baris kembar digabung), diskon karyawan dibatasi 10%, stok per cabang, No. HP
+  pelanggan unik, hapus pelanggan bertiket diblokir, HPP rata-rata tertimbang saat terima PO.
+- `0071`–`0072` Supplier/Keuangan/Tugas — kunci bulan lalu (`assert_open_month`), pengeluaran
+  milik PO tak bisa diedit dari Keuangan, `receive_goods_v2` menolak item terhapus alih-alih
+  melewatinya diam-diam, nomor PO dari server via advisory lock, `transfer_wallet` bisa
+  dibalikkan dan terlihat admin, supplier ber-PO tak bisa dihapus.
+- `0073` Kepercayaan log — `activity_stamp_actor` menstempel pelaku di server; `fm_log` +
+  trigger mencatat void penjualan/PO dan hapus pemasukan/pengeluaran dari DATABASE, bukan
+  dari browser yang bisa mati di tengah jalan.
+- `0074` Laporan — `service_receivables` dan `category_profit` sebagai RPC, supaya piutang
+  dihitung dari SELURUH tabel dan laba kategori memakai tanggal SELESAI.
+- `0075` **Perbaikan bug saya sendiri**, lihat di bawah.
+- `0076` Absensi — lat/lng disimpan, tanggal masa depan ditolak, jam dikosongkan untuk baris
+  non-hadir, `fm_log` dapat `p_outlet_id`, `purge_activity_logs` (owner-only, minimal 90 hari).
+- `0077` Kuota paket — `plan_quota()` mencerminkan `plans.ts` ke database; outlet, wallet, dan
+  kursi undangan ditegakkan trigger. `restore_org_data` tidak lagi menghapus `activity_logs`.
+- `0078`–`0079` Undangan kedaluwarsa 14 hari.
+
+### Tiga bug yang ditangkap TES, bukan oleh saya
+
+1. **`current_user` di dalam fungsi `security definer` adalah PEMILIK fungsi, bukan pemanggil.**
+   Penjaga `activity_stamp_actor` ditulis `current_user = 'authenticated'` sehingga trigger
+   tidak pernah menyala dan nama pelaku palsu tetap tersimpan. Tes integrasi memalsukan
+   `actor_name` dan barisnya lolos. Tes yang benar adalah `auth.uid() is null` — itulah
+   "apakah ini sesi pengguna sungguhan". Diperbaiki `0075`.
+2. **`plan_quota` gagal dipasang** dengan `SQLSTATE 42P13` karena `select *` ikut membawa
+   kolom `plan`. Harus menyebut kolom secara eksplisit.
+3. **`invites_expiry` menyegarkan masa berlaku pada SETIAP update** baris yang belum diklaim,
+   sehingga undangan kedaluwarsa bisa hidup lagi hanya karena barisnya tersentuh. Penanda yang
+   benar adalah jalur undang-ulang itu sendiri: `created_at` berubah. Diperbaiki `0079`.
+
+**Pelajaran:** ketiganya lolos dari pembacaan kode dan hanya jatuh saat tes integrasi
+menjalankannya sungguhan di staging. Cermin klien tidak akan menangkapnya — hanya penegak
+server yang diuji sebagai penegak server.
+
+#decision #audit #rls #rpc #integrity #testing
+
+## Pembersihan `/simplify` + ekspor PDF Laporan (22 Sep 2026)
+
+### Pembersihan kualitas (bukan perburuan bug)
+
+Empat agen review paralel — reuse, simplifikasi, efisiensi, altitude — atas diff `0069`–`0079`.
+Net **−78 baris** di 23 berkas. Yang layak diingat:
+
+- **`useDerivedQuery`** ([`useCollection.ts`](src/hooks/useCollection.ts)) — lima hook agregat
+  (ringkasan servis, piutang, laba kategori, statistik & riwayat pelanggan) menyalin badan yang
+  sama persis. Satu salinan LUPA berlangganan perubahan repository dan hanya tampak segar karena
+  hook tetangga di halaman yang sama memasangnya. Halaman Pelanggan baru saja melepas
+  `useCollection('services')` — sekali lagi, statistiknya membeku diam-diam.
+- **`visibleInstances`** ([`lib/business/tasks.ts`](src/lib/business/tasks.ts)) — halaman Tugas
+  menyaring per penerima, lampu rel navigasi tidak. Karyawan melihat badge "7" lalu menemukan
+  dua baris. Docstring `useNavSignals` sendiri berjanji "rel mencerminkan angka yang sama" —
+  janji itu putus di hari pertama. Sekarang keduanya memanggil fungsi yang sama.
+- **`SERVER_LOGGED`** ([`lib/activity.ts`](src/lib/activity.ts)) — "apakah server sudah mencatat
+  ini?" tersebar sebagai `if (!isCloudMode())` di empat layar, plus satu tempat yang menghapusnya
+  sama sekali. Sekarang satu himpunan aksi; menambah trigger berikutnya satu baris.
+- **[`src/data/financeEntry.ts`](src/data/financeEntry.ts)** — percabangan cloud/lokal untuk
+  mencatat uang keluar dari modal, pola sama dengan `saveServiceParts`.
+- **Efisiensi:** hapus template tugas dulu mengirim ratusan DELETE berurutan (jendela 30 hari ×
+  template harian 6 item ≈ 186 round-trip + 186 refetch) → `Promise.all`. Absensi menarik dua
+  rentang tanggal yang saling tumpang tindih → satu.
+
+### Ekspor PDF Laporan
+
+Tombol **Ekspor PDF** di date bar Laporan, gerbang `exportImport` yang sama dengan CSV.
+Dokumen A4 potret berkop toko dengan isi lengkap, termasuk buku transaksi utuh (bukan cap 100
+baris seperti di layar).
+
+**Keputusan: dialog cetak browser, BUKAN pustaka PDF klien.** Teks tetap vektor (bisa dicari
+dan disalin), grafik tetap SVG, bundle tidak bertambah satu byte. jsPDF/pdfmake menukar semua
+itu dengan ~300 KB dan tipografi lebih buruk. Pengguna memilih "Simpan sebagai PDF" di tujuan
+cetak — toast mengatakannya, tapi hanya bila jendelanya benar-benar terbuka, karena itu
+`openPrintWindow` mengembalikan boolean.
+
+- **[`src/lib/print.ts`](src/lib/print.ts)** (baru) — mekanik jendela cetak (penjaga demo, popup
+  diblokir, pemicu cetak `onload`+3s, `escapeHtml`) dipakai bertiga: nota servis, struk
+  penjualan, laporan A4. Sejajar `lib/csv.ts` untuk unduhan CSV. **Di sinilah satu-satunya
+  tempat warna literal boleh ditulis** — dokumen cetak tidak mewarisi `tokens.css`, dan tinta di
+  kertas tidak punya tema gelap.
+- **`trendGeometry`** ([`lib/business/reports.ts`](src/lib/business/reports.ts)) — rumus jalur,
+  gridline, dan posisi label dipakai `TrendChart` di layar DAN grafik di PDF. Dua salinan berarti
+  PDF bisa menggambar bentuk berbeda dari yang dilihat pemilik, dan kertas tidak bisa memperbaiki
+  diri. Empat tes menyertainya.
+
+**Pelajaran ukuran kertas:** dua cacat hanya muncul saat dokumen diuji pada lebar A4 asli
+(186 mm = 210 − margin 2×12), bukan pada lebar layar: tabel antar-outlet terjepit sampai
+memecah "Rp" dan angkanya ke dua baris, dan dua tombol ekspor membungkus terpisah. Memeriksa
+dokumen cetak di lebar viewport adalah pengulangan kesalahan lama "membaca screenshot" —
+**ukur pada lebar medianya**.
+
+**Verifikasi:** `tsc`, `eslint`, dan 616 test hijau. Dokumen dirender ke tab nyata pada 186 mm
+dan diperiksa luberannya lewat `scrollWidth` vs `clientWidth`, bukan lewat gambar.
+
+#decision #refactor #laporan #print #pdf #impeccable

@@ -11,7 +11,7 @@ Bagian dari [[00 - FixMaster MOC]]. Catatan ini = **memori persisten** untuk pek
 
 ## Lingkungan testing (FAKTA — jangan tanya ulang)
 
-- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Tracker server sinkron `0001`–`0048` per 30 Agu 2026.
+- **Staging Supabase**: `https://fpwwswngqpftaixdlozo.supabase.co` (project `fixmaster-staging`, org `rifan6juli-svg`, plan FREE). **Terpisah dari produksi** — aman untuk test yang membuat/menghapus user & org. Tracker server sinkron `0001`–`0079` per 21 Sep 2026 (staging **dan** produksi).
 - **Produksi Supabase**: project `FixMaster` (`vmitplpvncfvyimgyxrn`, region Singapore). **BERISI DATA & TRANSAKSI ASLI**. Tracker server sinkron `0001`–`0048` per 30 Agu 2026; `0048` diterapkan setelah dry-run hanya menemukan satu migrasi pending dan 78/78 integration staging lulus. Operasi ke produksi WAJIB konfirmasi user dulu. CLI default sudah dikembalikan ke **staging**.
 - **Kredensial app**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ada di `.env.local` (gitignored via `*.local`). Var dibaca di [supabase-client.ts](src/data/supabase-client.ts) (`import.meta.env.VITE_SUPABASE_*`).
 - **Kredensial test**: ditaruh di **`.env.test.local`** (root repo, auto-ignored oleh `*.local`). Berisi `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -62,7 +62,26 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 > [!IMPORTANT]
 > Test Tier 1/2 HANYA terhadap **staging**, TIDAK PERNAH produksi (berisiko data & uang asli).
 
-## Hasil testing (11 Jun 2026)
+## Hasil testing (22 Sep 2026)
+
+- **Unit (offline)**: **616 lolos / 60 berkas**. `npm run test`.
+- **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. `npm run test:integration`.
+- **Probe regresi UI**: `audit-zoom` 11 lebar × 12 halaman dan `audit-mobile` 5 lebar ponsel +
+  5 lebar tablet × 12 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
+  regresi yang sebenarnya. Temuan tersisa semuanya disengaja: teks ter-ellipsis di `/services`,
+  carousel scroll-snap di landing, dan rail chip horizontal (`overflow-x:auto`) di
+  `/services`, `/customers`, `/inventory`.
+- **Build + Lint**: bersih.
+
+> [!note] Positif palsu yang berulang di laporan probe
+> Selain `clipped`, `scrollers` juga bukan daftar cacat: ia mendaftar SETIAP elemen yang bisa
+> digeser ke samping, termasuk yang memang dirancang begitu (rail chip, carousel). Yang menandakan
+> regresi hanyalah `docOver` > 0. Dua hal SELALU muncul di `clipped` dan bukan cacat: `caption._srOnly` (caption tabel khusus
+> pembaca layar, memang disembunyikan dengan clip) dan elemen `text.` di dalam SVG (label sumbu
+> grafik — `scrollWidth` pada SVG text tidak berarti apa-apa). Saring keduanya sebelum membaca
+> hasil, kalau tidak tiap laporan terlihat merah total.
+
+### Nilai historis — hasil 11 Jun 2026
 
 - **Unit (offline)**: 288 lolos (naik dari 280; +8 anti-drift Tier 3). `npm run test`.
 - **Integration RLS/RPC (staging)**: 27/28 proteksi lolos. 1 merah = **F5** (apply_payment bypass). `npm run test:integration`.

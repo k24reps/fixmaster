@@ -64,7 +64,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest unit (470 test, offline)
+npm run test    # vitest unit (616 test / 60 berkas, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
@@ -72,11 +72,18 @@ Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasum
 Dua probe regresi siap pakai (butuh dev server jalan):
 
 ```bash
-node scripts/audit-mobile.mjs                      # 5 lebar ponsel x 12 halaman
-MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
-node scripts/audit-zoom.mjs                        # 11 lebar desktop x 12 halaman
-ZOOM=1.25 node scripts/audit-zoom.mjs              # zoom aplikasi
+# Keduanya default ke BASE_URL=http://localhost:5183 — SET sesuai port dev server
+# yang benar-benar jalan (vite biasanya 5173, dan bisa bergeser bila port terpakai).
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 12 halaman
+BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # zoom aplikasi
 ```
+
+Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. **Saring dua
+positif palsu** sebelum menyimpulkan: `caption._srOnly` (caption khusus pembaca layar, memang
+di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat
+merah total padahal bersih.
 
 Keduanya melaporkan luberan dokumen, tiap wadah yang bisa digeser ke samping, overlap kolom
 sticky, dan teks ter-clip. **Ukur DOM rect, jangan baca screenshot terkompresi** — tiga temuan

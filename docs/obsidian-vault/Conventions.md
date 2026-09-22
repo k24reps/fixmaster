@@ -36,9 +36,11 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 - **Import alias**: `@/` → `src/` (mis. `@/components/ui`)
 
 ## Pola kunci
-- **Warna**: SELALU `var(--token)` dari [[Design System]] — jangan hardcode hex. Otomatis benar di dark/light.
+- **Warna**: SELALU `var(--token)` dari [[Design System]] — jangan hardcode hex. Otomatis benar di dark/light. **Satu-satunya pengecualian: dokumen cetak** (`lib/print.ts`, `features/services/printReceipt.ts`, `features/reports/printReport.ts`). Dokumen itu dibuka lewat `window.open` sebagai halaman terpisah sehingga tidak mewarisi `tokens.css` sama sekali — dan tinta di kertas tidak punya tema gelap. Di luar ketiga berkas itu, hex literal tetap terlarang.
 - **Data**: baca via `useCollection('<koleksi>')`; mutasi via `repository`. Lihat [[Data Layer]].
 - **Logika domain**: tulis murni & testable di `lib/business/`, panggil dari UI. Jangan taruh aturan di komponen.
+- **Percabangan cloud/lokal**: `isCloudMode()` TIDAK hidup di dalam modal/halaman. Bungkus jadi satu modul tulis di `src/data/` (pola `serviceParts.ts`, `financeEntry.ts`) yang menyembunyikan "RPC atau tulis lokal" dari pemanggilnya. Salinan di tiap modal harus disepakati ulang setiap kali bentuk barisnya berubah, dan jalur lokalnya hanya bisa diuji lewat UI.
+- **Angka yang tampil di dua tempat wajib satu fungsi.** Badge rel navigasi vs daftar halaman, grafik layar vs grafik cetak, kartu vs laci detail — kalau dua permukaan menjawab pertanyaan yang sama, keduanya memanggil helper yang sama di `lib/business/`. Cukup satu salinan untuk membuat keduanya berbohong tanpa ada yang sadar.
 - **Ikon**: hanya lewat komponen `Icon`. Lihat [[Iconography]].
 - **Form/modal**: bangun isi form dengan primitif bersama `FormFields` / `FormRow` / `FormError` (`src/components/ui/Form.tsx`) — jangan inline style. `FormRow` otomatis collapse ke 1 kolom di mobile; `FormError` = fault-readout LED. Komponen `Modal` dasar sudah membawa faceplate aksen + judul ber-LED, jadi modal baru otomatis senada.
 - **Ergonomi UI operasional**: teks informasi/aksi minimal 12 px; kontrol pada mobile/touch minimal 44×44 px. Deret KPI panjang memakai horizontal rail agar konten kerja utama tetap masuk viewport pertama. Uji minimal pada 390×844, 1024 px, dan 1440 px dalam dark/light; pastikan nol overflow horizontal.
@@ -50,13 +52,27 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (470 test) |
+| `npm run test` | Vitest (616 test / 60 berkas) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 | `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |
 
 ## Verifikasi UI
 Screenshot via Playwright di `scripts/` (mis. `shoot-batch.mjs`, `verify-sidebar.mjs`). Seed data demo lewat `window.__fixmasterSeed()`. Sinkron attachment vault: `scripts/sync-vault-attachments.ps1`.
+
+Dua probe regresi wajib untuk perubahan UI (butuh dev server; keduanya menulis JSON ke
+`scripts/shots/`):
+
+```bash
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 12 halaman
+BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs
+```
+
+Saring dua positif palsu sebelum membaca hasil: `caption._srOnly` (caption khusus pembaca layar,
+memang di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan
+terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
+margin), bukan lebar viewport — dua cacat tata letak PDF hanya muncul di sana.
 
 > [!tip] Default verifikasi
 > Setelah perubahan kode: jalankan build + test + lint. Untuk perubahan UI, foto render asli (bukan asumsi). Lihat pelajaran di [[Decisions & Bug Fixes]].

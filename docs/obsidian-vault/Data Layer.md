@@ -362,6 +362,14 @@ Helper murni di `services.ts`: `settlementAmount`, `settlementCorrectionDelta` (
 
 
 
+**Ekspor PDF Laporan.** Jalur ketiga di gerbang `exportImport` yang sama. Dokumen A4 dibangun
+[`features/reports/printReport.ts`](src/features/reports/printReport.ts) dan dibuka lewat
+[`lib/print.ts`](src/lib/print.ts) — **dialog cetak browser, bukan pustaka PDF klien**: teks tetap
+vektor, grafik tetap SVG, bundle tidak bertambah. `lib/print.ts` juga memayungi nota servis dan
+struk penjualan, dan merupakan **satu-satunya tempat warna literal boleh ditulis** (dokumen cetak
+tidak mewarisi `tokens.css`). `reportDocHtml()` dipisah dari `printReport()` supaya dokumennya bisa
+dirakit dan diperiksa tanpa membuka dialog cetak.
+
 **Hapus/erasure data (hak "penghapusan" UU PDP).** Di Settings → Sistem (Zona Berbahaya), mode cloud menyediakan **"Hapus Akun Permanen"**: (1) `repository.clearAll()` menghapus data tenant, (2) `deleteAccountCredential()` memanggil Edge Function **`delete-account`** yang—setelah memverifikasi JWT pemanggil—menghapus record `auth.users` miliknya **sendiri** via service_role (kunci admin tak pernah ke browser; user tak bisa menghapus akun orang lain), (3) `signOut()`. Bila fungsi belum di-deploy/gagal, **fallback jujur**: data tetap terhapus, user keluar, dan toast memberi tahu kredensial perlu dihapus via dukungan. Disarankan export dulu sebelum hapus.
 
 **Seam pelaporan error.** `lib/report.ts` = satu titik kirim error. Default **console-only** (tanpa SDK/jaringan/bobot bundle); `setErrorReporter()` memasang tracker nyata (mis. Sentry) sekali saat startup tanpa mengubah call-site lain. `reportError()` membungkus non-Error & **tak pernah throw** walau reporter rusak. `ErrorBoundary.componentDidCatch` kini lewat seam ini (tag `source: root|route`). `initErrorTracking()` (dipanggil di `main.tsx`) lazy-import `@sentry/react` **hanya** bila `VITE_SENTRY_DSN` diset.
@@ -379,6 +387,43 @@ Helper murni di `services.ts`: `settlementAmount`, `settlementCorrectionDelta` (
 **Service Worker app-shell (lapisan 10).** `public/sw.js` + `lib/sw-register.ts` (registrasi **prod-only**). Cache **app-shell + aset `/assets` ber-hash** (cache-first, aman karena content-hashed), navigasi network-first → fallback `index.html` offline, cache ber-versi + bersih cache lama agar update tak nyangkut. **Tidak** meng-cache API/data (app real-time/multi-tenant). CSP `worker-src 'self'` mengizinkannya.
 
 
+
+## Penegakan server menyeluruh (migrasi `0069`–`0079`)
+
+Hasil audit logika bisnis lima menu. Prinsipnya: **server menegakkan, klien mencerminkan
+hanya untuk pesan ramah**. Cermin klien tidak pernah jadi satu-satunya penjaga. Rinciannya
+di [[Decisions & Bug Fixes]].
+
+- **Uang & stok (`0069`–`0072`)** — `process_sale` memvalidasi ulang harga/HPP/total dan
+  menggabungkan baris kembar sebelum cek stok; diskon karyawan dibatasi 10%; stok bisa dimiliki
+  satu cabang; HPP jadi rata-rata tertimbang saat PO diterima. `assert_open_month` mengunci
+  bulan lalu di Keuangan; pengeluaran milik PO tak bisa diedit dari layar Keuangan;
+  `receive_goods_v2` menolak item terhapus alih-alih melewatinya diam-diam; nomor PO dari server
+  lewat advisory lock.
+- **Jejak audit (`0073`, `0075`, `0076`)** — `activity_stamp_actor` menstempel pelaku di server,
+  jadi nama pelaku tidak bisa dipalsukan dari klien. `fm_log` + trigger membuat DATABASE mencatat
+  sendiri empat peristiwa uang (void penjualan, void PO, hapus pemasukan, hapus pengeluaran) plus
+  `wallet.transfer` — jejaknya tidak lagi bergantung pada browser yang masih hidup sesudah server
+  selesai. Di klien, himpunan `SERVER_LOGGED` di [`lib/activity.ts`](src/lib/activity.ts) yang
+  memutuskan kapan klien TIDAK ikut mencatat. `purge_activity_logs` owner-only, minimal 90 hari.
+- **Agregat laporan (`0074`)** — `service_receivables` dan `category_profit` sebagai RPC, supaya
+  piutang dihitung dari SELURUH tabel (bukan potongan 1000 baris) dan laba kategori memakai
+  tanggal SELESAI. Dikonsumsi [`useReportData.ts`](src/hooks/useReportData.ts).
+- **Kuota paket (`0077`)** — `plan_quota()` mencerminkan `plans.ts` ke database; outlet, wallet,
+  dan kursi undangan ditegakkan trigger, bukan hanya disembunyikan UI. `restore_org_data` tidak
+  lagi ikut menghapus `activity_logs`: memulihkan backup lama tak boleh menghapus jejak audit.
+- **Undangan (`0078`–`0079`)** — `pending_invites.expires_at`, berlaku 14 hari, hanya disegarkan
+  oleh jalur undang-ulang (`created_at` berubah).
+
+### Modul tulis bersama (`src/data/*.ts`)
+
+Percabangan `isCloudMode()` **tidak boleh hidup di dalam modal**. Tiap salinan harus disepakati
+ulang saat bentuk barisnya berubah, dan jalur lokalnya hanya bisa diuji lewat UI. Polanya:
+
+| Modul | Menyembunyikan |
+|---|---|
+| [`serviceParts.ts`](src/data/serviceParts.ts) | Simpan sparepart tiket + selisih stok (RPC `update_service_parts` vs tulis lokal) |
+| [`financeEntry.ts`](src/data/financeEntry.ts) | Catat pemasukan/pengeluaran + saldo wallet (RPC `record_finance_entry` vs tulis lokal). Dipakai Keuangan DAN saldo awal wallet di Pengaturan |
 
 ## Terkait
 - [[Tech Stack]] · [[Decisions & Bug Fixes]] · [[Sidebar - Live Diagnostic Rail]]

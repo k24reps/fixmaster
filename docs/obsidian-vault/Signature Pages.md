@@ -284,7 +284,7 @@ Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown katego
 Deret empat metrik memakai satu baris seimbang di desktop dan horizontal rail di mobile;
 kontrol tanggal menumpuk tanpa overflow, dan grafik tren sudah tampak di viewport mobile
 pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
-1. **Tren Pemasukan vs Pengeluaran** — grafik garis **SVG murni** (komponen [`TrendChart`](src/features/reports/TrendChart.tsx), tanpa library) dengan crosshair hover, area pemasukan, gridline + label mono. Bucket auto: harian (≤31 hr) / mingguan (≤184 hr) / bulanan (selebihnya).
+1. **Tren Pemasukan vs Pengeluaran** — grafik garis **SVG murni** (komponen [`TrendChart`](src/features/reports/TrendChart.tsx), tanpa library; geometrinya dari `trendGeometry` di `lib/business/reports.ts`, dipakai bersama grafik di laporan PDF supaya keduanya tak bisa menggambar bentuk berbeda) dengan crosshair hover, area pemasukan, gridline + label mono. Bucket auto: harian (≤31 hr) / mingguan (≤184 hr) / bulanan (selebihnya).
 2. **Rincian Transaksi** — tabel on-screen (versi layar dari CSV): tag jenis, kategori, keterangan, nominal bertanda; cap 100 baris (sisanya via ekspor).
 3. **Laba per Kategori Perangkat** — omzet + laba kotor (finalCost − biaya part) per jenis perangkat (HP/laptop/dst), servis selesai/lunas.
 4. **Sparepart Terlaris + Saran Restok** — part paling sering dipakai (qty+biaya) & item ≤ minStock (neediest first).
@@ -293,7 +293,11 @@ pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
 7. **Perbandingan Antar-Outlet** — income/expense/net per cabang (hanya muncul bila >1 outlet; null = "Tanpa Cabang").
 8. **Aging Piutang** — tabel servis selesai yang belum lunas (sisa = finalCost − DP), umur dari tanggal selesai dengan tag 0-7 / 8-30 / 31+.
 
-- **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Helper baru `lib/csv.ts`: `toCsv()` (escaping RFC-4180) + `downloadCsv()` (BOM UTF-8 agar Excel baca rupiah/aksen benar). Nama file memuat scope + rentang tanggal.
+- **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Nama file memuat scope + rentang tanggal.
+  > [!note] Koreksi (21 Sep 2026)
+  > `lib/csv.ts` **tidak lagi** punya `toCsv()`/`downloadCsv()` sendiri. Itu dulu implementasi CSV KEDUA di repo — satu-satunya yang dipakai Laporan, dan satu-satunya yang **tanpa** guard formula-injection serta tanpa tes. Sekarang Laporan memakai `buildCsv`/`csvFilename` dari [`lib/business/export.ts`](src/lib/business/export.ts) yang sama dengan kartu Export Data di Pengaturan; `lib/csv.ts` hanya menyisakan `downloadCsvFile` (Blob + anchor).
+- **Ekspor piutang terpisah (21 Sep 2026).** Kartu Piutang punya tombol **Ekspor** sendiri: daftar inilah yang dibawa saat menagih, dan ia **tidak** mengikuti rentang tanggal laporan — jadi tak bisa ikut di ekspor transaksi.
+- **Ekspor PDF (22 Sep 2026).** Tombol **Ekspor PDF** bersebelahan dengan Ekspor CSV (keduanya dalam satu `.exportGroup` supaya membungkus bersama), gerbang `exportImport` yang sama. Dokumen **A4 potret berkop toko**: kop + jenis dokumen + periode + cakupan cabang, vonis, empat KPI dengan delta, grafik tren, break-even, kategori pemasukan/pengeluaran, laba per kategori perangkat, sparepart terlaris, funnel, performa teknisi, saran restok, perbandingan antar-outlet (lebar penuh — empat kolom uang tidak muat di setengah halaman), piutang + ringkasan umur, lalu **buku transaksi LENGKAP** (bukan cap 100 baris seperti di layar). Kaki berulang tiap halaman. Lewat dialog cetak browser → "Simpan sebagai PDF"; lihat [[Decisions & Bug Fixes]] dan [[Data Layer]].
 
 > [!warning] Akses Laporan kini **owner-only** (migration `0019`)
 > Sebelumnya manager (owner+admin). Sekarang hanya **owner**: nav pakai flag `ownerOnly`, rute dibungkus `OwnerRoute`, dan `reports.view` dicabut dari admin. Lihat [[Decisions & Bug Fixes]].
