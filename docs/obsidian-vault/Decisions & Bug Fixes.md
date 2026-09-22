@@ -2137,6 +2137,156 @@ tersedia bila paket hosting Vercel mendukungnya.
 
 #decision #landing #auth #analytics #seo #ai-seo #accessibility #vercel #impeccable
 
+## Backup otomatis harian ke Storage (`0051`–`0052`, 2 Sep 2026)
+
+Backup manual sudah ada sejak awal, tapi ia hanya mendarat di perangkat yang menekan tombolnya —
+dan pengingatnya bawaannya `off`. Artinya toko yang paling butuh backup adalah toko yang paling
+mungkin tidak pernah menekannya.
+
+Bucket privat `org-backups`, path `{orgId}/auto-<ISO>.json`, RLS memakai segmen folder pertama
+sebagai `org_id` — konvensi yang sama persis dengan `org-logos` (`0014`). Isinya memakai format
+`BackupFile` v1 yang SUDAH ada, jadi hasil backup otomatis bisa di-restore lewat jalur manual
+tanpa kode tambahan.
+
+`0052` yang membuatnya benar-benar otomatis: **aplikasi web tidak bisa menjalankan tugas
+terjadwal saat ditutup**, jadi pemicunya harus datang dari server. `pg_cron` menyalakan, `pg_net`
+mengirim HTTP-nya ke Edge Function. Dua langkah manual di luar migrasi (secret
+`BACKUP_CRON_SECRET` dan penjadwalannya) dicatat di kepala berkas migrasinya.
+
+Unduh backup JSON kemudian dikunci khusus Trial, supaya masa coba tidak jadi jalan memanen data
+lalu pergi. Paket `suspended` sengaja TETAP bisa mengunduh — toko yang berhenti berlangganan
+tidak boleh disandera datanya.
+
+#decision #backup #storage #cron
+
+## Absensi jadi milik PEMILIK, dan jam kerja tak bisa dikarang (`0053`, `0054`, `0056`, 3–5 Sep 2026)
+
+Tiga migrasi, satu tema: absensi adalah data upah, bukan data operasional.
+
+**`0053` — RPC sebagai pintu belakang.** `clock_in` (`0004`) adalah `security definer`, artinya ia
+MELEWATI RLS sepenuhnya. Semua penjagaan yang ditulis rapi di policy `attendance_ins`
+(`0017`/`0028`) tidak pernah berlaku di jalur itu; yang tersisa hanya "apakah pemanggil anggota org
+ini". Seorang teknisi bisa mengabsenkan rekannya sambil berdiri di dalam radius geofence — dan
+geofence dibangun persis untuk mencegah itu. Sekaligus diperbaiki: `now()` polos itu UTC, sehingga
+check-in 09:00 WIB tersimpan sebagai tanggal/jam yang salah.
+
+**`0054` — satu baris per karyawan per hari, dijamin indeks unik.** Klien sudah menjaganya dan
+`0053` menambahkannya ke `clock_in`, tapi keduanya penjagaan waktu-tulis. Indeks inilah yang
+membuatnya tak bisa dilanggar lewat REST langsung, restore backup, atau balapan dua perangkat yang
+menekan Check In bersamaan. **Sengaja dipisah dari `0053`** karena migrasi ini bisa GAGAL bila data
+lama sudah memuat duplikat — dan kegagalannya akan ikut membatalkan pengerasan `clock_in` di
+`0053`.
+
+**`0056` — `is_org_manager()` terlalu lebar.** Sampai migrasi ini, admin bisa membaca seluruh
+riwayat absensi toko, mengubahnya, menghapusnya, dan mengabsenkan orang lain. Admin memang manager
+untuk servis, stok, dan supplier; kehadiran rekan kerja bukan urusan operasional — itu urusan
+ketenagakerjaan, dan yang menggaji hanya satu orang. UI sudah dirapikan lebih dulu, tapi itu
+**hanya gerbang tampilan**: admin yang memanggil REST langsung tetap melihat segalanya.
+
+> [!important] Pelajaran yang berulang di tiga migrasi ini
+> Merapikan UI bukan memperbaiki izin. Setiap kali batas akses "sudah diperbaiki di layar",
+> tanyakan jalur REST dan jalur RPC-nya — `security definer` melewati RLS, jadi penjagaan di policy
+> tidak ikut berlaku di sana.
+
+#decision #absensi #rls #security
+
+## 64 dari 70 fungsi `security definer` tanpa `set search_path` (`0055`, 4 Sep 2026)
+
+Migrasi `0045` menuliskan aturannya sebagai standar proyek: *"`set search_path = public, pg_temp`
+(pola `0020`) — permukaan definer lintas-tenant tak boleh bisa dibajak lewat search_path"*.
+
+Aturan itu ternyata hanya diterapkan pada `0045` ke atas. Saat audit absensi dihitung ulang: dari
+**70 fungsi `security definer` di repo, 64 tidak punya `set search_path`** — termasuk
+`process_sale`, `settle_service`, `apply_payment`, `claim_invite`, dan `track_service`.
+
+Pelajarannya bukan soal SQL, melainkan soal **standar yang ditulis tapi tidak ditegakkan**. Aturan
+yang hanya hidup di komentar satu migrasi akan berlaku untuk migrasi itu saja. Yang membuatnya
+nyata adalah audit yang menghitung ulang seluruh permukaan, bukan niat baik.
+
+#decision #security #rls #audit
+
+## Penugasan cabang tidak boleh kosong (`0057`, 5 Sep 2026)
+
+`auth_outlet_ids()` (`0024`/`0042`) sengaja tanpa fallback: anggota tanpa penugasan tidak melihat
+transaksi cabang mana pun. Itu arah yang benar (**gagal-tertutup**) — fallback "kosong = semua
+cabang" berarti menghapus satu cabang diam-diam membuka SEMUA cabang lain bagi karyawan yang hanya
+ditugaskan ke cabang itu.
+
+Yang ditutup di sini jalur salah-simpan: owner mematikan semua chip di Pengaturan → Tim lalu klik
+Simpan, dan karyawannya mendadak buta. UI sudah memperingatkan tapi tetap mengizinkan.
+
+#decision #rls #multi-outlet
+
+## Egress: riwayat tiket keluar dari daftar, dan jadi append-only (`0058`–`0059`, 6 Sep 2026)
+
+**Ukurannya yang memicu:** kolom `history` menyumbang **±78% ukuran tiap baris servis** — sumber
+egress terbesar di produk. Daftar servis berhenti memuatnya (`SERVICE_LIST_COLUMNS`).
+
+**Tapi ada temuan integritas di baliknya.** Kolom `history` ditandai "append-only" sejak `0001`, dan
+tidak ada yang pernah menegakkannya: klien menulis ulang SELURUH array (baca-ubah-tulis), dan
+`settle_service`/`cancel_service` menerima `p_history` lalu menimpanya. Akibatnya dua perangkat yang
+menambah riwayat ke tiket yang sama dari salinan lama membuat yang menyimpan belakangan **menghapus
+entri perangkat lainnya** — dan anggota mana pun bisa mengganti jejak audit lewat REST. Trigger
+`0058` menggabungkan: riwayat lama selalu dipertahankan, hanya entri yang belum ada yang ditambahkan
+di belakang.
+
+`0059` menambah kolom `services.completion_note`: catatan wajib saat status "selesai" selama ini
+hanya hidup di `history`, jadi ia tak bisa tampil di tabel tanpa memuat ulang riwayat tiap tiket.
+**Kolom baru WAJIB ikut ditambahkan ke `SERVICE_LIST_COLUMNS`** (`src/data/types.ts`) — tes integrasi
+tier3e memeriksanya.
+
+#decision #egress #integrity #servis
+
+## Audit Dashboard & Servis — `0060`–`0068` (7–20 Sep 2026)
+
+Audit menu Dashboard & Servis; pendahulu langsung audit lima menu berikutnya (`0069`–`0079`).
+
+1. **Pelunasan/pembatalan tidak atomik (`0061`).** Klien menyimpan status Lunas/Batal LEBIH DULU,
+   baru memanggil RPC uang. Bila RPC gagal (koneksi, langganan, outlet), tiket tertinggal **Lunas
+   tanpa pemasukan** atau **Batal tanpa stok kembali** — dan tak bisa diulang karena statusnya sudah
+   terminal. `settle_service` kini menulis status + biaya final + riwayat + uang dalam satu transaksi.
+2. **RPC uang tidak memeriksa status dan memercayai nominal klien (`0061`).** Baris dikunci
+   `for update`, sisa tagihan dihitung server, pelunasan/refund ganda ditolak.
+3. **Nomor servis dihitung klien (`0061`).** Trigger BEFORE INSERT + advisory lock.
+4. **Kelebihan DP hilang tanpa catatan (`0062`).** Biaya final boleh lebih kecil dari DP, dan
+   sisanya dijepit 0 — DP 300.000 dengan biaya final 250.000 berarti 50.000 milik pelanggan menguap.
+   Kini refund dibukukan dalam transaksi yang sama.
+5. **Koreksi biaya memindahkan pendapatan antar bulan (`0063`).** Implementasi lama menghapus semua
+   pemasukan pelunasan lalu membukukan ulang **tertanggal hari ini** — pendapatan bulan lalu pindah
+   ke bulan ini. Kini hanya SELISIHNYA yang dibukukan, dan pelunasan lama tidak disentuh.
+6. **Angka Servis/Dashboard dari daftar terpotong 1000 tiket (`0063`).** Papan teknisi juga sepanjang
+   masa, per nama, termasuk tiket belum dibayar dan klaim garansi. `service_summary` menghitung di
+   server.
+7. **Stok sparepart dipotong klien dari cache (`0064`).** `stock: cache - qty` bisa menimpa penjualan
+   kasir yang bersamaan. Selain itu tulis inventori manager-only (`0017`), jadi karyawan gagal
+   menambah sparepart dengan pesan "langganan" yang **menyesatkan**. `update_service_parts` menulis
+   daftar part DAN selisih stok dalam satu transaksi, selisih dihitung server dari baris yang
+   `deducted`.
+8. **Lunas/Batal owner/admin-only hanya di aplikasi (`0065`).** Karyawan bisa memanggil
+   `settle_service`/`cancel_service` langsung, bahkan meng-`update` kolom `status` lewat REST.
+   Trigger menutup semua jalur sekaligus — RPC `security definer` tetap membawa `auth.uid()`
+   pemanggil, jadi RPC-nya ikut tertolak tanpa ditulis ulang.
+9. **Celah sisa: `deducted` bisa diubah lewat update biasa (`0066`).** Karyawan bisa menandai part
+   "sudah dipotong" tanpa stok benar-benar dipotong, lalu memanggil `update_service_parts` untuk
+   "mengembalikan" stok yang tak pernah diambil — **stok inventori menggelembung**. Trigger
+   membandingkan stok yang dipegang tiket sebelum & sesudah; bagi karyawan perubahan itu hanya boleh
+   terjadi di dalam RPC (penanda transaksi-lokal `fixmaster.parts_rpc`).
+10. **Garansi per sparepart** (`0060` lacak publik, `0064`–`0065` klaim per bagian, `0067` garansi
+    bawaan per item inventori). Halaman lacak hanya mengembalikan nama part + tanggal akhir
+    garansinya; harga modal/jual TIDAK pernah ikut.
+11. **Hapus transaksi keuangan ditulis langkah demi langkah (`0068`).** Gagal di tengah meninggalkan
+    saldo, baris, dan tiket yang tidak saling cocok. `delete_finance_entry` melakukannya dalam satu
+    transaksi, dengan aturan pembalikan yang berbeda per jenis baris (pelunasan, DP, selisih koreksi,
+    refund koreksi).
+
+> [!note] Pola yang sama muncul sembilan kali di sini
+> Hampir setiap temuan berbentuk **"klien menulis beberapa langkah yang seharusnya satu
+> transaksi"**, atau **"aturan ditegakkan di aplikasi tapi tidak di database"**. Keduanya tidak
+> terlihat saat aplikasi dipakai normal — hanya muncul saat koneksi putus di tengah, dua perangkat
+> menyimpan bersamaan, atau seseorang memanggil REST langsung.
+
+#decision #audit #servis #rpc #integrity
+
 ## Audit logika bisnis seluruh menu — `0069`–`0079` (21 Sep 2026)
 
 Audit menu-per-menu atas logika bisnis, dikerjakan dalam lima gelombang: Kasir/Inventori/

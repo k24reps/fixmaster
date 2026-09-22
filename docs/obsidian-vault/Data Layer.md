@@ -388,6 +388,63 @@ dirakit dan diperiksa tanpa membuka dialog cetak.
 
 
 
+## Integritas servis & absensi (migrasi `0050`–`0068`)
+
+Rincian keputusan dan latar tiap temuan di [[Decisions & Bug Fixes]]. Di sini fakta strukturalnya.
+
+### Kolom & batasan baru
+
+| Objek | Migrasi | Catatan |
+|---|---|---|
+| `services.completion_note` (text) | `0059` | Catatan wajib saat status "selesai", dipindah keluar dari `history`. **Kolom baru WAJIB ikut ke `SERVICE_LIST_COLUMNS`** di `src/data/types.ts` — tes integrasi tier3e memeriksanya |
+| `inventory_items.warranty_days` | `0067` | Garansi bawaan per item; disalin ke baris sparepart sebagai `defaultWarrantyDays` saat part diambil ke tiket. Kosong = pakai garansi part toko |
+| `services.spareparts[].warrantyDays` / `warrantyUntil` | `0060` | Garansi per part, di dalam JSONB — tanpa kolom baru |
+| Indeks unik absensi per karyawan per hari | `0054` | Sengaja dipisah dari `0053` karena bisa GAGAL bila data lama punya duplikat, dan kegagalannya akan ikut membatalkan pengerasan `clock_in` |
+| `membership_outlets` tidak boleh kosong | `0057` | `auth_outlet_ids()` gagal-tertutup: kosong = tidak melihat cabang mana pun |
+
+### RPC baru / berubah tanda tangan
+
+| RPC | Migrasi | Yang dilakukan |
+|---|---|---|
+| `settle_service` | `0061`, `0062` | Status + biaya final + riwayat + uang dalam SATU transaksi; menerima `p_final_cost`, lalu `p_refund_amount`/`p_refund_wallet_id` untuk kelebihan DP |
+| `correct_service_cost` | `0063` | Membukukan SELISIHNYA saja, hari ini; pelunasan lama tidak disentuh |
+| `service_summary` | `0063` | Angka Servis/Dashboard + papan teknisi dihitung server, bukan dari daftar terpotong 1000 tiket |
+| `update_service_parts` | `0064` | Daftar sparepart + selisih stok dalam satu transaksi; selisih dihitung server dari baris `deducted`, baris inventori dikunci |
+| `claim_warranty` | `0064`, `0065` | Klaim garansi atomik, memilih BAGIAN yang diklaim (jasa dan/atau part) dan hanya yang masih berlaku |
+| `delete_finance_entry` | `0068` | Hapus transaksi keuangan atomik; aturan pembalikan berbeda per jenis baris (pelunasan / DP / selisih koreksi / refund koreksi) |
+| `track_service` | `0050`, `0060` | Menambah `publicNote` toko, lalu `part_warranties` (hanya nama part + tanggal akhir garansi — harga TIDAK pernah ikut) |
+| `clock_in` / `clock_out` | `0053` | Zona waktu WIB (bukan `now()` polos yang UTC), dan penjagaan yang sebelumnya hanya ada di policy kini ikut di dalam RPC |
+
+### Trigger penegak
+
+- **`0058` riwayat append-only** — `history` ditandai append-only sejak `0001` tapi tak pernah
+  ditegakkan. Trigger menggabungkan: riwayat lama selalu dipertahankan, hanya entri baru yang
+  ditambahkan di belakang. Menutup dua hal sekaligus: perangkat kedua yang menimpa entri perangkat
+  pertama, dan anggota yang mengganti jejak audit lewat REST.
+- **`0065` Lunas/Batal owner/admin-only** — ditegakkan di database, bukan hanya di aplikasi. RPC
+  `security definer` tetap membawa `auth.uid()` pemanggil sehingga RPC-nya ikut tertolak tanpa
+  ditulis ulang. Service role (`auth.uid()` null — backup/restore, skrip admin) lolos.
+- **`0066` stok yang "dipegang" tiket** — membandingkan qty baris `deducted` per item sebelum &
+  sesudah. Bagi karyawan, perubahan itu hanya boleh terjadi di dalam `update_service_parts`, ditandai
+  variabel transaksi-lokal `fixmaster.parts_rpc`.
+- **`0056` absensi owner-only** — `is_org_manager()` (yang mencakup admin) diganti pemeriksaan owner.
+
+### `set search_path` di seluruh fungsi definer (`0055`)
+
+Standar proyek sejak `0045`: `set search_path = public, pg_temp` pada setiap `security definer`.
+Audit menemukan aturan itu hanya berlaku dari `0045` ke atas — **64 dari 70 fungsi** tidak
+memilikinya, termasuk `process_sale`, `settle_service`, `apply_payment`, `claim_invite`, dan
+`track_service`. `0055` menutup semuanya sekaligus. Fungsi definer baru WAJIB menyertakannya.
+
+### Auto-backup (`0051`–`0052`)
+
+Bucket privat `org-backups`, path `{orgId}/auto-<ISO>.json` — segmen folder pertama dipakai RLS
+sebagai `org_id`, konvensi sama dengan `org-logos` (`0014`). Isi file memakai format `BackupFile` v1
+yang sudah ada, jadi hasilnya bisa di-restore lewat jalur manual. Pemicunya `pg_cron` + `pg_net` ke
+Edge Function, karena **aplikasi web tidak bisa menjalankan tugas terjadwal saat ditutup**. Dua
+langkah manual (secret `BACKUP_CRON_SECRET` + penjadwalan) dicatat di kepala `0052`. Klien membacanya
+lewat [`src/data/cloudBackup.ts`](src/data/cloudBackup.ts).
+
 ## Penegakan server menyeluruh (migrasi `0069`–`0079`)
 
 Hasil audit logika bisnis lima menu. Prinsipnya: **server menegakkan, klien mencerminkan

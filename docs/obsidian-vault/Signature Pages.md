@@ -338,6 +338,21 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
   browser berbahasa Inggris). `Check Out` memakai aksi secondary—bukan danger—karena
   menyelesaikan shift bukan tindakan destruktif.
 
+- **Rekap per RENTANG, bukan per bulan (4 Sep 2026).** Periode gaji toko jarang jatuh persis
+  tanggal 1 sampai akhir bulan; 26–25 dan per-dua-minggu sama umumnya. Selektor bulan diganti
+  rentang bebas (`Dari`/`Sampai`) dengan pintasan Bulan ini / Bulan lalu / 7 hari. Rekap DAN riwayat
+  mengikuti rentang yang sama.
+- **Riwayat bisa difilter per karyawan (5 Sep 2026).**
+- **Absensi jadi owner-only (`0056`, 5 Sep 2026).** Halaman ini sengaja TIDAK memakai `isManager()`.
+  Rekap jam kerja seluruh tim adalah dasar perhitungan upah sekaligus potret siapa yang sering
+  telat — itu milik **pemilik**, bukan siapa pun yang kebetulan berperan manager. Admin melihat
+  barisnya sendiri. Sebelumnya batas ini hanya ada di layar; `0056` menjadikannya batas sungguhan
+  di database. Lihat [[Decisions & Bug Fixes]].
+- **Jam kerja tidak bisa dikarang (`0053`–`0054`, 3 Sep 2026).** Clock-in/out lewat RPC yang kini
+  memakai jam server WIB (bukan `now()` polos yang UTC), penjagaan "hanya diri sendiri atau owner"
+  ikut masuk ke dalam RPC, dan satu baris per karyawan per hari dijamin indeks unik — termasuk
+  terhadap REST langsung dan balapan dua perangkat.
+
 ![[att-dark.png]]
 
 ## Daftar Servis — Repair Job Cards
@@ -372,6 +387,14 @@ Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih
 
 ![[modal-profit-table-dark.png]]
 
+- **Penanganan wajib, kolom yang bisa diatur, filter & tiga tampilan (6 Sep 2026).** Catatan
+  penanganan wajib diisi saat status → Selesai, dan kini disimpan di kolomnya sendiri
+  (`services.completion_note`, `0059`) supaya bisa tampil di tabel tanpa memuat ulang `history`
+  tiap tiket. Kolom tabel bisa dipilih pemilik (tersinkron di baris organisasi); tiga mode tampilan.
+- **Daftar servis tidak lagi memuat `history` (`0058`, 6 Sep 2026).** Kolom itu menyumbang **±78%
+  ukuran tiap baris** — sumber egress terbesar di produk. Daftar memakai `SERVICE_LIST_COLUMNS`;
+  **kolom baru WAJIB ikut ditambahkan ke sana**, dijaga tes integrasi tier3e.
+
 ## Detail Servis — Repair Ticket
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
@@ -387,6 +410,14 @@ Fitur tambahan (revisi Fase 4):
 - **Toggle "Sudah Diambil"** — menandai barang sudah diambil pelanggan, terpisah dari status pembayaran; indikator status ambil tampil di header. **Tombol kini khusus owner/admin** (16 Jun 2026) — karyawan tetap melihat indikator, tapi tak bisa men-toggle. Aksi sama tersedia sebagai aksi cepat di Daftar Servis.
 - **Garansi saat "selesai"** — saat status → `selesai`, StatusModal menampilkan input lama garansi **Jasa** & **Sparepart** (hari), wajib minimal salah satu, prefill default dari Pengaturan. **Chip template (revisi 22 Jun 2026)**: tiap field punya baris chip **angka hari** sendiri (`7 · 14 · 30`) yang mengisi field di atasnya — konteks Jasa/Sparepart dari label field, bukan teks chip (dulu 6 tombol "Jasa 7h / Part 14h" yang ramai). Menghasilkan `warrantyServiceUntil` & `warrantyPartsUntil` terpisah (tampil dua baris di header detail).
 - **Tombol "Klaim Garansi"** — muncul hanya pada tiket `lunas` yang masih dalam masa garansi → membuka [[Data Layer|tiket klaim tertaut]] gratis lewat `WarrantyClaimModal`, dengan opsi catat kerugian garansi manual.
+  - **Klaim per BAGIAN (`0064`–`0065`, 14–17 Sep 2026).** Modal memilih bagian yang diklaim (jasa
+    dan/atau sparepart tertentu), dan hanya bagian yang garansinya masih berlaku. Server
+    memvalidasi ulang pilihan itu; seluruh klaim ditulis dalam satu transaksi, bukan beberapa
+    langkah klien. Klaim lama diisi mundur (`0068`).
+  - **Garansi ditetapkan PER SPAREPART saat tiket Selesai** (`warrantyDays`/`warrantyUntil` di dalam
+    JSONB `services.spareparts`, tanpa kolom baru), dengan isian awal dari garansi bawaan item
+    inventori (`inventory_items.warranty_days`, `0067`). Halaman lacak publik menampilkan nama part
+    + tanggal akhir garansinya saja — harga TIDAK pernah ikut (`0060`).
 
 Fitur tambahan (profit per unit — revisi 11 Jun 2026):
 - **Panel SPAREPART · BOM** punya dua tombol: **"+ Sparepart"** (buka `SparepartPickerModal` — pilih item inventory + qty, idiom bench: LED stok, SKU mono) dan **"+ Modal Dadakan"** (form inline: keterangan + nominal + **dropdown wallet**). Tiap baris bisa dihapus (ikon trash); baris **modal dadakan** juga bisa **diedit** (ikon pensil, hover brand) — form yang sama terbuka pra-isi dengan label "Perbarui Modal".
