@@ -2711,3 +2711,47 @@ memblokir aksi.
 Verifikasi: build + lint + 628 test hijau; halaman detail servis dibuka dari
 daftar dan halaman Inventori beserta alur hapusnya diuji di `/demo` tanpa error
 konsol.
+
+## Verifikasi migrasi tanpa API: SQL langsung (23 Sep 2026)
+
+`0080` dan `0081` diterapkan ke staging DAN produksi **selagi organisasi Supabase
+restricted**. Kuncinya: restriksi menyasar **API gateway**, bukan Postgres —
+terbukti karena `pg_dump` berhasil lewat Session pooler. `supabase db push` tidak
+bisa dipakai (butuh Docker), jadi `psql -f` langsung.
+
+Selalu dengan `-v ON_ERROR_STOP=1 -1`: satu transaksi, berhenti di error pertama.
+Kegagalan tidak meninggalkan skema setengah jadi.
+
+### Pelajaran: `CREATE FUNCTION` berhasil TIDAK berarti fungsinya benar
+- `language sql` (`nav_counts`) **divalidasi** Postgres saat dibuat, jadi
+  `CREATE FUNCTION` yang lolos sudah membuktikan nama kolomnya benar.
+- `language plpgsql` (trigger `0080`) **tidak** — badannya baru diperiksa saat
+  dijalankan. Jadi logika pengisian `completed_at` masih nol bukti setelah
+  migrasi "berhasil".
+
+Diuji dengan menambahkan entri "selesai" ke satu tiket di dalam transaksi yang
+di-`rollback` — membuktikan trigger bekerja tanpa mengubah data.
+
+### Pelajaran: migrasi bisa berhasil tapi hasilnya salah
+`ON_ERROR_STOP` + transaksi hanya menangkap kegagalan, bukan backfill yang
+diam-diam mengisi nol baris. Karena itu tiap migrasi diikuti query pembanding:
+
+| Pemeriksaan | Staging | Produksi |
+|---|---|---|
+| `completed_at` terisi / punya entri selesai | 36 / 36, terlewat **0** | 282 / 282, terlewat **0** |
+| Filter nomor HP menemukan pelanggannya sendiri | — | **285 / 285**, gagal **0** |
+| `nav_counts` vs hitung manual | — | identik di 5 kolom |
+
+Pemeriksaan filter nomor HP menjalankan ulang logika `phoneVariants()` +
+`phoneLookupFilter()` **dalam SQL** terhadap seluruh pelanggan produksi. Itu
+menguji hal yang sama dengan `tier3g` tanpa butuh API, dan itulah yang membuat
+merge ke `main` bisa dipertanggungjawabkan: satu-satunya jalur yang bisa MERUSAK
+DATA terbukti terhadap data sungguhan.
+
+### Yang tetap belum terbukti
+`tier3f` dan `tier3g` belum pernah dijalankan — keduanya lewat supabase-js /
+PostgREST yang masih restricted. Verifikasi SQL di atas menguji LOGIKA, bukan
+jalur API: penyaringan RLS per organisasi, dan perilaku fungsi saat dipanggil
+sebagai pengguna terautentikasi alih-alih superuser. `nav_counts` sengaja
+SECURITY INVOKER supaya RLS yang membatasi org — justru bagian itu yang belum
+teruji. Jalankan keduanya lebih dulu begitu kuota pulih.
