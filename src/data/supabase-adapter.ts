@@ -13,6 +13,7 @@ import type {
 import type { ID, NavCounts } from './types';
 import { SERVICE_LIST_COLUMNS } from './types';
 import { serviceSearchFilter } from '@/lib/business/serviceFilters';
+import { customerSearchFilter, phoneLookupFilter } from '@/lib/business/customers';
 
 /** Map each repository collection to its Postgres table name. */
 const TABLE: Record<CollectionName, string> = {
@@ -339,6 +340,65 @@ export class SupabaseAdapter implements Repository {
     });
     if (error) throw error;
     return data as NavCounts;
+  }
+
+  /**
+   * Pencarian pelanggan di SERVER, menggantikan penarikan tabel penuh.
+   *
+   * `FULL_LIST` menarik seluruh tabel pelanggan karena dua alasan: kotak
+   * pencarian, dan pemeriksaan duplikat saat menyimpan servis. Keduanya kini
+   * jadi query bertarget.
+   *
+   * Filternya SENGAJA longgar — keputusan akhir tetap pada fungsi murni
+   * (`searchCustomers` untuk daftar, `findByPhone` untuk dedup), jadi aturan
+   * pencocokan tidak terduplikasi ke SQL. Untuk `phone`, longgar itu WAJIB
+   * mencakup bentuk 0 maupun 62 (lihat `phoneLookupFilter`): kekurangan cocok
+   * di sini berarti pelanggan ganda.
+   */
+  /**
+   * Berapa servis AKTIF yang memakai sparepart ini.
+   *
+   * Dipakai peringatan sebelum menghapus barang. Dulu halaman Inventori memuat
+   * SELURUH tabel servis hanya untuk menjawab ini — pada setiap kunjungan,
+   * padahal hapus adalah aksi yang jarang. Sekarang dihitung saat dibutuhkan,
+   * dengan `head: true` sehingga tidak ada baris yang dikirim sama sekali.
+   *
+   * `spareparts` adalah jsonb array; `contains` memakai operator `@>`, yang
+   * cocok bila ADA elemen memuat pasangan kunci ini.
+   */
+  async countActiveServicesUsingItem(itemId: string): Promise<number> {
+    const { count, error } = await this.client
+      .from(TABLE.services)
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', this.orgId)
+      .is('deleted_at', null)
+      .not('status', 'in', '("lunas","batal")')
+      .contains('spareparts', [{ itemId }]);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  async queryCustomers(opts: {
+    term?: string;
+    phone?: string;
+    limit: number;
+  }): Promise<EntityMap['customers'][]> {
+    const filter = opts.phone
+      ? phoneLookupFilter(opts.phone)
+      : customerSearchFilter(opts.term ?? '');
+    // Tanpa filter, jangan kembalikan seluruh tabel — itu justru yang dihindari.
+    if (!filter) return [];
+    const query = this.client
+      .from(TABLE.customers)
+      .select('*')
+      .eq('org_id', this.orgId)
+      .is('deleted_at', null)
+      .or(filter);
+    const { data, error } = await query.order('name', { ascending: true }).limit(opts.limit);
+    if (error) throw error;
+    return (data ?? []).map((r) =>
+      fromRow<EntityMap['customers']>(r as unknown as Record<string, unknown>),
+    );
   }
 
   async queryServices(opts: {

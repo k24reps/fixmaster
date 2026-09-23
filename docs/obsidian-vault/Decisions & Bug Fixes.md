@@ -2606,3 +2606,108 @@ tidak punya `navCounts`.
 sendiri (katalog, picker POS, pemilih sparepart). Rel nav sudah berhenti
 memicunya, tapi halaman-halaman itu masih menarik tabel penuh. Perbaikannya
 butuh pencarian sisi server berpola `queryServices()` dan menyentuh UI.
+
+## Egress: pelanggan keluar dari `FULL_LIST` (23 Sep 2026)
+
+Lanjutan `0080`/`0081`, tanpa migrasi — penting karena Supabase sedang restricted
+dan perubahan ini tetap bisa disiapkan.
+
+### Kenapa `FULL_LIST` ada, dan kenapa memotongnya SALAH
+Komentarnya di `supabase-adapter.ts` menulis sebabnya: terpotong 1000 baris,
+"Kasir tak menampilkan barang lama dan pelanggan lama tak ditemukan (lalu dibuat
+ganda)". Jadi memberi cap adalah cara menghidupkan kembali bug itu. Perbaikannya
+harus **pencarian sisi server**, bukan pemotongan.
+
+### Jebakan yang nyaris terlewat: ekuivalensi nomor HP
+`normalizePhone` memetakan awalan `62` → `0`, jadi "+62 812-3456" dan
+"0812 3456" adalah orang yang sama. Tapi database menyimpan nomor **mentah**,
+dan `ilike` bekerja pada string mentah itu — sehingga filter digit-berurutan
+untuk `08123456` **TIDAK** cocok dengan baris tersimpan "+62 812-3456" (tidak ada
+digit `0` di sana sama sekali).
+
+Untuk pencarian, meleset hanya menjengkelkan. Untuk dedup, meleset = **pelanggan
+ganda**. Karena itu `phoneVariants()` menghasilkan SEMUA bentuk yang
+normalisasinya sama (tepat dua: ber-0 dan ber-62), dan `phoneLookupFilter()`
+mencari keduanya. Kelebihan cocok tidak apa-apa; kekurangan cocok fatal.
+
+### Rancangan: server mempersempit, fungsi murni memutuskan
+Meniru `serviceSearchFilter`: filter server sengaja longgar, lalu
+`searchCustomers` (daftar saran) dan `findByPhone` (dedup) tetap yang
+memutuskan. Aturan pencocokan TIDAK diduplikasi ke SQL — hanya hidup di
+`lib/business/customers.ts`.
+
+### Yang berubah
+- `phoneVariants`, `phoneLookupFilter`, `customerSearchFilter` — fungsi murni, 9 test baru.
+- `SupabaseAdapter.queryCustomers({ term?, phone?, limit })`; tanpa filter ia
+  mengembalikan `[]`, bukan seluruh tabel.
+- `useCustomerSearch` — meniru bentuk `useServiceArchive` (tunda 300 ms, minimal
+  3 huruf, kunci di bawah `['collection','customers',…]`).
+- `ServiceModal` tidak lagi menerima prop `customers`; ia mencari sendiri, dan
+  dedup simpan memakai query bertarget per nomor.
+- `ServicesPage` + `ServiceDetailPage` **berhenti memuat tabel pelanggan sama
+  sekali** — keduanya hanya meneruskan prop itu.
+- `PosPage` memakai pencarian server; daftar lokal hanya untuk adapter lokal/demo.
+
+### Belum terverifikasi
+Jalur cloud belum pernah menyentuh database — Supabase restricted. Penjaganya
+`tests/integration/tier3g-customer-search.integration.test.ts`: menyimpan satu
+orang dengan EMPAT gaya penulisan nomor, lalu memastikan pencarian dengan bentuk
+apa pun menjaring semuanya. **Jalankan begitu staging pulih.** Jalur lokal/demo
+tidak berubah secara logika (`findByPhone` tetap menerima daftar penuh yang sama).
+
+### Masih terbuka
+- `CustomersPage` masih memuat tabel penuh — halaman penelusuran, butuh UI
+  paginasi tersendiri.
+- `inventory` dan `suppliers` masih `FULL_LIST`. Inventory lebih rumit: selain
+  picker (butuh pencarian), ia juga dipakai agregat di Dashboard, Laporan, dan
+  Supplier — itu jalur RPC, bukan pencarian.
+
+Verifikasi: build + lint + **628 test** (619 → +9) hijau; halaman Servis, Kasir,
+dan Pelanggan dirender di `/demo` tanpa error konsol.
+
+## Egress: dua halaman berhenti menarik tabel servis (23 Sep 2026)
+
+Setelah pelanggan, sasaran berikutnya DIALIHKAN dari `inventory` ke `services`
+berdasarkan bukti, bukan urutan daftar. Inventori ternyata paling terjerat
+(picker butuh pencarian, tapi Dashboard/Laporan/Supplier memakainya sebagai
+agregat) sekaligus paling kecil — katalog toko terbatas, sedangkan `services`
+adalah tabel terbesar dan ditarik utuh oleh dua halaman yang tidak memerlukannya.
+
+### `ServiceDetailPage` menarik seluruh tabel untuk SATU tiket
+`services.find((s) => s.id === id)` — dan tepat di bawahnya sudah ada jalur yang
+benar, `repository.get('services', id)`, tapi `enabled`-nya menunggu daftar penuh
+selesai dimuat dan gagal. Jadi membuka satu tiket lewat tautan langsung menarik
+seluruh tabel lebih dulu.
+
+Dibalik: baris tunggal diambil langsung, dan `useCollection('services')` diberi
+`enabled: false` — tetap membaca cache bila pengguna datang dari halaman Servis,
+tapi tidak pernah memicu pengambilan sendiri.
+
+**Yang harus diperiksa lebih dulu:** `ServiceModal` memakai
+`services.map(s => s.serviceNo)` untuk `nextDocNumber`. Daftar kosong berarti
+nomor ganda. Ternyata aman — migrasi `0061` memasang trigger `BEFORE INSERT`
+(security definer, di bawah advisory lock) yang memberi nomor berikutnya bila
+usulan klien bentrok. Daftar klien hanya PETUNJUK, bukan sumber kebenaran.
+Tanpa memeriksa itu, perubahan ini akan tampak berbahaya padahal tidak.
+
+### `InventoryPage` menarik seluruh tabel servis untuk satu toast
+Hanya untuk peringatan "dipakai di N servis aktif" saat menghapus barang — aksi
+yang jarang, peringatannya pun bersifat saran. Dibayar setiap kunjungan.
+
+Diganti `countActiveServicesUsingItem(itemId)`: `head: true` + `count: 'exact'`,
+jadi **tidak ada baris yang dikirim sama sekali**. Filternya memakai `contains`
+(operator jsonb `@>`) pada `spareparts`. Penghitungan dibungkus try/catch dan
+dialog konfirmasi tetap dibuka apa pun hasilnya — peringatan tidak boleh
+memblokir aksi.
+
+### Masih terbuka
+- `CustomersPage` dan `InventoryPage` masih memuat katalognya sendiri — itu
+  memang tugas halamannya, perbaikannya butuh UI paginasi.
+- `inventory` masih `FULL_LIST`. Picker (Kasir, SparepartPicker) bisa memakai
+  pencarian server seperti pelanggan, tapi Dashboard/Laporan/Supplier
+  memerlukannya sebagai agregat — itu jalur RPC, bukan pencarian, dan katalog
+  toko relatif kecil sehingga prioritasnya rendah.
+
+Verifikasi: build + lint + 628 test hijau; halaman detail servis dibuka dari
+daftar dan halaman Inventori beserta alur hapusnya diuji di `/demo` tanpa error
+konsol.

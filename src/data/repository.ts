@@ -133,6 +133,21 @@ export interface Repository {
    */
   navCounts?(): Promise<NavCounts>;
 
+  /**
+   * Cari pelanggan di server, alih-alih memuat seluruh tabel.
+   * - `term`: kotak pencarian (nama atau nomor).
+   * - `phone`: pemeriksaan duplikat sebelum membuat pelanggan baru.
+   * Hasilnya SUPERSET — penelepon tetap menyaring dengan `searchCustomers` /
+   * `findByPhone`. Adapter lokal tidak punya ini; daftarnya sudah lengkap.
+   */
+  /**
+   * Jumlah servis aktif yang memakai sparepart ini — untuk peringatan sebelum
+   * hapus. Adapter lokal tidak punya ini; daftarnya sudah di memori.
+   */
+  countActiveServicesUsingItem?(itemId: ID): Promise<number>;
+
+  queryCustomers?(opts: { term?: string; phone?: string; limit: number }): Promise<Customer[]>;
+
   queryServices?(opts: {
     term?: string;
     createdFrom?: string;

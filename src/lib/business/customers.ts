@@ -16,6 +16,56 @@ export function normalizePhone(phone: string): string {
  * Generic over the row: pelanggan dan supplier memakai aturan nomor yang sama,
  * dan yang satu tidak boleh punya salinan normalisasi sendiri.
  */
+/**
+ * Semua bentuk digit yang NORMALISASINYA sama dengan nomor ini.
+ *
+ * `normalizePhone` memetakan awalan `62` → `0`, jadi "+62 812-3456" dan
+ * "0812 3456" adalah orang yang sama. Database menyimpan nomor MENTAH, jadi
+ * pencarian sisi server harus mencari kedua bentuk itu — kalau tidak, ia gagal
+ * menemukan pelanggan yang sudah ada dan alur simpan membuat DUPLIKAT. Itu bug
+ * yang sama yang membuat `FULL_LIST` ada (lihat supabase-adapter.ts).
+ */
+export function phoneVariants(phone: string): string[] {
+  const norm = normalizePhone(phone);
+  if (!norm) return [];
+  // normalizePhone hanya mengenal satu penulisan ulang, jadi kelas ekuivalensinya
+  // tepat dua: bentuk ber-0, dan bentuk ber-62 yang memetakan ke sana.
+  return norm.startsWith('0') ? [norm, '62' + norm.slice(1)] : [norm];
+}
+
+/**
+ * Filter PostgREST `.or()` untuk mencari baris yang MUNGKIN cocok nomornya.
+ *
+ * Sengaja LONGGAR: digit dicocokkan berurutan (`%0%8%1%2%...`) karena nomor
+ * tersimpan dengan pemisah apa saja. Hasilnya bisa kelebihan cocok — itu
+ * disengaja. Keputusan akhir tetap milik `findByPhone`, yang membandingkan
+ * bentuk ternormalisasi secara utuh. Satu aturan, satu tempat.
+ *
+ * Yang TIDAK boleh terjadi adalah kekurangan cocok, karena itu berarti duplikat.
+ */
+export function phoneLookupFilter(phone: string, column = 'phone'): string | null {
+  const variants = phoneVariants(phone);
+  if (!variants.length) return null;
+  return variants.map((d) => `${column}.ilike."%${d.split('').join('%')}%"`).join(',');
+}
+
+/**
+ * Filter PostgREST `.or()` untuk kotak pencarian pelanggan: nama ATAU nomor.
+ * Sepadan dengan `matchesCustomer`, dan seperti di atas ia longgar — klien
+ * menyaring ulang hasilnya dengan `searchCustomers`.
+ */
+export function customerSearchFilter(term: string): string | null {
+  const clean = term.replace(/[,()*%"\\]/g, ' ').trim();
+  if (!clean) return null;
+  const filters = [`name.ilike."%${clean}%"`];
+  const digits = clean.replace(/\D/g, '');
+  if (digits.length >= 3) {
+    const byPhone = phoneLookupFilter(clean);
+    if (byPhone) filters.push(byPhone);
+  }
+  return filters.join(',');
+}
+
 export function findByPhone<T extends { id: string; phone: string }>(
   rows: readonly T[],
   phone: string,

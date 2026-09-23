@@ -37,6 +37,7 @@ import {
   type DiscountType,
 } from '@/lib/business/pos';
 import { searchCustomers } from '@/lib/business/customers';
+import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { printSaleReceipt } from './printSaleReceipt';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
@@ -48,7 +49,9 @@ export function PosPage() {
   const { data: wallets } = useCollection('wallets');
   const { data: sales, ...salesLoad } = useCollection('sales');
   const { data: outlets } = useCollection('outlets');
-  const { data: customers } = useCollection('customers');
+  // Pelanggan dicari di server; daftar lokal hanya untuk adapter lokal/demo.
+  const serverSearch = !!repository.queryCustomers;
+  const { data: customers } = useCollection('customers', { enabled: !serverSearch });
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
   const orgId = org?.id ?? '';
@@ -80,7 +83,12 @@ export function PosPage() {
     [sales],
   );
 
-  const custMatches = useMemo(() => searchCustomers(customers, custQuery), [customers, custQuery]);
+  const remoteCustomers = useCustomerSearch({ enabled: true, term: custQuery });
+  // `searchCustomers` tetap yang memutuskan — server hanya mempersempit kandidat.
+  const custMatches = useMemo(
+    () => searchCustomers(serverSearch ? remoteCustomers : customers, custQuery),
+    [serverSearch, remoteCustomers, customers, custQuery],
+  );
 
   // Void a sale (manager-only). Cloud → atomic RPC; local → mirror the
   // reversal (restore stock, reverse wallet, delete linked income, mark void).

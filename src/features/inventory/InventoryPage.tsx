@@ -40,7 +40,12 @@ function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
 export function InventoryPage() {
   const [searchParams] = useSearchParams();
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
-  const { data: services } = useCollection('services');
+  // Servis hanya dipakai untuk peringatan "dipakai di N servis aktif" saat
+  // menghapus barang — aksi yang jarang. Di cloud itu dihitung server saat
+  // dibutuhkan, jadi halaman ini berhenti menarik seluruh tabel servis tiap
+  // dikunjungi. Adapter lokal tetap memakai daftar di memori.
+  const serverCount = !!repository.countActiveServicesUsingItem;
+  const { data: services } = useCollection('services', { enabled: !serverCount });
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
@@ -110,11 +115,26 @@ export function InventoryPage() {
     }
   };
 
-  const requestDelete = (item: InventoryItem) => {
+  const requestDelete = async (item: InventoryItem) => {
     // Dependency warning: used in an active service?
-    const usedIn = services.filter(
-      (s) => !['lunas', 'batal'].includes(s.status) && s.spareparts.some((sp) => sp.itemId === item.id),
-    ).length;
+    // Peringatan ini bersifat SARAN — dialog konfirmasi tetap dibuka apa pun
+    // hasilnya, termasuk bila penghitungan gagal.
+    const countUsage = () =>
+      repository.countActiveServicesUsingItem
+        ? repository.countActiveServicesUsingItem(item.id)
+        : Promise.resolve(
+            services.filter(
+              (s) =>
+                !['lunas', 'batal'].includes(s.status) &&
+                s.spareparts.some((sp) => sp.itemId === item.id),
+            ).length,
+          );
+    let usedIn: number;
+    try {
+      usedIn = await countUsage();
+    } catch {
+      usedIn = 0;
+    }
     if (usedIn > 0) {
       toast.warning(`"${item.name}" dipakai di ${usedIn} servis aktif — periksa dulu.`);
     }

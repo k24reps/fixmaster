@@ -6,6 +6,9 @@ import {
   matchesCustomer,
   searchCustomers,
   customerServiceStats,
+  phoneVariants,
+  phoneLookupFilter,
+  customerSearchFilter,
 } from './customers';
 import type { Customer } from '@/data/types';
 
@@ -111,5 +114,69 @@ describe('searchCustomers', () => {
   });
   it('respects the limit', () => {
     expect(searchCustomers(list, 'andi', 1)).toHaveLength(1);
+  });
+});
+
+describe('phoneVariants / phoneLookupFilter', () => {
+  it('menghasilkan kedua bentuk yang normalisasinya sama', () => {
+    expect(phoneVariants('0812 3456')).toEqual(['08123456', '628123456']);
+    expect(phoneVariants('+62 812-3456')).toEqual(['08123456', '628123456']);
+  });
+
+  it('kedua penulisan menghasilkan varian yang identik', () => {
+    // Inilah syarat anti-duplikat: dua cara menulis nomor yang sama HARUS
+    // menghasilkan himpunan pencarian yang sama, apa pun bentuk simpanannya.
+    expect(phoneVariants('+62 812-3456')).toEqual(phoneVariants('0812 3456'));
+  });
+
+  it('filter mencakup bentuk 0 DAN 62, bukan salah satu', () => {
+    const f = phoneLookupFilter('08123456') ?? '';
+    expect(f).toContain('%0%8%1%2%3%4%5%6%');
+    expect(f).toContain('%6%2%8%1%2%3%4%5%6%');
+  });
+
+  it('nomor kosong tidak menghasilkan filter', () => {
+    expect(phoneLookupFilter('')).toBeNull();
+    expect(phoneLookupFilter('-')).toBeNull();
+    expect(phoneVariants('')).toEqual([]);
+  });
+
+  it('filter longgar tetap mencakup nomor yang tersimpan dengan pemisah', () => {
+    // Simulasi ilike: pola digit berurutan harus cocok dengan string mentah.
+    const toRegExp = (pattern: string) =>
+      new RegExp('^' + pattern.replace(/%/g, '.*') + '$', 'i');
+    const variants = phoneVariants('0812 3456');
+    const stored = ['0812-3456', '+62 812 3456', '628123456', '0812.3456'];
+    for (const s of stored) {
+      const hit = variants.some((v) => toRegExp('%' + v.split('').join('%') + '%').test(s));
+      expect(hit, `tersimpan sebagai "${s}" harus ikut tercakup`).toBe(true);
+    }
+  });
+});
+
+describe('customerSearchFilter', () => {
+  it('mencari berdasarkan nama', () => {
+    expect(customerSearchFilter('Budi')).toContain('name.ilike."%Budi%"');
+  });
+
+  it('kueri angka ikut mencari nomor dalam kedua bentuk', () => {
+    const f = customerSearchFilter('0812345') ?? '';
+    expect(f).toContain('name.ilike.');
+    expect(f).toContain('phone.ilike.');
+    expect(f).toContain('%6%2%8%1%2%3%4%5%');
+  });
+
+  it('membuang karakter yang merusak sintaks or()', () => {
+    const f = customerSearchFilter('a,b(c)*d%e"f') ?? '';
+    // Ambil isi pola, lalu lepas `%` pembungkusnya — itu milik sintaks ilike,
+    // bukan sisa masukan pengguna.
+    const inner = (f.split('name.ilike."')[1] ?? '').split('"')[0].replace(/^%|%$/g, '');
+    for (const ch of [',', '(', ')', '*', '%', '"', '\\']) {
+      expect(inner, `karakter ${ch} lolos ke pola`).not.toContain(ch);
+    }
+  });
+
+  it('kueri kosong tidak menghasilkan filter', () => {
+    expect(customerSearchFilter('   ')).toBeNull();
   });
 });

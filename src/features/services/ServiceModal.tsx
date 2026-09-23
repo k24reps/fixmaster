@@ -9,6 +9,7 @@ import { getCategories, getComplaintTemplates, getAccessoryTemplates } from '@/c
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { trackEvent } from '@/lib/analytics';
@@ -21,7 +22,6 @@ interface ServiceModalProps {
   onClose: () => void;
   editing: Service | null;
   services: Service[];
-  customers: Customer[];
   employees: Employee[];
   onSaved: () => void;
 }
@@ -31,13 +31,19 @@ export function ServiceModal({
   onClose,
   editing,
   services,
-  customers,
   employees,
   onSaved,
 }: ServiceModalProps) {
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
   const { data: outlets } = useCollection('outlets');
+  // Pelanggan tidak lagi dimuat utuh. Di cloud, kotak saran dan pemeriksaan
+  // duplikat memakai query bertarget; adapter lokal tetap memakai daftar penuh
+  // karena di sana tidak ada ongkos egress. `enabled: false` membuat hook ini
+  // TIDAK memicu pengambilan di cloud, tapi tetap membaca cache bila halaman
+  // lain kebetulan sudah memuatnya.
+  const serverSearch = !!repository.queryCustomers;
+  const { data: localCustomers } = useCollection('customers', { enabled: !serverSearch });
   const categories = getCategories();
   const complaintTemplates = getComplaintTemplates();
   const accessoryTemplates = getAccessoryTemplates();
@@ -76,9 +82,16 @@ export function ServiceModal({
     ...employees.map((e) => ({ value: e.id, label: e.name })),
   ];
 
+  const suggestTerm = suggestField === 'name' ? customerName : customerPhone;
+  const remoteMatches = useCustomerSearch({
+    enabled: !editing && !!suggestField,
+    term: suggestTerm,
+  });
+  // `searchCustomers` tetap yang memutuskan — server hanya mempersempit
+  // kandidat, jadi aturan pencocokan tidak terduplikasi ke SQL.
   const suggestions =
     !editing && suggestField
-      ? searchCustomers(customers, suggestField === 'name' ? customerName : customerPhone)
+      ? searchCustomers(serverSearch ? remoteMatches : localCustomers, suggestTerm)
       : [];
 
   const pickCustomer = (c: Customer) => {
@@ -138,7 +151,13 @@ export function ServiceModal({
 
     try {
       // Link or create the customer by phone.
-      let customer = findByPhone(customers, customerPhone);
+      // Kandidat diambil bertarget per nomor. Filternya longgar dan mencakup
+      // bentuk 0 maupun 62 (phoneLookupFilter) — kekurangan cocok di sini
+      // berarti pelanggan GANDA, bug yang membuat FULL_LIST ada.
+      const candidates = repository.queryCustomers
+        ? await repository.queryCustomers({ phone: customerPhone, limit: 50 })
+        : localCustomers;
+      let customer = findByPhone(candidates, customerPhone);
       if (!customer) {
         customer = {
           id: newId(),

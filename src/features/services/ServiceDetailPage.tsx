@@ -58,8 +58,11 @@ export function ServiceDetailPage() {
   const t = useT();
   const { fmtMoney, fmtDate, fmtDateTime } = useFormat();
 
-  const { data: services, loading: servicesLoading } = useCollection('services');
-  const { data: customers } = useCollection('customers');
+  // Halaman ini hanya butuh SATU tiket. Daftar penuh dibaca bila KEBETULAN sudah
+  // ada di cache (mis. pengguna datang dari halaman Servis), tapi `enabled: false`
+  // membuatnya tidak pernah MEMICU pengambilan — dulu membuka satu tiket lewat
+  // tautan langsung menarik seluruh tabel servis hanya untuk mencari satu baris.
+  const { data: services } = useCollection('services', { enabled: false });
   const { data: wallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const org = useSessionStore((s) => s.org);
@@ -89,13 +92,14 @@ export function ServiceDetailPage() {
   const oneQuery = useQuery({
     queryKey: ['collection', 'services', 'one', id],
     queryFn: () => repository.get('services', id ?? ''),
-    enabled: !!id && !servicesLoading && !listed,
+    // Tidak lagi menunggu daftar selesai dimuat — barisnya diambil langsung.
+    enabled: !!id && !listed,
   });
   const service = listed ?? oneQuery.data ?? null;
   const history = useServiceHistory(service);
 
   if (!service) {
-    if (servicesLoading || oneQuery.isFetching) return null;
+    if (oneQuery.isPending || oneQuery.isFetching) return null;
     return (
       <div className={styles.notFound}>
         <span className={styles.nfCode}>404</span>
@@ -845,7 +849,6 @@ export function ServiceDetailPage() {
         onClose={() => setEditOpen(false)}
         editing={service}
         services={services}
-        customers={customers}
         employees={sessionEmployees}
         onSaved={() => {}}
       />

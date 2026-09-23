@@ -63,7 +63,6 @@ const PAGE_SIZE = 50;
 export function ServicesPage() {
   const [searchParams] = useSearchParams();
   const { data: services, loading } = useCollection('services');
-  const { data: customers } = useCollection('customers');
   const { data: employees } = useCollection('employees');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const techs = employees.length ? employees : sessionEmployees;
@@ -859,7 +858,6 @@ export function ServicesPage() {
         onClose={() => setEditOpen(false)}
         editing={editing}
         services={services}
-        customers={customers}
         employees={techs}
         onSaved={() => {}}
       />
