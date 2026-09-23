@@ -19,32 +19,41 @@
   --brand-900: #7c4d12;
 
   /* ---------- Accent (Diagnostic Cyan) ---------- */
-  --accent-400: #5fe6d4;
+  --accent-400: #5ce9e6;
   --accent-500: #3dd9c4;
-  --accent-600: #1fb3a0;
+  --accent-600: #17a396;
   --accent-700: #0b766d;
 
-  /* ---------- Semantic ---------- */
-  --green-400: #34d399;
-  --green-500: #10b981;
-  --green-600: #059669;
-  --amber-400: #fbbf24;
-  --amber-500: #f59e0b;
-  --amber-600: #d97706;
-  --red-400: #f87171;
-  --red-500: #ef4444;
-  --red-600: #dc2626;
-  --blue-400: #60a5fa;
-  --blue-500: #3b82f6;
-  --violet-500: #8b5cf6;
-  --pink-500: #ec4899;
+  /* ---------- Semantic ----------
+     Setiap rona dijaga berjarak dari rona di sebelahnya, karena `STATUS_TONE`
+     (lib/business/services.ts) memetakan 8 status servis ke hanya 5 rona —
+     jadi rona yang berdekatan langsung menjadi status yang tak terbedakan. */
+  /* Hijau sinyal — terverifikasi, lunas, selesai. */
+  --green-400: #3fdd9e;
+  --green-500: #0fba7f;
+  --green-600: #077a52;
+  /* Oranye peringatan. SENGAJA digeser jauh dari emas brand: sebelumnya
+     #f59e0b vs brand #f5a623 praktis warna yang sama, sehingga "Konfirmasi
+     Biaya" dan "Tunggu Sparepart" tak bisa dibedakan dari "Diterima". */
+  --amber-400: #ff8a3d;
+  --amber-500: #f96d0c;
+  --amber-600: #c14d00;
+  /* Merah alarm. */
+  --red-400: #ff8098;
+  --red-500: #e62a52;
+  --red-600: #bb0f3f;
+  --red-700: #9a0b34;
+  /* Biru sinyal condong periwinkle, dijauhkan dari cyan aksen. */
+  --blue-400: #86aaff;
+  --blue-500: #4a7cf7;
+  --blue-600: #2a5ad8;
   --on-solid: #ffffff;
   --paper: #ffffff;
   --readout-base: #090b0e;
   --readout-surface: #12161d;
   --readout-text: #f1f4f8;
   --readout-muted: #8b97a6;
-  --readout-muted-2: #6b7787;
+  --readout-muted-2: #7a8494;
   --readout-soft: #cfd6e0;
   /* VOLT Probe keeps the same physical materials in both app themes. */
   --volt-shell: #15191f;
@@ -142,23 +151,30 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg-base: #0b0d10;
-  --bg-app: #111419;
-  --bg-surface: #191d23;
-  --bg-surface-2: #20252c;
-  --bg-elevated: #252b33;
-  --bg-input: #14181e;
-  --bg-hover: rgba(255, 255, 255, 0.04);
+  /* Graphite tengah malam, bukan abu netral. Rona baja (~218deg) dipertahankan
+     di seluruh tumpukan supaya emas brand duduk sebagai komplemen dan benar-
+     benar menyala, bukan menempel di atas abu mati. */
+  --bg-base: #070a11;
+  --bg-app: #0e131d;
+  --bg-surface: #161c28;
+  --bg-surface-2: #1d2430;
+  --bg-elevated: #252d3b;
+  --bg-input: #111825;
+  --bg-hover: rgba(255, 255, 255, 0.055);
 
-  --surface-glass: rgba(25, 29, 35, 0.76);
-  --surface-glass-strong: rgba(17, 20, 25, 0.92);
+  --surface-glass: rgba(22, 28, 40, 0.78);
+  --surface-glass-strong: rgba(14, 19, 29, 0.93);
 
-  --text-primary: #f1f3f6;
-  --text-secondary: #a7b0bc;
-  --text-muted: #8290a0;
+  --text-primary: #f1f3f7;
+  --text-secondary: #a8b2c1;
+  --text-muted: #8391a4;
   --text-inverse: #14171c;
   /* Text rendered on top of the amber brand color (always dark). */
   --on-brand: #1a1205;
+  /* Tinta di atas isian sinyal. Nilainya berbalik antar tema karena isiannya
+     ikut berbalik: di sini success terang (#0fba7f) sehingga butuh tinta gelap
+     (putih cuma 2.5:1), sedangkan di tema terang success justru gelap. */
+  --on-signal: #07160f;
 
   --border: rgba(255, 255, 255, 0.075);
   --border-strong: rgba(255, 255, 255, 0.145);
@@ -170,30 +186,30 @@
   --brand-soft: rgba(245, 166, 35, 0.15);
   --accent: var(--accent-500);
   --accent-text: var(--accent-400);
-  --accent-soft: rgba(61, 217, 196, 0.14);
+  --accent-soft: rgba(61, 217, 196, 0.17);
   --success: var(--green-500);
   --success-text: var(--green-400);
-  --success-soft: rgba(16, 185, 129, 0.15);
+  --success-soft: rgba(15, 186, 127, 0.18);
   --warning: var(--amber-500);
   --warning-text: var(--amber-400);
-  --warning-soft: rgba(245, 158, 11, 0.15);
+  --warning-soft: rgba(249, 109, 12, 0.18);
   --danger: var(--red-500);
   --danger-text: var(--red-400);
-  --danger-soft: rgba(239, 68, 68, 0.15);
+  --danger-soft: rgba(230, 42, 82, 0.18);
   --info: var(--blue-500);
   --info-text: var(--blue-400);
-  --info-soft: rgba(59, 130, 246, 0.15);
+  --info-soft: rgba(74, 124, 247, 0.18);
 
-  /* Faint PCB / blueprint grid line tint. */
-  --grid-line: rgba(255, 255, 255, 0.022);
+  /* Faint PCB / blueprint grid line tint — biru cetak-biru, bukan putih. */
+  --grid-line: rgba(150, 190, 255, 0.032);
 
   /* App-shell chassis: sidebar/control-deck surfaces. */
-  --rail-bg: #15191f;
-  --rail-well: #101318;
-  --rail-panel: #1d2229;
-  --rail-control: #12161c;
+  --rail-bg: #121826;
+  --rail-well: #0b1019;
+  --rail-panel: #1a2130;
+  --rail-control: #0e1420;
   --rail-divider: rgba(255, 255, 255, 0.12);
-  --rail-active: rgba(245, 166, 35, 0.16);
+  --rail-active: rgba(245, 166, 35, 0.18);
   --rail-shadow: 0 6px 8px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   --gradient-brand: linear-gradient(135deg, #f5a623, #e8920c);
@@ -217,67 +233,71 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg-base: #d7dee4;
-  --bg-app: #e9edf0;
-  --bg-surface: #fbfcfd;
-  --bg-surface-2: #e1e7eb;
+  /* Netral hangat bersaturasi rendah (~35deg), bukan krem. Sebelumnya rona
+     dingin 205deg yang membuat layar terang terbaca klinis; kehangatan tipis
+     ini yang membuat sesi panjang terasa nyaman tanpa menggeser identitas. */
+  --bg-base: #dfddd8;
+  --bg-app: #f0eeea;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #e8e5e0;
   --bg-elevated: #ffffff;
-  --bg-input: #edf1f4;
-  --bg-hover: rgba(20, 35, 48, 0.07);
+  --bg-input: #f4f2ed;
+  --bg-hover: rgba(60, 46, 25, 0.07);
 
-  --surface-glass: rgba(251, 252, 253, 0.88);
+  --surface-glass: rgba(255, 255, 255, 0.89);
   --surface-glass-strong: rgba(255, 255, 255, 0.96);
 
-  --text-primary: #131a22;
-  --text-secondary: #3f4d5b;
-  --text-muted: #526170;
+  --text-primary: #17191d;
+  --text-secondary: #43474d;
+  --text-muted: #54585f;
   --text-inverse: #ffffff;
   --on-brand: #1a1205;
+  --on-signal: #ffffff;
 
-  --border: rgba(20, 35, 48, 0.16);
-  --border-strong: rgba(20, 35, 48, 0.27);
+  --border: rgba(60, 46, 25, 0.17);
+  --border-strong: rgba(60, 46, 25, 0.29);
   --border-brand: rgba(184, 109, 0, 0.58);
 
-  --brand: #d9820a;
+  --brand: #cf7c08;
   --brand-hover: #8a5200;
   --brand-text: var(--brand-900);
-  --brand-soft: rgba(217, 130, 10, 0.16);
+  --brand-soft: rgba(207, 124, 8, 0.18);
   --accent: var(--accent-600);
-  --accent-text: #08645d;
-  --accent-soft: rgba(31, 179, 160, 0.16);
+  --accent-text: #055f72;
+  --accent-soft: rgba(31, 179, 160, 0.18);
   --success: var(--green-600);
-  --success-text: #036b4e;
-  --success-soft: rgba(16, 185, 129, 0.15);
+  --success-text: #0c5a28;
+  --success-soft: rgba(15, 186, 127, 0.18);
   --warning: var(--amber-600);
-  --warning-text: #8f5100;
-  --warning-soft: rgba(245, 158, 11, 0.16);
+  --warning-text: #661f0e;
+  --warning-soft: rgba(249, 109, 12, 0.18);
   --danger: var(--red-600);
-  --danger-text: #b91c1c;
-  --danger-soft: rgba(239, 68, 68, 0.13);
-  --info: var(--blue-500);
-  --info-text: #1d4ed8;
-  --info-soft: rgba(59, 130, 246, 0.13);
+  --danger-text: #ab1730;
+  --danger-soft: rgba(230, 42, 82, 0.15);
+  --info: var(--blue-600);
+  --info-text: #2450c4;
+  --info-soft: rgba(74, 124, 247, 0.15);
 
-  --grid-line: rgba(20, 35, 48, 0.055);
+  --grid-line: rgba(60, 46, 25, 0.06);
 
-  /* Bright-workshop chassis: cool anodized steel, not pale office paper. */
-  --rail-bg: #f3f6f8;
-  --rail-well: #e3e9ed;
-  --rail-panel: #fafbfc;
+  /* Bright-workshop chassis: anodized steel under warm shop lighting. */
+  --rail-bg: #f6f4f0;
+  --rail-well: #e9e6e0;
+  --rail-panel: #fdfcfa;
   --rail-control: #ffffff;
-  --rail-divider: rgba(20, 35, 48, 0.22);
-  --rail-active: #ffefd2;
-  --rail-shadow: 0 6px 8px rgba(20, 35, 48, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --rail-divider: rgba(60, 46, 25, 0.22);
+  --rail-active: #ffeccd;
+  --rail-shadow: 0 6px 8px rgba(62, 48, 28, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   --gradient-brand: linear-gradient(135deg, #e8920c, #d9820a);
   --gradient-brand-accent: linear-gradient(135deg, #e8920c, #1fb3a0);
   --gradient-sheen: linear-gradient(135deg, rgba(245, 166, 35, 0.06), rgba(255, 255, 255, 0));
 
-  --shadow-sm: 0 2px 4px rgba(20, 35, 48, 0.12);
-  --shadow-md: 0 6px 8px rgba(20, 35, 48, 0.14);
-  --shadow-lg: 0 16px 28px rgba(20, 35, 48, 0.2);
+  --shadow-sm: 0 2px 4px rgba(62, 48, 28, 0.12);
+  --shadow-md: 0 6px 8px rgba(62, 48, 28, 0.14);
+  --shadow-lg: 0 16px 28px rgba(62, 48, 28, 0.2);
   --shadow-brand: 0 6px 20px rgba(217, 130, 10, 0.25);
-  --shadow-bench-tight: 0 6px 8px rgba(15, 22, 35, 0.1);
+  --shadow-bench-tight: 0 6px 8px rgba(62, 48, 28, 0.11);
   --shadow-brand-tight: 0 4px 8px rgba(217, 130, 10, 0.18);
 
   --focus-ring: var(--brand-800);

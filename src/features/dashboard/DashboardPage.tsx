@@ -294,8 +294,8 @@ export function DashboardPage() {
             <Metric label={t('dashboard.unfinished')} value={summary?.unfinished ?? 0} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} />
             {isMgr && (
               <>
-                <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} />
-                <Metric label={t('dashboard.expense')} value={fmtRpInline(kpis.expense)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-down" aria-hidden />} />
+                <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} flow="in" />
+                <Metric label={t('dashboard.expense')} value={fmtRpInline(kpis.expense)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-down" aria-hidden />} flow="out" />
                 <Metric label={t('dashboard.totalBalance')} value={fmtRpInline(kpis.totalWallet)} unit={t('dashboard.allWallets')} icon={<Icon name="wallet" aria-hidden />} />
               </>
             )}
@@ -433,14 +433,24 @@ function Target({ label, pct, detail }: { label: string; pct: number; detail: st
   );
 }
 
-function Metric({ label, value, unit, icon }: {
+/**
+ * `flow` sengaja BUKAN `tone` generik. Prop tone dulu dilepas (13 Sep 2026)
+ * karena tiap tile memilih rona sendiri, sehingga hijau berarti "Selesai" di
+ * satu kartu dan tak berarti apa-apa di kartu berikutnya. `flow` hanya punya
+ * dua nilai dan menyatakan satu hal yang benar-benar terukur: arah uang.
+ * Perlakuannya menyalin pola yang sudah dipakai kartu ringkasan Keuangan —
+ * spine 3px + warna angka, tanpa tint kartu.
+ */
+function Metric({ label, value, unit, icon, flow }: {
   label: string;
   value: ReactNode;
   unit?: string;
   icon: ReactNode;
+  flow?: 'in' | 'out';
 }) {
+  const flowClass = flow === 'in' ? styles.flowIn : flow === 'out' ? styles.flowOut : '';
   return (
-    <div className={styles.metric}>
+    <div className={[styles.metric, flowClass].filter(Boolean).join(' ')}>
       <div className={styles.metricTop}>
         <span className={styles.metricIcon}>{icon}</span>
         <span className={styles.metricLabel}>{label}</span>

@@ -80,6 +80,17 @@ BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar deskto
 BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # zoom aplikasi
 ```
 
+Untuk perubahan **warna/token**, dua gerbang tambahan — `audit-tokens` juga menjaga
+agar warna sinyal tidak saling mirip (`STATUS_TONE` memetakan 8 status ke 5 rona):
+
+```bash
+node scripts/audit-tokens.mjs                                     # tanpa dev server
+BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan
+```
+
+Gerbang token saja TIDAK cukup: komponen meracik warna lewat `color-mix` dan lapisan
+semi-transparan yang tak terlihat dari `tokens.css`. Ukur DOM juga.
+
 Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. **Saring dua
 positif palsu** sebelum menyimpulkan: `caption._srOnly` (caption khusus pembaca layar, memang
 di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat

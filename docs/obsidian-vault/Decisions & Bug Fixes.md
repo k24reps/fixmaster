@@ -2392,3 +2392,96 @@ dokumen cetak di lebar viewport adalah pengulangan kesalahan lama "membaca scree
 dan diperiksa luberannya lewat `scrollWidth` vs `clientWidth`, bukan lewat gambar.
 
 #decision #refactor #laporan #print #pdf #impeccable
+
+## Penyegaran palet warna — rona sinyal dipisahkan (23 Sep 2026)
+
+Permintaan user: "ubah palet warna yang sudah ada saja, biar tidak terkesan boring,
+buat pengguna jadi betah". Lingkupnya sengaja dijaga di `src/styles/tokens.css`
+(plus 5 baris komponen untuk tinta tombol) — bukan redesign.
+
+### Cacat nyata yang ditemukan saat mendiagnosis, bukan saat mendesain
+- **`--warning` ≈ `--brand`.** `#f59e0b` vs `#f5a623` berjarak **dE 0.018** (OKLab).
+  Lewat `STATUS_TONE`, 3 dari 8 status servis — Diterima, Konfirmasi Biaya, Tunggu
+  Sparepart — tampil warna identik. Ini cacat baca, bukan sekadar selera.
+- **Putih di atas isian sinyal terang.** Tombol `.success` (putih di `#10b981` =
+  2.5:1) dan `.danger` (putih di `#ef4444` = 3.8:1) gagal WCAG AA. **Pre-existing**,
+  bukan regresi dari pekerjaan ini. `TaskTemplateModal.module.css` sudah menyimpan
+  komentar tentang jebakan yang sama pada amber — jadi ini pernah ditemui, lalu
+  diperbaiki setempat saja, tidak di sumbernya.
+- `--violet-500` & `--pink-500` mati total (nol pemakaian) → dihapus.
+
+### Keputusan
+- **Netral diberi suhu, brand tidak disentuh.** Dark → graphite baja ~218deg; light →
+  netral hangat ~35deg. Amber `#f5a623` dan cyan `#3dd9c4` tetap, karena itu identitas.
+- **`--success`/`--danger` TIDAK digelapkan** meski putih di atasnya gagal. Keduanya
+  dipakai ~35 kali sebagai LED indikator di latar gelap; menggelapkannya demi teks
+  tombol akan merusak semua indikator itu. Yang diperbaiki **tintanya** (`--on-signal`,
+  berbalik antar tema) dan tombol danger dipindah ke `--red-600` solid.
+
+### Pelajaran: pemisahan warna harus diukur perseptual, bukan per-derajat rona
+Pemeriksaan pertama memakai selisih derajat rona HSV dan melaporkan emas-vs-oranye
+"hanya 11deg" — padahal mata jelas membedakannya. HSV memampatkan wilayah
+emas/oranye. Diganti ke **delta-E OKLab**, dengan pasangan lama (dE 0.018) dicetak
+sebagai pembanding "terlalu mirip" supaya ambangnya punya dasar, bukan angka karangan.
+
+### Pelajaran: ambang jangan diturunkan supaya lulus — nilainya yang diperbaiki
+Di tema terang, `--brand-text` dan `--warning-text` sama-sama harus cokelat gelap agar
+lolos 4.5:1 di atas pil bertint. Pencarian menyeluruh menunjukkan **tidak ada** pasangan
+yang memenuhi kontras dan pemisahan sekaligus bila hanya rona yang digeser. Jalan
+keluarnya datang dari dimensi lain: warning dibuat **lebih pekat** dari brand
+(`#661f0e` vs `#7c4d12`) → dE 0.128 dan kontras keduanya justru naik.
+
+### Pelajaran: gerbang token saja tidak cukup — ukur DOM
+Gerbang token sempat melaporkan LULUS sementara pemindaian DOM menemukan **18** elemen
+di bawah ambang, karena komponen meracik warna lewat `color-mix` dan lapisan
+semi-transparan yang tak terlihat dari daftar token. Baseline diukur dengan
+menyuntikkan `tokens.css` lama ke halaman (palet lama = 0 temuan), sehingga jelas ke-18
+itu **regresi yang baru dibuat**, bukan warisan — lalu diperbaiki sampai 0.
+
+### Verifikasi
+- `scripts/audit-tokens.mjs` — 0 pelanggaran (kontras + pemisahan, dark & light).
+- `scripts/audit-contrast.mjs` — 0 temuan dari 405 elemen di 4 kombinasi halaman/tema,
+  setara baseline palet lama.
+- `npm run build`, `npm run lint`, **616 test / 60 berkas** hijau.
+- Perbandingan visual: `scripts/shots/palette-before/` vs `palette-after/`.
+
+### Yang TIDAK diselesaikan oleh perubahan palet
+Kesan "membosankan" terbesar di Dashboard bukan dari palet, melainkan dari **lima kartu
+KPI yang seluruhnya monokrom** (chip ikon abu, angka putih, label abu) — Pemasukan dan
+Pengeluaran tak dibedakan warna sama sekali. Itu keputusan komponen, bukan token; palet
+tidak bisa mewarnainya tanpa ikut mewarnai semua chip ikon lain. Belum dikerjakan.
+Selain itu `STATUS_TONE` memetakan `diagnosa` dan `pengerjaan` ke rona `info` yang sama,
+jadi dua tahap itu tetap sewarna by design.
+
+### Tile KPI Dashboard: arah uang diberi warna, sisanya tidak (23 Sep 2026)
+
+Lanjutan penyegaran palet. Keluhan "membosankan" pada deretan lima tile KPI ternyata
+**bukan** soal palet: tile-nya memang sengaja dibuat monokrom pada audit 13 Sep 2026
+(commit `9d27fda`, aturan *Lit-Signal*, *One Amber*, *Mounted-or-Flat*), dengan alasan
+yang tercatat di `StatCard.tsx` — "hijau berarti 'Selesai' di satu kartu dan tak berarti
+apa-apa di kartu berikutnya" — dan di `DashboardPage.module.css`: "'Pengeluaran' bukan
+kegagalan dan 'Total saldo' bukan status".
+
+**Keputusan: jangan balikkan audit itu, pakai celah yang sudah disahkannya.** Commit yang
+sama menyebut pola yang tetap boleh: kartu ringkasan Keuangan membawa arah uang lewat
+**spine 3px + warna angka, tanpa tint kartu**. Pola itu masih hidup di
+`FinancePage.module.css` (`.summaryCard.income/.expense`). Jadi dua tile uang di Dashboard
+memakai pola yang sama, tiga tile lain tetap netral.
+
+Prop-nya `flow?: 'in' | 'out'`, **bukan** `tone` generik — pembedaannya persis alasan
+`tone` dilepas: `flow` hanya punya dua nilai dan menyatakan satu hal terukur, sedangkan
+`tone` membiarkan tiap tile memilih rona sendiri. `StatCard` (halaman Servis) sengaja
+TIDAK disentuh: "Selesai / Lunas" adalah status-sebagai-hitungan, persis jebakan yang
+dijaga komentar komponennya.
+
+**Koreksi menyusul: merah terang sempat jadi magenta.** `--danger-text` tema terang
+sebelumnya `#9e0050`, dipilih saat `--warning-text` masih oranye dan butuh jarak besar.
+Setelah warning dipindah ke karat pekat `#661f0e`, merah punya ruang kembali ke crimson
+sejati `#ab1730` (dE 0.153, kontras 4.60) — penting karena warna itu kini dipakai sebagai
+angka uang yang menonjol, dan magenta untuk "Pengeluaran" membaca salah. Tema **gelap**
+tidak bisa ikut: menarik `--red-400` ke merah sejati menjatuhkan jaraknya ke oranye
+warning menjadi dE 0.082, di bawah ambang — jadi merah-muda di tema gelap adalah harga
+yang memang harus dibayar untuk triad emas/oranye/merah.
+
+Verifikasi: `audit-tokens` 0 pelanggaran, `audit-contrast` 0 temuan, build + lint + 616
+test hijau, render asli difoto di kedua tema.

@@ -93,6 +93,42 @@ Ia bukan sekadar dark mode yang diputihkan.
 - Shadow light dipadatkan maksimal 8 px untuk panel biasa; elevasi besar tinggal untuk
   overlay/dropdown. Kedalaman berasal dari lapisan permukaan dan divider, bukan ghost card.
 
+### Penyegaran palet: rona sinyal dipisahkan, netral diberi suhu (23 Sep 2026)
+
+Palet disegarkan tanpa mengganti identitas: brand tetap safety amber `#f5a623`,
+aksen tetap diagnostic cyan. Yang berubah adalah **netral** dan **rona sinyal**.
+
+**Cacat yang diperbaiki.** `--warning` lama `#f59e0b` praktis warna yang sama
+dengan brand `#f5a623` — berjarak hanya **dE 0.018** di OKLab. Lewat `STATUS_TONE`
+(`lib/business/services.ts`), yang memetakan 8 status servis ke hanya 5 rona, ini
+membuat **Diterima**, **Konfirmasi Biaya**, dan **Tunggu Sparepart** tampil
+identik. Warning digeser ke oranye; jaraknya kini dE 0.10+ di kedua tema.
+
+**Netral diberi suhu.** Dark bergeser dari abu netral ke graphite baja (~218deg)
+supaya amber duduk sebagai komplemen dan menyala, bukan menempel di atas abu mati.
+Light bergeser dari abu-biru dingin ke netral hangat bersaturasi rendah (~35deg) —
+bukan krem — karena rona dingin membuat layar terang terbaca klinis.
+
+**Pelajaran: pisahkan lewat terang-gelap, bukan hanya rona.** Di tema terang,
+`--brand-text` dan `--warning-text` sama-sama harus cokelat gelap agar lolos 4.5:1
+di atas pil bertint. Menggeser rona saja tidak pernah cukup — tidak ada solusi yang
+memenuhi kontras dan pemisahan sekaligus. Solusinya datang saat warning dibuat
+**lebih pekat** dari brand (`#661f0e` vs `#7c4d12`): jarak naik ke dE 0.128 dan
+kontras keduanya justru membaik.
+
+**Tinta di atas isian sinyal.** `--on-signal` dibuat sebagai sepupu `--on-brand`,
+dan nilainya **berbalik antar tema** karena isiannya ikut berbalik: di dark, success
+terang (`#0fba7f`) sehingga butuh tinta gelap — putih di atasnya hanya 2.5:1, cacat
+lama yang kini tertutup; di light, success justru gelap sehingga tintanya putih.
+Tombol danger memakai `--red-600` solid, bukan `--danger`, karena putih di atas
+`--danger` hanya 3.9:1. `--success`/`--danger` sendiri tidak digelapkan karena
+dipakai ~35 kali sebagai LED indikator di latar gelap, di mana terang itu justru
+yang diinginkan.
+
+Dua gerbang menjaga ini: `scripts/audit-tokens.mjs` (token, tanpa server) dan
+`scripts/audit-contrast.mjs` (DOM sungguhan, butuh server). Lihat
+[[Decisions & Bug Fixes]].
+
 ### Ambient bench pada produk dan demo (29 Agu 2026)
 
 Grid blueprint/PCB 30 px pada `body::before` adalah material lingkungan bersama, bukan

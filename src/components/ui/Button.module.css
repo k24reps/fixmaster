@@ -82,18 +82,19 @@
 }
 
 .danger {
-  background: var(--danger);
+  /* --red-600, bukan --danger: putih di atas --danger cuma 3.9:1. */
+  background: var(--red-600);
   color: var(--on-solid);
 }
 .danger:hover:not(:disabled) {
-  background: var(--red-600);
+  background: var(--red-700);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
 .success {
   background: var(--success);
-  color: var(--on-solid);
+  color: var(--on-signal);
 }
 .success:hover:not(:disabled) {
   background: var(--green-600);

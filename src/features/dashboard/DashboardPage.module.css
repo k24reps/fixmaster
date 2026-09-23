@@ -340,6 +340,33 @@
   letter-spacing: 0.04em;
 }
 
+/* Arah uang, satu-satunya sinyal terukur di deretan ini. Menyalin pola kartu
+   ringkasan Keuangan: spine 3px + warna angka, kartu TIDAK di-tint dan ikon
+   TIDAK diberi rona. Tiga tile lain tetap netral karena "Unit masuk", "Belum
+   selesai", dan "Total saldo" tidak punya arah baik/buruk — memberi mereka
+   warna akan mengulang persis kekacauan yang dibersihkan 13 Sep 2026. */
+.flowIn::before,
+.flowOut::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.flowIn::before {
+  background: var(--green-500);
+}
+.flowOut::before {
+  background: var(--red-500);
+}
+.flowIn .metricValue {
+  color: var(--success-text);
+}
+.flowOut .metricValue {
+  color: var(--danger-text);
+}
+
 /* ---------- Targets (tick gauges) ---------- */
 .targets {
   display: grid;

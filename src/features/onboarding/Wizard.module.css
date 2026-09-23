@@ -138,7 +138,7 @@
 .dot.done {
   border-color: var(--success);
   background: var(--success);
-  color: var(--on-solid);
+  color: var(--on-signal);
 }
 .dotLabel {
   font-size: var(--text-xs);

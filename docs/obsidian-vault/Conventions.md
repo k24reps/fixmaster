@@ -74,6 +74,20 @@ memang di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu 
 terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
 margin), bukan lebar viewport — dua cacat tata letak PDF hanya muncul di sana.
 
+Untuk perubahan **warna/token**, dua gerbang tambahan:
+
+```bash
+node scripts/audit-tokens.mjs                                     # tanpa server
+BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan
+```
+
+`audit-tokens` memeriksa kontras pasangan token **dan** pemisahan antar warna sinyal
+(dE OKLab) — rona yang terlalu mirip langsung membuat status servis tak terbedakan,
+karena `STATUS_TONE` memetakan 8 status ke hanya 5 rona. `audit-contrast` mengukur DOM
+sungguhan, menangkap racikan `color-mix`/lapisan transparan yang tak terlihat dari daftar
+token; ia pernah menemukan 18 elemen yang diloloskan gerbang token. Bandingkan dengan
+palet lama lewat `BASELINE=<tokens.css lama>` untuk memisahkan regresi baru dari warisan.
+
 > [!tip] Default verifikasi
 > Setelah perubahan kode: jalankan build + test + lint. Untuk perubahan UI, foto render asli (bukan asumsi). Lihat pelajaran di [[Decisions & Bug Fixes]].
 

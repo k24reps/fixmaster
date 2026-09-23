@@ -175,7 +175,7 @@
 }
 .receiveBtn:hover {
   background: var(--success);
-  color: var(--on-solid);
+  color: var(--on-signal);
 }
 .receiveBtn:active {
   transform: translateY(2px);

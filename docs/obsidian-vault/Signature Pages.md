@@ -228,6 +228,13 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
   menjadi rail satu baris; panel tindakan sudah terlihat di viewport pertama. Breakpoint yang
   bergantung ruang memakai `@container dashboard`, bukan viewport. Gauge memakai `scaleX()` dan
   collapse sidebar diskrit sehingga tak ada animasi properti layout.
+- **Arah uang pada tile KPI (23 Sep 2026).** Dua dari lima tile — Pemasukan & Pengeluaran —
+  membawa spine 3px + warna angka, menyalin pola kartu ringkasan Keuangan. Tiga sisanya tetap
+  netral. Ini **bukan** pengembalian prop `tone` yang dilepas 13 Sep 2026: `flow` hanya punya
+  dua nilai dan menyatakan satu hal terukur (arah uang), sedangkan `tone` membiarkan tiap tile
+  memilih rona sendiri sehingga hijau berarti "Selesai" di satu kartu dan tak berarti apa-apa
+  di kartu berikutnya. "Unit masuk", "Belum selesai", dan "Total saldo" tidak diberi warna
+  karena tidak punya arah baik/buruk. Lihat [[Decisions & Bug Fixes]].
 
 ![[dash2-dark.png]]
 
