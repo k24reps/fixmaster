@@ -2755,3 +2755,62 @@ jalur API: penyaringan RLS per organisasi, dan perilaku fungsi saat dipanggil
 sebagai pengguna terautentikasi alih-alih superuser. `nav_counts` sengaja
 SECURITY INVOKER supaya RLS yang membatasi org — justru bagian itu yang belum
 teruji. Jalankan keduanya lebih dulu begitu kuota pulih.
+
+## Keamanan: fungsi pembantu internal terbuka bagi anon (`0082`, 23 Sep 2026)
+
+Ditemukan saat memverifikasi restore ke self-host. Replika lokal terbukti punya ACL
+**identik** dengan produksi (353 baris ACL lawan 353, nol beda), sehingga seluruh
+postur keamanan produksi bisa diaudit **tanpa menyentuh produksi**.
+
+### Akar masalah: jebakan default privileges Supabase
+Supabase memasang `ALTER DEFAULT PRIVILEGES` yang memberi `anon`, `authenticated`,
+dan `service_role` EXECUTE atas setiap fungsi baru di `public` **saat dibuat**.
+Migrasi lama mencoba menutupnya dari arah yang salah:
+- `check_rate_limit` — `revoke ... from anon, authenticated` berhasil mencabut
+  grant eksplisit, tapi `PUBLIC` (`=X`) tetap ada, dan anon mewarisinya.
+- `restore_org_data` — `revoke all ... from public` tidak menyentuh grant
+  **eksplisit** ke anon yang diberikan default privileges.
+
+**Aturan untuk migrasi ke depan:** menutup fungsi dari luar butuh
+`revoke execute ... from public, anon, authenticated` sekaligus — mencabut dari
+salah satu saja tidak cukup.
+
+### Dampak — terbukti, bukan teori
+Dari 52 fungsi `SECURITY DEFINER` yang bisa dipanggil anon, 42 punya pemeriksaan
+otorisasi di badannya dan 6 adalah fungsi trigger (tak bisa dipanggil lewat API).
+Yang tersisa bermasalah nyata hanya `check_rate_limit`: ketiga parameternya dari
+pemanggil dan badannya tak memeriksa siapa pemanggilnya. Ia satu-satunya pengaman
+`track_service` terhadap penebakan nomor servis yang **berurutan**. Di replika, anon
+memanggilnya dengan jendela waktu negatif (`make_interval(secs => -N)` membuat
+kondisi hapusnya mencakup semua) → **`200 true`**, bucket toko terkosongkan.
+
+Tingkatnya **sedang**: `track_service` tidak mengembalikan nama/HP pelanggan (hanya
+perangkat, status, riwayat non-internal), tapi pembatasnya bisa dibobol untuk
+penelusuran massal, halaman pelacakan toko bisa dilumpuhkan, dan `rate_events` bisa
+digelembungkan tanpa batas.
+
+### Yang sengaja TIDAK disentuh
+`is_org_active` juga bisa dipanggil anon, tapi dievaluasi oleh **23 kebijakan RLS**
+dengan hak pengguna yang login. Mencabut EXECUTE-nya menggagalkan SEMUA penulisan
+data karyawan. Selalu periksa pemakaian di `pg_policies` sebelum mencabut hak
+sebuah fungsi.
+
+### Verifikasi (di replika, lewat API sebagai anon)
+| | Sebelum | Sesudah |
+|---|---|---|
+| `check_rate_limit` jendela negatif | 200 `true` | 401 (42501) |
+| `po_lines_checked` | bisa | 401 |
+| `track_service` (halaman pelanggan) | 200 | **200 — tetap jalan** |
+| owner → `restore_org_data` | bisa | tetap bisa |
+
+Penjaga regresi: blok baru di `tests/integration/tier2-rpc.integration.test.ts`.
+
+**Status (23 Sep 2026):** diterapkan ke replika, staging, lalu produksi lewat `psql`
+langsung (API sedang restricted). Pemeriksaan `has_function_privilege` di produksi
+identik baris demi baris dengan replika. Lubangnya tertutup **sebelum** API pulih,
+jadi tidak pernah sempat dieksploitasi.
+
+Catatan: `0080`–`0082` diterapkan lewat `psql`, bukan CLI, sehingga
+`supabase_migrations.schema_migrations` di produksi masih berakhir di `0079`.
+Ketiganya aman diulang bila suatu saat `supabase db push` dijalankan (backfill
+hanya menyentuh baris kosong; sisanya `create or replace` dan `revoke`).

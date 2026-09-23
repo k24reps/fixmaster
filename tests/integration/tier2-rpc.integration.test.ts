@@ -204,3 +204,46 @@ d('Tier 2 — track_service (publik, anon) membocorkan hanya field aman', () => 
     expect(data ?? []).toHaveLength(0); // RLS: anon bukan member
   });
 });
+
+/**
+ * Fungsi pembantu INTERNAL tidak boleh bisa dipanggil anon (0082).
+ *
+ * Default privileges Supabase memberi anon EXECUTE atas setiap fungsi baru di
+ * `public` SAAT DIBUAT, dan `revoke ... from anon` tidak mencabut warisan dari
+ * PUBLIC. Jadi kesalahan ini bisa terulang di migrasi mana pun — berkas ini
+ * penjaganya.
+ *
+ * check_rate_limit adalah satu-satunya pengaman track_service terhadap penebakan
+ * nomor servis yang berurutan. Sebelum 0082, anon bisa mengosongkan bucket
+ * sebuah toko dengan jendela waktu negatif. Terbukti di replika self-host yang
+ * ACL-nya identik dengan produksi: `200 true`.
+ */
+d('Tier 2 — fungsi pembantu internal tertutup bagi anon', () => {
+  it('anon TIDAK bisa memanggil check_rate_limit (pembatas track_service)', async () => {
+    const anon = makeAnon();
+    const { error } = await anon.rpc('check_rate_limit', {
+      p_key: `track:${ctx.orgA}`,
+      p_max: 1,
+      p_window_seconds: -999999,
+    });
+    expect(error, 'anon bisa mengosongkan pembatas track_service').not.toBeNull();
+  });
+
+  it('anon TIDAK bisa memanggil po_lines_checked', async () => {
+    const anon = makeAnon();
+    const { error } = await anon.rpc('po_lines_checked', { p_org_id: ctx.orgA, p_lines: [] });
+    expect(error).not.toBeNull();
+  });
+
+  it('track_service TETAP bisa dipanggil anon — ia memanggil pembatasnya dari dalam', async () => {
+    // Perbaikan ini tidak boleh mematikan halaman pelacakan pelanggan:
+    // track_service SECURITY DEFINER, jadi ia memanggil check_rate_limit
+    // dengan hak pemiliknya, bukan hak anon.
+    const anon = makeAnon();
+    const { error } = await anon.rpc('track_service', {
+      p_org_id: ctx.orgA,
+      p_service_no: ctx.serviceANo,
+    });
+    expect(error).toBeNull();
+  });
+});

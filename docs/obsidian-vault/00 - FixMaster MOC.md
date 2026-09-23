@@ -20,6 +20,7 @@ created: 2026-06-04
 - [[Design System]] — identitas visual "Precision Electronics Bench", token, tipografi
 - [[Tech Stack]] — React 19 + Vite + TypeScript + Zustand + TanStack Query
 - [[Data Layer]] — pola repository, koleksi, adapter IndexedDB/Supabase
+- [[Self-Hosting]] — runbook pindah dari Supabase cloud ke self-host, beserta jebakannya
 - [[Iconography]] — migrasi Font Awesome → Phosphor lewat satu komponen `Icon`
 
 ## 🎛️ Navigasi & Layout
