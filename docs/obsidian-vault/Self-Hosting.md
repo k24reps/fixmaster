@@ -299,6 +299,10 @@ menghapusnya).
   address bar (navigasi tidak tunduk `connect-src`). Ditambah
   `https://api.fixmaster.my.id wss://api.fixmaster.my.id`. Uji dari **konteks
   halaman** (`fetch` di konsol origin fixmaster.app), bukan curl/address bar.
+  Setelah deploy CSP baru, browser yang sudah pernah membuka URL yang SAMA masih
+  memakai header CSP lama dari cache HTTP (isi `index.html` tak berubah → ETag sama).
+  URL baru langsung benar (auth → 401 tanpa apikey = tersambung). Pengguna: muat
+  ulang paksa (Ctrl+Shift+R) atau tutup-buka tab.
 
 ## Belum dikerjakan
 
