@@ -199,10 +199,109 @@ tanpa ditunggui":
 - **Uji wajib sebelum dipakai toko:** restart Windows sungguhan, lalu tanpa
   menyentuh apa pun pastikan 11 layanan `healthy` dan edge function `health` 200.
 
+## Memindahkan replika yang sudah terbukti (salinan dingin)
+
+Jangan mengulang restore dari dump di mesin tujuan — jebakan ACL di atas harus
+dihindari ulang dan hasilnya perlu diverifikasi ulang. Pindahkan replika yang sudah
+lolos verifikasi apa adanya:
+1. Catat hitungan baris (`cek-baris.sql`: auth.users, vault terbaca, cron, tabel
+   realtime, 25 tabel `public`).
+2. `docker compose stop` — Postgres berhenti bersih, data dir konsisten.
+3. Ekspor volume bernama **`supabase_db-config`** (`/etc/postgresql-custom`). Ia
+   berisi **`pgsodium_root.key`**: tanpa kunci ini rahasia vault (`project_url`,
+   `backup_cron_secret`) tak terbaca dan backup otomatis mati diam-diam. Data dir
+   ada di bind mount `volumes/db/data`, tapi kunci ini TIDAK.
+4. `tar.exe -cf` folder `docker/` utuh (±77 MB, 1.881 berkas: `.env`, override,
+   functions, data). Tar Windows menyimpan byte apa adanya — LF tetap LF.
+5. Di tujuan: ekstrak ke path pendek di luar OneDrive (`C:\fixmaster-server`),
+   `docker compose pull`, pulihkan volume, `up -d --wait`, bandingkan hitungan.
+
+Skrip siap pakai: `fixmaster-backup/pindah-server/pasang-server.ps1` (di luar repo,
+karena berdampingan dengan arsip yang memuat rahasia). Arsip itu berisi `.env`,
+hash password, dan seluruh data toko — perlakukan seperti dump.
+
+**Hasil di laptop server (24 Sep 2026, ±01:00 WIB):** 11/11 `healthy`, hitungan
+baris **29/29 sama persis**, vault terbaca 2, `health` 200 `"db":"up"`. Unduhan image
+di koneksi rumah ±15–27 menit per image besar. Putaran pertama `up --wait` gagal:
+**storage** belum `healthy` dalam batas waktu (mesin 8 GB, start pertama) — tanpa
+galat; menjalankan ulang skrip langsung lolos. Peringatan "volume
+supabase_db-config already exists but was not created by Docker Compose" tidak
+berbahaya (volume dibuat skrip, bukan Compose; efek sampingnya `down -v` tidak
+menghapusnya).
+
+## Akses publik: Cloudflare Tunnel (keputusan 24 Sep 2026)
+
+- **Domain terpisah**, bukan `fixmaster.app`. DNS `fixmaster.app` dikelola Vercel
+  (`ns1/ns2.vercel-dns.com`); Tunnel dengan hostname tetap butuh zona di Cloudflare,
+  dan zona subdomain/CNAME setup bukan fitur paket gratis. Pemilik memilih domain
+  murah terpisah agar `fixmaster.app` tak tersentuh. Cloudflare Registrar tidak
+  menjual `.id` — `.my.id` dibeli di registrar Indonesia (verifikasi KTP PANDI),
+  nameserver diarahkan ke Cloudflare (paket Free).
+  **Domain terpilih: `fixmaster.my.id`** → API di **`api.fixmaster.my.id`**. Sengaja
+  bukan nama toko: server ini melayani semua tenant, dan hostname sulit diganti
+  (tertanam di build + kunci sesi supabase-js).
+- Tunnel dikelola dari dashboard (Zero Trust → Networks → Tunnels), `cloudflared`
+  dipasang sebagai **service Windows** — jalan tanpa login, tidak seperti Docker
+  Desktop. Public hostname `api.<domain>` → `http://localhost:8000` (Envoy).
+- **Gateway membuka lebih dari API.** Envoy juga melayani Studio di `/` (basic
+  auth, password 32 karakter), `/pg/` (pg-meta), `/graphql/v1`, `/mcp`. Satu WAF
+  custom rule (Block) menutup semuanya dari internet; Studio tetap bisa dibuka di
+  server lewat `localhost:8000`:
+  ```
+  (http.host eq "api.<domain>" and not starts_with(http.request.uri.path, "/rest/v1/")
+   and not starts_with(http.request.uri.path, "/auth/v1/")
+   and not starts_with(http.request.uri.path, "/realtime/v1/")
+   and not starts_with(http.request.uri.path, "/storage/v1/")
+   and not starts_with(http.request.uri.path, "/functions/v1/"))
+  ```
+- `.env` diganti lewat `pindah-server/ubah-domain.ps1`: `SUPABASE_PUBLIC_URL`,
+  `API_EXTERNAL_URL` (`…/auth/v1`), `SITE_URL=https://fixmaster.app`,
+  `ADDITIONAL_REDIRECT_URLS=https://fixmaster.app/**`. Skrip menulis lewat
+  `[IO.File]::WriteAllText` — `Set-Content` PowerShell 5.1 menyelipkan CRLF (lihat
+  jebakan CRLF). Vault `project_url` tetap `http://api-gw:8000` (alamat internal).
+- Frontend (`VITE_SUPABASE_URL`/`ANON_KEY` di Vercel) baru diganti saat cutover.
+- **Terbukti 24 Sep 2026 ±01:51 WIB:** `https://api.fixmaster.my.id/functions/v1/health`
+  → `"db":"up"` lewat internet, 11/11 healthy setelah `ubah-domain.ps1`.
+- Jebakan UI Cloudflare: kolom **Routes** di daftar tunnel hanya menghitung rute
+  privat — rute publik ada di tab **Published application routes** (bukan
+  *Hostname routes*). WAF di menu akun adalah **Account-level** (Enterprise); custom
+  rule gratis ada di menu **domain** → Security rules.
+- **Token tunnel = kredensial.** Siapa pun yang memegangnya bisa menjalankan
+  konektor untuk tunnel ini dan menyadap lalu lintas `api.`. Jangan tangkap layar
+  perintah `service install`; bila terlanjur, refresh token lalu pasang ulang
+  service.
+  Terjadi 24 Sep 2026: token tertangkap layar → tunnel dihapus & dibuat ulang
+  (tombol refresh token tak ditemukan di UI baru). Jebakannya: rekaman CNAME `api`
+  milik tunnel lama **tidak ikut terhapus** — hapus manual di DNS → Records, baru
+  rute baru bisa disimpan. Health kembali 200 lewat tunnel baru.
+
+## Cutover produksi (24 Sep 2026 ±02:30 WIB)
+
+- **Cek selisih dulu** (`pindah-server/cek-delta.sql`, `max(updated_at)` per tabel di
+  produksi): perubahan terakhir 22 Sep 14:00 UTC, dump 23 Sep 13:01 UTC → tak ada
+  selisih. Server = sumber data tunggal sejak saat ini; cloud tak lagi menerima data
+  — **jangan kembali ke cloud tanpa menyalin data balik**, walau kuota pulih 7 Okt.
+- `ENABLE_EMAIL_AUTOCONFIRM=true` (padanan cloud: konfirmasi email mati). Tanpa ini
+  pendaftaran toko baru gagal, karena server belum punya SMTP.
+- **Vercel env:** `VITE_SUPABASE_URL=https://api.fixmaster.my.id` + anon key server,
+  **Production saja**. Jebakan: satu entri env yang bertarget Preview+Production
+  terhapus UTUH oleh `vercel env rm NAME production` — bukan hanya target itu.
+  `vercel env add` non-interaktif butuh `--type config --value … --yes`.
+  Preview sengaja dibiarkan **tanpa** Supabase → build uji jalan mode lokal/demo, tak
+  mungkin menyentuh data toko. (Sebelumnya Preview memakai kunci produksi.)
+- `main` di-fast-forward ke `staging` (`4c58b30`, termasuk fix putaran realtime —
+  tanpa itu tiap HP membebani server rumah). Bundle live `supabase-client-*.js`
+  memuat `api.fixmaster.my.id`, nol rujukan ke `vmitplpvncfvyimgyxrn`.
+- Semua pengguna login ulang sekali (URL berganti → kunci sesi supabase-js lain).
+
 ## Belum dikerjakan
 
 - Berkas di bucket `org-logos` (logo toko) — tidak ada di dump; Storage API cloud
   sedang restricted.
+- **SMTP** — reset password & email auth belum terkirim.
+- **Backup di luar mesin** — `auto-backup` menulis ke storage di laptop yang SAMA;
+  mesin rusak = data dan backup hilang bersamaan.
+- Uji restart Windows tanpa disentuh (dilewati pemilik saat pemasangan).
 - Akses dari luar: rencananya **Cloudflare Tunnel** tanpa syarat (menembus CGNAT,
   IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
 
