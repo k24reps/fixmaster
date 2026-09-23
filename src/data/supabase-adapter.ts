@@ -10,7 +10,7 @@ import type {
   SingletonMap,
   ChangeListener,
 } from './repository';
-import type { ID, NavCounts } from './types';
+import type { ID, NavCounts, TaskCountGroup } from './types';
 import { SERVICE_LIST_COLUMNS } from './types';
 import { serviceSearchFilter } from '@/lib/business/serviceFilters';
 import { customerSearchFilter, phoneLookupFilter } from '@/lib/business/customers';
@@ -366,6 +366,22 @@ export class SupabaseAdapter implements Repository {
    * `spareparts` adalah jsonb array; `contains` memakai operator `@>`, yang
    * cocok bila ADA elemen memuat pasangan kunci ini.
    */
+  /**
+   * Hitungan tugas per template untuk rel nav (0083). Menggantikan tarikan UTUH
+   * task_instances — 150 baris/80 KB di replika produksi, tumbuh 5 baris/hari —
+   * dengan ±sebanyak jumlah template.
+   */
+  async taskCountsByTemplate(today: string): Promise<TaskCountGroup[]> {
+    const { data, error } = await this.client.rpc('task_counts_by_template', {
+      p_outlet_id: this.outletId ?? null,
+      p_today: today,
+    });
+    if (error) throw error;
+    return ((data ?? []) as { template_id: string | null; overdue: number; due_today: number }[]).map(
+      (r) => ({ templateId: r.template_id, overdue: r.overdue, dueToday: r.due_today }),
+    );
+  }
+
   async countActiveServicesUsingItem(itemId: string): Promise<number> {
     const { count, error } = await this.client
       .from(TABLE.services)
@@ -406,6 +422,9 @@ export class SupabaseAdapter implements Repository {
     createdFrom?: string;
     createdTo?: string;
     customerId?: string;
+    visibleOnly?: boolean;
+    openOnly?: boolean;
+    closedSince?: string;
     limit: number;
   }): Promise<EntityMap['services'][]> {
     let query = this.client
@@ -421,6 +440,20 @@ export class SupabaseAdapter implements Repository {
     if (opts.createdFrom) query = query.gte('created_at', opts.createdFrom);
     if (opts.createdTo) query = query.lt('created_at', opts.createdTo);
     if (opts.customerId) query = query.eq('customer_id', opts.customerId);
+    if (opts.visibleOnly) query = query.eq('archived', false);
+    // KONTRAK: `updated_at` dipakai sebagai "kapan tiket terakhir ditutup".
+    // Sah karena SETIAP jalur penutupan memperbaruinya — settle_service dan
+    // cancel_service (RPC) serta penandaan "sudah diambil" di ServicesPage &
+    // ServiceDetailPage (klien, `updatedAt: now`). Jalur penutupan baru WAJIB
+    // ikut memperbaruinya; kalau tidak, tiket lama akan lenyap dari daftar
+    // tepat setelah dilunasi atau diambil.
+    if (opts.openOnly) query = query.or('picked_up.is.false,status.not.in.(lunas,batal)');
+    if (opts.closedSince) {
+      query = query
+        .eq('picked_up', true)
+        .in('status', ['lunas', 'batal'])
+        .gte('updated_at', opts.closedSince);
+    }
     const { data, error } = await query.order('created_at', { ascending: false }).limit(opts.limit);
     if (error) throw error;
     return (data ?? []).map((r) =>

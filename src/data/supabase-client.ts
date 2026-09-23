@@ -1336,8 +1336,11 @@ export function subscribeOrgTables(
 
   const teardownChannel = () => {
     if (channel) {
-      void c.removeChannel(channel);
+      // Kosongkan DULU: removeChannel bisa memanggil callback 'CLOSED' secara
+      // sinkron, dan penjaga `channel !== ch` di bawah harus sudah berlaku.
+      const old = channel;
       channel = null;
+      void c.removeChannel(old);
     }
   };
 
@@ -1371,7 +1374,11 @@ export function subscribeOrgTables(
     }
     channel = ch;
     ch.subscribe((status) => {
-      if (disposed) return;
+      // removeChannel() memanggil callback kanal LAMA dengan 'CLOSED'. Tanpa
+      // penjaga ini, tiap reconnect membuang kanal lama → CLOSED → reconnect
+      // lagi → 'live' → notifyAll: putaran tanpa akhir yang menarik ulang semua
+      // koleksi (terukur 23 Sep 2026: 145× daftar servis dalam 3 menit).
+      if (disposed || channel !== ch) return;
       lastEventAt = Date.now();
       if (status === 'SUBSCRIBED') {
         attempt = 0;

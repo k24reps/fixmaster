@@ -11,8 +11,9 @@ Bagian dari [[00 - FixMaster MOC]]. Latar belakang di [[Decisions & Bug Fixes]].
 
 Runbook memindahkan FixMaster dari Supabase cloud ke Supabase **self-host**. Ditulis
 dari uji penuh pada 23 Sep 2026 di mesin kerja (Windows + Docker Desktop), yang
-menghasilkan replika fungsional produksi. Target sesungguhnya: laptop 24 jam yang
-akan dipasang Ubuntu Server / Debian.
+menghasilkan replika fungsional produksi. Target sesungguhnya: laptop 24 jam (RAM
+8 GB) yang **tetap Windows** + WSL2 + Docker Desktop — keputusan pemilik 23 Sep 2026,
+batal instal ulang ke Linux. Stack yang sama persis dengan uji di mesin kerja.
 
 > [!important] Kenapa self-host, bukan pindah akun Supabase
 > Kuota egress free tier habis (23 Sep 2026) dan seluruh org di-restrict. Pindah ke
@@ -139,12 +140,70 @@ hanya ada di cloud (`mfa_recovery_*`, `scim_*`) terbukti 0 baris.
 | Edge function `health` lewat gateway | 200, `"db":"up"` |
 | `select run_auto_backup()` → pg_net | 200, `total 3, failed 0`, 3 berkas |
 
+## Uji login pengguna sungguhan (23 Sep 2026)
+
+Frontend diarahkan ke replika **tanpa menyentuh `.env.local`**: berkas
+`.env.selfhost.local` (diabaikan git, `*.local`) berisi `VITE_SUPABASE_URL` +
+`VITE_SUPABASE_ANON_KEY` self-host, dijalankan `npm run dev -- --mode selfhost`
+(konfigurasi `fixmaster-selfhost` di `.claude/launch.json`, port 5190). Berkas mode
+Vite menimpa `.env.local`. **Verifikasi dulu** bahwa mode termuat — ambil
+`/src/data/supabase-client.ts` dari server dev; Vite menyuntikkan `import.meta.env`
+ke modulnya — kalau tidak, pengguna login ke produksi tanpa sadar.
+
+Pemilik login dengan akun & password produksinya. Semua lolos, nol error di enam
+layanan:
+
+| Jalur | Bukti di log Envoy |
+|---|---|
+| Login (hash bcrypt ter-restore) | `POST /auth/v1/token` 200 |
+| Realtime | indikator `LIVE` |
+| `nav_counts` sebagai pengguna login (RLS) | 200, **112 B** |
+| Penulisan melewati RLS (`is_org_active`) | `POST /activity_logs` 201 |
+| Pencarian pelanggan sisi server | `name.ilike` 881 B / 293 B, `limit=50`; debounce: 6 huruf → 2 permintaan |
+| Dedup nomor HP | satu kueri memuat pola **ber-0 dan ber-62** |
+| Laporan | `services` + `created_at=gte` + `completed_at`, **tanpa `history`**, 73,9 KB |
+
+Membaca log Envoy: baris akses memuat query string lengkap. Saat mem-parse, decode
+URL **sekali** saja — decode ganda mengubah `%08…` di awal nomor HP menjadi karakter
+kontrol dan tampak seperti bug aplikasi.
+
+### Ukuran payload terukur dari sesi nyata — sisa egress terbesar
+
+| Tabel | Per tarikan | Dipicu |
+|---|---|---|
+| `services` (daftar) | **338 KB** | Dashboard, Servis — ditarik ulang semua perangkat tiap ada perubahan (realtime) |
+| `task_instances` | **80 KB** | rel sidebar, **setiap halaman**; tumbuh tiap hari (150 tugas lewat tenggat) |
+| `customers` | 82 KB | halaman Pelanggan (belum dipaginasi) |
+| `incomes` + `expenses` | ±92 KB | Dashboard, rentang bulan ini |
+
+Satu muat Dashboard ≈ 0,5 MB. Perkiraan: 3 perangkat × ±12 muat ulang/jam × 10 jam
+≈ 180 MB/hari ≈ **5 GB/bulan** — urutan besarnya sama dengan kuota free tier yang
+habis. `task_instances` adalah ongkos keputusan menahan tugas di klien (demi aturan
+visibilitas peran); jalan tengahnya menarik hanya `status=pending`.
+
+## Server Windows 24 jam — yang berbeda dari mesin kerja
+
+Uji di mesin kerja membuktikan stack-nya; server 24 jam menambah syarat "tetap hidup
+tanpa ditunggui":
+- **Docker Desktop:** backend WSL2, *Start Docker Desktop when you sign in*. Semua
+  layanan compose sudah `restart: unless-stopped`, jadi ikut hidup begitu Docker
+  hidup. Windows harus **login otomatis** setelah restart (Docker Desktop tidak jalan
+  sebelum ada sesi pengguna).
+- **RAM:** batasi VM WSL lewat `%UserProfile%\.wslconfig` (`[wsl2] memory=5GB`) agar
+  Windows sendiri tetap punya ruang di mesin 8 GB. Stack penuh terukur ±1,2 GiB.
+- **Daya:** sleep/hibernate *Never* saat dicolok; tutup layar = *Do nothing*.
+- **Windows Update:** atur *active hours* dan jadwal restart di luar jam toko;
+  restart otomatis aman bila login otomatis + Docker autostart sudah terbukti.
+- **Line ending:** jebakan CRLF di atas berlaku sama — set `core.autocrlf=false`
+  sebelum clone repo self-host.
+- **Uji wajib sebelum dipakai toko:** restart Windows sungguhan, lalu tanpa
+  menyentuh apa pun pastikan 11 layanan `healthy` dan edge function `health` 200.
+
 ## Belum dikerjakan
 
 - Berkas di bucket `org-logos` (logo toko) — tidak ada di dump; Storage API cloud
   sedang restricted.
-- Frontend FixMaster belum diarahkan ke self-host (login pengguna sungguhan).
 - Akses dari luar: rencananya **Cloudflare Tunnel** tanpa syarat (menembus CGNAT,
-  IP dinamis, sekaligus HTTPS).
+  IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
 
 #self-host #runbook

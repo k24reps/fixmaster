@@ -390,6 +390,18 @@ export interface NavCounts {
   poOpen: number;
 }
 
+/**
+ * Hitungan tugas `pending` per template: lewat tenggat, dan jatuh tempo hari ini.
+ * Keluaran RPC `task_counts_by_template` (0083), sekaligus bentuk yang dihasilkan
+ * `groupTaskCounts` di jalur lokal — supaya keduanya lewat SATU langkah
+ * visibilitas (`visibleTaskCounts`). `templateId` null = tugas tanpa template.
+ */
+export interface TaskCountGroup {
+  templateId: string | null;
+  overdue: number;
+  dueToday: number;
+}
+
 // ---------- POS Sales ----------
 export interface SaleLine {
   itemId: ID;

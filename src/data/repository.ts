@@ -17,6 +17,7 @@ import type {
   TaskInstance,
   ActivityLog,
   NavCounts,
+  TaskCountGroup,
   ID,
 } from './types';
 
@@ -134,6 +135,13 @@ export interface Repository {
   navCounts?(): Promise<NavCounts>;
 
   /**
+   * Hitungan tugas `pending` per template (RPC `task_counts_by_template`, 0083).
+   * `today` = tanggal LOKAL klien — server berjalan UTC. Visibilitas peran tetap
+   * diterapkan klien lewat `visibleTaskCounts`.
+   */
+  taskCountsByTemplate?(today: string): Promise<TaskCountGroup[]>;
+
+  /**
    * Cari pelanggan di server, alih-alih memuat seluruh tabel.
    * - `term`: kotak pencarian (nama atau nomor).
    * - `phone`: pemeriksaan duplikat sebelum membuat pelanggan baru.
@@ -154,6 +162,20 @@ export interface Repository {
     createdTo?: string;
     /** Semua tiket satu pelanggan (riwayat di menu Pelanggan). */
     customerId?: string;
+    /**
+     * Sembunyikan tiket yang diarsipkan — padanan `visibleServices`. Opt-in:
+     * pencarian arsip, koreksi di Keuangan, dan riwayat pelanggan justru HARUS
+     * tetap bisa menemukan tiket arsip.
+     */
+    visibleOnly?: boolean;
+    /**
+     * Hanya tiket yang BELUM tuntas, berapa pun umurnya. Tuntas = sudah diambil
+     * DAN (lunas ATAU batal), persis `isClosedOut`. Piutang (status `selesai`)
+     * dan tiket batal yang perangkatnya belum dikembalikan tidak pernah tuntas.
+     */
+    openOnly?: boolean;
+    /** Hanya tiket TUNTAS yang ditutup (updated_at) sejak batas ini. */
+    closedSince?: string;
     limit: number;
   }): Promise<EntityMap['services'][]>;
 }

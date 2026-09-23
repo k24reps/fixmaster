@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { repository } from '@/data';
-import { useCollection } from './useCollection';
+import { useCollection, useDerivedQuery } from './useCollection';
 import { useCollectionRange } from './useCollectionRange';
 import { isActive } from '@/lib/business/services';
-import { isOverdue, visibleInstances } from '@/lib/business/tasks';
+import { groupTaskCounts, visibleTaskCounts } from '@/lib/business/tasks';
+import type { TaskCountGroup } from '@/data/types';
 import { localDateStr } from '@/lib/time';
 import { roleAllows } from '@/config/plans';
 import { useSessionStore } from '@/stores/session';
@@ -26,6 +27,7 @@ export interface NavSignal {
 }
 
 const IDLE: NavSignal = { count: 0, tone: 'idle', pulse: false };
+const NO_TASK_GROUPS: TaskCountGroup[] = [];
 
 /**
  * Computes per-route live signals for the "Diagnostic Rail" sidebar.
@@ -56,7 +58,9 @@ export function useNavSignals(): Record<string, NavSignal> {
     if (!serverCounts) return;
     return repository.subscribe((changed) => {
       if (changed === 'services' || changed === 'inventory' || changed === 'purchaseOrders') {
-        void queryClient.invalidateQueries({ queryKey: ['navCounts'] });
+        // cancelRefetch:false — resync memberi tahu ketiga koleksi sekaligus dan
+        // rel ini terpasang dua kali; tanpa ini satu resync = 6 panggilan RPC.
+        void queryClient.invalidateQueries({ queryKey: ['navCounts'] }, { cancelRefetch: false });
       }
     });
   }, [serverCounts, queryClient]);
@@ -64,16 +68,28 @@ export function useNavSignals(): Record<string, NavSignal> {
   const { data: services } = useCollection('services', { enabled: !serverCounts });
   const { data: inventory } = useCollection('inventory', { enabled: !serverCounts });
   const { data: purchaseOrders } = useCollection('purchaseOrders', { enabled: !serverCounts });
-  const { data: taskInstances } = useCollection('taskInstances');
+  // Only today's rows matter here. The rail mounts on every page (twice, with
+  // MobileBottomNav), so pulling the whole attendance history — which grows
+  // every day — was paid on every page and again on every clock-in.
+  const today = localDateStr();
+  // Tugas: hitungan PER TEMPLATE, bukan daftar instance (0083). Dulu rel ini
+  // menarik task_instances utuh — 80 KB di setiap halaman, tumbuh 5 baris/hari
+  // karena tugas harian yang tak dicentang menumpuk. Kunci di bawah
+  // ['collection','taskInstances',…] supaya perubahan koleksi itu tetap
+  // meng-invalidasi; `today` di kunci membuatnya dihitung ulang lewat tengah malam.
+  const { data: taskGroups } = useDerivedQuery(
+    ['collection', 'taskInstances', 'navCounts', activeOutletId, today],
+    async () =>
+      repository.taskCountsByTemplate
+        ? repository.taskCountsByTemplate(today)
+        : groupTaskCounts(await repository.list('taskInstances'), today),
+    NO_TASK_GROUPS,
+  );
   // Tugas disaring dengan aturan yang sama seperti halamannya. Tanpa ini
   // karyawan melihat badge berisi tugas orang lain yang tak pernah ia temukan.
   const { data: taskTemplates } = useCollection('taskTemplates');
   const me = useSessionStore((s) => s.currentEmployee);
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
-  // Only today's rows matter here. The rail mounts on every page (twice, with
-  // MobileBottomNav), so pulling the whole attendance history — which grows
-  // every day — was paid on every page and again on every clock-in.
-  const today = localDateStr();
   const { data: attendance } = useCollectionRange('attendance', 'date', today, today);
 
   return useMemo(() => {
@@ -98,17 +114,15 @@ export function useNavSignals(): Record<string, NavSignal> {
       : purchaseOrders.filter((p) => p.status === 'ordered' || p.status === 'partial').length;
 
     // Tasks: overdue pending is critical; due-today pending is a warning.
-    const myTasks = visibleInstances(
-      taskInstances,
+    // Aturan visibilitas diterapkan per kelompok template dengan fungsi yang
+    // sama seperti halaman Tugas — setara persis dengan menyaring per baris.
+    const { overdue, dueToday } = visibleTaskCounts(
+      taskGroups,
       new Map(taskTemplates.map((t) => [t.id, t])),
       { id: me?.id ?? '', role: me?.role ?? 'karyawan' },
       allowedOutletIds,
       me ? roleAllows(me.role, '*') || me.role === 'admin' : false,
     );
-    const overdue = myTasks.filter((t) => isOverdue(t, today)).length;
-    const dueToday = myTasks.filter(
-      (t) => t.status === 'pending' && t.dueDate === today,
-    ).length;
 
     // Attendance: staff currently clocked in (checked in, not out, today).
     const working = attendance.filter(
@@ -140,7 +154,7 @@ export function useNavSignals(): Record<string, NavSignal> {
     services,
     inventory,
     purchaseOrders,
-    taskInstances,
+    taskGroups,
     taskTemplates,
     me,
     allowedOutletIds,

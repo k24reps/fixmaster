@@ -2814,3 +2814,169 @@ Catatan: `0080`–`0082` diterapkan lewat `psql`, bukan CLI, sehingga
 `supabase_migrations.schema_migrations` di produksi masih berakhir di `0079`.
 Ketiganya aman diulang bila suatu saat `supabase db push` dijalankan (backfill
 hanya menyentuh baris kosong; sisanya `create or replace` dan `revoke`).
+
+## Egress: rel tugas dihitung per template, Dashboard berhenti menarik daftar servis (`0083`, 23 Sep 2026)
+
+Dipicu ukuran payload sungguhan dari sesi login pemilik ke replika self-host
+(log Envoy), bukan perkiraan.
+
+### `task_instances`: rencana pertama ternyata tidak menghemat apa pun
+Rel sidebar (setiap halaman) menarik `task_instances` utuh: 150 baris, 80 KB,
+tumbuh **5 baris/hari**. Rencananya "tarik yang `pending` saja" — tapi pengukuran
+menunjukkan **ke-150-nya `pending` dan lewat tenggat, nol yang pernah dicentang**.
+Filter itu akan menarik semuanya juga. Ukur dulu sebelum mengoptimasi.
+
+### Jalan keluar: hitung per template, visibilitas tetap di klien
+`0081` sengaja tidak memindahkan tugas ke server karena `taskVisibleTo` menyaring
+per peran/cabang, dan menyalinnya ke SQL membuat badge bisa menyimpang dari halaman
+Tugas. Kuncinya: aturan itu **hanya bergantung pada template**, bukan baris instance.
+Maka RPC `task_counts_by_template` (`0083`) menghitung per template, dan klien
+menerapkan `taskVisibleTo` yang sama persis pada hasilnya (`visibleTaskCounts`).
+Jalur lokal mengelompokkan dari memori dengan `groupTaskCounts` — kedua jalur lewat
+satu langkah visibilitas.
+
+- Kesetaraan dibuktikan tes: matriks semua jenis penugasan × tugas tanpa template ×
+  template terhapus × campuran status/tanggal, lima profil pengguna, cara lama dan
+  baru berdampingan. Plus tes penjaga "bukan nol lawan nol" (18/18).
+- `p_today` dikirim klien: server UTC, sehingga 00:00–07:00 WIB `current_date`-nya
+  masih kemarin.
+- Replika: RPC = hitungan langsung (150/0), **4 kelompok, 337 B lawan 79.627 B** —
+  dan **tidak tumbuh** seiring hari; hanya bila template bertambah.
+- Pelajaran `0082` diterapkan sejak awal: `revoke ... from public, anon`.
+
+### Dashboard: 338 KB untuk menampilkan 6 baris
+Angka ringkasannya sudah dari RPC (`useServiceSummary`); daftar penuh hanya dipakai
+untuk 6 "Servis Terbaru" dan cek kosong. Diganti `queryServices({ limit: 6,
+visibleOnly: true })` — opsi `visibleOnly` baru, **opt-in**, karena pemakai lain
+(arsip, koreksi Keuangan, riwayat pelanggan) harus tetap menemukan tiket arsip.
+**337.709 B → 6.865 B (49×)**, tetap 6 baris selamanya. Isinya identik dengan cara
+lama (NS-0326…0321, tanpa `history`, tanpa arsip). Mode demo lewat jalur mundur
+lokal: 6 tiket, badge tugas 2 — sama dengan sebelum perubahan.
+
+### Membaca log bersama: pisahkan uji dari pengguna lewat user-agent
+Satu tarikan `task_instances` 80 KB sempat tampak seperti sisa kode lama. Ternyata
+itu `curl` saya sendiri saat membandingkan ukuran. Waktu yang berdekatan menipu;
+user-agent tidak.
+
+### Halaman Servis: daftar berjendela 31 hari (disetujui pemilik)
+Data toko terbesar: **98% tiket tuntas** (328/334); ±109 tiket masuk/bulan. Daftar
+"semua" menuju ±1 MB (batas 1.000 baris) dalam kurang dari setahun; daftar
+berjendela tetap konstan karena bergantung pada laju masuk × panjang jendela,
+bukan umur toko.
+
+**Aturannya:** muat tiket yang **belum tuntas** (berapa pun umurnya) **atau**
+`updated_at` dalam 31 hari (awal hari lokal). Tuntas = sudah diambil **dan**
+(lunas **atau** batal) — persis `isClosedOut`. Sejak revisi 23 Sep: **dua kueri
+paralel**, lihat "Revisi: 31 hari, dua kueri" di bawah. (Versi pertama memakai satu
+`or=(picked_up.is.false,status.not.in.(lunas,batal),updated_at.gte.<batas>)`.)
+
+Keputusan pemilik: (1) chip status berarti "dalam jendela" — KPI tetap dari RPC,
+tidak berubah; (2) tiket lama tak muncul saat menggulir; (3) 30 hari; plus
+pembatas render 50 baris dihapus untuk tampilan berjendela.
+
+Yang harus diverifikasi sebelum aturan ini sah:
+- **Definisi "tuntas" saya sempat keliru** — menganggap semua tiket batal tuntas.
+  `isClosedOut` mensyaratkan **sudah diambil** untuk lunas maupun batal. Tiket batal
+  yang perangkatnya belum dikembalikan adalah barang pelanggan yang masih di toko.
+- **Piutang aman menurut definisinya:** `service_receivables` = status `selesai` +
+  ada sisa tagihan, dan `selesai` tidak pernah tuntas. Penyaring "Belum lunas"
+  (`unpaid`) menampilkan semua piutang, berapa pun umurnya. Tidak ada aturan
+  tambahan — menyalin logika piutang ke filter daftar berarti dua definisi.
+- **`updated_at` sebagai "kapan ditutup"** — tidak ada trigger yang memeliharanya.
+  Sah hanya karena SETIAP jalur penutupan memperbaruinya: `settle_service`,
+  `cancel_service` (8/8 RPC pengubah `services` menyetelnya) dan penandaan "sudah
+  diambil" di ServicesPage & ServiceDetailPage (`updatedAt: now`). Ditulis sebagai
+  KONTRAK di komentar `queryServices`. Jalur penutupan baru yang lupa → tiket lama
+  lenyap tepat setelah dilunasi. (`service_summary` 0063 bergantung pada invariant
+  yang sama.)
+- `picked_up` `NOT NULL default false` — `is.false` tak melewatkan NULL.
+- Dua `or` (penyaring cabang + jendela) digabung DAN oleh PostgREST: dengan
+  penyaring cabang yang cocok semua tiket, hasil tetap 105 (bukan 326).
+- Arsip (`useServiceArchive`) kini **selalu** aktif di cloud, bukan hanya saat
+  daftar mentok 1.000. Batas rentangnya = awal jendela: setiap tiket yang **dibuat**
+  dalam jendela pasti termuat, karena `updated_at ≥ created_at`.
+
+**Hasil di replika:** 337.709 B → **113.310 B**, 107 tiket (batas = 24 Agu 00:00
+WIB). 8 selalu tampil, termasuk tiket lama yang tadinya terkubur: NS-0102 masih
+`diagnosa`, NS-0149 lunas belum diambil, dua batal belum dikembalikan, satu
+piutang. 17 tiket dibuat sebelum jendela — semuanya sah.
+
+Pembatas render 50 baris dibuat untuk "ribuan tiket sejak toko berdiri"; kini
+hanya berlaku saat hasil arsip ikut digabung (maks 1.000). Kaki daftar memakai
+ulang petunjuk yang sudah ada: *"105 dari 105 tiket · 326 total · tiket lebih lama:
+cari nomor/nama atau pilih tanggal"* (`stats.total` dari RPC = seluruh tiket).
+
+Efek samping yang diterima: ServiceDetailPage tidak lagi menemukan tiket di cache
+daftar (kuncinya berbeda), jadi selalu lewat `repository.get(id)` — satu baris.
+
+`0083` BELUM diterapkan ke staging/produksi — merge ke `main` sebelum itu akan
+mematikan badge tugas (RPC tidak ada). Perubahan halaman Servis tidak butuh migrasi.
+
+#### Revisi: 31 hari, dua kueri, tanpa asumsi ukuran toko (23 Sep 2026)
+
+Permintaan pemilik: jendela **31 hari** + tiket belum tuntas dari bulan-bulan
+sebelumnya selalu tampil — dan **jangan berasumsi ±100 unit/bulan**; itu angka satu
+toko, bukan pelanggan FixMaster lain.
+
+Asumsi itu ternyata tersembunyi di kode, bukan hanya di komentar: satu kueri `or`
+berurut `created_at desc` dengan `limit` 1.000 (max_rows PostgREST). Toko yang
+menyentuh >1.000 tiket dalam jendela akan terpotong dari yang **paling tua** —
+tepatnya tiket belum tuntas lama yang harus selalu terpantau. Perbaikannya:
+- `queryServices({ openOnly })` → `or=(picked_up.is.false,status.not.in.(lunas,batal))`
+- `queryServices({ closedSince })` → `picked_up=eq.true&status=in.(lunas,batal)&updated_at=gte.<batas>`
+- Dijalankan paralel, digabung (himpunannya saling lepas), diurutkan di klien
+  seperti biasa. Bila salah satu mentok 1.000, `truncated` → jaminan "semua tiket
+  yang dibuat dalam jendela termuat" gugur, jadi setiap rentang tanggal ditanyakan ke
+  server dan footer menyebut daftar terpotong.
+- Komentar kode tidak lagi memuat angka toko mana pun; angka terukur hanya di vault
+  ini sebagai data **satu** toko.
+
+Batas atas yang tersisa (sengaja): tiap perubahan servis menarik ulang seluruh
+jendela di setiap perangkat. Ongkosnya ∝ laju tiket masuk toko itu × 31 hari. Untuk
+toko yang jauh lebih ramai, langkah berikutnya adalah pembaruan per baris dari
+payload realtime, bukan jendela yang lebih pendek.
+
+**Terukur di replika (toko pemilik):** 8 belum tuntas (7.856 B) + 103 tuntas
+(109.971 B) = 111 tiket, batas `2026-08-22T17:00Z` = 23 Agu 00:00 WIB.
+
+**Kaji ulang "Sembunyikan tuntas" — tetap dipertahankan.** Dulu ia menyembunyikan
+riwayat bertahun-tahun; kini paling banyak 31 hari. Tapi dalam jendela itu pun
+tiket tuntas mendominasi (103 dari 111 di toko pemilik — rasio yang wajar untuk toko
+mana pun, karena tiket aktif dibatasi kapasitas meja kerja sedangkan yang tuntas
+menumpuk selama jendela). Tombol ini satu-satunya cara melihat antrean kerja
+"semua yang belum tuntas" — chip status hanya satu status sekaligus, dan status
+`lunas` belum diambil tidak tuntas.
+
+## Realtime: putaran reconnect → resync tanpa akhir (23 Sep 2026)
+
+**Gejala (log Envoy replika, sesi pemilik):** mulai 14:51:59, ±1 detik setelah token
+JWT pertama kedaluwarsa (`JWT_EXPIRY=3600`, `POST /auth/v1/token` 14:51:50), aplikasi
+menarik ulang **semua** koleksi yang terpasang + baris organisasi berulang-ulang:
+145× daftar servis (113 KB) dalam 3 menit, ±16 MB, lalu melambat ke tiap ±60 detik
+dan tidak pernah berhenti. WebSocket-nya sendiri tetap satu koneksi — yang berputar
+adalah **kanal**.
+
+**Sidik jarinya:** setiap putaran berisi persis himpunan `notifyAll()` +
+`refreshOrganization()` — satu-satunya jalur yang memanggil keduanya adalah cabang
+`offline → live` di `SupabaseAdapter.setScope`. Rasio `nav_counts`:`services` ≈ 6:1
+(3 koleksi × 2 rel nav) cocok dengan `notifyAll`.
+
+**Akar masalah:** `RealtimeChannel.unsubscribe()` (dipanggil `removeChannel`)
+"Triggers onClose() hooks" — callback `subscribe` milik kanal **lama** menerima
+`CLOSED`. `subscribeOrgTables` memperlakukannya sebagai putus sungguhan: status
+`offline` → `scheduleReconnect` → `connect()` membuang kanal (yang kini baru) →
+`CLOSED` lagi → … dan tiap kanal baru yang `SUBSCRIBED` memicu `live` → resync penuh.
+Satu putus sungguhan (token kedaluwarsa, jaringan) cukup untuk menyalakan putaran
+selamanya. Berlaku juga di cloud — kemungkinan ikut menyumbang egress produksi.
+
+**Perbaikan** (`src/data/supabase-client.ts`): callback mengabaikan kanal yang bukan
+kanal aktif (`channel !== ch`), dan `teardownChannel` mengosongkan `channel`
+**sebelum** `removeChannel` karena callback `CLOSED` bisa datang sinkron. Tes
+`src/data/supabase-client.test.ts` meniru perilaku realtime-js; tanpa perbaikan ia
+melihat 10 kanal dalam 2 menit, dengan perbaikan tepat 2.
+
+**Ikutan:** invalidasi `navCounts` memakai `cancelRefetch: false` — satu resync kini
+satu panggilan RPC per rel, bukan 6 yang saling membatalkan.
+
+**Terverifikasi di replika:** setelah Vite memuat ulang halaman pemilik, lalu lintas
+turun dari tiap ≤60 detik menjadi nol selama 2 menit berikutnya.

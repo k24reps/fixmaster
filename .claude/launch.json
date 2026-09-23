@@ -12,6 +12,21 @@
       "autoPort": true
     },
     {
+      "name": "fixmaster-selfhost",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "selfhost",
+        "--port",
+        "5190",
+        "--strictPort"
+      ],
+      "port": 5190
+    },
+    {
       "name": "fixmaster-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

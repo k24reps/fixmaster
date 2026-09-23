@@ -14,13 +14,13 @@ import {
   ConfirmDialog,
 } from '@/components/ui';
 import { repository } from '@/data';
-import { useCollection } from '@/hooks/useCollection';
+import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import { SERVICE_LIST_CAP, useServiceArchive } from '@/hooks/useServiceArchive';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
 import { fmtNumber, fmtRp } from '@/lib/format';
-import { fmtDate, localDateOf, localDateStr, localDayStartISO, monthRange } from '@/lib/time';
+import { addDays, fmtDate, localDateOf, localDateStr, localDayStartISO, monthRange } from '@/lib/time';
 import { serviceSummary } from '@/lib/business/dashboard';
 import {
   STATUS_LABELS,
@@ -60,9 +60,47 @@ import styles from './ServicesPage.module.css';
  */
 const PAGE_SIZE = 50;
 
+/**
+ * Jendela daftar "panas" di cloud: SEMUA tiket yang belum tuntas (berapa pun
+ * umurnya, supaya selalu terpantau) plus yang tuntas dalam N hari terakhir.
+ * Tiket tuntas adalah riwayat beku yang dulu ditarik ulang utuh di setiap
+ * perangkat tiap ada perubahan servis, sehingga ongkosnya tumbuh seiring umur
+ * toko. Dengan jendela, ongkosnya mengikuti laju tiket masuk toko itu sendiri,
+ * bukan umurnya. Tiket lama tetap ditemukan lewat pencarian, filter tanggal,
+ * dan riwayat pelanggan (useServiceArchive).
+ */
+const SERVICE_WINDOW_DAYS = 31;
+const NO_WINDOW: { rows: Service[]; truncated: boolean } = { rows: [], truncated: false };
+
 export function ServicesPage() {
   const [searchParams] = useSearchParams();
-  const { data: services, loading } = useCollection('services');
+  // Cloud: daftar berjendela. Batasnya awal hari lokal, jadi kuncinya hanya
+  // berganti sekali sehari. Lokal/demo: daftar lengkap — tidak ada ongkos
+  // egress di sana. Kunci di bawah ['collection','services',…] supaya realtime
+  // tetap meng-invalidasi.
+  // Dua kueri, bukan satu `or`: tiap kueri mentok max_rows PostgREST (1.000).
+  // Dengan satu kueri berurut created_at, toko yang ramai akan kehilangan
+  // tiket BELUM tuntas yang paling tua lebih dulu — justru yang harus terpantau.
+  const windowed = !!repository.queryServices;
+  const activeOutlet = useSessionStore((s) => s.activeOutletId);
+  const windowStart = localDayStartISO(addDays(localDateStr(), -SERVICE_WINDOW_DAYS));
+  const { data: windowData, loading } = useDerivedQuery(
+    ['collection', 'services', 'window', activeOutlet, windowStart],
+    async () => {
+      if (!repository.queryServices) return { rows: await repository.list('services'), truncated: false };
+      const [open, closed] = await Promise.all([
+        repository.queryServices({ openOnly: true, limit: SERVICE_LIST_CAP }),
+        repository.queryServices({ closedSince: windowStart, limit: SERVICE_LIST_CAP }),
+      ]);
+      return {
+        rows: [...open, ...closed],
+        truncated: open.length >= SERVICE_LIST_CAP || closed.length >= SERVICE_LIST_CAP,
+      };
+    },
+    NO_WINDOW,
+  );
+  const services = windowData.rows;
+  const truncated = windowData.truncated;
   const { data: employees } = useCollection('employees');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const techs = employees.length ? employees : sessionEmployees;
@@ -115,16 +153,16 @@ export function ServicesPage() {
   const cols = useMemo(() => new Set(resolveServiceColumns(savedColumns)), [savedColumns]);
 
   const today = localDateStr();
-  // Daftar cloud maks 1000 tiket terbaru. Bila terpotong, pencarian & rentang
-  // tanggal yang lebih tua ikut ditanyakan ke server, lalu digabung ke daftar.
-  const capped = services.length >= SERVICE_LIST_CAP;
+  // Tiket di luar daftar yang dimuat ditanyakan ke server saat dicari (≥3 huruf)
+  // atau saat rentang tanggal menjangkau sebelum batasnya, lalu digabung.
+  // SETIAP tiket yang DIBUAT dalam jendela pasti termuat, karena updated_at tak
+  // mungkin lebih tua dari created_at — jadi batasnya adalah awal jendela. Kalau
+  // salah satu kueri terpotong, jaminan itu gugur: setiap rentang tanggal
+  // ditanyakan ke server.
   const dateRange = createdRange(dateFilter, today, { from: customFrom, to: customTo });
-  const oldestLoaded = useMemo(
-    () => (capped ? Math.min(...services.map((s) => Date.parse(s.createdAt))) : 0),
-    [capped, services],
-  );
+  const oldestLoaded = truncated ? Infinity : Date.parse(windowStart);
   const archive = useServiceArchive({
-    enabled: capped,
+    enabled: windowed,
     term: query,
     range: dateRange && Date.parse(localDayStartISO(dateRange.from)) < oldestLoaded ? dateRange : null,
   });
@@ -243,7 +281,14 @@ export function ServicesPage() {
   // dari seluruh tiket, bukan dari sini — kalau tidak, angka
   // "Total Servis"/"Nilai Tiket Lunas" akan berubah mengikuti seberapa banyak
   // baris yang kebetulan sudah dimuat, dan itu laporan yang menyesatkan.
-  const shownRows = useMemo(() => rows.slice(0, limit), [rows, limit]);
+  // Daftar berjendela dirender UTUH (±105 tiket). Potongan 50 baris dibuat untuk
+  // ribuan tiket sejak toko berdiri; kini itu hanya terjadi saat hasil arsip ikut
+  // digabung (pencarian/rentang lama, maks 1000), jadi potongannya hanya berlaku
+  // saat itu.
+  const shownRows = useMemo(
+    () => (archive.length > 0 ? rows.slice(0, limit) : rows),
+    [rows, limit, archive.length],
+  );
 
   // Lajur segmen Daftar dari kolom yang diaktifkan toko, supaya segmen antar
   // baris sejajar tanpa kepala tabel. Urutan = urutan segmen di JSX (nomor dulu).
@@ -846,7 +891,11 @@ export function ServicesPage() {
                 {shownRows.length} dari {rows.length} tiket
                 {rows.length !== stats.total && ` · ${stats.total} total`}
                 {hideClosed && closedCount > 0 && ` · ${closedCount} tuntas disembunyikan`}
-                {capped && ' · tiket lebih lama: cari nomor/nama atau pilih tanggal'}
+                {windowed &&
+                  archive.length === 0 &&
+                  (truncated
+                    ? ' · daftar terpotong 1.000 tiket: cari nomor/nama atau pilih tanggal'
+                    : ' · tiket lebih lama: cari nomor/nama atau pilih tanggal')}
               </span>
             </div>
           </div>

@@ -5,7 +5,7 @@
  * fully unit-testable. This is the core differentiator vs FixNova, which
  * has no internal task management at all.
  */
-import type { TaskTemplate, TaskInstance, TaskTemplateItem, Role } from '@/data/types';
+import type { TaskTemplate, TaskInstance, TaskTemplateItem, Role, TaskCountGroup } from '@/data/types';
 import { parseISODate, localDateStr } from '@/lib/time';
 import { newId } from '@/lib/id';
 
@@ -233,4 +233,50 @@ export function visibleInstances<T extends { templateId?: string | null }>(
 /** Whether a pending instance is overdue relative to today. */
 export function isOverdue(instance: TaskInstance, today: string): boolean {
   return instance.status === 'pending' && instance.dueDate < today;
+}
+
+/**
+ * Kelompokkan instance menjadi `TaskCountGroup` — padanan lokal dari RPC 0083.
+ * Aturannya identik dengan `isOverdue` dan jatuh tempo `dueDate === today`.
+ */
+export function groupTaskCounts(
+  instances: readonly Pick<TaskInstance, 'templateId' | 'status' | 'dueDate'>[],
+  today: string,
+): TaskCountGroup[] {
+  const byTemplate = new Map<string | null, TaskCountGroup>();
+  for (const i of instances) {
+    if (i.status !== 'pending' || i.dueDate > today) continue;
+    const key = i.templateId ?? null;
+    let g = byTemplate.get(key);
+    if (!g) byTemplate.set(key, (g = { templateId: key, overdue: 0, dueToday: 0 }));
+    if (i.dueDate < today) g.overdue += 1;
+    else g.dueToday += 1;
+  }
+  return [...byTemplate.values()];
+}
+
+/**
+ * Jumlahkan hanya kelompok yang boleh dilihat orang ini.
+ *
+ * Memakai `taskVisibleTo` yang sama dengan halaman Tugas. Itu mungkin karena
+ * aturannya hanya bergantung pada TEMPLATE, bukan pada baris instance — jadi
+ * menjumlah per template setara persis dengan menyaring per baris lalu
+ * menghitung, tanpa perlu menyalin aturan peran ke SQL.
+ */
+export function visibleTaskCounts(
+  groups: readonly TaskCountGroup[],
+  templateById: ReadonlyMap<string, TaskAssignee>,
+  me: { id: string; role: Role },
+  outletIds: readonly string[],
+  seesAll: boolean,
+): { overdue: number; dueToday: number } {
+  let overdue = 0;
+  let dueToday = 0;
+  for (const g of groups) {
+    const template = g.templateId ? templateById.get(g.templateId) : undefined;
+    if (!taskVisibleTo(template, me, outletIds, seesAll)) continue;
+    overdue += g.overdue;
+    dueToday += g.dueToday;
+  }
+  return { overdue, dueToday };
 }

@@ -9,6 +9,8 @@ import {
   bySortOrder,
   taskVisibleTo,
   visibleInstances,
+  groupTaskCounts,
+  visibleTaskCounts,
 } from './tasks';
 import type { TaskTemplate, TaskInstance } from '@/data/types';
 
@@ -320,3 +322,81 @@ describe('taskVisibleTo', () => {
     expect(visibleInstances(rows, templates, me, [], true)).toHaveLength(3);
   });
 });
+
+/**
+ * 0083 memindahkan hitungan tugas rel nav ke server, DIKELOMPOKKAN PER TEMPLATE,
+ * lalu klien menerapkan `taskVisibleTo` per kelompok. Itu hanya sah bila hasilnya
+ * SETARA PERSIS dengan cara lama: saring per baris dengan `visibleInstances`,
+ * lalu hitung. Kalau tidak, karyawan melihat badge yang berbeda dari halaman
+ * Tugas — persis kegagalan yang diperingatkan komentar `visibleInstances`.
+ */
+describe('groupTaskCounts + visibleTaskCounts ≡ visibleInstances lalu hitung (0083)', () => {
+  const today = '2026-09-23';
+  const templates = [
+    { ...tpl({ id: 'role-k' }), assigneeType: 'role' as const, assigneeRole: 'karyawan' as const },
+    { ...tpl({ id: 'role-a' }), assigneeType: 'role' as const, assigneeRole: 'admin' as const },
+    { ...tpl({ id: 'emp-e1' }), assigneeType: 'employee' as const, assigneeEmployeeId: 'e1' },
+    { ...tpl({ id: 'emp-e9' }), assigneeType: 'employee' as const, assigneeEmployeeId: 'e9' },
+    { ...tpl({ id: 'out-o1' }), assigneeType: 'outlet' as const, assigneeOutletId: 'o1' },
+    { ...tpl({ id: 'out-o2' }), assigneeType: 'outlet' as const, assigneeOutletId: 'o2' },
+    { ...tpl({ id: 'out-any' }), assigneeType: 'outlet' as const, assigneeOutletId: null },
+  ];
+  const templateById = new Map(templates.map((t) => [t.id, t]));
+
+  // Setiap template, plus tugas tanpa template dan template yang sudah dihapus,
+  // dikalikan campuran status dan tanggal — termasuk yang TIDAK boleh terhitung.
+  const templateIds: (string | null)[] = [...templates.map((t) => t.id), null, 'terhapus'];
+  const cases: [TaskInstance['status'], string][] = [
+    ['pending', '2026-09-01'], ['pending', '2026-09-22'], ['pending', today],
+    ['pending', today], ['pending', '2026-09-30'], ['done', '2026-09-10'], ['done', today],
+  ];
+  let n = 0;
+  const instances: TaskInstance[] = templateIds.flatMap((templateId) =>
+    cases.map(([status, dueDate]) => ({
+      id: `i${n++}`, orgId: 'o1', outletId: null, templateId, itemId: null, title: '',
+      description: '', dueDate, status, completedAt: null, completedById: null,
+      completedByName: '', note: '', sortOrder: 0, createdAt: '', updatedAt: '', deletedAt: null,
+    })),
+  );
+
+  const users = [
+    { label: 'karyawan e1, cabang o1', me: { id: 'e1', role: 'karyawan' as const }, outlets: ['o1'], seesAll: false },
+    { label: 'karyawan e1, tanpa batasan cabang', me: { id: 'e1', role: 'karyawan' as const }, outlets: [], seesAll: false },
+    { label: 'karyawan e9, cabang o2', me: { id: 'e9', role: 'karyawan' as const }, outlets: ['o2'], seesAll: false },
+    { label: 'admin, tidak melihat semua', me: { id: 'a1', role: 'admin' as const }, outlets: ['o1', 'o2'], seesAll: false },
+    { label: 'manager, melihat semua', me: { id: 'm1', role: 'owner' as const }, outlets: [], seesAll: true },
+  ];
+
+  for (const u of users) {
+    it(u.label, () => {
+      const lama = visibleInstances(instances, templateById, u.me, u.outlets, u.seesAll);
+      const expected = {
+        overdue: lama.filter((t) => isOverdue(t, today)).length,
+        dueToday: lama.filter((t) => t.status === 'pending' && t.dueDate === today).length,
+      };
+      const baru = visibleTaskCounts(groupTaskCounts(instances, today), templateById, u.me, u.outlets, u.seesAll);
+      expect(baru).toEqual(expected);
+    });
+  }
+
+  it('matriksnya benar-benar menguji sesuatu (bukan nol lawan nol)', () => {
+    const semua = visibleTaskCounts(groupTaskCounts(instances, today), templateById, users[4].me, [], true);
+    // 9 template-id × (2 lewat tenggat + 2 hari ini) pada data di atas.
+    expect(semua).toEqual({ overdue: 18, dueToday: 18 });
+    // Dan pengguna berbeda memang melihat angka berbeda.
+    const e9 = visibleTaskCounts(groupTaskCounts(instances, today), templateById, users[2].me, ['o2'], false);
+    expect(e9.overdue).toBeLessThan(semua.overdue);
+  });
+
+  it('mengabaikan yang selesai dan yang jatuh tempo di masa depan', () => {
+    const g = groupTaskCounts(
+      [
+        { templateId: 't', status: 'done', dueDate: '2026-09-01' },
+        { templateId: 't', status: 'pending', dueDate: '2026-12-01' },
+      ],
+      today,
+    );
+    expect(g).toEqual([]);
+  });
+});
+

@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
-import { useCollection } from '@/hooks/useCollection';
+import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
+import { repository } from '@/data';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import { fmtRp } from '@/lib/format';
@@ -13,7 +14,7 @@ import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
 import { isManager } from '@/config/plans';
 import { useT, type TranslationKey } from '@/i18n';
-import type { ServiceStatus } from '@/data/types';
+import type { Service, ServiceStatus } from '@/data/types';
 import styles from './DashboardPage.module.css';
 
 const ALERT_COPY: Record<
@@ -38,6 +39,9 @@ const ALERT_COPY: Record<
   },
 };
 
+const RECENT_SERVICES = 6;
+const NO_SERVICES: Service[] = [];
+
 function fmtRpInline(value: number): string {
   return fmtRp(value).replace(' ', '\u00a0');
 }
@@ -51,8 +55,25 @@ export function DashboardPage() {
   const isMgr = me ? isManager(me.role) : false;
   const { from, to } = monthRange();
 
-  const servicesQuery = useCollection('services');
-  // Hitungan & papan teknisi dari SEMUA tiket (daftar di atas maks 1000 terbaru).
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  // Dashboard hanya MENAMPILKAN 6 tiket terbaru; hitungan & papan teknisinya
+  // datang dari RPC (useServiceSummary di bawah). Dulu halaman ini menarik
+  // SELURUH tabel servis untuk 6 baris itu — 338 KB di replika produksi (334
+  // tiket), tumbuh ±100 tiket/bulan, dan ditarik ulang di setiap perangkat tiap
+  // ada perubahan servis. Dashboard juga halaman pertama setiap kali masuk.
+  // Kunci di bawah ['collection','services',…] supaya realtime tetap
+  // meng-invalidasi; yang ditarik ulang kini hanya 6 baris.
+  const servicesQuery = useDerivedQuery(
+    ['collection', 'services', 'dashboardRecent', activeOutletId],
+    async () =>
+      repository.queryServices
+        ? repository.queryServices({ limit: RECENT_SERVICES, visibleOnly: true })
+        : visibleServices(await repository.list('services'))
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .slice(0, RECENT_SERVICES),
+    NO_SERVICES,
+  );
+  // Hitungan & papan teknisi dari SEMUA tiket.
   const summaryQuery = useServiceSummary(from, to);
   const incomesQuery = useCollectionRange('incomes', 'date', from, to);
   const expensesQuery = useCollectionRange('expenses', 'date', from, to);
@@ -61,9 +82,6 @@ export function DashboardPage() {
   // Hanya baris hari ini yang dipakai (activeStaff) — kunci query-nya sama
   // dengan rail navigasi, jadi keduanya berbagi satu tarikan kecil.
   const attendanceQuery = useCollectionRange('attendance', 'date', localDateStr(), localDateStr());
-  // Tiket arsip disembunyikan seperti di menu Servis, supaya angka & peringatan
-  // di sini sama dengan yang tampil saat tautannya diklik.
-  const services = useMemo(() => visibleServices(servicesQuery.data), [servicesQuery.data]);
   const incomes = incomesQuery.data;
   const expenses = expensesQuery.data;
   const wallets = walletsQuery.data;
@@ -116,15 +134,14 @@ export function DashboardPage() {
     () => computeAlerts(summary ?? { confirmation: 0, awaitingPickup: 0 }, inventory),
     [summary, inventory],
   );
-  const recent = useMemo(
-    () => [...services].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
-    [services],
-  );
+  // Tiket arsip sudah disaring di sumbernya (visibleOnly / visibleServices),
+  // supaya yang tampil sama dengan menu Servis saat tautannya diklik.
+  const recent = servicesQuery.data;
   const revenuePct = target.revenue > 0 ? Math.min(100, (kpis.revenue / target.revenue) * 100) : 0;
   const servicePct = target.serviceCount > 0
     ? Math.min(100, (unitsIn / target.serviceCount) * 100)
     : 0;
-  const empty = services.length === 0;
+  const empty = recent.length === 0;
   const maxRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
 
   const today = localDateStr();
