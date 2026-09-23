@@ -16,6 +16,7 @@ import type {
   TaskTemplate,
   TaskInstance,
   ActivityLog,
+  NavCounts,
   ID,
 } from './types';
 
@@ -125,6 +126,13 @@ export interface Repository {
    * nomor, pelanggan, HP, perangkat, dan keluhan; `createdFrom`/`createdTo` =
    * batas timestamp [from, to). Adapter lokal tidak membutuhkannya — daftarnya lengkap.
    */
+  /**
+   * Hitungan lampu rel nav dalam SATU permintaan (RPC `nav_counts`, 0081).
+   * Adapter lokal tidak membutuhkannya — datanya sudah ada di memori, jadi
+   * `useNavSignals` menghitungnya langsung dari `list()`.
+   */
+  navCounts?(): Promise<NavCounts>;
+
   queryServices?(opts: {
     term?: string;
     createdFrom?: string;

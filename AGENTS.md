@@ -68,6 +68,13 @@ npm run test    # vitest unit (616 test / 60 berkas, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
+
+> [!warning] `tests/` TIDAK ikut type-check
+> `tsc -b` memakai `tsconfig.app.json` yang hanya `"include": ["src"]`. Error tipe
+> di `tests/` baru ketahuan saat dijalankan — dan tes integrasi butuh staging, jadi
+> bisa tersembunyi lama. Periksa manual berkas tes baru dengan tsconfig sementara:
+> `extends` app, `include: ["tests","src"]`, `types: ["node","vite/client"]`
+> (tanpa `vite/client` semua impor `*.module.css` salah dilaporkan hilang).
 Untuk perubahan UI: foto render asli via Playwright (`scripts/`), jangan berasumsi "kelihatannya benar".
 Dua probe regresi siap pakai (butuh dev server jalan):
 

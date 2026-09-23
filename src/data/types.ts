@@ -323,6 +323,15 @@ export interface Service extends BaseEntity {
    * Opsional: baris lokal lama belum membawanya.
    */
   completionNote?: string;
+  /**
+   * Saat tiket PERTAMA kali mencapai status "selesai" (migrasi 0080). Kolom
+   * sendiri, bukan dipindai dari `history`: Laporan hanya butuh satu stempel
+   * waktu ini, dan memuat `history` untuk mendapatkannya menyeret ≈78% ukuran
+   * tiap baris — sumber egress terbesar di produk.
+   * Opsional: baris lokal lama belum membawanya, jadi `completionDate()`
+   * tetap punya jalur mundur ke `history`.
+   */
+  completedAt?: ISODateTime;
   accessories: string;
   status: ServiceStatus;
   technicianId: ID | null;
@@ -361,9 +370,25 @@ export interface Service extends BaseEntity {
  */
 export const SERVICE_LIST_COLUMNS: string =
   'id,org_id,outlet_id,service_no,customer_id,customer_name,customer_phone,category,device,' +
-  'complaint,completion_note,accessories,status,technician_id,technician_name,estimate_cost,final_cost,' +
+  'complaint,completion_note,completed_at,accessories,status,technician_id,technician_name,' +
+  'estimate_cost,final_cost,' +
   'down_payment,spareparts,warranty_until,warranty_service_until,warranty_parts_until,' +
   'picked_up,picked_up_at,warranty_claim_of,claimed_items,archived,created_at,updated_at,deleted_at';
+
+/**
+ * Hitungan untuk lampu rel navigasi, dijawab satu RPC (`nav_counts`, 0081).
+ * Menggantikan penarikan tiga tabel utuh yang dibayar di SETIAP halaman karena
+ * rel ini hidup di Sidebar dan MobileBottomNav. Tugas TIDAK ada di sini: aturan
+ * visibilitasnya per peran, dan menyalinnya ke SQL akan membuat badge menyimpang
+ * dari halaman Tugas.
+ */
+export interface NavCounts {
+  servicesActive: number;
+  servicesAwaitingConfirm: boolean;
+  inventoryOut: number;
+  inventoryLow: number;
+  poOpen: number;
+}
 
 // ---------- POS Sales ----------
 export interface SaleLine {

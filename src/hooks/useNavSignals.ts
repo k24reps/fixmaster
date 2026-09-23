@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { repository } from '@/data';
 import { useCollection } from './useCollection';
 import { useCollectionRange } from './useCollectionRange';
 import { isActive } from '@/lib/business/services';
@@ -31,9 +33,37 @@ const IDLE: NavSignal = { count: 0, tone: 'idle', pulse: false };
  * numbers the pages themselves show — no duplicated rules.
  */
 export function useNavSignals(): Record<string, NavSignal> {
-  const { data: services } = useCollection('services');
-  const { data: inventory } = useCollection('inventory');
-  const { data: purchaseOrders } = useCollection('purchaseOrders');
+  const queryClient = useQueryClient();
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  // Cloud: satu RPC (0081) menggantikan tarikan UTUH services + inventory +
+  // purchase_orders. Rel ini hidup di Sidebar DAN MobileBottomNav, jadi ongkos
+  // itu dibayar di setiap halaman — termasuk Pengaturan, yang tak memakai
+  // satu pun dari ketiganya. Adapter lokal tak punya metode ini: datanya sudah
+  // di memori, jadi jalur di bawah menghitungnya seperti semula.
+  const serverCounts = !!repository.navCounts;
+  const { data: counts } = useQuery({
+    queryKey: ['navCounts', activeOutletId],
+    queryFn: () => repository.navCounts!(),
+    enabled: serverCounts,
+  });
+
+  // Kuncinya TIDAK bisa diletakkan di bawah satu prefiks `['collection', X]`
+  // seperti useDerivedQuery, karena angka ini berasal dari TIGA koleksi dan
+  // invalidateCollection mencocokkan prefiks. Tanpa langganan eksplisit ini,
+  // badge stok habis — yang justru ditandai kritis dan berkedip — baru berubah
+  // setelah staleTime 5 menit.
+  useEffect(() => {
+    if (!serverCounts) return;
+    return repository.subscribe((changed) => {
+      if (changed === 'services' || changed === 'inventory' || changed === 'purchaseOrders') {
+        void queryClient.invalidateQueries({ queryKey: ['navCounts'] });
+      }
+    });
+  }, [serverCounts, queryClient]);
+
+  const { data: services } = useCollection('services', { enabled: !serverCounts });
+  const { data: inventory } = useCollection('inventory', { enabled: !serverCounts });
+  const { data: purchaseOrders } = useCollection('purchaseOrders', { enabled: !serverCounts });
   const { data: taskInstances } = useCollection('taskInstances');
   // Tugas disaring dengan aturan yang sama seperti halamannya. Tanpa ini
   // karyawan melihat badge berisi tugas orang lain yang tak pernah ia temukan.
@@ -48,18 +78,24 @@ export function useNavSignals(): Record<string, NavSignal> {
 
   return useMemo(() => {
 
+    // Tiga angka pertama datang dari server bila tersedia. Aturannya HARUS sama
+    // persis dengan cabang lokal di bawah — nav_counts (0081) mencerminkannya.
     // Services: active units in the workshop; escalate if any await cost confirmation.
-    const pending = services.filter((s) => isActive(s.status)).length;
-    const awaitingConfirm = services.some((s) => s.status === 'konfirmasi');
+    const pending = counts ? counts.servicesActive : services.filter((s) => isActive(s.status)).length;
+    const awaitingConfirm = counts
+      ? counts.servicesAwaitingConfirm
+      : services.some((s) => s.status === 'konfirmasi');
 
     // Inventory: out-of-stock is critical, low-stock is a warning.
-    const out = inventory.filter((i) => i.stock <= 0).length;
-    const low = inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
+    const out = counts ? counts.inventoryOut : inventory.filter((i) => i.stock <= 0).length;
+    const low = counts
+      ? counts.inventoryLow
+      : inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
 
     // Suppliers: open purchase orders still awaiting receipt.
-    const openPo = purchaseOrders.filter(
-      (p) => p.status === 'ordered' || p.status === 'partial',
-    ).length;
+    const openPo = counts
+      ? counts.poOpen
+      : purchaseOrders.filter((p) => p.status === 'ordered' || p.status === 'partial').length;
 
     // Tasks: overdue pending is critical; due-today pending is a warning.
     const myTasks = visibleInstances(
@@ -100,6 +136,7 @@ export function useNavSignals(): Record<string, NavSignal> {
       '/attendance': working > 0 ? { count: working, tone: 'good', pulse: false } : IDLE,
     } as Record<string, NavSignal>;
   }, [
+    counts,
     services,
     inventory,
     purchaseOrders,

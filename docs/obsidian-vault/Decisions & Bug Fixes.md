@@ -2485,3 +2485,124 @@ yang memang harus dibayar untuk triad emas/oranye/merah.
 
 Verifikasi: `audit-tokens` 0 pelanggaran, `audit-contrast` 0 temuan, build + lint + 616
 test hijau, render asli difoto di kedua tema.
+
+## Egress: tanggal selesai keluar dari `history` (`0080`, 23 Sep 2026)
+
+**Pemicunya insiden nyata:** kuota egress free tier organisasi habis dan SELURUH
+proyek di-restrict — produksi berhenti melayani permintaan. Dashboard menunjukkan
+plan FREE, `t4g.nano`, disk 17%, CPU 2%, dan **"No backups"**. Databasenya kecil;
+yang besar adalah cara aplikasi menariknya.
+
+**Akar yang ditemukan.** `completionDate()` (`lib/business/reports.ts`) memindai
+seluruh array `history` hanya untuk mengambil SATU stempel waktu: entri pertama
+berstatus `selesai`. Karena itu `listByDateRange` memakai `select('*')` dan
+menyeret `history` — ≈78% ukuran tiap baris (angka terukur dari `0058`) — untuk
+SETIAP tiket dalam rentang tanggal. Penelusuran menunjukkan **hanya satu**
+konsumen query rentang `services`, yaitu `ReportsPage.tsx:61`, dan halaman itu
+tidak pernah membaca `.history` sama sekali.
+
+**Perbaikannya menyalin `0059` persis.** Kolom `services.completed_at`, backfill
+dari history, dipelihara dengan memperluas trigger `services_history_append_only`
+(`0058`) — bukan trigger baru: SEMUA jalur pengubah status menulis `history`
+(StatusModal, `settle_service`, `cancel_service`), jadi satu titik itu menangkap
+semuanya, sedangkan trigger pada kolom `status` bisa meleset dari jalur RPC.
+Lalu `listByDateRange` memakai `SERVICE_LIST_COLUMNS` untuk services.
+
+**Dua detail yang mudah salah:**
+- Backfill memakai entri `selesai` **PERTAMA** menurut urutan array (`order by
+  t.i`), bukan terakhir seperti `0059`. Sengaja berbeda: catatan penanganan ingin
+  yang terbaru, tanggal selesai ingin saat tiket pertama kali mencapai `selesai`
+  — itu yang direplikasi dari `.find()`.
+- Ada penjaga regex sebelum `::timestamptz`. Postgres tidak punya `try_cast`;
+  satu baris dengan `at` tak berformat ISO akan menggagalkan SELURUH migrasi di
+  produksi.
+
+`completionDate()` tetap punya jalur mundur ke `history` supaya adapter
+lokal/demo (yang menyimpan objek utuh dan tak punya kolom itu) terus bekerja.
+
+**Pelajaran: helper tes bisa menelan field baru diam-diam.** Dua tes baru gagal
+dengan `null`, dan sempat terbaca seperti bug kode. Penyebabnya `svc()` di
+`reports.test.ts` membangun objek eksplisit dan hanya meneruskan override yang ia
+sebutkan — `completedAt` terbuang sebelum sampai ke fungsi. Helper fixture wajib
+ikut diperbarui tiap ada field baru, kalau tidak ia menguji objek yang bukan
+entitas sebenarnya.
+
+**Dampak & batasnya.** Query rentang services turun ≈78% (sekitar 4,5x lebih
+kecil). Berapa persen total egress yang dihemat **tidak bisa diklaim tanpa
+pengukuran** — bergantung seberapa sering Laporan dibuka. Pantau di
+**Organization → Usage** dan **Observability** (menu "Reports" sudah tidak ada).
+
+**Belum dikerjakan:** `inventory`, `customers`, `suppliers` ada di `FULL_LIST`
+(`supabase-adapter.ts`) dan menembus cap 1000 baris PostgREST dengan perulangan
+`.range()` — seluruh tabel ditarik tiap halaman dipasang. Perbaikannya butuh
+pencarian sisi server berpola `queryServices()`, menyentuh UI, jadi dipisah.
+
+Verifikasi: build + lint + **619 test** (616 -> +3) hijau; Laporan diuji asap di
+render asli lewat `/demo`, yang justru menguji jalur mundur karena adapter
+in-memory tak punya kolom itu.
+
+## Egress: lampu rel nav berhenti menarik tabel utuh (`0081`, 23 Sep 2026)
+
+Lanjutan `0080`, dan ternyata sumbernya LEBIH besar. `useNavSignals` menyalakan
+rel diagnostik di `Sidebar.tsx` DAN `MobileBottomNav.tsx` — keduanya bagian
+shell, jadi hook ini berjalan di SETIAP halaman terautentikasi. Untuk
+menghasilkan tujuh bilangan bulat ia menarik LIMA tabel utuh: services,
+inventory (yang bahkan `FULL_LIST`, menembus cap 1000 baris dengan perulangan),
+purchase_orders, task_instances, task_templates. Membuka **Pengaturan** pun
+membayar seluruh katalog inventaris.
+
+Polanya sudah pernah dikenali sebagian: komentar di hook itu menjelaskan
+`attendance` dipersempit ke hari ini justru karena "the rail mounts on every
+page (twice, with MobileBottomNav)". Empat tabel lain tertinggal.
+
+### Keputusan: hanya yang tanpa logika peran yang pindah ke server
+RPC `nav_counts` (0081) menjawab services + inventory + purchase_orders dalam
+satu permintaan. **Tugas sengaja TIDAK ikut.** `taskVisibleTo` menyaring per
+peran/cabang, dan komentarnya sendiri memperingatkan halaman Tugas dan rel nav
+wajib memakai aturan yang sama — kalau tidak, karyawan melihat badge "7" dengan
+dua baris. Menyalin aturan itu ke SQL menciptakan dua implementasi yang bisa
+menyimpang diam-diam; hematnya tidak sepadan, karena task_templates kecil dan
+task_instances jauh lebih ramping daripada services/inventory.
+
+### SECURITY INVOKER, bukan definer
+RLS yang ada (`is_org_member`, 0002) sudah membatasi baris ke org pemanggil,
+jadi fungsi ini tidak menambah permukaan hak akses dan tidak perlu menerima
+`org_id` dari klien. Penyaringan cabangnya mencerminkan `OUTLET_SCOPED` di
+`supabase-adapter.ts`: baris cabang aktif PLUS baris milik org (`outlet_id null`).
+
+### Kuncinya tidak muat di `useDerivedQuery`
+`useDerivedQuery` menaruh kunci di bawah satu prefiks `['collection', X]` supaya
+`invalidateCollection` (yang mencocokkan prefiks) mengenainya. Angka ini berasal
+dari TIGA koleksi, jadi tidak ada satu prefiks yang cukup. Memaksakannya akan
+memperburuk abstraksi itu bagi lima pemakainya, jadi hook ini memakai `useQuery`
+sendiri plus langganan eksplisit ke tiga koleksi. Tanpa langganan itu, badge
+stok habis — yang ditandai kritis dan berkedip — baru berubah setelah staleTime
+5 menit.
+
+### Yang BELUM terverifikasi
+SQL-nya belum pernah menyentuh database sungguhan: organisasi Supabase sedang
+restricted karena kuota egress, jadi staging pun tak bisa dihubungi. Penjaganya
+ditinggalkan sebagai `tests/integration/tier3f-nav-counts.integration.test.ts`
+— membandingkan hasil RPC dengan perhitungan TypeScript pada data yang sama,
+memeriksa isolasi antar-org, dan memastikan karyawan mendapat angka yang sama
+dengan owner. **Jalankan berkas itu lebih dulu begitu staging pulih.**
+
+### Temuan sampingan: `tests/` tidak ikut type-check
+`npm run build` menjalankan `tsc -b`, tetapi `tsconfig.app.json` hanya
+`"include": ["src"]`. Berkas di `tests/` TIDAK diperiksa tipenya oleh gerbang
+verifikasi — error tipe di tes integrasi baru ketahuan saat dijalankan, yang
+bisa berbulan-bulan kemudian. Berkas baru di atas diperiksa manual dengan
+tsconfig sementara (`extends` app + `include: ["tests","src"]` +
+`types: ["node","vite/client"]`; tanpa `vite/client`, seluruh impor
+`*.module.css` salah dilaporkan hilang).
+
+Verifikasi: build + lint + 619 test hijau; badge rel nav di `/demo` identik
+dengan sebelum perubahan (Servis 4, Inventori 2, Supplier 1, Tugas 2, Absensi 1)
+tanpa error konsol — dan itu menguji jalur mundurnya, karena adapter in-memory
+tidak punya `navCounts`.
+
+### Masih terbuka
+`inventory`, `customers`, `suppliers` tetap `FULL_LIST` untuk HALAMANNYA
+sendiri (katalog, picker POS, pemilih sparepart). Rel nav sudah berhenti
+memicunya, tapi halaman-halaman itu masih menarik tabel penuh. Perbaikannya
+butuh pencarian sisi server berpola `queryServices()` dan menyentuh UI.

@@ -338,11 +338,15 @@ export function serviceFunnel(services: Service[]): FunnelStage[] {
 }
 
 /**
- * The LOCAL date a service first reached "selesai" (from history), else null.
- * Needs rows WITH history: Laporan feeds it from the date-range query, which
- * selects every column. The plain cloud list omits history (supabase-adapter).
+ * The LOCAL date a service first reached "selesai", else null.
+ *
+ * Prefers the `completedAt` column (migrasi 0080). Memindai `history` adalah
+ * jalur mundur untuk baris yang belum membawanya — adapter lokal/demo, dan
+ * baris cloud lama seandainya backfill belum jalan. Karena kolom ini ada,
+ * Laporan tidak lagi perlu memuat `history` sama sekali (≈78% tiap baris).
  */
 export function completionDate(service: Service): string | null {
+  if (service.completedAt) return localDateOf(service.completedAt);
   const entry = (service.history ?? []).find((h) => h.status === 'selesai');
   return entry ? localDateOf(entry.at) : null;
 }

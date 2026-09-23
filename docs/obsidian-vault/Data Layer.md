@@ -397,6 +397,8 @@ Rincian keputusan dan latar tiap temuan di [[Decisions & Bug Fixes]]. Di sini fa
 | Objek | Migrasi | Catatan |
 |---|---|---|
 | `services.completion_note` (text) | `0059` | Catatan wajib saat status "selesai", dipindah keluar dari `history`. **Kolom baru WAJIB ikut ke `SERVICE_LIST_COLUMNS`** di `src/data/types.ts` — tes integrasi tier3e memeriksanya |
+| `services.completed_at` (timestamptz) | `0080` | Saat tiket PERTAMA mencapai "selesai", dipindah keluar dari `history` supaya Laporan berhenti menyeret ≈78% tiap baris. Dipelihara oleh trigger `services_history_append_only` (`0058`) yang diperluas, sekali-set via `coalesce`. `completionDate()` tetap punya jalur mundur ke `history` untuk adapter lokal/demo |
+| `nav_counts(p_outlet_id)` RPC | `0081` | Hitungan lampu rel nav (services aktif, menunggu konfirmasi, stok habis/menipis, PO terbuka) dalam SATU permintaan. **SECURITY INVOKER** — RLS yang membatasi org, jadi tanpa permukaan hak akses baru. Tugas TIDAK di sini: aturan visibilitasnya per peran, menyalinnya ke SQL akan membuat badge menyimpang dari halaman Tugas |
 | `inventory_items.warranty_days` | `0067` | Garansi bawaan per item; disalin ke baris sparepart sebagai `defaultWarrantyDays` saat part diambil ke tiket. Kosong = pakai garansi part toko |
 | `services.spareparts[].warrantyDays` / `warrantyUntil` | `0060` | Garansi per part, di dalam JSONB — tanpa kolom baru |
 | Indeks unik absensi per karyawan per hari | `0054` | Sengaja dipisah dari `0053` karena bisa GAGAL bila data lama punya duplikat, dan kegagalannya akan ikut membatalkan pengerasan `clock_in` |

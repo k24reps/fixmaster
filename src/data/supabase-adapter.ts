@@ -10,7 +10,7 @@ import type {
   SingletonMap,
   ChangeListener,
 } from './repository';
-import type { ID } from './types';
+import type { ID, NavCounts } from './types';
 import { SERVICE_LIST_COLUMNS } from './types';
 import { serviceSearchFilter } from '@/lib/business/serviceFilters';
 
@@ -300,9 +300,14 @@ export class SupabaseAdapter implements Repository {
     to: string,
   ): Promise<EntityMap[K][]> {
     const column = camelToSnake(dateField);
+    // Laporan adalah satu-satunya pemakai rentang `services`, dan ia tidak
+    // membaca `history` sama sekali — satu-satunya yang dibutuhkannya dari sana
+    // kini ada di kolom `completed_at` (0080). Menyeret history di sini berarti
+    // ≈78% tiap baris untuk seluruh rentang tanggal.
+    const columns = collection === 'services' ? SERVICE_LIST_COLUMNS : '*';
     let query = this.client
       .from(TABLE[collection])
-      .select('*')
+      .select(columns)
       .eq('org_id', this.orgId)
       .is('deleted_at', null)
       .gte(column, from)
@@ -313,7 +318,27 @@ export class SupabaseAdapter implements Repository {
     query = query.order(column, { ascending: false });
     const { data, error } = await query;
     if (error) throw error;
-    return (data ?? []).map((r) => fromRow<EntityMap[K]>(r));
+    // Kolom runtime mengalahkan parser tipe select() supabase-js (sama seperti
+    // di list()), jadi baris dilewatkan sebagai Record biasa.
+    return (data ?? []).map((r) =>
+      fromRow<EntityMap[K]>(r as unknown as Record<string, unknown>),
+    );
+  }
+
+  /**
+   * Lampu rel nav dalam satu permintaan, menggantikan tarikan tabel utuh
+   * services + inventory + purchase_orders yang dibayar di SETIAP halaman
+   * (rel ini hidup di Sidebar DAN MobileBottomNav). Lihat 0081.
+   *
+   * `p_outlet_id` memakai cabang aktif adapter, sama seperti `list()`, supaya
+   * penyaringan cabangnya identik dengan yang dilihat halaman.
+   */
+  async navCounts(): Promise<NavCounts> {
+    const { data, error } = await this.client.rpc('nav_counts', {
+      p_outlet_id: this.outletId ?? null,
+    });
+    if (error) throw error;
+    return data as NavCounts;
   }
 
   async queryServices(opts: {

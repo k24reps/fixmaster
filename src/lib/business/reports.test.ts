@@ -93,6 +93,7 @@ const svc = (over: Partial<Service>): Service => ({
   pickedUpAt: null,
   warrantyClaimOf: null,
   history: over.history ?? [],
+  completedAt: over.completedAt,
   archived: false,
   createdAt: over.createdAt ?? '2026-06-01T00:00:00.000Z',
   updatedAt: '2026-06-01T00:00:00.000Z',
@@ -287,6 +288,31 @@ describe('completionDate / avgTurnaroundDays', () => {
   });
   it('reads completion date from history', () => {
     expect(completionDate(withHistory)).toBe('2026-06-05');
+  });
+  it('prefers the completedAt column over history (0080)', () => {
+    // Laporan tidak lagi memuat `history`; baris cloud hanya membawa kolom ini.
+    expect(completionDate(svc({ completedAt: '2026-06-07T10:00:00.000Z' }))).toBe('2026-06-07');
+  });
+  it('falls back to history when the column is absent', () => {
+    // Adapter lokal/demo menyimpan objek utuh dan tak punya kolom itu.
+    expect(completionDate(withHistory)).toBe('2026-06-05');
+    expect(completionDate(svc({}))).toBeNull();
+  });
+  it('column wins when both exist, so a reopened ticket keeps its first date', () => {
+    const both = svc({
+      completedAt: '2026-06-05T10:00:00.000Z',
+      history: [
+        {
+          at: '2026-06-20T10:00:00.000Z',
+          status: 'selesai',
+          by: 'e1',
+          byName: 'A',
+          note: '',
+          internal: false,
+        },
+      ],
+    });
+    expect(completionDate(both)).toBe('2026-06-05');
   });
   it('averages intake→completion spans', () => {
     const other = svc({
