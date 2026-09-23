@@ -293,6 +293,12 @@ menghapusnya).
   tanpa itu tiap HP membebani server rumah). Bundle live `supabase-client-*.js`
   memuat `api.fixmaster.my.id`, nol rujukan ke `vmitplpvncfvyimgyxrn`.
 - Semua pengguna login ulang sekali (URL berganti → kunci sesi supabase-js lain).
+- **Jebakan yang lolos saat cutover: CSP.** `vercel.json` membatasi `connect-src` ke
+  `*.supabase.co`, jadi login gagal "Gagal terhubung" (`Failed to fetch`) walau
+  server, CORS, dan WAF semuanya sehat — dan alamat yang sama terbuka normal di
+  address bar (navigasi tidak tunduk `connect-src`). Ditambah
+  `https://api.fixmaster.my.id wss://api.fixmaster.my.id`. Uji dari **konteks
+  halaman** (`fetch` di konsol origin fixmaster.app), bukan curl/address bar.
 
 ## Belum dikerjakan
 
