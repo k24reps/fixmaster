@@ -7,12 +7,12 @@
 $ErrorActionPreference = 'Stop'
 $pwFile = Join-Path $PSScriptRoot 'backup-pw.dat'
 
-$a = Read-Host 'Password enkripsi backup (min. 12 karakter)' -AsSecureString
+$a = Read-Host 'Password enkripsi backup (min. 16 karakter)' -AsSecureString
 $b = Read-Host 'Ulangi password' -AsSecureString
 $pa = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($a))
 $pb = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($b))
 if ($pa -ne $pb) { throw 'Password tidak sama. Ulangi.' }
-if ($pa.Length -lt 12) { throw 'Terlalu pendek. Minimal 12 karakter.' }
+if ($pa.Length -lt 16) { throw 'Terlalu pendek. Minimal 16 karakter.' }
 if ($pa -match '"') { throw 'Jangan pakai tanda kutip ganda (").' }
 
 $a | ConvertFrom-SecureString | Set-Content -Path $pwFile -Encoding ascii

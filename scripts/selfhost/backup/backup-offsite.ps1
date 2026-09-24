@@ -7,7 +7,10 @@
 #   full.dump    pg_dump -Fc --no-owner --no-privileges  (auth, storage, public, ...)
 #   public.dump  pg_dump -Fc -n public --no-owner         (public DENGAN hak akses)
 #   storage\     berkas bucket (logo, backup JSON per toko)
-# TIDAK termasuk .env dan db-config.tgz: simpan sekali di USB/pengelola password.
+#   .env          rahasia server (JWT secret, service key, password DB)
+#   db-config.tgz volume /etc/postgresql-custom, berisi pgsodium_root.key (vault)
+# Dua yang terakhir ikut agar selalu terbaru tanpa salin manual. Akibatnya arsip +
+# password yang bocor = server hidup ikut terancam; pakai password panjang.
 
 param(
   [string]$Dest = 'G:\My Drive\fixmaster-backup',
@@ -56,7 +59,15 @@ try {
   Native 'docker cp full'
   & $docker cp supabase-db:/tmp/fm-public.dump (Join-Path $work 'public.dump') | Out-Null
   Native 'docker cp public'
-  & $docker exec supabase-db rm -f /tmp/fm-full.dump /tmp/fm-public.dump | Out-Null
+  # Volume db-config terpasang di /etc/postgresql-custom kontainer db.
+  & $docker exec supabase-db tar czf /tmp/fm-db-config.tgz -C /etc/postgresql-custom .
+  Native 'tar db-config'
+  & $docker cp supabase-db:/tmp/fm-db-config.tgz (Join-Path $work 'db-config.tgz') | Out-Null
+  Native 'docker cp db-config'
+  & $docker exec supabase-db rm -f /tmp/fm-full.dump /tmp/fm-public.dump /tmp/fm-db-config.tgz | Out-Null
+  $envFile = Join-Path $Root '.env'
+  if (-not (Test-Path $envFile)) { throw ".env tidak ada di $envFile" }
+  Copy-Item $envFile (Join-Path $work '.env')
 
   foreach ($f in 'full.dump', 'public.dump') {
     $size = (Get-Item (Join-Path $work $f)).Length
@@ -65,7 +76,7 @@ try {
 
   $archive = Join-Path $work "fixmaster-$stamp.7z"
   $storage = Join-Path $Root 'volumes\storage'
-  $items = @((Join-Path $work 'full.dump'), (Join-Path $work 'public.dump'))
+  $items = @('full.dump', 'public.dump', 'db-config.tgz', '.env' | ForEach-Object { Join-Path $work $_ })
   if (Test-Path $storage) { $items += $storage }
   & $sevenZip a -t7z -mx=7 -mhe=on "-p$pw" $archive @items | Out-Null
   Native '7-Zip buat arsip'

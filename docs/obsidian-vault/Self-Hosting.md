@@ -330,8 +330,12 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   jalan saat menyala), sesi interaktif (Docker Desktop, Drive, DPAPI terikat akun).
 - **Retensi** 28 terbaru (14 hari) + salinan pertama tiap bulan selama 12 bulan.
 - **Pengawasan** `backup-offsite.log` lokal + `STATUS.txt` di Drive (bisa dicek dari HP).
-- **Tidak termasuk** `.env` dan `db-config.tgz` — simpan sekali di USB/pengelola
-  password; salin ulang tiap `.env` berubah.
+- **Ikut juga** `.env` dan `db-config.tgz` (diambil dari `/etc/postgresql-custom`
+  di kontainer db, memuat `pgsodium_root.key`) — permintaan pemilik agar tak perlu
+  salin manual tiap `.env` berubah. Konsekuensi: arsip + password bocor = server
+  HIDUP ikut terancam (JWT secret bisa memalsukan token), bukan hanya salinan data.
+  Karena itu password minimal 16 karakter. Satu arsip kini cukup untuk membangun
+  ulang server dari nol.
 - Jebakan PowerShell 5.1: stdout biner lewat pipa rusak → dump ditulis di dalam
   kontainer lalu `docker cp`. `docker` bisa tak ada di PATH Task Scheduler → path
   lengkap cadangan. Path storage sangat dalam (>260 karakter saat dibongkar di
