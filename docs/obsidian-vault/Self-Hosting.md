@@ -420,7 +420,7 @@ tiket terakhir NS-0327 (dibuat setelah cutover), perubahan terakhir 09:13 WIB.
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
-Server = `0001`–`0083` (catatan `supabase_migrations` belum mencatat 0080–0083).
+Server = `0001`–`0084` (catatan `supabase_migrations` belum mencatat 0080–0084; 0084 diterapkan 24 Sep lewat psql).
 
 ## Belum dikerjakan
 
