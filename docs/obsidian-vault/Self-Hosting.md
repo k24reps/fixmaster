@@ -316,7 +316,7 @@ menghapusnya).
 
 ## Backup di luar mesin (24 Sep 2026)
 
-Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:ixmaster-serverackup\`.
+Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\backup\`.
 - **Isi** tiap arsip `fixmaster-YYYYMMDD-HHmm.7z`: `full.dump` (`--no-owner
   --no-privileges`, memuat `auth.users` + policy storage) + `public.dump` (dengan
   ACL) + folder `volumes/storage`. Format sama dengan dump migrasi — pulihkan dengan
@@ -325,7 +325,7 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:ixmaster-serverac
   disimpan Windows DPAPI (`simpan-password.ps1` → `backup-pw.dat`, hanya terbuka oleh
   akun itu di mesin itu) — **pemilik wajib mencatat password di tempat lain**; tanpa
   itu arsip tak bisa dibuka di mesin baru.
-- **Tujuan** folder Google Drive for desktop (`G:\My Driveixmaster-backup`).
+- **Tujuan** folder Google Drive for desktop (`G:\My Drive\fixmaster-backup`).
   **Jadwal** Task Scheduler 02:00 + 13:00, `StartWhenAvailable` (jadwal terlewat
   jalan saat menyala), sesi interaktif (Docker Desktop, Drive, DPAPI terikat akun).
 - **Retensi** 28 terbaru (14 hari) + salinan pertama tiap bulan selama 12 bulan.
