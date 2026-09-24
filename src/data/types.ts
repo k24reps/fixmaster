@@ -106,6 +106,12 @@ export interface OrgSettings {
    * kapan terakhir ia mengamankan datanya.
    */
   lastBackupAt?: string;
+  /**
+   * Email backup mingguan ke owner (0085, Edge Function backup-email). Tak ada
+   * nilai = AKTIF; hanya `false` yang mematikannya, supaya toko lama ikut
+   * terlindungi tanpa harus menyalakannya dulu.
+   */
+  backupEmail?: boolean;
 }
 
 export interface Employee extends BaseEntity {

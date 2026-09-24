@@ -21,3 +21,8 @@ verify_jwt = false
 # pengguna biasa mana pun akan lolos, dan endpoint ini menyentuh data
 # SEMUA organisasi.
 verify_jwt = false
+
+[functions.backup-email]
+# Sama dengan auto-backup: dipanggil pg_cron (0085), gerbangnya x-cron-secret
+# yang dicek di dalam fungsi, dan ia menyentuh data SEMUA organisasi.
+verify_jwt = false

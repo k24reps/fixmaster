@@ -10,6 +10,7 @@
  * included by design — restoring recreates the live dataset, which is the
  * intent of a backup).
  */
+import type { BackupEmailRun } from '@/data/cloudBackup';
 
 /** Bump when the on-disk shape changes incompatibly. */
 export const BACKUP_VERSION = 1;
@@ -227,4 +228,20 @@ export function isBackupDue(
  */
 export function prunableBackups(names: string[], keep: number): string[] {
   return [...names].sort().reverse().slice(keep);
+}
+
+/** Satu kalimat status email backup terakhir untuk kartu Backup & Restore. */
+export function backupEmailStatus(run: BackupEmailRun | null): string {
+  if (!run) return 'Email pertama dikirim Senin berikutnya pukul 07.00 WIB.';
+  const when = new Date(run.sentAt).toLocaleString('id-ID');
+  switch (run.status) {
+    case 'sent':
+      return `Terakhir dikirim ${when} ke ${run.recipients.join(', ')}.`;
+    case 'failed':
+      return `Pengiriman terakhir gagal (${when})${run.error ? ` — ${run.error}` : ''}.`;
+    case 'skipped':
+      return `Minggu terakhir dilewati (${when})${run.error ? `: ${run.error}` : ''}.`;
+    default:
+      return `Uji coba server ${when} — belum benar-benar dikirim.`;
+  }
 }

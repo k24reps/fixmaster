@@ -3002,3 +3002,38 @@ persis dengan 0049) + revoke/grant ulang. Diuji di replika: operator melihat 3 t
 beserta nomornya, owner biasa `Forbidden`, anon ditolak hak akses. Unit 637 tes.
 Render terverifikasi dari tangkapan layar pemilik (tabel desktop: 3 toko, nomor +
 tag WA di bawah nama); agen tak memotret sendiri karena login butuh password.
+
+## Email backup mingguan ke owner + SMTP reset password (`0085`, 24 Sep 2026)
+
+**Keputusan pemilik:** pengirim `noreply@fixmaster.app` lewat **Resend** (DNS di Vercel
+cukup ditambah rekaman SPF/DKIM — nameserver tidak dipindah); satu kunci untuk email
+backup (API) dan reset password (SMTP GoTrue). **Tautan unduh 7 hari**, bukan lampiran
+(backup toko terbesar sudah 2.5 MB dalam 3 bulan; email yang bocor setelah seminggu
+kosong). **Seminggu sekali** (Senin 00:00 UTC = 07:00 WIB, enam jam setelah backup malam).
+Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak punya kotak masuk.
+
+- **Rantai:** pg_cron `fixmaster-backup-email` → `run_backup_email()` (vault
+  `project_url` + `backup_cron_secret`, pola 0052) → Edge Function `backup-email`
+  (gerbang `x-cron-secret` yang sama) → Resend. Jejak di tabel **terpisah**
+  `backup_email_runs` (owner baca, service role tulis): `latestBackupRun()` membaca baris
+  terbaru `backup_runs` sebagai status BACKUP, jadi email tak boleh bercampur di sana.
+- **Toko dilewati:** ditangguhkan, **Trial** (backup JSON dikunci selama Trial di
+  Pengaturan — email tak boleh jadi jalan pintasnya), demo, atau owner mematikannya
+  (`settings.backupEmail = false`; tanpa nilai = aktif agar toko lama ikut terlindungi).
+- **Tautan:** `createSignedUrl(…, 7 hari, { download })` memakai `SUPABASE_URL` internal
+  Docker; token tak terikat host, jadi origin diganti `SUPABASE_PUBLIC_URL` (sudah
+  diteruskan compose resmi). WAF membuka `/storage/v1/`. Diuji di replika: 200,
+  `content-disposition: attachment; filename=…`, 2.5 MB; tanpa token 400.
+- Tanpa `RESEND_API_KEY` fungsi berjalan **dry run** (dicatat, tak dikirim); tautan tak
+  pernah dikembalikan di respons karena respons pg_net tersimpan di database.
+  `idempotency-key` per org per minggu: cron/manual yang diulang tak menggandakan email.
+- **UI:** kartu Backup & Restore mendapat saklar kanal (LED + mono AKTIF/MATI,
+  `role="switch"`) dan satu kalimat status (`backupEmailStatus` di lib/business/backup,
+  diuji). Email HTML memakai warna literal & gaya inline — klien email tak mengenal CSS
+  var; satu-satunya pengecualian aturan token, di luar aplikasi.
+- **Pemasangan server:** paket `pindah-server/email` (dirakit dari repo:
+  `scripts/selfhost/email/pasang-email.ps1` + migrasi 0085 + fungsi) — meminta kunci
+  secara tersembunyi, mengisi `RESEND_API_KEY` + `SMTP_*` (smtp.resend.com:465, user
+  `resend`), menulis override, menyalin fungsi, menerapkan 0085, menyalakan ulang, lalu
+  dry run. Diuji di replika dengan `-TanpaKunci`, dua kali (idempoten).
+- Templat email GoTrue (reset password) masih bawaan berbahasa Inggris — belum diubah.

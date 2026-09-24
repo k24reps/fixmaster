@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   prunableBackups,
+  backupEmailStatus,
   buildBackup,
   buildRestorePayload,
   serializeBackup,
@@ -213,5 +214,24 @@ describe('prunableBackups (retensi auto-backup)', () => {
   // suatu saat RETENTION salah diset nol, ia harus berperilaku terduga.
   it('keep 0 memangkas semuanya', () => {
     expect(prunableBackups(days(3), 0)).toHaveLength(3);
+  });
+});
+
+describe('backupEmailStatus', () => {
+  const at = '2026-09-28T00:00:05Z';
+  it('menyebut penerima saat terkirim, dan menjelaskan status lain apa adanya', () => {
+    expect(backupEmailStatus(null)).toMatch(/Senin berikutnya/);
+    expect(
+      backupEmailStatus({ sentAt: at, status: 'sent', recipients: ['a@x.id', 'b@x.id'], error: null }),
+    ).toMatch(/ke a@x\.id, b@x\.id\.$/);
+    expect(
+      backupEmailStatus({ sentAt: at, status: 'failed', recipients: [], error: 'resend 403' }),
+    ).toMatch(/gagal .* — resend 403\.$/);
+    expect(
+      backupEmailStatus({ sentAt: at, status: 'skipped', recipients: [], error: 'belum ada backup otomatis' }),
+    ).toMatch(/dilewati .*: belum ada backup otomatis\.$/);
+    expect(backupEmailStatus({ sentAt: at, status: 'dry_run', recipients: [], error: null })).toMatch(
+      /belum benar-benar dikirim/,
+    );
   });
 });

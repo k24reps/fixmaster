@@ -112,11 +112,23 @@ import {
   listCloudBackups,
   readCloudBackup,
   latestBackupRun,
+  latestBackupEmail,
   type CloudBackup,
   type BackupRun,
+  type BackupEmailRun,
 } from '@/data/cloudBackup';
-import { countRecords, parseBackup, type BackupFrequency } from '@/lib/business/backup';
-import { saveServiceColumns, getLastBackupAt, setLastBackupAt } from '@/config/orgConfig';
+import {
+  backupEmailStatus,
+  countRecords,
+  parseBackup,
+  type BackupFrequency,
+} from '@/lib/business/backup';
+import {
+  saveServiceColumns,
+  getLastBackupAt,
+  setLastBackupAt,
+  setBackupEmail,
+} from '@/config/orgConfig';
 import {
   SERVICE_COLUMNS,
   resolveServiceColumns,
@@ -2777,6 +2789,10 @@ function BackupCard() {
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
   const [lastRun, setLastRun] = useState<BackupRun | null>(null);
   const [loadingCloud, setLoadingCloud] = useState(false);
+  // Email backup mingguan (0085). Tanpa nilai = aktif; hanya `false` mematikan.
+  const emailOn = useSessionStore((s) => s.org?.settings?.backupEmail !== false);
+  const [lastEmail, setLastEmail] = useState<BackupEmailRun | null>(null);
+  const [savingEmail, setSavingEmail] = useState(false);
 
   useEffect(() => {
     if (!cloud || !org?.id) return;
@@ -2786,13 +2802,15 @@ function BackupCard() {
       // sinkron memicu render bertingkat (react-hooks/set-state-in-effect).
       setLoadingCloud(true);
       try {
-        const [files, run] = await Promise.all([
+        const [files, run, mail] = await Promise.all([
           listCloudBackups(org.id),
           latestBackupRun(org.id),
+          latestBackupEmail(org.id).catch(() => null),
         ]);
         if (cancelled) return;
         setCloudBackups(files);
         setLastRun(run);
+        setLastEmail(mail);
       } catch {
         // Kegagalan memuat daftar tidak boleh melumpuhkan kartu ini —
         // backup manual tetap harus bisa dijalankan.
@@ -2814,6 +2832,18 @@ function BackupCard() {
       stageRestore(await readCloudBackup(backup.path));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal membaca backup');
+    }
+  };
+
+  const toggleBackupEmail = async () => {
+    setSavingEmail(true);
+    try {
+      await setBackupEmail(!emailOn);
+      toast.success(emailOn ? 'Email backup mingguan dimatikan' : 'Email backup mingguan diaktifkan');
+    } catch {
+      toast.error('Gagal menyimpan pengaturan');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -2987,6 +3017,47 @@ function BackupCard() {
                   </li>
                 ))}
               </ul>
+            )}
+          </>
+        )}
+        {cloud && !isDemo && (
+          <>
+            <hr className={styles.dangerDivider} />
+            <div className={styles.autoBackupHead}>
+              <span className={styles.autoBackupLabel}>Email backup mingguan</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={emailOn && canBackup}
+                aria-label="Email backup mingguan"
+                className={styles.channelSwitch}
+                data-on={emailOn && canBackup}
+                disabled={!canBackup || savingEmail}
+                onClick={() => void toggleBackupEmail()}
+              >
+                <span className={styles.channelSwitchLed} aria-hidden />
+                {emailOn && canBackup ? 'Aktif' : 'Mati'}
+              </button>
+            </div>
+            <p className={styles.planNote}>
+              Tiap Senin 07.00 WIB server mengirim tautan unduh salinan otomatis terbaru
+              ke email owner. Tautannya kedaluwarsa setelah 7 hari; berkasnya tetap di
+              server, jadi email lama tidak berisi data apa pun.
+            </p>
+            {!canBackup ? (
+              <p className={styles.planNote}>
+                Mulai dikirim setelah toko berlangganan — sama seperti backup JSON.
+              </p>
+            ) : (
+              emailOn && (
+                <p
+                  className={
+                    lastEmail?.status === 'failed' ? styles.autoBackupError : styles.planNote
+                  }
+                >
+                  {backupEmailStatus(lastEmail)}
+                </p>
+              )
             )}
           </>
         )}

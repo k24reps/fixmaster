@@ -265,6 +265,10 @@ export async function setLastBackupAt(at: string): Promise<void> {
   await patchSettings({ lastBackupAt: at });
 }
 
+export async function setBackupEmail(on: boolean): Promise<void> {
+  await patchSettings({ backupEmail: on });
+}
+
 const NO_TARGET: MonthlyTarget = { revenue: 0, serviceCount: 0, overheadBudget: 0 };
 
 /**

@@ -64,7 +64,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest unit (637 test / 61 berkas, offline)
+npm run test    # vitest unit (638 test / 61 berkas, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```

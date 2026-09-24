@@ -29,6 +29,34 @@ export interface BackupRun {
   trigger: string;
 }
 
+export interface BackupEmailRun {
+  sentAt: string;
+  status: 'sent' | 'failed' | 'skipped' | 'dry_run';
+  recipients: string[];
+  error: string | null;
+}
+
+/** Email backup mingguan terakhir (0085) — terkirim, gagal, maupun dilewati. */
+export async function latestBackupEmail(orgId: string): Promise<BackupEmailRun | null> {
+  const client = isSupabaseConfigured ? getSupabase() : null;
+  if (!client || !orgId) return null;
+  const { data, error } = await client
+    .from('backup_email_runs')
+    .select('sent_at, status, recipients, error')
+    .eq('org_id', orgId)
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return {
+    sentAt: data.sent_at as string,
+    status: data.status as BackupEmailRun['status'],
+    recipients: (data.recipients as string[] | null) ?? [],
+    error: (data.error as string | null) ?? null,
+  };
+}
+
 /**
  * Daftar backup milik org, terbaru dulu.
  *
