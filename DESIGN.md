@@ -6,27 +6,40 @@ colors:
   amber-lit: "#f7b733"
   amber-deep: "#e8920c"
   diagnostic-cyan: "#3dd9c4"
-  cyan-lit: "#5fe6d4"
-  graphite-base: "#0b0d10"
-  graphite-app: "#111419"
-  graphite-surface: "#191d23"
-  graphite-raised: "#20252c"
-  graphite-input: "#14181e"
-  rail-chassis: "#15191f"
-  rail-well: "#101318"
-  rail-panel: "#1d2229"
+  cyan-lit: "#68e3e0"
+  graphite-base: "#0b0f17"
+  graphite-app: "#131822"
+  graphite-surface: "#1c222e"
+  graphite-surface-2: "#242b38"
+  graphite-raised: "#2c3443"
+  graphite-input: "#161d2a"
+  rail-chassis: "#171d2b"
+  rail-well: "#0e131e"
+  rail-panel: "#202634"
+  rail-control: "#121823"
   readout-base: "#090b0e"
   readout-surface: "#12161d"
   readout-text: "#f1f4f8"
   readout-muted: "#8b97a6"
-  ink-primary: "#f1f3f6"
-  ink-secondary: "#a7b0bc"
-  ink-muted: "#8290a0"
+  ink-primary: "#e4e6ea"
+  ink-secondary: "#afb8c6"
+  ink-muted: "#8f9dae"
   on-brand: "#1a1205"
-  signal-good: "#34d399"
-  signal-warn: "#fbbf24"
-  signal-crit: "#f87171"
-  signal-info: "#60a5fa"
+  signal-good: "#31b882"
+  signal-good-text: "#77d787"
+  signal-warn: "#ef7634"
+  signal-warn-text: "#f88f4e"
+  signal-crit: "#db4059"
+  signal-crit-text: "#f8869a"
+  signal-info: "#527fe9"
+  signal-info-text: "#89abf9"
+  light-steel-app: "#f0eeea"
+  light-steel-surface: "#fdfcf9"
+  light-steel-elevated: "#ffffff"
+  light-ink-primary: "#212327"
+  light-brand: "#cf7c08"
+  light-brand-deep: "#d9820a"
+  light-accent-bezel: "#1fb3a0"
 typography:
   display:
     fontFamily: "Space Grotesk, Inter, sans-serif"
@@ -155,7 +168,9 @@ The confirmed anti-reference is generic SaaS: stock component-library chrome, a 
 
 A cool graphite field with exactly two chromatic voices and a four-color signal set, all resolved through tokens so the two themes stay in lockstep.
 
-Frontmatter values are the dark theme. The light theme re-binds the same token names; its counterparts are named below where they differ meaningfully.
+Frontmatter values are the dark theme unless prefixed `light-`. The light theme re-binds the same token names; its counterparts are named below where they differ meaningfully.
+
+**Comfort calibration (24 Sep 2026), measured in OKLCH.** Graphite ladder lifted off near-black (L 0.168 / 0.209 / 0.252 / 0.288 / 0.324 instead of starting at 0.145 with ~0.04 steps) so every surface reads as an object; dark primary ink eased from 15–17:1 to ~12.8:1 against cards, light primary from 17.6:1 to ~15.3:1; signal fills and texts kept their lightness and hue but lost 10–15% chroma (red/orange/blue were the loudest pixels on screen); light cards moved to ivory `#fdfcf9` so floating layers (`#ffffff`) separate from them; the amber glow and the amber→cyan bezel were softened. Both gates (`scripts/audit-tokens.mjs`, `scripts/audit-contrast.mjs`) pass. When tuning further, move chroma before lightness — lightness is what contrast rides on.
 
 "Default" here means the token layer only: bare `:root` is dark. At runtime the app follows `prefers-color-scheme` (`src/stores/theme.ts`), so a first-time visitor on a light-set OS lands in light. Neither theme is the one users see — test both.
 

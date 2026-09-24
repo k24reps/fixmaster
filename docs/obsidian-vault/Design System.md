@@ -40,6 +40,35 @@ Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
 > [!tip] Prinsip
 > "Bahasa visual bersama, bukan asal beda." Tiap halaman punya alat sendiri, tapi semua memakai token + motif yang sama. Lihat [[Signature Pages]].
 
+### Kalibrasi nyaman di mata (24 Sep 2026)
+
+Permintaan pemilik: nyaman di mata, tidak mencolok, tidak "gelap tak jelas", tetap
+clean & profesional. **Refinement** — identitas, komponen, dan panel instrumen hitam
+(tetap sama di kedua tema, keputusan pemilik) tidak berubah; hanya `tokens.css`.
+
+Diukur dulu di OKLCH (L = terang persepsi, C = kejenuhan), karena gerbang kontras
+hanya menjawab "cukup", bukan "nyaman" — keduanya lulus 0 pelanggaran SEBELUM
+kalibrasi, padahal keluhannya nyata:
+
+| Temuan | Sebelum | Sesudah |
+|---|---|---|
+| Latar gelap nyaris hitam, anak tangga tipis | L 0.145 / 0.187 / 0.226 / 0.296 | L 0.168 / 0.209 / 0.252 / 0.324 |
+| Tepi kartu gelap | 7.5% / 14.5% putih | 9% / 16.5% |
+| Tinta utama gelap di kartu | 15.4:1 (berpendar) | 12.8:1 |
+| Tinta utama terang di kartu | 17.6:1 | 15.3:1 |
+| Kartu terang = modal terang | keduanya `#ffffff` | kartu gading `#fdfcf9`, yang mengambang `#ffffff` |
+| Sinyal gelap paling menyala | merah C 0.219, oranye/biru C 0.192 | C 0.19 / 0.168 (L & rona tetap) |
+| Glow amber + bingkai amber→cyan | penuh | glow −30%, bingkai dicampur 28% warna kartu |
+
+- Aturan kerja: **turunkan kejenuhan sebelum terang** — terang adalah tumpuan kontras,
+  jadi warna bisa dikalemkan tanpa satu teks pun jatuh di bawah AA.
+- Satu efek samping tertangkap gerbang: teks hijau & cyan sama-sama kehilangan
+  kejenuhan lalu saling mendekat (dE 0.088 < 0.1) → rona hijau digeser 162→148°.
+- Verifikasi: `audit-tokens` LULUS, `audit-contrast` 0 gagal (dashboard demo + landing,
+  kedua tema), detektor impeccable 0 temuan, foto demo publik diregenerasi.
+- `scripts/shoot-demo.mjs` ikut dibetulkan: ia menuntut zoom `1`, padahal demo
+  mem-pin kepadatan desktop 80% (`deviceDensityZoom`) sejak keputusan belakangan.
+
 ## Bench OS V2 — fondasi lintas aplikasi (9 Agu 2026)
 
 Landing `Repair Flow Console` kini menjadi acuan visual seluruh produk. Konsistensi

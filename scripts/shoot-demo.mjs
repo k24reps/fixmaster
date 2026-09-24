@@ -63,7 +63,10 @@ async function waitForDemo(page) {
     !surface.hasDemoClass ||
     surface.shellBackground !== 'rgba(0, 0, 0, 0)' ||
     surface.ambientOpacity !== '0.72' ||
-    surface.zoom !== '1' ||
+    // Demo mem-pin kepadatan desktop (`deviceDensityZoom`, 80% di perangkat
+    // pointer presisi — lihat DESIGN.md "12px Floor Rule"). Yang dijaga di sini
+    // adalah zoom tersimpan pengguna TIDAK bocor ke foto publik, bukan angka 1.
+    !['1', '0.8'].includes(surface.zoom) ||
     !gridVisible
   ) {
     throw new Error(`Demo surface regression: ${JSON.stringify(surface)}`);
