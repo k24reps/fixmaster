@@ -434,3 +434,13 @@ Server = `0001`–`0083` (catatan `supabase_migrations` belum mencatat 0080–00
   IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
 
 #self-host #runbook
+
+## Mengganti akun operator
+
+Operator = baris di `platform_admins` (0045), sengaja tanpa jalur dari aplikasi
+(tak boleh ada self-promote). Ganti lewat `scripts/selfhost/ganti-operator.sql`: satu
+transaksi, operator baru dipasang DULU lalu yang lama dilepas; menolak bila akun baru
+belum terdaftar atau email sama. Opsi `-v hapus_akun=ya` menghapus akun login lama —
+ditolak bila akun itu anggota toko. Jejak `operator_actions` tetap (menyimpan
+`actor_email` teks, `actor_id` tanpa FK). Diuji di replika dengan `rollback`.
+Operator awal: `operator@fixmaster.app` (sejak 30 Agu 2026, tanpa keanggotaan toko).
