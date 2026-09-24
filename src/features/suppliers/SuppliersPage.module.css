@@ -165,7 +165,7 @@
   min-height: 40px;
   border-radius: var(--radius-sm);
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);

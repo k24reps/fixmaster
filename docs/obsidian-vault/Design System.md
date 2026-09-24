@@ -69,6 +69,30 @@ kalibrasi, padahal keluhannya nyata:
 - `scripts/shoot-demo.mjs` ikut dibetulkan: ia menuntut zoom `1`, padahal demo
   mem-pin kepadatan desktop 80% (`deviceDensityZoom`) sejak keputusan belakangan.
 
+#### Tahap 3 — sapuan semua menu (24 Sep 2026)
+
+`audit-contrast.mjs` dulu hanya memeriksa dashboard demo + landing. Disapu 12 menu ×
+2 tema: tema gelap bersih kecuali **2 regresi kalibrasi** (angka biru di panel
+Servis 4.33:1 — panel mengambang jadi lebih terang), dan tema terang punya **58 teks
+di bawah ambang di 9 halaman** — dibuktikan **bug lama** dengan menjalankan sapuan
+yang sama di atas token pra-kalibrasi: jumlahnya identik.
+
+**Akar polanya — aturan untuk kode baru:** komponen memakai **primitif terang milik
+tema gelap** (`--green-400`, `--amber-400`, `--red-400`, `--blue-400`) atau **warna
+isian** (`--brand`, `--accent`, `--info`) sebagai `color:` teks. Di tema terang itu
+jadi 1.5–3.2:1. **Teks berwarna wajib lewat token teks sadar-tema:**
+`--success-text`, `--warning-text`, `--danger-text`, `--info-text`, `--brand-text`,
+`--accent-text`. Di tema gelap token teks = primitif -400 yang sama, jadi tampilan
+gelap tak berubah. Primitif -400 tetap sah **di dalam panel instrumen** (selalu
+gelap) — karena itu penggantiannya per temuan terukur, bukan massal.
+
+- 22 `color:` diganti di 8 berkas (Servis, Keuangan, Laporan, Pelanggan, Log
+  Aktivitas, Inventori, Absensi, Supplier). Garis bawah & titik LED tetap isian.
+- `--danger-text` terang L 0.478 → 0.45 (`#99202f`): badge merah di atas
+  `--danger-soft` masih 4.39:1.
+- Gerbang `audit-contrast.mjs` kini ikut mengklik 11 menu demo → **26 halaman×tema,
+  0 gagal**. `audit-tokens` tetap LULUS.
+
 ## Bench OS V2 — fondasi lintas aplikasi (9 Agu 2026)
 
 Landing `Repair Flow Console` kini menjadi acuan visual seluruh produk. Konsistensi

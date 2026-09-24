@@ -35,10 +35,10 @@
   font-size: var(--text-md);
 }
 .statsBar .low strong {
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .statsBar .out strong {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 
 /* ---------- Toolbar ---------- */
@@ -198,10 +198,10 @@
   color: var(--text-primary);
 }
 .low .stockNum {
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .out .stockNum {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .stockUnit {
   font-family: var(--font-mono);

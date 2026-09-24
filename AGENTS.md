@@ -92,7 +92,7 @@ agar warna sinyal tidak saling mirip (`STATUS_TONE` memetakan 8 status ke 5 rona
 
 ```bash
 node scripts/audit-tokens.mjs                                     # tanpa dev server
-BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan
+BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan: landing + 12 menu demo x 2 tema
 ```
 
 Gerbang token saja TIDAK cukup: komponen meracik warna lewat `color-mix` dan lapisan

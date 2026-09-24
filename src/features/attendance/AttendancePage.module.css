@@ -166,7 +166,7 @@
 }
 .statePill.working {
   background: var(--info-soft);
-  color: var(--blue-400);
+  color: var(--info-text);
   border-color: transparent;
 }
 .statePill.working::before {
@@ -180,7 +180,7 @@
 }
 .statePill.done {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
   border-color: transparent;
 }
 /* Izin / sakit / alpha. Netral, bukan hijau: hijau di kartu ini berarti

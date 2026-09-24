@@ -142,5 +142,44 @@ for (const theme of ['dark', 'light']) {
   }
 }
 
+// Menu lain di dalam demo. Demo memakai MemoryRouter — tak terjangkau lewat URL —
+// jadi sidebar diklik. Sebelum ini hanya dashboard + landing yang diperiksa, dan
+// 58 teks tema terang di bawah ambang (primitif terang tema gelap dipakai sebagai
+// warna teks) tersembunyi di 9 halaman lain sampai 24 Sep 2026.
+const MENUS = ['Servis', 'Kasir', 'Pelanggan', 'Inventori', 'Supplier', 'Keuangan',
+  'Tugas Internal', 'Absensi', 'Laporan', 'Log Aktivitas', 'Pengaturan'];
+for (const theme of ['dark', 'light']) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  await page.goto(BASE + '/demo', { waitUntil: 'networkidle' });
+  await page.evaluate((t) => localStorage.setItem('fixmaster-theme', t), theme);
+  await page.goto(BASE + '/demo', { waitUntil: 'networkidle' });
+  await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
+  if (BASELINE) {
+    await page.evaluate((css) => {
+      const el = document.createElement('style');
+      el.textContent = css;
+      document.head.appendChild(el);
+    }, BASELINE);
+  }
+  for (const menu of MENUS) {
+    try {
+      await page.getByRole('link', { name: new RegExp('^' + menu) }).first().click();
+    } catch {
+      console.log(`\ndemo-${menu} / ${theme} — navigasi gagal (tautan tak ditemukan)`);
+      total++;
+      continue;
+    }
+    await page.waitForTimeout(1300);
+    const r = await page.evaluate(scan);
+    total += r.fail.length;
+    console.log(`\ndemo-${menu} / ${theme} — diperiksa ${r.checked}, dilewati ${r.skipped}, gagal ${r.fail.length}`);
+    for (const f of r.fail.slice(0, 12)) {
+      console.log(`  ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
+       fg ${f.fg}  bg ${f.bg}  .${f.cls}`);
+    }
+  }
+  await page.close();
+}
+
 await browser.close();
 console.log(`\n${total === 0 ? 'BERSIH' : 'ADA TEMUAN'} — ${total} elemen di bawah ambang`);

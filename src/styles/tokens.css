@@ -299,7 +299,8 @@
   --warning-text: #661f0e;
   --warning-soft: rgba(239, 118, 52, 0.18);
   --danger: var(--red-600);
-  --danger-text: #a42736;
+  /* L 0.45: di L 0.478 badge merah di atas --danger-soft masih 4.39:1. */
+  --danger-text: #99202f;
   --danger-soft: rgba(219, 64, 89, 0.15);
   --info: var(--blue-600);
   --info-text: #2b54b8;

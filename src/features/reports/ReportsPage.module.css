@@ -428,11 +428,11 @@
 }
 .typeInc {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .typeExp {
   background: var(--danger-soft);
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 
 /* Aging tag (receivables) */
@@ -446,15 +446,15 @@
 }
 .ageNew {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .ageMid {
   background: var(--warning-soft);
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .ageOld {
   background: var(--danger-soft);
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 
 @container laporan (max-width: 1024px) {

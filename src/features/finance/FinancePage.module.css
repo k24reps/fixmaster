@@ -228,10 +228,10 @@
   letter-spacing: 0.04em;
 }
 .tapeCat.inc {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .tapeCat.exp {
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .tapeAmount {
   font-size: var(--text-sm);
@@ -240,10 +240,10 @@
   font-variant-numeric: tabular-nums;
 }
 .tapeAmount.inc {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .tapeAmount.exp {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .tapeCat.trf,
 .tapeAmount.trf {
@@ -371,7 +371,7 @@
   color: var(--text-primary);
 }
 .tabActive {
-  color: var(--brand);
+  color: var(--brand-text);
   border-bottom-color: var(--brand);
   font-weight: 600;
 }

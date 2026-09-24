@@ -125,7 +125,7 @@
   font-size: var(--text-xl);
   font-weight: var(--fw-bold);
   line-height: 1;
-  color: var(--brand);
+  color: var(--brand-text);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 12px var(--brand-soft);
 }
