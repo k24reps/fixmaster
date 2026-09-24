@@ -386,10 +386,16 @@ Setelah pulih: Cloudflare → tunnel → **Add a connector** → `service instal
 (domain/rute tetap); pasang ulang backup offsite; semua pengguna login ulang sekali.
 Karena `.env` sama, Vercel dan anon key tidak berubah.
 
-**Status uji:** arsip format baru terbukti (674 KB, 107 entri, skrip ikut ke Drive).
-Uji pulih penuh BELUM — butuh mesin tanpa stack Supabase; di mesin kerja itu berarti
-menghapus kontainer + volume `supabase_db-config` replika lokal (ditolak pengaman
-otomatis, menunggu izin pemilik).
+**Uji pulih penuh LOLOS (24 Sep 2026).** Mesin kerja dikosongkan dulu: kontainer +
+volume `supabase_db-config` replika lama dihapus atas izin pemilik. Hasil: 25/25 tabel
+public sama persis, auth 14/14, storage.objects 3, policy 7, realtime 17, vault 2,
+cron 1, diff hak akses 0, `auth/health` 200. Bukti di luar skrip: `run_auto_backup()`
+di stack hasil pulih → HTTP 200 `total 3, failed 0` (vault + pgsodium lama + pg_net +
+functions + storage semuanya jalan). Jebakan yang ditemukan uji: `*> $null` pada
+program native = error fatal di PS 5.1 + Stop; `compose pull` butuh folder Docker di
+PATH (`docker-credential-desktop`). **Replika lokal kini di
+`C:\Users\Rif\Documents\fixmaster-pulih-uji\docker`** (dihentikan; datanya = arsip uji
+dari replika lama). Berikutnya: uji yang sama dengan arsip ASLI dari Drive.
 
 ## Alur rilis setelah self-host (berlaku sejak 24 Sep 2026)
 
@@ -403,7 +409,7 @@ otomatis, menunggu izin pemilik).
 **Urutan wajib:** migrasi ke server **sebelum** push ke `main` — frontend yang
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
-(`supabase-selfhost/docker` di mesin kerja, beku sejak pindah) jadi tempat uji.
+(`fixmaster-pulih-uji/docker` di mesin kerja, hasil uji pulih) jadi tempat uji.
 Server = `0001`–`0083` (catatan `supabase_migrations` belum mencatat 0080–0083).
 
 ## Belum dikerjakan

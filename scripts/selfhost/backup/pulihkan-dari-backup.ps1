@@ -24,6 +24,8 @@ $ErrorActionPreference = 'Stop'
 $sevenZip = 'C:\Program Files\7-Zip\7z.exe'
 $docker = (Get-Command docker -ErrorAction SilentlyContinue).Source
 if (-not $docker) { $docker = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe' }
+# `compose pull` memanggil docker-credential-desktop yang tinggal di folder yang sama.
+$env:PATH = (Split-Path $docker) + ';' + $env:PATH
 $dockerDir = Join-Path $Target 'docker'
 
 function Step($msg) { Write-Host ""; Write-Host "==> $msg" -ForegroundColor Cyan }
@@ -121,8 +123,9 @@ if (-not (Test-Path $docker)) { throw "docker.exe tidak ditemukan" }
 Native 'Docker belum jalan (buka Docker Desktop)'
 if (Test-Path $dockerDir) { throw "$dockerDir sudah ada. Skrip ini hanya untuk mesin kosong." }
 if (& $docker ps -a --filter 'name=^supabase-db$' --format '{{.Names}}') { throw 'Kontainer supabase-db sudah ada. Skrip ini hanya untuk mesin kosong.' }
-& $docker volume inspect supabase_db-config *> $null
-if ($LASTEXITCODE -eq 0) { throw 'Volume supabase_db-config sudah ada. Skrip ini hanya untuk mesin kosong.' }
+# Bukan `volume inspect *> $null`: di PowerShell 5.1 + ErrorAction Stop, stderr
+# program native yang dialihkan menjadi error fatal.
+if (& $docker volume ls -q --filter 'name=^supabase_db-config$') { throw 'Volume supabase_db-config sudah ada. Skrip ini hanya untuk mesin kosong.' }
 if (Test-Path $Work) { throw "$Work sudah ada - hapus dulu (mungkin sisa percobaan sebelumnya)." }
 
 New-Item -ItemType Directory -Force $Target | Out-Null
