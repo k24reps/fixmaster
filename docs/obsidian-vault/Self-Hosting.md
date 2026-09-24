@@ -51,6 +51,14 @@ batal instal ulang ke Linux. Stack yang sama persis dengan uji di mesin kerja.
    divalidasi saat constraint dibuat.
 7. Restore `public` dari dump kedua — lihat jebakan ACL.
 8. Restore `storage.buckets` (data saja). Pastikan `org-backups` **privat**.
+   **Lalu pasang ulang 7 policy `storage.objects`** (0014 logo + 0051 backup) sebagai
+   `supabase_admin` — skrip `pindah-server/pulihkan-storage-policy.sql`. Policy itu
+   tinggal di skema `storage`, jadi restore `public` + data bucket TIDAK membawanya.
+   Terlewat saat uji 23 Sep: unggah logo gagal *"new row violates row-level security
+   policy"*, dan "Backup sekarang"/unduh backup owner ikut tertolak. Cek:
+   `select count(*) from pg_policies where schemaname='storage'` → **7**. (Diperiksa:
+   tak ada objek lain di luar `public` dari migrasi — tak ada trigger di `auth.users`;
+   cron & vault dibuat ulang di langkah 10.)
 9. `alter publication supabase_realtime add table ...` untuk 17 tabel — tanpa ini
    sinkron antar-perangkat mati.
 10. Buat ulang rahasia vault + jadwal + `BACKUP_CRON_SECRET` (lihat bagian backup).
@@ -134,6 +142,7 @@ hanya ada di cloud (`mfa_recovery_*`, `scim_*`) terbukti 0 baris.
 | 11 layanan `healthy` | ✅ |
 | `auth.users` / `identities` / punya hash password | 14 / 14 / 14 |
 | Paritas ACL (`pg_dump -n public` kedua sisi, baris GRANT/REVOKE) | 353 = 353 |
+| Policy `storage.objects` | **0 — terlewat**, dipulihkan 24 Sep (7); unggah logo lolos |
 | Jumlah baris tiap tabel `public` vs dump | 24/25 persis; `backup_runs` +3 dari uji backup |
 | Tabel realtime | 17/17 |
 | `org-backups` privat | ✅ |
@@ -303,11 +312,12 @@ menghapusnya).
   memakai header CSP lama dari cache HTTP (isi `index.html` tak berubah → ETag sama).
   URL baru langsung benar (auth → 401 tanpa apikey = tersambung). Pengguna: muat
   ulang paksa (Ctrl+Shift+R) atau tutup-buka tab.
+- **Terbukti:** pemilik login di `fixmaster.app` lewat server rumah, indikator realtime `LIVE`.
 
 ## Belum dikerjakan
 
-- Berkas di bucket `org-logos` (logo toko) — tidak ada di dump; Storage API cloud
-  sedang restricted.
+- Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
+  sudah diunggah ulang 24 Sep.
 - **SMTP** — reset password & email auth belum terkirim.
 - **Backup di luar mesin** — `auto-backup` menulis ke storage di laptop yang SAMA;
   mesin rusak = data dan backup hilang bersamaan.
