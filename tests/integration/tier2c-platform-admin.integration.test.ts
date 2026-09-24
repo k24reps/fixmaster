@@ -113,8 +113,11 @@ d('Tier 2c — admin platform (lintas-tenant)', () => {
     expect(typeof rowB?.outlet_count).toBe('number');
     expect(typeof rowB?.service_count).toBe('number');
     expect(rowB).not.toHaveProperty('sale_count');
+    // 0084: nomor telepon TOKO (Profil Usaha) = metadata klien, kontak vendor.
+    expect(typeof rowB?.org_phone).toBe('string');
 
-    // Batas privasi ditegakkan: tak ada kolom yang membawa isi bisnis klien.
+    // Batas privasi ditegakkan: tak ada kolom yang membawa isi bisnis klien —
+    // termasuk nomor PELANGGAN milik klien (`phone`, `customer_phone`).
     for (const leaked of [
       'customers',
       'services',
@@ -122,6 +125,7 @@ d('Tier 2c — admin platform (lintas-tenant)', () => {
       'total',
       'balance',
       'phone',
+      'customer_phone',
     ]) {
       expect(Object.keys(rowB ?? {})).not.toContain(leaked);
     }

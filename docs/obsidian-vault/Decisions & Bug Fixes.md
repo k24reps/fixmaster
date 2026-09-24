@@ -2980,3 +2980,25 @@ satu panggilan RPC per rel, bukan 6 yang saling membatalkan.
 
 **Terverifikasi di replika:** setelah Vite memuat ulang halaman pemilik, lalu lintas
 turun dari tiap ≤60 detik menjadi nol selama 2 menit berikutnya.
+
+## Konsol operator: nomor telepon toko (`0084`, 24 Sep 2026)
+
+Permintaan pemilik: operator bisa melihat nomor telepon yang didaftarkan tiap toko.
+`admin_list_orgs` kini mengembalikan `org_phone` (= `organizations.phone`, diisi klien
+di Pengaturan → Profil Usaha). Tampil di tabel (di bawah nama) dan kartu, sebagai
+readout mono + tag `WA` yang membuka `wa.me` (pakai `toWaNumber`, helper yang sama
+dengan notifikasi pelanggan). Pencarian konsol ikut mencocokkan nomor lewat digit
+ternormalisasi (`normalizePhone`, minimal 4 digit) — "+62 821-…", "0821 …", "0821…"
+saling menemukan.
+
+**Batas privasi 0045 tetap:** permukaan lintas-tenant hanya metadata + agregat.
+Nomor TOKO adalah metadata (kontak vendor → klien), bukan isi bisnis klien. Tes
+tier2c memang melarang kolom `phone`; kolom baru sengaja bernama `org_phone`, dan
+tesnya diperkuat: `org_phone` wajib ada, `phone`/`customer_phone` (nomor pelanggan
+milik klien) tetap dilarang.
+
+Mengubah kolom `RETURNS TABLE` butuh `drop function` + create ulang (badan sama
+persis dengan 0049) + revoke/grant ulang. Diuji di replika: operator melihat 3 toko
+beserta nomornya, owner biasa `Forbidden`, anon ditolak hak akses. Unit 637 tes.
+Render konsol belum difoto agen — login operator butuh password yang tak boleh
+diketik agen; diverifikasi pemilik setelah deploy.

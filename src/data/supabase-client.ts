@@ -1112,6 +1112,8 @@ export interface AdminOrgRow {
   lastPaidReference: string | null;
   /** Catatan internal vendor. Tidak pernah terlihat klien. */
   note: string;
+  /** Nomor telepon TOKO dari Profil Usaha (0084) — bukan data pelanggan klien. */
+  phone: string;
 }
 
 function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
@@ -1129,6 +1131,7 @@ function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
     lastPaidAt: (d.last_paid_at as string | null) ?? null,
     lastPaidReference: (d.last_paid_reference as string | null) ?? null,
     note: (d.note as string) ?? '',
+    phone: (d.org_phone as string) ?? '',
   };
 }
 

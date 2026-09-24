@@ -38,6 +38,7 @@ import {
   type OperatorAction,
 } from '@/data/supabase-client';
 import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
+import { toWaNumber } from '@/lib/business/notify';
 import {
   accessRemainingLabel,
   matchesOrganization,
@@ -517,6 +518,7 @@ export function OperatorPage() {
                                     <span className={styles.demoTag}>DEMO</span>
                                   )}
                                 </span>
+                                <ShopPhone phone={o.phone} />
                                 {o.note && (
                                   <span className={styles.noteInline}>{o.note}</span>
                                 )}
@@ -706,6 +708,23 @@ function OrganizationActions({
   );
 }
 
+/** Nomor toko dari Profil Usaha; langsung membuka chat WhatsApp vendor → klien. */
+function ShopPhone({ phone }: { phone: string }) {
+  if (!phone.trim()) return null;
+  return (
+    <a
+      className={styles.shopPhone}
+      href={`https://wa.me/${toWaNumber(phone)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Chat WhatsApp toko ini"
+    >
+      <span className={styles.shopPhoneTag}>WA</span>
+      {phone}
+    </a>
+  );
+}
+
 function OrganizationCard({
   organization: o,
   onAction,
@@ -734,6 +753,7 @@ function OrganizationCard({
             {o.name}
             {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
           </h2>
+          <ShopPhone phone={o.phone} />
         </div>
         <span className={[styles.plan, suspended ? styles.planSuspended : ''].join(' ')}>
           {operatorPlanLabel(o.plan)}

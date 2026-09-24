@@ -26,6 +26,16 @@ describe('operator organization helpers', () => {
     expect(matchesOrganization(organization, 'konter lain')).toBe(false);
   });
 
+  it('mencari lewat nomor telepon toko, apa pun penulisannya', () => {
+    const withPhone = { ...organization, phone: '+62 821-1821-8747' };
+    expect(matchesOrganization(withPhone, '082118218747')).toBe(true);
+    expect(matchesOrganization(withPhone, '0821 1821')).toBe(true);
+    expect(matchesOrganization(withPhone, '8747')).toBe(true);
+    expect(matchesOrganization(withPhone, '999')).toBe(false); // < 4 digit
+    expect(matchesOrganization(withPhone, '5555')).toBe(false);
+    expect(matchesOrganization(organization, '0821')).toBe(false); // tanpa nomor
+  });
+
   it('query kosong mempertahankan seluruh daftar', () => {
     expect(matchesOrganization(organization, '   ')).toBe(true);
   });

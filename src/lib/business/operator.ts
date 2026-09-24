@@ -1,6 +1,9 @@
+import { normalizePhone } from './customers';
+
 interface SearchableOrganization {
   orgId: string;
   name: string;
+  phone?: string;
 }
 
 export type OperatorPaidPlan = 'standard' | 'enterprise';
@@ -88,9 +91,15 @@ export function matchesOrganization(
   const needle = query.trim().toLocaleLowerCase('id-ID');
   if (!needle) return true;
 
-  return [
+  const byText = [
     organization.name,
     organization.orgId,
     organizationNumber(organization.orgId),
   ].some((value) => value.toLocaleLowerCase('id-ID').includes(needle));
+  if (byText) return true;
+
+  // Nomor toko: bandingkan digit ternormalisasi, jadi "+62 812-34", "0812 34", dan
+  // "081234" saling menemukan. Minimal 4 digit supaya "2026" tak mencocokkan semua.
+  const digits = normalizePhone(query);
+  return digits.length >= 4 && !!organization.phone && normalizePhone(organization.phone).includes(digits);
 }
