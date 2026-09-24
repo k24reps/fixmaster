@@ -354,6 +354,21 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   `full.dump` memuat `auth.users`, `public.services`, policy `org_logos_*`;
   `public.dump` 122 entri ACL; retensi menghapus tepat berkas yang seharusnya.
 
+## Alur rilis setelah self-host (berlaku sejak 24 Sep 2026)
+
+| Bagian | Tempat | Cara rilis |
+|---|---|---|
+| Frontend | Vercel `fixmaster.app` | GitHub: `staging` → Preview (**mode demo, tanpa Supabase**), `main` → Production (server rumah) |
+| Database (migrasi) | laptop server | `psql` ke server — bukan Supabase CLI. Uji dulu di replika lokal mesin kerja |
+| Edge function | laptop server | salin ke `C:ixmaster-server\dockerolumesunctions\`, `docker compose up -d functions` |
+| Konfigurasi server | laptop server | `scripts/selfhost/atur-env.ps1` (jaga LF) |
+
+**Urutan wajib:** migrasi ke server **sebelum** push ke `main` — frontend yang
+memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
+(`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
+(`supabase-selfhost/docker` di mesin kerja, beku sejak pindah) jadi tempat uji.
+Server = `0001`–`0083` (catatan `supabase_migrations` belum mencatat 0080–0083).
+
 ## Belum dikerjakan
 
 - Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
