@@ -312,6 +312,14 @@ menghapusnya).
   memakai header CSP lama dari cache HTTP (isi `index.html` tak berubah → ETag sama).
   URL baru langsung benar (auth → 401 tanpa apikey = tersambung). Pengguna: muat
   ulang paksa (Ctrl+Shift+R) atau tutup-buka tab.
+  **Akar sebenarnya (diukur):** Vercel menjawab revalidasi `If-None-Match` dengan
+  **304 tanpa header CSP**, jadi browser menahan CSP lama yang tersimpan — per URL
+  (`/`, `/services`, `/settings` masing-masing) dan selamanya selama isi `index.html`
+  tak berubah (ETag sama). Gejalanya "kadang Failed to fetch, sembuh setelah muat
+  ulang paksa". Perbaikan: rute HTML (`/((?!assets/|fonts/)[^.]*)`) diberi
+  `Cache-Control: no-store` agar header selalu datang bersama 200, plus satu komentar
+  di `index.html` untuk mengganti ETag sekali. Pelajaran umum: **perubahan yang hanya
+  menyentuh header `vercel.json` tidak sampai ke browser yang sudah menyimpan halaman.**
 - **Terbukti:** pemilik login di `fixmaster.app` lewat server rumah, indikator realtime `LIVE`.
 
 ## Backup di luar mesin (24 Sep 2026)

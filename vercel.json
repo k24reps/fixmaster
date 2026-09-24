@@ -37,6 +37,10 @@
       ]
     },
     {
+      "source": "/((?!assets/|fonts/)[^.]*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
       "source": "/",
       "headers": [
         {
