@@ -314,13 +314,39 @@ menghapusnya).
   ulang paksa (Ctrl+Shift+R) atau tutup-buka tab.
 - **Terbukti:** pemilik login di `fixmaster.app` lewat server rumah, indikator realtime `LIVE`.
 
+## Backup di luar mesin (24 Sep 2026)
+
+Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:ixmaster-serverackup\`.
+- **Isi** tiap arsip `fixmaster-YYYYMMDD-HHmm.7z`: `full.dump` (`--no-owner
+  --no-privileges`, memuat `auth.users` + policy storage) + `public.dump` (dengan
+  ACL) + folder `volumes/storage`. Format sama dengan dump migrasi — pulihkan dengan
+  urutan runbook di atas. Tanpa downtime (pg_dump saat hidup).
+- **Enkripsi** 7-Zip AES-256 `-mhe=on` (daftar isi ikut terenkripsi). Password
+  disimpan Windows DPAPI (`simpan-password.ps1` → `backup-pw.dat`, hanya terbuka oleh
+  akun itu di mesin itu) — **pemilik wajib mencatat password di tempat lain**; tanpa
+  itu arsip tak bisa dibuka di mesin baru.
+- **Tujuan** folder Google Drive for desktop (`G:\My Driveixmaster-backup`).
+  **Jadwal** Task Scheduler 02:00 + 13:00, `StartWhenAvailable` (jadwal terlewat
+  jalan saat menyala), sesi interaktif (Docker Desktop, Drive, DPAPI terikat akun).
+- **Retensi** 28 terbaru (14 hari) + salinan pertama tiap bulan selama 12 bulan.
+- **Pengawasan** `backup-offsite.log` lokal + `STATUS.txt` di Drive (bisa dicek dari HP).
+- **Tidak termasuk** `.env` dan `db-config.tgz` — simpan sekali di USB/pengelola
+  password; salin ulang tiap `.env` berubah.
+- Jebakan PowerShell 5.1: stdout biner lewat pipa rusak → dump ditulis di dalam
+  kontainer lalu `docker cp`. `docker` bisa tak ada di PATH Task Scheduler → path
+  lengkap cadangan. Path storage sangat dalam (>260 karakter saat dibongkar di
+  folder panjang) → **bongkar di path pendek** (mis. `C:\pulih`).
+- **Uji 24 Sep di mesin kerja:** 558 KB; tanpa password tak terbuka; dengan password
+  `full.dump` memuat `auth.users`, `public.services`, policy `org_logos_*`;
+  `public.dump` 122 entri ACL; retensi menghapus tepat berkas yang seharusnya.
+
 ## Belum dikerjakan
 
 - Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
   sudah diunggah ulang 24 Sep.
 - **SMTP** — reset password & email auth belum terkirim.
-- **Backup di luar mesin** — `auto-backup` menulis ke storage di laptop yang SAMA;
-  mesin rusak = data dan backup hilang bersamaan.
+- Backup di luar mesin: skrip siap & teruji (lihat bagian di atas); tinggal dipasang
+  di server + uji pulih pertama dari arsip Drive.
 - Uji restart Windows tanpa disentuh (dilewati pemilik saat pemasangan).
 - Akses dari luar: rencananya **Cloudflare Tunnel** tanpa syarat (menembus CGNAT,
   IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
