@@ -346,6 +346,9 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   ulang server dari nol.
 - **Terpasang di laptop server 24 Sep 2026 08:13 WIB:** `OK fixmaster-20260924-0813.7z
   592 KB`; task `FixMaster Backup Offsite` terdaftar, run berikut 13:00.
+- **Jadwal terbukti:** `fixmaster-20260924-1300.7z` dibuat Task Scheduler tanpa
+  disentuh (masih format lama — skrip baru disalin sesudahnya). Arsip format baru
+  pertama: `fixmaster-20260924-1330.7z` (manual), folder `skrip\` muncul di Drive.
 - Jebakan PowerShell 5.1: stdout biner lewat pipa rusak → dump ditulis di dalam
   kontainer lalu `docker cp`. `docker` bisa tak ada di PATH Task Scheduler → path
   lengkap cadangan. Path storage sangat dalam (>260 karakter saat dibongkar di
