@@ -354,6 +354,43 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   `full.dump` memuat `auth.users`, `public.services`, policy `org_logos_*`;
   `public.dump` 122 entri ACL; retensi menghapus tepat berkas yang seharusnya.
 
+## Pemulihan dari backup (SSD rusak / mesin baru)
+
+Skrip: `scripts/selfhost/backup/pulihkan-dari-backup.ps1` — juga tersalin otomatis ke
+`Drive/fixmaster-backup/skrip/` tiap backup, jadi saat bencana cukup **akun Google +
+password arsip**. Syarat mesin: Windows + WSL + Docker Desktop + 7-Zip (tanpa Git,
+tanpa PostgreSQL, tanpa repo).
+
+Sejak 24 Sep siang arsip membawa folder `docker\` (tanpa data Postgres & storage,
+<1 MB: `.env`, override, edge function, konfigurasi Envoy) — konfigurasi persis sama,
+tak perlu clone rilis Supabase. Arsip lebih tua (tanpa `docker\`) ditolak skrip.
+
+Urutan skrip (menolak berjalan bila `C:\fixmaster-server\docker`, kontainer
+`supabase-db`, atau volume `supabase_db-config` sudah ada):
+1. Bongkar ke path pendek (`C:\pulih`); cek `.env` bebas CRLF.
+2. Salin `docker\` + `storage\` ke `C:\fixmaster-server\docker`.
+3. `compose pull`, lalu volume `supabase_db-config` dibuat (berlabel compose) dan
+   diisi `db-config.tgz` **sebelum** start pertama — kalau tidak, Postgres membuat
+   `pgsodium_root.key` baru.
+4. `compose up --wait` (diulang sekali: storage lambat di start pertama).
+5. Bash di DALAM kontainer db (`pg_restore`/`psql` image): pg_cron → auth.users +
+   identities → public dengan trik default privileges → storage.buckets +
+   **storage.objects** + policy storage → publikasi realtime → vault + cron →
+   verifikasi (jumlah baris tiap tabel public vs COPY di dump, auth, objects, policy,
+   realtime, vault 2, cron 1, diff hak akses = 0) → `notify pgrst`.
+6. Restart rest+functions, uji `functions/health` + `auth/health`.
+`finally` menghapus `C:\pulih` (salinan terbongkar tanpa enkripsi) lewat
+`rd \?\…` karena path storage bisa >260 karakter.
+
+Setelah pulih: Cloudflare → tunnel → **Add a connector** → `service install`
+(domain/rute tetap); pasang ulang backup offsite; semua pengguna login ulang sekali.
+Karena `.env` sama, Vercel dan anon key tidak berubah.
+
+**Status uji:** arsip format baru terbukti (674 KB, 107 entri, skrip ikut ke Drive).
+Uji pulih penuh BELUM — butuh mesin tanpa stack Supabase; di mesin kerja itu berarti
+menghapus kontainer + volume `supabase_db-config` replika lokal (ditolak pengaman
+otomatis, menunggu izin pemilik).
+
 ## Alur rilis setelah self-host (berlaku sejak 24 Sep 2026)
 
 | Bagian | Tempat | Cara rilis |

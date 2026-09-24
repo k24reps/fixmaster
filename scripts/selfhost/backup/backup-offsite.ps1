@@ -3,14 +3,16 @@
 # Dijalankan Task Scheduler 02:00 dan 13:00 (pasang-jadwal.ps1). Manual:
 #   powershell -ExecutionPolicy Bypass -File C:\fixmaster-server\backup\backup-offsite.ps1
 #
-# Isi arsip (format yang sama dengan migrasi dari cloud, lihat runbook vault):
-#   full.dump    pg_dump -Fc --no-owner --no-privileges  (auth, storage, public, ...)
-#   public.dump  pg_dump -Fc -n public --no-owner         (public DENGAN hak akses)
-#   storage\     berkas bucket (logo, backup JSON per toko)
-#   .env          rahasia server (JWT secret, service key, password DB)
-#   db-config.tgz volume /etc/postgresql-custom, berisi pgsodium_root.key (vault)
-# Dua yang terakhir ikut agar selalu terbaru tanpa salin manual. Akibatnya arsip +
-# password yang bocor = server hidup ikut terancam; pakai password panjang.
+# Isi arsip (satu arsip cukup untuk membangun ulang server, lihat
+# pulihkan-dari-backup.ps1):
+#   full.dump      pg_dump -Fc --no-owner --no-privileges (auth, storage, public, ...)
+#   public.dump    pg_dump -Fc -n public --no-owner        (public DENGAN hak akses)
+#   db-config.tgz  volume /etc/postgresql-custom, berisi pgsodium_root.key (vault)
+#   docker\        folder compose TANPA data: .env, override, edge function (<1 MB)
+#   storage\       berkas bucket (logo, backup JSON per toko)
+# Karena .env ikut, arsip + password yang bocor = server hidup ikut terancam;
+# pakai password panjang. Skrip di folder ini juga disalin ke Drive\skrip\ agar
+# pemulihan hanya butuh akun Google + password.
 
 param(
   [string]$Dest = 'G:\My Drive\fixmaster-backup',
@@ -65,9 +67,7 @@ try {
   & $docker cp supabase-db:/tmp/fm-db-config.tgz (Join-Path $work 'db-config.tgz') | Out-Null
   Native 'docker cp db-config'
   & $docker exec supabase-db rm -f /tmp/fm-full.dump /tmp/fm-public.dump /tmp/fm-db-config.tgz | Out-Null
-  $envFile = Join-Path $Root '.env'
-  if (-not (Test-Path $envFile)) { throw ".env tidak ada di $envFile" }
-  Copy-Item $envFile (Join-Path $work '.env')
+  if (-not (Test-Path (Join-Path $Root '.env'))) { throw ".env tidak ada di $Root" }
 
   foreach ($f in 'full.dump', 'public.dump') {
     $size = (Get-Item (Join-Path $work $f)).Length
@@ -76,14 +76,21 @@ try {
 
   $archive = Join-Path $work "fixmaster-$stamp.7z"
   $storage = Join-Path $Root 'volumes\storage'
-  $items = @('full.dump', 'public.dump', 'db-config.tgz', '.env' | ForEach-Object { Join-Path $work $_ })
+  $items = @('full.dump', 'public.dump', 'db-config.tgz' | ForEach-Object { Join-Path $work $_ })
+  $items += $Root
   if (Test-Path $storage) { $items += $storage }
-  & $sevenZip a -t7z -mx=7 -mhe=on "-p$pw" $archive @items | Out-Null
+  # Folder compose ikut dengan nama 'docker\' tapi tanpa data Postgres & storage
+  # (storage sudah masuk sebagai 'storage\', data Postgres diwakili dump).
+  $rootName = Split-Path $Root -Leaf
+  & $sevenZip a -t7z -mx=7 -mhe=on "-p$pw" $archive @items "-x!$rootName\volumes\db\data" "-x!$rootName\volumes\storage" | Out-Null
   Native '7-Zip buat arsip'
   & $sevenZip t "-p$pw" $archive | Out-Null
   Native '7-Zip uji arsip'
 
   Copy-Item $archive $Dest -Force
+  # Skrip pemulihan ikut ke Drive (tidak rahasia) - saat bencana repo belum tentu ada.
+  New-Item -ItemType Directory -Force (Join-Path $Dest 'skrip') | Out-Null
+  Copy-Item (Join-Path $PSScriptRoot '*.ps1') (Join-Path $Dest 'skrip') -Force
   $kb = [math]::Round((Get-Item $archive).Length / 1KB)
 
   # Retensi: KeepRecent terbaru + salinan PERTAMA tiap bulan untuk KeepMonths bulan.
