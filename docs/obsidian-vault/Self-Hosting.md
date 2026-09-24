@@ -396,9 +396,16 @@ cron 1, diff hak akses 0, `auth/health` 200. Bukti di luar skrip: `run_auto_back
 di stack hasil pulih → HTTP 200 `total 3, failed 0` (vault + pgsodium lama + pg_net +
 functions + storage semuanya jalan). Jebakan yang ditemukan uji: `*> $null` pada
 program native = error fatal di PS 5.1 + Stop; `compose pull` butuh folder Docker di
-PATH (`docker-credential-desktop`). **Replika lokal kini di
-`C:\Users\Rif\Documents\fixmaster-pulih-uji\docker`** (dihentikan; datanya = arsip uji
-dari replika lama). Berikutnya: uji yang sama dengan arsip ASLI dari Drive.
+PATH (`docker-credential-desktop`).
+
+**Uji pulih dengan arsip ASLI LOLOS (24 Sep 2026 13:39):** `fixmaster-20260924-1330.7z`
+diunduh dari Drive, dibuka dengan password dari **catatan** pemilik (bukan DPAPI) —
+membuktikan catatan password benar. 25/25 tabel, auth 14/14, storage.objects 4 (logo
+yang diunggah ulang ikut), policy 7, realtime 17, vault 2, cron 1, diff hak akses 0,
+`functions/health` + `auth/health` sehat; `C:\pulih` terhapus otomatis. Data terkini:
+tiket terakhir NS-0327 (dibuat setelah cutover), perubahan terakhir 09:13 WIB.
+**Replika lokal kini di `C:\Users\Rif\Documents\fixmaster-replika\docker`**
+(dihentikan) — salinan produksi per 24 Sep 13:30, tempat uji migrasi.
 
 ## Alur rilis setelah self-host (berlaku sejak 24 Sep 2026)
 
@@ -412,7 +419,7 @@ dari replika lama). Berikutnya: uji yang sama dengan arsip ASLI dari Drive.
 **Urutan wajib:** migrasi ke server **sebelum** push ke `main` — frontend yang
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
-(`fixmaster-pulih-uji/docker` di mesin kerja, hasil uji pulih) jadi tempat uji.
+(`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
 Server = `0001`–`0083` (catatan `supabase_migrations` belum mencatat 0080–0083).
 
 ## Belum dikerjakan
