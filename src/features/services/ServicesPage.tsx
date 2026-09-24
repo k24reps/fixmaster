@@ -748,7 +748,9 @@ export function ServicesPage() {
                       )}
                       {cols.has('device') && (
                         <div className={styles.rowCell} data-seg="device">
-                          <span className={styles.rowTitle}>{s.device}</span>
+                          <span className={styles.rowTitle} title={s.device || undefined}>
+                            {s.device}
+                          </span>
                           <small className={styles.sub}>{s.category}</small>
                           {renderPickup(s)}
                         </div>
@@ -804,7 +806,7 @@ export function ServicesPage() {
                     {renderStatus(s)}
                   </div>
                   <div className={styles.jobDevice}>
-                    <strong>{s.device}</strong>
+                    <strong title={s.device || undefined}>{s.device}</strong>
                     <small>{s.category}</small>
                     {renderPickup(s)}
                     {cols.has('complaint') && s.complaint && (
