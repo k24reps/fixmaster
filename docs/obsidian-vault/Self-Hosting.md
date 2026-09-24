@@ -360,7 +360,7 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
 |---|---|---|
 | Frontend | Vercel `fixmaster.app` | GitHub: `staging` → Preview (**mode demo, tanpa Supabase**), `main` → Production (server rumah) |
 | Database (migrasi) | laptop server | `psql` ke server — bukan Supabase CLI. Uji dulu di replika lokal mesin kerja |
-| Edge function | laptop server | salin ke `C:ixmaster-server\dockerolumesunctions\`, `docker compose up -d functions` |
+| Edge function | laptop server | salin ke `C:\fixmaster-server\docker\volumes\functions\`, `docker compose up -d functions` |
 | Konfigurasi server | laptop server | `scripts/selfhost/atur-env.ps1` (jaga LF) |
 
 **Urutan wajib:** migrasi ke server **sebelum** push ke `main` — frontend yang
