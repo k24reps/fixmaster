@@ -3000,5 +3000,5 @@ milik klien) tetap dilarang.
 Mengubah kolom `RETURNS TABLE` butuh `drop function` + create ulang (badan sama
 persis dengan 0049) + revoke/grant ulang. Diuji di replika: operator melihat 3 toko
 beserta nomornya, owner biasa `Forbidden`, anon ditolak hak akses. Unit 637 tes.
-Render konsol belum difoto agen — login operator butuh password yang tak boleh
-diketik agen; diverifikasi pemilik setelah deploy.
+Render terverifikasi dari tangkapan layar pemilik (tabel desktop: 3 toko, nomor +
+tag WA di bawah nama); agen tak memotret sendiri karena login butuh password.

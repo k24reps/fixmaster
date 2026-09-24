@@ -442,8 +442,8 @@ export function OperatorPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Cari nama atau nomor organisasi"
-                aria-label="Cari nama atau nomor organisasi"
+                placeholder="Cari nama, nomor organisasi, atau telepon"
+                aria-label="Cari nama, nomor organisasi, atau telepon"
                 autoComplete="off"
               />
               {query && (
@@ -470,7 +470,7 @@ export function OperatorPage() {
                   description={
                     orgs.length === 0
                       ? 'Organisasi yang mendaftar akan muncul di konsol ini.'
-                      : 'Coba nama lain, nomor ORG, atau UUID lengkap.'
+                      : 'Coba nama lain, nomor ORG, UUID lengkap, atau nomor telepon toko.'
                   }
                 />
               ) : (
