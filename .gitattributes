@@ -1,0 +1,4 @@
+# Batch Windows butuh CRLF (label/goto bisa salah baca dengan LF); skrip sh butuh LF.
+# Dipaksa di sini karena core.autocrlf tiap mesin berbeda.
+*.cmd text eol=crlf
+.claude/skills/impeccable/scripts/impeccable text eol=lf

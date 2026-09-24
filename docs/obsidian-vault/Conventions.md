@@ -91,6 +91,15 @@ palet lama lewat `BASELINE=<tokens.css lama>` untuk memisahkan regresi baru dari
 > [!tip] Default verifikasi
 > Setelah perubahan kode: jalankan build + test + lint. Untuk perubahan UI, foto render asli (bukan asumsi). Lihat pelajaran di [[Decisions & Bug Fixes]].
 
+## Skill proyek (sejak 24 Sep 2026)
+
+Tiga skill ditambatkan di `.claude/skills/` agar tak hilang saat ganti akun:
+`impeccable` (semua visual/UX **dan** teks di dalam UI), `antislop-code` (komentar
+kode saja), `antislop-copywriting` (prosa di luar UI). Skill inti `antislop` dan
+varian UI-nya sengaja tidak dipasang karena bersaing dengan impeccable. Tabel
+wewenang lengkap + alasan: AGENTS.md §7. Biner impeccable di-gitignore (diunduh
+ulang peluncurnya, terverifikasi hash).
+
 ## Terkait
 - [[Domain & Scope]] · [[Design System]] · [[Data Layer]] · [[Tech Stack]]
 

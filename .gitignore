@@ -36,3 +36,9 @@ prod_public_schema.sql
 
 # Dump teks landing page untuk audit copy (dibuat ulang dari src/i18n/id.ts)
 landing-copy-audit.md
+
+# Skill proyek (AGENTS.md §7): biner mesin impeccable diunduh ulang oleh
+# peluncurnya (terverifikasi hash) — 15 MB per platform, jangan masuk repo.
+.claude/skills/impeccable/scripts/bin/
+# Sesi "live" impeccable menyuntik skrip ke halaman; tak boleh ter-commit.
+.impeccable/live/

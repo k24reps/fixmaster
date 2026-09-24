@@ -149,6 +149,33 @@ Temuan biaya (dari 8/9 revisi): pengeluaran **didominasi input token × jumlah r
 ### Jangan dikorbankan demi hemat
 Gerbang verifikasi (build/test/lint) dan update vault **same-turn** biayanya kecil tapi mencegah rework mahal. Menundanya ke sesi baru justru menambah input token (harus baca ulang kode). Tetap jalankan.
 
+## 7. Skill proyek (ikut repo, `.claude/skills/`)
+
+Skill di akun/mesin (`~/.claude/skills`) hilang saat ganti akun — tiga skill ini
+ditambatkan ke repo supaya berlaku di mana pun. Batas wewenangnya **tidak tumpang
+tindih**:
+
+| Skill | Wewenang | Bukan wewenangnya |
+|---|---|---|
+| `impeccable` (v0.1.5) | **Semua** yang visual & UX: desain, redesign, `critique`, `audit`, `polish`, `adapt`, `harden`, warna, tipografi, motion, **dan teks di dalam UI** (`clarify`) | — |
+| `antislop-code` | Kebersihan **komentar kode**: buang komentar basa-basi, pertahankan komentar ALASAN (gaya repo ini) | Tidak mengubah kode, tidak menyentuh UI |
+| `antislop-copywriting` | **Prosa di luar UI**: vault, README, commit/PR, rencana marketing, template WA/email, laporan | Teks dalam komponen UI → impeccable; di sana hanya daftar periksa, tak pernah menimpa |
+
+- **Sengaja TIDAK dipasang:** `antislop` inti (mayoritas aturan visual + "Three Dials" —
+  bersaing langsung dengan arah visual impeccable), `antislop-ui`,
+  `antislop-layoutmobile`, `antislop-human` (wilayah `audit`/`adapt`/`harden`
+  impeccable). Dua skill antislop yang terpasang diberi catatan: abaikan "load the core",
+  checklist di akhir berkasnya = gerbang.
+- Bila ragu siapa yang berwenang atas sebuah teks: **kalau tampil di layar aplikasi,
+  impeccable.** Aturan §3 (Precision Electronics Bench, token warna) tetap di atas
+  keduanya.
+- Biner mesin impeccable (`scripts/bin/`, 15 MB) **di-gitignore**; peluncur
+  (`scripts/impeccable.cmd`) mengunduhnya dari rilis GitHub resmi dengan verifikasi
+  hash saat pertama dipakai (butuh `curl`). `.impeccable/live/` juga di-gitignore —
+  skrip sesi live tidak boleh ter-commit, begitu pula suntikannya ke `index.html`.
+- Memperbarui skill: salin ulang dari sumbernya, pertahankan catatan FixMaster di
+  kepala berkas antislop, dan perbarui versi di tabel ini.
+
 ---
 
 _Mulai dari: [`docs/obsidian-vault/00 - FixMaster MOC.md`](docs/obsidian-vault/00%20-%20FixMaster%20MOC.md)_
