@@ -336,6 +336,8 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   HIDUP ikut terancam (JWT secret bisa memalsukan token), bukan hanya salinan data.
   Karena itu password minimal 16 karakter. Satu arsip kini cukup untuk membangun
   ulang server dari nol.
+- **Terpasang di laptop server 24 Sep 2026 08:13 WIB:** `OK fixmaster-20260924-0813.7z
+  592 KB`; task `FixMaster Backup Offsite` terdaftar, run berikut 13:00.
 - Jebakan PowerShell 5.1: stdout biner lewat pipa rusak → dump ditulis di dalam
   kontainer lalu `docker cp`. `docker` bisa tak ada di PATH Task Scheduler → path
   lengkap cadangan. Path storage sangat dalam (>260 karakter saat dibongkar di
@@ -349,8 +351,8 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
 - Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
   sudah diunggah ulang 24 Sep.
 - **SMTP** — reset password & email auth belum terkirim.
-- Backup di luar mesin: skrip siap & teruji (lihat bagian di atas); tinggal dipasang
-  di server + uji pulih pertama dari arsip Drive.
+- Uji pulih pertama dari arsip Google Drive ke mesin lain (backup offsite terpasang
+  di server 24 Sep: arsip pertama 592 KB, jadwal aktif, run berikut 13:00).
 - Uji restart Windows tanpa disentuh (dilewati pemilik saat pemasangan).
 - Akses dari luar: rencananya **Cloudflare Tunnel** tanpa syarat (menembus CGNAT,
   IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
