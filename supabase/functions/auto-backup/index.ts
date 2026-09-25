@@ -42,6 +42,8 @@ const TABLE_TO_COLLECTION: Record<string, string> = {
   suppliers: 'suppliers',
   customers: 'customers',
   wallets: 'wallets',
+  // 0086 — restore_org_data mengisinya sesudah wallets (FK).
+  wallet_transfers: 'walletTransfers',
   inventory_items: 'inventory',
   fixed_costs: 'fixedCosts',
   services: 'services',

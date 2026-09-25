@@ -151,6 +151,7 @@ export const RESTORE_TABLE_MAP: Record<string, string> = {
   suppliers: 'suppliers',
   customers: 'customers',
   wallets: 'wallets',
+  walletTransfers: 'wallet_transfers',
   inventory: 'inventory_items',
   fixedCosts: 'fixed_costs',
   services: 'services',

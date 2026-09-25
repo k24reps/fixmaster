@@ -51,6 +51,8 @@ export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'service.create': { label: 'Servis baru', icon: 'screwdriver-wrench', tone: 'success' },
   'service.status': { label: 'Ubah status servis', icon: 'wrench', tone: 'info' },
   'wallet.transfer': { label: 'Transfer saldo', icon: 'arrow-right-arrow-left', tone: 'info' },
+  'wallet.transfer.edit': { label: 'Edit transfer saldo', icon: 'pen', tone: 'warning' },
+  'wallet.transfer.void': { label: 'Batalkan transfer saldo', icon: 'circle-xmark', tone: 'danger' },
 };
 
 const FALLBACK_META: ActionMeta = { label: 'Aktivitas', icon: 'info-circle', tone: 'neutral' };

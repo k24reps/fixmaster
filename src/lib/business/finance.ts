@@ -4,7 +4,6 @@
  * No DOM/repository dependencies → fully unit-testable.
  */
 import type { Wallet, Income, Expense } from '@/data/types';
-import { localDateOf } from '@/lib/time';
 
 /** Apply a signed delta to a wallet balance, returning a new wallet. */
 export function applyBalance(wallet: Wallet, delta: number): Wallet {
@@ -39,23 +38,86 @@ export function reverseExpenseDelta(expense: Pick<Expense, 'amount'>): number {
   return expense.amount;
 }
 
-export interface TransferResult {
-  ok: boolean;
-  error?: string;
-  fromWallet?: Wallet;
-  toWallet?: Wallet;
+// ---------- Transfer antar wallet (0086) ----------
+/** Bagian transfer yang menggerakkan uang. */
+export interface TransferMoney {
+  fromWalletId: string;
+  toWalletId: string;
+  amount: number;
 }
 
-/** Move funds between two wallets, guarding against invalid/insufficient transfers. */
-export function transfer(from: Wallet, to: Wallet, amount: number): TransferResult {
-  if (from.id === to.id) return { ok: false, error: 'Wallet asal & tujuan sama' };
-  if (amount <= 0) return { ok: false, error: 'Nominal harus lebih dari 0' };
-  if (amount > from.balance) return { ok: false, error: 'Saldo tidak cukup' };
-  return {
-    ok: true,
-    fromWallet: applyBalance(from, -amount),
-    toWallet: applyBalance(to, amount),
-  };
+/**
+ * Selisih saldo bersih per wallet untuk berpindah dari `before` ke `after`.
+ * `before = null` = transfer baru; `after = null` = transfer dibatalkan; keduanya
+ * ada = edit (lama dibalik, baru diterapkan). Satu rumus untuk ketiganya, sama
+ * dengan loop di update_wallet_transfer.
+ */
+export function transferDeltas(
+  before: TransferMoney | null,
+  after: TransferMoney | null,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  const add = (id: string, d: number) => map.set(id, (map.get(id) ?? 0) + d);
+  if (before) {
+    add(before.fromWalletId, before.amount);
+    add(before.toWalletId, -before.amount);
+  }
+  if (after) {
+    add(after.fromWalletId, -after.amount);
+    add(after.toWalletId, after.amount);
+  }
+  return map;
+}
+
+export type TransferChangeResult =
+  | { ok: true; wallets: Wallet[] }
+  | { ok: false; error: string };
+
+const rp = (n: number) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+
+/**
+ * Validasi lalu terapkan perubahan transfer ke saldo — aturan & pesannya
+ * kembaran RPC 0086, supaya galat muncul seketika tanpa menunggu server dan
+ * mode lokal/demo berperilaku sama. Mengembalikan HANYA wallet yang berubah.
+ * Wallet yang berkurang tidak boleh jatuh di bawah nol: uang yang sudah
+ * terpakai tidak bisa ditarik kembali.
+ */
+export function applyTransferChange(
+  wallets: Wallet[],
+  before: TransferMoney | null,
+  after: TransferMoney | null,
+): TransferChangeResult {
+  if (after) {
+    if (after.fromWalletId === after.toWalletId) return { ok: false, error: 'Wallet asal & tujuan sama' };
+    if (!(after.amount > 0)) return { ok: false, error: 'Nominal harus lebih dari 0' };
+    if (!Number.isInteger(after.amount)) return { ok: false, error: 'Nominal harus rupiah bulat' };
+    if (!wallets.some((w) => w.id === after.fromWalletId)) return { ok: false, error: 'Wallet asal tidak ditemukan' };
+    if (!wallets.some((w) => w.id === after.toWalletId)) return { ok: false, error: 'Wallet tujuan tidak ditemukan' };
+  }
+  const changed: Wallet[] = [];
+  for (const [id, delta] of transferDeltas(before, after)) {
+    if (delta === 0) continue;
+    const w = wallets.find((x) => x.id === id);
+    if (!w) return { ok: false, error: 'Wallet tidak ditemukan' };
+    if (delta < 0 && w.balance + delta < 0) {
+      const error = !before
+        ? `Saldo ${w.name} tidak cukup (tersisa ${rp(w.balance)})`
+        : !after
+          ? `Saldo ${w.name} tinggal ${rp(w.balance)} — tidak cukup untuk mengembalikan ${rp(-delta)}`
+          : `Saldo ${w.name} tidak cukup (tersisa ${rp(w.balance)}, perlu ${rp(-delta)})`;
+      return { ok: false, error };
+    }
+    changed.push(applyBalance(w, delta));
+  }
+  return { ok: true, wallets: changed };
+}
+
+/**
+ * Nominal & wallet sebuah transfer hanya bisa diubah/dibatalkan di bulan
+ * berjalan (assert_open_month, 0071); keterangannya selalu bisa.
+ */
+export function transferMoneyLocked(t: { date: string; status: string }, today: string): boolean {
+  return t.status !== 'active' || t.date < today.slice(0, 8) + '01';
 }
 
 // ---------- Modal pemilik vs uang operasional ----------
@@ -117,46 +179,4 @@ export function shouldRevertServiceOnIncomeDelete(
   income: Pick<Income, 'serviceId' | 'category'>,
 ): boolean {
   return income.category === 'Servis' && !!income.serviceId;
-}
-
-export interface TransferEntry {
-  id: string;
-  /** Local date (YYYY-MM-DD) the transfer was recorded. */
-  date: string;
-  /** "Kas A → Kas B" label as recorded in the audit log. */
-  label: string;
-  amount: number;
-  fromWalletId: string;
-  toWalletId: string;
-}
-
-/**
- * Wallet-to-wallet transfers, read back from the activity log (they book no
- * ledger row, so the audit trail is the only record). `from`/`to` are local
- * date bounds — the caller fetches a widened timestamp window, so edge rows
- * outside the real range are trimmed here.
- */
-export function transferEntries(
-  logs: {
-    id: string;
-    action: string;
-    entityId: string | null;
-    entityLabel: string;
-    createdAt: string;
-    meta?: Record<string, unknown>;
-  }[],
-  from: string,
-  to: string,
-): TransferEntry[] {
-  return logs
-    .filter((l) => l.action === 'wallet.transfer')
-    .map((l) => ({
-      id: l.id,
-      date: localDateOf(l.createdAt),
-      label: l.entityLabel || 'Transfer antar wallet',
-      amount: Number(l.meta?.amount ?? 0),
-      fromWalletId: l.entityId ?? '',
-      toWalletId: String(l.meta?.toWalletId ?? ''),
-    }))
-    .filter((t) => t.date >= from && t.date <= to);
 }

@@ -24,6 +24,7 @@ const TABLE: Record<CollectionName, string> = {
   suppliers: 'suppliers',
   purchaseOrders: 'purchase_orders',
   wallets: 'wallets',
+  walletTransfers: 'wallet_transfers',
   incomes: 'incomes',
   expenses: 'expenses',
   fixedCosts: 'fixed_costs',
@@ -52,6 +53,7 @@ export const REALTIME_TABLES: readonly string[] = [
   'outlets', 'customers', 'suppliers', 'inventory_items', 'wallets',
   'fixed_costs', 'services', 'purchase_orders', 'sales', 'incomes',
   'expenses', 'attendance', 'task_templates', 'task_instances', 'activity_logs',
+  'wallet_transfers',
 ];
 
 /**

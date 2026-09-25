@@ -200,6 +200,29 @@ export interface Wallet extends BaseEntity {
 }
 
 /**
+ * Transfer saldo antar wallet (0086). Bukan pemasukan/pengeluaran — tidak
+ * menyentuh laba. Dibatalkan = `status: 'void'` (baris tetap ada, saldo sudah
+ * dikembalikan), bukan dihapus. Uang (wallet & nominal) hanya bisa diubah di
+ * bulan berjalan; `note` bebas diedit kapan saja.
+ */
+export interface WalletTransfer extends BaseEntity {
+  fromWalletId: ID;
+  toWalletId: ID;
+  /** Nama saat transfer dibuat/diedit — tetap terbaca walau wallet diganti nama. */
+  fromName: string;
+  toName: string;
+  amount: number;
+  note: string;
+  /** Tanggal lokal YYYY-MM-DD. */
+  date: string;
+  status: 'active' | 'void';
+  createdByName?: string;
+  voidedAt?: string | null;
+  voidedByName?: string | null;
+  voidReason?: string | null;
+}
+
+/**
  * `Modal` = setoran modal pemilik (uang pribadi disuntik ke kas usaha).
  * Uangnya nyata dan menambah saldo, TAPI bukan pendapatan — dikecualikan
  * dari semua perhitungan omzet/laba lewat `operatingIncomes` (finance.ts).
@@ -574,7 +597,9 @@ export type ActivityAction =
   | 'data.restore'
   | 'service.create'
   | 'service.status'
-  | 'wallet.transfer';
+  | 'wallet.transfer'
+  | 'wallet.transfer.edit'
+  | 'wallet.transfer.void';
 
 export interface ActivityLog extends BaseEntity {
   /** Membership id of who performed the action (null if removed later). */

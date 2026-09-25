@@ -76,10 +76,10 @@ import {
   type WaTemplateKey,
 } from '@/lib/business/notify';
 import { toast } from '@/stores/toast';
-import { demoGuard, isCloudMode } from '@/stores/demo';
+import { demoGuard } from '@/stores/demo';
 import { isValidInviteEmail, canChangeRole, canDeactivate } from '@/lib/business/team';
 import { normalizePhone } from '@/lib/business/customers';
-import { transfer } from '@/lib/business/finance';
+import { createTransfer } from '@/features/finance/transferActions';
 import { createFinanceEntry } from '@/data/financeEntry';
 import { localDateStr } from '@/lib/time';
 import { logActivity } from '@/lib/activity';
@@ -98,7 +98,6 @@ import {
   listInvoices,
   subscribeOrgBilling,
   deleteAccountCredential,
-  transferWallet,
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
@@ -2110,32 +2109,11 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     const from = wallets.find((w) => w.id === fromId);
     const to = wallets.find((w) => w.id === toId);
     if (!from || !to) return toast.error('Pilih wallet asal & tujuan');
-    // Validate locally first (same guards the server enforces) for instant feedback.
-    const result = transfer(from, to, amount);
-    if (!result.ok) return toast.error(result.error ?? 'Transfer gagal');
     setTransferring(true);
     try {
-      if (isCloudMode()) {
-        await transferWallet({ orgId, fromWalletId: fromId, toWalletId: toId, amount });
-      } else {
-        await repository.put('wallets', {
-          ...result.fromWallet!,
-          updatedAt: new Date().toISOString(),
-        });
-        await repository.put('wallets', {
-          ...result.toWallet!,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      // Cloud: transfer_wallet mencatat jejaknya sendiri (0073). Tanpa
-      // penjagaan ini satu transfer meninggalkan DUA baris log bernominal sama.
-      logActivity({
-        action: 'wallet.transfer',
-        entityType: 'wallet',
-        entityId: fromId,
-        entityLabel: `${from.name} → ${to.name}`,
-        meta: { amount, toWalletId: toId },
-      });
+      // Jalur yang sama dengan Buku Kas (0086): validasi kembar server, RPC di
+      // cloud, tabel wallet_transfers + log di lokal.
+      await createTransfer({ wallets, fromWalletId: fromId, toWalletId: toId, amount, note: '' });
       toast.success(`Transfer ${fmtRp(amount)}: ${from.name} → ${to.name}`);
       setTransferAmount('');
       setFromId('');
@@ -2146,6 +2124,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
       setTransferring(false);
     }
   };
+
 
   return (
     <Card glass>

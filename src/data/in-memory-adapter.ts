@@ -17,6 +17,7 @@ const COLLECTIONS: CollectionName[] = [
   'suppliers',
   'purchaseOrders',
   'wallets',
+  'walletTransfers',
   'incomes',
   'expenses',
   'fixedCosts',

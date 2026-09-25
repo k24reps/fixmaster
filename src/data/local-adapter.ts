@@ -11,7 +11,8 @@ import type { BaseEntity, ID } from './types';
 import { newId } from '@/lib/id';
 
 const DB_NAME = 'fixmaster';
-const DB_VERSION = 2;
+// 3: store walletTransfers (0086). upgrade() hanya MENAMBAH store yang belum ada.
+const DB_VERSION = 3;
 
 const COLLECTIONS: CollectionName[] = [
   'employees',
@@ -21,6 +22,7 @@ const COLLECTIONS: CollectionName[] = [
   'suppliers',
   'purchaseOrders',
   'wallets',
+  'walletTransfers',
   'incomes',
   'expenses',
   'fixedCosts',

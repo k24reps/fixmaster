@@ -4,10 +4,11 @@ import {
   netWalletDeltas,
   reverseIncomeDelta,
   reverseExpenseDelta,
-  transfer,
+  applyTransferChange,
+  transferDeltas,
+  transferMoneyLocked,
   summarize,
   shouldRevertServiceOnIncomeDelete,
-  transferEntries,
 } from './finance';
 import type { Wallet } from '@/data/types';
 
@@ -55,30 +56,87 @@ describe('reverse deltas', () => {
   });
 });
 
-describe('transfer', () => {
-  it('moves funds between wallets', () => {
-    const r = transfer(
-      wallet({ id: 'a', balance: 1000 }),
-      wallet({ id: 'b', balance: 0 }),
-      400,
+describe('transfer antar wallet (0086)', () => {
+  const ws = () => [
+    wallet({ id: 'a', name: 'Tunai', balance: 1000 }),
+    wallet({ id: 'b', name: 'BCA', balance: 200 }),
+    wallet({ id: 'c', name: 'QRIS', balance: 0 }),
+  ];
+  const bal = (r: ReturnType<typeof applyTransferChange>, id: string) =>
+    r.ok ? r.wallets.find((w) => w.id === id)?.balance : undefined;
+
+  it('buat: asal berkurang, tujuan bertambah', () => {
+    const r = applyTransferChange(ws(), null, { fromWalletId: 'a', toWalletId: 'b', amount: 400 });
+    expect(bal(r, 'a')).toBe(600);
+    expect(bal(r, 'b')).toBe(600);
+  });
+
+  it('menolak wallet sama, nol, pecahan, dan saldo kurang — pesan sama dengan RPC', () => {
+    const e = (after: { fromWalletId: string; toWalletId: string; amount: number }) => {
+      const r = applyTransferChange(ws(), null, after);
+      return r.ok ? '' : r.error;
+    };
+    expect(e({ fromWalletId: 'a', toWalletId: 'a', amount: 1 })).toBe('Wallet asal & tujuan sama');
+    expect(e({ fromWalletId: 'a', toWalletId: 'b', amount: 0 })).toBe('Nominal harus lebih dari 0');
+    expect(e({ fromWalletId: 'a', toWalletId: 'b', amount: 10.5 })).toBe('Nominal harus rupiah bulat');
+    expect(e({ fromWalletId: 'c', toWalletId: 'b', amount: 5 })).toBe('Saldo QRIS tidak cukup (tersisa Rp 0)');
+  });
+
+  it('edit nominal + tujuan: yang lama dibalik, yang baru diterapkan', () => {
+    // a->b 300 sudah terjadi; saldo di bawah adalah SESUDAHNYA. Diedit jadi a->c 500.
+    const w = [
+      wallet({ id: 'a', name: 'Tunai', balance: 1000 }),
+      wallet({ id: 'b', name: 'BCA', balance: 400 }),
+      wallet({ id: 'c', name: 'QRIS', balance: 0 }),
+    ];
+    const r = applyTransferChange(
+      w,
+      { fromWalletId: 'a', toWalletId: 'b', amount: 300 },
+      { fromWalletId: 'a', toWalletId: 'c', amount: 500 },
     );
-    expect(r.ok).toBe(true);
-    expect(r.fromWallet?.balance).toBe(600);
-    expect(r.toWallet?.balance).toBe(400);
+    expect(bal(r, 'a')).toBe(800); // +300 -500
+    expect(bal(r, 'b')).toBe(100); // -300
+    expect(bal(r, 'c')).toBe(500);
   });
-  it('rejects same-wallet transfer', () => {
-    const w = wallet({ id: 'a', balance: 1000 });
-    expect(transfer(w, w, 100).ok).toBe(false);
-  });
-  it('rejects insufficient balance', () => {
-    const r = transfer(wallet({ id: 'a', balance: 100 }), wallet({ id: 'b' }), 400);
-    expect(r.ok).toBe(false);
-    expect(r.error).toContain('cukup');
-  });
-  it('rejects non-positive amount', () => {
-    expect(transfer(wallet({ id: 'a', balance: 100 }), wallet({ id: 'b' }), 0).ok).toBe(
-      false,
+
+  it('edit ditolak bila tujuan lama sudah menghabiskan uangnya', () => {
+    const r = applyTransferChange(
+      ws(),
+      { fromWalletId: 'a', toWalletId: 'b', amount: 300 },
+      { fromWalletId: 'a', toWalletId: 'c', amount: 500 },
     );
+    expect(r).toEqual({ ok: false, error: 'Saldo BCA tidak cukup (tersisa Rp 200, perlu Rp 300)' });
+  });
+
+  it('batal mengembalikan saldo persis, dan ditolak bila uangnya sudah terpakai', () => {
+    const ok = applyTransferChange(ws(), { fromWalletId: 'a', toWalletId: 'b', amount: 150 }, null);
+    expect(bal(ok, 'a')).toBe(1150);
+    expect(bal(ok, 'b')).toBe(50);
+    const no = applyTransferChange(ws(), { fromWalletId: 'a', toWalletId: 'b', amount: 250 }, null);
+    expect(no).toEqual({
+      ok: false,
+      error: 'Saldo BCA tinggal Rp 200 — tidak cukup untuk mengembalikan Rp 250',
+    });
+  });
+
+  it('edit keterangan saja tidak menyentuh saldo', () => {
+    const same = { fromWalletId: 'a', toWalletId: 'b', amount: 300 };
+    expect(applyTransferChange(ws(), same, { ...same })).toEqual({ ok: true, wallets: [] });
+  });
+
+  it('uang transfer bulan lalu atau yang dibatalkan terkunci', () => {
+    expect(transferMoneyLocked({ date: '2026-09-01', status: 'active' }, '2026-09-25')).toBe(false);
+    expect(transferMoneyLocked({ date: '2026-08-31', status: 'active' }, '2026-09-25')).toBe(true);
+    expect(transferMoneyLocked({ date: '2026-09-20', status: 'void' }, '2026-09-25')).toBe(true);
+  });
+
+  it('transferDeltas menjumlahkan wallet yang muncul di kedua sisi', () => {
+    const d = transferDeltas(
+      { fromWalletId: 'a', toWalletId: 'b', amount: 100 },
+      { fromWalletId: 'b', toWalletId: 'a', amount: 100 },
+    );
+    expect(d.get('a')).toBe(200);
+    expect(d.get('b')).toBe(-200);
   });
 });
 
@@ -132,54 +190,5 @@ describe('shouldRevertServiceOnIncomeDelete', () => {
     expect(
       shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: null }),
     ).toBe(false);
-  });
-});
-
-describe('transferEntries', () => {
-  const log = (over: Record<string, unknown> = {}) => ({
-    id: 't1',
-    action: 'wallet.transfer',
-    entityId: 'w-from',
-    entityLabel: 'Tunai → Bank BCA',
-    createdAt: '2026-07-15T03:00:00.000Z',
-    meta: { amount: 500000, toWalletId: 'w-to' },
-    ...over,
-  });
-
-  it('maps a transfer log to both wallet sides', () => {
-    const [t] = transferEntries([log()], '2026-07-01', '2026-07-31');
-    expect(t).toMatchObject({
-      amount: 500000,
-      fromWalletId: 'w-from',
-      toWalletId: 'w-to',
-      label: 'Tunai → Bank BCA',
-    });
-  });
-
-  it('ignores non-transfer actions', () => {
-    expect(
-      transferEntries([log({ action: 'income.create' })], '2026-07-01', '2026-07-31'),
-    ).toEqual([]);
-  });
-
-  it('trims rows outside the local date range (widened timestamp window)', () => {
-    const outside = log({ id: 't2', createdAt: '2026-06-30T03:00:00.000Z' });
-    const ids = transferEntries([log(), outside], '2026-07-01', '2026-07-31').map(
-      (t) => t.id,
-    );
-    expect(ids).toEqual(['t1']);
-  });
-
-  it('survives a log written without meta', () => {
-    const [t] = transferEntries(
-      [log({ meta: undefined, entityLabel: '' })],
-      '2026-07-01',
-      '2026-07-31',
-    );
-    expect(t).toMatchObject({
-      amount: 0,
-      toWalletId: '',
-      label: 'Transfer antar wallet',
-    });
   });
 });

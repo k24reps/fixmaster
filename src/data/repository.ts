@@ -7,6 +7,7 @@ import type {
   Supplier,
   PurchaseOrder,
   Wallet,
+  WalletTransfer,
   Income,
   Expense,
   FixedCost,
@@ -34,6 +35,7 @@ export interface EntityMap {
   suppliers: Supplier;
   purchaseOrders: PurchaseOrder;
   wallets: Wallet;
+  walletTransfers: WalletTransfer;
   incomes: Income;
   expenses: Expense;
   fixedCosts: FixedCost;

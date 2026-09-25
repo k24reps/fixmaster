@@ -22,8 +22,8 @@ describe('REALTIME_TABLES', () => {
     expect(REALTIME_TABLES).not.toContain('memberships');
   });
 
-  it('covers the 15 domain tables', () => {
-    expect(REALTIME_TABLES).toHaveLength(15);
-    expect(new Set(REALTIME_TABLES).size).toBe(15); // no duplicates
+  it('covers the 16 domain tables (0086: wallet_transfers)', () => {
+    expect(REALTIME_TABLES).toHaveLength(16);
+    expect(new Set(REALTIME_TABLES).size).toBe(16); // no duplicates
   });
 });

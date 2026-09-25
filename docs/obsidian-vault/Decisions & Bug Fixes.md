@@ -3060,7 +3060,7 @@ Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak p
   **Terbukti 25 Sep:** pemilik menerima email reset berbahasa Indonesia lewat Resend.
 
 
-## Audit transfer antar wallet (25 Sep 2026) — temuan, menunggu keputusan
+## Audit transfer antar wallet (25 Sep 2026) — temuan (semua dibereskan 0086, lihat bawah)
 
 Alur: `TransferModal` → `transfer()` (validasi klien) → RPC `transfer_wallet` (0073) → log
 `wallet.transfer` via `fm_log` → Buku Kas membaca log itu (`transferEntries`).
@@ -3086,3 +3086,39 @@ wallet dihapus permanen, hanya bila saldo 0); filter per-wallet memberi arah +/�
    salah satu gagal dengan galat, data tetap benar.
 6. Server menerima nominal pecahan (numeric) padahal UI hanya rupiah bulat.
 7. Komentar `FinancePage` basi: "admin melihat transfer kosong" sudah dibereskan 0072.
+
+## Transfer punya tabel sendiri + bisa diedit/dibatalkan (0086, 25 Sep 2026)
+
+Keputusan pemilik: transfer diperlakukan seperti pemasukan/pengeluaran — bisa dikoreksi —
+tapi **tidak dihapus**. Menjawab ketujuh temuan audit di atas.
+
+- **Tabel `wallet_transfers`** (koleksi `walletTransfers`): wallet asal/tujuan (FK
+  `ON DELETE RESTRICT`), snapshot `from_name`/`to_name`, `amount` rupiah bulat (check
+  `= trunc`), `note` (Keterangan, maks 120 di UI), `date` WIB, `status` `active|void`,
+  jejak `voided_by_name`/`void_reason`. RLS select `is_org_manager`; tulis hanya lewat RPC.
+  Backfill dari log `wallet.transfer` (id = id log, idempoten) → 51/51 transfer toko pemilik,
+  total sama Rp 18.558.000, saldo tak bergeser. Purge log (0076) tak lagi menyentuh riwayat.
+- **Batalkan = void, bukan hapus.** Baris tetap tampil dicoret "Dibatalkan · oleh X", saldo
+  dikembalikan. Ditolak bila wallet tujuan sudah tak memegang nominalnya ("Saldo BCA tinggal
+  Rp … — tidak cukup untuk mengembalikan Rp …") — uangnya sudah dipakai, jadi koreksinya
+  lewat transfer baru. Menggantikan "Balikkan transfer" yang bisa diulang tanpa kaitan.
+- **Edit** (`update_wallet_transfer`): wallet & nominal hanya bulan berjalan
+  (`assert_open_month`, kunci bulan 0071); **keterangan kapan saja**. Selisih per wallet
+  dihitung sekali, wallet yang turun wajib tetap ≥ 0. Log `wallet.transfer.edit` (before/after)
+  dan `wallet.transfer.void`, keduanya di `SERVER_LOGGED`.
+- **Anti-deadlock:** `wallet_transfer_lock()` mengunci wallet terurut id. **Hapus wallet**
+  ditolak bila masih punya riwayat transfer (trigger 0077 ditambal). Galat server memakai
+  `fm_rp()` → "Rp 297.067", bukan numeric mentah.
+- **Klien:** satu pintu `features/finance/transferActions.ts` (Buku Kas & Pengaturan) —
+  cloud ke RPC, lokal/demo ke repository. Aturan kembar server di `applyTransferChange` /
+  `transferDeltas` / `transferMoneyLocked` (`lib/business/finance.ts`, 8 test);
+  `transfer()` + `transferEntries()` dihapus. Buku Kas kini membaca `walletTransfers` per
+  tanggal, bukan seluruh log aktivitas bulan itu (818 baris → ±19).
+- **Backup/restore ikut:** `backupRestore` COLLECTIONS, `RESTORE_TABLE_MAP`, `auto-backup`
+  `TABLE_TO_COLLECTION`; `restore_org_data` menghapus transfer sebelum wallet dan
+  memasukkannya sesudah wallet (FK RESTRICT). IndexedDB `DB_VERSION` 3.
+- **Diuji:** SQL rollback di replika (buat/edit/void/penolakan/kunci bulan/uang sudah
+  terpakai/peran/anon/round-trip restore 54 baris) + demo di browser (transfer Rp 500.000 →
+  edit Rp 300.000 → batalkan: saldo kembali Tunai 2.500.000 / BCA 14.750.000). Build, 638
+  unit test, lint hijau. Integrasi tier3b masih mengasumsikan `transfer_wallet` lama
+  (kini mengembalikan uuid) — sesuaikan saat tes integrasi dijalankan.

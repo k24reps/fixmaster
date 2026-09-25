@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
-import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
+import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateStr, monthRange } from '@/lib/time';
@@ -11,7 +11,7 @@ import {
   applyBalance,
   reverseExpenseDelta,
   shouldRevertServiceOnIncomeDelete,
-  transferEntries,
+  transferMoneyLocked,
   isCapitalFlow,
   CAPITAL_INCOME_CATEGORY,
   CAPITAL_EXPENSE_CATEGORY,
@@ -28,7 +28,8 @@ import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
 import { TransferModal } from './TransferModal';
-import type { Income, Expense, ActivityLog } from '@/data/types';
+import { voidTransfer } from './transferActions';
+import type { Income, Expense, WalletTransfer } from '@/data/types';
 import styles from './FinancePage.module.css';
 
 type LedgerKind = 'income' | 'expense' | 'transfer';
@@ -43,7 +44,7 @@ interface LedgerRow {
   walletId: string;
   /** Transfers only: the receiving wallet (walletId holds the sender). */
   toWalletId?: string;
-  record: Income | Expense | ActivityLog;
+  record: Income | Expense | WalletTransfer;
 }
 
 /** Tiket menurut nomornya. Cloud: cari di seluruh tabel (daftar hanya potongan terbaru). */
@@ -63,13 +64,9 @@ export function FinancePage() {
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [ledgerTab, setLedgerTab] = useState<'all' | LedgerKind>('all');
   const [transferOpen, setTransferOpen] = useState(false);
-  // Isian awal untuk "Balikkan transfer": transfer tak membukukan baris kas,
-  // jadi membatalkannya berarti membuat transfer kebalikannya.
-  const [transferInitial, setTransferInitial] = useState<{
-    fromId: string;
-    toId: string;
-    amount: number;
-  } | null>(null);
+  const [editingTransfer, setEditingTransfer] = useState<WalletTransfer | null>(null);
+  const [toVoid, setToVoid] = useState<WalletTransfer | null>(null);
+  const [voiding, setVoiding] = useState(false);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
   // How many past months of ledger to also load. 0 = current month only.
   const [monthsBack, setMonthsBack] = useState(0);
@@ -89,14 +86,9 @@ export function FinancePage() {
   const { data: wallets, ...walletsLoad } = useCollection('wallets');
   const { data: incomes, ...incomesLoad } = useCollectionRange('incomes', 'date', fetchFrom, to);
   const { data: expenses, ...expensesLoad } = useCollectionRange('expenses', 'date', fetchFrom, to);
-  // Transfer antar wallet tidak punya tabel sendiri — jejaknya cuma di activity
-  // log (owner-only lewat RLS, jadi admin melihat daftar transfer kosong).
-  // ponytail: kalau admin perlu lihat transfer, baru bikin tabel wallet_transfers.
-  const [actFrom, actTo] = useMemo(
-    () => rangeForTimestamp(fetchFrom, to),
-    [fetchFrom, to],
-  );
-  const { data: activity } = useCollectionRange('activity', 'createdAt', actFrom, actTo);
+  // Transfer punya tabel sendiri sejak 0086. Dulu Buku Kas menarik SELURUH log
+  // aktivitas sebulan (818 baris ≈240 KB di toko pemilik) demi ±19 transfer.
+  const { data: walletTransfers } = useCollectionRange('walletTransfers', 'date', fetchFrom, to);
 
   const summary = useMemo(
     () =>
@@ -125,20 +117,21 @@ export function FinancePage() {
     };
   }, [incomes, expenses, from, to]);
 
-  const transfers = useMemo<LedgerRow[]>(() => {
-    const byId = new Map(activity.map((a) => [a.id, a]));
-    return transferEntries(activity, fetchFrom, to).map((t) => ({
-      id: t.id,
-      kind: 'transfer' as const,
-      date: t.date,
-      category: 'Transfer',
-      description: t.label,
-      amount: t.amount,
-      walletId: t.fromWalletId,
-      toWalletId: t.toWalletId,
-      record: byId.get(t.id)!,
-    }));
-  }, [activity, fetchFrom, to]);
+  const transfers = useMemo<LedgerRow[]>(
+    () =>
+      walletTransfers.map((t) => ({
+        id: t.id,
+        kind: 'transfer' as const,
+        date: t.date,
+        category: 'Transfer',
+        description: t.note || 'Transfer antar wallet',
+        amount: t.amount,
+        walletId: t.fromWalletId,
+        toWalletId: t.toWalletId,
+        record: t,
+      })),
+    [walletTransfers],
+  );
 
   const ledger = useMemo<LedgerRow[]>(() => {
     const rows: LedgerRow[] = [
@@ -191,6 +184,25 @@ export function FinancePage() {
   );
 
   const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
+  // Transfer menyimpan nama wallet saat itu: tetap terbaca walau wallet ada di
+  // cabang lain (tak ikut daftar) atau sudah diganti nama.
+  const transferWalletName = (id: string, snapshot: string) =>
+    wallets.find((w) => w.id === id)?.name ?? (snapshot || '—');
+  const today = localDateStr();
+
+  const handleVoid = async () => {
+    if (!toVoid || voiding) return;
+    setVoiding(true);
+    try {
+      await voidTransfer({ wallets, transfer: toVoid });
+      toast.success(`Transfer ${fmtRp(toVoid.amount)} dibatalkan, saldo dikembalikan`);
+      setToVoid(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan transfer');
+    } finally {
+      setVoiding(false);
+    }
+  };
 
   const confirmDelete = async () => {
     if (!toDelete) return;
@@ -428,7 +440,7 @@ export function FinancePage() {
           <Button
             variant="secondary"
             onClick={() => {
-              setTransferInitial(null);
+              setEditingTransfer(null);
               setTransferOpen(true);
             }}
             iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
@@ -492,23 +504,33 @@ export function FinancePage() {
             ) : (
               visibleLedger.map((r) => {
                 if (r.kind === 'transfer') {
+                  const t = r.record as WalletTransfer;
+                  const voided = t.status === 'void';
+                  const locked = transferMoneyLocked(t, today);
                   // Saat difilter per-wallet, transfer punya arah: keluar dari
-                  // wallet asal, masuk ke wallet tujuan.
-                  const dir =
-                    walletFilter === r.toWalletId ? '+' : walletFilter ? '−' : '';
+                  // wallet asal, masuk ke wallet tujuan. Yang dibatalkan tak punya arah.
+                  const dir = voided
+                    ? ''
+                    : walletFilter === r.toWalletId
+                      ? '+'
+                      : walletFilter
+                        ? '−'
+                        : '';
                   return (
                     <div
                       key={`transfer-${r.id}`}
-                      className={[styles.tapeRow, styles.transfer].join(' ')}
+                      className={[styles.tapeRow, styles.transfer, voided ? styles.voided : ''].join(' ')}
                     >
                       <span className={styles.tapeDate}>{fmtDate(r.date)}</span>
                       <div className={styles.tapeBody}>
                         <span className={styles.tapeDesc}>{r.description}</span>
                         <span className={styles.tapeMeta}>
                           <span className={[styles.tapeCat, styles.trf].join(' ')}>
-                            Transfer
+                            {voided ? 'Dibatalkan' : 'Transfer'}
                           </span>
-                          · {walletName(r.walletId)} → {walletName(r.toWalletId ?? '')}
+                          · {transferWalletName(t.fromWalletId, t.fromName)} →{' '}
+                          {transferWalletName(t.toWalletId, t.toName)}
+                          {voided && t.voidedByName ? ` · oleh ${t.voidedByName}` : ''}
                         </span>
                       </div>
                       <span className={[styles.tapeAmount, styles.trf].join(' ')}>
@@ -516,21 +538,29 @@ export function FinancePage() {
                         {fmtRp(r.amount)}
                       </span>
                       <span className={styles.tapeBtns}>
-                        <button
-                          className={styles.iconBtn}
-                          onClick={() => {
-                            setTransferInitial({
-                              fromId: r.toWalletId ?? '',
-                              toId: r.walletId,
-                              amount: r.amount,
-                            });
-                            setTransferOpen(true);
-                          }}
-                          aria-label="Balikkan transfer"
-                          title="Balikkan transfer — buat transfer kebalikannya"
-                        >
-                          <Icon name="arrow-right-arrow-left" aria-hidden />
-                        </button>
+                        {!voided && (
+                          <button
+                            className={styles.iconBtn}
+                            onClick={() => {
+                              setEditingTransfer(t);
+                              setTransferOpen(true);
+                            }}
+                            aria-label="Edit transfer"
+                            title={locked ? 'Edit keterangan (nominal bulan lalu terkunci)' : 'Edit transfer'}
+                          >
+                            <Icon name="pen" aria-hidden />
+                          </button>
+                        )}
+                        {!voided && !locked && (
+                          <button
+                            className={[styles.iconBtn, styles.danger].join(' ')}
+                            onClick={() => setToVoid(t)}
+                            aria-label="Batalkan transfer"
+                            title="Batalkan transfer — saldo dikembalikan, catatannya tetap ada"
+                          >
+                            <Icon name="circle-xmark" aria-hidden />
+                          </button>
+                        )}
                       </span>
                     </div>
                   );
@@ -679,10 +709,23 @@ export function FinancePage() {
         open={transferOpen}
         onClose={() => {
           setTransferOpen(false);
-          setTransferInitial(null);
+          setEditingTransfer(null);
         }}
         wallets={wallets}
-        initial={transferInitial}
+        editing={editingTransfer}
+      />
+      <ConfirmDialog
+        open={!!toVoid}
+        title="Batalkan Transfer?"
+        message={
+          toVoid
+            ? `${fmtRp(toVoid.amount)} dikembalikan dari ${transferWalletName(toVoid.toWalletId, toVoid.toName)} ke ${transferWalletName(toVoid.fromWalletId, toVoid.fromName)}. Catatan transfernya tetap tampil dicoret di Buku Kas.`
+            : ''
+        }
+        confirmLabel={voiding ? 'Membatalkan…' : 'Batalkan Transfer'}
+        danger
+        onConfirm={() => void handleVoid()}
+        onCancel={() => setToVoid(null)}
       />
       <ConfirmDialog
         open={!!toDelete}

@@ -833,14 +833,55 @@ export async function transferWallet(args: {
   fromWalletId: string;
   toWalletId: string;
   amount: number;
-}): Promise<void> {
+  note?: string;
+}): Promise<string> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { error } = await c.rpc('transfer_wallet', {
+  const { data, error } = await c.rpc('transfer_wallet', {
     p_org_id: args.orgId,
     p_from_wallet_id: args.fromWalletId,
     p_to_wallet_id: args.toWalletId,
     p_amount: args.amount,
+    p_note: args.note ?? '',
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+/** Edit transfer (0086): uang hanya di bulan berjalan; keterangan kapan saja. */
+export async function updateWalletTransfer(args: {
+  orgId: string;
+  transferId: string;
+  fromWalletId: string;
+  toWalletId: string;
+  amount: number;
+  note: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('update_wallet_transfer', {
+    p_org_id: args.orgId,
+    p_transfer_id: args.transferId,
+    p_from_wallet_id: args.fromWalletId,
+    p_to_wallet_id: args.toWalletId,
+    p_amount: args.amount,
+    p_note: args.note,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Batalkan transfer (0086): saldo kembali, barisnya tetap ada berstatus void. */
+export async function voidWalletTransfer(args: {
+  orgId: string;
+  transferId: string;
+  reason?: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('void_wallet_transfer', {
+    p_org_id: args.orgId,
+    p_transfer_id: args.transferId,
+    p_reason: args.reason ?? '',
   });
   if (error) throw new Error(error.message);
 }

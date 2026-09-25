@@ -46,6 +46,8 @@ const SERVER_LOGGED: ReadonlySet<ActivityAction> = new Set<ActivityAction>([
   'sale.void',
   'po.void',
   'wallet.transfer',
+  'wallet.transfer.edit',
+  'wallet.transfer.void',
   'income.delete',
   'expense.delete',
   'data.restore',

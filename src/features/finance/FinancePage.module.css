@@ -249,6 +249,26 @@
 .tapeAmount.trf {
   color: var(--text-muted);
 }
+/* Transfer dibatalkan (0086): tetap di pita sebagai jejak, dicoret + redup,
+   spine putus-putus — uangnya sudah kembali, jadi ia tak boleh terbaca sebagai
+   perpindahan yang masih berlaku. */
+.tapeRow.voided .tapeDesc,
+.tapeRow.voided .tapeAmount {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+  color: var(--text-muted);
+}
+.tapeRow.voided .tapeCat.trf {
+  color: var(--danger-text);
+}
+.tapeRow.voided::before {
+  background: repeating-linear-gradient(
+    180deg,
+    var(--text-muted) 0 3px,
+    transparent 3px 6px
+  );
+  opacity: 0.7;
+}
 .muted {
   color: var(--text-muted);
 }
