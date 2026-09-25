@@ -420,7 +420,7 @@ tiket terakhir NS-0327 (dibuat setelah cutover), perubahan terakhir 09:13 WIB.
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
-Server = `0001`–`0088` (catatan `supabase_migrations` belum mencatat 0080–0088; 0084–0088 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru, 0087, dan 0088 dipasang 25 Sep). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
+Server = `0001`–`0089` (catatan `supabase_migrations` belum mencatat 0080–0089; 0084–0089 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru dan 0087–0089 dipasang 25 Sep). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
 
 ## Belum dikerjakan
 
