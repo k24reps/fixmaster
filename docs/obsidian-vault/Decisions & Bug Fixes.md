@@ -3037,3 +3037,11 @@ Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak p
   `resend`), menulis override, menyalin fungsi, menerapkan 0085, menyalakan ulang, lalu
   dry run. Diuji di replika dengan `-TanpaKunci`, dua kali (idempoten).
 - Templat email GoTrue (reset password) masih bawaan berbahasa Inggris — belum diubah.
+- **DNS (25 Sep 2026):** `fixmaster.app` ternyata SUDAH punya rekaman Resend dari akun
+  lama (±2 Sep: `resend._domainkey`, `send` MX+SPF region ap-northeast-1, `_dmarc
+  p=none`) — cek MX domain utama saja tidak cukup, rekaman email tinggal di subdomain.
+  Akun Resend baru mengklaim domain lewat TXT `@ resend-domain-verification=…`
+  (ditambahkan via `vercel dns add`, rekaman lain tak disentuh). MX/SPF lama langsung
+  Verified; DKIM akun baru berbeda → rekaman lama dihapus, yang baru dipasang (dua DKIM
+  di satu nama membuat verifikasi tak menentu). Cek propagasi lewat DoH
+  (`dns.google/resolve`) — `nslookup` di Windows kerap time-out ke NS1.
