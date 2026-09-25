@@ -3049,3 +3049,11 @@ Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak p
   -UjiOrg <Nuara>` di laptop server → email backup sungguhan **sampai** di kotak masuk
   owner. Server kini `0001`–`0085`. SMTP reset password terpasang bersamaan (uji
   "Lupa password?" menyusul).
+- **Email reset password berbahasa Indonesia:** templat `public/email/reset-password.html`
+  (tayang di `fixmaster.app/email/…`, ikut repo & deploy) diambil GoTrue lewat
+  `GOTRUE_MAILER_TEMPLATES_RECOVERY`; subjek `Atur ulang password FixMaster`;
+  `GOTRUE_MAILER_OTP_EXP=3600` diset eksplisit karena teks email menyebut "1 jam"
+  (ubah keduanya bersamaan). Ketiganya di blok `auth` override, ditulis
+  `pasang-email.ps1` — jalankan ulang dengan `-TanpaKunci` (kunci di `.env` tetap).
+  Go template ikut mengisi `{{ }}` di dalam komentar HTML, jadi komentar templat
+  menyebut variabel tanpa kurung kurawal.

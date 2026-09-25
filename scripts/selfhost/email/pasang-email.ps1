@@ -42,7 +42,11 @@ function SetEnv([string]$key, [string]$value) {
 Step '1/6 Kunci Resend'
 $key = ''
 if ($TanpaKunci) {
-  Write-Host 'Dilewati (-TanpaKunci): email backup berjalan sebagai dry run, SMTP tidak diubah.'
+  if ($raw -match '(?m)^RESEND_API_KEY=re_') {
+    Write-Host 'Dilewati (-TanpaKunci): kunci & SMTP yang sudah terpasang di .env tetap dipakai.'
+  } else {
+    Write-Host 'Dilewati (-TanpaKunci): email backup berjalan sebagai dry run, SMTP tidak diubah.'
+  }
 } else {
   $sec = Read-Host 'Tempel API key Resend (re_...)' -AsSecureString
   $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)).Trim()
@@ -79,6 +83,16 @@ services:
       BACKUP_CRON_SECRET: ${BACKUP_CRON_SECRET}
       # Edge Function backup-email (0085). Kosong = dry run.
       RESEND_API_KEY: ${RESEND_API_KEY}
+  auth:
+    environment:
+      # Email "Lupa password?" berbahasa Indonesia. Templat diambil GoTrue dari
+      # situs (public/email/reset-password.html di repo FixMaster); gagal ambil =
+      # GoTrue memakai templat bawaannya, jadi reset password tetap jalan.
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: "Atur ulang password FixMaster"
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: "https://fixmaster.app/email/reset-password.html"
+      # Tautan reset berlaku 1 jam (bawaan GoTrue lebih panjang); teks email
+      # menyebut angka ini - ubah keduanya bersamaan.
+      GOTRUE_MAILER_OTP_EXP: "3600"
 '@
 [IO.File]::WriteAllText((Join-Path $Root 'docker-compose.override.yml'), ($override -replace "`r`n", "`n"), (New-Object Text.UTF8Encoding $false))
 $fnDir = Join-Path $Root 'volumes\functions\backup-email'
