@@ -262,3 +262,60 @@
 .dot[data-tone='success'] { background: var(--success); }
 .dot[data-tone='danger'] { background: var(--danger); }
 .dot[data-tone='neutral'] { background: var(--text-muted); }
+
+/* Batal: tiap part yang sudah dipotong dari stok memilih nasibnya sendiri —
+   kembali ke rak, atau terpakai (terpasang di unit / rusak saat dipasang). */
+.partFate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.partFateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px dotted var(--border);
+}
+.partFateRow:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.partFateName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.partFateToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--success-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.partFateToggle::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.partFateToggle[aria-pressed='true'] {
+  color: var(--warning-text);
+  border-color: var(--warning);
+}
+.partFateToggle[aria-pressed='true']::before {
+  background: var(--warning);
+}

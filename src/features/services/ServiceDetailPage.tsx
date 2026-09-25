@@ -740,7 +740,15 @@ export function ServiceDetailPage() {
                         manual ? styles.stateModal : p.deducted ? styles.stateOk : styles.stateWait,
                       ].join(' ')}
                     >
-                      {manual ? 'Modal (kas)' : p.deducted ? 'Terpasang' : 'Menunggu'}
+                      {manual
+                        ? 'Modal (kas)'
+                        : cancelled
+                          ? p.deducted
+                            ? 'Terpakai'
+                            : 'Kembali ke stok'
+                          : p.deducted
+                            ? 'Terpasang'
+                            : 'Menunggu'}
                     </span>
                     {!cancelled && manual && (
                       <button
@@ -752,7 +760,8 @@ export function ServiceDetailPage() {
                         <Icon name="pen" aria-hidden />
                       </button>
                     )}
-                    {!cancelled && (
+                    {/* Part terpasang di tiket Lunas sudah dibayar: stoknya tak bisa kembali (0088). */}
+                    {!cancelled && !(service.status === 'lunas' && !manual && p.deducted) && (
                       <button
                         className={styles.bomDel}
                         onClick={() => removeCostLine(i)}

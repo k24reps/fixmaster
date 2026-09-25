@@ -18,6 +18,9 @@ export async function saveServiceParts(service: Service, next: ServiceSparepart[
   const fresh = (await repository.get('services', service.id)) ?? service;
   const items: InventoryItem[] = [];
   for (const { itemId, delta } of partsStockDelta(fresh.spareparts, next)) {
+    if (fresh.status === 'lunas' && delta > 0) {
+      throw new Error('Tiket sudah Lunas: sparepart yang terpasang tidak bisa dikembalikan ke stok');
+    }
     const item = await repository.get('inventory', itemId);
     // Barang sudah dihapus: stok yang dikembalikan dilewati (cermin 0069).
     if (!item && delta > 0) continue;

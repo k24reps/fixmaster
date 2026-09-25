@@ -91,15 +91,18 @@ export function computeStockDeduction(
  * inventory line still flagged `deducted` is reversed (qty by itemId) and the
  * line is flipped to `deducted:false` so a re-cancel / further edit can't
  * double-restore. Manual lines have no stock and are skipped (their cash is
- * reversed separately via their linked Expense).
+ * reversed separately via their linked Expense). Indeks di `consumed` = part
+ * terpakai (terpasang/rusak): tidak kembali ke rak dan tetap `deducted`
+ * (cermin cancel_service 0088).
  */
 export function computeStockRestore(
   spareparts: ServiceSparepart[],
+  consumed: ReadonlySet<number> = new Set(),
 ): { restorations: { itemId: string; qty: number }[]; updated: ServiceSparepart[] } {
   const restorations: { itemId: string; qty: number }[] = [];
-  const updated = spareparts.map((sp) => {
+  const updated = spareparts.map((sp, i) => {
     const isInventory = sp.kind !== 'manual' && sp.itemId != null;
-    if (isInventory && sp.deducted) {
+    if (isInventory && sp.deducted && !consumed.has(i)) {
       restorations.push({ itemId: sp.itemId as string, qty: sp.qty });
       return { ...sp, deducted: false };
     }

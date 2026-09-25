@@ -407,6 +407,8 @@ Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
 
+- **Sparepart & Batal (0087/0088, 25 Sep 2026).** Modal Dadakan tambah/edit/hapus lewat RPC atomik. Part terpasang di tiket **Lunas** tak punya tombol hapus (stoknya tak bisa kembali). Saat **Batal**, tiap part stok dipilih lewat toggle mono `KE STOK` / `TERPAKAI`; di tiket batal, label BOM jadi `TERPAKAI` / `KEMBALI KE STOK`. Detail di [[Decisions & Bug Fixes#Sparepart tiket servis — paket B (0088, 25 Sep 2026)]].
+
 **Hierarki aksi + kejujuran billing (9 Agu 2026).** Tiket lunas menampilkan
 `Pembayaran / Lunas`, bukan “sisa” senilai total biaya. Sebelum biaya final ditetapkan,
 readout berkata `Belum ditetapkan`/`Menunggu biaya final`, bukan Rp0 yang tampak pasti.

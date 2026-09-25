@@ -3123,7 +3123,7 @@ tapi **tidak dihapus**. Menjawab ketujuh temuan audit di atas.
   unit test, lint hijau. Integrasi tier3b masih mengasumsikan `transfer_wallet` lama
   (kini mengembalikan uuid) — sesuaikan saat tes integrasi dijalankan.
 
-## Audit alur tiket servis (25 Sep 2026) — temuan (1–3 & 7 dibereskan 0087; 4–6, 8–9 menunggu paket B/C)
+## Audit alur tiket servis (25 Sep 2026) — temuan (1–3 & 7 → 0087; 4–6 → 0087/0088; 8–9 menunggu paket C)
 
 Cakupan: intake (`ServiceModal`), status (`StatusModal`, `TRANSITIONS` di
 `lib/business/services.ts`), DP/lunas/batal/koreksi (RPC 0061–0063), sparepart &
@@ -3192,3 +3192,32 @@ Menjawab temuan 1, 2, 3, dan 7 audit di atas.
   utuh). Build, lint, **639** unit test (+1 `patch`).
 - Catatan: 0086 sempat menambah `fm_rp()` padahal `fmt_rp()` (0068) sudah ada; 0087 tidak
   memakai keduanya. Satukan bila menyentuh fungsi transfer lagi.
+
+## Sparepart tiket servis — paket B (0088, 25 Sep 2026)
+
+Menjawab temuan 4 dan 5; temuan 6 (kunci bulan Modal Dadakan) sudah tertutup 0087.
+Hapus pengeluaran Modal Dadakan dari Keuangan sudah dikunci UI sejak awal
+(`lockedExpense` di `FinancePage`) — tidak disentuh.
+
+- **Regresi 0087 ditutup.** `services_guard_integrity` 0087 melewatkan semua RPC security
+  definer, sehingga cek "Lunas/Batal hanya owner/admin" dari 0065 ikut hilang untuk
+  `settle_service`/`cancel_service` yang dipanggil karyawan langsung lewat API (UI tidak
+  pernah menampilkan tombolnya). Cek peran kini jalan **sebelum** pintas `current_user`,
+  karena RPC membawa `auth.uid()` pemanggil. Pelajaran: pintas "definer bebas" hanya aman
+  untuk aturan integritas data, bukan aturan wewenang.
+- **Tiket Lunas:** `update_service_parts` menolak delta stok positif (hapus baris / kurangi
+  qty) — part terpasang sudah dibayar. Menambah part tetap boleh. Cermin lokal di
+  `saveServiceParts`; tombol hapus disembunyikan untuk part terpasang di tiket Lunas.
+- **Batal dengan part terpakai:** `cancel_service(…, p_keep_parts int[])` — indeks baris
+  yang TIDAK kembali ke stok (terpasang di unit / rusak saat dipasang); baris itu tetap
+  `deducted`. Fungsi lama 6 argumen di-drop (panggilan bernama jadi ambigu), klien lama tetap
+  jalan lewat default. `StatusModal`: tiap part stok punya toggle mono `KE STOK` /
+  `TERPAKAI` (LED hijau/kuning); riwayat Batal mencatat "Part terpakai: …". Detail tiket
+  batal melabeli part `TERPAKAI` / `KEMBALI KE STOK` (dulu `MENUNGGU`, menyesatkan).
+  `computeStockRestore(parts, consumed)` +1 test.
+- **Batasan sadar:** nilai part terpakai tidak dibukukan sebagai pengeluaran — kerugiannya
+  terlihat sebagai stok yang berkurang. Tambah bila pemilik butuh angka rugi per tiket.
+- **Diuji** di replika (SQL rollback: batal campuran stok 9/10, indeks tak sah, Lunas tambah
+  boleh & hapus ditolak, karyawan settle/cancel ditolak, karyawan status kerja boleh,
+  panggilan lama 6 argumen; uji 0087 tetap hijau) dan demo (FM-0002: LCD terpakai stok 1,
+  thermal paste kembali 24). Build, lint, **640** unit test.

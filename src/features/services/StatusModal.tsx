@@ -91,6 +91,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // Cancel ("batal") sub-action: optional partial DP refund.
   const [refundAmount, setRefundAmount] = useState('');
   const [refundWalletId, setRefundWalletId] = useState('');
+  // Batal: indeks part stok yang terpakai (tidak dikembalikan ke rak).
+  const [consumedParts, setConsumedParts] = useState<ReadonlySet<number>>(new Set());
   // Koreksi sub-action
   const [correctAmount, setCorrectAmount] = useState('');
   const [correctWalletId, setCorrectWalletId] = useState('');
@@ -135,6 +137,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setDpWalletId(defaultWallet());
       setRefundAmount('');
       setRefundWalletId(defaultWallet());
+      setConsumedParts(new Set());
       setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
       setCorrectWalletId(defaultWallet());
     }
@@ -152,6 +155,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const noteRequired = target === 'batal';
   const needsHandling = target === 'selesai';
   const warrantyPresets = getWarrantyPresets();
+  // Part stok yang masih dipegang tiket — yang bisa dipilih nasibnya saat Batal.
+  const heldParts = service.spareparts
+    .map((part, index) => ({ part, index }))
+    .filter(({ part }) => part.kind !== 'manual' && part.itemId != null && part.deducted);
   const walletOptions = wallets.map((w) => ({ value: w.id, label: w.name }));
 
   // Amount still owed at settlement given the (possibly edited) final cost.
@@ -287,7 +294,16 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             by: me?.id ?? '',
             byName: me?.name ?? '',
             // Riwayat (juga tampil di halaman lacak pelanggan) tetap memuat penanganannya.
-            note: [needsHandling ? handling.trim() : '', note.trim()].filter(Boolean).join(' · ') || STATUS_LABELS[target],
+            note:
+              [
+                needsHandling ? handling.trim() : '',
+                note.trim(),
+                target === 'batal' && consumedParts.size > 0
+                  ? `Part terpakai: ${[...consumedParts].map((i) => service.spareparts[i]?.name).join(', ')}`
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ') || STATUS_LABELS[target],
             internal: false,
           },
         ],
@@ -379,9 +395,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             outletId: service.outletId,
             refundAmount: refund,
             refundWalletId: refund > 0 ? refundWalletId : null,
+            keepParts: [...consumedParts],
           });
         } else {
-          const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts);
+          const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts, consumedParts);
           if (restorations.length) {
             const inventory = await repository.list('inventory');
             const toRestore = inventory
@@ -796,6 +813,43 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 </div>
                 <p className={styles.dp}>
                   Kosongkan/0 jika DP tidak dikembalikan (jadi pendapatan toko). Refund dicatat sebagai pengeluaran; income DP tetap tersimpan.
+                </p>
+              </div>
+            )}
+            {target === 'batal' && heldParts.length > 0 && (
+              <div className={styles.warranty}>
+                <span className={styles.warrantyLabel}>Sparepart dari stok</span>
+                <div className={styles.partFate}>
+                  {heldParts.map(({ part, index }) => {
+                    const used = consumedParts.has(index);
+                    return (
+                      <div key={index} className={styles.partFateRow}>
+                        <span className={styles.partFateName}>
+                          {part.name} ×{part.qty}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.partFateToggle}
+                          aria-pressed={used}
+                          aria-label={`${part.name}: ${used ? 'terpakai, tidak kembali ke stok' : 'kembali ke stok'}`}
+                          onClick={() =>
+                            setConsumedParts((prev) => {
+                              const next = new Set(prev);
+                              if (used) next.delete(index);
+                              else next.add(index);
+                              return next;
+                            })
+                          }
+                        >
+                          {used ? 'Terpakai' : 'Ke stok'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className={styles.dp}>
+                  Klik untuk menandai part yang sudah terpasang di unit atau rusak saat dipasang. Part terpakai tidak
+                  kembali ke stok.
                 </p>
               </div>
             )}

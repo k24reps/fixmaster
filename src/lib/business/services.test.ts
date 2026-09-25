@@ -139,6 +139,15 @@ describe('stock restore on cancel', () => {
     const { restorations } = computeStockRestore(parts);
     expect(restorations).toEqual([{ itemId: 'a', qty: 1 }]);
   });
+  it('part terpakai tidak kembali ke stok dan tetap deducted', () => {
+    const parts = [
+      sp({ itemId: 'a', qty: 1, deducted: true }),
+      sp({ itemId: 'b', qty: 2, deducted: true }),
+    ];
+    const { restorations, updated } = computeStockRestore(parts, new Set([1]));
+    expect(restorations).toEqual([{ itemId: 'a', qty: 1 }]);
+    expect(updated.map((p) => p.deducted)).toEqual([false, true]);
+  });
   it('is a no-op when nothing was deducted', () => {
     const parts = [sp({ itemId: 'a' }), sp({ itemId: 'b' })];
     const { restorations, updated } = computeStockRestore(parts);
