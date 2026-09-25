@@ -420,13 +420,12 @@ tiket terakhir NS-0327 (dibuat setelah cutover), perubahan terakhir 09:13 WIB.
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
-Server = `0001`–`0084` (catatan `supabase_migrations` belum mencatat 0080–0084; 0084 diterapkan 24 Sep lewat psql).
+Server = `0001`–`0085` (catatan `supabase_migrations` belum mencatat 0080–0085; 0084/0085 diterapkan lewat psql/pemasang). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
 
 ## Belum dikerjakan
 
 - Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
   sudah diunggah ulang 24 Sep.
-- **SMTP** — reset password & email auth belum terkirim.
 - Uji pulih pertama dari arsip Google Drive ke mesin lain (backup offsite terpasang
   di server 24 Sep: arsip pertama 592 KB, jadwal aktif, run berikut 13:00).
 - Uji restart Windows tanpa disentuh (dilewati pemilik saat pemasangan).

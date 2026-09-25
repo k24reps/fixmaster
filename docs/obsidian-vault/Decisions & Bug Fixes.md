@@ -3045,3 +3045,7 @@ Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak p
   Verified; DKIM akun baru berbeda → rekaman lama dihapus, yang baru dipasang (dua DKIM
   di satu nama membuat verifikasi tak menentu). Cek propagasi lewat DoH
   (`dns.google/resolve`) — `nslookup` di Windows kerap time-out ke NS1.
+- **Terpasang di server & terbukti (25 Sep 2026):** domain Verified di Resend, `pasang-email.ps1
+  -UjiOrg <Nuara>` di laptop server → email backup sungguhan **sampai** di kotak masuk
+  owner. Server kini `0001`–`0085`. SMTP reset password terpasang bersamaan (uji
+  "Lupa password?" menyusul).
