@@ -3057,3 +3057,32 @@ Balasan diarahkan ke `fixmaster.cs@gmail.com` (Reply-To) — fixmaster.app tak p
   `pasang-email.ps1` — jalankan ulang dengan `-TanpaKunci` (kunci di `.env` tetap).
   Go template ikut mengisi `{{ }}` di dalam komentar HTML, jadi komentar templat
   menyebut variabel tanpa kurung kurawal.
+  **Terbukti 25 Sep:** pemilik menerima email reset berbahasa Indonesia lewat Resend.
+
+
+## Audit transfer antar wallet (25 Sep 2026) — temuan, menunggu keputusan
+
+Alur: `TransferModal` → `transfer()` (validasi klien) → RPC `transfer_wallet` (0073) → log
+`wallet.transfer` via `fm_log` → Buku Kas membaca log itu (`transferEntries`).
+
+**Sudah benar:** satu transaksi atomik; manager-only + langganan aktif; saldo asal dikunci
+`for update` dan divalidasi server; tidak membuat income/expense (laporan laba bersih);
+log ditulis server (tak bergantung browser); wallet terhapus ditolak ("tidak ditemukan" —
+wallet dihapus permanen, hanya bila saldo 0); filter per-wallet memberi arah +/−.
+
+**Temuan:**
+1. **Riwayat transfer bisa hilang permanen.** `purge_activity_logs` (0076, owner, ≥90 hari)
+   menghapus SEMUA log lama termasuk `wallet.transfer` — padahal log itulah satu-satunya
+   catatan transfer.
+2. **Buku Kas menarik seluruh log aktivitas** (`useCollectionRange('activity', …)`) demi
+   menyaring transfer: toko pemilik Sep 818 log ≈240 KB mentah untuk **19** transfer (2%),
+   dan ditarik ulang tiap ada log baru dari perangkat mana pun selama halaman terbuka;
+   bertambah per "muat bulan sebelumnya".
+3. **"Balikkan transfer" tak berjejak kaitan:** transfer yang sama bisa dibalik berkali-kali,
+   dan kebalikannya tampil sebagai transfer biasa.
+4. Wallet yang hanya dipakai transfer bisa dihapus (trigger 0077 hanya menghitung
+   incomes/expenses) → baris transfer lamanya kehilangan nama wallet di baris meta.
+5. Dua transfer berlawanan serentak (A→B & B→A) bisa deadlock — urutan kunci tak tetap;
+   salah satu gagal dengan galat, data tetap benar.
+6. Server menerima nominal pecahan (numeric) padahal UI hanya rupiah bulat.
+7. Komentar `FinancePage` basi: "admin melihat transfer kosong" sudah dibereskan 0072.
