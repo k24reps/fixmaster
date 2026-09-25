@@ -656,9 +656,12 @@ export function ServiceDetailPage() {
                 <button className={styles.bomAddBtn} onClick={() => setPickerOpen(true)}>
                   <Icon name="plus" aria-hidden /> Sparepart
                 </button>
-                <button className={styles.bomAddBtn} onClick={openModalForm}>
-                  <Icon name="plus" aria-hidden /> Modal Dadakan
-                </button>
+                {/* Modal Dadakan = pengeluaran kas: owner/admin saja (RLS & RPC 0087). */}
+                {isManager && (
+                  <button className={styles.bomAddBtn} onClick={openModalForm}>
+                    <Icon name="plus" aria-hidden /> Modal Dadakan
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -750,7 +753,7 @@ export function ServiceDetailPage() {
                             ? 'Terpasang'
                             : 'Menunggu'}
                     </span>
-                    {!cancelled && manual && (
+                    {!cancelled && manual && isManager && (
                       <button
                         className={styles.bomEdit}
                         onClick={() => openEditModal(i)}
@@ -761,7 +764,7 @@ export function ServiceDetailPage() {
                       </button>
                     )}
                     {/* Part terpasang di tiket Lunas sudah dibayar: stoknya tak bisa kembali (0088). */}
-                    {!cancelled && !(service.status === 'lunas' && !manual && p.deducted) && (
+                    {!cancelled && !(manual && !isManager) && !(service.status === 'lunas' && !manual && p.deducted) && (
                       <button
                         className={styles.bomDel}
                         onClick={() => removeCostLine(i)}

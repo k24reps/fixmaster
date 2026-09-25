@@ -319,3 +319,60 @@
 .partFateToggle[aria-pressed='true']::before {
   background: var(--warning);
 }
+
+/* Servis ditunggu: satu sakelar di bawah biaya — spine brand menandai bahwa
+   Terapkan kini juga membukukan pelunasan dan serah terima unit. */
+.expressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-brand);
+  border-radius: var(--radius-sm);
+}
+.expressText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.expressText small {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.expressToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.expressToggle::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.expressToggle[aria-pressed='true'] {
+  color: var(--success-text);
+  border-color: var(--success);
+}
+.expressToggle[aria-pressed='true']::before {
+  background: var(--success);
+}

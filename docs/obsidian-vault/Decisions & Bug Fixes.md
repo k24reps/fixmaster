@@ -3123,7 +3123,7 @@ tapi **tidak dihapus**. Menjawab ketujuh temuan audit di atas.
   unit test, lint hijau. Integrasi tier3b masih mengasumsikan `transfer_wallet` lama
   (kini mengembalikan uuid) — sesuaikan saat tes integrasi dijalankan.
 
-## Audit alur tiket servis (25 Sep 2026) — temuan (1–3 & 7 → 0087; 4–6 → 0087/0088; 8–9 menunggu paket C)
+## Audit alur tiket servis (25 Sep 2026) — temuan (semua dibereskan: 0087 · 0088 · 0089)
 
 Cakupan: intake (`ServiceModal`), status (`StatusModal`, `TRANSITIONS` di
 `lib/business/services.ts`), DP/lunas/batal/koreksi (RPC 0061–0063), sparepart &
@@ -3221,3 +3221,29 @@ Hapus pengeluaran Modal Dadakan dari Keuangan sudah dikunci UI sejak awal
   boleh & hapus ditolak, karyawan settle/cancel ditolak, karyawan status kerja boleh,
   panggilan lama 6 argumen; uji 0087 tetap hijau) dan demo (FM-0002: LCD terpakai stok 1,
   thermal paste kembali 24). Build, lint, **640** unit test.
+
+## Servis ditunggu — paket C (0089, 25 Sep 2026)
+
+Menjawab temuan 8 dan 9.
+
+- **Selesai dari status kerja mana pun.** `TRANSITIONS` (dan trigger
+  `services_guard_integrity` 0089, cermin persis): Diterima/Diagnosa/Konfirmasi/Tunggu →
+  Selesai. Servis kilat tak perlu lagi melewati Diagnosa & Konfirmasi. Keputusan sadar:
+  status adalah catatan alur, bukan gerbang uang — biaya tetap wajib diisi saat Selesai,
+  dan pelunasan tetap lewat `settle_service`. `shouldDeductStock` kini juga Selesai
+  (baris lama yang belum dipotong tak terlewat saat melompati Pengerjaan).
+- **Pengerjaan → Tunggu Sparepart**: kekurangan part baru ketahuan saat dikerjakan.
+- **Sakelar "Pelanggan menunggu?"** di `StatusModal` saat target Selesai (owner/admin
+  saja — pelunasan manager-only): satu kali Terapkan (tombolnya jadi "Selesai & Lunas")
+  = simpan Selesai → `settle_service` (pembayaran bisa dipecah, refund kelebihan DP) →
+  tandai diambil. Riwayat tetap mencatat Selesai, Lunas, dan "Barang diambil pelanggan"
+  terpisah; log aktivitas `meta.express`. Bila pelunasan gagal, tiket tertinggal di
+  Selesai (keadaan sah, tinggal dilunasi) — tak ada uang setengah jalan karena RPC-nya
+  atomik. Nominal pembayaran satu-kaki kini mengikuti Biaya Final saat diketik (juga
+  untuk Lunas biasa).
+- **Modal Dadakan** (tambah/edit/hapus baris) disembunyikan untuk karyawan — pengeluaran
+  kas memang manager-only (RLS & RPC 0087).
+- **Diuji** di replika (Diterima → Selesai → Lunas → diambil, tunai +150.000;
+  Pengerjaan → Tunggu; mundur tetap ditolak; uji 0087 disesuaikan: lompatan ilegal kini
+  Diterima → Pengerjaan; uji 0088 hijau) dan demo (FM-0006 Diterima → "Selesai & Lunas":
+  Lunas, diambil, pemasukan Rp 150.000 di Tunai). Build, lint, 640 unit test.

@@ -12,13 +12,18 @@ import type {
 } from '@/data/types';
 import { addDays } from '@/lib/time';
 
-/** Allowed status transitions (state machine). */
+/**
+ * Allowed status transitions (state machine). Cermin trigger
+ * services_guard_integrity (0089). Selesai bisa dicapai dari status kerja mana
+ * pun: servis kilat yang ditunggu pelanggan tak perlu melewati Diagnosa &
+ * Konfirmasi. Pengerjaan → Tunggu: kekurangan part baru ketahuan saat dikerjakan.
+ */
 const TRANSITIONS: Record<ServiceStatus, ServiceStatus[]> = {
-  diterima: ['diagnosa', 'batal'],
-  diagnosa: ['konfirmasi', 'batal'],
-  konfirmasi: ['tunggu', 'pengerjaan', 'batal'],
-  tunggu: ['pengerjaan', 'batal'],
-  pengerjaan: ['selesai', 'batal'],
+  diterima: ['diagnosa', 'selesai', 'batal'],
+  diagnosa: ['konfirmasi', 'selesai', 'batal'],
+  konfirmasi: ['tunggu', 'pengerjaan', 'selesai', 'batal'],
+  tunggu: ['pengerjaan', 'selesai', 'batal'],
+  pengerjaan: ['tunggu', 'selesai', 'batal'],
   // Pengerjaan = buka lagi (salah tandai Selesai); batal = unit tak ditebus.
   selesai: ['lunas', 'pengerjaan', 'batal'],
   lunas: [],
@@ -58,7 +63,8 @@ export function canSetStatus(role: Role, status: ServiceStatus): boolean {
  * them here and no double-deduction occurs.
  */
 export function shouldDeductStock(status: ServiceStatus): boolean {
-  return status === 'pengerjaan';
+  // Selesai ikut: tiket bisa melompat ke Selesai tanpa lewat Pengerjaan.
+  return status === 'pengerjaan' || status === 'selesai';
 }
 
 /**

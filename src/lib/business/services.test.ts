@@ -44,7 +44,11 @@ describe('status machine', () => {
     expect(canTransition('lunas', 'pengerjaan')).toBe(false);
   });
   it('lists next statuses', () => {
-    expect(nextStatuses('konfirmasi')).toEqual(['tunggu', 'pengerjaan', 'batal']);
+    expect(nextStatuses('konfirmasi')).toEqual(['tunggu', 'pengerjaan', 'selesai', 'batal']);
+    // Servis ditunggu: langsung Selesai; part kurang saat dikerjakan: kembali Tunggu.
+    expect(canTransition('diterima', 'selesai')).toBe(true);
+    expect(canTransition('pengerjaan', 'tunggu')).toBe(true);
+    expect(canTransition('diterima', 'pengerjaan')).toBe(false);
     expect(nextStatuses('lunas')).toEqual([]);
   });
   it('detects terminal + active states', () => {
@@ -88,9 +92,10 @@ describe('deferred stock deduction', () => {
     itemId: 'i1', name: 'RAM', qty: 1, costPrice: 100, sellPrice: 200, deducted: false, ...over,
   });
 
-  it('only deducts at pengerjaan', () => {
+  it('deducts at pengerjaan & selesai', () => {
     expect(shouldDeductStock('diterima')).toBe(false);
     expect(shouldDeductStock('pengerjaan')).toBe(true);
+    expect(shouldDeductStock('selesai')).toBe(true);
   });
   it('deducts only not-yet-deducted items', () => {
     const parts = [sp({ itemId: 'a', qty: 2 }), sp({ itemId: 'b', deducted: true })];

@@ -407,6 +407,7 @@ Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
 
+- **Servis ditunggu (0089, 25 Sep 2026).** Update Status: Selesai tersedia dari status kerja mana pun; bila target Selesai, owner/admin melihat baris ber-spine brand "Pelanggan menunggu?" dengan sakelar mono LED `TIDAK` / `LANGSUNG LUNAS`. Menyala → blok pembayaran muncul dan tombol jadi **Selesai & Lunas** (selesai + lunas + diambil sekali klik). Detail di [[Decisions & Bug Fixes#Servis ditunggu — paket C (0089, 25 Sep 2026)]].
 - **Sparepart & Batal (0087/0088, 25 Sep 2026).** Modal Dadakan tambah/edit/hapus lewat RPC atomik. Part terpasang di tiket **Lunas** tak punya tombol hapus (stoknya tak bisa kembali). Saat **Batal**, tiap part stok dipilih lewat toggle mono `KE STOK` / `TERPAKAI`; di tiket batal, label BOM jadi `TERPAKAI` / `KEMBALI KE STOK`. Detail di [[Decisions & Bug Fixes#Sparepart tiket servis — paket B (0088, 25 Sep 2026)]].
 
 **Hierarki aksi + kejujuran billing (9 Agu 2026).** Tiket lunas menampilkan

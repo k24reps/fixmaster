@@ -91,6 +91,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // Cancel ("batal") sub-action: optional partial DP refund.
   const [refundAmount, setRefundAmount] = useState('');
   const [refundWalletId, setRefundWalletId] = useState('');
+  // Servis ditunggu: Selesai sekaligus Lunas & diambil, satu kali Terapkan.
+  const [express, setExpress] = useState(false);
   // Batal: indeks part stok yang terpakai (tidak dikembalikan ke rak).
   const [consumedParts, setConsumedParts] = useState<ReadonlySet<number>>(new Set());
   // Koreksi sub-action
@@ -138,6 +140,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setRefundAmount('');
       setRefundWalletId(defaultWallet());
       setConsumedParts(new Set());
+      setExpress(false);
       setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
       setCorrectWalletId(defaultWallet());
     }
@@ -154,6 +157,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // required "Penanganan" field, so its note is optional like everywhere else.
   const noteRequired = target === 'batal';
   const needsHandling = target === 'selesai';
+  // Pelunasan terjadi di modal ini: Lunas biasa, atau Selesai + "langsung lunas".
+  const canExpress = target === 'selesai' && canSetStatus(role, 'lunas');
+  const paying = target === 'lunas' || (canExpress && express);
   const warrantyPresets = getWarrantyPresets();
   // Part stok yang masih dipegang tiket — yang bisa dipilih nasibnya saat Batal.
   const heldParts = service.spareparts
@@ -169,8 +175,22 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // Koreksi: + diterima ke wallet, − dikembalikan dari wallet.
   const correctDelta = correctAmount.trim() ? parseRpInput(correctAmount) - service.finalCost : 0;
 
+  // Satu kaki pembayaran senilai sisa tagihan (kasus umum) + tawaran refund
+  // penuh bila DP melebihi biaya; bisa dipecah/dikurangi dari sana.
+  const seedPayment = (costInput: string) => {
+    const cost = parseRpInput(costInput) || service.finalCost;
+    const due = settlementAmount(cost, service.downPayment);
+    setSplits([{ walletId: defaultWallet(), amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+    const excess = overpaidAmount(cost, service.downPayment);
+    if (excess > 0) {
+      setRefundAmount(fmtRpInput(String(excess)));
+      setRefundWalletId((w) => w || defaultWallet());
+    }
+  };
+
   const onTargetChange = (next: ServiceStatus | '') => {
     setTarget(next);
+    if (next !== 'selesai') setExpress(false);
     if (next === 'selesai') {
       setWarrantyService((v) => (v === '' ? String(getWarrantyServiceDays()) : v));
       setPartDays((prev) =>
@@ -178,18 +198,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         service.spareparts.map((p, i) => (prev[i] ? prev[i] : String(p.defaultWarrantyDays ?? getWarrantyPartsDays()))),
       );
     }
-    if (next === 'lunas') {
-      // Seed a single payment leg covering the full balance (the common case);
-      // the user can split it across wallets from there.
-      const due = settlementAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
-      setSplits([{ walletId: defaultWallet(), amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
-      // Kelebihan DP: tawarkan refund selisih penuh (bisa dikurangi).
-      const excess = overpaidAmount(parseRpInput(finalCost) || service.finalCost, service.downPayment);
-      if (excess > 0) {
-        setRefundAmount(fmtRpInput(String(excess)));
-        setRefundWalletId((w) => w || defaultWallet());
-      }
-    }
+    if (next === 'lunas') seedPayment(finalCost);
     if (next === 'batal' && service.downPayment > 0) {
       // Default to refunding the full DP; the owner can lower it (the shop keeps
       // the difference, e.g. a diagnosis fee) or zero it out.
@@ -231,14 +240,14 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       return;
     }
     const settle = settlementAmount(cost, service.downPayment);
-    if (target === 'lunas' && settle > 0) {
+    if (paying && settle > 0) {
       const err = validateSplit(splitsAsNumbers(), settle);
       if (err === 'empty') return toast.warning('Isi minimal satu pembayaran');
       if (err === 'mismatch')
         return toast.warning(`Total pembayaran (${fmtRp(splitPaid)}) harus sama dengan sisa tagihan (${fmtRp(settle)})`);
     }
     // Kelebihan DP dikembalikan saat pelunasan, bukan hilang diam-diam.
-    const excess = target === 'lunas' ? overpaidAmount(cost, service.downPayment) : 0;
+    const excess = paying ? overpaidAmount(cost, service.downPayment) : 0;
     const excessRefund = excess > 0 ? parseRpInput(refundAmount) : 0;
     if (excessRefund > excess) {
       return toast.warning(`Refund melebihi kelebihan DP (${fmtRp(excess)})`);
@@ -325,14 +334,22 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       // (member-allowed) with ALL legs — also when DP covers the bill (no legs),
       // so the status change itself is validated server-side; local mirrors it
       // per-leg directly. Income tagged to the service's outlet.
-      if (target === 'lunas' && (settle > 0 || cloud)) {
+      // Servis ditunggu: tiket baru saja disimpan Selesai di atas, lalu dilunasi
+      // di sini lewat jalur yang sama dengan Lunas biasa.
+      const settleHistory = express && paying
+        ? [
+            ...changes.history,
+            { at: now, status: 'lunas' as const, by: me?.id ?? '', byName: me?.name ?? '', note: STATUS_LABELS.lunas, internal: false },
+          ]
+        : changes.history;
+      if (paying && (settle > 0 || cloud)) {
         const legs = settle > 0 ? normalizeSplits(splitsAsNumbers()) : [];
         if (cloud) {
           await settleService({
             orgId: service.orgId,
             serviceId: service.id,
             payments: legs,
-            history: updatedService.history ?? [],
+            history: settleHistory,
             outletId: service.outletId,
             finalCost: cost,
             ...(excessRefund > 0 ? { refundAmount: excessRefund, refundWalletId } : {}),
@@ -359,6 +376,18 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           }
         }
         if (legs[0]) setLastExpenseWallet(legs[0].walletId);
+      }
+      if (express && paying) {
+        if (!cloud) await repository.patch('services', service.id, { status: 'lunas', history: settleHistory, updatedAt: now });
+        await repository.patch('services', service.id, {
+          pickedUp: true,
+          pickedUpAt: now,
+          updatedAt: now,
+          history: [
+            ...settleHistory,
+            { at: now, status: 'edit', by: me?.id ?? '', byName: me?.name ?? '', note: 'Barang diambil pelanggan', internal: false },
+          ],
+        });
       }
       // Lokal/demo: refund kelebihan DP sebagai pengeluaran (cloud: di RPC yang sama).
       if (!cloud && excessRefund > 0) {
@@ -445,9 +474,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         entityType: 'service',
         entityId: service.id,
         entityLabel: service.serviceNo,
-        meta: { from: service.status, to: target },
+        meta: { from: service.status, to: express && paying ? 'lunas' : target, ...(express && paying ? { express: true } : {}) },
       });
-      toast.success(`Status → ${STATUS_LABELS[target]}`);
+      toast.success(express && paying ? 'Selesai, lunas & diambil' : `Status → ${STATUS_LABELS[target]}`);
       onSaved();
       onClose();
     } catch (e) {
@@ -599,7 +628,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   };
 
   const apply = mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : () => applyStatus();
-  const applyLabel = mode === 'dp' ? 'Simpan DP' : mode === 'koreksi' ? 'Perbarui Biaya' : 'Terapkan';
+  const applyLabel =
+    mode === 'dp' ? 'Simpan DP' : mode === 'koreksi' ? 'Perbarui Biaya' : paying && express ? 'Selesai & Lunas' : 'Terapkan';
   const noActions = modes.length === 0;
 
   return (
@@ -686,11 +716,39 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               <Input
                 label="Biaya Final"
                 value={finalCost}
-                onChange={(e) => setFinalCost(fmtRpInput(e.target.value))}
+                onChange={(e) => {
+                  const next = fmtRpInput(e.target.value);
+                  setFinalCost(next);
+                  // Satu pembayaran = ikuti biaya; yang sudah dipecah dibiarkan.
+                  if (paying && splits.length === 1) {
+                    const due = settlementAmount(parseRpInput(next), service.downPayment);
+                    setSplits([{ ...splits[0], amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+                  }
+                }}
                 placeholder="250.000"
               />
             )}
-            {target === 'lunas' && settleDue > 0 && (
+            {canExpress && (
+              <div className={styles.expressRow}>
+                <span className={styles.expressText}>
+                  <strong>Pelanggan menunggu?</strong>
+                  <small>Selesai, lunas, dan diambil sekaligus.</small>
+                </span>
+                <button
+                  type="button"
+                  className={styles.expressToggle}
+                  aria-pressed={express}
+                  aria-label="Langsung lunas dan tandai diambil"
+                  onClick={() => {
+                    if (!express) seedPayment(finalCost);
+                    setExpress(!express);
+                  }}
+                >
+                  {express ? 'Langsung lunas' : 'Tidak'}
+                </button>
+              </div>
+            )}
+            {paying && settleDue > 0 && (
               <div className={styles.splitBlock}>
                 <span className={styles.splitLabel}>Pembayaran (bisa dipecah ke beberapa wallet)</span>
                 {splits.map((s, i) => (
@@ -768,7 +826,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 )}
               </div>
             )}
-            {target === 'lunas' && lunasExcess > 0 && (
+            {paying && lunasExcess > 0 && (
               <div className={styles.warranty}>
                 <span className={styles.warrantyLabel}>
                   Kelebihan DP {fmtRp(lunasExcess)} (DP {fmtRp(service.downPayment)} melebihi biaya final)
@@ -877,7 +935,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               <p className={styles.dp}>
                 DP diterima: {fmtRp(service.downPayment)} ·{' '}
                 {needsCost && lunasExcess > 0
-                  ? `Kelebihan DP: ${fmtRp(lunasExcess)}${target === 'lunas' ? '' : ' — dikembalikan saat pelunasan'}`
+                  ? `Kelebihan DP: ${fmtRp(lunasExcess)}${paying ? '' : ' — dikembalikan saat pelunasan'}`
                   : `Sisa: ${fmtRp(outstandingBalance({ ...service, finalCost: parseRpInput(finalCost) || service.finalCost }))}`}
               </p>
             )}
