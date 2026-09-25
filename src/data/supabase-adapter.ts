@@ -497,6 +497,22 @@ export class SupabaseAdapter implements Repository {
     return fromRow<EntityMap[K]>(data);
   }
 
+  async patch<K extends CollectionName>(
+    collection: K,
+    id: ID,
+    fields: Partial<EntityMap[K]>,
+  ): Promise<EntityMap[K]> {
+    const { data, error } = await this.client
+      .from(TABLE[collection])
+      .update(toRow(fields as Record<string, unknown>))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) rethrowWrite(error);
+    this.notify(collection);
+    return fromRow<EntityMap[K]>(data);
+  }
+
   async putMany<K extends CollectionName>(
     collection: K,
     records: EntityMap[K][],

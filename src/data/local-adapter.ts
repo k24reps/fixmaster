@@ -137,6 +137,16 @@ export class LocalAdapter implements Repository {
     return stamped;
   }
 
+  async patch<K extends CollectionName>(
+    collection: K,
+    id: ID,
+    fields: Partial<EntityMap[K]>,
+  ): Promise<EntityMap[K]> {
+    const current = await this.get(collection, id);
+    if (!current) throw new Error('Data tidak ditemukan');
+    return this.put(collection, { ...current, ...fields });
+  }
+
   async putMany<K extends CollectionName>(
     collection: K,
     records: EntityMap[K][],

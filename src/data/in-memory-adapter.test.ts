@@ -55,6 +55,17 @@ describe('InMemoryAdapter (RAM-only demo repository)', () => {
     expect(await adapter.list('customers')).toHaveLength(0);
   });
 
+  it('patch mengubah kolom yang dikirim saja, sisanya dari data tersimpan', async () => {
+    await adapter.put('customers', makeCustomer('1', 'org-1', 'Andi'));
+    // Salinan basi di perangkat lain tak ikut dikirim — hanya kolom yang diubah.
+    await adapter.put('customers', { ...makeCustomer('1', 'org-1', 'Andi'), phone: '0899' });
+    await adapter.patch('customers', '1', { name: 'Andi S' });
+    const got = await adapter.get('customers', '1');
+    expect(got?.name).toBe('Andi S');
+    expect(got?.phone).toBe('0899');
+    await expect(adapter.patch('customers', 'tidak-ada', { name: 'x' })).rejects.toThrow();
+  });
+
   it('bulk upserts', async () => {
     await adapter.putMany('customers', [
       makeCustomer('1', 'org-1', 'Andi'),

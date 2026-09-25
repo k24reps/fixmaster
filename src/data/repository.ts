@@ -97,6 +97,12 @@ export interface Repository {
   get<K extends CollectionName>(collection: K, id: ID): Promise<EntityMap[K] | null>;
   /** Insert or update a record (sets audit fields automatically). */
   put<K extends CollectionName>(collection: K, record: EntityMap[K]): Promise<EntityMap[K]>;
+  /**
+   * Ubah sebagian kolom satu record yang sudah ada. Cloud mengirim HANYA kolom
+   * ini (UPDATE, bukan upsert baris penuh), jadi salinan yang basi tidak
+   * menimpa kolom lain yang berubah di perangkat lain — mis. DP tiket.
+   */
+  patch<K extends CollectionName>(collection: K, id: ID, fields: Partial<EntityMap[K]>): Promise<EntityMap[K]>;
   /** Bulk upsert within a single transaction (atomic). */
   putMany<K extends CollectionName>(
     collection: K,

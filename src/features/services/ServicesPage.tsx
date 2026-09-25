@@ -321,8 +321,7 @@ export function ServicesPage() {
     const now = new Date().toISOString();
     const nowPicked = !s.pickedUp;
     try {
-      await repository.put('services', {
-        ...s,
+      await repository.patch('services', s.id, {
         pickedUp: nowPicked,
         pickedUpAt: nowPicked ? now : null,
         updatedAt: now,

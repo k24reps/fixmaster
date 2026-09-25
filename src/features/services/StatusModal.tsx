@@ -240,6 +240,17 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     setBusy(true);
     const now = new Date().toISOString();
     try {
+      // Modal bisa lama terbuka. Bila tiket berubah di perangkat lain sejak itu
+      // (status, DP, sparepart), angka di form ini sudah tidak berlaku.
+      const fresh = await repository.get('services', service.id);
+      if (
+        fresh &&
+        (fresh.status !== service.status ||
+          fresh.downPayment !== service.downPayment ||
+          JSON.stringify(fresh.spareparts) !== JSON.stringify(service.spareparts))
+      ) {
+        throw new Error('Tiket ini berubah di perangkat lain. Tutup lalu buka lagi untuk melihat data terbaru.');
+      }
       const { deductions, updated } = computeStockDeduction(service.spareparts, target);
       // Baris lama yang belum dipotong: stok & tanda `deducted` ditulis bersama (0064).
       if (deductions.length) await saveServiceParts(service, updated);
@@ -258,8 +269,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         ? latestPartWarranty(partsWithWarranty)
         : (reopening ? null : service.warrantyPartsUntil);
 
-      const updatedService: Service = {
-        ...service,
+      const changes = {
         status: target,
         finalCost: cost,
         warrantyServiceUntil,
@@ -281,15 +291,17 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             internal: false,
           },
         ],
-      };
+      } satisfies Partial<Service>;
+      const updatedService: Service = { ...service, ...changes };
       // Cloud: pelunasan & pembatalan ditulis SELURUHNYA oleh RPC dalam satu
       // transaksi (status, biaya final, riwayat, uang, stok — 0061). Dulu status
       // disimpan lebih dulu, sehingga RPC yang gagal meninggalkan tiket Lunas
       // tanpa pemasukan atau Batal tanpa stok kembali, dan tak bisa diulang.
       // Demo memakai adapter di memori, jadi ikut jalur lokal.
       const cloud = isCloudMode();
+      // Hanya kolom yang diubah modal ini — DP tidak pernah ikut dikirim.
       if (!(cloud && (target === 'lunas' || target === 'batal'))) {
-        await repository.put('services', updatedService);
+        await repository.patch('services', service.id, changes);
       }
 
       // Settle ("lunas"): book income for the bill still owed after DP, split

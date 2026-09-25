@@ -3122,3 +3122,73 @@ tapi **tidak dihapus**. Menjawab ketujuh temuan audit di atas.
   edit Rp 300.000 → batalkan: saldo kembali Tunai 2.500.000 / BCA 14.750.000). Build, 638
   unit test, lint hijau. Integrasi tier3b masih mengasumsikan `transfer_wallet` lama
   (kini mengembalikan uuid) — sesuaikan saat tes integrasi dijalankan.
+
+## Audit alur tiket servis (25 Sep 2026) — temuan (1–3 & 7 dibereskan 0087; 4–6, 8–9 menunggu paket B/C)
+
+Cakupan: intake (`ServiceModal`), status (`StatusModal`, `TRANSITIONS` di
+`lib/business/services.ts`), DP/lunas/batal/koreksi (RPC 0061–0063), sparepart &
+modal dadakan (`ServiceDetailPage`, `update_service_parts` 0069), tanda ambil, klaim.
+
+**Sudah benar:** lunas & batal atomik di server (0061) dengan sisa tagihan dihitung
+server, anti lunas/refund ganda; lunas/batal owner/admin-only sampai ke database (0065);
+stok part lewat RPC terkunci (0064/0066/0069); riwayat append-only (0058); nomor tiket
+anti-bentrok (0061); tanggal WIB di RPC uang (0069); kelebihan DP dikembalikan saat lunas.
+
+**Temuan (terbukti di replika / dari kode):**
+1. **Edit nominal/wallet Modal Dadakan di cloud selalu gagal SETELAH saldo digeser.**
+   `updateManualModal` menulis saldo wallet dulu, lalu upsert pengeluaran — yang ditolak
+   `expenses_guard_linked` (0071, "terikat tiket servis"; dibuktikan di replika). Hasil:
+   saldo berubah, pengeluaran & baris tiket tidak; tiap percobaan ulang menggeser lagi.
+2. **Tulis ulang baris penuh dari salinan basi.** Edit data, ubah status non-final, dan
+   tanda ambil memakai `repository.put` = upsert seluruh baris dari snapshot saat modal
+   dibuka. DP yang masuk di perangkat lain selama itu → `down_payment` kembali ke nilai lama
+   (pemasukan DP tetap ada → pelanggan ditagih penuh saat lunas). Owner/admin juga bisa
+   menimpa `spareparts` (penjaga 0066 hanya untuk karyawan) → stok yang dipegang tiket
+   melenceng. Tak ada trigger yang menjaga `down_payment`/`final_cost`/`status`.
+3. **Modal Dadakan tambah/hapus tidak atomik** dan saldo dihitung di browser
+   (`applyBalance` dari cache) → penjualan/DP serentak bisa tertimpa. Pola yang sama dengan
+   transfer sebelum 0086.
+4. Sparepart tiket **Lunas** masih bisa dihapus (UI & RPC hanya menolak Batal) → stok
+   kembali ke rak padahal part terpasang dan sudah dibayar.
+5. **Batal selalu mengembalikan semua part ke stok**, termasuk dari Selesai (part terpasang)
+   atau part yang rusak saat dipasang — tak ada pilihan "terpakai/rusak".
+6. Hapus Modal Dadakan tiket bulan lalu menghapus pengeluaran bulan tertutup (tanpa
+   `assert_open_month`).
+7. Transisi status tidak dijaga server: karyawan bisa lewat API melompat status atau
+   mengeluarkan tiket dari Lunas; manajer bisa set Lunas lewat API tanpa pemasukan;
+   karyawan bisa mengubah `down_payment` langsung. (UI tidak melakukannya — celah API.)
+8. UX: tombol Modal Dadakan tampil untuk karyawan tapi pasti ditolak RLS; `tunggu` hanya
+   dari Konfirmasi (tak bisa dari Pengerjaan); tak ada hapus tiket (salah input → Batal,
+   ikut statistik batal).
+9. **Servis ditunggu** (pelanggan menunggu di konter): wajib 5 kali ubah status
+   (Diagnosa → Konfirmasi → Pengerjaan → Selesai → Lunas) + Tandai Diambil = 6 aksi.
+
+## Integritas tiket servis — paket A (0087, 25 Sep 2026)
+
+Menjawab temuan 1, 2, 3, dan 7 audit di atas.
+
+- **Modal Dadakan lewat RPC** `add_service_modal` / `update_service_modal` /
+  `remove_service_modal` (manager-only, sesuai RLS pengeluaran): pengeluaran, saldo, dan
+  baris tiket dalam satu transaksi; baris dikenali dari `expenseId`. Edit nominal/wallet
+  dan hapus mengikuti kunci bulan pengeluarannya (`assert_open_month`); ganti keterangan
+  boleh kapan saja. Pengeluaran yang sudah dihapus dari Keuangan (2 baris yatim di data
+  pemilik): edit membukukannya ulang hari ini, hapus hanya membuang barisnya. Jalur lokal/
+  demo tidak berubah.
+- **`repository.patch(collection, id, fields)`** — kontrak baru di ketiga adapter. Cloud =
+  `UPDATE` kolom yang dikirim saja, bukan upsert baris penuh. Dipakai edit data tiket, ubah
+  status non-final, tanda ambil (daftar & detail), dan garansi part. `StatusModal`
+  membaca ulang tiket sebelum menyimpan dan menolak bila status/DP/sparepart sudah berubah
+  sejak modal dibuka.
+- **Trigger `services_guard_integrity`** (menggantikan `services_guard_final_status` 0065)
+  untuk tulisan `current_user = 'authenticated'` (RPC security definer bebas, pola
+  `inventory_guard_stock`): `down_payment` dari klien diabaikan; `final_cost` tiket
+  Lunas/Batal dikunci; perubahan status wajib mengikuti `TRANSITIONS` dan Lunas/Batal
+  hanya lewat RPC. Klien lama yang masih mengirim baris basi kini ditolak ("status tiket
+  sudah berubah di perangkat lain") alih-alih diam-diam memutar balik status.
+- **`services_guard_parts_held`** kini berlaku untuk owner/admin juga — stok yang dipegang
+  tiket hanya berubah lewat RPC.
+- **Diuji** di replika (SQL rollback, 17 skenario + batal & hapus pelunasan dari Keuangan
+  tetap jalan) dan demo (edit keluhan, Pengerjaan → Selesai, tandai diambil: DP Rp 200.000
+  utuh). Build, lint, **639** unit test (+1 `patch`).
+- Catatan: 0086 sempat menambah `fm_rp()` padahal `fmt_rp()` (0068) sudah ada; 0087 tidak
+  memakai keduanya. Satukan bila menyentuh fungsi transfer lagi.

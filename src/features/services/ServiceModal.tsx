@@ -184,8 +184,9 @@ export function ServiceModal({
       const tech = employees.find((e) => e.id === technicianId);
 
       if (editing) {
-        const updated: Service = {
-          ...editing,
+        // Hanya kolom form: status, DP, biaya, dan sparepart bisa saja berubah di
+        // perangkat lain selama form terbuka, dan tidak boleh tertimpa salinan ini.
+        await repository.patch('services', editing.id, {
           customerId: customer.id,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
@@ -208,8 +209,7 @@ export function ServiceModal({
               internal: true,
             },
           ],
-        };
-        await repository.put('services', updated);
+        });
         toast.success('Servis diperbarui');
       } else {
         const serviceNo = nextDocNumber(

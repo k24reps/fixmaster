@@ -50,8 +50,7 @@ export function PartWarrantyModal({
       }
       const days = values.map((v) => Math.max(0, Math.round(Number(v) || 0)));
       const spareparts = applyPartWarranty(fresh.spareparts, days, finishDate);
-      await repository.put('services', {
-        ...fresh,
+      await repository.patch('services', fresh.id, {
         spareparts,
         warrantyPartsUntil: latestPartWarranty(spareparts),
         updatedAt: new Date().toISOString(),

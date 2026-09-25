@@ -22,6 +22,14 @@ Repository (interface)
 
 Metode inti: `list`, `get`, `put`, `putMany`, `remove`, `subscribe`, `clearAll`.
 
+### `patch` — tulis sebagian kolom (0087)
+
+`repository.patch(collection, id, fields)` mengubah kolom yang dikirim saja. Di cloud ia
+`UPDATE` biasa, sedangkan `put` = upsert **baris penuh** dari salinan klien yang bisa basi
+(DP tiket pernah tertimpa begini). Pakai `patch` untuk mengubah record yang sudah ada dari
+data layar; `put` untuk membuat record baru atau jalur lokal yang baru membaca ulang.
+Lokal/in-memory: `get` + gabung + `put`.
+
 ### Repository swappable (live-binding) — untuk demo publik
 
 `src/data/index.ts` meng-ekspor `repository` sebagai **ES live-binding mutable**. `installRepository(impl)` menukar instance saat runtime, `resetRepository()` mengembalikannya. Karena semua pemanggil (`useCollection`, `session`, dll) membaca binding **saat dipanggil**, menukar instance langsung mengalihkan seluruh app tanpa reload.

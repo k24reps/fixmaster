@@ -510,6 +510,66 @@ export async function updateServiceParts(args: {
 }
 
 /**
+ * Modal Dadakan tiket (0087): pengeluaran + saldo wallet + baris tiket dalam
+ * satu transaksi server. Baris dikenali dari `expenseId`-nya.
+ */
+export async function addServiceModal(args: {
+  orgId: string;
+  serviceId: string;
+  name: string;
+  amount: number;
+  walletId: string;
+}): Promise<string> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('add_service_modal', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_name: args.name,
+    p_amount: args.amount,
+    p_wallet_id: args.walletId,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export async function updateServiceModal(args: {
+  orgId: string;
+  serviceId: string;
+  expenseId: string;
+  name: string;
+  amount: number;
+  walletId: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('update_service_modal', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_expense_id: args.expenseId,
+    p_name: args.name,
+    p_amount: args.amount,
+    p_wallet_id: args.walletId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeServiceModal(args: {
+  orgId: string;
+  serviceId: string;
+  expenseId: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('remove_service_modal', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_expense_id: args.expenseId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Buka klaim garansi via `create_warranty_claim` (0064): tiket klaim, catatan di
  * tiket asli, dan kerugian garansi (opsional) dalam satu transaksi. Ditolak bila
  * klaim lain untuk tiket asli yang sama masih berjalan.

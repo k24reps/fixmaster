@@ -5,6 +5,8 @@ import { useCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
 import { saveServiceParts } from '@/data/serviceParts';
+import { addServiceModal, updateServiceModal, removeServiceModal } from '@/data/supabase-client';
+import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useFormat } from '@/lib/useFormat';
@@ -214,6 +216,27 @@ export function ServiceDetailPage() {
     setSavingCost(true);
     const now = new Date().toISOString();
     try {
+      // Cloud: satu transaksi server (0087) — pengeluaran, saldo, dan baris tiket.
+      if (isCloudMode()) {
+        const expenseId = await addServiceModal({
+          orgId: service.orgId,
+          serviceId: service.id,
+          name: modalName.trim(),
+          amount,
+          walletId: modalWalletId,
+        });
+        setLastExpenseWallet(modalWalletId);
+        logActivity({
+          action: 'expense.create',
+          entityType: 'expense',
+          entityId: expenseId,
+          entityLabel: `Modal ${service.serviceNo}`,
+          meta: { amount, serviceId: service.id },
+        });
+        toast.success('Modal dadakan dicatat & masuk keuangan');
+        closeModalForm();
+        return;
+      }
       const expenseId = newId();
       await repository.put('expenses', {
         id: expenseId,
@@ -279,6 +302,27 @@ export function ServiceDetailPage() {
     const now = new Date().toISOString();
     try {
       const oldAmount = line.costPrice;
+      if (isCloudMode() && line.expenseId) {
+        await updateServiceModal({
+          orgId: service.orgId,
+          serviceId: service.id,
+          expenseId: line.expenseId,
+          name: modalName.trim(),
+          amount,
+          walletId: modalWalletId,
+        });
+        setLastExpenseWallet(modalWalletId);
+        logActivity({
+          action: 'expense.update',
+          entityType: 'expense',
+          entityId: line.expenseId,
+          entityLabel: `Modal ${service.serviceNo}`,
+          meta: { amount, prevAmount: oldAmount, serviceId: service.id },
+        });
+        toast.success('Modal dadakan diperbarui');
+        closeModalForm();
+        return;
+      }
       const oldWalletId = line.walletId ?? null;
       // Net the cash movement per wallet (refund old debit, apply new debit).
       const delta = walletDeltasForModalEdit(oldWalletId, oldAmount, modalWalletId, amount);
@@ -341,6 +385,11 @@ export function ServiceDetailPage() {
     const line = service.spareparts[index];
     if (!line) return;
     try {
+      if (isCloudMode() && line.kind === 'manual' && line.expenseId) {
+        await removeServiceModal({ orgId: service.orgId, serviceId: service.id, expenseId: line.expenseId });
+        toast.success('Baris dihapus');
+        return;
+      }
       if (line.kind === 'manual') {
         if (line.expenseId) {
           const expenses = await repository.list('expenses');
@@ -407,8 +456,7 @@ export function ServiceDetailPage() {
     const now = new Date().toISOString();
     const nowPicked = !service.pickedUp;
     try {
-      await repository.put('services', {
-        ...service,
+      await repository.patch('services', service.id, {
         pickedUp: nowPicked,
         pickedUpAt: nowPicked ? now : null,
         updatedAt: now,
