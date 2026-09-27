@@ -124,7 +124,8 @@ export function ServicesPage() {
   const [moreOpen, setMoreOpen] = useState(false);
   // Daftar = tabel (tetap jatuh ke kartu bila tak muat), Kartu, atau Ringkas.
   const [view, chooseView] = usePersistedView('fixmaster-services-view', 'list');
-  const [techFilter, setTechFilter] = useState('all');
+  // `?tech=me` = "Tiket saya" dari panel Meja Saya di Dashboard.
+  const [techFilter, setTechFilter] = useState(() => (searchParams.get('tech') === 'me' ? 'me' : 'all'));
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [customFrom, setCustomFrom] = useState('');
@@ -134,7 +135,8 @@ export function ServicesPage() {
   // Tiket tuntas (lunas/batal DAN sudah diambil) ikut tampil menurut urutan
   // tanggal; "Sembunyikan tuntas" menyaringnya saat daftar dipakai sebagai antrean kerja.
   const [hideClosed, setHideClosed] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  // `?new=1` membuka Servis Baru langsung (tombol cepat Dashboard).
+  const [editOpen, setEditOpen] = useState(() => searchParams.get('new') === '1');
   const [editing, setEditing] = useState<Service | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<Service | null>(null);

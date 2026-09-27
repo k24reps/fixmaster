@@ -1,14 +1,31 @@
-import { useMemo, useState, useEffect, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
 import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
+import { useCategoryProfit } from '@/hooks/useReportData';
+import { useNavSignals } from '@/hooks/useNavSignals';
 import { fmtRp } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, monthRange } from '@/lib/time';
-import { computeKpis, computeAlerts, type Alert } from '@/lib/business/dashboard';
-import { STATUS_LABELS, STATUS_TONE, visibleServices } from '@/lib/business/services';
+import {
+  computeKpis,
+  computeAlerts,
+  serviceMargin,
+  monthPace,
+  targetState,
+  alertAges,
+  type Alert,
+} from '@/lib/business/dashboard';
+import {
+  STATUS_LABELS,
+  STATUS_TONE,
+  visibleServices,
+  isClosedOut,
+  isUnfinished,
+} from '@/lib/business/services';
+import { matchesTechnician } from '@/lib/business/serviceFilters';
 import { getTarget } from '@/config/orgConfig';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
@@ -40,20 +57,27 @@ const ALERT_COPY: Record<
 };
 
 const RECENT_SERVICES = 6;
+// Tiket terbuka untuk umur peringatan & "Tiket saya". Kolom daftar (tanpa
+// history) saja, jadi ±1 KB per baris.
+// ponytail: batas 60 — toko dengan >60 tiket terbuka bisa melewatkan tiket
+// tertua; ganti dengan kolom `oldest_*` di service_summary bila itu terjadi.
+const OPEN_LIMIT = 60;
 const NO_SERVICES: Service[] = [];
 
+type Period = 'today' | 'month';
+
 function fmtRpInline(value: number): string {
-  return fmtRp(value).replace(' ', '\u00a0');
+  return fmtRp(value).replace(' ', ' ');
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const t = useT();
   const language = useSettingsStore((s) => s.language);
-  const locale = language === 'en' ? 'en-US' : 'id-ID';
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
   const { from, to } = monthRange();
+  const today = localDateStr();
+  const [period, setPeriod] = useState<Period>('today');
 
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   // Dashboard hanya MENAMPILKAN 6 tiket terbaru; hitungan & papan teknisinya
@@ -73,15 +97,30 @@ export function DashboardPage() {
             .slice(0, RECENT_SERVICES),
     NO_SERVICES,
   );
-  // Hitungan & papan teknisi dari SEMUA tiket.
+  const openQuery = useDerivedQuery(
+    ['collection', 'services', 'dashboardOpen', activeOutletId],
+    async () =>
+      repository.queryServices
+        ? repository.queryServices({ openOnly: true, visibleOnly: true, limit: OPEN_LIMIT })
+        : visibleServices(await repository.list('services')).filter((s) => !isClosedOut(s)),
+    NO_SERVICES,
+  );
+  // Hitungan & papan teknisi dari SEMUA tiket; versi hari ini untuk readout konsol.
   const summaryQuery = useServiceSummary(from, to);
+  const todaySummaryQuery = useServiceSummary(today, today);
+  // Laba servis dari himpunan yang sama dengan Laporan (tiket SELESAI dalam periode).
+  const profitMonthQuery = useCategoryProfit(from, to);
+  const profitTodayQuery = useCategoryProfit(today, today);
   const incomesQuery = useCollectionRange('incomes', 'date', from, to);
   const expensesQuery = useCollectionRange('expenses', 'date', from, to);
   const walletsQuery = useCollection('wallets');
   const inventoryQuery = useCollection('inventory');
+  const { data: outlets } = useCollection('outlets');
   // Hanya baris hari ini yang dipakai (activeStaff) — kunci query-nya sama
   // dengan rail navigasi, jadi keduanya berbagi satu tarikan kecil.
-  const attendanceQuery = useCollectionRange('attendance', 'date', localDateStr(), localDateStr());
+  const attendanceQuery = useCollectionRange('attendance', 'date', today, today);
+  // Rel navigasi sudah menghitung tugas tertunda dengan aturan halaman Tugas.
+  const signals = useNavSignals();
   const incomes = incomesQuery.data;
   const expenses = expensesQuery.data;
   const wallets = walletsQuery.data;
@@ -90,7 +129,11 @@ export function DashboardPage() {
 
   const queryStates = [
     servicesQuery,
+    openQuery,
     summaryQuery,
+    todaySummaryQuery,
+    profitMonthQuery,
+    profitTodayQuery,
     incomesQuery,
     expensesQuery,
     walletsQuery,
@@ -105,58 +148,56 @@ export function DashboardPage() {
   const oldestUpdatedAt = updateTimes.length ? Math.min(...updateTimes) : 0;
 
   const retryDashboard = async () => {
-    await Promise.allSettled([
-      servicesQuery.refetch(),
-      summaryQuery.refetch(),
-      incomesQuery.refetch(),
-      expensesQuery.refetch(),
-      walletsQuery.refetch(),
-      inventoryQuery.refetch(),
-      attendanceQuery.refetch(),
-    ]);
+    await Promise.allSettled(queryStates.map((query) => query.refetch()));
   };
 
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
   const target = getTarget();
+  const range = period === 'today' ? { from: today, to: today } : { from, to };
   const kpis = useMemo(
-    () => computeKpis(incomes, expenses, wallets, from, to),
+    () => computeKpis(incomes, expenses, wallets, range.from, range.to),
+    [incomes, expenses, wallets, range.from, range.to],
+  );
+  const monthRevenue = useMemo(
+    () => computeKpis(incomes, expenses, wallets, from, to).revenue,
     [incomes, expenses, wallets, from, to],
   );
+  const margin = serviceMargin(period === 'today' ? profitTodayQuery.data : profitMonthQuery.data);
+  const doneToday = serviceMargin(profitTodayQuery.data).units;
   const summary = summaryQuery.data;
   const unitsIn = summary?.unitsIn ?? 0;
   const leaderboard = summary?.leaderboard ?? [];
+  const open = openQuery.data;
+  const ages = useMemo(() => alertAges(open), [open]);
   const alerts = useMemo(
     () => computeAlerts(summary ?? { confirmation: 0, awaitingPickup: 0 }, inventory),
     [summary, inventory],
   );
+  const myOpen = me
+    ? open.filter((s) => isUnfinished(s.status) && matchesTechnician(s, 'me', [], me)).length
+    : 0;
+  const myAttendance = me ? attendance.find((a) => a.date === today && a.employeeId === me.id) : undefined;
+  const taskSignal = signals['/tasks'];
   // Tiket arsip sudah disaring di sumbernya (visibleOnly / visibleServices),
   // supaya yang tampil sama dengan menu Servis saat tautannya diklik.
   const recent = servicesQuery.data;
-  const revenuePct = target.revenue > 0 ? Math.min(100, (kpis.revenue / target.revenue) * 100) : 0;
+  // Target berlaku untuk SELURUH usaha: membandingkannya dengan pemasukan satu
+  // cabang dulu menghasilkan 2–5% yang tampak seperti toko gagal.
+  const branchScoped = !!activeOutletId && outlets.length > 1;
+  const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? null;
+  const pace = monthPace();
+  const revenuePct = target.revenue > 0 ? Math.min(100, (monthRevenue / target.revenue) * 100) : 0;
   const servicePct = target.serviceCount > 0
     ? Math.min(100, (unitsIn / target.serviceCount) * 100)
     : 0;
   const empty = recent.length === 0;
   const maxRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
+  const maxDone = Math.max(1, ...leaderboard.map((tech) => tech.completed));
 
-  const today = localDateStr();
   const activeStaff = attendance.filter(
     (entry) => entry.date === today && !!entry.checkIn && !entry.checkOut,
   ).length;
-  const clock = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-  const dateStr = now.toLocaleDateString(locale, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
   const updatedTime = oldestUpdatedAt
-    ? new Date(oldestUpdatedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+    ? new Date(oldestUpdatedAt).toLocaleTimeString(language === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit' })
     : null;
   const dataStatus = criticalError
     ? t('dashboard.dataStale')
@@ -168,42 +209,55 @@ export function DashboardPage() {
           ? `${t('dashboard.updated')} ${updatedTime}`
           : t('dashboard.ready');
   const profitState = kpis.netCashFlow > 0 ? 'ok' : kpis.netCashFlow < 0 ? 'crit' : 'warn';
-  const margin = kpis.revenue > 0 ? (kpis.netCashFlow / kpis.revenue) * 100 : 0;
-  const costRatio = kpis.revenue > 0 ? (kpis.expense / kpis.revenue) * 100 : 0;
-  const hasTarget = (isMgr && target.revenue > 0) || target.serviceCount > 0;
+  const hasTarget = !branchScoped && ((isMgr && target.revenue > 0) || target.serviceCount > 0);
+  const dash = initialLoading ? '—' : null;
 
   return (
     <div className={styles.wrap} aria-busy={initialLoading || refreshing}>
+      {/* Konsol: cabang yang sedang dilihat + denyut HARI INI. Dulu berisi tanggal
+          dan jam (mengulang jam ponsel) sementara tak satu angka pun milik hari ini. */}
       <section className={styles.console} aria-label={t('dashboard.consoleAria')}>
         <div className={styles.consoleBrand}>
           <div className={styles.consoleMascot}>
             <Mascot variant="face" size={30} animated={false} className={styles.consoleMascotImg} />
           </div>
-          <div className={styles.consoleBrandText}>
-            <span className={styles.consoleTitle}>{t('dashboard.console')}</span>
+          <div className={styles.consoleItem}>
+            <span className={styles.consoleKey}>{t('dashboard.branch')}</span>
+            <span className={styles.consoleVal}>
+              {activeOutlet?.name ?? (outlets.length > 1 ? t('dashboard.allBranches') : outlets[0]?.name ?? '—')}
+            </span>
           </div>
         </div>
-        <div className={styles.consoleReadouts}>
-          <div className={[styles.consoleItem, styles.consoleDate].join(' ')}>
-            <span className={styles.consoleKey}>{t('common.date')}</span>
-            <span className={styles.consoleVal}>{dateStr}</span>
+        <span className={styles.consoleToday}>
+          <span className={styles.consoleLed} aria-hidden /> {t('dashboard.today')}
+        </span>
+        <dl className={styles.consoleReadouts}>
+          <div className={styles.consoleItem}>
+            <dt className={styles.consoleKey}>{t('dashboard.todayIn')}</dt>
+            <dd className={styles.consoleNum}>{dash ?? todaySummaryQuery.data?.unitsIn ?? 0}</dd>
           </div>
           <div className={styles.consoleItem}>
-            <span className={styles.consoleKey}>{t('dashboard.staffPresent')}</span>
-            <span className={styles.consoleVal}>
-              {initialLoading ? '—' : `${activeStaff} ${t('dashboard.people')}`}
-            </span>
+            <dt className={styles.consoleKey}>{t('dashboard.todayDone')}</dt>
+            <dd className={styles.consoleNum}>{dash ?? doneToday}</dd>
           </div>
           <div className={styles.consoleItem}>
-            <span className={styles.consoleKey}>{t('dashboard.time')}</span>
-            <span className={[styles.consoleVal, styles.consoleClock].join(' ')}>{clock}</span>
+            <dt className={styles.consoleKey}>{t('dashboard.staffPresent')}</dt>
+            <dd className={styles.consoleNum}>{dash ?? activeStaff}</dd>
           </div>
-          <div className={[styles.consoleItem, styles.consoleData].join(' ')} role="status" aria-live="polite">
-            <span className={styles.consoleKey}>{t('dashboard.data')}</span>
-            <span className={[styles.consoleVal, criticalError ? styles.consoleFault : ''].join(' ')}>
-              {dataStatus}
-            </span>
-          </div>
+        </dl>
+        <div className={[styles.consoleItem, styles.consoleData].join(' ')} role="status" aria-live="polite">
+          <span className={styles.consoleKey}>{t('dashboard.data')}</span>
+          <span className={[styles.consoleVal, criticalError ? styles.consoleFault : ''].join(' ')}>
+            {dataStatus}
+          </span>
+        </div>
+        <div className={styles.quick} role="group" aria-label={t('dashboard.quickActions')}>
+          <Link className={styles.quickPrimary} to="/services?new=1">
+            <Icon name="plus" aria-hidden /> {t('dashboard.newService')}
+          </Link>
+          <Link className={styles.quickSecondary} to="/pos">
+            <Icon name="cart-shopping" aria-hidden /> {t('dashboard.openPos')}
+          </Link>
         </div>
       </section>
 
@@ -234,43 +288,48 @@ export function DashboardPage() {
         <DashboardLoading label={t('dashboard.loading')} />
       ) : dataUnavailable ? null : (
         <>
-          <section
-            className={[styles.hero, styles[profitState]].join(' ')}
-            aria-label={t('dashboard.netProfitAria')}
-            hidden={!isMgr}
-            style={isMgr ? undefined : { display: 'none' }}
-          >
-            <div className={styles.heroScreen}>
-              <span className={styles.heroScan} aria-hidden />
-              <div className={styles.heroMain}>
-                <span className={styles.heroLabel}>
-                  <span className={styles.heroLed} aria-hidden />
-                  {t('dashboard.netProfit')}
-                </span>
-                <span className={styles.heroValue}>{fmtRpInline(kpis.netCashFlow)}</span>
-                <span className={styles.heroTag}>
-                  {kpis.netCashFlow >= 0 ? t('dashboard.surplus') : t('dashboard.deficit')}
-                </span>
+          {/* Karyawan: mejanya dulu. Semua: yang perlu ditangani sebelum angka uang. */}
+          {!isMgr && (
+            <section className={styles.desk} aria-label={t('dashboard.myDesk')}>
+              <h2 className={styles.deskTitle}>{t('dashboard.myDesk')}</h2>
+              <div className={styles.strip} role="list">
+                <DeskCell
+                  to="/services?tech=me"
+                  label={t('dashboard.myTickets')}
+                  value={String(myOpen)}
+                  unit={t('dashboard.myTicketsUnit')}
+                  tone={myOpen > 0 ? 'info' : undefined}
+                />
+                <DeskCell
+                  to="/tasks"
+                  label={t('dashboard.myTasks')}
+                  value={String(taskSignal?.count ?? 0)}
+                  unit={t('dashboard.myTasksUnit')}
+                  tone={taskSignal?.tone === 'crit' ? 'danger' : taskSignal?.count ? 'warning' : undefined}
+                />
+                <DeskCell
+                  to="/attendance"
+                  label={t('dashboard.myAttendance')}
+                  value={
+                    myAttendance?.checkOut
+                      ? t('dashboard.clockedOut').replace('{time}', myAttendance.checkOut)
+                      : myAttendance?.checkIn
+                        ? t('dashboard.clockedIn').replace('{time}', myAttendance.checkIn)
+                        : t('dashboard.notClockedIn')
+                  }
+                  tone={myAttendance?.checkIn ? 'success' : 'warning'}
+                  small
+                />
               </div>
-              <div className={styles.heroAside}>
-                <div className={styles.heroStat}>
-                  <span className={styles.heroStatKey}>{t('dashboard.margin')}</span>
-                  <span className={styles.heroStatVal}>{margin.toFixed(1)}%</span>
-                </div>
-                <div className={styles.heroStat}>
-                  <span className={styles.heroStatKey}>{t('dashboard.costRatio')}</span>
-                  <span className={styles.heroStatVal}>{costRatio.toFixed(1)}%</span>
-                </div>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           <Card glass>
             <CardHeader icon={<Icon name="list-check" aria-hidden />} title={t('dashboard.actionsTitle')} />
             <CardBody className={styles.noPad}>
               {alerts.length === 0 ? (
                 <div className={styles.allClear}>
-                  <span className={styles.allClearIcon}><Icon name="circle-check" aria-hidden /></span>
+                  <span className={styles.alertLed} data-tone="success" aria-hidden />
                   <span>
                     <strong>{t('dashboard.allClear')}</strong>
                     <small>{t('dashboard.allClearDescription')}</small>
@@ -280,21 +339,27 @@ export function DashboardPage() {
                 <ul className={styles.alertList}>
                   {alerts.map((alert) => {
                     const copy = ALERT_COPY[alert.kind];
-                    const message = `${alert.count} ${t(copy.message)}`;
+                    const age = ages[alert.kind];
+                    const ageText =
+                      age === undefined
+                        ? null
+                        : age === 0
+                          ? t('dashboard.ageToday')
+                          : t('dashboard.ageDays').replace('{days}', String(age));
+                    const message = t(copy.message);
                     const action = t(copy.action);
                     return (
                       <li key={alert.kind}>
                         <Link
                           className={styles.alertItem}
                           to={alert.href}
-                          aria-label={`${message}. ${action}`}
+                          aria-label={`${alert.count} ${message}${ageText ? `, ${ageText}` : ''}. ${action}`}
                         >
-                          <span className={[styles.alertIcon, styles[alert.tone]].join(' ')}>
-                            <Icon name={alert.icon} aria-hidden />
-                          </span>
+                          <span className={styles.alertLed} data-tone={alert.tone} aria-hidden />
+                          <span className={styles.alertCount} data-tone={alert.tone}>{alert.count}</span>
                           <span className={styles.alertCopy}>
                             <strong>{message}</strong>
-                            <small>{action}</small>
+                            <small>{ageText ? `${ageText} · ${action}` : action}</small>
                           </span>
                           <Icon name="arrow-right" className={styles.alertArrow} aria-hidden />
                         </Link>
@@ -306,17 +371,83 @@ export function DashboardPage() {
             </CardBody>
           </Card>
 
-          <section className={styles.metrics} aria-label={t('dashboard.metricsAria')}>
-            <Metric label={t('dashboard.unitsIn')} value={unitsIn} unit={t('dashboard.thisMonth')} icon={<Icon name="download" aria-hidden />} />
-            <Metric label={t('dashboard.unfinished')} value={summary?.unfinished ?? 0} unit={t('dashboard.inQueue')} icon={<Icon name="screwdriver-wrench" aria-hidden />} />
+          {isMgr && (
+            <section className={[styles.hero, styles[profitState]].join(' ')} aria-label={t('dashboard.netProfitAria')}>
+              <div className={styles.heroScreen}>
+                <span className={styles.heroScan} aria-hidden />
+                <div className={styles.heroMain}>
+                  <div className={styles.heroHead}>
+                    <span className={styles.heroLabel}>
+                      <span className={styles.heroLed} aria-hidden />
+                      {t('dashboard.netProfit')}
+                    </span>
+                    <div className={styles.period} role="radiogroup" aria-label={t('dashboard.periodAria')}>
+                      {(['today', 'month'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          role="radio"
+                          aria-checked={period === p}
+                          className={styles.periodBtn}
+                          onClick={() => setPeriod(p)}
+                        >
+                          {t(p === 'today' ? 'dashboard.today' : 'dashboard.month')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <span className={styles.heroValue}>{fmtRpInline(kpis.netCashFlow)}</span>
+                  <span className={styles.heroTag}>
+                    {kpis.netCashFlow >= 0 ? t('dashboard.surplus') : t('dashboard.deficit')}
+                  </span>
+                </div>
+                <div className={styles.heroAside}>
+                  <Link className={styles.heroStat} to="/finance">
+                    <span className={styles.heroStatKey}>{t('dashboard.revenue')}</span>
+                    <span className={[styles.heroStatVal, styles.statIn].join(' ')}>{fmtRpInline(kpis.revenue)}</span>
+                  </Link>
+                  <Link className={styles.heroStat} to="/finance">
+                    <span className={styles.heroStatKey}>{t('dashboard.expense')}</span>
+                    <span className={[styles.heroStatVal, styles.statOut].join(' ')}>{fmtRpInline(kpis.expense)}</span>
+                  </Link>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatKey}>{t('dashboard.serviceProfit')}</span>
+                    <span className={styles.heroStatVal}>{fmtRpInline(margin.profit)}</span>
+                    <span className={styles.heroStatSub}>
+                      {margin.pct === null
+                        ? t('dashboard.noServiceDone')
+                        : t('dashboard.serviceMarginDetail')
+                            .replace('{pct}', `${Math.round(margin.pct)}%`)
+                            .replace('{units}', String(margin.units))}
+                    </span>
+                  </div>
+                </div>
+                <p className={styles.heroNote}>{t('dashboard.cashNote')}</p>
+              </div>
+            </section>
+          )}
+
+          {/* Strip readout (Design System), bukan deretan StatCard: tiap angka
+              menaut ke daftar yang menjelaskannya. "Dalam proses" memakai definisi
+              yang sama dengan readout halaman Servis. */}
+          <div className={styles.strip} role="list" aria-label={t('dashboard.metricsAria')}>
+            <DeskCell to="/services" label={t('dashboard.unitsIn')} value={String(unitsIn)} unit={t('dashboard.thisMonth')} />
+            <DeskCell
+              to="/services"
+              label={t('dashboard.inProcess')}
+              value={String(summary?.inProcess ?? 0)}
+              unit={t('dashboard.inProcessUnit')}
+              tone={(summary?.inProcess ?? 0) > 0 ? 'info' : undefined}
+            />
             {isMgr && (
-              <>
-                <Metric label={t('dashboard.revenue')} value={fmtRpInline(kpis.revenue)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-up" aria-hidden />} flow="in" />
-                <Metric label={t('dashboard.expense')} value={fmtRpInline(kpis.expense)} unit={t('dashboard.thisMonth')} icon={<Icon name="arrow-trend-down" aria-hidden />} flow="out" />
-                <Metric label={t('dashboard.totalBalance')} value={fmtRpInline(kpis.totalWallet)} unit={t('dashboard.allWallets')} icon={<Icon name="wallet" aria-hidden />} />
-              </>
+              <DeskCell
+                to="/finance"
+                label={t('dashboard.totalBalance')}
+                value={fmtRpInline(kpis.totalWallet)}
+                unit={activeOutletId ? t('dashboard.orgWide') : t('dashboard.allWallets')}
+              />
             )}
-          </section>
+          </div>
 
           <div className={[styles.grid, !hasTarget ? styles.gridSingle : ''].join(' ')}>
             <Card glass>
@@ -324,9 +455,9 @@ export function DashboardPage() {
                 icon={<Icon name="clock" aria-hidden />}
                 title={t('dashboard.recentServices')}
                 action={
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/services')}>
+                  <Link className={styles.viewAll} to="/services">
                     {t('dashboard.viewAll')}
-                  </Button>
+                  </Link>
                 }
               />
               <CardBody className={styles.noPad}>
@@ -336,9 +467,9 @@ export function DashboardPage() {
                     title={t('dashboard.noServices')}
                     description={t('dashboard.noServicesDescription')}
                     action={
-                      <Button onClick={() => navigate('/services')} iconLeft={<Icon name="plus" aria-hidden />}>
-                        {t('dashboard.newService')}
-                      </Button>
+                      <Link className={styles.quickPrimary} to="/services?new=1">
+                        <Icon name="plus" aria-hidden /> {t('dashboard.newService')}
+                      </Link>
                     }
                   />
                 ) : (
@@ -373,10 +504,20 @@ export function DashboardPage() {
                 <CardBody>
                   <div className={styles.targets}>
                     {isMgr && target.revenue > 0 && (
-                      <Target label={t('dashboard.revenueTarget')} pct={revenuePct} detail={`${fmtRpInline(kpis.revenue)} / ${fmtRpInline(target.revenue)}`} />
+                      <Target
+                        label={t('dashboard.revenueTarget')}
+                        pct={revenuePct}
+                        pace={pace}
+                        detail={`${fmtRpInline(monthRevenue)} / ${fmtRpInline(target.revenue)}`}
+                      />
                     )}
                     {target.serviceCount > 0 && (
-                      <Target label={t('dashboard.serviceTarget')} pct={servicePct} detail={`${unitsIn} / ${target.serviceCount} ${t('dashboard.units')}`} />
+                      <Target
+                        label={t('dashboard.serviceTarget')}
+                        pct={servicePct}
+                        pace={pace}
+                        detail={`${unitsIn} / ${target.serviceCount} ${t('dashboard.units')}`}
+                      />
                     )}
                   </div>
                 </CardBody>
@@ -393,7 +534,9 @@ export function DashboardPage() {
                 <ul className={styles.leaderboard}>
                   {leaderboard.map((tech, index) => {
                     const rank = index + 1;
-                    const pct = Math.max(8, (tech.revenue / maxRev) * 100);
+                    // Karyawan tak melihat keuangan, termasuk pendapatan rekan kerja:
+                    // meternya mengikuti jumlah unit selesai.
+                    const pct = Math.max(8, isMgr ? (tech.revenue / maxRev) * 100 : (tech.completed / maxDone) * 100);
                     return (
                       <li key={tech.key} className={styles.leaderItem}>
                         <span className={styles.chan} data-rank={rank}>{rank}</span>
@@ -401,7 +544,8 @@ export function DashboardPage() {
                           <div className={styles.leaderTop}>
                             <span className={styles.leaderName}>{tech.name}</span>
                             <span className={styles.leaderStats}>
-                              <strong>{tech.completed}</strong> {t('dashboard.completed')} · {fmtRpInline(tech.revenue)}
+                              <strong>{tech.completed}</strong> {t('dashboard.completed')}
+                              {isMgr && <> · {fmtRpInline(tech.revenue)}</>}
                             </span>
                           </div>
                           <div className={styles.meter}>
@@ -434,8 +578,11 @@ function DashboardLoading({ label }: { label: string }) {
   );
 }
 
-function Target({ label, pct, detail }: { label: string; pct: number; detail: string }) {
-  const state = pct >= 100 ? 'ok' : pct >= 60 ? 'warn' : 'live';
+/** Gauge target dengan penanda LAJU bulan: warnanya menyatakan jarak ke laju. */
+function Target({ label, pct, pace, detail }: { label: string; pct: number; pace: number; detail: string }) {
+  const t = useT();
+  const state = targetState(pct, pace);
+  const pacePct = `${Math.round(pace * 100)}%`;
   return (
     <div className={styles.targetItem}>
       <div className={styles.targetLabel}>
@@ -444,36 +591,34 @@ function Target({ label, pct, detail }: { label: string; pct: number; detail: st
       </div>
       <div className={[styles.gauge, styles[state]].join(' ')}>
         <div className={styles.gaugeFill} style={{ transform: `scaleX(${pct / 100})` }} />
+        <span className={styles.paceTick} style={{ left: `${pace * 100}%` }} aria-hidden />
       </div>
-      <small className={styles.targetDetail}>{detail}</small>
+      <small className={styles.targetDetail}>
+        {detail} ·{' '}
+        <span className={state === 'behind' ? styles.paceBehind : undefined}>
+          {t(state === 'behind' ? 'dashboard.targetBehind' : 'dashboard.targetOn').replace('{pace}', pacePct)}
+        </span>
+      </small>
     </div>
   );
 }
 
-/**
- * `flow` sengaja BUKAN `tone` generik. Prop tone dulu dilepas (13 Sep 2026)
- * karena tiap tile memilih rona sendiri, sehingga hijau berarti "Selesai" di
- * satu kartu dan tak berarti apa-apa di kartu berikutnya. `flow` hanya punya
- * dua nilai dan menyatakan satu hal yang benar-benar terukur: arah uang.
- * Perlakuannya menyalin pola yang sudah dipakai kartu ringkasan Keuangan —
- * spine 3px + warna angka, tanpa tint kartu.
- */
-function Metric({ label, value, unit, icon, flow }: {
+function DeskCell({ to, label, value, unit, tone, small }: {
+  to: string;
   label: string;
   value: ReactNode;
   unit?: string;
-  icon: ReactNode;
-  flow?: 'in' | 'out';
+  tone?: 'info' | 'warning' | 'danger' | 'success';
+  small?: boolean;
 }) {
-  const flowClass = flow === 'in' ? styles.flowIn : flow === 'out' ? styles.flowOut : '';
   return (
-    <div className={[styles.metric, flowClass].filter(Boolean).join(' ')}>
-      <div className={styles.metricTop}>
-        <span className={styles.metricIcon}>{icon}</span>
-        <span className={styles.metricLabel}>{label}</span>
-      </div>
-      <span className={styles.metricValue}>{value}</span>
-      {unit && <span className={styles.metricUnit}>{unit}</span>}
-    </div>
+    <Link className={styles.cell} to={to} role="listitem">
+      <span className={styles.cellLabel}>
+        {tone && <span className={styles.alertLed} data-tone={tone} aria-hidden />}
+        {label}
+      </span>
+      <span className={[styles.cellValue, small ? styles.cellValueSm : ''].join(' ')}>{value}</span>
+      {unit && <span className={styles.cellUnit}>{unit}</span>}
+    </Link>
   );
 }

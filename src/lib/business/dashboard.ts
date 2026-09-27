@@ -184,6 +184,58 @@ export function computeAlerts(
   return alerts;
 }
 
+/**
+ * Laba kotor servis dari baris laba-per-kategori (tiket yang SELESAI dalam
+ * periode, `category_profit` 0074 / `profitByDeviceCategory`). Inilah "margin"
+ * yang dimaksud pemilik — bukan arus kas ÷ pemasukan, yang dulu tampil 79% karena
+ * pembelian stok dan DP ikut di kedua sisi.
+ */
+export function serviceMargin(rows: readonly { count: number; revenue: number; profit: number }[]): {
+  units: number;
+  revenue: number;
+  profit: number;
+  pct: number | null;
+} {
+  const units = rows.reduce((n, r) => n + r.count, 0);
+  const revenue = rows.reduce((n, r) => n + r.revenue, 0);
+  const profit = rows.reduce((n, r) => n + r.profit, 0);
+  return { units, revenue, profit, pct: revenue > 0 ? (profit / revenue) * 100 : null };
+}
+
+/** Bagian bulan yang sudah berjalan, 0..1, termasuk hari ini. */
+export function monthPace(today: Date = new Date()): number {
+  const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  return today.getDate() / days;
+}
+
+/**
+ * Keadaan gauge target terhadap LAJU bulan, bukan ambang tetap. 13% pada
+ * tanggal 27 dulu tampil cyan tenang karena di bawah 60% = "live"; sekarang
+ * tertinggal lebih dari 10 poin dari laju = `behind`.
+ */
+export function targetState(pct: number, pace: number): 'ok' | 'on' | 'behind' {
+  if (pct >= 100) return 'ok';
+  return pct + 10 < pace * 100 ? 'behind' : 'on';
+}
+
+/**
+ * Umur (hari) peringatan tertua dari tiket yang masih terbuka: konfirmasi biaya
+ * sejak perubahan terakhir tiket, siap diambil sejak selesai dikerjakan.
+ */
+export function alertAges(
+  open: readonly Pick<Service, 'status' | 'pickedUp' | 'updatedAt' | 'completedAt'>[],
+  now: Date = new Date(),
+): Partial<Record<Alert['kind'], number>> {
+  const days = (iso: string) => Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 86_400_000));
+  const oldest = (dates: string[]) => (dates.length ? Math.max(...dates.map(days)) : undefined);
+  const out: Partial<Record<Alert['kind'], number>> = {};
+  const conf = oldest(open.filter((s) => s.status === 'konfirmasi').map((s) => s.updatedAt));
+  const pick = oldest(open.filter(isAwaitingPickup).map((s) => s.completedAt ?? s.updatedAt));
+  if (conf !== undefined) out.confirmation = conf;
+  if (pick !== undefined) out['awaiting-pickup'] = pick;
+  return out;
+}
+
 /** Revenue series for the last N days (for the trend chart). */
 export function revenueSeries(
   incomes: Income[],

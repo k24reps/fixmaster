@@ -5,6 +5,10 @@ import {
   serviceSummary,
   computeAlerts,
   revenueSeries,
+  serviceMargin,
+  monthPace,
+  targetState,
+  alertAges,
 } from './dashboard';
 import type { Service, Income, Expense, Wallet, InventoryItem, ServiceHistoryEntry } from '@/data/types';
 
@@ -274,5 +278,45 @@ describe('revenueSeries', () => {
     expect(series.labels).toHaveLength(7);
     expect(series.values).toHaveLength(7);
     expect(series.values[6]).toBe(100); // today is last
+  });
+});
+
+describe('serviceMargin', () => {
+  it('laba kotor servis = profit / revenue lintas kategori', () => {
+    const m = serviceMargin([
+      { count: 2, revenue: 1000000, profit: 400000 },
+      { count: 1, revenue: 500000, profit: 100000 },
+    ]);
+    expect(m).toEqual({ units: 3, revenue: 1500000, profit: 500000, pct: (500000 / 1500000) * 100 });
+  });
+  it('tanpa tiket selesai: pct null, bukan 0%', () => {
+    expect(serviceMargin([]).pct).toBeNull();
+  });
+});
+
+describe('monthPace & targetState', () => {
+  it('tanggal 27 dari 30 hari = 0,9', () => {
+    expect(monthPace(new Date(2026, 8, 27))).toBeCloseTo(0.9);
+  });
+  it('13% pada laju 90% = tertinggal; dekat laju = on; 100% = ok', () => {
+    expect(targetState(13, 0.9)).toBe('behind');
+    expect(targetState(85, 0.9)).toBe('on');
+    expect(targetState(100, 0.9)).toBe('ok');
+  });
+});
+
+describe('alertAges', () => {
+  const now = new Date('2026-09-27T12:00:00Z');
+  it('umur tertua per jenis peringatan', () => {
+    const ages = alertAges(
+      [
+        { status: 'konfirmasi', pickedUp: false, updatedAt: '2026-09-24T12:00:00Z' },
+        { status: 'konfirmasi', pickedUp: false, updatedAt: '2026-09-26T12:00:00Z' },
+        { status: 'selesai', pickedUp: false, updatedAt: '2026-09-27T08:00:00Z', completedAt: '2026-09-20T12:00:00Z' },
+        { status: 'lunas', pickedUp: true, updatedAt: '2026-09-01T12:00:00Z' },
+      ],
+      now,
+    );
+    expect(ages).toEqual({ confirmation: 3, 'awaiting-pickup': 7 });
   });
 });

@@ -258,8 +258,24 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
   memilih rona sendiri sehingga hijau berarti "Selesai" di satu kartu dan tak berarti apa-apa
   di kartu berikutnya. "Unit masuk", "Belum selesai", dan "Total saldo" tidak diberi warna
   karena tidak punya arah baik/buruk. Lihat [[Decisions & Bug Fixes]].
+- **Critique tahap 3 (27 Sep 2026) — "hari ini & yang perlu saya".** Urutan kini:
+  1. **Konsol** = cabang yang dilihat + denyut **HARI INI** (Masuk dari `useServiceSummary(today)`,
+     Selesai dari `useCategoryProfit(today)`, Hadir) + data; aksi cepat **Servis Baru**
+     (`/services?new=1`) & **Kasir** di desktop (ponsel: sudah di navigasi bawah). Tanggal & jam dibuang.
+  2. **Karyawan: Meja saya** — strip Tiket saya (`/services?tech=me`), Tugas (sinyal rel), Absensi.
+  3. **Perlu Tindakan** — LED + angka mono + **umur** tertua (`alertAges` dari tiket terbuka,
+     `openOnly`, maks 60 baris kolom daftar).
+  4. **Hero (owner/admin)** — sakelar **Hari ini | Bulan ini**; Pemasukan/Pengeluaran menaut ke
+     Keuangan; **Laba servis** = `serviceMargin(category_profit)` (biaya final − harga part tiket
+     yang SELESAI) menggantikan "Margin 79%" (arus kas ÷ pemasukan) dan "Rasio biaya" (100 − itu);
+     catatan "arus kas, bukan laba".
+  5. **Strip readout** (bukan tile ikon, bukan carousel): Unit masuk, **Dalam proses** (definisi
+     sama dengan readout Servis), Saldo ("semua cabang" saat satu cabang dipilih). Tiap sel = tautan.
+  6. **Target** dengan **penanda laju** (`monthPace`) dan warna menurut jarak ke laju
+     (`targetState`); disembunyikan saat satu cabang dipilih (targetnya milik seluruh usaha).
+  7. Papan teknisi: rupiah hanya untuk owner/admin; meter karyawan mengikuti unit selesai.
 
-![[dash2-dark.png]]
+![[dash3-dark.png]]
 
 ## Pelanggan — Contact Registry
 

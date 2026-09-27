@@ -3346,3 +3346,32 @@ Pemilik memilih: momen uang dulu, kelima isu, pad tender kasir. Detail tampilan 
   `audit-mobile` /pos bersih 5 lebar; detektor 2 advisory lama; 647 tes.
 - **Belum:** saran pelanggan belum bisa dipilih dengan panah; i18n ±60 literal lama di
   Kasir; riwayat tanpa jam/metode/kasir; Kosongkan tanpa undo.
+
+## UX Dashboard — critique tahap 3 (27 Sep 2026)
+
+Skor **22/40** (arsip `.impeccable/critique/2026-09-27T11-52-28Z__src-features-dashboard.md`).
+Pemilik memilih: hari ini + perlu tindakan dulu, margin servis sungguhan, kelima isu. Tampilan
+di [[Signature Pages]] (Dashboard).
+
+- **[P1] "Hari ini" palsu.** Subjudul "performa bisnis Anda hari ini", padahal semua angka
+  bulan berjalan dan konsol berisi tanggal + jam. Kini denyut HARI INI di konsol + sakelar periode.
+- **[P1] Margin menyesatkan.** "Margin 79,1%" = arus kas ÷ pemasukan (DP & belanja stok di kedua
+  sisi); "Rasio biaya" = 100 − margin. Diganti **laba servis** dari `category_profit` (0074) —
+  himpunan yang sama dengan Laporan, jadi tanpa migrasi. Kunci `dashboard.margin/costRatio` dihapus.
+- **[P1] Peran diabaikan.** Karyawan mendapat tata letak pemilik tanpa uang (strip 60% kosong) dan
+  tetap melihat rupiah rekan di papan teknisi → panel **Meja saya**; rupiah papan hanya manager.
+- **[P2] Angka buntu & tak konsisten.** Tile tak bisa diklik; "Belum selesai" (isUnfinished) ≠
+  badge rel (isActive) ≠ "Dalam proses" Servis (inProcess) → strip memakai `inProcess`, sama dengan
+  halaman yang ditautnya. Saldo tak ikut cabang (wallet milik organisasi) → label "semua cabang";
+  target organisasi dibandingkan pemasukan satu cabang (2–5%) → target disembunyikan saat bercabang.
+- **[P2] Bench tertinggal.** Tile ikon-dalam-kotak (pola yang dipensiunkan Servis) + ikon alert
+  pastel (anti-referensi DESIGN.md) → strip readout + LED/angka mono. Target 13% pada tanggal 27
+  tampil cyan tenang (ambang tetap 60%) → penanda laju.
+- **Gerbang:** `audit-contrast` memindai `/demo` sebelum seed selesai — tema terang dashboard hanya
+  1 elemen diperiksa. Kini menunggu "MODE DEMO" (89/90 elemen). Landing di dev lokal masih 0 elemen
+  (halaman kosong: boot auth dev tak selesai) — belum diselidiki.
+- **Diverifikasi:** Playwright desktop 1440 gelap/terang, ponsel 375, karyawan (via store), satu
+  cabang, Servis Baru dari aksi cepat membuka jendela; `audit-contrast` BERSIH; `audit-tokens`
+  LULUS; 652 tes.
+- **Batas:** umur peringatan dari ≤60 tiket terbuka; "Selesai hari ini" = tiket yang mencapai
+  Selesai (category_profit), termasuk klaim garansi.

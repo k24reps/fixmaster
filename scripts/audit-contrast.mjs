@@ -128,6 +128,9 @@ for (const theme of ['dark', 'light']) {
       document.documentElement.setAttribute('data-theme', t);
     }, theme);
     await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    // Demo baru merender dashboard setelah seed selesai; tanpa menunggu ini
+    // tema terang hanya memeriksa 1 elemen (terukur 27 Sep 2026).
+    if (path === '/demo') await page.getByText('MODE DEMO').first().waitFor({ timeout: 20000 });
     if (BASELINE) {
       await page.evaluate((css) => {
         const el = document.createElement('style');

@@ -12,7 +12,7 @@
   container: dashboard / inline-size;
 }
 
-/* ---------- Console header (info NOT shown in the tiles) ---------- */
+/* ---------- Console: cabang + denyut HARI INI + aksi cepat ---------- */
 .console {
   display: flex;
   align-items: center;
@@ -27,8 +27,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   padding-right: var(--space-4);
-  border-right: 1px solid var(--border);
+  border-right: 1px dotted var(--border-strong);
 }
 .consoleMascot {
   display: flex;
@@ -39,25 +40,30 @@
 .consoleMascotImg {
   display: block;
 }
-.consoleBrandText {
-  display: flex;
+.consoleToday {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-}
-.consoleTitle {
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-text);
   white-space: nowrap;
+}
+.consoleLed {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  box-shadow: 0 0 7px var(--brand);
 }
 .consoleReadouts {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  flex: 1;
-  flex-wrap: wrap;
+  margin: 0;
 }
 .consoleItem {
   display: flex;
@@ -73,16 +79,60 @@
   color: var(--text-muted);
 }
 .consoleVal {
+  margin: 0;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.consoleClock {
+.consoleNum {
+  margin: 0;
   font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.consoleData {
+  padding-left: var(--space-4);
+  border-left: 1px dotted var(--border-strong);
 }
 .consoleFault {
-  color: var(--danger);
+  color: var(--danger-text);
+}
+/* Aksi cepat — di ponsel dilipat (navigasi bawah sudah memuat Servis & Kasir). */
+.quick {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.quickPrimary,
+.quickSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.quickPrimary {
+  color: var(--on-brand);
+  background: var(--gradient-brand);
+}
+.quickSecondary {
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+.quickSecondary:hover {
+  border-color: var(--brand);
 }
 
 /* ---------- Data fault + honest loading ---------- */
@@ -237,15 +287,78 @@
   border: 1px solid currentColor;
   color: var(--readout-muted);
 }
+.heroHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+/* Sakelar periode di atas LCD — layar selalu gelap, jadi warnanya readout. */
+.period {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--readout-text) 22%, transparent);
+  border-radius: var(--radius-full);
+}
+.periodBtn {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--readout-muted);
+}
+.periodBtn:hover {
+  color: var(--readout-text);
+}
+.periodBtn[aria-checked='true'] {
+  background: color-mix(in srgb, var(--readout-text) 16%, transparent);
+  color: var(--readout-text);
+}
 .heroAside {
   display: flex;
-  gap: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
   z-index: 1;
 }
 .heroStat {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--radius-xs);
+  color: inherit;
+  text-decoration: none;
+}
+a.heroStat:hover {
+  background: color-mix(in srgb, var(--readout-text) 8%, transparent);
+}
+.heroStatSub {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--readout-muted);
+}
+.statIn {
+  color: var(--green-400);
+}
+.statOut {
+  color: var(--red-400);
+}
+.heroNote {
+  position: relative;
+  z-index: 1;
+  flex-basis: 100%;
+  max-width: 80ch;
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px dotted color-mix(in srgb, var(--readout-text) 18%, transparent);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--readout-muted);
 }
 .heroStatKey {
   font-family: var(--font-mono);
@@ -272,99 +385,78 @@
 .hero.crit .heroValue { color: var(--red-400); }
 .hero.crit .heroTag { color: var(--red-400); }
 
-/* ---------- Metric gauges (instrument tiles) ---------- */
-.metrics {
+/* ---------- Strip readout (Design System) + Meja saya ----------
+   Satu panel, sel dipisah seam titik, tiap sel menaut ke daftarnya. Dulu lima
+   kartu ikon-dalam-kotak yang tak bisa diklik; di ponsel jadi carousel dan
+   Pemasukan/Pengeluaran/Saldo tersembunyi 2–4 geseran ke kanan. */
+.strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-/* Lima KPI setara, satu rona. Dulu tiap kartu punya spine, ikon bertint, dan
-   LED warna sinyal sendiri, padahal "Pengeluaran" bukan kegagalan dan "Total
-   saldo" bukan status. Kartu juga tidak bisa diklik, jadi tidak terangkat. */
-.metric {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
-.metricTop {
+.cell {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+  margin: 0 -1px -1px 0;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
 }
-.metricIcon {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
+.cell:hover {
+  background: var(--bg-hover);
+}
+.cell:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring);
+}
+.cellLabel {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.05rem;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-}
-.metricLabel {
-  display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
-  min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.12em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
-/* Value sits on its own full-width row so long Rupiah figures show in
-   full — responsive clamp + word-break instead of nowrap+ellipsis. */
-.metricValue {
+.cellValue {
   font-family: var(--font-mono);
+  font-size: var(--text-lg);
   font-weight: var(--fw-bold);
-  font-size: clamp(1.1rem, 1.85cqi, 1.5rem);
-  line-height: 1.1;
-  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
-.metricUnit {
+.cellValueSm {
+  font-size: var(--text-md);
+}
+.cellUnit {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
-  letter-spacing: 0.04em;
 }
-
-/* Arah uang, satu-satunya sinyal terukur di deretan ini. Menyalin pola kartu
-   ringkasan Keuangan: spine 3px + warna angka, kartu TIDAK di-tint dan ikon
-   TIDAK diberi rona. Tiga tile lain tetap netral karena "Unit masuk", "Belum
-   selesai", dan "Total saldo" tidak punya arah baik/buruk — memberi mereka
-   warna akan mengulang persis kekacauan yang dibersihkan 13 Sep 2026. */
-.flowIn::before,
-.flowOut::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
+.desk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.flowIn::before {
-  background: var(--green-500);
-}
-.flowOut::before {
-  background: var(--red-500);
-}
-.flowIn .metricValue {
-  color: var(--success-text);
-}
-.flowOut .metricValue {
-  color: var(--danger-text);
+.deskTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 /* ---------- Targets (tick gauges) ---------- */
@@ -400,12 +492,12 @@
   border-radius: var(--radius-xs);
   background: var(--bg-input);
   border: 1px solid var(--border);
-  overflow: hidden;
 }
 .gaugeFill {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  overflow: hidden;
   /* Progres berjalan = bacaan instrumen (cyan); amber milik aksi utama. */
   background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
   transform-origin: left center;
@@ -414,8 +506,18 @@
 .gauge.ok .gaugeFill {
   background: linear-gradient(90deg, var(--green-500), var(--green-400));
 }
-.gauge.warn .gaugeFill {
+.gauge.behind .gaugeFill {
   background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+}
+/* Penanda laju: di mana angka seharusnya berada pada tanggal ini. */
+.paceTick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-primary);
+  z-index: 1;
 }
 /* tick marks overlay */
 .gauge::after {
@@ -431,7 +533,8 @@
   pointer-events: none;
 }
 .targetPct.ok { color: var(--success-text); }
-.targetPct.warn { color: var(--warning-text); }
+.targetPct.behind { color: var(--warning-text); }
+.paceBehind { color: var(--warning-text); }
 .targetDetail {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -453,6 +556,27 @@
 }
 
 /* ---------- Recent services ---------- */
+.viewAll {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  padding: 6px 8px;
+  margin: -6px -8px;
+  border-radius: var(--radius-xs);
+}
+.viewAll:hover {
+  background: var(--bg-hover);
+}
+/* Tautan, bukan tombol, jadi aturan 44px global untuk <button> tak berlaku. */
+@media (max-width: 720px), (pointer: coarse) {
+  .viewAll {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--control-h);
+  }
+}
 .recentList {
   display: flex;
   flex-direction: column;
@@ -560,29 +684,30 @@
   background: var(--brand-soft);
   box-shadow: inset var(--ring);
 }
-.alertIcon {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-sm);
+/* LED + angka mono, bukan kotak ikon pastel (anti-referensi DESIGN.md). */
+.alertLed {
   flex-shrink: 0;
-  border: 1px solid transparent;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--text-muted);
 }
-.alertIcon.warning {
-  background: var(--warning-soft);
-  color: var(--warning-text);
+.alertLed[data-tone='warning'] { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
+.alertLed[data-tone='danger'] { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
+.alertLed[data-tone='info'] { background: var(--info); box-shadow: 0 0 7px var(--info); }
+.alertLed[data-tone='success'] { background: var(--success); box-shadow: 0 0 7px var(--success); }
+.alertCount {
+  min-width: 2ch;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-primary);
 }
-.alertIcon.danger {
-  background: var(--danger-soft);
-  color: var(--danger-text);
-}
-.alertIcon.info {
-  background: var(--info-soft);
-  color: var(--info-text);
-}
+.alertCount[data-tone='warning'] { color: var(--warning-text); }
+.alertCount[data-tone='danger'] { color: var(--danger-text); }
+.alertCount[data-tone='info'] { color: var(--info-text); }
 .alertCopy {
   display: flex;
   flex: 1;
@@ -614,16 +739,6 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-}
-.allClearIcon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  border-radius: var(--radius-sm);
-  color: var(--success);
-  background: var(--success-soft);
 }
 .allClear > span:last-child {
   display: flex;
@@ -728,55 +843,20 @@
 }
 
 @container dashboard (max-width: 900px) {
-  .metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .grid,
   .targets {
     grid-template-columns: 1fr;
   }
 }
 @container dashboard (max-width: 560px) {
-  .metrics {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    scroll-padding-inline: var(--space-4);
-    padding-bottom: var(--space-1);
-    scrollbar-width: none;
-  }
-  .metrics::-webkit-scrollbar {
-    display: none;
-  }
-  .metric {
-    flex: 0 0 min(78cqi, 280px);
-    min-width: 220px;
-    padding: var(--space-3);
-    scroll-snap-align: start;
-  }
-  .metricTop {
-    gap: var(--space-2);
-  }
-  .metricIcon {
-    width: 32px;
-    height: 32px;
-    font-size: 0.95rem;
-  }
-  .metricLabel {
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
-  }
-  .metricValue {
-    font-size: clamp(1.05rem, 5cqi, 1.35rem);
-    white-space: nowrap;
-  }
   .console {
-    flex-wrap: nowrap;
-    gap: var(--space-2);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
     padding: var(--space-2) var(--space-3);
   }
   .consoleBrand {
-    gap: var(--space-1);
+    gap: var(--space-2);
     padding-right: 0;
     border-right: none;
   }
@@ -784,34 +864,50 @@
     width: auto !important;
     height: 28px !important;
   }
-  .consoleTitle {
-    display: none;
+  .consoleData {
+    grid-row: 1;
+    grid-column: 2;
+    padding-left: 0;
+    border-left: none;
+    text-align: right;
+  }
+  .consoleToday,
+  .consoleReadouts {
+    grid-column: 1 / -1;
+  }
+  .consoleToday {
+    padding-top: var(--space-2);
+    border-top: 1px dotted var(--border-strong);
   }
   .consoleReadouts {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
-    flex-wrap: nowrap;
   }
-  .consoleDate {
+  .quick {
     display: none;
   }
-  .consoleKey,
-  .consoleVal {
-    font-size: var(--text-xs);
-  }
   .heroScreen {
-    flex-wrap: nowrap;
     padding: var(--space-3) var(--space-4);
     gap: var(--space-3);
   }
   .heroAside {
-    width: auto;
-    flex-direction: column;
-    gap: var(--space-2);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: var(--space-2) var(--space-4);
+  }
+  .heroAside > :last-child {
+    grid-column: 1 / -1;
   }
   .heroValue {
     font-size: clamp(1.45rem, 7cqi, 2rem);
+  }
+  .strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .strip > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .fault {
     align-items: flex-start;
