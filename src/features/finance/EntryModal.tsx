@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Modal,
   Input,
@@ -9,9 +9,9 @@ import {
   FormError,
 } from '@/components/ui';
 import { repository } from '@/data';
-import { fmtRpInput, parseRpInput } from '@/lib/format';
+import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
-import { applyBalance } from '@/lib/business/finance';
+import { applyBalance, entryDateError, findRecentDuplicate } from '@/lib/business/finance';
 import { createFinanceEntry } from '@/data/financeEntry';
 import { updateFinanceEntry } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
@@ -19,6 +19,7 @@ import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
+import { useT } from '@/i18n';
 import type {
   ActivityAction,
   Wallet,
@@ -27,6 +28,7 @@ import type {
   Expense,
   Income,
 } from '@/data/types';
+import styles from './FinancePage.module.css';
 
 interface EntryModalProps {
   open: boolean;
@@ -35,9 +37,15 @@ interface EntryModalProps {
   wallets: Wallet[];
   /** When set, the modal edits this record instead of creating a new entry. */
   editing?: Income | Expense | null;
+  /** Baris yang sudah ada (jenis yang sama) — untuk peringatan catat ganda. */
+  existing?: readonly (Income | Expense)[];
 }
 
-const INCOME_CATEGORIES: IncomeCategory[] = ['Servis', 'Penjualan', 'Modal', 'Lainnya'];
+// Servis & Penjualan sengaja TIDAK ada: pelunasan tiket dan penjualan Kasir
+// sudah mencatat pemasukannya sendiri, jadi mencatatnya di sini = dihitung dua
+// kali. Server menolaknya juga (0091). Baris lama berkategori itu tetap bisa
+// diedit — kategorinya ditambahkan kembali saat mengedit.
+const INCOME_CATEGORIES: IncomeCategory[] = ['Modal', 'Lainnya'];
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Sparepart',
   'Operasional',
@@ -117,16 +125,33 @@ async function saveEdit(editing: Income | Expense, a: EditArgs): Promise<string>
   return editing.id;
 }
 
-export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModalProps) {
+export function EntryModal({ open, onClose, kind, wallets, editing, existing = [] }: EntryModalProps) {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
+  // Dibaca supaya komponen render ulang saat cabang berganti (mustPickOutlet membaca store).
+  useSessionStore((s) => s.activeOutletId);
   const { data: outlets } = useCollection('outlets');
   const [date, setDate] = useState(localDateStr());
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [walletId, setWalletId] = useState('');
+  const [outletId, setOutletId] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Peringatan catat ganda sudah ditampilkan untuk isian ini; Simpan berikutnya lanjut.
+  const [dupAck, setDupAck] = useState(false);
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  const today = localDateStr();
+  const monthStart = today.slice(0, 8) + '01';
+  // Cabang dipilih DI SINI, bukan ditolak setelah form terisi dengan petunjuk ke
+  // sidebar yang tertutup jendela (dan tak ada di ponsel). Pola sama dengan Servis Baru.
+  const needOutlet = !editing && mustPickOutlet(outlets.length);
+  const outletOptions = outlets
+    .filter((o) => allowedOutletIds.length === 0 || allowedOutletIds.includes(o.id))
+    .map((o) => ({ value: o.id, label: o.name }));
 
   const [lastOpen, setLastOpen] = useState(false);
   if (open && !lastOpen) {
@@ -145,24 +170,37 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
       setWalletId(wallets[0]?.id ?? '');
       setDescription('');
     }
+    setOutletId('');
+    setDupAck(false);
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
 
-  const save = async () => {
+  const change = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v);
+    setError('');
+    setDupAck(false);
+  };
+
+  const save = async (again = false) => {
+    if (busy) return;
     const value = parseRpInput(amount);
+    if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
     if (value <= 0) return setError('Nominal harus lebih dari 0');
     if (!walletId) return setError('Pilih wallet');
-    // OQ-C (same guard as PosPage.checkout): a user who can reach multiple
-    // outlets must pick a branch first so the entry isn't silently stamped to
-    // the primary outlet. Edits keep the record's original outlet, so only
-    // creation needs the guard.
-    if (!editing && mustPickOutlet(outlets.length)) {
-      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum mencatat');
+    // Baris bulan lalu yang diedit tak pernah sampai di sini (tombolnya tak ada).
+    const dateError = entryDateError(date, today);
+    if (dateError) return setError(dateError);
+    const note = description.trim();
+    if (!editing && !dupAck) {
+      const dup = findRecentDuplicate(existing, { amount: value, walletId, description: note, date });
+      if (dup) {
+        setDupAck(true);
+        return setError(t('finance.duplicateWarn'));
+      }
     }
 
     setBusy(true);
-    const note = description.trim();
     try {
       const entryId = editing
         ? await saveEdit(editing, { orgId, kind, date, category, value, walletId, note, wallets })
@@ -174,7 +212,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
             amount: value,
             walletId,
             description: note,
-            outletId: resolveCreateOutlet(outlets),
+            outletId: needOutlet ? outletId : resolveCreateOutlet(outlets),
           });
 
       logActivity({
@@ -184,10 +222,21 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
         entityLabel: note || category,
         meta: { amount: value, category, ...(editing ? { prevAmount: editing.amount } : {}) },
       });
+      const wallet = wallets.find((w) => w.id === walletId);
       toast.success(
-        `${kind === 'income' ? 'Pemasukan' : 'Pengeluaran'} ${editing ? 'diperbarui' : 'dicatat'}`,
+        `${kind === 'income' ? 'Pemasukan' : 'Pengeluaran'} ${editing ? 'diperbarui' : 'dicatat'}` +
+          (wallet && !editing ? ` · ${wallet.name} ${kind === 'income' ? '+' : '−'}${fmtRp(value)}` : ''),
       );
-      onClose();
+      if (again) {
+        // Catat beruntun: tanggal, kategori, wallet, dan cabang dipertahankan.
+        setAmount('');
+        setDescription('');
+        setDupAck(false);
+        setError('');
+        amountRef.current?.focus();
+      } else {
+        onClose();
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan');
     } finally {
@@ -195,7 +244,10 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
     }
   };
 
-  const categories = kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const base = kind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories: string[] =
+    editing && !(base as string[]).includes(editing.category) ? [editing.category, ...base] : base;
+  const formId = `entry-${kind}`;
 
   return (
     <Modal
@@ -215,56 +267,81 @@ export function EntryModal({ open, onClose, kind, wallets, editing }: EntryModal
           <Button variant="secondary" onClick={onClose}>
             Batal
           </Button>
-          <Button onClick={save} loading={busy}>
+          {!editing && (
+            <Button variant="secondary" onClick={() => void save(true)} disabled={busy}>
+              {t('finance.saveAgain')}
+            </Button>
+          )}
+          <Button type="submit" form={formId} loading={busy}>
             Simpan
           </Button>
         </>
       }
     >
-      <FormFields>
-        <FormError>{error}</FormError>
-        <FormRow>
+      {/* <form>: Enter di field mana pun menyimpan. */}
+      <form
+        id={formId}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <FormFields>
+          <FormError>{error}</FormError>
+          {needOutlet && (
+            <Select
+              label={t('finance.outlet')}
+              value={outletId}
+              onChange={(e) => change(setOutletId)(e.target.value)}
+              options={outletOptions}
+              placeholder={t('finance.outletPlaceholder')}
+            />
+          )}
+          <FormRow>
+            <Input
+              label="Tanggal"
+              type="date"
+              value={date}
+              min={editing ? undefined : monthStart}
+              max={today}
+              onChange={(e) => change(setDate)(e.target.value)}
+              hint={editing ? undefined : t('finance.dateHint')}
+            />
+            <Select
+              label="Kategori"
+              value={category}
+              onChange={(e) => change(setCategory)(e.target.value)}
+              options={categories.map((c) => ({ value: c, label: c }))}
+            />
+          </FormRow>
+          {CATEGORY_HINT[category] && <p className={styles.formHint}>{CATEGORY_HINT[category]}</p>}
+          {kind === 'income' && !editing && (
+            <p className={styles.formHint}>{t('finance.autoIncomeHint')}</p>
+          )}
+          <FormRow>
+            <Input
+              ref={amountRef}
+              label="Nominal"
+              value={amount}
+              inputMode="numeric"
+              onChange={(e) => change(setAmount)(fmtRpInput(e.target.value))}
+              placeholder="100.000"
+              autoFocus
+            />
+            <Select
+              label="Wallet"
+              value={walletId}
+              onChange={(e) => change(setWalletId)(e.target.value)}
+              options={wallets.map((w) => ({ value: w.id, label: `${w.name} · ${fmtRp(w.balance)}` }))}
+            />
+          </FormRow>
           <Input
-            label="Tanggal"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            label="Keterangan (opsional)"
+            value={description}
+            onChange={(e) => change(setDescription)(e.target.value)}
           />
-          <Select
-            label="Kategori"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            options={categories.map((c) => ({ value: c, label: c }))}
-          />
-        </FormRow>
-        {CATEGORY_HINT[category] && (
-          <p
-            style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
-          >
-            {CATEGORY_HINT[category]}
-          </p>
-        )}
-        <FormRow>
-          <Input
-            label="Nominal"
-            value={amount}
-            onChange={(e) => setAmount(fmtRpInput(e.target.value))}
-            placeholder="100.000"
-            autoFocus
-          />
-          <Select
-            label="Wallet"
-            value={walletId}
-            onChange={(e) => setWalletId(e.target.value)}
-            options={wallets.map((w) => ({ value: w.id, label: w.name }))}
-          />
-        </FormRow>
-        <Input
-          label="Keterangan (opsional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </FormFields>
+        </FormFields>
+      </form>
     </Modal>
   );
 }

@@ -9,6 +9,9 @@ import {
   transferMoneyLocked,
   summarize,
   shouldRevertServiceOnIncomeDelete,
+  entryDateError,
+  findRecentDuplicate,
+  walletMovement,
 } from './finance';
 import type { Wallet } from '@/data/types';
 
@@ -190,5 +193,43 @@ describe('shouldRevertServiceOnIncomeDelete', () => {
     expect(
       shouldRevertServiceOnIncomeDelete({ category: 'Servis', serviceId: null }),
     ).toBe(false);
+  });
+});
+
+describe('entryDateError', () => {
+  it('awal bulan s/d hari ini diterima; bulan lalu & masa depan ditolak', () => {
+    expect(entryDateError('2026-09-01', '2026-09-27')).toBeNull();
+    expect(entryDateError('2026-09-27', '2026-09-27')).toBeNull();
+    expect(entryDateError('2026-08-31', '2026-09-27')).toMatch(/terkunci/);
+    expect(entryDateError('2026-09-28', '2026-09-27')).toMatch(/masa depan/);
+  });
+});
+
+describe('findRecentDuplicate', () => {
+  const now = new Date('2026-09-27T10:10:00Z');
+  const row = { amount: 75000, walletId: 'w1', description: 'Beli lem B7000', date: '2026-09-27', createdAt: '2026-09-27T10:05:00Z' };
+  it('baris identik 5 menit lalu = duplikat (keterangan tak peka huruf/spasi)', () => {
+    expect(findRecentDuplicate([row], { ...row, description: ' beli lem b7000 ' }, now)).toBe(row);
+  });
+  it('beda nominal, wallet, atau sudah lewat 10 menit = bukan duplikat', () => {
+    expect(findRecentDuplicate([row], { ...row, amount: 80000 }, now)).toBeNull();
+    expect(findRecentDuplicate([row], { ...row, walletId: 'w2' }, now)).toBeNull();
+    expect(findRecentDuplicate([row], row, new Date('2026-09-27T10:30:00Z'))).toBeNull();
+  });
+});
+
+describe('walletMovement', () => {
+  it('masuk, keluar, dan transfer bersih; transfer batal diabaikan', () => {
+    const m = walletMovement(
+      'w1',
+      [{ amount: 100, walletId: 'w1' }, { amount: 50, walletId: 'w2' }],
+      [{ amount: 30, walletId: 'w1' }],
+      [
+        { amount: 20, fromWalletId: 'w2', toWalletId: 'w1', status: 'active' },
+        { amount: 5, fromWalletId: 'w1', toWalletId: 'w2', status: 'active' },
+        { amount: 999, fromWalletId: 'w2', toWalletId: 'w1', status: 'void' },
+      ],
+    );
+    expect(m).toEqual({ in: 100, out: 30, transfer: 15 });
   });
 });

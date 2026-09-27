@@ -65,6 +65,8 @@ import {
   Repeat,
   CaretDoubleLeft,
   CaretDown,
+  CaretLeft,
+  CaretRight,
   FileText,
   Question,
   Warning,
@@ -171,6 +173,8 @@ export type IconName =
   | 'repeat'
   | 'angles-left'
   | 'chevron-down'
+  | 'chevron-left'
+  | 'chevron-right'
   | 'file-invoice'
   | 'circle-question'
   | 'triangle-exclamation'
@@ -278,6 +282,8 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   repeat: Repeat,
   'angles-left': CaretDoubleLeft,
   'chevron-down': CaretDown,
+  'chevron-left': CaretLeft,
+  'chevron-right': CaretRight,
   'file-invoice': FileText,
   'circle-question': Question,
   'triangle-exclamation': Warning,

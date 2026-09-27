@@ -35,15 +35,22 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
     closeRef.current = onClose;
   });
   const pressedOverlay = useRef(false);
+  // Pemicu jendela. autoFocus React memindahkan fokus ke field SEBELUM efek di
+  // bawah berjalan, jadi `document.activeElement` di efek sudah field itu — dulu
+  // fokus hilang ke <body> setiap jendela berfield autoFocus ditutup. Pemicunya
+  // dibaca dari `relatedTarget` fokus pertama yang masuk ke dialog.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const me = Symbol('modal');
     openStack.push(me);
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
     // autoFocus React sudah jalan sebelum efek; jangan rebut fokus dari field itu.
-    if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
+    if (dialog && !dialog.contains(document.activeElement)) {
+      if (document.activeElement instanceof HTMLElement) openerRef.current = document.activeElement;
+      dialog.focus();
+    }
 
     const onKey = (e: KeyboardEvent) => {
       if (openStack[openStack.length - 1] !== me || !dialog) return;
@@ -76,6 +83,8 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
       document.removeEventListener('keydown', onKey);
       openStack.splice(openStack.indexOf(me), 1);
       if (openStack.length === 0) document.body.style.overflow = '';
+      const opener = openerRef.current;
+      openerRef.current = null;
       if (opener?.isConnected) opener.focus();
     };
   }, [open]);
@@ -102,6 +111,12 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
+        onFocusCapture={(e) => {
+          const from = e.relatedTarget;
+          if (!openerRef.current && from instanceof HTMLElement && !e.currentTarget.contains(from)) {
+            openerRef.current = from;
+          }
+        }}
       >
         {title && (
           <div className={styles.header}>

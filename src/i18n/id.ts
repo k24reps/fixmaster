@@ -64,7 +64,7 @@ export const id = {
   'subtitle.customers': 'Basis data pelanggan & riwayat servis',
   'subtitle.inventory': 'Stok sparepart & produk',
   'subtitle.suppliers': 'Supplier dan pemesanan barang',
-  'subtitle.finance': 'Arus kas, wallet, dan profitabilitas',
+  'subtitle.finance': 'Arus kas, saldo wallet, dan buku kas per bulan',
   'subtitle.tasks': 'Tugas internal & SOP tim',
   'subtitle.attendance': 'Kehadiran & jam kerja karyawan',
   'subtitle.reports': 'Analitik & laporan bisnis',
@@ -481,6 +481,26 @@ export const id = {
   'pos.newSale': 'Transaksi Baru',
   'pos.waMessage': 'Terima kasih sudah berbelanja di {shop}.\nNo. transaksi: {no}\n{items}\nTotal: {total}',
   'pos.voidConfirm': 'Ya, batalkan {no}',
+
+  // ---------- Keuangan ----------
+  'finance.outlet': 'Cabang',
+  'finance.outletPlaceholder': 'Pilih cabang…',
+  'finance.outletRequired': 'Pilih cabang untuk transaksi ini',
+  'finance.duplicateWarn': 'Transaksi yang sama (nominal, wallet, keterangan) baru saja dicatat. Tekan Simpan sekali lagi bila memang dua kali.',
+  'finance.saveAgain': 'Simpan & tambah lagi',
+  'finance.dateHint': 'Bulan ini s/d hari ini — bulan lalu sudah terkunci',
+  'finance.autoIncomeHint': 'Pelunasan servis & penjualan Kasir tercatat otomatis — jangan dicatat di sini.',
+  'finance.deleteEffect': 'Saldo {wallet} dikembalikan ({amount}). Baris ini hilang dari buku kas.',
+  'finance.deleteServiceIncome': 'Pemasukan ini dari tiket servis: saldo dikembalikan, dan bila ini pelunasan, tiketnya kembali ke status Selesai.',
+  'finance.lockMonth': 'terkunci · bulan lalu',
+  'finance.lockLinked': 'terkunci · ubah dari PO/tiket',
+  'finance.lockSource': 'ubah dari tiket/Kasir',
+  'finance.prevMonth': 'Bulan sebelumnya',
+  'finance.nextMonth': 'Bulan berikutnya',
+  'finance.thisMonth': 'bulan ini',
+  'finance.totalBalance': 'Total saldo',
+  'finance.allBranches': 'semua cabang',
+  'finance.summaryAria': 'Ringkasan bulan yang dilihat',
 } as const;
 
 export type TranslationKey = keyof typeof id;

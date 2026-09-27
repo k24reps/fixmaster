@@ -3375,3 +3375,33 @@ di [[Signature Pages]] (Dashboard).
   LULUS; 652 tes.
 - **Batas:** umur peringatan dari ≤60 tiket terbuka; "Selesai hari ini" = tiket yang mencapai
   Selesai (category_profit), termasuk klaim garansi.
+
+## UX Keuangan — critique tahap 4 (27 Sep 2026)
+
+Skor **19/40** (arsip `.impeccable/critique/2026-09-27T14-15-56Z__src-features-finance.md`).
+Pemilik memilih: UI + migrasi 0091, hapus Servis/Penjualan dari pemasukan manual, kelima isu.
+Tampilan di [[Signature Pages]] (Keuangan).
+
+- **[P0] Tanggal bebas merusak buku kas → 0091.** `record_finance_entry` (0071) tak memanggil
+  `assert_open_month`, dan tak satu fungsi pun menolak masa depan. Terukur: entri 15 Agustus
+  mengubah bulan lalu lalu langsung terkunci; entri Januari 2027 memotong saldo Tunai tanpa tampil
+  di buku kas mana pun. 0091 menambah `assert_entry_date` (bulan berjalan s/d hari ini, Asia/Jakarta)
+  di `record_finance_entry` dan `update_finance_entry`. `assert_open_month` sengaja TIDAK diubah —
+  ia juga menjaga hapus/batal, dan baris masa depan yang terlanjur ada harus tetap bisa dihapus.
+- **Pemasukan manual Servis/Penjualan ditolak** (UI + 0091): pelunasan tiket & penjualan Kasir
+  sudah mencatatnya sendiri. Baris lama berkategori itu tetap bisa diedit.
+- **[P1] Cabang setelah form terisi** → pilihan cabang di baris pertama (pola Servis Baru, Kasir).
+- **[P1] Tanpa rekonsiliasi** → Total saldo, pergerakan per wallet, ringkasan ikut filter, pemilih bulan.
+- **[P1] Aksi uang** → peringatan catat ganda, dialog hapus spesifik, tombol hapus terkunci saat proses.
+- **[P2] Pita ponsel** → per hari, baris dua tingkat (156 → 113px, 0 keterangan terpotong); tab & aksi sebaris.
+- **Regresi tahap 1 diperbaiki — fokus jendela:** `Modal` mencatat pemicu di efek, padahal
+  autoFocus React sudah memindahkan fokus ke field lebih dulu → fokus hilang ke `<body>` saat
+  jendela ditutup (semua jendela berfield autoFocus). Kini pemicu dibaca dari `relatedTarget`
+  fokus pertama yang masuk ke dialog (`onFocusCapture`).
+- **Ikon `chevron-left/right`** belum terdaftar (tampil tanda tanya) → didaftarkan; `Icon.test` menangkapnya.
+- **Diverifikasi:** 0091 diuji di DB lokal dalam transaksi rollback (besok & bulan lalu ditolak,
+  awal bulan diterima) lalu dijalankan pemilik di VPS; Playwright desktop gelap/terang + ponsel
+  320/375 (seluruh alur di atas, fokus kembali ke tombol pemicu); `audit-contrast` BERSIH;
+  `audit-tokens` LULUS; 656 tes.
+- **Belum:** i18n literal lama Keuangan; isian "uang dihitung" untuk mencocokkan laci; baris
+  pertama buku kas di ponsel masih tepat di bawah lipatan (kepala Buku Kas sudah terlihat).

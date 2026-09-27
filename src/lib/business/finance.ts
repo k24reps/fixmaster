@@ -3,7 +3,7 @@
  * mutations, transfers, and reverse-cascade calculations.
  * No DOM/repository dependencies → fully unit-testable.
  */
-import type { Wallet, Income, Expense } from '@/data/types';
+import type { Wallet, Income, Expense, WalletTransfer } from '@/data/types';
 
 /** Apply a signed delta to a wallet balance, returning a new wallet. */
 export function applyBalance(wallet: Wallet, delta: number): Wallet {
@@ -179,4 +179,69 @@ export function shouldRevertServiceOnIncomeDelete(
   income: Pick<Income, 'serviceId' | 'category'>,
 ): boolean {
   return income.category === 'Servis' && !!income.serviceId;
+}
+
+/**
+ * Tanggal catat/ubah transaksi: awal bulan ini s/d hari ini. Cermin
+ * `assert_entry_date` (0091) — bulan lalu laporannya sudah berjalan, dan tanggal
+ * masa depan dulu memotong saldo tanpa pernah tampil di buku kas.
+ */
+export function entryDateError(date: string, today: string): string | null {
+  if (!date) return 'Tanggal wajib diisi';
+  if (date > today) return 'Tanggal tidak boleh di masa depan';
+  if (date < today.slice(0, 8) + '01') {
+    return 'Bulan lalu sudah terkunci — catat koreksinya sebagai transaksi bulan ini';
+  }
+  return null;
+}
+
+/**
+ * Baris yang identik (nominal, wallet, keterangan, tanggal) dan baru dicatat
+ * dalam `windowMin` menit — tanda ketuk dua kali atau catat ulang tanpa sadar.
+ */
+export function findRecentDuplicate<
+  T extends Pick<Income, 'amount' | 'walletId' | 'description' | 'date' | 'createdAt'>,
+>(
+  rows: readonly T[],
+  entry: Pick<Income, 'amount' | 'walletId' | 'description' | 'date'>,
+  now: Date = new Date(),
+  windowMin = 10,
+): T | null {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const since = now.getTime() - windowMin * 60_000;
+  return (
+    rows.find(
+      (r) =>
+        r.amount === entry.amount &&
+        r.walletId === entry.walletId &&
+        r.date === entry.date &&
+        norm(r.description) === norm(entry.description) &&
+        Date.parse(r.createdAt) >= since,
+    ) ?? null
+  );
+}
+
+export interface WalletMovement {
+  in: number;
+  out: number;
+  /** Transfer masuk − keluar (transfer batal diabaikan). */
+  transfer: number;
+}
+
+/** Pergerakan satu wallet dalam himpunan baris yang sudah disaring periodenya. */
+export function walletMovement(
+  walletId: string,
+  incomes: readonly Pick<Income, 'amount' | 'walletId'>[],
+  expenses: readonly Pick<Expense, 'amount' | 'walletId'>[],
+  transfers: readonly Pick<WalletTransfer, 'amount' | 'fromWalletId' | 'toWalletId' | 'status'>[],
+): WalletMovement {
+  const sum = (rows: readonly { amount: number }[]) => rows.reduce((n, r) => n + r.amount, 0);
+  const live = transfers.filter((t) => t.status !== 'void');
+  return {
+    in: sum(incomes.filter((i) => i.walletId === walletId)),
+    out: sum(expenses.filter((e) => e.walletId === walletId)),
+    transfer:
+      sum(live.filter((t) => t.toWalletId === walletId)) -
+      sum(live.filter((t) => t.fromWalletId === walletId)),
+  };
 }

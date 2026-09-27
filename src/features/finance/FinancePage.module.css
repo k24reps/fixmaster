@@ -1,152 +1,220 @@
 /* ============================================================
    Finance — "Cashbook Tape"
-   Wallets as meter readouts, a balance summary panel, and the
-   ledger as a monospace thermal tape with +/- entries (echoes
-   the POS receipt). Global tokens — matches the bench identity.
+   Pemilih bulan, wallet sebagai strip readout (saldo + pergerakan
+   bulan), ringkasan strip, dan buku kas sebagai pita thermal mono
+   yang dikelompokkan per hari. Token global — identitas bench.
    ============================================================ */
 
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
+  container: finance / inline-size;
 }
 
-/* ---------- Wallet meters ---------- */
-.walletGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-3);
+/* ---------- Pemilih bulan: menggerakkan ringkasan DAN buku kas ---------- */
+.monthBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
-/* Kartu wallet adalah <button> filter buku kas — tampilannya tetap kartu. */
-.walletCard {
+.monthStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+.monthStep:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+.monthStep:disabled {
+  opacity: 0.4;
+}
+.monthLabel {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 11rem;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.monthNow {
+  font-weight: var(--fw-normal);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--brand-text);
+}
+
+/* ---------- Wallet strip (Design System: Strip readout) ---------- */
+.walletStrip,
+.summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.walletCell,
+.summaryCell {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--space-4) var(--space-5);
-  background: var(--surface-glass);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  width: 100%;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+  margin: 0 -1px -1px 0;
   text-align: left;
-  cursor: pointer;
-  font: inherit;
   color: inherit;
-  transition:
-    border-color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out);
 }
-.walletCard:hover {
-  border-color: var(--brand);
+/* Sel wallet = tombol filter buku kas. */
+button.walletCell {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
 }
-.walletCardActive {
-  border-color: var(--brand);
+button.walletCell:hover {
   background: var(--bg-hover);
 }
-.walletHint {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out);
+button.walletCell:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring);
 }
-.walletCard:hover .walletHint,
-.walletCard:focus-visible .walletHint,
-.walletCardActive .walletHint {
-  opacity: 1;
+button.walletCell[aria-pressed='true'] {
+  background: var(--brand-soft);
 }
-/* Tanpa strip gradien atas & LED per dompet: sama di semua kartu, jadi tidak
-   mengklasifikasi apa pun (Spine, Not the Fill; Lit-Signal). */
+.walletTotal {
+  background: var(--bg-surface-2);
+}
 .walletName {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.12em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
+.walletLed {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  opacity: 0.35;
+}
+button.walletCell[aria-pressed='true'] .walletLed {
+  opacity: 1;
+  box-shadow: 0 0 7px var(--brand);
+}
+/* Rupiah panjang menyusut mengikuti lebar wadah, dan boleh patah daripada terpotong. */
 .walletBalance {
   font-family: var(--font-mono);
-  font-size: var(--text-xl);
+  font-size: clamp(var(--text-md), 3.2cqi, var(--text-xl));
   font-weight: var(--fw-bold);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+/* Tiap angka utuh; yang turun baris angkanya, bukan "Rp" / "550.000". */
+.walletMove > span {
+  white-space: nowrap;
+}
+.walletMove {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .noWallet {
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
 
-/* ---------- Summary balance panel ---------- */
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-}
-.summaryCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.summaryCard::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-}
-.summaryCard span {
+/* ---------- Ringkasan: satu strip, arah uang dibawa spine ---------- */
+.summaryCell span {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
-.summaryCard strong {
+.summaryCell strong {
   font-family: var(--font-mono);
   font-size: var(--text-lg);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
-/* Spine, not fill: arah uang dibawa spine 3px + warna angka. Dulu ketiga kartu
-   juga dibanjiri tint (hijau/merah/amber) di atas spine-nya, dan angkanya
-   memakai rona 400 yang tidak berganti tema, jadi pudar di tema terang. */
-.summaryCard.income::before {
+.summaryCell::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+}
+.summaryCell.income::before {
   background: var(--green-500);
 }
-.summaryCard.income strong {
+.summaryCell.income strong {
   color: var(--success-text);
 }
-.summaryCard.expense::before {
+.summaryCell.expense::before {
   background: var(--red-500);
 }
-.summaryCard.expense strong {
+.summaryCell.expense strong {
   color: var(--danger-text);
 }
-.summaryCard.net::before {
+.summaryCell.net::before {
   background: var(--accent);
 }
-.summaryCard.net strong {
-  color: var(--text-primary);
+
+/* Warna arah uang untuk teks lepas (pergerakan wallet, kepala hari). */
+.inc {
+  color: var(--success-text);
+}
+.exp {
+  color: var(--danger-text);
+}
+.trf {
+  color: var(--text-muted);
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
+/* Petunjuk kecil di jendela Entry. */
+.formHint {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 /* ---------- Cashbook tape ---------- */
+.ledgerCard {
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-3));
+}
 .noPad {
   padding: 0;
 }
@@ -155,24 +223,33 @@
   flex-direction: column;
   font-family: var(--font-mono);
 }
+/* Kepala hari: tanggal sekali + arus bersih hari itu, di seam titik. */
+.dayHead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px var(--space-5);
+  background: var(--bg-surface-2);
+  border-bottom: 1px dotted var(--border-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
 .tapeRow {
   position: relative;
   display: grid;
-  /* Last column holds .tapeBtns (1–2 buttons in one cell) — a fixed 36px
-     slot forced the second button onto a new implicit row. */
-  grid-template-columns: 92px 1fr auto minmax(36px, auto);
+  grid-template-columns: minmax(0, 1fr) auto minmax(36px, auto);
+  grid-template-areas: 'body amount btns';
   align-items: center;
-  gap: var(--space-3);
-  padding: 12px var(--space-5) 12px calc(var(--space-5) + 3px);
+  gap: 4px var(--space-3);
+  padding: 10px var(--space-5) 10px calc(var(--space-5) + 3px);
   border-bottom: 1px dotted var(--border);
   transition: background var(--dur-fast) var(--ease-out);
 }
-.tapeBtns {
-  display: flex;
-  gap: 2px;
-  justify-content: flex-end;
-}
-.tapeRow:last-child {
+.day:last-of-type .tapeRow:last-child {
   border-bottom: none;
 }
 .tapeRow:hover {
@@ -197,12 +274,8 @@
 .tapeRow.transfer::before {
   background: var(--text-muted);
 }
-.tapeDate {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  white-space: nowrap;
-}
 .tapeBody {
+  grid-area: body;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -212,42 +285,45 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .tapeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
   font-size: var(--text-xs);
   color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 .tapeCat {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.tapeCat.inc {
-  color: var(--success-text);
-}
+/* Kategori pengeluaran bertinta biasa: amber di samping nominal merah dulu
+   memberi dua sinyal untuk satu fakta. */
 .tapeCat.exp {
-  color: var(--warning-text);
+  color: var(--text-secondary);
+}
+.lockTag {
+  padding: 0 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
 }
 .tapeAmount {
+  grid-area: amount;
   font-size: var(--text-sm);
   font-weight: var(--fw-bold);
   white-space: nowrap;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.tapeAmount.inc {
-  color: var(--success-text);
-}
-.tapeAmount.exp {
-  color: var(--danger-text);
-}
-.tapeCat.trf,
-.tapeAmount.trf {
-  color: var(--text-muted);
+.tapeBtns {
+  grid-area: btns;
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
 }
 /* Transfer dibatalkan (0086): tetap di pita sebagai jejak, dicoret + redup,
    spine putus-putus — uangnya sudah kembali, jadi ia tak boleh terbaca sebagai
@@ -290,87 +366,16 @@
 }
 .iconBtn.danger:hover {
   background: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
-@media (max-width: 768px) {
-  /* Padding 16px/20px terlalu boros saat kartu tinggal ~138px di 320px, dan
-     saldo var(--text-xl) memotong "Rp 3.200.000" sebanyak 25px (terukur).
-     clamp ber-vw membuat angka menyusut sendiri alih-alih terpotong. */
-  .walletCard,
-  .summaryCard {
-    padding: var(--space-3);
-  }
-  /* Tab bar ini flex tanpa overflow, jadi saat sempit ia MEMAMPAT dan
-     memotong teks ("Pengeluaran" hilang 45px di 320px) alih-alih
-     menggulung. Dibiarkan membungkus ke baris kedua: tak ada scroll
-     horizontal, tak ada teks terpotong. */
-  /* Token panjang (nomor servis, kode part) tak punya titik pecah, jadi
-     meski white-space normal ia tetap meluber. */
-  .tapeDesc {
-    overflow-wrap: anywhere;
-  }
-  .tabBar {
-    flex-wrap: wrap;
-    padding: 0 var(--space-3);
-  }
-  .tab {
-    padding: 8px var(--space-2);
-    font-size: var(--text-xs);
-    letter-spacing: 0.02em;
-  }
-  .walletBalance {
-    font-size: clamp(0.95rem, 4.6vw, var(--text-xl));
-  }
-  .summaryCard strong {
-    font-size: clamp(0.9rem, 4.2vw, var(--text-lg));
-  }
-  .summaryCard span {
-    font-size: var(--text-xs);
-  }
-  .walletGrid,
-  .summaryGrid {
-    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
-       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
-       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
-       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
-       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .walletGrid > *:last-child:nth-child(odd),
-  .summaryGrid > *:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-  .walletGrid > *,
-  .tapeRow {
-    /* 76px kurang 3px untuk "21 Agu 2026" (terukur) — ellipsis pada
-       tanggal terbaca seperti data rusak. */
-    grid-template-columns: 84px 1fr auto;
-    row-gap: 4px;
-  }
-  /* Buttons drop to their own full-width line, side by side (they used to
-     stack vertically — one implicit grid row per loose button). */
-  .tapeBtns {
-    grid-column: 1 / -1;
-    justify-self: end;
-  }
-  /* Mobile: let long descriptions wrap to 2 lines instead of clipping to "…"
-     with no way to read the rest. */
-  .tapeDesc {
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-}
-
-/* ---------- Ledger tab bar (Semua / Pemasukan / Pengeluaran) ---------- */
+/* ---------- Ledger tab bar (Semua / Pemasukan / Pengeluaran / Transfer) ---------- */
 .tabBar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-2);
 }
 .tab {
   padding: 8px var(--space-4);
@@ -396,7 +401,6 @@
   font-weight: 600;
 }
 
-/* "Muat bulan sebelumnya" footer under the ledger tape. */
 .loadMore {
   display: flex;
   align-items: center;
@@ -429,4 +433,65 @@
   font-family: var(--font-mono);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+/* Sempit: dua sel per baris, dan baris pita jadi dua tingkat — keterangan
+   selebar pita, lalu nominal + aksi. Satu baris empat kolom dulu memeras
+   keterangan jadi 81px dan memotong nomor tiket ("Pelunasan servis FM…"). */
+@container finance (max-width: 560px) {
+  .walletStrip,
+  .summaryStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .walletStrip > :last-child:nth-child(odd),
+  .summaryStrip > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .walletCell,
+  .summaryCell {
+    padding: var(--space-3);
+  }
+  .summaryCell strong {
+    font-size: var(--text-md);
+  }
+  .tapeRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'body body'
+      'amount btns';
+    padding: 10px var(--space-4) 10px calc(var(--space-4) + 3px);
+  }
+  .tapeAmount {
+    text-align: left;
+  }
+  .dayHead {
+    padding: 6px var(--space-4);
+  }
+  /* Empat tab sebaris (dulu "Transfer" turun ke baris kedua, +44px). */
+  .tabBar {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    justify-content: space-between;
+    padding: 0 var(--space-2);
+  }
+  .tab {
+    padding: 8px 4px;
+    font-size: var(--text-xs);
+    letter-spacing: 0;
+  }
+  /* Tiga aksi sebaris: buku kas naik satu baris tombol. */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .actions > * {
+    padding-inline: var(--space-2);
+  }
+}
+/* 320px: "Pengeluaran" + ikon tak muat sepertiga baris (terukur) — ikon dilepas. */
+@container finance (max-width: 360px) {
+  .actions svg {
+    display: none;
+  }
 }

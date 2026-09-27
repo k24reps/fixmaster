@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useT } from '@/i18n';
+import { useSessionStore } from '@/stores/session';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -13,6 +15,7 @@ import {
   shouldRevertServiceOnIncomeDelete,
   transferMoneyLocked,
   isCapitalFlow,
+  walletMovement,
   CAPITAL_INCOME_CATEGORY,
   CAPITAL_EXPENSE_CATEGORY,
 } from '@/lib/business/finance';
@@ -59,6 +62,8 @@ async function findServiceByNo(serviceNo: string) {
 const PAGE_SIZE = 100;
 
 export function FinancePage() {
+  const t = useT();
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const [modalKind, setModalKind] = useState<'income' | 'expense' | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -68,54 +73,58 @@ export function FinancePage() {
   const [toVoid, setToVoid] = useState<WalletTransfer | null>(null);
   const [voiding, setVoiding] = useState(false);
   const [toDelete, setToDelete] = useState<LedgerRow | null>(null);
-  // How many past months of ledger to also load. 0 = current month only.
-  const [monthsBack, setMonthsBack] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+  // Bulan yang dilihat: 0 = bulan ini, 1 = bulan lalu, … Menggerakkan ringkasan
+  // DAN buku kas sekaligus. Dulu "Muat bulan sebelumnya" hanya menumpuk baris
+  // di buku kas, sementara ringkasan terkunci di bulan berjalan.
+  const [monthOffset, setMonthOffset] = useState(0);
   // Row budget for the DOM. Grows on demand so loading an older month is not
   // silently swallowed by a hard 100-row cap.
   const [limit, setLimit] = useState(PAGE_SIZE);
   // Klik kartu wallet → tampilkan hanya transaksi wallet itu.
   const [walletFilter, setWalletFilter] = useState<string | null>(null);
 
-  const { from, to } = monthRange();
-  // Fetch window: from the start of (current month − monthsBack) up to the end
-  // of this month. Only this slice is pulled — never the whole history (plan B).
-  const fetchFrom = useMemo(() => {
+  // Bulan berjalan = batas kunci (0071); bulan yang dilihat = jendela tarik.
+  const { from: openFrom } = monthRange();
+  const monthDate = useMemo(() => {
     const d = new Date();
-    return localDateStr(new Date(d.getFullYear(), d.getMonth() - monthsBack, 1));
-  }, [monthsBack]);
+    return new Date(d.getFullYear(), d.getMonth() - monthOffset, 1);
+  }, [monthOffset]);
+  const { from, to } = monthRange(monthDate);
+  const monthLabel = monthDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   const { data: wallets, ...walletsLoad } = useCollection('wallets');
-  const { data: incomes, ...incomesLoad } = useCollectionRange('incomes', 'date', fetchFrom, to);
-  const { data: expenses, ...expensesLoad } = useCollectionRange('expenses', 'date', fetchFrom, to);
+  const { data: outlets } = useCollection('outlets');
+  const { data: incomes, ...incomesLoad } = useCollectionRange('incomes', 'date', from, to);
+  const { data: expenses, ...expensesLoad } = useCollectionRange('expenses', 'date', from, to);
   // Transfer punya tabel sendiri sejak 0086. Dulu Buku Kas menarik SELURUH log
   // aktivitas sebulan (818 baris ≈240 KB di toko pemilik) demi ±19 transfer.
-  const { data: walletTransfers } = useCollectionRange('walletTransfers', 'date', fetchFrom, to);
+  const { data: walletTransfers } = useCollectionRange('walletTransfers', 'date', from, to);
 
+  // Ringkasan ikut filter wallet — dulu tetap angka semua wallet saat difilter.
   const summary = useMemo(
     () =>
       summarize(
-        incomes.filter((r) => r.date >= from && r.date <= to),
-        expenses.filter((r) => r.date >= from && r.date <= to),
+        walletFilter ? incomes.filter((r) => r.walletId === walletFilter) : incomes,
+        walletFilter ? expenses.filter((r) => r.walletId === walletFilter) : expenses,
       ),
-    [incomes, expenses, from, to],
+    [incomes, expenses, walletFilter],
+  );
+  const totalBalance = wallets.reduce((n, w) => n + w.balance, 0);
+  const moves = useMemo(
+    () => new Map(wallets.map((w) => [w.id, walletMovement(w.id, incomes, expenses, walletTransfers)])),
+    [wallets, incomes, expenses, walletTransfers],
   );
 
   // Arus kas pemilik bulan ini, dihitung TERPISAH dari arus kas operasional. Ditampilkan supaya
   // turunnya Pemasukan setelah re-kategorisasi ada penjelasannya — bukan angka
   // yang hilang diam-diam.
   const capital = useMemo(() => {
-    const inRange = (d: string) => d >= from && d <= to;
     const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
     return {
-      modal: sum(
-        incomes.filter((i) => inRange(i.date) && i.category === CAPITAL_INCOME_CATEGORY),
-      ),
-      prive: sum(
-        expenses.filter(
-          (e) => inRange(e.date) && e.category === CAPITAL_EXPENSE_CATEGORY,
-        ),
-      ),
+      modal: sum(incomes.filter((i) => i.category === CAPITAL_INCOME_CATEGORY)),
+      prive: sum(expenses.filter((e) => e.category === CAPITAL_EXPENSE_CATEGORY)),
     };
-  }, [incomes, expenses, from, to]);
+  }, [incomes, expenses]);
 
   const transfers = useMemo<LedgerRow[]>(
     () =>
@@ -182,6 +191,19 @@ export function FinancePage() {
     () => filteredLedger.slice(0, limit),
     [filteredLedger, limit],
   );
+  // Buku kas per hari: tanggal sekali di kepala hari (dengan arus bersihnya),
+  // bukan kolom 84px yang diulang di setiap baris.
+  const days = useMemo(() => {
+    const out: { date: string; net: number; rows: LedgerRow[] }[] = [];
+    for (const r of visibleLedger) {
+      let day = out[out.length - 1];
+      if (!day || day.date !== r.date) out.push((day = { date: r.date, net: 0, rows: [] }));
+      day.rows.push(r);
+      if (r.kind === 'income' && !isCapitalFlow(r)) day.net += r.amount;
+      if (r.kind === 'expense' && !isCapitalFlow(r)) day.net -= r.amount;
+    }
+    return out;
+  }, [visibleLedger]);
 
   const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
   // Transfer menyimpan nama wallet saat itu: tetap terbaca walau wallet ada di
@@ -205,8 +227,9 @@ export function FinancePage() {
   };
 
   const confirmDelete = async () => {
-    if (!toDelete) return;
+    if (!toDelete || deleting) return;
     const wallet = wallets.find((w) => w.id === toDelete.walletId);
+    setDeleting(true);
     try {
       if (isCloudMode() && toDelete.kind !== 'transfer') {
         // Cloud: satu transaksi server (0068) — wallet, baris terkait, dan tiket
@@ -347,55 +370,283 @@ export function FinancePage() {
       // Surface the failing step — the local/demo path is multi-write (wallets →
       // incomes → services); cloud is atomic via delete_finance_entry (0068).
       toast.error(e instanceof Error ? e.message : 'Gagal menghapus transaksi');
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const pickWallet = (id: string | null) => {
+    const next = id === null || walletFilter === id ? null : id;
+    setWalletFilter(next);
+    setLimit(PAGE_SIZE);
+    // Di ponsel buku kas ada dua layar di bawah kartu wallet; hasil filter dulu
+    // jatuh di luar layar tanpa tanda apa pun.
+    if (next && window.matchMedia?.('(max-width: 720px)').matches) {
+      requestAnimationFrame(() =>
+        document.getElementById('buku-kas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    }
+  };
+
+  // Dialog hapus menyebut baris yang dihapus dan akibatnya pada saldo — dulu
+  // pesannya generik dan memperingatkan soal pelunasan servis untuk semua baris.
+  const deleteMessage = (r: LedgerRow) => {
+    const line = `${r.kind === 'income' ? '+' : '−'}${fmtRp(r.amount)} · ${walletName(r.walletId)} · ${r.description || r.category}`;
+    const effect =
+      r.kind === 'income' && (r.record as Income).serviceId
+        ? t('finance.deleteServiceIncome')
+        : t('finance.deleteEffect')
+            .replace('{wallet}', walletName(r.walletId))
+            .replace('{amount}', `${r.kind === 'income' ? '−' : '+'}${fmtRp(r.amount)}`);
+    return `${line}. ${effect}`;
+  };
+  const rowLabel = (r: LedgerRow) => `${r.description || r.category} ${fmtRp(r.amount)}`;
+  const orgWide = !!activeOutletId && outlets.length > 1;
+
+  const renderRow = (r: LedgerRow) => {
+    if (r.kind === 'transfer') {
+      const tr = r.record as WalletTransfer;
+      const voided = tr.status === 'void';
+      const locked = transferMoneyLocked(tr, today);
+      // Saat difilter per-wallet, transfer punya arah: keluar dari
+      // wallet asal, masuk ke wallet tujuan. Yang dibatalkan tak punya arah.
+      const dir = voided
+        ? ''
+        : walletFilter === r.toWalletId
+          ? '+'
+          : walletFilter
+            ? '−'
+            : '';
+      return (
+        <div
+          key={`transfer-${r.id}`}
+          className={[styles.tapeRow, styles.transfer, voided ? styles.voided : ''].join(' ')}
+        >
+          <div className={styles.tapeBody}>
+            <span className={styles.tapeDesc}>{r.description}</span>
+            <span className={styles.tapeMeta}>
+              <span className={[styles.tapeCat, styles.trf].join(' ')}>
+                {voided ? 'Dibatalkan' : 'Transfer'}
+              </span>
+              <span>
+                {transferWalletName(tr.fromWalletId, tr.fromName)} →{' '}
+                {transferWalletName(tr.toWalletId, tr.toName)}
+                {voided && tr.voidedByName ? ` · oleh ${tr.voidedByName}` : ''}
+              </span>
+            </span>
+          </div>
+          <span className={[styles.tapeAmount, styles.trf].join(' ')}>
+            {dir}
+            {fmtRp(r.amount)}
+          </span>
+          <span className={styles.tapeBtns}>
+            {!voided && (
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => {
+                  setEditingTransfer(tr);
+                  setTransferOpen(true);
+                }}
+                aria-label={`Edit transfer ${fmtRp(r.amount)}`}
+                title={locked ? 'Edit keterangan (nominal bulan lalu terkunci)' : 'Edit transfer'}
+              >
+                <Icon name="pen" aria-hidden />
+              </button>
+            )}
+            {!voided && !locked && (
+              <button
+                type="button"
+                className={[styles.iconBtn, styles.danger].join(' ')}
+                onClick={() => setToVoid(tr)}
+                aria-label={`Batalkan transfer ${fmtRp(r.amount)}`}
+                title="Batalkan transfer — saldo dikembalikan, catatannya tetap ada"
+              >
+                <Icon name="circle-xmark" aria-hidden />
+              </button>
+            )}
+          </span>
+        </div>
+      );
+    }
+    const inc = r.kind === 'income';
+    // Modal/prive pemilik: uangnya nyata bergerak (tanda +/− tetap),
+    // tapi diwarnai netral supaya tak terbaca sebagai untung/rugi —
+    // sama seperti baris transfer.
+    const capitalRow = isCapitalFlow(r);
+    const tone = capitalRow ? styles.trf : inc ? styles.inc : styles.exp;
+    // Expense tied to a PO or a service "modal dadakan" line must be
+    // removed from its owning page (PO / service detail) so the
+    // linked record is reversed too — deleting here would orphan it.
+    const lockedExpense =
+      r.kind === 'expense' &&
+      (!!(r.record as Expense).poId || r.description.startsWith('Modal servis '));
+    // Pemasukan dari tiket/Kasir diubah dari halaman asalnya.
+    const linkedIncome = inc && (!!(r.record as Income).serviceId || !!(r.record as Income).saleId);
+    // Bulan lalu terkunci (0071), sama seperti pembatalan penjualan:
+    // laporannya sudah berjalan, jadi koreksinya dicatat bulan ini.
+    const closedMonth = r.date < openFrom;
+    // Alasan kunci ditulis, bukan hanya tooltip — layar sentuh tak punya hover.
+    const lockText = closedMonth
+      ? t('finance.lockMonth')
+      : lockedExpense
+        ? t('finance.lockLinked')
+        : linkedIncome
+          ? t('finance.lockSource')
+          : null;
+    return (
+      <div
+        key={`${r.kind}-${r.id}`}
+        className={[styles.tapeRow, capitalRow ? styles.transfer : styles[r.kind]].join(' ')}
+      >
+        <div className={styles.tapeBody}>
+          <span className={styles.tapeDesc} title={r.description || undefined}>
+            {r.description || <span className={styles.muted}>Tanpa keterangan</span>}
+          </span>
+          <span className={styles.tapeMeta}>
+            <span className={[styles.tapeCat, tone].join(' ')}>{r.category}</span>
+            <span>{walletName(r.walletId)}</span>
+            {lockText && <span className={styles.lockTag}>{lockText}</span>}
+          </span>
+        </div>
+        <span className={[styles.tapeAmount, tone].join(' ')}>
+          {inc ? '+' : '−'}
+          {fmtRp(r.amount)}
+        </span>
+        {/* One grid cell for ALL action buttons — loose siblings
+            overflowed the single `auto` column and wrapped to a new
+            implicit grid row (trash icon stranded bottom-left). */}
+        <span className={styles.tapeBtns}>
+          {!closedMonth && !lockedExpense && !linkedIncome && (
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => {
+                if (inc) {
+                  setEditingIncome(r.record as Income);
+                  setEditingExpense(null);
+                } else {
+                  setEditingExpense(r.record as Expense);
+                  setEditingIncome(null);
+                }
+                setModalKind(r.kind as 'income' | 'expense');
+              }}
+              aria-label={`Edit ${rowLabel(r)}`}
+            >
+              <Icon name="pen" aria-hidden />
+            </button>
+          )}
+          {!lockedExpense && !closedMonth && (
+            <button
+              type="button"
+              className={[styles.iconBtn, styles.danger].join(' ')}
+              onClick={() => setToDelete(r)}
+              aria-label={`Hapus ${rowLabel(r)}`}
+            >
+              <Icon name="trash" aria-hidden />
+            </button>
+          )}
+        </span>
+      </div>
+    );
   };
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.walletGrid}>
-        {loadPending(walletsLoad) ? (
-          <Card glass>
-            <LoadState queries={[walletsLoad]} />
-          </Card>
-        ) : wallets.length === 0 ? (
-          <Card glass padding>
-            <p className={styles.noWallet}>Belum ada wallet. Tambahkan di Pengaturan.</p>
-          </Card>
-        ) : (
-          wallets.map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              className={[
-                styles.walletCard,
-                walletFilter === w.id ? styles.walletCardActive : '',
-              ].join(' ')}
-              aria-pressed={walletFilter === w.id}
-              onClick={() => {
-                setWalletFilter((cur) => (cur === w.id ? null : w.id));
-                setLimit(PAGE_SIZE);
-              }}
-            >
-              <span className={styles.walletName}>{w.name}</span>
-              <strong className={styles.walletBalance}>{fmtRp(w.balance)}</strong>
-              <span className={styles.walletHint}>
-                {walletFilter === w.id ? 'Klik lagi untuk semua' : 'Lihat transaksi'}
-              </span>
-            </button>
-          ))
-        )}
+      <div className={styles.monthBar}>
+        <button
+          type="button"
+          className={styles.monthStep}
+          onClick={() => {
+            setMonthOffset((m) => m + 1);
+            setLimit(PAGE_SIZE);
+          }}
+          aria-label={t('finance.prevMonth')}
+        >
+          <Icon name="chevron-left" aria-hidden />
+        </button>
+        <span className={styles.monthLabel} aria-live="polite">
+          {monthLabel}
+          {monthOffset === 0 && <span className={styles.monthNow}>{t('finance.thisMonth')}</span>}
+        </span>
+        <button
+          type="button"
+          className={styles.monthStep}
+          onClick={() => {
+            setMonthOffset((m) => Math.max(0, m - 1));
+            setLimit(PAGE_SIZE);
+          }}
+          disabled={monthOffset === 0}
+          aria-label={t('finance.nextMonth')}
+        >
+          <Icon name="chevron-right" aria-hidden />
+        </button>
       </div>
 
-      <div className={styles.summaryGrid}>
-        <div className={[styles.summaryCard, styles.income].join(' ')}>
-          <span>Pemasukan (bln ini)</span>
+      {/* Wallet = strip readout dengan sel Total, dan pergerakan bulan yang
+          dilihat di tiap sel — cukup untuk mencocokkan saldo dengan laci/rekening. */}
+      {loadPending(walletsLoad) ? (
+        <Card glass>
+          <LoadState queries={[walletsLoad]} />
+        </Card>
+      ) : wallets.length === 0 ? (
+        <Card glass padding>
+          <p className={styles.noWallet}>Belum ada wallet. Tambahkan di Pengaturan.</p>
+        </Card>
+      ) : (
+        <div className={styles.walletStrip}>
+          <div className={[styles.walletCell, styles.walletTotal].join(' ')}>
+            <span className={styles.walletName}>{t('finance.totalBalance')}</span>
+            <strong className={styles.walletBalance}>{fmtRp(totalBalance)}</strong>
+            <span className={styles.walletMove}>
+              {orgWide ? t('finance.allBranches') : `${wallets.length} wallet`}
+            </span>
+          </div>
+          {wallets.map((w) => {
+            const m = moves.get(w.id);
+            const on = walletFilter === w.id;
+            return (
+              <button
+                key={w.id}
+                type="button"
+                className={styles.walletCell}
+                aria-pressed={on}
+                onClick={() => pickWallet(w.id)}
+              >
+                <span className={styles.walletName}>
+                  <span className={styles.walletLed} aria-hidden />
+                  {w.name}
+                </span>
+                <strong className={styles.walletBalance}>{fmtRp(w.balance)}</strong>
+                {m && (
+                  <span className={styles.walletMove}>
+                    <span className={styles.inc}>+{fmtRp(m.in)}</span>{' '}
+                    <span className={styles.exp}>−{fmtRp(m.out)}</span>
+                    {m.transfer !== 0 && (
+                      <span className={styles.trf}>
+                        {' '}
+                        {m.transfer > 0 ? '⇄ +' : '⇄ −'}
+                        {fmtRp(Math.abs(m.transfer))}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className={styles.summaryStrip} role="list" aria-label={t('finance.summaryAria')}>
+        <div role="listitem" className={[styles.summaryCell, styles.income].join(' ')}>
+          <span>Pemasukan{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.income)}</strong>
         </div>
-        <div className={[styles.summaryCard, styles.expense].join(' ')}>
-          <span>Pengeluaran (bln ini)</span>
+        <div role="listitem" className={[styles.summaryCell, styles.expense].join(' ')}>
+          <span>Pengeluaran{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
-        <div className={[styles.summaryCard, styles.net].join(' ')}>
+        <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
           <span>Arus Kas Bersih</span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
@@ -450,14 +701,19 @@ export function FinancePage() {
         )}
       </div>
 
-      <Card glass>
+      <Card glass id="buku-kas" className={styles.ledgerCard}>
         <CardHeader
           icon={<Icon name="receipt" aria-hidden />}
           title={walletFilter ? `Buku Kas · ${walletName(walletFilter)}` : 'Buku Kas'}
           action={
             walletFilter ? (
-              <Button variant="secondary" size="sm" onClick={() => setWalletFilter(null)}>
-                <Icon name="times" aria-hidden /> Semua wallet
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => pickWallet(null)}
+                iconLeft={<Icon name="times" aria-hidden />}
+              >
+                Semua wallet
               </Button>
             ) : undefined
           }
@@ -473,9 +729,9 @@ export function FinancePage() {
           ).map(([key, label]) => (
             <button
               key={key}
-              className={[styles.tab, ledgerTab === key ? styles.tabActive : ''].join(
-                ' ',
-              )}
+              type="button"
+              aria-pressed={ledgerTab === key}
+              className={[styles.tab, ledgerTab === key ? styles.tabActive : ''].join(' ')}
               onClick={() => {
                 setLedgerTab(key);
                 setLimit(PAGE_SIZE);
@@ -486,8 +742,8 @@ export function FinancePage() {
           ))}
         </div>
         <CardBody className={styles.noPad}>
-          {/* Footer "muat bulan sebelumnya" ikut dirender saat kosong — kalau
-              disembunyikan, filter wallet tanpa hasil jadi jalan buntu. */}
+          {/* Footer ikut dirender saat kosong — kalau disembunyikan, filter
+              wallet tanpa hasil jadi jalan buntu. */}
           <div className={styles.tape}>
             {loadPending(incomesLoad, expensesLoad) ? (
               <LoadState queries={[incomesLoad, expensesLoad]} />
@@ -497,174 +753,25 @@ export function FinancePage() {
                 title="Belum ada transaksi"
                 description={
                   walletFilter
-                    ? `Belum ada transaksi untuk ${walletName(walletFilter)} di rentang ini. Muat bulan sebelumnya atau pilih wallet lain.`
-                    : 'Catat pemasukan atau pengeluaran pertama.'
+                    ? `Belum ada transaksi untuk ${walletName(walletFilter)} di ${monthLabel}. Pilih bulan atau wallet lain.`
+                    : monthOffset > 0
+                      ? `Tidak ada transaksi di ${monthLabel}.`
+                      : 'Catat pemasukan atau pengeluaran pertama.'
                 }
               />
             ) : (
-              visibleLedger.map((r) => {
-                if (r.kind === 'transfer') {
-                  const t = r.record as WalletTransfer;
-                  const voided = t.status === 'void';
-                  const locked = transferMoneyLocked(t, today);
-                  // Saat difilter per-wallet, transfer punya arah: keluar dari
-                  // wallet asal, masuk ke wallet tujuan. Yang dibatalkan tak punya arah.
-                  const dir = voided
-                    ? ''
-                    : walletFilter === r.toWalletId
-                      ? '+'
-                      : walletFilter
-                        ? '−'
-                        : '';
-                  return (
-                    <div
-                      key={`transfer-${r.id}`}
-                      className={[styles.tapeRow, styles.transfer, voided ? styles.voided : ''].join(' ')}
-                    >
-                      <span className={styles.tapeDate}>{fmtDate(r.date)}</span>
-                      <div className={styles.tapeBody}>
-                        <span className={styles.tapeDesc}>{r.description}</span>
-                        <span className={styles.tapeMeta}>
-                          <span className={[styles.tapeCat, styles.trf].join(' ')}>
-                            {voided ? 'Dibatalkan' : 'Transfer'}
-                          </span>
-                          · {transferWalletName(t.fromWalletId, t.fromName)} →{' '}
-                          {transferWalletName(t.toWalletId, t.toName)}
-                          {voided && t.voidedByName ? ` · oleh ${t.voidedByName}` : ''}
-                        </span>
-                      </div>
-                      <span className={[styles.tapeAmount, styles.trf].join(' ')}>
-                        {dir}
-                        {fmtRp(r.amount)}
-                      </span>
-                      <span className={styles.tapeBtns}>
-                        {!voided && (
-                          <button
-                            className={styles.iconBtn}
-                            onClick={() => {
-                              setEditingTransfer(t);
-                              setTransferOpen(true);
-                            }}
-                            aria-label="Edit transfer"
-                            title={locked ? 'Edit keterangan (nominal bulan lalu terkunci)' : 'Edit transfer'}
-                          >
-                            <Icon name="pen" aria-hidden />
-                          </button>
-                        )}
-                        {!voided && !locked && (
-                          <button
-                            className={[styles.iconBtn, styles.danger].join(' ')}
-                            onClick={() => setToVoid(t)}
-                            aria-label="Batalkan transfer"
-                            title="Batalkan transfer — saldo dikembalikan, catatannya tetap ada"
-                          >
-                            <Icon name="circle-xmark" aria-hidden />
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  );
-                }
-                const inc = r.kind === 'income';
-                // Modal/prive pemilik: uangnya nyata bergerak (tanda +/− tetap),
-                // tapi diwarnai netral supaya tak terbaca sebagai untung/rugi —
-                // sama seperti baris transfer.
-                const capital = isCapitalFlow(r);
-                const tone = capital ? styles.trf : inc ? styles.inc : styles.exp;
-                // Expense tied to a PO or a service "modal dadakan" line must be
-                // removed from its owning page (PO / service detail) so the
-                // linked record is reversed too — deleting here would orphan it.
-                const lockedExpense =
-                  r.kind === 'expense' &&
-                  (!!(r.record as Expense).poId ||
-                    r.description.startsWith('Modal servis '));
-                // Bulan lalu terkunci (0071), sama seperti pembatalan penjualan:
-                // laporannya sudah berjalan, jadi koreksinya dicatat bulan ini.
-                const closedMonth = r.date < from;
-                return (
-                  <div
-                    key={`${r.kind}-${r.id}`}
-                    className={[
-                      styles.tapeRow,
-                      capital ? styles.transfer : styles[r.kind],
-                    ].join(' ')}
-                  >
-                    <span className={styles.tapeDate}>{fmtDate(r.date)}</span>
-                    <div className={styles.tapeBody}>
-                      <span className={styles.tapeDesc}>
-                        {r.description || (
-                          <span className={styles.muted}>Tanpa keterangan</span>
-                        )}
-                      </span>
-                      <span className={styles.tapeMeta}>
-                        <span className={[styles.tapeCat, tone].join(' ')}>
-                          {r.category}
-                        </span>
-                        · {walletName(r.walletId)}
-                      </span>
-                    </div>
-                    <span className={[styles.tapeAmount, tone].join(' ')}>
-                      {inc ? '+' : '−'}
-                      {fmtRp(r.amount)}
-                    </span>
-                    {/* One grid cell for ALL action buttons — loose siblings
-                        overflowed the single `auto` column and wrapped to a new
-                        implicit grid row (trash icon stranded bottom-left). */}
-                    <span
-                      className={styles.tapeBtns}
-                      title={
-                        closedMonth
-                          ? 'Transaksi bulan lalu terkunci — catat koreksinya sebagai transaksi bulan ini'
-                          : lockedExpense
-                            ? 'Pengeluaran ini terikat PO / tiket servis — ubah dari halaman asalnya'
-                            : undefined
-                      }
-                    >
-                      {r.kind === 'expense' && !lockedExpense && !closedMonth && (
-                        <button
-                          className={styles.iconBtn}
-                          onClick={() => {
-                            setEditingExpense(r.record as Expense);
-                            setEditingIncome(null);
-                            setModalKind('expense');
-                          }}
-                          aria-label="Edit"
-                        >
-                          <Icon name="pen" aria-hidden />
-                        </button>
-                      )}
-                      {/* Manual income can be edited. Income linked to a service
-                          OR a POS sale is locked — editing it would desync the
-                          source record (settlement legs / sale total). */}
-                      {r.kind === 'income' &&
-                        !closedMonth &&
-                        !(r.record as Income).serviceId &&
-                        !(r.record as Income).saleId && (
-                          <button
-                            className={styles.iconBtn}
-                            onClick={() => {
-                              setEditingIncome(r.record as Income);
-                              setEditingExpense(null);
-                              setModalKind('income');
-                            }}
-                            aria-label="Edit"
-                          >
-                            <Icon name="pen" aria-hidden />
-                          </button>
-                        )}
-                      {!lockedExpense && !closedMonth && (
-                        <button
-                          className={[styles.iconBtn, styles.danger].join(' ')}
-                          onClick={() => setToDelete(r)}
-                          aria-label="Hapus"
-                        >
-                          <Icon name="trash" aria-hidden />
-                        </button>
-                      )}
+              days.map((day) => (
+                <section key={day.date} className={styles.day} aria-label={fmtDate(day.date)}>
+                  <div className={styles.dayHead}>
+                    <span>{fmtDate(day.date)}</span>
+                    <span className={day.net >= 0 ? styles.inc : styles.exp}>
+                      {day.net >= 0 ? '+' : '−'}
+                      {fmtRp(Math.abs(day.net))}
                     </span>
                   </div>
-                );
-              })
+                  {day.rows.map(renderRow)}
+                </section>
+              ))
             )}
             <div className={styles.loadMore}>
               {filteredLedger.length > visibleLedger.length && (
@@ -677,17 +784,8 @@ export function FinancePage() {
                   Tampilkan lebih banyak
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setMonthsBack((m) => m + 1)}
-                iconLeft={<Icon name="clock-rotate-left" aria-hidden />}
-              >
-                Muat bulan sebelumnya
-              </Button>
               <span className={styles.loadMoreHint}>
-                {monthsBack === 0 ? 'Bulan ini' : `${monthsBack + 1} bulan terakhir`} ·{' '}
-                {visibleLedger.length} dari {filteredLedger.length} baris
+                {monthLabel} · {visibleLedger.length} dari {filteredLedger.length} baris
               </span>
             </div>
           </div>
@@ -704,6 +802,7 @@ export function FinancePage() {
         kind={modalKind ?? 'income'}
         wallets={wallets}
         editing={editingExpense ?? editingIncome}
+        existing={modalKind === 'expense' ? expenses : incomes}
       />
       <TransferModal
         open={transferOpen}
@@ -730,11 +829,13 @@ export function FinancePage() {
       <ConfirmDialog
         open={!!toDelete}
         title="Hapus Transaksi?"
-        message="Saldo wallet akan dikembalikan. Jika ini pelunasan servis, status servis kembali ke 'Selesai'. Hanya transaksi bulan berjalan yang bisa dihapus."
-        confirmLabel="Hapus"
+        message={toDelete ? deleteMessage(toDelete) : ''}
+        confirmLabel={deleting ? 'Menghapus…' : 'Hapus'}
         danger
-        onConfirm={confirmDelete}
-        onCancel={() => setToDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          if (!deleting) setToDelete(null);
+        }}
       />
     </div>
   );
