@@ -485,15 +485,42 @@ memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
 Server = `0001`–`0089` (catatan `supabase_migrations` belum mencatat 0080–0089; 0084–0089 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru dan 0087–0089 dipasang 25 Sep). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
 
+## Pemantauan server (27 Sep 2026)
+
+Kejadian 26–27 Sep baru ketahuan saat pemilik mencoba membuka aplikasi. Pemantau harus
+berada **di luar** VPS (pemantau di VPS ikut mati bersamanya). Pilihan: **UptimeRobot**
+paket gratis — cek tiap 5 menit, email + push aplikasi HP, pemberitahuan pulih juga.
+Membuat sendiri (Cloudflare Worker / GitHub Actions) ditolak: butuh penyimpanan status
+agar tak spam, dan jadwal Actions sering terlambat serta memakan kuota menit.
+
+- Monitor **Keyword**: `https://api.fixmaster.my.id/functions/v1/health`, kata kunci
+  `"db":"up"`, alert bila kata kunci **tidak ada**. Satu cek menguji seluruh rantai:
+  DNS → Cloudflare → tunnel → Envoy → edge function → Postgres. Tanpa kunci API (jalur
+  `/functions/v1/` lolos WAF).
+- Arti balasan saat alarm: **1033/530** = tunnel putus (VPS mati / cloudflared berhenti);
+  **502** = tunnel hidup tapi stack mati; **200 tanpa `"db":"up"`** = database bermasalah.
+- Status: menunggu pemilik mendaftar (akun dibuat pemilik sendiri).
+
 ## Belum dikerjakan
 
-- Berkas `org-logos` toko lain (bila ada) — tidak ada di dump. Logo toko pemilik
-  sudah diunggah ulang 24 Sep.
-- Uji pulih pertama dari arsip Google Drive ke mesin lain (backup offsite terpasang
-  di server 24 Sep: arsip pertama 592 KB, jadwal aktif, run berikut 13:00).
-- Uji restart Windows tanpa disentuh (dilewati pemilik saat pemasangan).
-- Akses dari luar: rencananya **Cloudflare Tunnel** tanpa syarat (menembus CGNAT,
-  IP dinamis, sekaligus HTTPS). Di Windows `cloudflared` dipasang sebagai service.
+- **Tertunda sampai kuota Supabase pulih (7 Okt 2026)** — urutan sebelum menghapus
+  proyek cloud; menyimpannya tak berbiaya, menghapusnya tak bisa dibatalkan:
+  1. Unduh semua berkas storage dari proyek produksi cloud (`vmitplpvncfvyimgyxrn`) —
+     terutama `org-logos` toko lain yang TIDAK ada di dump 23 Sep — dan salin yang
+     belum ada ke VPS.
+  2. Ambil satu dump terakhir, simpan di Drive sebagai arsip beku.
+  3. Alihkan tes integrasi (`.env.test.local` → staging) ke replika lokal, termasuk
+     tier3f/tier3g yang belum pernah jalan.
+  4. Buang rujukan `supabase.co`: CSP `connect-src` di `vercel.json`, `.env.local`,
+     `.env.test.local`, `deploy-migrations.bat`, dokumen lama.
+  5. Baru hapus proyek produksi & staging di dashboard Supabase (diklik pemilik).
+  Syarat tambahan: VPS sudah 1–2 minggu tenang + satu uji pulih dari arsip
+  `fixmaster-vps`.
+- **Uji reboot VPS** saat toko sepi: `sudo reboot`, lalu tanpa menyentuh apa pun
+  pastikan semua layanan healthy dan `functions/health` 200 (docker & cloudflared
+  ter-`enable`, layanan compose `restart: unless-stopped`).
+- **Laptop rumah (saat pemilik pulang):** salin delta 26 Sep 02:00 → saat mati ke VPS
+  (`cek-delta.sql`), hentikan stack, `Disable-ScheduledTask 'FixMaster Backup Offsite'`.
 
 #self-host #runbook
 
