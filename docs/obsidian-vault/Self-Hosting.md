@@ -462,9 +462,10 @@ Jebakan yang sudah ditangani:
   1.60 `config create` tidak meminta izin → `rclone config reconnect gdrive:`; **hapus
   tunnel tidak menghapus CNAME-nya** — record `api` lama dihapus manual di DNS sebelum rute
   baru bisa disimpan.
-- **Sisa:** token tunnel sempat terlihat di screenshot → rotate saat sempat; Kebijakan
-  Privasi masih menulis "infrastruktur cloud (Supabase)"; salin delta 26 Sep 02:00 →
-  saat laptop mati; matikan stack + jadwal backup laptop begitu pemilik pulang.
+- Token tunnel yang sempat terlihat di screenshot sudah di-refresh 27 Sep (API sehat
+  sesudahnya); Kebijakan Privasi §3 diperbarui ke server Jakarta.
+- **Sisa:** salin delta 26 Sep 02:00 → saat laptop mati; matikan stack + jadwal backup
+  laptop begitu pemilik pulang.
 - **Celah data**: transaksi antara arsip terakhir dan saat laptop mati hanya ada di
   laptop → salin belakangan dengan `cek-delta.sql`. Laptop tidak boleh jadi server lagi
   (matikan stack + `Disable-ScheduledTask 'FixMaster Backup Offsite'`).
