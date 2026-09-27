@@ -34,14 +34,18 @@ else
 fi
 
 step "3/4 Google Drive (rclone remote 'gdrive')"
-if rclone listremotes | grep -qx 'gdrive:'; then
-  echo "Remote gdrive sudah ada."
-else
-  # scope=drive: perlu melihat & merapikan folder backup. VPS tanpa browser, jadi
-  # rclone meminta hasil `rclone authorize "drive" ...` dari laptop yang punya browser.
-  rclone config create gdrive drive scope=drive config_is_local=false
+# scope=drive: perlu melihat & merapikan folder backup. rclone 1.60 (Ubuntu 24.04)
+# membuat remote TANPA meminta izin saat `config create` — izinnya lewat
+# `config reconnect`. VPS tanpa browser: jawab "n", lalu jalankan perintah
+# `rclone authorize "drive" ...` yang dicetak di laptop ber-browser.
+rclone listremotes | grep -qx 'gdrive:' ||
+  rclone config create gdrive drive scope=drive config_is_local=false >/dev/null
+if ! rclone lsd gdrive: >/dev/null 2>&1; then
+  echo 'Izin Google Drive: jawab "n" (tanpa browser), jalankan perintah rclone authorize di laptop, tempel hasilnya di sini.'
+  rclone config reconnect gdrive:
 fi
-rclone lsd gdrive: >/dev/null && echo "Terhubung ke Google Drive."
+rclone lsd gdrive: >/dev/null 2>&1 || { echo "GAGAL: belum terhubung ke Google Drive - ulangi skrip."; exit 1; }
+echo "Terhubung ke Google Drive."
 
 step "4/4 Jadwal cron 02:00 & 13:00 WIB + backup pertama"
 cat > /etc/cron.d/fixmaster-backup <<CRON
