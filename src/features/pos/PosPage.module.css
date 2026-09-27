@@ -376,7 +376,12 @@
   flex-direction: column;
   max-height: calc(var(--app-vh) - var(--topbar-height) - var(--space-8));
   padding: 0 !important;
-  overflow: hidden;
+  /* Seluruh register menggulir di dalam panel, LCD menempel di atas dan tombol
+     Proses di bawah. Dulu overflow:hidden + hanya daftar item yang menggulir:
+     di laptop 1366×768 dengan 3 baris bayar, Proses jatuh di luar panel dan
+     tak terjangkau sama sekali (terukur 879 vs 850px). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   /* Dock ponsel menggulir ke sini; tanpa ini LCD mendarat di bawah header. */
   scroll-margin-top: calc(var(--topbar-height) + var(--space-3));
 }
@@ -631,8 +636,6 @@
 
 /* ----- Receipt body (thermal paper / monospace) ----- */
 .cartItems {
-  flex: 1;
-  overflow-y: auto;
   padding: var(--space-3) var(--space-5);
   display: flex;
   flex-direction: column;
@@ -651,10 +654,12 @@
    dulu memeras nama jadi "Keyb…" dan harga satuan pecah 3 baris di 375px. */
 .cartItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(82px, auto);
+  /* Dulu 'unit qty total' di baris kedua: di ponsel tombol qty 44px memeras
+     harga satuan sampai tertimpa (terukur 115px teks di sel 0–67px). */
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    'name name name'
-    'unit qty total';
+    'name total'
+    'unit qty';
   align-items: center;
   column-gap: var(--space-3);
   row-gap: 4px;
@@ -673,12 +678,13 @@
 }
 .cartItemUnit {
   grid-area: unit;
+  min-width: 0;
   font-size: var(--text-xs);
   color: var(--text-muted);
-  white-space: nowrap;
 }
 .qtyControl {
   grid-area: qty;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -716,6 +722,8 @@
 }
 .lineTotal {
   grid-area: total;
+  align-self: start;
+  white-space: nowrap;
   text-align: right;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -1124,6 +1132,20 @@
 
 .mobileCartDock {
   display: none;
+}
+
+@media (min-width: 1025px) {
+  .register {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .processBtn {
+    position: sticky;
+    bottom: var(--space-3);
+    z-index: 1;
+    box-shadow: 0 0 0 var(--space-3) var(--bg-surface);
+  }
 }
 
 @media (max-width: 1024px) {

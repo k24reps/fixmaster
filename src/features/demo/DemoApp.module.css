@@ -20,6 +20,10 @@
    app normally scrolls the document, but here it lives in a fixed-height shell,
    so this stage becomes the scroll container (else content is clipped). */
 .demoStage {
+  /* Tinggi layar aplikasi di dalam demo = viewport dikurangi faceplate. Tanpa
+     ini semua yang dipatok --app-vh (register Kasir, jendela) melewati tepi
+     bawah ±60px — di 1366×768 tombol Proses jatuh di luar layar. */
+  --app-vh: calc(100dvh / var(--zoom) - var(--app-inset-top));
   flex: 1;
   min-height: 0;
   overflow-y: auto;

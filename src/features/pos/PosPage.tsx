@@ -335,6 +335,10 @@ export function PosPage() {
   };
 
   const onSearchEnter = () => {
+    if (done && !query.trim()) {
+      newSale();
+      return;
+    }
     const hit = pickOnEnter(inventory, available, query);
     if (!hit) return;
     addToCart(hit);
@@ -483,6 +487,7 @@ export function PosPage() {
         change: settle.change,
         phone: customer?.phone ?? '',
       });
+      if (finePointer) searchRef.current?.focus();
       logActivity({
         action: 'sale.create',
         entityType: 'sale',
@@ -531,8 +536,10 @@ export function PosPage() {
       : { label: t('pos.lcdExact'), value: done.sale.saleNo, tone: 'exact' }
     : cart.length === 0 || settle.paid === 0
       ? null
-      : settle.change > 0
-        ? { label: t('pos.lcdChange'), value: fmtRp(settle.change), tone: 'change' }
+      : settle.excess
+        ? { label: t('pos.lcdExcess'), value: fmtRp(settle.change), tone: 'due' }
+        : settle.change > 0
+          ? { label: t('pos.lcdChange'), value: fmtRp(settle.change), tone: 'change' }
         : settle.due > 0
           ? { label: t('pos.lcdDue'), value: fmtRp(settle.due), tone: 'due' }
           : { label: t('pos.lcdExact'), value: '', tone: 'exact' };
@@ -596,7 +603,8 @@ export function PosPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                onSearchEnter();
+                // Enter yang ditahan tidak boleh ikut menutup LUNAS.
+                if (!e.repeat) onSearchEnter();
               }
             }}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -724,7 +732,7 @@ export function PosPage() {
                 type="button"
                 className={styles.outletChip}
                 onClick={() => setOutletModal(true)}
-                aria-label={t('pos.outletChip').replace('{name}', activeOutlet?.name ?? 'Semua Outlet')}
+                aria-label={t('pos.outletChip').replace('{name}', activeOutlet?.name ?? 'Pilih cabang')}
               >
                 <span className={activeOutlet ? styles.outletLedOn : styles.outletLed} aria-hidden />
                 {activeOutlet?.name ?? 'Pilih cabang'}
@@ -771,9 +779,12 @@ export function PosPage() {
                 </a>
               )}
             </div>
+            {/* Tanpa autoFocus: Enter yang menyelesaikan transaksi dulu ikut
+                "menekan" tombol ini, sehingga LUNAS & kembalian hilang sebelum
+                terbaca. Fokus pindah ke kolom cari; Enter kosong di sana (atau
+                pindaian berikutnya) memulai transaksi baru. */}
             <Button
               fullWidth
-              autoFocus
               iconRight={<Icon name="arrow-right" aria-hidden />}
               onClick={newSale}
             >
@@ -942,7 +953,9 @@ export function PosPage() {
                       value={p.amount ? fmtRpInput(String(p.amount)) : ''}
                       onChange={(e) => setTenderAmount(p.walletId, parseRpInput(e.target.value))}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && settle.ok && !discountOver) checkout();
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        if (!e.repeat && settle.ok && !discountOver) void checkout();
                       }}
                       placeholder="0"
                     />
@@ -979,6 +992,7 @@ export function PosPage() {
 
             <Button
               fullWidth
+              className={styles.processBtn}
               onClick={checkout}
               loading={busy}
               disabled={!settle.ok || discountOver}

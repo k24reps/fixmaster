@@ -3405,3 +3405,24 @@ Tampilan di [[Signature Pages]] (Keuangan).
   `audit-tokens` LULUS; 656 tes.
 - **Belum:** i18n literal lama Keuangan; isian "uang dihitung" untuk mencocokkan laci; baris
   pertama buku kas di ponsel masih tepat di bawah lipatan (kepala Buku Kas sudah terlihat).
+
+## Critique ulang Kasir — 20 → 26/40 (28 Sep 2026)
+
+Arsip `.impeccable/critique/2026-09-27T21-31-21Z__src-features-pos.md`. Penilai tanpa akses ke run
+sebelumnya. Kekhasan dinilai tinggi (LCD, tuts tender, LUNAS). Empat bug yang ditemukan — dua
+buatan tahap 2 — langsung diperbaiki:
+
+- **[P0] Enter menutup LUNAS.** Enter di kolom tender menjalankan checkout; panel LUNAS terpasang
+  sebelum tombol dilepas dan `autoFocus` "Transaksi Baru" menerima keypress Enter yang sama →
+  kembalian, struk, dan WA hilang sebelum terbaca. Kini `preventDefault` + abaikan `e.repeat`,
+  tombol tanpa autoFocus, fokus pindah ke kolom cari; Enter kosong di cari = transaksi baru.
+- **[P1] Harga satuan tertimpa tombol qty di ponsel** (grid 'unit qty total' + tombol 44px global
+  memeras sel harga ke 0–67px). Grid baris keranjang kini 'name total' / 'unit qty'.
+- **[P1] Register terpotong di 1366×768:** `overflow:hidden` + hanya daftar item yang menggulir →
+  Proses di luar panel. Kini seluruh register menggulir di panel, LCD `sticky top`, Proses `sticky
+  bottom` (desktop ≥1025px). Di demo, `.demoStage` mendefinisikan ulang `--app-vh` dikurangi
+  `--app-inset-top` — semua tinggi berbasis `--app-vh` dulu melewati tepi bawah ±60px.
+- **[P2] LCD "KEMBALIAN" hijau saat lebih bayar ditolak** → nada "Lebih bayar" amber; pesan
+  menyebut baris yang tak diperlukan ("Pembayaran lain sudah menutup total — hapus baris QRIS").
+- **Belum:** Kosongkan tanpa undo; kirim ulang WA dari riwayat; riwayat tanpa jam/metode/kasir/total
+  harian; ketik qty; aturan "kembalian dari baris terakhir" belum terlihat; i18n ±15 literal.

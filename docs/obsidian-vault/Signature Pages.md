@@ -221,7 +221,9 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
   10rb–1jt) untuk baris terakhir. Baris kedua LCD: SISA / KEMBALIAN / UANG PAS.
 - **LUNAS.** Setelah simpan, register menahan total + kembalian; panel berisi Cetak
   Struk (struk memuat Dibayar/Kembalian), Kirim WA (bila pelanggan punya nomor), dan
-  **Transaksi Baru** (fokus otomatis → Enter). Toast sukses dihapus.
+  **Transaksi Baru**. Toast sukses dihapus. Sejak 28 Sep fokus pindah ke kolom cari (bukan
+  ke tombol): Enter kosong di cari atau pindaian berikutnya memulai transaksi baru. Register
+  desktop menggulir di dalam panel dengan LCD menempel di atas dan Proses di bawah.
 - **Cepat.** Cari mencakup SKU; Enter menambah SKU persis atau satu-satunya hasil
   (`pickOnEnter`, pemindai barcode); "/" memfokuskan cari; fokus otomatis hanya untuk
   mouse. Barang habis tampil redup "Habis" saat dicari.
