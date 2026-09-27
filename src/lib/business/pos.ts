@@ -72,17 +72,81 @@ export function validateCart(items: CartItem[]): CartValidation {
   return { ok: errors.length === 0, errors };
 }
 
+export interface TenderSettlement {
+  ok: boolean;
+  /** Uang yang DITERIMA dari pelanggan (boleh melebihi total). */
+  paid: number;
+  /** Sisa yang belum dibayar (0 bila sudah tertutup). */
+  due: number;
+  /** Kembalian yang diserahkan kasir. */
+  change: number;
+  /** Wallet yang menyerahkan kembalian: baris tender terakhir. */
+  changeWalletId: string | null;
+  /** Lebih bayar yang tak bisa jadi kembalian: baris lain saja sudah menutup total. */
+  excess: boolean;
+  /** Alokasi yang dicatat ke server — jumlahnya selalu = total saat ok. */
+  allocations: PaymentAllocation[];
+}
+
 /**
- * Validate that payment allocations exactly cover the total (tolerating
- * sub-rupiah rounding). Returns the difference for UI feedback.
+ * Tender kasir: tiap baris = uang yang diterima per wallet. Lebih bayar menjadi
+ * kembalian yang dipotong dari baris TERAKHIR — urutan yang wajar di meja
+ * kasir (QRIS/transfer diisi pas, tunai diterima paling akhir), sehingga yang
+ * tercatat di wallet adalah uang yang benar-benar tinggal, bukan uang yang
+ * sempat dipegang. process_sale (0069) tetap menerima jumlah = total.
+ * ponytail: wallet tak punya tipe "tunai", jadi baris terakhir yang dianggap
+ * laci; tambah `kind` di Wallet bila perlu memaksa kembalian hanya dari tunai.
  */
-export function validatePayments(
-  payments: PaymentAllocation[],
-  total: number,
-): { ok: boolean; paid: number; diff: number } {
-  const paid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const diff = paid - total;
-  return { ok: Math.abs(diff) < 1, paid, diff };
+export function settleTender(tendered: PaymentAllocation[], total: number): TenderSettlement {
+  const lines = tendered.filter((p) => p.amount > 0);
+  const paid = lines.reduce((sum, p) => sum + p.amount, 0);
+  const base = { paid, due: 0, change: 0, changeWalletId: null, excess: false, allocations: lines };
+  if (paid < total - 0.5) return { ...base, ok: false, due: total - paid };
+  const change = Math.round(paid - total);
+  if (change < 1) return { ...base, ok: true };
+  const last = lines[lines.length - 1];
+  if (paid - last.amount >= total) return { ...base, ok: false, change, excess: true };
+  return {
+    ...base,
+    ok: true,
+    change,
+    changeWalletId: last.walletId,
+    allocations: lines.map((p, i) =>
+      i === lines.length - 1 ? { ...p, amount: p.amount - change } : p,
+    ),
+  };
+}
+
+/**
+ * Nominal uang yang lazim diserahkan untuk tagihan `due`: pas, lalu pembulatan
+ * ke atas pecahan 10rb/50rb/100rb/500rb/1jt. Maksimal empat, tanpa kembar.
+ */
+export function cashSuggestions(due: number): number[] {
+  if (due <= 0) return [];
+  const out = [due];
+  for (const step of [10_000, 50_000, 100_000, 500_000, 1_000_000]) {
+    const v = Math.ceil(due / step) * step;
+    if (!out.includes(v)) out.push(v);
+  }
+  return out.slice(0, 4);
+}
+
+/**
+ * Barang yang ditambahkan saat Enter di kolom cari. SKU persis menang (pemindai
+ * barcode mengetik SKU lalu Enter); selain itu hanya bila hasilnya tinggal satu,
+ * supaya Enter tak pernah menebak di antara beberapa barang.
+ */
+export function pickOnEnter<T extends { sku: string; stock: number }>(
+  inventory: T[],
+  visible: T[],
+  query: string,
+): T | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const bySku = inventory.find((i) => i.sku && i.sku.toLowerCase() === q);
+  if (bySku) return bySku;
+  const sellable = visible.filter((i) => i.stock > 0);
+  return sellable.length === 1 ? sellable[0] : null;
 }
 
 /** Convert cart items into immutable sale lines. */

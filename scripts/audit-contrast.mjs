@@ -202,6 +202,23 @@ for (const theme of ['dark', 'light']) {
       await page.keyboard.press('Escape');
       await page.locator('a[href^="/services/"]').first().click();
     }],
+    // Kasir dengan keranjang terisi. Menu Kasir di atas hanya memindai keranjang
+    // kosong, sehingga status pembayaran (1,5:1 di tema terang) lolos sampai
+    // critique Kasir 27 Sep 2026.
+    ['Kasir-Keranjang', async () => {
+      await page.getByRole('link', { name: /^Kasir/ }).first().click();
+      await page.waitForTimeout(900);
+      const pick = page.getByRole('button', { name: /Pusat/ }).first();
+      if (await pick.isVisible().catch(() => false)) await pick.click();
+      await page.waitForTimeout(600);
+      await page.locator('[class*="productCard"]:not([disabled])').first().click();
+    }],
+    ['Kasir-Kurang', async () => {
+      await page.locator('button[class*="tenderKey"]').first().click();
+      await page.locator('#pos-cart input[inputmode="numeric"]').last().fill('1000');
+    }],
+    ['Kasir-Kembalian', () => page.locator('[class*="quickCash"] button').last().click()],
+    ['Kasir-Lunas', () => page.getByRole('button', { name: /^Proses/ }).click()],
   ];
   for (const [label, act] of steps) {
     try {

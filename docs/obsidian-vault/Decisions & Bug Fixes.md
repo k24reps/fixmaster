@@ -3308,3 +3308,41 @@ Dashboard, Keuangan.
 - **Belum:** peluncur `impeccable.cmd` selalu exit 0 (biner exit 2) — gerbang berbasis
   `.cmd` selalu lolos; `PRODUCT.md` masih menyebut server "cloud (Supabase)"; field
   IMEI/PIN/kondisi & tawaran cetak/WA setelah intake (persona teknisi) belum dikerjakan.
+
+## UX Kasir — critique tahap 2 (27 Sep 2026)
+
+Skor **20/40** (arsip `.impeccable/critique/2026-09-27T10-23-57Z__src-features-pos.md`).
+Pemilik memilih: momen uang dulu, kelima isu, pad tender kasir. Detail tampilan di
+[[Signature Pages]] (Kasir POS).
+
+- **[P0] Buntu cabang + keranjang lintas cabang.** Di "Semua Outlet" katalog mencampur
+  stok 3 cabang; keranjang & pembayaran bisa diisi sampai "PAS", lalu Proses ditolak
+  "Pilih cabang dulu … (sidebar)" (di ponsel tak ada sidebar). Setelah memilih cabang,
+  keranjang tetap berisi barang cabang lain → gagal "Stok … berubah" (palsu). Kini cabang
+  dipilih sebelum katalog; ganti cabang mengosongkan keranjang (dicek saat render,
+  `cartOutlet !== activeOutletId`); pesan lokal "tidak ada di stok cabang ini".
+- **[P1] Tanpa kembalian.** `validatePayments` menuntut |selisih| < 1 → lebih bayar
+  mematikan tombol; isi otomatis hanya bila 1 wallet. Diganti `settleTender`: nominal =
+  uang diterima, kembalian dipotong dari baris terakhir sehingga alokasi ke server tetap
+  = total (process_sale 0069 tak berubah). **Batas:** wallet tak punya tipe "tunai", jadi
+  baris terakhir dianggap laci — tambah `kind` di Wallet bila perlu memaksa. `validatePayments`
+  dihapus.
+- **[P1] Kontras.** Status bayar `--green-400`/`--amber-400` mentah: 1,5:1 & 1,9:1 di tema
+  terang; baris diskon 2,3:1 → `--success-text`/`--warning-text` + LED. `audit-contrast`
+  kini mengisi keranjang dan memindai 4 keadaan (keranjang, kurang, kembalian, lunas) —
+  sebelumnya hanya keranjang kosong, persis celah yang sama dengan jendela Servis.
+- **[P1] Akhir lemah.** Register langsung Rp 0 + toast (kadang menutupi tombol); struk
+  hanya di tab lain → keadaan LUNAS dengan Cetak Struk / Kirim WA / Transaksi Baru.
+- **[P2] Ponsel & keyboard.** Nama keranjang terpotong 50px, harga satuan 3 baris di bawah
+  tombol −, keyboard huruf untuk uang, SKU tak bisa dicari, Enter tak berbuat apa-apa →
+  baris dua tingkat, `inputMode="numeric"`, cari SKU + Enter + "/".
+- **Toast kembar** "Stok … hanya 1": toast dipanggil di dalam updater `setCart`, yang
+  dijalankan dua kali oleh StrictMode. Kini dicek di luar updater.
+- **Kecil:** harga kartu tak lagi patah "Rp / 1.250.000"; toggle Rp/% tak melar; tombol
+  void "Kembali" / "Ya, batalkan INV-…"; ikon untuk × − +.
+- **Diverifikasi:** Playwright desktop 1440 (gelap+terang) + ponsel 375 — pilih cabang,
+  Enter, tender pas → chip Rp 2.500.000 → kembalian Rp 300.000, LUNAS, ganti cabang;
+  kontras status 7,4:1 / 6,3:1; `audit-contrast` BERSIH; `audit-tokens` LULUS;
+  `audit-mobile` /pos bersih 5 lebar; detektor 2 advisory lama; 647 tes.
+- **Belum:** saran pelanggan belum bisa dipilih dengan panah; i18n ±60 literal lama di
+  Kasir; riwayat tanpa jam/metode/kasir; Kosongkan tanpa undo.

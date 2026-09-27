@@ -37,6 +37,7 @@ Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
 - **Tick-gauge** untuk meter & proporsi
 - **Fitur terkunci** (plan-gated): channel redup + badge **LED brand + "PRO" mono** — **bukan ikon gembok** generik. Lihat [[Sidebar - Live Diagnostic Rail]].
 - **Kanal pilihan** (27 Sep 2026): keputusan penting dengan 2–5 opsi (mis. status tujuan tiket) = deretan tombol kanal `role="radio"` — LED 8px + label mono uppercase, 44px, kanal terpilih menyala di nada statusnya (`STATUS_TONE` → `--*-soft` + `--*-text`). **Bukan `<select>` bawaan.** Opsi destruktif (Batal) duduk sendiri di bawah seam titik. Contoh: `StatusModal`.
+- **Pad tender** (27 Sep 2026): pilihan wallet pembayaran = tuts mekanis (border bawah 3px, turun saat ditekan) dengan LED; tuts yang dipakai menyala brand (`aria-pressed`). Status sisa/kembalian dibaca di **LCD** (skala terang, LCD selalu gelap), bukan pil warna di atas kertas. Contoh: Kasir.
 - **Strip readout** (27 Sep 2026): angka ringkasan halaman = satu panel `<dl>` dengan sel dipisah seam titik (label mono + nilai mono tabular, LED bila butuh perhatian), `auto-fit` sehingga menyusut sendiri — **bukan deretan StatCard** (ikon-dalam-kotak + angka, pola SaaS generik yang di ponsel menumpuk jadi lima baris). Contoh: Daftar Servis.
 - **Teks sinyal selalu `--*-text`**, bukan `--success`/`--warning`/`--accent`/`--brand` (itu warna isian/LED). Isian di atas latar tipis: nada dibawa latarnya, teksnya tinta biasa. Terukur 27 Sep: pola lama gagal 1,9–4,45:1 di jendela modal.
 

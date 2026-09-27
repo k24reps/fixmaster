@@ -206,6 +206,27 @@ terlihat di dasar layar dengan jumlah item + total. Tap membawa pengguna langsun
 register `#pos-cart`; grid produk tetap dua kolom. Sejak bottom navigation 11 Agu,
 dock otomatis duduk di atas bar + safe-area sehingga kedua aksi tetap dapat disentuh.
 Ini mencegah status keranjang dan aksi bayar hilang beberapa layar di bawah katalog.
+Sejak 27 Sep dock **disembunyikan selama register terlihat** (IntersectionObserver),
+dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
+
+**Critique tahap 2 (27 Sep 2026)** — alur uang dibentuk ulang seperti laci kasir:
+- **Cabang dulu.** Di "Semua Outlet" dengan >1 cabang, kolom katalog diganti panel
+  **Pilih cabang kasir** (kanal ber-LED) — memanggil `setActiveOutlet`, sama dengan
+  selektor sidebar. Pita LCD memuat **chip cabang** (ketuk → jendela ganti cabang).
+  Cabang berganti dari mana pun → keranjang dikosongkan dengan pemberitahuan (stoknya
+  milik cabang lama).
+- **Pad tender.** Satu tuts per wallet; tuts baru terisi **sisa tagihan** (pas = satu
+  ketukan). Nominal = uang **diterima**; lebih bayar = **kembalian**, dipotong dari baris
+  terakhir (`settleTender`). Chip uang lazim (`cashSuggestions`: pas, pembulatan
+  10rb–1jt) untuk baris terakhir. Baris kedua LCD: SISA / KEMBALIAN / UANG PAS.
+- **LUNAS.** Setelah simpan, register menahan total + kembalian; panel berisi Cetak
+  Struk (struk memuat Dibayar/Kembalian), Kirim WA (bila pelanggan punya nomor), dan
+  **Transaksi Baru** (fokus otomatis → Enter). Toast sukses dihapus.
+- **Cepat.** Cari mencakup SKU; Enter menambah SKU persis atau satu-satunya hasil
+  (`pickOnEnter`, pemindai barcode); "/" memfokuskan cari; fokus otomatis hanya untuk
+  mouse. Barang habis tampil redup "Habis" saat dicari.
+- **Baris keranjang dua baris** (nama selebar struk; harga · qty · jumlah), input uang
+  `inputMode="numeric"`, toggle Rp/% ber-`aria-pressed`.
 
 ![[pos-dark.png]]
 

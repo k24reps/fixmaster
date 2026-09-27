@@ -129,16 +129,109 @@
   color: var(--text-primary);
   padding-right: var(--space-3);
 }
+/* Harga tidak boleh patah jadi "Rp" / "1.250.000" — bila tak muat sebaris
+   dengan chip stok, yang turun baris adalah harganya utuh. */
 .productMeta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: 4px var(--space-2);
 }
 .productMeta strong {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--brand-hover);
+  white-space: nowrap;
+}
+/* Barang habis tetap tampil saat dicari — redup dan tak bisa diketuk. */
+.productCard:disabled,
+.productRow:disabled,
+.productTile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.soldOut {
+  color: var(--danger-text);
+  text-transform: uppercase;
+}
+
+/* ---------- Pilih cabang kasir (sebelum katalog) ---------- */
+.outletPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.outletPickTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.outletPickBody {
+  max-width: 60ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+.outletList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+/* Kanal ber-LED, sama dengan panel status tiket (Design System: Kanal pilihan). */
+.outletOpt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.outletOpt:hover {
+  border-color: var(--brand);
+}
+.outletOpt[aria-pressed='true'] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.outletOptName {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm);
+}
+.outletOptTag {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.outletLed,
+.outletLedOn {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  opacity: 0.45;
+}
+.outletLedOn,
+.outletOpt[aria-pressed='true'] .outletLed {
+  opacity: 1;
+  box-shadow: 0 0 8px var(--brand);
 }
 
 /* ---------- Katalog: cari + pilihan tampilan ---------- */
@@ -150,6 +243,21 @@
 .toolbar > :first-child {
   flex: 1;
   min-width: 0;
+}
+/* Petunjuk pintasan "/" — tuts mekanis kecil, hanya untuk mouse. */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  margin-left: calc(-1 * var(--space-2));
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 /* Tombol tampilan & chip kategori: komponen bersama components/ui/CatalogControls. */
 
@@ -269,6 +377,8 @@
   max-height: calc(var(--app-vh) - var(--topbar-height) - var(--space-8));
   padding: 0 !important;
   overflow: hidden;
+  /* Dock ponsel menggulir ke sini; tanpa ini LCD mendarat di bawah header. */
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-3));
 }
 
 /* ----- LCD readout ----- */
@@ -332,6 +442,49 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* Tanda LUNAS menggantikan LED LIVE setelah transaksi tersimpan. */
+.paidTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--green-400);
+}
+.paidTag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-400);
+  box-shadow: 0 0 7px var(--green-400);
+}
+/* Baris kedua LCD: sisa / kembalian / pas. LCD selalu gelap, jadi skala
+   terang dipakai langsung (tak ikut berganti tema). */
+.lcdSub {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+.lcdSub span:last-child {
+  font-size: var(--text-md);
+  letter-spacing: 0.01em;
+}
+.lcdSub.due {
+  color: var(--amber-400);
+}
+.lcdSub.change {
+  color: var(--green-400);
+}
+.lcdSub.exact {
+  color: var(--readout-muted);
+}
 /* "all-segments-on" ghost behind the live number — classic LCD trick */
 .lcdGhost {
   position: absolute;
@@ -343,11 +496,103 @@
 .registerMeta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
   margin-top: 8px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--readout-muted);
   position: relative;
+}
+
+/* Cabang kasir di pita LCD: selalu terlihat, satu ketukan untuk ganti. */
+.outletChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 60%;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--readout-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outletChip:hover {
+  background: color-mix(in srgb, var(--readout-text) 10%, transparent);
+}
+.outletChip .outletLed,
+.outletChip .outletLedOn {
+  width: 6px;
+  height: 6px;
+}
+
+/* ----- Setelah lunas: struk & transaksi baru ----- */
+.donePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+.doneTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--success-text);
+}
+.doneLed {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+.doneNo {
+  margin-left: auto;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.doneChange {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dotted var(--border-strong);
+}
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.doneActions > * {
+  flex: 1 1 140px;
+}
+.waBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.waBtn:hover {
+  border-color: var(--success);
+  color: var(--success-text);
 }
 
 /* ----- Receipt header ----- */
@@ -372,6 +617,8 @@
   color: var(--brand-hover);
 }
 .clearBtn {
+  padding: 8px;
+  margin: -8px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
@@ -400,10 +647,17 @@
   text-align: center;
   padding: var(--space-6) 0;
 }
+/* Dua baris: nama selebar struk, lalu harga · qty · jumlah. Satu baris
+   dulu memeras nama jadi "Keyb…" dan harga satuan pecah 3 baris di 375px. */
 .cartItem {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(82px, auto);
+  grid-template-areas:
+    'name name name'
+    'unit qty total';
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
+  row-gap: 4px;
   padding-bottom: var(--space-3);
   border-bottom: 1px dotted var(--border);
 }
@@ -411,31 +665,31 @@
   border-bottom: none;
   padding-bottom: 0;
 }
-.cartItemInfo {
-  flex: 1;
-  min-width: 0;
-}
-.cartItemInfo strong {
-  display: block;
+.cartItemName {
+  grid-area: name;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
-.cartItemInfo small {
+.cartItemUnit {
+  grid-area: unit;
   font-size: var(--text-xs);
   color: var(--text-muted);
+  white-space: nowrap;
 }
 .qtyControl {
+  grid-area: qty;
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 /* mechanical keys — depth via thicker bottom border, depress on :active */
 .qtyControl button {
-  width: 27px;
-  height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-xs);
   background: var(--bg-surface-2);
   border: 1px solid var(--border-strong);
@@ -461,7 +715,7 @@
   font-weight: var(--fw-bold);
 }
 .lineTotal {
-  min-width: 82px;
+  grid-area: total;
   text-align: right;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -513,6 +767,9 @@
   color: var(--brand-hover);
 }
 .customerChip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--text-md);
   line-height: 1;
   color: var(--text-muted);
@@ -563,9 +820,11 @@
 .discountWarn {
   font-size: var(--text-xs);
   line-height: 1.5;
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
-.discountRow > div {
+/* Hanya kolom input yang melebar — dulu selektor `> div` ikut menarik
+   toggle Rp/% jadi kotak kosong ~140px. */
+.discountRow > :first-child {
   flex: 1;
 }
 .discountToggle {
@@ -601,7 +860,7 @@
   color: var(--text-secondary);
 }
 .discountLine {
-  color: var(--amber-400) !important;
+  color: var(--warning-text) !important;
 }
 .totalLine {
   font-size: var(--text-md);
@@ -618,8 +877,9 @@
 }
 .paymentsHeader {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  gap: var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
@@ -627,21 +887,122 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.autoBtn {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--brand-hover);
+.tenderHint {
+  flex: 1;
+  text-align: right;
+  font-weight: var(--fw-normal);
   text-transform: none;
   letter-spacing: 0;
 }
+/* Pad tender: satu tuts per wallet. Tuts yang dipakai menyala. */
+.tenderKeys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--space-2);
+}
+.tenderKey {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast);
+}
+.tenderKey:hover {
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+.tenderKey:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+.tenderKey[aria-pressed='true'] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+.tenderLed {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
+  opacity: 0.35;
+}
+.tenderKey[aria-pressed='true'] .tenderLed {
+  opacity: 1;
+  box-shadow: 0 0 8px var(--brand);
+}
 .paymentRow {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
 }
+.paymentRow label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tenderRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.tenderRemove:hover {
+  color: var(--danger-text);
+  background: var(--bg-hover);
+}
+/* Nominal uang yang lazim diserahkan — untuk baris tender terakhir. */
+.quickCash {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quickCash button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.quickCash button:hover {
+  border-style: solid;
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+.statusLed {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
 .paymentStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -651,13 +1012,22 @@
   border-radius: var(--radius-sm);
   text-transform: uppercase;
 }
+/* Teks sinyal memakai token -text (terbaca di kedua tema); dulu --green-400 /
+   --amber-400 mentah terukur 1,5:1 dan 1,9:1 di tema terang. */
 .paymentStatus.ok {
   background: var(--success-soft);
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .paymentStatus.bad {
   background: var(--warning-soft);
-  color: var(--amber-400);
+  color: var(--warning-text);
+}
+.paymentStatus.idle {
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+}
+.paymentStatus.idle .statusLed {
+  opacity: 0.5;
 }
 
 /* ---------- Recent transactions / void ---------- */

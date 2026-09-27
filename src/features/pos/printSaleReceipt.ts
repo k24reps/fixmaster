@@ -8,7 +8,8 @@ import type { Sale, Organization } from '@/data/types';
  * memakai kertas, gaya, dan identitas toko yang sama persis dengan nota servis:
  * kepala dan kaki datang dari `openReceiptWindow`, yang berbeda hanya isinya.
  */
-export function printSaleReceipt(sale: Sale, org: Organization): void {
+/** `change` hanya diketahui saat transaksi baru selesai — cetak ulang tak memuatnya. */
+export function printSaleReceipt(sale: Sale, org: Organization, change = 0): void {
   const note = (org.settings?.publicNote ?? '').trim();
 
   const itemRows = sale.lines
@@ -19,6 +20,8 @@ export function printSaleReceipt(sale: Sale, org: Organization): void {
     receiptRow('Subtotal', fmtRp(sale.subtotal)),
     sale.discount > 0 ? receiptRow('Diskon', `−${fmtRp(sale.discount)}`) : '',
     receiptRow('TOTAL', fmtRp(sale.total), 'strong'),
+    change > 0 ? receiptRow('Dibayar', fmtRp(sale.total + change)) : '',
+    change > 0 ? receiptRow('Kembalian', fmtRp(change)) : '',
   ].join('');
 
   const metaRows = [

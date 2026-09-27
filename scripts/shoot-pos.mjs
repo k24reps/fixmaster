@@ -34,6 +34,10 @@ async function capture({ name, theme, width = 1440, height = 1100, fill = true }
   await page.waitForSelector('a[href="/pos"]', { timeout: 10000 });
   await page.click('a[href="/pos"]');
 
+  // Demo membuka "Semua Outlet" → kasir meminta cabang dulu (27 Sep 2026).
+  const pick = page.getByRole('button', { name: /Pusat/ }).first();
+  if (await pick.waitFor({ timeout: 5000 }).then(() => true, () => false)) await pick.click();
+
   // Wait for product cards, then add a few to the cart.
   await page.waitForSelector('button[class*="productCard"]', { timeout: 10000 });
   if (fill) {

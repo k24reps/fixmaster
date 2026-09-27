@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   Input,
@@ -31,12 +31,16 @@ import {
   STAFF_MAX_DISCOUNT_PCT,
   cartTotal,
   validateCart,
-  validatePayments,
+  settleTender,
+  cashSuggestions,
+  pickOnEnter,
   toSaleLines,
   type CartItem,
   type DiscountType,
 } from '@/lib/business/pos';
 import { searchCustomers } from '@/lib/business/customers';
+import { interpolate, waLink } from '@/lib/business/notify';
+import { useT } from '@/i18n';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { printSaleReceipt } from './printSaleReceipt';
 import { toast } from '@/stores/toast';
@@ -52,8 +56,21 @@ export function PosPage() {
   // Pelanggan dicari di server; daftar lokal hanya untuk adapter lokal/demo.
   const serverSearch = !!repository.queryCustomers;
   const { data: customers } = useCollection('customers', { enabled: !serverSearch });
+  const t = useT();
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
+  const setActiveOutlet = useSessionStore((s) => s.setActiveOutlet);
+  const reachableOutlets = allowedOutletIds.length
+    ? outlets.filter((o) => allowedOutletIds.includes(o.id))
+    : outlets;
+  // Mesin kasir milik satu meja: di "Semua Outlet" katalognya campuran stok
+  // beberapa cabang, jadi cabang dipilih SEBELUM katalog tampil — bukan
+  // ditolak setelah keranjang dan pembayaran terisi (critique 27 Sep 2026).
+  // activeOutletId dibaca di atas supaya komponen ini ikut render ulang.
+  const needOutlet = mustPickOutlet(outlets.length);
+  const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? null;
   const orgId = org?.id ?? '';
   const isMgr = me ? isManager(me.role) : false;
   // Penjualan bulan lalu tidak bisa dibatalkan (0069): laporan bulan itu sudah berjalan.
@@ -65,8 +82,20 @@ export function PosPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState('');
   const [discountType, setDiscountType] = useState<DiscountType>('amount');
-  const [payments, setPayments] = useState<PaymentAllocation[]>([]);
+  // Uang yang DITERIMA per wallet, urut sesuai ketukan; kembalian dipotong dari
+  // baris terakhir (settleTender).
+  const [tender, setTender] = useState<PaymentAllocation[]>([]);
   const [busy, setBusy] = useState(false);
+  // Keadaan LUNAS setelah transaksi: register menahan total & kembalian, dan
+  // struk tersedia tepat saat pelanggan masih di depan meja.
+  const [done, setDone] = useState<{ sale: Sale; change: number; phone: string } | null>(null);
+  const [outletModal, setOutletModal] = useState(false);
+  const [outletNotice, setOutletNotice] = useState(false);
+  const [cartOutlet, setCartOutlet] = useState(activeOutletId);
+  const [cartInView, setCartInView] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Fokus otomatis hanya untuk mouse: di ponsel ia memunculkan keyboard.
+  const [finePointer] = useState(() => !!window.matchMedia?.('(pointer: fine)').matches);
   const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [voidBusy, setVoidBusy] = useState(false);
@@ -154,37 +183,98 @@ export function PosPage() {
   // sampai mengunci katalog di daftar kosong.
   const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
 
+  // Barang habis tetap muncul saat DICARI (redup, "Habis") — kalau disembunyikan,
+  // kasir membaca "tidak ada yang cocok" dan mengira barangnya tak terdaftar.
   const available = useMemo(() => {
     const q = query.trim().toLowerCase();
     return inventory
-      .filter((i) => i.stock > 0)
+      .filter((i) => i.stock > 0 || !!q)
       .filter((i) => activeCategory === 'all' || categoryOf(i.category) === activeCategory)
-      .filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
+      .filter(
+        (i) =>
+          !q ||
+          i.name.toLowerCase().includes(q) ||
+          i.category.toLowerCase().includes(q) ||
+          (i.sku ?? '').toLowerCase().includes(q),
+      )
+      .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0))
       .slice(0, 50);
   }, [inventory, query, activeCategory]);
 
   const subtotal = cartSubtotal(cart);
   const discountValue = resolveDiscount(subtotal, parseRpInput(discount), discountType);
   const total = cartTotal(cart, parseRpInput(discount), discountType);
-  const paymentCheck = validatePayments(payments, total);
+  const settle = settleTender(tender, total);
+  const walletName = (id: string | null) => wallets.find((w) => w.id === id)?.name ?? '';
+  const lastTender = tender[tender.length - 1];
+  const quickCash = lastTender
+    ? cashSuggestions(total - (settle.paid - Math.max(0, lastTender.amount)))
+    : [];
   // Diskon besar = uang toko keluar tanpa persetujuan. Karyawan dibatasi;
   // server menolaknya juga (0070), ini hanya supaya batasnya terbaca lebih awal.
   const maxDiscount = discountLimit(subtotal, isMgr);
   const discountOver = discountValue > maxDiscount;
   const totalQty = cart.reduce((n, c) => n + c.qty, 0);
   const nextNo = useMemo(() => nextDocNumber('INV', sales.map((s) => s.saleNo)), [sales]);
-  const totalText = fmtRp(total);
+  const totalText = fmtRp(done ? done.sale.total : total);
   const totalGhost = totalText.replace(/[0-9]/g, '8');
 
+  // Cabang berganti dari mana pun (register, sidebar, menu ponsel): stok di
+  // keranjang milik cabang lama, jadi keranjang dikosongkan dan diberi tahu —
+  // dulu keranjang tetap, lalu checkout gagal dengan "Stok … berubah" palsu.
+  if (cartOutlet !== activeOutletId) {
+    setCartOutlet(activeOutletId);
+    if (cart.length) {
+      setCart([]);
+      setTender([]);
+      setDiscount('');
+      setOutletNotice(true);
+    }
+  }
+
+  // Dock ponsel hanya berguna selama register belum terlihat.
+  useEffect(() => {
+    const el = document.getElementById('pos-cart');
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setCartInView(e.isIntersecting), { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [tab, needOutlet]);
+
+  // "/" memfokuskan pencarian dari mana saja di halaman (kecuali saat mengetik).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (!searchRef.current) return;
+      e.preventDefault();
+      searchRef.current.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const addToCart = (item: InventoryItem) => {
+    if (item.stock <= 0) {
+      toast.warning(t('pos.outOfStockToast').replace('{name}', item.name));
+      return;
+    }
+    // Dicek di luar updater: updater setState dijalankan dua kali di StrictMode,
+    // dan toast di dalamnya dulu muncul kembar.
+    const inCart = cart.find((c) => c.itemId === item.id);
+    if (inCart && inCart.qty >= item.stock) {
+      toast.warning(`Stok "${item.name}" hanya ${item.stock}`);
+      return;
+    }
+    setDone(null);
+    setOutletNotice(false);
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === item.id);
       if (existing) {
-        if (existing.qty >= item.stock) {
-          toast.warning(`Stok "${item.name}" hanya ${item.stock}`);
-          return prev;
-        }
-        return prev.map((c) => (c.itemId === item.id ? { ...c, qty: c.qty + 1 } : c));
+        return prev.map((c) =>
+          c.itemId === item.id ? { ...c, qty: Math.min(c.qty + 1, item.stock) } : c,
+        );
       }
       return [
         ...prev,
@@ -208,25 +298,61 @@ export function PosPage() {
     );
   };
 
-  const setWalletPayment = (walletId: string, amount: number) => {
-    setPayments((prev) => {
-      const others = prev.filter((p) => p.walletId !== walletId);
-      if (amount <= 0) return others;
-      return [...others, { walletId, amount }];
-    });
+  // Tombol wallet: yang belum dipakai ditambahkan dengan SISA tagihan, jadi
+  // pembayaran pas cukup satu ketukan; yang sudah dipakai difokuskan saja.
+  const pickWallet = (walletId: string) => {
+    if (tender.some((p) => p.walletId === walletId)) {
+      document.getElementById(`tender-${walletId}`)?.focus();
+      return;
+    }
+    setTender((prev) => [...prev, { walletId, amount: Math.max(0, settle.due) }]);
   };
+  // Nominal diubah DI TEMPAT — urutan baris tetap, karena baris terakhir yang
+  // menyerahkan kembalian.
+  const setTenderAmount = (walletId: string, amount: number) =>
+    setTender((prev) => prev.map((p) => (p.walletId === walletId ? { ...p, amount } : p)));
+  const removeTender = (walletId: string) =>
+    setTender((prev) => prev.filter((p) => p.walletId !== walletId));
 
   const reset = () => {
     setCart([]);
     setDiscount('');
-    setPayments([]);
+    setTender([]);
     setCustomer(null);
     setCustQuery('');
   };
 
-  const autoFillSingleWallet = () => {
-    if (wallets.length === 1) setPayments([{ walletId: wallets[0].id, amount: total }]);
+  const newSale = () => {
+    setDone(null);
+    searchRef.current?.focus();
   };
+
+  const chooseOutlet = (id: string) => {
+    setOutletModal(false);
+    setOutletNotice(false);
+    setDone(null);
+    setActiveOutlet(id);
+  };
+
+  const onSearchEnter = () => {
+    const hit = pickOnEnter(inventory, available, query);
+    if (!hit) return;
+    addToCart(hit);
+    setQuery('');
+  };
+
+  const statusText = settle.ok
+    ? settle.change > 0
+      ? interpolate(t('pos.statusChange'), {
+          amount: fmtRp(settle.change),
+          wallet: walletName(settle.changeWalletId),
+        })
+      : t('pos.statusExact')
+    : settle.excess
+      ? interpolate(t('pos.statusExcess'), { wallet: walletName(lastTender?.walletId ?? null) })
+      : settle.paid === 0
+        ? interpolate(t('pos.statusEmpty'), { amount: fmtRp(total) })
+        : interpolate(t('pos.statusDue'), { amount: fmtRp(settle.due) });
 
   const checkout = async () => {
     const cartCheck = validateCart(cart);
@@ -234,10 +360,11 @@ export function PosPage() {
       toast.error(cartCheck.errors[0]);
       return;
     }
-    if (!paymentCheck.ok) {
-      toast.error('Total pembayaran harus sama dengan total transaksi');
+    if (!settle.ok) {
+      toast.error(statusText);
       return;
     }
+    const payments = settle.allocations;
     if (discountOver) {
       toast.error(
         `Diskon karyawan maksimal ${STAFF_MAX_DISCOUNT_PCT}% (${fmtRp(maxDiscount)}) — minta owner/admin untuk diskon lebih besar`,
@@ -246,8 +373,8 @@ export function PosPage() {
     }
     // OQ-C: a user who can reach multiple outlets must pick a specific branch
     // first, so the sale is tagged to the right outlet (not guessed).
-    if (mustPickOutlet(outlets.length)) {
-      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum transaksi');
+    if (needOutlet) {
+      setOutletModal(true);
       return;
     }
     const txOutletId = resolveCreateOutlet(outlets);
@@ -255,7 +382,29 @@ export function PosPage() {
     const now = new Date().toISOString();
     try {
       const saleNo = nextDocNumber('INV', sales.map((s) => s.saleNo));
-      let saleId: string;
+      const draft: Sale = {
+        id: newId(),
+        orgId,
+        outletId: txOutletId,
+        saleNo,
+        date: localDateStr(),
+        lines: toSaleLines(cart),
+        subtotal,
+        discount: discountValue,
+        discountType,
+        total,
+        payments,
+        cashierId: me?.id ?? '',
+        cashierName: me?.name ?? '',
+        customerId: customer?.id ?? null,
+        customerName: customer?.name ?? '',
+        voided: false,
+        voidedReason: '',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      };
+      let saleId = draft.id;
       let savedNo = saleNo;
 
       if (isCloudMode()) {
@@ -283,35 +432,16 @@ export function PosPage() {
         for (const c of cart) {
           const item = fresh.find((i) => i.id === c.itemId);
           if (!item || item.stock < c.qty) {
-            toast.error(`Stok "${c.name}" berubah, periksa ulang`);
+            toast.error(
+              item
+                ? `Stok "${c.name}" berubah, periksa ulang`
+                : t('pos.notInOutlet').replace('{name}', c.name),
+            );
             setBusy(false);
             return;
           }
         }
-        saleId = newId();
-        const sale: Sale = {
-          id: saleId,
-          orgId,
-          outletId: txOutletId,
-          saleNo,
-          date: localDateStr(),
-          lines: toSaleLines(cart),
-          subtotal,
-          discount: discountValue,
-          discountType,
-          total,
-          payments,
-          cashierId: me?.id ?? '',
-          cashierName: me?.name ?? '',
-          customerId: customer?.id ?? null,
-          customerName: customer?.name ?? '',
-          voided: false,
-          voidedReason: '',
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        await repository.put('sales', sale);
+        await repository.put('sales', draft);
 
         // Deduct stock.
         const updatedInv = fresh
@@ -346,7 +476,13 @@ export function PosPage() {
         }
       }
 
-      toast.success(`Transaksi ${savedNo} berhasil`);
+      // Salinan untuk struk segera — server sudah menyimpan yang asli, tapi
+      // pelanggan menunggu sekarang, bukan setelah realtime tiba.
+      setDone({
+        sale: { ...draft, id: saleId, saleNo: savedNo },
+        change: settle.change,
+        phone: customer?.phone ?? '',
+      });
       logActivity({
         action: 'sale.create',
         entityType: 'sale',
@@ -362,6 +498,52 @@ export function PosPage() {
       setBusy(false);
     }
   };
+
+  const outletButtons = (
+    <div className={styles.outletList}>
+      {reachableOutlets.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className={styles.outletOpt}
+          aria-pressed={o.id === activeOutletId}
+          onClick={() => chooseOutlet(o.id)}
+        >
+          <span className={styles.outletLed} aria-hidden />
+          <span className={styles.outletOptName}>{o.name}</span>
+          {o.isPrimary && <span className={styles.outletOptTag}>PUSAT</span>}
+        </button>
+      ))}
+    </div>
+  );
+
+  const stockBadge = (item: InventoryItem) =>
+    item.stock <= 0 ? (
+      <Badge tone="danger">{t('pos.outOfStock')}</Badge>
+    ) : (
+      <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>stok {item.stock}</Badge>
+    );
+
+  // Baris kedua LCD: yang harus dilihat kasir berikutnya — sisa, kembalian, pas.
+  const lcdSub: { label: string; value: string; tone: 'due' | 'change' | 'exact' } | null = done
+    ? done.change > 0
+      ? { label: t('pos.lcdChange'), value: fmtRp(done.change), tone: 'change' }
+      : { label: t('pos.lcdExact'), value: done.sale.saleNo, tone: 'exact' }
+    : cart.length === 0 || settle.paid === 0
+      ? null
+      : settle.change > 0
+        ? { label: t('pos.lcdChange'), value: fmtRp(settle.change), tone: 'change' }
+        : settle.due > 0
+          ? { label: t('pos.lcdDue'), value: fmtRp(settle.due), tone: 'due' }
+          : { label: t('pos.lcdExact'), value: '', tone: 'exact' };
+
+  const waMessage = (sale: Sale) =>
+    interpolate(t('pos.waMessage'), {
+      shop: org?.name ?? '',
+      no: sale.saleNo,
+      items: sale.lines.map((l) => `${l.qty}× ${l.name}`).join('\n'),
+      total: fmtRp(sale.total),
+    });
 
   return (
     <div className={styles.page}>
@@ -392,13 +574,34 @@ export function PosPage() {
       {tab === 'pos' && (
       <div className={styles.layout}>
         <div className={styles.products}>
+        {needOutlet ? (
+          <Card glass className={styles.outletPick}>
+            <h3 className={styles.outletPickTitle}>
+              <span className={styles.outletLed} aria-hidden /> {t('pos.outletPickTitle')}
+            </h3>
+            <p className={styles.outletPickBody}>{t('pos.outletPickBody')}</p>
+            {outletButtons}
+          </Card>
+        ) : (
+        <>
         <div className={styles.toolbar}>
           <Input
-            placeholder="Cari produk untuk ditambahkan…"
+            ref={searchRef}
+            placeholder={t('pos.searchPlaceholder')}
+            aria-label={t('pos.searchPlaceholder')}
             value={query}
+            autoFocus={finePointer}
+            noAutoCap
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onSearchEnter();
+              }
+            }}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
           />
+          {finePointer && <kbd className={styles.kbd} aria-hidden>/</kbd>}
           <ViewToggle value={view} onChange={chooseView} label="Tampilan produk" />
         </div>
         <CategoryChips
@@ -414,7 +617,7 @@ export function PosPage() {
           </Card>
         ) : available.length === 0 ? (
           <Card glass>
-            {inStockCount > 0 ? (
+            {inStockCount > 0 || query.trim() ? (
               <EmptyState
                 icon={<Icon name="magnifying-glass" aria-hidden />}
                 title="Tidak ada produk yang cocok"
@@ -436,14 +639,13 @@ export function PosPage() {
                 type="button"
                 className={styles.productRow}
                 onClick={() => addToCart(item)}
+                disabled={item.stock <= 0}
               >
                 <span className={styles.productRowMain}>
                   <strong>{item.name}</strong>
                   <small>{categoryOf(item.category)}</small>
                 </span>
-                <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>
-                  stok {item.stock}
-                </Badge>
+                {stockBadge(item)}
                 <span className={styles.productRowPrice}>{fmtRp(item.sellPrice)}</span>
               </button>
             ))}
@@ -456,14 +658,19 @@ export function PosPage() {
                 type="button"
                 className={styles.productTile}
                 onClick={() => addToCart(item)}
+                disabled={item.stock <= 0}
                 title={item.name}
               >
                 <span className={styles.tileName}>{item.name}</span>
                 <span className={styles.tileMeta}>
                   <strong>{fmtRp(item.sellPrice)}</strong>
-                  <span className={item.stock <= item.minStock ? styles.tileLow : undefined}>
-                    stok {item.stock}
-                  </span>
+                  {item.stock <= 0 ? (
+                    <span className={styles.soldOut}>{t('pos.outOfStock')}</span>
+                  ) : (
+                    <span className={item.stock <= item.minStock ? styles.tileLow : undefined}>
+                      stok {item.stock}
+                    </span>
+                  )}
                 </span>
               </button>
             ))}
@@ -471,42 +678,116 @@ export function PosPage() {
         ) : (
           <div className={styles.productGrid}>
             {available.map((item) => (
-              <button key={item.id} className={styles.productCard} onClick={() => addToCart(item)}>
+              <button
+                key={item.id}
+                type="button"
+                className={styles.productCard}
+                onClick={() => addToCart(item)}
+                disabled={item.stock <= 0}
+              >
                 <span className={styles.productName}>{item.name}</span>
                 <span className={styles.productMeta}>
-                  <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>
-                    stok {item.stock}
-                  </Badge>
+                  {stockBadge(item)}
                   <strong>{fmtRp(item.sellPrice)}</strong>
                 </span>
               </button>
             ))}
           </div>
         )}
+        </>
+        )}
       </div>
 
       <Card id="pos-cart" glass className={styles.cartPanel}>
-        <div className={styles.register}>
+        <div className={styles.register} aria-live="polite">
           <div className={styles.registerTop}>
-            <span className={styles.live}>LIVE</span>
+            {done ? (
+              <span className={styles.paidTag}>{t('pos.lcdPaid')}</span>
+            ) : (
+              <span className={styles.live}>LIVE</span>
+            )}
             <span>TOTAL · IDR</span>
           </div>
           <div className={styles.lcd}>
             <span className={styles.lcdGhost} aria-hidden>{totalGhost}</span>
             {totalText}
           </div>
+          {lcdSub && (
+            <div className={[styles.lcdSub, styles[lcdSub.tone]].join(' ')}>
+              <span>{lcdSub.label}</span>
+              <span>{lcdSub.value}</span>
+            </div>
+          )}
           <div className={styles.registerMeta}>
-            <span>{totalQty} unit · {cart.length} baris</span>
-            <span>{nextNo}</span>
+            {reachableOutlets.length > 1 ? (
+              <button
+                type="button"
+                className={styles.outletChip}
+                onClick={() => setOutletModal(true)}
+                aria-label={t('pos.outletChip').replace('{name}', activeOutlet?.name ?? 'Semua Outlet')}
+              >
+                <span className={activeOutlet ? styles.outletLedOn : styles.outletLed} aria-hidden />
+                {activeOutlet?.name ?? 'Pilih cabang'}
+                <Icon name="chevron-down" aria-hidden />
+              </button>
+            ) : (
+              <span>{done ? done.sale.saleNo : nextNo}</span>
+            )}
+            <span>
+              {done ? `${done.sale.lines.length} baris` : `${totalQty} unit · ${cart.length} baris`}
+            </span>
           </div>
         </div>
 
+        {done ? (
+          <div className={styles.donePanel}>
+            <p className={styles.doneTitle}>
+              <span className={styles.doneLed} aria-hidden /> {t('pos.doneTitle')}
+              <span className={styles.doneNo}>{done.sale.saleNo}</span>
+            </p>
+            <p className={styles.doneChange}>
+              {done.change > 0
+                ? t('pos.doneChange').replace('{amount}', fmtRp(done.change))
+                : t('pos.doneExact')}
+            </p>
+            <div className={styles.doneActions}>
+              {org && (
+                <Button
+                  variant="secondary"
+                  iconLeft={<Icon name="receipt" aria-hidden />}
+                  onClick={() => printSaleReceipt(done.sale, org, done.change)}
+                >
+                  {t('pos.printReceipt')}
+                </Button>
+              )}
+              {done.phone && (
+                <a
+                  className={styles.waBtn}
+                  href={waLink(done.phone, waMessage(done.sale))}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Icon name="whatsapp" aria-hidden /> {t('pos.sendWa')}
+                </a>
+              )}
+            </div>
+            <Button
+              fullWidth
+              autoFocus
+              iconRight={<Icon name="arrow-right" aria-hidden />}
+              onClick={newSale}
+            >
+              {t('pos.newSale')}
+            </Button>
+          </div>
+        ) : (
+        <>
         <div className={styles.cartHeader}>
           <h3>
             <Icon name="cart-shopping" aria-hidden /> Keranjang
           </h3>
           {cart.length > 0 && (
-            <button className={styles.clearBtn} onClick={reset}>
+            <button type="button" className={styles.clearBtn} onClick={reset}>
               Kosongkan
             </button>
           )}
@@ -514,18 +795,22 @@ export function PosPage() {
 
         <div className={styles.cartItems}>
           {cart.length === 0 ? (
-            <p className={styles.emptyCart}>Belum ada item. Klik produk untuk menambahkan.</p>
+            <p className={styles.emptyCart}>
+              {outletNotice ? t('pos.outletChanged') : 'Belum ada item. Klik produk untuk menambahkan.'}
+            </p>
           ) : (
             cart.map((c) => (
               <div key={c.itemId} className={styles.cartItem}>
-                <div className={styles.cartItemInfo}>
-                  <strong>{c.name}</strong>
-                  <small>{fmtRp(c.sellPrice)} × {c.qty}</small>
-                </div>
+                <strong className={styles.cartItemName}>{c.name}</strong>
+                <small className={styles.cartItemUnit}>{fmtRp(c.sellPrice)} × {c.qty}</small>
                 <div className={styles.qtyControl}>
-                  <button onClick={() => setQty(c.itemId, c.qty - 1)} aria-label="Kurangi">−</button>
+                  <button type="button" onClick={() => setQty(c.itemId, c.qty - 1)} aria-label={`Kurangi ${c.name}`}>
+                    <Icon name="minus" aria-hidden />
+                  </button>
                   <span>{c.qty}</span>
-                  <button onClick={() => setQty(c.itemId, c.qty + 1)} aria-label="Tambah">+</button>
+                  <button type="button" onClick={() => setQty(c.itemId, c.qty + 1)} aria-label={`Tambah ${c.name}`}>
+                    <Icon name="plus" aria-hidden />
+                  </button>
                 </div>
                 <span className={styles.lineTotal}>{fmtRp(c.sellPrice * c.qty)}</span>
               </div>
@@ -542,14 +827,15 @@ export function PosPage() {
                 <div className={styles.customerChip}>
                   <Icon name="users" aria-hidden />
                   <span>{customer.name}</span>
-                  <button onClick={() => setCustomer(null)} aria-label="Lepas pelanggan">
-                    ×
+                  <button type="button" onClick={() => setCustomer(null)} aria-label="Lepas pelanggan">
+                    <Icon name="xmark" aria-hidden />
                   </button>
                 </div>
               ) : (
                 <>
                   <Input
                     placeholder="Pelanggan (opsional)"
+                    aria-label="Pelanggan (opsional)"
                     value={custQuery}
                     onChange={(e) => setCustQuery(e.target.value)}
                     iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -559,6 +845,7 @@ export function PosPage() {
                       {custMatches.map((c) => (
                         <li key={c.id}>
                           <button
+                            type="button"
                             onClick={() => {
                               setCustomer(c);
                               setCustQuery('');
@@ -577,18 +864,26 @@ export function PosPage() {
 
             <div className={styles.discountRow}>
               <Input
-                placeholder="Diskon"
+                placeholder={t('pos.discount')}
+                aria-label={t('pos.discount')}
+                inputMode="numeric"
                 value={discount}
                 onChange={(e) => setDiscount(fmtRpInput(e.target.value))}
               />
               <div className={styles.discountToggle}>
                 <button
+                  type="button"
+                  aria-pressed={discountType === 'amount'}
+                  aria-label={t('pos.discountAmount')}
                   className={discountType === 'amount' ? styles.activeToggle : ''}
                   onClick={() => setDiscountType('amount')}
                 >
                   Rp
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={discountType === 'percent'}
+                  aria-label={t('pos.discountPercent')}
                   className={discountType === 'percent' ? styles.activeToggle : ''}
                   onClick={() => setDiscountType('percent')}
                 >
@@ -616,46 +911,91 @@ export function PosPage() {
 
             <div className={styles.payments}>
               <div className={styles.paymentsHeader}>
-                <span>Pembayaran</span>
-                {wallets.length === 1 && (
-                  <button className={styles.autoBtn} onClick={autoFillSingleWallet}>
-                    Isi otomatis
-                  </button>
-                )}
+                <span>{t('pos.tender')}</span>
+                {tender.length === 0 && <span className={styles.tenderHint}>{t('pos.tenderHint')}</span>}
               </div>
-              {wallets.map((w) => {
-                const current = payments.find((p) => p.walletId === w.id)?.amount ?? 0;
+              <div className={styles.tenderKeys} role="group" aria-label={t('pos.tenderKeys')}>
+                {wallets.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    className={styles.tenderKey}
+                    aria-pressed={tender.some((p) => p.walletId === w.id)}
+                    onClick={() => pickWallet(w.id)}
+                  >
+                    <span className={styles.tenderLed} aria-hidden />
+                    {w.name}
+                  </button>
+                ))}
+              </div>
+              {tender.map((p) => {
+                const name = walletName(p.walletId);
                 return (
-                  <div key={w.id} className={styles.paymentRow}>
-                    <span>{w.name}</span>
+                  <div key={p.walletId} className={styles.paymentRow}>
+                    <label htmlFor={`tender-${p.walletId}`}>{name}</label>
                     <Input
-                      value={current ? fmtRpInput(String(current)) : ''}
-                      onChange={(e) => setWalletPayment(w.id, parseRpInput(e.target.value))}
+                      id={`tender-${p.walletId}`}
+                      aria-label={t('pos.tenderAmount').replace('{wallet}', name)}
+                      inputMode="numeric"
+                      autoFocus={finePointer}
+                      onFocus={(e) => e.currentTarget.select()}
+                      value={p.amount ? fmtRpInput(String(p.amount)) : ''}
+                      onChange={(e) => setTenderAmount(p.walletId, parseRpInput(e.target.value))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && settle.ok && !discountOver) checkout();
+                      }}
                       placeholder="0"
                     />
+                    <button
+                      type="button"
+                      className={styles.tenderRemove}
+                      onClick={() => removeTender(p.walletId)}
+                      aria-label={t('pos.tenderRemove').replace('{wallet}', name)}
+                    >
+                      <Icon name="xmark" aria-hidden />
+                    </button>
                   </div>
                 );
               })}
-              <div className={[styles.paymentStatus, paymentCheck.ok ? styles.ok : styles.bad].join(' ')}>
-                {paymentCheck.ok
-                  ? 'Pembayaran pas'
-                  : paymentCheck.diff < 0
-                    ? `Kurang ${fmtRp(-paymentCheck.diff)}`
-                    : `Lebih ${fmtRp(paymentCheck.diff)}`}
+              {quickCash.length > 1 && lastTender && (
+                <div className={styles.quickCash} role="group" aria-label={t('pos.cashQuick')}>
+                  {quickCash.map((v, i) => (
+                    <button key={v} type="button" onClick={() => setTenderAmount(lastTender.walletId, v)}>
+                      {i === 0 ? t('pos.exact') : fmtRp(v)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div
+                className={[
+                  styles.paymentStatus,
+                  settle.ok ? styles.ok : settle.paid === 0 ? styles.idle : styles.bad,
+                ].join(' ')}
+              >
+                <span className={styles.statusLed} aria-hidden />
+                {statusText}
               </div>
             </div>
 
-            <Button fullWidth onClick={checkout} loading={busy} disabled={!paymentCheck.ok || discountOver}>
-              <Icon name="circle-check" aria-hidden /> Proses Transaksi
+            <Button
+              fullWidth
+              onClick={checkout}
+              loading={busy}
+              disabled={!settle.ok || discountOver}
+              iconLeft={busy ? undefined : <Icon name="circle-check" aria-hidden />}
+            >
+              {t('pos.process').replace('{amount}', fmtRp(total))}
             </Button>
             </div>
           </>
+        )}
+        </>
         )}
       </Card>
       </div>
       )}
 
-      {tab === 'pos' && cart.length > 0 && (
+      {tab === 'pos' && cart.length > 0 && !done && !cartInView && (
         <button
           type="button"
           className={styles.mobileCartDock}
@@ -730,10 +1070,10 @@ export function PosPage() {
         footer={
           <>
             <Button variant="secondary" onClick={() => setVoidTarget(null)}>
-              Batal
+              {t('common.back')}
             </Button>
             <Button variant="danger" onClick={confirmVoid} loading={voidBusy}>
-              Batalkan Transaksi
+              {t('pos.voidConfirm').replace('{no}', voidTarget?.saleNo ?? '')}
             </Button>
           </>
         }
@@ -747,6 +1087,16 @@ export function PosPage() {
           value={voidReason}
           onChange={(e) => setVoidReason(e.target.value)}
         />
+      </Modal>
+
+      <Modal
+        open={outletModal}
+        onClose={() => setOutletModal(false)}
+        title={t('pos.outletSwitchTitle')}
+        size="sm"
+      >
+        {cart.length > 0 && <p className={styles.outletPickBody}>{t('pos.outletSwitchCartNote')}</p>}
+        {outletButtons}
       </Modal>
     </div>
   );
