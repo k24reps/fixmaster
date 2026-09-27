@@ -482,6 +482,13 @@ export const id = {
   'pos.newSale': 'Transaksi Baru',
   'pos.waMessage': 'Terima kasih sudah berbelanja di {shop}.\nNo. transaksi: {no}\n{items}\nTotal: {total}',
   'pos.voidConfirm': 'Ya, batalkan {no}',
+  'pos.cleared': 'Keranjang dikosongkan.',
+  'pos.restoreCart': 'Kembalikan {n} barang',
+  'pos.qtyLabel': 'Jumlah {name}',
+  'pos.changeRule': 'Kembalian diambil dari baris terakhir ({wallet}) — isi uang tunai paling akhir.',
+  'pos.resendWa': 'Kirim ulang struk WA {no}',
+  'pos.noPhone': 'Pelanggan ini belum punya nomor WA',
+  'pos.historyBranch': 'Cabang {name}',
 
   // ---------- Keuangan ----------
   'finance.outlet': 'Cabang',

@@ -34,6 +34,7 @@ import {
   settleTender,
   cashSuggestions,
   pickOnEnter,
+  groupSalesByDay,
   toSaleLines,
   type CartItem,
   type DiscountType,
@@ -90,6 +91,14 @@ export function PosPage() {
   // struk tersedia tepat saat pelanggan masih di depan meja.
   const [done, setDone] = useState<{ sale: Sale; change: number; phone: string } | null>(null);
   const [outletModal, setOutletModal] = useState(false);
+  // Isi keranjang terakhir yang dikosongkan — "Kosongkan" dulu tanpa jalan kembali.
+  const [cleared, setCleared] = useState<{
+    cart: CartItem[];
+    discount: string;
+    discountType: DiscountType;
+    tender: PaymentAllocation[];
+    customer: Customer | null;
+  } | null>(null);
   const [outletNotice, setOutletNotice] = useState(false);
   const [cartOutlet, setCartOutlet] = useState(activeOutletId);
   const [cartInView, setCartInView] = useState(false);
@@ -269,6 +278,7 @@ export function PosPage() {
     }
     setDone(null);
     setOutletNotice(false);
+    setCleared(null);
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === item.id);
       if (existing) {
@@ -291,6 +301,10 @@ export function PosPage() {
   };
 
   const setQty = (itemId: string, qty: number) => {
+    const item = cart.find((c) => c.itemId === itemId);
+    if (item && qty > item.stock) {
+      toast.warning(`Stok "${item.name}" hanya ${item.stock}`);
+    }
     setCart((prev) =>
       prev
         .map((c) => (c.itemId === itemId ? { ...c, qty: Math.max(0, Math.min(qty, c.stock)) } : c))
@@ -320,6 +334,41 @@ export function PosPage() {
     setTender([]);
     setCustomer(null);
     setCustQuery('');
+  };
+
+  const clearCart = () => {
+    setCleared({ cart, discount, discountType, tender, customer });
+    reset();
+    searchRef.current?.focus();
+  };
+  const restoreCart = () => {
+    if (!cleared) return;
+    setCart(cleared.cart);
+    setDiscount(cleared.discount);
+    setDiscountType(cleared.discountType);
+    setTender(cleared.tender);
+    setCustomer(cleared.customer);
+    setCleared(null);
+  };
+
+  // Kirim ulang struk WA dari riwayat. Nomor diambil dari data pelanggan saat
+  // diklik; jendela dibuka lebih dulu (sinkron) supaya tak diblokir peramban.
+  const resendWa = async (s: Sale) => {
+    const win = window.open('', '_blank');
+    try {
+      const c = s.customerId ? await repository.get('customers', s.customerId) : null;
+      if (!c?.phone) {
+        win?.close();
+        toast.warning(t('pos.noPhone'));
+        return;
+      }
+      const url = waLink(c.phone, waMessage(s));
+      if (win) win.location.href = url;
+      else window.open(url, '_blank');
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : 'Gagal membuka WhatsApp');
+    }
   };
 
   const newSale = () => {
@@ -798,7 +847,7 @@ export function PosPage() {
             <Icon name="cart-shopping" aria-hidden /> Keranjang
           </h3>
           {cart.length > 0 && (
-            <button type="button" className={styles.clearBtn} onClick={reset}>
+            <button type="button" className={styles.clearBtn} onClick={clearCart}>
               Kosongkan
             </button>
           )}
@@ -806,9 +855,17 @@ export function PosPage() {
 
         <div className={styles.cartItems}>
           {cart.length === 0 ? (
+            <>
             <p className={styles.emptyCart}>
-              {outletNotice ? t('pos.outletChanged') : 'Belum ada item. Klik produk untuk menambahkan.'}
+              {outletNotice ? t('pos.outletChanged') : cleared ? t('pos.cleared') : 'Belum ada item. Klik produk untuk menambahkan.'}
             </p>
+            {cleared && !outletNotice && (
+              <button type="button" className={styles.restoreBtn} onClick={restoreCart}>
+                <Icon name="repeat" aria-hidden />{' '}
+                {t('pos.restoreCart').replace('{n}', String(cleared.cart.reduce((n, c) => n + c.qty, 0)))}
+              </button>
+            )}
+            </>
           ) : (
             cart.map((c) => (
               <div key={c.itemId} className={styles.cartItem}>
@@ -818,7 +875,18 @@ export function PosPage() {
                   <button type="button" onClick={() => setQty(c.itemId, c.qty - 1)} aria-label={`Kurangi ${c.name}`}>
                     <Icon name="minus" aria-hidden />
                   </button>
-                  <span>{c.qty}</span>
+                  {/* Qty bisa diketik — 12 kabel data bukan 11 ketukan "+". */}
+                  <input
+                    className={styles.qtyInput}
+                    inputMode="numeric"
+                    aria-label={t('pos.qtyLabel').replace('{name}', c.name)}
+                    value={c.qty}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      if (!Number.isNaN(n) && n > 0) setQty(c.itemId, n);
+                    }}
+                  />
                   <button type="button" onClick={() => setQty(c.itemId, c.qty + 1)} aria-label={`Tambah ${c.name}`}>
                     <Icon name="plus" aria-hidden />
                   </button>
@@ -970,6 +1038,11 @@ export function PosPage() {
                   </div>
                 );
               })}
+              {tender.length > 1 && lastTender && (
+                <p className={styles.tenderRule}>
+                  {t('pos.changeRule').replace('{wallet}', walletName(lastTender.walletId))}
+                </p>
+              )}
               {quickCash.length > 1 && lastTender && (
                 <div className={styles.quickCash} role="group" aria-label={t('pos.cashQuick')}>
                   {quickCash.map((v, i) => (
@@ -1030,48 +1103,87 @@ export function PosPage() {
             <h3>
               <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
             </h3>
+            {/* Riwayat mengikuti cabang aktif — dulu tanpa tanda, sehingga cabang
+                tanpa penjualan tampak seperti data hilang. */}
+            {activeOutlet && reachableOutlets.length > 1 && (
+              <span className={styles.historyScope}>
+                {t('pos.historyBranch').replace('{name}', activeOutlet.name)}
+              </span>
+            )}
           </div>
           {loadPending(salesLoad) ? (
             <LoadState queries={[salesLoad]} />
           ) : recentSales.length === 0 ? (
             <p className={styles.emptyCart}>Belum ada transaksi.</p>
           ) : (
-            <ul className={styles.historyList}>
-              {recentSales.map((s) => (
-                <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
-                  <div className={styles.historyInfo}>
-                    <strong>{s.saleNo}</strong>
-                    <small>
-                      {fmtDate(s.date)} · {s.lines.length} item
-                      {s.customerName ? ` · ${s.customerName}` : ''}
-                    </small>
-                  </div>
-                  <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
-                  {org && (
-                    <button
-                      className={styles.iconBtn}
-                      onClick={() => printSaleReceipt(s, org)}
-                      aria-label={`Cetak struk ${s.saleNo}`}
-                      title="Cetak struk"
-                    >
-                      <Icon name="receipt" aria-hidden />
-                    </button>
-                  )}
-                  {s.voided ? (
-                    <Badge tone="danger">Dibatalkan</Badge>
-                  ) : !isMgr || s.date < monthStart ? null : (
-                    <button
-                      className={styles.voidBtn}
-                      onClick={() => { setVoidTarget(s); setVoidReason(''); }}
-                      aria-label={`Batalkan ${s.saleNo}`}
-                      title="Batalkan transaksi"
-                    >
-                      <Icon name="circle-xmark" aria-hidden />
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
+            groupSalesByDay(recentSales).map((day) => (
+              <section key={day.date} className={styles.historyDay} aria-label={fmtDate(day.date)}>
+                <div className={styles.historyDayHead}>
+                  <span>{fmtDate(day.date)}</span>
+                  <span>
+                    {day.count} trx · {fmtRp(day.total)}
+                  </span>
+                </div>
+                <ul className={styles.historyList}>
+                  {day.rows.map((s) => (
+                    <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
+                      <div className={styles.historyInfo}>
+                        <strong>
+                          {s.saleNo}
+                          <span className={styles.historyTime}>
+                            {s.createdAt
+                              ? new Date(s.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                              : ''}
+                          </span>
+                        </strong>
+                        <small>
+                          {s.lines.length} item
+                          {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || '—').join(' + ')}`}
+                          {s.cashierName ? ` · ${s.cashierName}` : ''}
+                          {s.customerName ? ` · ${s.customerName}` : ''}
+                        </small>
+                      </div>
+                      <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
+                      {s.customerId && !s.voided && (
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => void resendWa(s)}
+                          aria-label={t('pos.resendWa').replace('{no}', s.saleNo)}
+                          title={t('pos.resendWa').replace('{no}', s.saleNo)}
+                        >
+                          <Icon name="whatsapp" aria-hidden />
+                        </button>
+                      )}
+                      {org && (
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => printSaleReceipt(s, org)}
+                          aria-label={`Cetak struk ${s.saleNo}`}
+                          title="Cetak struk"
+                        >
+                          <Icon name="receipt" aria-hidden />
+                        </button>
+                      )}
+                      {s.voided ? (
+                        <Badge tone="danger">Dibatalkan</Badge>
+                      ) : !isMgr || s.date < monthStart ? null : (
+                        <button
+                          type="button"
+                          className={styles.voidBtn}
+                          onClick={() => { setVoidTarget(s); setVoidReason(''); }}
+                          aria-label={`Batalkan ${s.saleNo}`}
+                          title="Batalkan transaksi"
+                        >
+                          <Icon name="circle-xmark" aria-hidden />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
         </Card>
       )}

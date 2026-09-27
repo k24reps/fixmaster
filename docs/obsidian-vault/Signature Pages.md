@@ -227,6 +227,9 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
 - **Cepat.** Cari mencakup SKU; Enter menambah SKU persis atau satu-satunya hasil
   (`pickOnEnter`, pemindai barcode); "/" memfokuskan cari; fokus otomatis hanya untuk
   mouse. Barang habis tampil redup "Habis" saat dicari.
+- **Riwayat (28 Sep):** dikelompokkan per hari (total tanpa yang batal), tiap baris jam ·
+  wallet · kasir · pelanggan, tombol kirim ulang WA untuk penjualan berpelanggan; kepala
+  menyebut cabang aktif. Keranjang: qty bisa diketik, Kosongkan bisa dikembalikan.
 - **Baris keranjang dua baris** (nama selebar struk; harga · qty · jumlah), input uang
   `inputMode="numeric"`, toggle Rp/% ber-`aria-pressed`.
 

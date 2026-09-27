@@ -480,6 +480,13 @@ export const en: Dictionary = {
   'pos.newSale': 'New Sale',
   'pos.waMessage': 'Thank you for shopping at {shop}.\nSale no: {no}\n{items}\nTotal: {total}',
   'pos.voidConfirm': 'Yes, void {no}',
+  'pos.cleared': 'Cart cleared.',
+  'pos.restoreCart': 'Restore {n} items',
+  'pos.qtyLabel': 'Quantity of {name}',
+  'pos.changeRule': 'Change comes out of the last row ({wallet}) — enter cash last.',
+  'pos.resendWa': 'Resend WA receipt {no}',
+  'pos.noPhone': 'This customer has no WhatsApp number yet',
+  'pos.historyBranch': 'Branch {name}',
 
   // ---------- Keuangan ----------
   'finance.outlet': 'Branch',

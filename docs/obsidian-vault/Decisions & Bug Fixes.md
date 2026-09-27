@@ -3424,5 +3424,8 @@ buatan tahap 2 — langsung diperbaiki:
   `--app-inset-top` — semua tinggi berbasis `--app-vh` dulu melewati tepi bawah ±60px.
 - **[P2] LCD "KEMBALIAN" hijau saat lebih bayar ditolak** → nada "Lebih bayar" amber; pesan
   menyebut baris yang tak diperlukan ("Pembayaran lain sudah menutup total — hapus baris QRIS").
-- **Belum:** Kosongkan tanpa undo; kirim ulang WA dari riwayat; riwayat tanpa jam/metode/kasir/total
-  harian; ketik qty; aturan "kembalian dari baris terakhir" belum terlihat; i18n ±15 literal.
+- **Susulan (28 Sep):** Kosongkan bisa dikembalikan ("Kembalikan N barang", fokus ke cari);
+  qty bisa diketik (dibatasi stok + peringatan); aturan kembalian ditulis saat tender >1 baris;
+  riwayat per hari (`groupSalesByDay`: jumlah trx + total tanpa yang batal) dengan jam, wallet,
+  kasir, penanda cabang aktif, dan **kirim ulang struk WA** (nomor diambil saat diklik; jendela
+  dibuka sinkron dulu agar tak diblokir). **Belum:** i18n ±15 literal lama.

@@ -11,6 +11,7 @@ import {
   settleTender,
   cashSuggestions,
   pickOnEnter,
+  groupSalesByDay,
   type CartItem,
 } from './pos';
 import type { SaleLine } from '@/data/types';
@@ -141,5 +142,19 @@ describe('pickOnEnter', () => {
   it('beberapa hasil atau kosong: tidak menebak', () => {
     expect(pickOnEnter(inv, [inv[0], inv[1]], 's')).toBeNull();
     expect(pickOnEnter(inv, inv, '  ')).toBeNull();
+  });
+});
+
+describe('groupSalesByDay', () => {
+  it('mengelompokkan per tanggal; transaksi batal tak ikut total', () => {
+    const days = groupSalesByDay([
+      { date: '2026-09-28', total: 100, voided: false },
+      { date: '2026-09-28', total: 50, voided: true },
+      { date: '2026-09-27', total: 70, voided: false },
+    ]);
+    expect(days.map((d) => [d.date, d.total, d.count, d.rows.length])).toEqual([
+      ['2026-09-28', 100, 1, 2],
+      ['2026-09-27', 70, 1, 1],
+    ]);
   });
 });

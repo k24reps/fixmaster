@@ -149,6 +149,27 @@ export function pickOnEnter<T extends { sku: string; stock: number }>(
   return sellable.length === 1 ? sellable[0] : null;
 }
 
+/**
+ * Riwayat kasir per hari (urutan masukan dipertahankan, terbaru dulu), dengan
+ * total harian yang tidak menghitung transaksi batal — angka yang dicocokkan
+ * pemilik dengan laci di akhir hari.
+ */
+export function groupSalesByDay<T extends { date: string; total: number; voided: boolean }>(
+  sales: readonly T[],
+): { date: string; total: number; count: number; rows: T[] }[] {
+  const out: { date: string; total: number; count: number; rows: T[] }[] = [];
+  for (const s of sales) {
+    let day = out[out.length - 1];
+    if (!day || day.date !== s.date) out.push((day = { date: s.date, total: 0, count: 0, rows: [] }));
+    day.rows.push(s);
+    if (!s.voided) {
+      day.total += s.total;
+      day.count += 1;
+    }
+  }
+  return out;
+}
+
 /** Convert cart items into immutable sale lines. */
 export function toSaleLines(items: CartItem[]): SaleLine[] {
   return items.map((i) => ({
