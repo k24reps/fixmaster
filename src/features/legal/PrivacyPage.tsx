@@ -21,7 +21,7 @@ export function PrivacyPage() {
       title="Kebijakan Privasi"
       docId="PRIVASI-001"
       intro="Bagaimana FixMaster mengumpulkan, menggunakan, dan melindungi data Anda serta data pelanggan usaha reparasi Anda."
-      updated="2026-06-07"
+      updated="2026-09-27"
     >
       <div className="callout">
         <p>
@@ -74,15 +74,18 @@ export function PrivacyPage() {
 
       <h2>3. Penyimpanan &amp; Lokasi Data</h2>
       <p>
-        Data disimpan pada infrastruktur cloud (Supabase) dengan isolasi antar-tenant (Row
-        Level Security), sehingga data satu usaha tidak dapat diakses usaha lain. Pembayaran
-        diproses oleh penyedia gateway; kami tidak menyimpan detail kartu Anda.
+        Data disimpan di server yang kami kelola di pusat data di Jakarta, Indonesia, dengan
+        isolasi antar-tenant (Row Level Security), sehingga data satu usaha tidak dapat
+        diakses usaha lain. Lalu lintas ke server melewati jaringan Cloudflare dan selalu
+        terenkripsi (HTTPS). Salinan cadangan dibuat dua kali sehari, dienkripsi (AES-256)
+        sebelum dikirim, lalu disimpan di layanan penyimpanan cloud. Pembayaran langganan
+        dikonfirmasi secara manual; kami tidak menyimpan detail kartu Anda.
       </p>
 
       <h2>4. Pembagian Data ke Pihak Ketiga</h2>
       <p>
         Kami tidak menjual data Anda. Kami hanya membagikan data kepada pemroses yang
-        diperlukan untuk menjalankan layanan (mis. penyedia hosting dan gateway pembayaran),
+        diperlukan untuk menjalankan layanan (mis. penyedia server, jaringan, dan pengiriman email),
         atau bila diwajibkan oleh hukum.
       </p>
 

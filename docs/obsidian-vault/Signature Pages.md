@@ -187,6 +187,8 @@ Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa
 
 ![[privacy-dark.png]]
 
+- **Revisi 27 Sep 2026 (`PRIVASI-001` §3–4).** Lokasi data mengikuti server sungguhan: VPS di Jakarta, lalu lintas lewat Cloudflare (HTTPS), cadangan 2×/hari terenkripsi AES-256 di penyimpanan cloud. Kalimat "gateway pembayaran" diganti — langganan dikonfirmasi manual sejak `0047`. Pihak pemroses: penyedia server, jaringan, dan pengiriman email. Ubah bagian ini setiap kali lokasi server berpindah ([[Self-Hosting]]).
+
 ## Fallback Error — Fault Panel
 
 `ErrorBoundary` (root + route) juga di-redesign dari icon-card generik jadi **panel diagnostik fault** sefamili bench: pelat bersekrup, header **`FAULT` stamp** ber-LED danger berdenyut + **kode fault** (`FX-SYS-500` root / `FX-MOD-500` route), aksi pulih (Coba Lagi / Muat Ulang). Lihat [[Decisions & Bug Fixes]].
