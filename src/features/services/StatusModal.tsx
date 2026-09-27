@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Select, Input, Button, Badge, ConfirmDialog } from '@/components/ui';
+import { Modal, Select, Input, Button, Badge, ConfirmDialog, Icon } from '@/components/ui';
+import { useT } from '@/i18n';
 import { PartWarrantyFields, WarrantyPresets } from './PartWarrantyFields';
 import { repository } from '@/data';
 import { saveServiceParts } from '@/data/serviceParts';
@@ -82,6 +83,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const [partDays, setPartDays] = useState<string[]>([]);
   const [confirmNoWarranty, setConfirmNoWarranty] = useState(false);
   const [confirmZeroCost, setConfirmZeroCost] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const t = useT();
   // Settlement payment legs ("split payment"): each leg = wallet + amount.
   // A single-wallet payment is just one leg.
   const [splits, setSplits] = useState<{ walletId: string; amount: string }[]>([]);
@@ -134,6 +137,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setPartDays(service.spareparts.map((p) => (p.warrantyDays != null ? String(p.warrantyDays) : '')));
       setConfirmNoWarranty(false);
       setConfirmZeroCost(false);
+      setConfirmCancel(false);
       setSplits([]);
       setDpAmount('');
       setDpWalletId(defaultWallet());
@@ -627,10 +631,65 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     }
   };
 
-  const apply = mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : () => applyStatus();
+  // Biaya Final berubah (ketik atau chip estimasi): satu pembayaran ikut; yang
+  // sudah dipecah dibiarkan.
+  const changeCost = (next: string) => {
+    setFinalCost(next);
+    if (paying && splits.length === 1) {
+      const due = settlementAmount(parseRpInput(next), service.downPayment);
+      setSplits([{ ...splits[0], amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
+    }
+  };
+
+  // Batal itu final dan memindah uang + stok: tombolnya menyebut konsekuensinya
+  // dan selalu lewat konfirmasi berisi ringkasan.
+  const cancelling = mode === 'status' && target === 'batal';
+  const cancelRefund = service.downPayment > 0 ? Math.min(parseRpInput(refundAmount), service.downPayment) : 0;
+  const partNames = (keepUsed: boolean) =>
+    heldParts
+      .filter(({ index }) => consumedParts.has(index) === keepUsed)
+      .map(({ part }) => `${part.name} ×${part.qty}`)
+      .join(', ');
+  const cancelSummary = [
+    t('serviceStatus.confirmCancelFinal'),
+    cancelRefund > 0
+      ? t('serviceStatus.confirmCancelRefund')
+          .replace('{amount}', fmtRp(cancelRefund))
+          .replace('{wallet}', wallets.find((w) => w.id === refundWalletId)?.name ?? '—')
+      : service.downPayment > 0
+        ? t('serviceStatus.confirmCancelKeep').replace('{amount}', fmtRp(service.downPayment))
+        : '',
+    partNames(false) && t('serviceStatus.confirmCancelToStock').replace('{parts}', partNames(false)),
+    partNames(true) && t('serviceStatus.confirmCancelUsed').replace('{parts}', partNames(true)),
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const requestCancel = () => {
+    if (!note.trim()) return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS.batal}`);
+    setConfirmCancel(true);
+  };
+
+  const apply =
+    mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : cancelling ? requestCancel : () => applyStatus();
   const applyLabel =
-    mode === 'dp' ? 'Simpan DP' : mode === 'koreksi' ? 'Perbarui Biaya' : paying && express ? 'Selesai & Lunas' : 'Terapkan';
+    mode === 'dp'
+      ? 'Simpan DP'
+      : mode === 'koreksi'
+        ? 'Perbarui Biaya'
+        : cancelling
+          ? cancelRefund > 0
+            ? t('serviceStatus.cancelRefund').replace('{amount}', fmtRp(cancelRefund))
+            : t('serviceStatus.cancelTicket')
+          : paying
+            ? express
+              ? `${t('serviceStatus.expressApply')}${settleDue > 0 ? ` · ${fmtRp(settleDue)}` : ''}`
+              : settleDue > 0
+                ? t('serviceStatus.receive').replace('{amount}', fmtRp(settleDue))
+                : t('serviceStatus.markPaid')
+            : t('serviceStatus.apply');
   const noActions = modes.length === 0;
+  const estimate = service.estimateCost ?? 0;
+  const workTargets = allowed.filter((s) => s !== 'batal');
 
   return (
     <>
@@ -641,9 +700,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.close')}
           </Button>
-          <Button onClick={apply} loading={busy} disabled={noActions}>
+          <Button variant={cancelling ? 'danger' : 'primary'} onClick={apply} loading={busy} disabled={noActions}>
             {applyLabel}
           </Button>
         </>
@@ -676,8 +735,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             <ul className={styles.partsList}>
               {service.spareparts.map((p, i) => (
                 <li key={`${p.itemId ?? 'm'}-${i}`}>
-                  <span>
-                    {p.kind === 'manual' ? '💵 ' : ''}
+                  <span className={styles.partName}>
+                    {p.kind === 'manual' && <Icon name="money-bill-wave" aria-hidden />}
                     {p.name}
                     {p.kind === 'manual' ? '' : ` ×${p.qty}`}
                   </span>
@@ -699,13 +758,45 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         {/* ---- Status sub-action ---- */}
         {mode === 'status' && allowed.length > 0 && (
           <>
-            <Select
-              label="Status Tujuan"
-              value={target}
-              onChange={(e) => onTargetChange(e.target.value as ServiceStatus)}
-              options={allowed.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
-              placeholder="Pilih status…"
-            />
+            {/* Status tujuan = kanal instrumen, satu ketukan. Batal dipisah di
+                bawah seam titik: final dan memindah uang, tak boleh sejajar
+                dengan langkah kerja biasa. */}
+            <div className={styles.channelBlock} role="radiogroup" aria-label={t('serviceStatus.target')}>
+              <span className={styles.label}>{t('serviceStatus.target')}</span>
+              {workTargets.length > 0 && (
+                <div className={styles.channels}>
+                  {workTargets.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      role="radio"
+                      aria-checked={target === s}
+                      data-tone={STATUS_TONE[s]}
+                      className={styles.channel}
+                      onClick={() => onTargetChange(s)}
+                    >
+                      <span className={styles.channelLed} aria-hidden />
+                      {STATUS_LABELS[s]}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {allowed.includes('batal') && (
+                <div className={styles.channelDangerRow}>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={target === 'batal'}
+                    data-tone="danger"
+                    className={styles.channel}
+                    onClick={() => onTargetChange('batal')}
+                  >
+                    <span className={styles.channelLed} aria-hidden />
+                    {STATUS_LABELS.batal}
+                  </button>
+                </div>
+              )}
+            </div>
             {reopening && (
               <p className={styles.dp}>
                 Tiket dibuka lagi untuk dikerjakan. Garansi yang ditetapkan saat Selesai dihapus dan diisi ulang saat
@@ -713,19 +804,32 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               </p>
             )}
             {needsCost && (
+              <div className={styles.costField}>
+                <Input
+                  label="Biaya Final"
+                  value={finalCost}
+                  onChange={(e) => changeCost(fmtRpInput(e.target.value))}
+                  placeholder="0"
+                  inputMode="numeric"
+                />
+                {/* Estimasi saat intake tak perlu diingat lalu diketik ulang. */}
+                {estimate > 0 && parseRpInput(finalCost) !== estimate && (
+                  <button
+                    type="button"
+                    className={styles.estimateChip}
+                    onClick={() => changeCost(fmtRpInput(String(estimate)))}
+                  >
+                    {t('serviceStatus.useEstimate').replace('{amount}', fmtRp(estimate))}
+                  </button>
+                )}
+              </div>
+            )}
+            {needsHandling && (
               <Input
-                label="Biaya Final"
-                value={finalCost}
-                onChange={(e) => {
-                  const next = fmtRpInput(e.target.value);
-                  setFinalCost(next);
-                  // Satu pembayaran = ikuti biaya; yang sudah dipecah dibiarkan.
-                  if (paying && splits.length === 1) {
-                    const due = settlementAmount(parseRpInput(next), service.downPayment);
-                    setSplits([{ ...splits[0], amount: due > 0 ? fmtRpInput(String(due)) : '' }]);
-                  }
-                }}
-                placeholder="250.000"
+                label="Penanganan (wajib)"
+                value={handling}
+                onChange={(e) => setHandling(e.target.value)}
+                placeholder="Contoh: ganti LCD, unit sudah dites normal"
               />
             )}
             {canExpress && (
@@ -772,14 +876,14 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                         title="Hapus pembayaran"
                         aria-label="Hapus pembayaran"
                       >
-                        ×
+                        <Icon name="xmark" aria-hidden />
                       </button>
                     )}
                   </div>
                 ))}
                 <div className={styles.splitFooter}>
                   <button type="button" className={styles.splitAdd} onClick={addSplit}>
-                    + Tambah wallet
+                    <Icon name="plus" aria-hidden /> Tambah wallet
                   </button>
                   <span
                     className={styles.splitTally}
@@ -810,8 +914,14 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                   />
                 </div>
                 {service.spareparts.length > 0 && (
-                  <div className={styles.partWarranty}>
-                    <span className={styles.warrantyLabel}>Garansi Sparepart (hari)</span>
+                  // Terisi dari garansi bawaan item/toko; jarang diubah, jadi dilipat.
+                  <details className={[styles.fold, styles.partWarranty].join(' ')}>
+                    <summary className={styles.foldSummary}>
+                      {t('serviceStatus.partWarranty')}
+                      <span className={styles.foldCount}>
+                        {t('serviceStatus.partCount').replace('{n}', String(service.spareparts.length))}
+                      </span>
+                    </summary>
                     <PartWarrantyFields
                       parts={service.spareparts}
                       values={partDays}
@@ -822,7 +932,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                       }
                       presets={warrantyPresets}
                     />
-                  </div>
+                  </details>
                 )}
               </div>
             )}
@@ -911,14 +1021,6 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 </p>
               </div>
             )}
-            {needsHandling && (
-              <Input
-                label="Penanganan (wajib)"
-                value={handling}
-                onChange={(e) => setHandling(e.target.value)}
-                placeholder="Contoh: ganti LCD, unit sudah dites normal"
-              />
-            )}
             <Input
               label={noteRequired ? 'Catatan (wajib)' : 'Catatan (opsional)'}
               value={note}
@@ -998,8 +1100,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           </>
         )}
 
-        <div className={styles.history}>
-          <span className={styles.label}>Riwayat</span>
+        {/* Riwayat lengkap ada di halaman detail; di sini hanya rujukan, dilipat. */}
+        <details className={[styles.fold, styles.history].join(' ')}>
+          <summary className={styles.foldSummary}>
+            {t('serviceStatus.history')}
+            <span className={styles.foldCount}>{history.length}</span>
+          </summary>
           <ul className={styles.timeline}>
             {[...history].reverse().map((h, i) => (
               <li key={i} className={styles.timelineItem}>
@@ -1014,9 +1120,22 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={confirmCancel}
+      title={t('serviceStatus.confirmCancelTitle').replace('{no}', service.serviceNo)}
+      message={cancelSummary}
+      confirmLabel={t('serviceStatus.confirmCancelAction')}
+      cancelLabel={t('common.back')}
+      danger
+      onCancel={() => setConfirmCancel(false)}
+      onConfirm={() => {
+        setConfirmCancel(false);
+        void applyStatus();
+      }}
+    />
     <ConfirmDialog
       open={confirmNoWarranty}
       title="Selesai tanpa garansi?"

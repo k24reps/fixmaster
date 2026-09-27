@@ -4,10 +4,65 @@
   gap: var(--space-5);
 }
 
-.stats {
+/* Strip readout: satu panel, lima sel dipisah seam titik. auto-fit membuatnya
+   menyusut sendiri (5 → 3+2 → 2+2+1) tanpa breakpoint. */
+.readouts {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  margin: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+  margin: 0 -1px -1px 0;
+  min-width: 0;
+}
+/* Sel rupiah dua jalur: "Rp 3.550.000" tak muat di satu sel sempit, dan di ponsel
+   strip jadi 3+2 alih-alih lima baris. */
+.readout:last-child {
+  grid-column: span 2;
+}
+.readoutLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.readoutValue {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.readoutLed {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+}
+.readoutLed[data-tone='info'] {
+  background: var(--info);
+  box-shadow: 0 0 7px var(--info);
+}
+.readoutLed[data-tone='warning'] {
+  background: var(--warning);
+  box-shadow: 0 0 7px var(--warning);
 }
 
 .toolbar {
@@ -95,6 +150,11 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+}
+/* Hitungan "Filter lainnya" di ponsel ikut menghitung teknisi/urutan yang
+   dilipat ke dalamnya, supaya filter aktif tak pernah tersembunyi diam-diam. */
+.mobileCount {
+  display: none;
 }
 .resetBtn {
   min-height: var(--control-h);
@@ -251,10 +311,10 @@
 .profit {
   font-family: var(--font-mono);
   font-weight: var(--fw-semibold);
-  color: var(--success);
+  color: var(--success-text);
 }
 .profit[data-loss='true'] {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 /* ---------- Money cell: biaya utama + rincian pemilik ---------- */
 /* Modal dan profit dulu dua kolom sendiri. Digabung ke sini karena tiga kolom
@@ -553,7 +613,7 @@
   white-space: nowrap;
 }
 .pickupWait {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 .pickupWait::before {
   content: '';
@@ -576,7 +636,7 @@
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
   line-height: 1.4;
-  color: var(--warning);
+  color: var(--warning-text);
   white-space: nowrap;
 }
 .stallTag::before {
@@ -689,16 +749,30 @@
 }
 
 @media (max-width: 720px) {
-  .stats {
-    /* Dulu carousel scroll-snap. Diganti grid dua kolom yang membungkus:
-       tak ada lagi yang bisa digeser ke samping, dan SELURUH kartu terlihat
-       sekaligus tanpa perlu ditemukan lewat gestur yang tidak terlihat.
-       `:last-child:nth-child(odd)` melebarkan kartu terakhir hanya bila
-       jumlahnya ganjil, supaya tak ada sel kosong menganga di baris akhir. */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .readout {
+    padding: var(--space-2) var(--space-3);
   }
-  .stats > *:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
+  .readoutValue {
+    font-size: var(--text-md);
+  }
+  /* Teknisi & urutan masuk ke "Filter lainnya": tiga baris kontrol dulu ikut
+     mendorong tiket pertama ke bawah navigasi bawah. Toggle cepat tetap di luar. */
+  .filterBar:not([data-more='true']) .select {
+    display: none;
+  }
+  .mobileCount {
+    display: inline;
+  }
+  /* Nomor tiket = pintu ke detail, tapi hanya 17px tinggi (audit-mobile).
+     Padding + margin negatif memperbesar area sentuh ke 45px tanpa menggeser
+     tata letak baris. */
+  .noLink {
+    display: inline-block;
+    padding: 14px 8px;
+    margin: -14px -8px;
+  }
+  .desktopCount {
+    display: none;
   }
   .toolbar {
     align-items: stretch;

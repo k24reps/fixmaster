@@ -102,6 +102,17 @@ import {
   SlidersHorizontal,
   Eye,
   EyeSlash,
+  ArrowsClockwise,
+  Buildings,
+  Laptop,
+  Lock,
+  Money,
+  PaperPlaneTilt,
+  Shield,
+  UserMinus,
+  UserPlus,
+  DotsThree,
+  Note,
   type IconProps as PhosphorIconProps,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react';
@@ -195,7 +206,22 @@ export type IconName =
   | 'shield-halved'
   | 'sliders'
   | 'eye'
-  | 'eye-slash';
+  | 'eye-slash'
+  | 'arrow-square-out'
+  | 'arrows-rotate'
+  | 'buildings'
+  | 'laptop'
+  | 'lock'
+  | 'money-bill-wave'
+  | 'paper-plane-tilt'
+  | 'shield'
+  | 'user-minus'
+  | 'user-plus'
+  | 'warning'
+  | 'x'
+  | 'xmark'
+  | 'dots-three'
+  | 'note';
 
 /** Name → Phosphor component. Aliases collapse onto shared glyphs. */
 const REGISTRY: Record<IconName, PhosphorIcon> = {
@@ -288,6 +314,23 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   sliders: SlidersHorizontal,
   eye: Eye,
   'eye-slash': EyeSlash,
+  // Nama-nama ini sudah dipakai di halaman tapi tak terdaftar, sehingga diam-diam
+  // tampil sebagai ikon tanda tanya (27 Sep 2026). Dijaga Icon.test.ts.
+  'arrow-square-out': ArrowSquareOut,
+  'arrows-rotate': ArrowsClockwise,
+  buildings: Buildings,
+  laptop: Laptop,
+  lock: Lock,
+  'money-bill-wave': Money,
+  'paper-plane-tilt': PaperPlaneTilt,
+  shield: Shield,
+  'user-minus': UserMinus,
+  'user-plus': UserPlus,
+  warning: Warning,
+  x: X,
+  xmark: X,
+  'dots-three': DotsThree,
+  note: Note,
 };
 
 // Reference rarely-used imports so tree-shaking keeps them and lint stays happy.

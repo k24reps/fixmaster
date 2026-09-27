@@ -32,7 +32,7 @@ import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { trackingUrl } from '@/lib/business/notify';
-import { Button, ConfirmDialog, Icon, Input, Select } from '@/components/ui';
+import { Button, ConfirmDialog, Icon, Input, Modal, Select, type IconName } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
@@ -44,6 +44,17 @@ import type { ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
 
 /** Linear "job traveler" stages (cancel handled separately). */
+interface TicketAction {
+  key: string;
+  icon: IconName;
+  label: string;
+  primary?: boolean;
+  active?: boolean;
+  iconRight?: boolean;
+  onClick?: () => void;
+  to?: string;
+}
+
 const TRAVELER: ServiceStatus[] = [
   'diterima',
   'diagnosa',
@@ -76,6 +87,7 @@ export function ServiceDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [partWarrantyOpen, setPartWarrantyOpen] = useState(false);
@@ -478,6 +490,72 @@ export function ServiceDetailPage() {
     }
   };
 
+  // Satu daftar aksi untuk bilah bawah DAN panel "Lainnya" di ponsel, supaya
+  // syarat tampil tiap aksi tidak ditulis dua kali.
+  const actions: TicketAction[] = [
+    { key: 'edit', icon: 'pen', label: 'Edit', onClick: () => setEditOpen(true) },
+    ...(org
+      ? [{ key: 'print', icon: 'print' as const, label: 'Cetak Nota', onClick: () => printServiceReceipt(service, org) }]
+      : []),
+    ...(isManager && (isAwaitingPickup(service) || service.pickedUp)
+      ? [
+          {
+            key: 'pickup',
+            icon: (service.pickedUp ? 'circle-check' : 'box') as IconName,
+            label: service.pickedUp ? t('serviceDetail.pickedUp') : 'Tandai Diambil',
+            primary: service.status === 'lunas' && !service.pickedUp,
+            active: service.pickedUp,
+            onClick: () => void togglePickup(),
+          },
+        ]
+      : []),
+    ...(claimable
+      ? [{ key: 'claim', icon: 'shield-halved' as const, label: 'Klaim Garansi', primary: service.pickedUp, onClick: () => setClaimOpen(true) }]
+      : []),
+    ...(openClaim
+      ? [{ key: 'open-claim', icon: 'shield-halved' as const, label: `Klaim ${openClaim.serviceNo} berjalan`, to: `/services/${openClaim.id}` }]
+      : []),
+    ...(!isTerminal(service.status)
+      ? [
+          onlyDp
+            ? { key: 'status', icon: 'money-bill-wave' as const, label: 'Terima DP', primary: true, onClick: () => setStatusOpen(true) }
+            : { key: 'status', icon: 'arrow-right' as const, iconRight: true, label: 'Update Status', primary: true, onClick: () => setStatusOpen(true) },
+        ]
+      : []),
+    ...(service.status === 'lunas' && isManager
+      ? [{ key: 'correct', icon: 'pen' as const, label: 'Koreksi Biaya', onClick: () => setStatusOpen(true) }]
+      : []),
+  ];
+  const secondaryActions = actions.filter((a) => !a.primary);
+  const renderAction = (a: TicketAction, className: string, after?: () => void) => {
+    const cls = [className, a.active ? styles.pickedActive : ''].join(' ');
+    const content = a.iconRight ? (
+      <>
+        {a.label} <Icon name={a.icon} aria-hidden />
+      </>
+    ) : (
+      <>
+        <Icon name={a.icon} aria-hidden /> {a.label}
+      </>
+    );
+    return a.to ? (
+      <Link key={a.key} className={cls} to={a.to} onClick={after}>
+        {content}
+      </Link>
+    ) : (
+      <button
+        key={a.key}
+        className={cls}
+        onClick={() => {
+          after?.();
+          a.onClick?.();
+        }}
+      >
+        {content}
+      </button>
+    );
+  };
+
   return (
     <div className={styles.page}>
       {/* Back link */}
@@ -573,15 +651,22 @@ export function ServiceDetailPage() {
         {!cancelled && (
           <section className={styles.traveler}>
             {TRAVELER.map((stage, i) => {
-              const done = i < currentIndex;
-              const current = i === currentIndex;
               const at = stageAt(stage);
+              // Hanya tahap yang benar-benar tercatat di riwayat yang dicentang.
+              // Sejak Selesai bisa dicapai langsung (0089), tahap yang dilompati
+              // dulu ikut bercentang dengan tanggal "—" — riwayat tampak lebih
+              // lengkap dari kenyataannya.
+              const passed = i < currentIndex;
+              const done = passed && !!at;
+              const skipped = passed && !at;
+              const current = i === currentIndex;
               return (
                 <div
                   key={stage}
                   className={[
                     styles.stage,
                     done ? styles.stageDone : '',
+                    skipped ? styles.stageSkipped : '',
                     current ? styles.stageCurrent : '',
                   ].join(' ')}
                 >
@@ -590,7 +675,7 @@ export function ServiceDetailPage() {
                   </div>
                   <div className={styles.stageInfo}>
                     <span className={styles.stageLabel}>{t(`status.${stage}`)}</span>
-                    <span className={styles.stageAt}>{at ?? '—'}</span>
+                    <span className={styles.stageAt}>{at ?? (skipped ? t('serviceDetail.skipped') : '—')}</span>
                   </div>
                   {i < TRAVELER.length - 1 && <span className={styles.connector} />}
                 </div>
@@ -849,59 +934,30 @@ export function ServiceDetailPage() {
           <span className={styles.actionValue}>{billingReadout.value}</span>
         </div>
         <div className={styles.actionBtns}>
-          <button className={styles.secondaryBtn} onClick={() => setEditOpen(true)}>
-            <Icon name="pen" aria-hidden /> Edit
-          </button>
-          {org && (
-            <button className={styles.secondaryBtn} onClick={() => printServiceReceipt(service, org)}>
-              <Icon name="print" aria-hidden /> Cetak Nota
-            </button>
-          )}
-          {isManager && (isAwaitingPickup(service) || service.pickedUp) && (
+          {actions.map((a) => renderAction(a, a.primary ? styles.primaryBtn : styles.secondaryBtn))}
+          {/* Di ≤760px aksi sekunder disembunyikan demi ruang; dulu tanpa pengganti,
+              sehingga Edit, Cetak Nota, Koreksi Biaya lenyap di ponsel pemilik. */}
+          {secondaryActions.length > 0 && (
             <button
-              className={[
-                service.status === 'lunas' && !service.pickedUp ? styles.primaryBtn : styles.secondaryBtn,
-                service.pickedUp ? styles.pickedActive : '',
-              ].join(' ')}
-              onClick={() => void togglePickup()}
+              className={[styles.secondaryBtn, styles.moreBtn].join(' ')}
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
             >
-              <Icon name={service.pickedUp ? 'circle-check' : 'box'} aria-hidden />{' '}
-              {service.pickedUp ? 'Diambil ✓' : 'Tandai Diambil'}
-            </button>
-          )}
-          {claimable && (
-            <button
-              className={service.pickedUp ? styles.primaryBtn : styles.secondaryBtn}
-              onClick={() => setClaimOpen(true)}
-            >
-              <Icon name="shield-halved" aria-hidden /> Klaim Garansi
-            </button>
-          )}
-          {openClaim && (
-            <Link className={styles.secondaryBtn} to={`/services/${openClaim.id}`}>
-              <Icon name="shield-halved" aria-hidden /> Klaim {openClaim.serviceNo} berjalan
-            </Link>
-          )}
-          {!isTerminal(service.status) && (
-            <button className={styles.primaryBtn} onClick={() => setStatusOpen(true)}>
-              {onlyDp ? (
-                <>
-                  <Icon name="money-bill-wave" aria-hidden /> Terima DP
-                </>
-              ) : (
-                <>
-                  Update Status <Icon name="arrow-right" aria-hidden />
-                </>
-              )}
-            </button>
-          )}
-          {service.status === 'lunas' && (me?.role === 'owner' || me?.role === 'admin') && (
-            <button className={styles.secondaryBtn} onClick={() => setStatusOpen(true)}>
-              <Icon name="pen" aria-hidden /> Koreksi Biaya
+              <Icon name="dots-three" aria-hidden /> {t('serviceDetail.more')}
             </button>
           )}
         </div>
       </div>
+      <Modal
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={`${t('serviceDetail.moreTitle')} · ${service.serviceNo}`}
+        size="sm"
+      >
+        <div className={styles.sheetList}>
+          {secondaryActions.map((a) => renderAction(a, styles.sheetAction, () => setMoreOpen(false)))}
+        </div>
+      </Modal>
 
       {/* ---------- Modals ---------- */}
       <ServiceModal

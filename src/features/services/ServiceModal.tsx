@@ -15,7 +15,25 @@ import { isSupabaseConfigured } from '@/data/supabase-client';
 import { trackEvent } from '@/lib/analytics';
 import { useDemoStore } from '@/stores/demo';
 import type { Service, Customer, Employee } from '@/data/types';
+import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
+
+interface IntakeDraft {
+  customerName: string;
+  customerPhone: string;
+  category: string;
+  device: string;
+  complaint: string;
+  accessories: string;
+  technicianId: string;
+  estimateCost: string;
+  outletId: string;
+}
+
+// Isian tiket BARU yang ditutup tanpa disimpan (Esc, ketuk latar, Batal). Dulu
+// hilang seketika — di meja konter itu berarti mengetik ulang semuanya sementara
+// pelanggan menunggu. Hanya di memori: hilang saat halaman dimuat ulang.
+let intakeDraft: IntakeDraft | null = null;
 
 interface ServiceModalProps {
   open: boolean;
@@ -56,8 +74,49 @@ export function ServiceModal({
   const [accessories, setAccessories] = useState('');
   const [technicianId, setTechnicianId] = useState('');
   const [estimateCost, setEstimateCost] = useState('');
+  const [outletId, setOutletId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const t = useT();
+  const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
+  // Pengguna multi-cabang di "Semua Outlet" wajib memilih cabang. Dulu hanya
+  // diberitahu SETELAH Simpan, dengan petunjuk ke sidebar yang tertutup jendela
+  // ini — dan isiannya hilang saat jendela ditutup untuk mencarinya.
+  const needOutlet = !editing && mustPickOutlet(outlets.length);
+  const outletOptions = outlets
+    .filter((o) => allowedOutletIds.length === 0 || allowedOutletIds.includes(o.id))
+    .map((o) => ({ value: o.id, label: o.name }));
+
+  const snapshot = (): IntakeDraft => ({
+    customerName,
+    customerPhone,
+    category,
+    device,
+    complaint,
+    accessories,
+    technicianId,
+    estimateCost,
+    outletId,
+  });
+  const hasContent = [customerName, customerPhone, device, complaint, accessories, estimateCost].some((v) =>
+    v.trim(),
+  );
+  const applyDraft = (d: IntakeDraft | null) => {
+    setCustomerName(d?.customerName ?? '');
+    setCustomerPhone(d?.customerPhone ?? '');
+    setCategory(d?.category ?? categories[0] ?? '');
+    setDevice(d?.device ?? '');
+    setComplaint(d?.complaint ?? '');
+    setAccessories(d?.accessories ?? '');
+    setTechnicianId(d?.technicianId ?? '');
+    setEstimateCost(d?.estimateCost ?? '');
+    setOutletId(d?.outletId ?? '');
+    setError('');
+  };
+  const close = () => {
+    if (!editing) intakeDraft = hasContent ? snapshot() : null;
+    onClose();
+  };
   // Quick-suggest: which customer field is active (drives the dropdown). Only
   // for NEW services — picking an existing customer here is the main way to
   // avoid near-duplicate records from re-typing a slightly different name.
@@ -65,16 +124,22 @@ export function ServiceModal({
 
   // Servis baru selalu mulai kosong; mode edit mencerminkan recordnya.
   useResetOnOpen(open, editing?.id ?? 'new', () => {
-    setCustomerName(editing?.customerName ?? '');
-    setCustomerPhone(editing?.customerPhone ?? '');
-    setCategory(editing?.category ?? categories[0] ?? '');
-    setDevice(editing?.device ?? '');
-    setComplaint(editing?.complaint ?? '');
-    setAccessories(editing?.accessories ?? '');
-    setTechnicianId(editing?.technicianId ?? '');
-    setEstimateCost(editing?.estimateCost ? fmtRpInput(String(editing.estimateCost)) : '');
-    setError('');
     setSuggestField(null);
+    if (!editing) {
+      applyDraft(intakeDraft);
+      return;
+    }
+    applyDraft({
+      customerName: editing.customerName,
+      customerPhone: editing.customerPhone,
+      category: editing.category,
+      device: editing.device,
+      complaint: editing.complaint,
+      accessories: editing.accessories,
+      technicianId: editing.technicianId ?? '',
+      estimateCost: editing.estimateCost ? fmtRpInput(String(editing.estimateCost)) : '',
+      outletId: '',
+    });
   });
 
   const technicianOptions = [
@@ -141,9 +206,7 @@ export function ServiceModal({
     if (!device.trim()) return setError('Nama perangkat wajib diisi');
     // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
     // branch first so the ticket isn't silently stamped to the primary outlet.
-    if (!editing && mustPickOutlet(outlets.length)) {
-      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum membuat servis');
-    }
+    if (needOutlet && !outletId) return setError(t('serviceForm.outletRequired'));
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -219,7 +282,7 @@ export function ServiceModal({
         const record: Service = {
           id: newId(),
           orgId,
-          outletId: resolveCreateOutlet(outlets),
+          outletId: needOutlet ? outletId : resolveCreateOutlet(outlets),
           serviceNo,
           customerId: customer.id,
           customerName: customerName.trim(),
@@ -271,6 +334,7 @@ export function ServiceModal({
           meta: { device: record.device, customer: record.customerName },
         });
         toast.success(`Servis ${saved.serviceNo} dibuat`);
+        intakeDraft = null;
       }
       onSaved();
       onClose();
@@ -284,12 +348,24 @@ export function ServiceModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title={editing ? `Edit ${editing.serviceNo}` : 'Servis Baru'}
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          {!editing && hasContent && (
+            <Button
+              variant="ghost"
+              className={styles.clearBtn}
+              onClick={() => {
+                intakeDraft = null;
+                applyDraft(null);
+              }}
+            >
+              {t('serviceForm.clear')}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={close}>
             Batal
           </Button>
           <Button onClick={save} loading={busy}>
@@ -300,6 +376,18 @@ export function ServiceModal({
     >
       <FormFields>
         <FormError>{error}</FormError>
+        {needOutlet && (
+          <Select
+            label={t('serviceForm.outlet')}
+            value={outletId}
+            onChange={(e) => {
+              setOutletId(e.target.value);
+              setError('');
+            }}
+            options={outletOptions}
+            placeholder={t('serviceForm.outletPlaceholder')}
+          />
+        )}
         <FormRow>
           <div className={styles.suggestWrap}>
             <Input

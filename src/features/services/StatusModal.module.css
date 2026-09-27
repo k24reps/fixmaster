@@ -70,7 +70,7 @@
   transition: color 0.15s, border-color 0.15s;
 }
 .splitRemove:hover {
-  color: var(--danger);
+  color: var(--danger-text);
   border-color: var(--danger);
 }
 .splitFooter {
@@ -100,7 +100,7 @@
   color: var(--amber-400, var(--warning));
 }
 .splitTally[data-balanced='true'] {
-  color: var(--success);
+  color: var(--success-text);
 }
 .label {
   font-size: var(--text-xs);
@@ -116,9 +116,11 @@
   background: var(--bg-surface-2);
   border-radius: var(--radius-sm);
 }
+/* Nada peringatan dibawa latar, bukan warna teks: amber di atas amber tipis
+   gagal di kedua tema (terang 1,9:1, gelap 4,22:1 — terukur 27 Sep 2026). */
 .dp {
   font-size: var(--text-sm);
-  color: var(--amber-400);
+  color: var(--text-primary);
   background: var(--warning-soft);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
@@ -210,11 +212,11 @@
 }
 
 .history {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border-strong);
+  padding-top: var(--space-3);
+}
+.history[open] .timeline {
+  margin-top: var(--space-3);
 }
 .timeline {
   display: flex;
@@ -327,11 +329,23 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3);
+  position: relative;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   background: var(--bg-surface-2);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-brand);
   border-radius: var(--radius-sm);
+}
+/* Spine diagnostik (DESIGN.md): batang 3px menjorok dari atas-bawah, ujung luar
+   membulat — bukan border-left tebal. */
+.expressRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--brand);
 }
 .expressText {
   display: flex;
@@ -375,4 +389,165 @@
 }
 .expressToggle[aria-pressed='true']::before {
   background: var(--success);
+}
+
+/* ---- Status tujuan: kanal instrumen ber-LED (bukan <select>) ----
+   Satu ketukan per status. LED + label mono membawa nada status (STATUS_TONE);
+   kanal terpilih menyala di warna nadanya. Batal duduk sendiri di bawah seam
+   titik — final dan memindah uang, tak sejajar langkah kerja biasa. */
+.channelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: var(--space-2);
+}
+.channelDangerRow {
+  display: flex;
+  padding-top: var(--space-2);
+  border-top: 1px dotted var(--border-strong);
+}
+.channel {
+  --tone: var(--text-muted);
+  --tone-soft: transparent;
+  --tone-text: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold, 700);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.channel[data-tone='brand'] {
+  --tone: var(--brand);
+  --tone-soft: var(--brand-soft);
+  --tone-text: var(--brand-text);
+}
+.channel[data-tone='info'] {
+  --tone: var(--info);
+  --tone-soft: var(--info-soft);
+  --tone-text: var(--info-text);
+}
+.channel[data-tone='warning'] {
+  --tone: var(--warning);
+  --tone-soft: var(--warning-soft);
+  --tone-text: var(--warning-text);
+}
+.channel[data-tone='success'] {
+  --tone: var(--success);
+  --tone-soft: var(--success-soft);
+  --tone-text: var(--success-text);
+}
+.channel[data-tone='danger'] {
+  --tone: var(--danger);
+  --tone-soft: var(--danger-soft);
+  --tone-text: var(--danger-text);
+}
+.channel:hover {
+  border-color: var(--tone);
+  color: var(--text-primary);
+}
+.channel[aria-checked='true'] {
+  border-color: var(--tone);
+  background: var(--tone-soft);
+  color: var(--tone-text);
+}
+.channelLed {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--tone);
+  opacity: 0.45;
+}
+.channel[aria-checked='true'] .channelLed {
+  opacity: 1;
+  box-shadow: 0 0 8px var(--tone);
+}
+.channelDangerRow .channel {
+  min-width: 150px;
+}
+
+/* ---- Biaya final + chip estimasi ---- */
+.costField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.estimateChip {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px dashed var(--border-brand);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--brand-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.estimateChip:hover {
+  background: var(--brand-soft);
+}
+
+/* ---- Lipatan (garansi part, riwayat) ---- */
+.fold > .foldSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fold > .foldSummary::-webkit-details-marker {
+  display: none;
+}
+.fold > .foldSummary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.fold[open] > .foldSummary::before {
+  transform: rotate(90deg);
+}
+.foldCount {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+.partName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold > .foldSummary::before {
+    transition: none;
+  }
 }

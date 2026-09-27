@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Icon } from './Icon';
+import { useT } from '@/i18n';
 import styles from './Modal.module.css';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
@@ -14,35 +16,100 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
+// Tumpukan jendela yang terbuka: hanya yang paling atas menanggapi Esc dan Tab.
+// Dulu tiap jendela memasang listener sendiri di document, sehingga Esc di
+// ConfirmDialog ikut menutup jendela di bawahnya beserta isian formnya.
+const openStack: symbol[] = [];
+
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
+  const t = useT();
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Pemanggil sering mengirim onClose inline; lewat ref, efek di bawah tidak
+  // berjalan ulang di setiap render (yang akan merebut fokus berulang-ulang).
+  const closeRef = useRef(onClose);
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  });
+  const pressedOverlay = useRef(false);
+
   useEffect(() => {
     if (!open) return;
+    const me = Symbol('modal');
+    openStack.push(me);
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    // autoFocus React sudah jalan sebelum efek; jangan rebut fokus dari field itu.
+    if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (openStack[openStack.length - 1] !== me || !dialog) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeRef.current();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+        (el) => el.offsetParent !== null,
+      );
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      openStack.splice(openStack.indexOf(me), 1);
+      if (openStack.length === 0) document.body.style.overflow = '';
+      if (opener?.isConnected) opener.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
   return createPortal(
-    <div className={styles.overlay} onMouseDown={onClose} role="presentation">
+    <div
+      className={styles.overlay}
+      role="presentation"
+      // Tutup hanya bila tekan DAN lepas terjadi di latar: menyeret seleksi teks
+      // dari dalam field lalu melepas di luar tidak lagi membuang form.
+      onMouseDown={(e) => {
+        pressedOverlay.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (pressedOverlay.current && e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
+        ref={dialogRef}
         className={[styles.modal, styles[size]].join(' ')}
-        onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        tabIndex={-1}
       >
         {title && (
           <div className={styles.header}>
-            <h3 className={styles.title}>{title}</h3>
-            <button className={styles.close} onClick={onClose} aria-label="Tutup">
-              &times;
+            <h3 className={styles.title} id={titleId}>
+              {title}
+            </h3>
+            <button className={styles.close} onClick={onClose} aria-label={t('common.close')}>
+              <Icon name="xmark" aria-hidden />
             </button>
           </div>
         )}

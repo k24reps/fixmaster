@@ -5,7 +5,6 @@ import {
   Button,
   Input,
   Badge,
-  StatCard,
   EmptyState,
   Icon,
   CategoryChips,
@@ -257,6 +256,8 @@ export function ServicesPage() {
   // Toko satu orang (mis. paket Solo) tidak butuh filter teknisi.
   const activeTechs = techs.filter((e) => e.active !== false);
   const showTechFilter = activeTechs.length > 1;
+  // Di ponsel teknisi & urutan dilipat ke "Filter lainnya" (CSS); yang aktif ikut dihitung.
+  const foldedOnMobile = [showTechFilter && techFilter !== 'all', sort !== 'newest'].filter(Boolean).length;
 
   // Setiap perubahan filter kembali ke potongan pertama daftar.
   const change = (apply: () => void) => {
@@ -495,14 +496,30 @@ export function ServicesPage() {
           if (s) void togglePickup(s, true);
         }}
       />
-      <div className={styles.stats}>
-        <StatCard label="Total Servis" value={stats.total} icon={<Icon name="clipboard-list" aria-hidden />} />
-        <StatCard label="Dalam Proses" value={stats.inProcess} icon={<Icon name="spinner" aria-hidden />} />
-        <StatCard label="Menunggu Diambil" value={stats.awaitingPickup} icon={<Icon name="box" aria-hidden />} />
-        <StatCard label="Selesai / Lunas" value={stats.done} icon={<Icon name="check-double" aria-hidden />} />
-        {/* Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan). */}
-        <StatCard label="Nilai Tiket Lunas" value={fmtRp(stats.lunasValue)} icon={<Icon name="coins" aria-hidden />} />
-      </div>
+      {/* Satu strip readout, bukan lima kartu: di ponsel lima kartu bertumpuk
+          mendorong tiket pertama ke bawah navigasi bawah (nol tiket terlihat). */}
+      <dl className={styles.readouts}>
+        {[
+          { label: 'Total Servis', value: String(stats.total) },
+          { label: 'Dalam Proses', value: String(stats.inProcess), tone: stats.inProcess > 0 ? 'info' : undefined },
+          {
+            label: 'Menunggu Diambil',
+            value: String(stats.awaitingPickup),
+            tone: stats.awaitingPickup > 0 ? 'warning' : undefined,
+          },
+          { label: 'Selesai / Lunas', value: String(stats.done) },
+          // Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan).
+          { label: 'Nilai Tiket Lunas', value: fmtRp(stats.lunasValue) },
+        ].map((r) => (
+          <div key={r.label} className={styles.readout}>
+            <dt className={styles.readoutLabel}>
+              {r.tone && <span className={styles.readoutLed} data-tone={r.tone} aria-hidden />}
+              {r.label}
+            </dt>
+            <dd className={styles.readoutValue}>{r.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <div className={styles.toolbar}>
         <div className={styles.search}>
@@ -522,7 +539,7 @@ export function ServicesPage() {
         </div>
       </div>
 
-      <div className={styles.filterBar} role="group" aria-label="Filter servis">
+      <div className={styles.filterBar} role="group" aria-label="Filter servis" data-more={moreOpen}>
         {showTechFilter && (
           <select
             className={styles.select}
@@ -577,7 +594,12 @@ export function ServicesPage() {
         >
           <Icon name="sliders" aria-hidden />
           Filter lainnya
-          {moreActive > 0 && <span className={styles.toggleCount}>{moreActive}</span>}
+          {moreActive > 0 && (
+            <span className={[styles.toggleCount, styles.desktopCount].join(' ')}>{moreActive}</span>
+          )}
+          {moreActive + foldedOnMobile > 0 && (
+            <span className={[styles.toggleCount, styles.mobileCount].join(' ')}>{moreActive + foldedOnMobile}</span>
+          )}
         </button>
         {/* Hanya muncul dari tautan Dashboard "unit menunggu diambil". */}
         {pickupFilter === 'awaiting' && (

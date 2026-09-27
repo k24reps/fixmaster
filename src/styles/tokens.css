@@ -211,7 +211,7 @@
   --danger-text: var(--red-400);
   --danger-soft: rgba(219, 64, 89, 0.18);
   --info: var(--blue-500);
-  --info-text: var(--blue-400);
+  --info-text: #94b3fa; /* blue-400 hanya 4,42:1 di atas badge di jendela (bg-elevated), 27 Sep 2026 */
   --info-soft: rgba(82, 127, 233, 0.18);
 
   /* Faint PCB / blueprint grid line tint — biru cetak-biru, bukan putih. */

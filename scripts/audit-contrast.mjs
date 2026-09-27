@@ -110,6 +110,15 @@ const routes = [
 ];
 
 let total = 0;
+const report = async (page, label) => {
+  const r = await page.evaluate(scan);
+  total += r.fail.length;
+  console.log(`\n${label} — diperiksa ${r.checked}, dilewati ${r.skipped}, gagal ${r.fail.length}`);
+  for (const f of r.fail.slice(0, 12)) {
+    console.log(`  ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
+       fg ${f.fg}  bg ${f.bg}  .${f.cls}`);
+  }
+};
 for (const theme of ['dark', 'light']) {
   for (const [path, name] of routes) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
@@ -170,13 +179,40 @@ for (const theme of ['dark', 'light']) {
       continue;
     }
     await page.waitForTimeout(1300);
-    const r = await page.evaluate(scan);
-    total += r.fail.length;
-    console.log(`\ndemo-${menu} / ${theme} — diperiksa ${r.checked}, dilewati ${r.skipped}, gagal ${r.fail.length}`);
-    for (const f of r.fail.slice(0, 12)) {
-      console.log(`  ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
-       fg ${f.fg}  bg ${f.bg}  .${f.cls}`);
+    await report(page, `demo-${menu} / ${theme}`);
+  }
+
+  // Jendela & detail tiket Servis. Gerbang ini dulu hanya memindai halaman yang
+  // terbuka tanpa interaksi, sehingga teks petunjuk StatusModal (.dp, 1,9:1 di
+  // tema terang) dan "Lunas" di panel biaya detail (3,1:1) lolos sampai critique
+  // 27 Sep 2026 menemukannya.
+  const steps = [
+    ['Servis-UpdateStatus', async () => {
+      await page.getByRole('link', { name: /^Servis/ }).first().click();
+      await page.waitForTimeout(900);
+      await page.locator('[class*="statusBtn"]', { hasNotText: /lunas|dibatalkan/i }).first().click();
+    }],
+    ['Servis-UpdateStatus-Selesai', () => page.getByRole('radio', { name: 'Selesai', exact: true }).click()],
+    ['Servis-UpdateStatus-Batal', () => page.getByRole('radio', { name: 'Dibatalkan', exact: true }).click()],
+    ['Servis-Baru', async () => {
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: /Servis Baru/ }).first().click();
+    }],
+    ['Servis-Detail', async () => {
+      await page.keyboard.press('Escape');
+      await page.locator('a[href^="/services/"]').first().click();
+    }],
+  ];
+  for (const [label, act] of steps) {
+    try {
+      await act();
+    } catch {
+      console.log(`\ndemo-${label} / ${theme} — langkah gagal (elemen tak ditemukan)`);
+      total++;
+      continue;
     }
+    await page.waitForTimeout(900);
+    await report(page, `demo-${label} / ${theme}`);
   }
   await page.close();
 }

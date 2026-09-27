@@ -367,6 +367,8 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 ## Daftar Servis — Repair Job Cards
 
+**Critique UX tahap 1 (27 Sep 2026).** Lima StatCard diganti **strip readout** satu panel (3+2 di ponsel, sel rupiah dua jalur): tiket pertama kini terlihat di atas navigasi bawah (y 778 → 647 di 375px). Di ponsel pilihan Teknisi & Urutan dilipat ke "Filter lainnya" (hitungannya ikut); tautan nomor tiket berarea sentuh 45px. Detail: [[Decisions & Bug Fixes#UX Servis — critique tahap 1 (27 Sep 2026)]].
+
 Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (responsif). Tiap baris/kartu = job card dengan badge status bertone, nomor servis mono, biaya tabular, dan kolom aksi.
 
 **Responsive task hierarchy (9 Agu 2026).** Lima KPI berada dalam satu baris desktop;
@@ -406,6 +408,8 @@ Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih
   **kolom baru WAJIB ikut ditambahkan ke sana**, dijaga tes integrasi tier3e.
 
 ## Detail Servis — Repair Ticket
+
+**Critique UX tahap 1 (27 Sep 2026).** Bilah aksi = satu daftar `TicketAction`; di ≤760px aksi sekunder masuk tombol **Lainnya** (panel bawah) — dulu Edit, Cetak Nota, Tandai Diambil, Klaim, dan Koreksi Biaya lenyap di ponsel. *Traveler* hanya mencentang tahap yang tercatat di riwayat; yang dilompati bersimpul putus-putus + "dilewati". BOM di bawah 470px (container `bom`) jadi dua baris. Jendela Update Status: kanal status ber-LED, chip "Pakai estimasi", Penanganan tepat di bawah biaya, garansi part & Riwayat dilipat, tombol utama menyebut konsekuensi ("Terima Rp X", "Batalkan · refund Rp X" merah + konfirmasi berisi ringkasan).
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.
 

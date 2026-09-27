@@ -103,3 +103,9 @@
   letter-spacing: 0.02em;
 }
 
+
+/* Kosongkan draf: aksi sekunder, didorong ke kiri footer agar tak tertukar
+   dengan Simpan. */
+.clearBtn {
+  margin-right: auto;
+}

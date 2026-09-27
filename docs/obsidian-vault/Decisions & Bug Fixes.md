@@ -3269,3 +3269,42 @@ pernah melihat hapusan apa pun (termasuk pelanggan/barang/tugas).
   ke WAL di tiap UPDATE/DELETE.
 - Ditolak: `notify` lokal setelah tiap RPC — hanya menambal perangkat yang menghapus,
   perangkat lain tetap basi.
+
+## UX Servis — critique tahap 1 (27 Sep 2026)
+
+Critique impeccable (dua penilai terpisah: tinjauan desain + detektor/browser) atas
+Daftar, Detail, Update Status, Servis Baru — skor **24/40**. Arsip:
+`.impeccable/critique/2026-09-27T06-23-38Z__src-features-services.md`. Pemilik memilih:
+keselamatan dulu, kelima isu, status sebagai panel kanal ber-LED. Tahap berikut: Kasir,
+Dashboard, Keuangan.
+
+- **[P0] Buntu cabang saat intake.** Pengguna multi-cabang di "Semua Outlet" baru diberi
+  tahu setelah Simpan, dengan petunjuk ke sidebar yang tertutup jendela — dan isian hilang
+  saat ditutup. Kini `Select` cabang di baris pertama `ServiceModal`; isian tiket baru yang
+  ditutup tanpa disimpan disimpan sebagai draf di memori (tombol Kosongkan).
+- **[P1] Batal.** Tombol "Terapkan" amber + tombol tutup berlabel "Batal". Kini tutup =
+  "Tutup"; saat target Batal tombol utama merah "Batalkan · refund Rp X" → `ConfirmDialog`
+  berisi ringkasan (final, refund dari wallet mana, part ke stok/terpakai). Lunas:
+  "Terima Rp X"; express "Selesai & Lunas · Rp X".
+- **[P1] Ponsel.** Lihat [[Signature Pages]] (Lainnya, strip readout, filter dilipat, BOM).
+- **[P1] Kontras.** `.dp` memakai palet mentah `--amber-400` (terang 1,9:1, gelap 4,22:1);
+  "Lunas" di panel biaya `--brand` 3,1:1; kategori `--accent` 3,05:1; "Terpasang"
+  `--success` 4,47:1; badge info di jendela 4,45:1. Semua warna teks di tiga CSS Servis
+  pindah ke `--*-text`, `.dp` bertinta biasa, `--info-text` gelap `#94b3fa`.
+  `audit-contrast` kini membuka Update Status (target Selesai & Batal), Servis Baru, dan
+  Detail — gerbang lama tak pernah membuka jendela, jadi semua ini lolos berbulan-bulan.
+- **[P2] Update Status padat.** Kanal status ber-LED menggantikan `<select>` (lihat
+  [[Design System]]); chip estimasi; Penanganan naik; garansi part & Riwayat `<details>`.
+- **Modal bersama** (`components/ui/Modal.tsx`): tumpukan jendela — hanya yang teratas
+  menanggapi Esc/Tab (dulu Esc di ConfirmDialog ikut menutup jendela di bawahnya); fokus
+  masuk, terkunci, kembali ke pemicu; `aria-labelledby`; tutup via latar hanya bila tekan
+  DAN lepas di latar; × = ikon.
+- **14 nama ikon tak terdaftar** (landing "Coba sekarang", Terima DP, Catatan Toko,
+  Kategori Perangkat, operator…) diam-diam tampil sebagai tanda tanya. Didaftarkan;
+  `Icon.test.tsx` memindai semua `<Icon name="…">` dan gagal bila ada nama tak dikenal.
+- **Traveler** mencentang tahap yang dilompati → kini "dilewati".
+- **Diverifikasi:** browser desktop 1440 + ponsel 375 (demo), `audit-contrast` BERSIH,
+  `audit-tokens` LULUS, `audit-mobile` 0/60, detektor tanpa temuan baru, 641 tes.
+- **Belum:** peluncur `impeccable.cmd` selalu exit 0 (biner exit 2) — gerbang berbasis
+  `.cmd` selalu lolos; `PRODUCT.md` masih menyebut server "cloud (Supabase)"; field
+  IMEI/PIN/kondisi & tawaran cetak/WA setelah intake (persona teknisi) belum dikerjakan.
