@@ -3247,3 +3247,25 @@ Menjawab temuan 8 dan 9.
   Pengerjaan → Tunggu; mundur tetap ditolak; uji 0087 disesuaikan: lompatan ilegal kini
   Diterima → Pengerjaan; uji 0088 hijau) dan demo (FM-0006 Diterima → "Selesai & Lunas":
   Lunas, diambil, pemasukan Rp 150.000 di Tunai). Build, lint, 640 unit test.
+
+## Hapus transaksi baru hilang setelah refresh (0090, 27 Sep 2026)
+
+Keluhan pemilik: menghapus transaksi di Keuangan tidak langsung menghilangkan barisnya.
+Akar masalah bukan di Keuangan: **event DELETE realtime tak pernah terkirim** ke klien mana
+pun. `subscribeOrgTables` menyaring `org_id=eq.<org>`; dokumentasi Supabase: DELETE hanya
+bisa difilter bila tabel `REPLICA IDENTITY FULL`. Dengan identitas bawaan baris lama di
+WAL hanya berisi PK, filter org_id tak cocok, event dibuang. Hapus lewat RPC
+(`delete_finance_entry`, `remove_service_modal`) tidak memanggil `notify` lokal, jadi
+perangkat yang menghapus pun menunggu event yang tak pernah datang; perangkat lain tak
+pernah melihat hapusan apa pun (termasuk pelanggan/barang/tugas).
+
+- **Dibuktikan** di replika dengan klien supabase-js sungguhan (JWT owner, filter org):
+  sebelum = hanya INSERT tiba; sesudah FULL = INSERT + DELETE (expenses & incomes),
+  payload DELETE `old` = `{id}` saja (RLS menyembunyikan isi baris).
+- **Perbaikan** = migrasi saja, tanpa kode klien (adapter sudah memuat ulang koleksi di
+  setiap event). FULL untuk 14 tabel publikasi yang barisnya bisa dihapus; `services`
+  (baris besar, sering UPDATE, tak pernah dihapus dari aplikasi) dan `activity_logs`
+  (hapus hanya lewat purge massal) sengaja dikecualikan — FULL menulis seluruh baris lama
+  ke WAL di tiap UPDATE/DELETE.
+- Ditolak: `notify` lokal setelah tiap RPC — hanya menambal perangkat yang menghapus,
+  perangkat lain tetap basi.
