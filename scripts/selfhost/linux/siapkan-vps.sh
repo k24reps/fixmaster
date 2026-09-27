@@ -56,8 +56,9 @@ if ! command -v cloudflared >/dev/null; then
 fi
 
 step "6/6 Firewall: hanya SSH yang terbuka"
-# Port SSH diambil dari sesi ini, supaya port non-standar penyedia VPS tidak terkunci.
-ssh_port="${SSH_CONNECTION##* }"
+# Port SSH dibaca dari konfigurasi sshd, supaya port non-standar penyedia VPS tidak
+# terkunci. Bukan $SSH_CONNECTION: `sudo` membuangnya (terjadi di VPS 27 Sep).
+ssh_port="$(sshd -T 2>/dev/null | awk '$1 == "port" {print $2; exit}')"
 ssh_port="${ssh_port:-22}"
 ufw allow "${ssh_port}/tcp" >/dev/null
 ufw --force enable >/dev/null
