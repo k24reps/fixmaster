@@ -451,6 +451,20 @@ Jebakan yang sudah ditangani:
   dihapus bersih lalu dipulihkan dari arsip buatan **Linux** → lolos lagi. Start pertama
   `supabase-meta` sempat unhealthy; percobaan kedua di skrip menanganinya. Yang TIDAK
   teruji di kontainer: `timedatectl`, ufw, swap, `systemctl` (butuh systemd).
+- **Dipasang sungguhan 27 Sep (±11:30–12:20 WIB), SERVER PRODUKSI = VPS** `43.157.228.56`
+  (user `ubuntu`, sudo). Arsip `fixmaster-20260926-0200.7z` → 27/27 tabel, auth 13,
+  storage 10, vault 2, cron 1, ACL beda 0; port 5432/6543/8000 hanya `127.0.0.1`; ufw aktif
+  (22); tunnel `fixmaster-vps` → `localhost:8000`; dari internet `functions/health` 200,
+  `auth/health` 200 dengan anon key, Studio & `/pg/` 403 (WAF). Pemilik login, data sampai
+  26 Sep 02:00 ada. Backup pertama ke Drive `fixmaster-vps` berhasil. Jebakan baru di mesin
+  asli (skrip sudah diperbaiki): kunci dpkg `unattended-upgrades` saat boot pertama
+  (`DPkg::Lock::Timeout`); `sudo` membuang `SSH_CONNECTION` (port dari `sshd -T`); rclone
+  1.60 `config create` tidak meminta izin → `rclone config reconnect gdrive:`; **hapus
+  tunnel tidak menghapus CNAME-nya** — record `api` lama dihapus manual di DNS sebelum rute
+  baru bisa disimpan.
+- **Sisa:** token tunnel sempat terlihat di screenshot → rotate saat sempat; Kebijakan
+  Privasi masih menulis "infrastruktur cloud (Supabase)"; salin delta 26 Sep 02:00 →
+  saat laptop mati; matikan stack + jadwal backup laptop begitu pemilik pulang.
 - **Celah data**: transaksi antara arsip terakhir dan saat laptop mati hanya ada di
   laptop → salin belakangan dengan `cek-delta.sql`. Laptop tidak boleh jadi server lagi
   (matikan stack + `Disable-ScheduledTask 'FixMaster Backup Offsite'`).
