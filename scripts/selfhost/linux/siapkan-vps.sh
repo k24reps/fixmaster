@@ -7,13 +7,16 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Jalankan sebagai root (sudo bash $0)"; exit 1; }
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
 step() { echo; echo "==> $*"; }
+# VPS baru menjalankan unattended-upgrades saat boot pertama dan memegang kunci
+# dpkg beberapa menit — tunggu, jangan gagal (terjadi di VPS Tencent 27 Sep).
+apt() { apt-get -o DPkg::Lock::Timeout=900 "$@"; }
 
 step "1/6 Zona waktu WIB (jadwal backup & tanggal log)"
 timedatectl set-timezone Asia/Jakarta
 
 step "2/6 Paket: Docker, Compose, 7-Zip, rclone"
-apt-get update -q
-apt-get install -y -q docker.io docker-compose-v2 7zip rclone curl ca-certificates ufw
+apt update -q
+apt install -y -q docker.io docker-compose-v2 7zip rclone curl ca-certificates ufw
 
 step "3/6 Docker: port hanya di localhost + batas ukuran log"
 # Di Linux, port yang dipublikasikan Docker MELOMPATI ufw. "ip" hanya mengikat
@@ -48,8 +51,8 @@ if ! command -v cloudflared >/dev/null; then
   curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg
   echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' \
     > /etc/apt/sources.list.d/cloudflared.list
-  apt-get update -q
-  apt-get install -y -q cloudflared
+  apt update -q
+  apt install -y -q cloudflared
 fi
 
 step "6/6 Firewall: hanya SSH yang terbuka"
