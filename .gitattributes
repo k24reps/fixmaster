@@ -2,3 +2,4 @@
 # Dipaksa di sini karena core.autocrlf tiap mesin berbeda.
 *.cmd text eol=crlf
 .claude/skills/impeccable/scripts/impeccable text eol=lf
+*.sh text eol=lf

@@ -407,6 +407,54 @@ tiket terakhir NS-0327 (dibuat setelah cutover), perubahan terakhir 09:13 WIB.
 **Replika lokal kini di `C:\Users\Rif\Documents\fixmaster-replika\docker`**
 (dihentikan) — salinan produksi per 24 Sep 13:30, tempat uji migrasi.
 
+## Pindah ke VPS Linux (27 Sep 2026)
+
+Laptop rumah mati saat pemilik di luar kota: fixmaster.app terbuka, tapi API membalas
+Cloudflare **1033** (tunnel tidak tersambung — laptop mati/tidur/tanpa internet, BUKAN
+bug aplikasi; aplikasi rusak dengan tunnel hidup = 502). Tak ada yang bisa menyalakan
+ulang dari jauh, jadi server dipindah ke VPS: **SumoPod · Tencent Jakarta · Ubuntu 24.04 ·
+2 vCPU / 4 GB / 60 GB (Rp 90.000/bln)**. 2 GB ditolak (stack ±1,2 GiB + restore); VPS
+Windows ditolak (Docker Desktop/WSL2 butuh virtualisasi bersarang yang umumnya tak ada).
+
+Skrip di `scripts/selfhost/linux/` (padanan skrip Windows, arsipnya saling terbuka):
+
+| Skrip | Isi |
+|---|---|
+| `siapkan-vps.sh` | WIB, docker.io + compose v2 + 7zip + rclone, `daemon.json`, swap 2 GB, cloudflared (repo resmi), ufw hanya port SSH sesi ini |
+| `pulihkan-dari-backup.sh` | port `pulihkan-dari-backup.ps1`; blok `restoreDb` **dibaca dari .ps1** (satu sumber), jadi .ps1 wajib ikut disalin |
+| `backup-offsite.sh` | port `backup-offsite.ps1` lewat rclone; isi arsip & retensi sama |
+| `pasang-backup.sh` | password (root 600), remote `gdrive` (scope drive, `config_is_local=false` → `rclone authorize "drive"` di laptop ber-browser), cron `0 2,13` |
+
+Jebakan yang sudah ditangani:
+- **Docker melompati ufw.** Port publik compose (8000, 5432, 6543) terbuka ke internet di
+  VPS. **`daemon.json` `"ip": "127.0.0.1"` TIDAK cukup** — terukur: ia hanya mengikat
+  jaringan bawaan, port jaringan milik compose tetap `0.0.0.0` + `[::]`. Yang menutup:
+  `docker-compose.vps.yml` (ditulis `pulihkan-dari-backup.sh`, ditambahkan ke
+  `COMPOSE_FILE` di `.env`) dengan `ports: !override` → `127.0.0.1:` untuk `api-gw` dan
+  `supavisor`. Berkas itu ikut arsip berikutnya; aman bila dipulihkan ke Windows.
+- **Izin eksekusi hilang** dari arsip buatan Windows (bind mount Docker Desktop tampil
+  777) → `chmod +x` semua `*.sh` di folder compose.
+- **CRLF**: Python di Windows menulis `
+` saat menyunting berkas teks — satu skrip
+  sempat rusak begini. `.gitattributes` kini `*.sh text eol=lf`; sunting via Python
+  pakai `newline=''`.
+- **Folder Drive terpisah `fixmaster-vps`.** Kalau laptop hidup lagi dan Task Scheduler-nya
+  ikut backup, arsip "terbaru" di folder bersama bisa berisi data basi laptop.
+- **Tunnel baru, tunnel lama DIHAPUS.** Dua konektor di tunnel yang sama = Cloudflare
+  membagi lalu lintas ke dua database berbeda. Hostname `api.fixmaster.my.id`
+  dipindah; aturan WAF (per hostname) tetap berlaku; Vercel tak perlu diubah.
+- **Diuji 27 Sep** di kontainer Ubuntu 24.04 ber-Docker sendiri (docker.io 29.1, compose
+  2.40, 7zip, rclone 1.60, cloudflared dari repo resmi): arsip buatan skrip **Windows**
+  dari replika → `pulihkan-dari-backup.sh` lolos (27/27 tabel, auth 14/14, storage 7,
+  policy 7, realtime 18, vault 2, cron 1, ACL beda 0, API 200); storage bisa ditulis;
+  `backup-offsite.sh` ke tujuan lokal → arsip 712 KB, password salah ditolak; stack
+  dihapus bersih lalu dipulihkan dari arsip buatan **Linux** → lolos lagi. Start pertama
+  `supabase-meta` sempat unhealthy; percobaan kedua di skrip menanganinya. Yang TIDAK
+  teruji di kontainer: `timedatectl`, ufw, swap, `systemctl` (butuh systemd).
+- **Celah data**: transaksi antara arsip terakhir dan saat laptop mati hanya ada di
+  laptop → salin belakangan dengan `cek-delta.sql`. Laptop tidak boleh jadi server lagi
+  (matikan stack + `Disable-ScheduledTask 'FixMaster Backup Offsite'`).
+
 ## Alur rilis setelah self-host (berlaku sejak 24 Sep 2026)
 
 | Bagian | Tempat | Cara rilis |
