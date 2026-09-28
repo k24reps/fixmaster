@@ -31,6 +31,7 @@ import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
 import { TransferModal } from './TransferModal';
+import { CountModal } from './CountModal';
 import { voidTransfer } from './transferActions';
 import type { Income, Expense, WalletTransfer } from '@/data/types';
 import styles from './FinancePage.module.css';
@@ -69,6 +70,7 @@ export function FinancePage() {
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [ledgerTab, setLedgerTab] = useState<'all' | LedgerKind>('all');
   const [transferOpen, setTransferOpen] = useState(false);
+  const [countOpen, setCountOpen] = useState(false);
   const [editingTransfer, setEditingTransfer] = useState<WalletTransfer | null>(null);
   const [toVoid, setToVoid] = useState<WalletTransfer | null>(null);
   const [voiding, setVoiding] = useState(false);
@@ -727,6 +729,15 @@ export function FinancePage() {
             Transfer
           </Button>
         )}
+        {wallets.length > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setCountOpen(true)}
+            iconLeft={<Icon name="list-check" aria-hidden />}
+          >
+            {t('finance.countAction')}
+          </Button>
+        )}
       </div>
 
       <Card glass id="buku-kas" className={styles.ledgerCard}>
@@ -831,6 +842,12 @@ export function FinancePage() {
         wallets={wallets}
         editing={editingExpense ?? editingIncome}
         existing={modalKind === 'expense' ? expenses : incomes}
+      />
+      <CountModal
+        open={countOpen}
+        onClose={() => setCountOpen(false)}
+        wallets={wallets}
+        initialWalletId={walletFilter}
       />
       <TransferModal
         open={transferOpen}

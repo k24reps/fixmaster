@@ -12,6 +12,7 @@ import {
   entryDateError,
   findRecentDuplicate,
   walletMovement,
+  reconcileWallet,
 } from './finance';
 import type { Wallet } from '@/data/types';
 
@@ -233,3 +234,16 @@ describe('walletMovement', () => {
     expect(m).toEqual({ in: 100, out: 30, transfer: 15 });
   });
 });
+
+describe('reconcileWallet', () => {
+  it('cocok: tanpa entri', () => {
+    expect(reconcileWallet(2500000, 2500000)).toEqual({ diff: 0, entry: null });
+  });
+  it('laci kurang: pengeluaran sebesar selisih', () => {
+    expect(reconcileWallet(2500000, 2450000)).toEqual({ diff: -50000, entry: { kind: 'expense', amount: 50000 } });
+  });
+  it('laci lebih: pemasukan sebesar selisih', () => {
+    expect(reconcileWallet(2500000, 2520000)).toEqual({ diff: 20000, entry: { kind: 'income', amount: 20000 } });
+  });
+});
+

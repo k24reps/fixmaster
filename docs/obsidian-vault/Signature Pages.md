@@ -326,6 +326,12 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   saldo di pilihan wallet; `inputMode="numeric"`; `<form>` (Enter menyimpan); **Simpan & tambah
   lagi** (tanggal/kategori/wallet/cabang dipertahankan); peringatan catat ganda
   (`findRecentDuplicate`, 10 menit) — Simpan kedua melanjutkan.
+- **Hitung saldo (28 Sep 2026)** — `CountModal`: pilih wallet (kanal ber-LED), ketik uang yang
+  benar-benar ada (isi laci / saldo aplikasi bank), readout satu persamaan Aplikasi | Dihitung |
+  Selisih (LED: cocok hijau, kurang merah, lebih amber). Selisih dicatat satu ketukan sebagai
+  pengeluaran/pemasukan **Lainnya** hari ini (`reconcileWallet`), sehingga saldo = hitungan tanpa
+  menimpa angka diam-diam. Baris "awal Rp X" per wallet (bulan ini, semua cabang) melengkapi
+  persamaannya.
 - **Hapus:** dialog menyebut barisnya (`−Rp 75.000 · Tunai · Beli lem`) dan akibatnya; tombol
   terkunci selama proses (klik ganda tak menghapus dua kali).
 

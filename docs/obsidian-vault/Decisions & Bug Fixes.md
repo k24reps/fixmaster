@@ -3523,3 +3523,13 @@ rekonsiliasi + 9 cek delta wallet; Dashboard & Laporan sepakat. Diperbaiki:
   mendapat fokus pertama bila wajib; TransferModal jadi `<form>` (Enter menyimpan).
 - **Belum:** fokus hilang setelah hapus/batal (barisnya lenyap); ±40 literal i18n; Laporan
   "per kategori" memuat Modal/Prive tanpa penanda "di luar laba".
+
+## Hitung saldo wallet — "uang yang dihitung" (28 Sep 2026)
+
+Pertanyaan utama pemilik di Keuangan — "apakah laci cocok dengan aplikasi?" — dulu tak bisa
+dijawab: tak ada tempat memasukkan satu-satunya angka yang hanya manusia bisa berikan. Kini
+**Hitung saldo** (`CountModal`) membandingkan hitungan dengan saldo dan mencatat selisihnya
+sebagai entri biasa (kurang = pengeluaran Lainnya, lebih = pemasukan Lainnya), jadi jejaknya
+ada di buku kas, Dashboard, dan Laporan. Keputusan: penyesuaian lewat `createFinanceEntry`
+(RPC 0071 + penjaga tanggal 0091), bukan menimpa `wallets.balance` — saldo di FixMaster selalu
+turunan dari baris yang bisa ditelusuri. Selisih nol hanya dikonfirmasi, tidak dicatat.

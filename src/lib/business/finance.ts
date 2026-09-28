@@ -245,3 +245,19 @@ export function walletMovement(
       sum(live.filter((t) => t.fromWalletId === walletId)),
   };
 }
+
+/**
+ * Hitung laci: selisih antara uang yang benar-benar dihitung dan saldo aplikasi,
+ * serta entri penyesuaian yang menutupnya. Kurang = pengeluaran (uang hilang itu
+ * kerugian nyata), lebih = pemasukan "Lainnya" — keduanya jujur di laporan,
+ * bukan saldo yang ditimpa diam-diam.
+ */
+export function reconcileWallet(
+  balance: number,
+  counted: number,
+): { diff: number; entry: { kind: 'income' | 'expense'; amount: number } | null } {
+  const diff = Math.round(counted - balance);
+  if (diff === 0) return { diff, entry: null };
+  return { diff, entry: { kind: diff > 0 ? 'income' : 'expense', amount: Math.abs(diff) } };
+}
+
