@@ -3554,3 +3554,26 @@ literal" di entri super-admin di atas kini tak berlaku lagi.
   masih memakai `STATUS_LABELS`.
 - **Pilihan bahasa tetap dikunci ke Indonesia** (`stores/settings.ts`): Inventori, Laporan,
   Pengaturan, dll. masih literal, jadi membuka EN sekarang masih menghasilkan UI campur.
+
+## Serah unit, tiket baru, DP batal, tiket Lunas (0093, 28 Sep 2026)
+
+Jawaban pemilik atas rekap pertanyaan UX (nomor 1, 2, 3, 11/12, 15):
+
+- **Serah unit (11/12).** Momen paling fisik di konter dulu berakhir di toast. Kini aksi utama
+  **Serahkan unit** (Selesai → Lunas + diambil lewat `StatusModal handover`; Lunas belum diambil →
+  tandai diambil) lalu `TicketDoneModal` (stempel, nota, WA). "Tandai diambil sekaligus" kini juga
+  berlaku saat target Lunas biasa, bukan hanya Selesai. Template WA `diambil` ditambahkan; tab
+  template NotifyModal jadi flex-wrap karena 7 tab selalu menyisakan tab menggantung di grid.
+- **Tiket baru (15).** `ServiceModal.onSaved(created)` → panel DITERIMA dengan cetak tanda terima
+  (nota yang sama — fine print-nya sudah "bukti pengambilan unit") dan WA `diterima`.
+- **Part setelah Selesai (1).** Biaya final tidak ikut naik saat part/modal ditambah, jadi profit
+  turun tanpa tanda. Diputuskan **peringatan, bukan paksaan**: panel BIAYA menampilkan notice amber
+  sampai Update Status disimpan. Status Selesai tak bisa mengedit biaya final tanpa melunasi, jadi
+  tombolnya membuka Update Status (biaya final bisa diubah saat Lunas); di Lunas → Koreksi Biaya.
+- **DP ditahan saat batal (2).** Pemasukan DP sudah tetap di Keuangan (0031) sementara profit tiket
+  batal tertulis "—" — dua halaman tak cocok. Kini DP ditahan = pendapatan tiket batal, biaya hanya
+  yang tetap ditanggung (`heldCost`: modal dadakan + part `deducted`). Tidak menambah jumlah unit.
+  Sumber angka: field `refund` di entri riwayat batal (baru) di klien; Expense `Refund DP servis`
+  di server (juga mencakup tiket lama). Tiket batal lama di halaman detail tetap "—".
+- **Tiket Lunas (3).** Menambah part hanya owner/admin — tombol disembunyikan untuk karyawan dan
+  `update_service_parts` menolaknya (0093). Modal dadakan memang sudah owner/admin (0087).

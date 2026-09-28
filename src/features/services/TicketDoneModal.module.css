@@ -1,0 +1,83 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+/* Stempel miring seperti di detail tiket: unit dititipkan / diserahkan. */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.stamp {
+  display: inline-block;
+  transform: rotate(-4deg);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-md);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--success-text);
+  border: 2.5px solid var(--success);
+  background: var(--success-soft);
+}
+.stamp[data-variant='intake'] {
+  color: var(--brand-text);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.no {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.readout {
+  display: grid;
+  margin: 0;
+  border-top: 1px dotted var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+}
+.readout > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.readout > div + div {
+  border-top: 1px dotted var(--border);
+}
+.readout dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.readout dd {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.actions > * {
+  flex: 1 1 150px;
+}

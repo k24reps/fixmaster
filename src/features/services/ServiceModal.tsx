@@ -42,7 +42,8 @@ interface ServiceModalProps {
   editing: Service | null;
   services: Service[];
   employees: Employee[];
-  onSaved: () => void;
+  /** `created` terisi hanya saat tiket BARU dibuat (panel tanda terima). */
+  onSaved: (created?: Service) => void;
 }
 
 export function ServiceModal({
@@ -215,6 +216,7 @@ export function ServiceModal({
     const now = new Date().toISOString();
     const orgId = org?.id ?? '';
 
+    let created: Service | null = null;
     try {
       // Link or create the customer by phone.
       // Kandidat diambil bertarget per nomor. Filternya longgar dan mencakup
@@ -324,6 +326,7 @@ export function ServiceModal({
         // Nomor usulan bisa diganti server bila bentrok (0061), jadi pesan & log
         // memakai nomor yang benar-benar tersimpan.
         const saved = await repository.put('services', record);
+        created = saved;
         if (services.length === 0 && !useDemoStore.getState().isDemo) {
           trackEvent('first_service_created', {
             workspace_mode: isSupabaseConfigured ? 'cloud' : 'local',
@@ -339,7 +342,7 @@ export function ServiceModal({
         toast.success(interpolate(t('serviceForm.created'), { no: saved.serviceNo }));
         intakeDraft = null;
       }
-      onSaved();
+      onSaved(created ?? undefined);
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceForm.saveFailed'));

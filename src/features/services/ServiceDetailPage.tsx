@@ -14,6 +14,9 @@ import { useT } from '@/i18n';
 import {
   outstandingBalance,
   serviceProfit,
+  cancelledProfit,
+  heldCost,
+  retainedDownPayment,
   serviceModalTotal,
   walletDeltasForModalEdit,
   isTerminal,
@@ -35,6 +38,7 @@ import { Button, ConfirmDialog, Icon, Input, Modal, Select, type IconName } from
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
+import { TicketDoneModal } from './TicketDoneModal';
 import { printServiceReceipt } from './printReceipt';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
@@ -85,6 +89,12 @@ export function ServiceDetailPage() {
   const isManager = role === 'owner' || role === 'admin';
 
   const [editOpen, setEditOpen] = useState(false);
+  // "Serahkan unit" membuka Update Status langsung di Lunas + diambil.
+  const [statusHandover, setStatusHandover] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(false);
+  // Part/modal ditambah setelah biaya final ditetapkan: biaya final TIDAK ikut
+  // naik, jadi profit turun tanpa tanda. Diingatkan di panel biaya.
+  const [costStale, setCostStale] = useState(false);
   // Baris BOM yang akan dihapus — menghapus memindahkan kas/stok, jadi dikonfirmasi dulu.
   const [toRemove, setToRemove] = useState<number | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -157,11 +167,17 @@ export function ServiceDetailPage() {
         : service.finalCost <= 0
         ? { label: t('serviceDetail.billLabel'), value: t('serviceDetail.billAwaitFinal') }
         : { label: t('serviceDetail.billRemaining'), value: fmtMoney(outstanding) };
-  const profit = serviceProfit(service);
-  // Profit baru bermakna bila biaya final ada dan tiket tidak batal — sebelum itu
-  // angkanya negatif palsu (daftar Servis sudah menampilkan "—" untuk kasus sama).
-  const profitKnown = !cancelled && service.finalCost > 0;
-  const modalTotal = serviceModalTotal(service.spareparts);
+  // Tiket batal: pendapatannya DP yang ditahan, biayanya hanya yang tetap
+  // ditanggung (part terpakai + modal dadakan). DP tiket lama tak diketahui → "—".
+  // Selain itu profit baru bermakna bila biaya final ada — sebelumnya negatif palsu.
+  const keptDp = retainedDownPayment(service);
+  const cancelProfit = cancelledProfit(service);
+  const profit = cancelled ? (cancelProfit ?? 0) : serviceProfit(service);
+  const profitKnown = cancelled ? cancelProfit !== null : service.finalCost > 0;
+  const modalTotal = cancelled ? heldCost(service.spareparts) : serviceModalTotal(service.spareparts);
+  const costLocked = service.finalCost > 0 && (service.status === 'selesai' || service.status === 'lunas');
+  // Tiket Lunas sudah dibayar: menambah part hanya untuk owner/admin (0093).
+  const canAddParts = !cancelled && (service.status !== 'lunas' || isManager);
   // Satu klaim berjalan per tiket asli (juga dijaga server, 0064).
   const openClaim = openClaimFor(services, service.id);
   const claimable = canClaimWarranty(service, localDateStr()) && !openClaim;
@@ -189,6 +205,7 @@ export function ServiceDetailPage() {
         { ...line, deducted: line.itemId ? true : line.deducted },
       ]);
       toast.success(t('serviceDetail.partAdded'));
+      if (costLocked) setCostStale(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceDetail.partAddFailed'));
     }
@@ -255,6 +272,7 @@ export function ServiceDetailPage() {
           meta: { amount, serviceId: service.id },
         });
         toast.success(t('serviceDetail.modalAdded'));
+        if (costLocked) setCostStale(true);
         closeModalForm();
         return;
       }
@@ -295,6 +313,7 @@ export function ServiceDetailPage() {
         meta: { amount, serviceId: service.id },
       });
       toast.success(t('serviceDetail.modalAdded'));
+        if (costLocked) setCostStale(true);
       closeModalForm();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceDetail.modalAddFailed'));
@@ -494,10 +513,16 @@ export function ServiceDetailPage() {
         ],
       });
       toast.success(t(nowPicked ? 'services.pickedToast' : 'services.unpickedToast'));
+      if (nowPicked && service.status === 'lunas') setDoneOpen(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('services.pickupFailed'));
     }
   };
+  const openStatus = (handover = false) => {
+    setStatusHandover(handover);
+    setStatusOpen(true);
+  };
+  const canHandover = isManager && service.status === 'selesai' && !service.pickedUp;
 
   // Satu daftar aksi untuk bilah bawah DAN panel "Lainnya" di ponsel, supaya
   // syarat tampil tiap aksi tidak ditulis dua kali.
@@ -511,7 +536,11 @@ export function ServiceDetailPage() {
           {
             key: 'pickup',
             icon: (service.pickedUp ? 'circle-check' : 'box') as IconName,
-            label: service.pickedUp ? t('serviceDetail.pickedUp') : t('serviceDetail.markPickedUp'),
+            label: service.pickedUp
+              ? t('serviceDetail.pickedUp')
+              : service.status === 'lunas'
+                ? t('serviceDetail.handover')
+                : t('serviceDetail.markPickedUp'),
             primary: service.status === 'lunas' && !service.pickedUp,
             active: service.pickedUp,
             onClick: () => void togglePickup(),
@@ -527,12 +556,17 @@ export function ServiceDetailPage() {
     ...(!isTerminal(service.status)
       ? [
           onlyDp
-            ? { key: 'status', icon: 'money-bill-wave' as const, label: t('serviceDetail.receiveDp'), primary: true, onClick: () => setStatusOpen(true) }
-            : { key: 'status', icon: 'arrow-right' as const, iconRight: true, label: t('serviceDetail.updateStatus'), primary: true, onClick: () => setStatusOpen(true) },
+            ? { key: 'status', icon: 'money-bill-wave' as const, label: t('serviceDetail.receiveDp'), primary: true, onClick: () => openStatus() }
+            : { key: 'status', icon: 'arrow-right' as const, iconRight: true, label: t('serviceDetail.updateStatus'), primary: !canHandover, onClick: () => openStatus() },
         ]
       : []),
+    // Selesai → pelanggan datang: lunasi + tandai diambil dalam satu alur, lalu
+    // panel serah unit (nota, WA). Dulu empat langkah dan berakhir di toast.
+    ...(canHandover
+      ? [{ key: 'handover', icon: 'box-open' as const, label: t('serviceDetail.handover'), primary: true, onClick: () => openStatus(true) }]
+      : []),
     ...(service.status === 'lunas' && isManager
-      ? [{ key: 'correct', icon: 'pen' as const, label: t('serviceDetail.correctCost'), onClick: () => setStatusOpen(true) }]
+      ? [{ key: 'correct', icon: 'pen' as const, label: t('serviceDetail.correctCost'), onClick: () => openStatus() }]
       : []),
   ];
   const secondaryActions = actions.filter((a) => !a.primary);
@@ -740,7 +774,7 @@ export function ServiceDetailPage() {
         <section className={styles.panel}>
           <div className={styles.bomHead}>
             <div className={styles.panelLabel}>SPAREPART · BILL OF MATERIALS</div>
-            {!cancelled && (
+            {canAddParts && (
               <div className={styles.bomActions}>
                 {/* Garansi per part ditetapkan saat Selesai; tombol ini untuk part
                     yang ditambahkan belakangan atau koreksi. */}
@@ -900,6 +934,12 @@ export function ServiceDetailPage() {
                   <dd className={styles.dp}>− {fmtMoney(service.downPayment)}</dd>
                 </div>
               )}
+              {cancelled && keptDp !== null && keptDp > 0 && (
+                <div>
+                  <dt>{t('serviceDetail.dpKept')}</dt>
+                  <dd>{fmtMoney(keptDp)}</dd>
+                </div>
+              )}
               <div className={styles.costTotal}>
                 <dt>{billingReadout.label}</dt>
                 <dd>{billingReadout.value}</dd>
@@ -917,6 +957,21 @@ export function ServiceDetailPage() {
                 </>
               )}
             </dl>
+            {costStale && costLocked && (
+              <div className={styles.costNotice} role="status">
+                <span className={styles.costNoticeLed} aria-hidden />
+                <p>
+                  {interpolate(t(service.status === 'lunas' ? 'serviceDetail.costStalePaid' : 'serviceDetail.costStale'), {
+                    amount: fmtMoney(service.finalCost),
+                  })}
+                </p>
+                {isManager && (
+                  <button type="button" className={styles.bomAddBtn} onClick={() => openStatus()}>
+                    {t(service.status === 'lunas' ? 'serviceDetail.correctCost' : 'serviceDetail.reviseAtSettle')}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={styles.panel}>
@@ -987,8 +1042,11 @@ export function ServiceDetailPage() {
         open={statusOpen}
         onClose={() => setStatusOpen(false)}
         service={service}
-        onSaved={() => {}}
+        onSaved={() => setCostStale(false)}
+        handover={statusHandover}
+        onHandedOver={() => setDoneOpen(true)}
       />
+      <TicketDoneModal open={doneOpen} onClose={() => setDoneOpen(false)} service={service} variant="handover" />
       <NotifyModal open={notifyOpen} onClose={() => setNotifyOpen(false)} service={service} />
       <WarrantyClaimModal
         open={claimOpen}

@@ -325,6 +325,12 @@ export interface ServiceHistoryEntry {
   note: string;
   /** Internal "edit" entries are hidden from the public tracking page. */
   internal: boolean;
+  /**
+   * Hanya entri `batal` (sejak 28 Sep 2026): DP yang dikembalikan. Sisanya
+   * ditahan toko dan dihitung sebagai pendapatan tiket (`retainedDownPayment`).
+   * Tak ada di tiket yang dibatalkan sebelumnya — DP-nya "tak diketahui".
+   */
+  refund?: number;
 }
 
 /** Bagian tiket asli yang diklaim garansinya (migrasi 0065, kolom `claimed_items`). */

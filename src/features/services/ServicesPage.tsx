@@ -47,6 +47,7 @@ import { getCategories } from '@/config/orgConfig';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
+import { TicketDoneModal } from './TicketDoneModal';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
 import { useT } from '@/i18n';
@@ -147,6 +148,9 @@ export function ServicesPage() {
   const [editing, setEditing] = useState<Service | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<Service | null>(null);
+  // Panel setelah tiket dibuat / unit diserahkan. Baris daftar dicari lagi saat
+  // render supaya nota memakai data terbaru (lunas, garansi).
+  const [done, setDone] = useState<{ service: Service; variant: 'intake' | 'handover' } | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -939,13 +943,20 @@ export function ServicesPage() {
         editing={editing}
         services={services}
         employees={techs}
-        onSaved={() => {}}
+        onSaved={(created) => created && setDone({ service: created, variant: 'intake' })}
       />
       <StatusModal
         open={statusOpen}
         onClose={() => setStatusOpen(false)}
         service={statusTarget}
         onSaved={() => {}}
+        onHandedOver={() => statusTarget && setDone({ service: statusTarget, variant: 'handover' })}
+      />
+      <TicketDoneModal
+        open={!!done}
+        onClose={() => setDone(null)}
+        service={done ? (services.find((s) => s.id === done.service.id) ?? done.service) : null}
+        variant={done?.variant ?? 'intake'}
       />
       <NotifyModal
         open={notifyOpen}

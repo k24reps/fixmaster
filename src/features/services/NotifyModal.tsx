@@ -23,14 +23,22 @@ interface NotifyModalProps {
   open: boolean;
   onClose: () => void;
   service: Service | null;
+  /** Template yang dipilih saat dibuka (panel tiket baru / serah unit). */
+  initialTemplate?: TemplateKey;
 }
 
 type TemplateKey = WaTemplateKey;
 
-export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
+export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyModalProps) {
   const t = useT();
   const org = useSessionStore((s) => s.org);
-  const [templateKey, setTemplateKey] = useState<TemplateKey>('selesai');
+  const [templateKey, setTemplateKey] = useState<TemplateKey>(initialTemplate ?? 'selesai');
+  // Dibuka dari panel tiket baru / serah unit: mulai di template momen itu.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open && initialTemplate) setTemplateKey(initialTemplate);
+  }
   const [message, setMessage] = useState('');
 
   const templates = resolveWaTemplates(getWaTemplateOverrides());

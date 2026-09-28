@@ -3,13 +3,16 @@
   flex-direction: column;
   gap: var(--space-3);
 }
-/* Enam template tidak muat dalam satu baris flex di lebar modal. Jumlah
-   kolom dipatok 3, bukan auto-fit: 6 tidak habis dibagi 4, sehingga auto-fit
-   menyisakan baris kedua yang timpang (4 tab lalu 2 tab menggantung). */
+/* Tujuh template (sejak "Diambil", 28 Sep 2026) tak habis dibagi 3 atau 4,
+   jadi grid tetap selalu menyisakan tab menggantung. Flex-wrap yang tumbuh
+   mengisi tiap baris penuh, berapa pun lebar modalnya. */
 .templateTabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+.templateTabs > * {
+  flex: 1 1 auto;
 }
 .tab {
   padding: 8px;

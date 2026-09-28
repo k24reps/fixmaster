@@ -58,6 +58,13 @@ interface StatusModalProps {
   onSaved: () => void;
   /** Which sub-action to open on. Falls back to the first available. */
   initialMode?: Mode;
+  /**
+   * "Serahkan unit": buka langsung di Lunas dengan "tandai diambil" menyala.
+   * Hanya berlaku saat tiket Selesai dan pemakai boleh melunasi.
+   */
+  handover?: boolean;
+  /** Dipanggil setelah unit dilunasi SEKALIGUS ditandai diambil (panel serah). */
+  onHandedOver?: () => void;
 }
 
 const MODE_LABELS: Record<Mode, TranslationKey> = {
@@ -66,7 +73,15 @@ const MODE_LABELS: Record<Mode, TranslationKey> = {
   koreksi: 'serviceStatus.modeCorrect',
 };
 
-export function StatusModal({ open, onClose, service, onSaved, initialMode = 'status' }: StatusModalProps) {
+export function StatusModal({
+  open,
+  onClose,
+  service,
+  onSaved,
+  initialMode = 'status',
+  handover = false,
+  onHandedOver,
+}: StatusModalProps) {
   const me = useSessionStore((s) => s.currentEmployee);
   const role = me?.role ?? 'karyawan';
   const isManager = role === 'owner' || role === 'admin';
@@ -98,6 +113,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const [refundWalletId, setRefundWalletId] = useState('');
   // Servis ditunggu: Selesai sekaligus Lunas & diambil, satu kali Terapkan.
   const [express, setExpress] = useState(false);
+  // Diterapkan setelah helper di bawah terdefinisi (render berikutnya).
+  const [pendingHandover, setPendingHandover] = useState(false);
   // Batal: indeks part stok yang terpakai (tidak dikembalikan ke rak).
   const [consumedParts, setConsumedParts] = useState<ReadonlySet<number>>(new Set());
   // Koreksi sub-action
@@ -147,6 +164,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setRefundWalletId(defaultWallet());
       setConsumedParts(new Set());
       setExpress(false);
+      setPendingHandover(handover && service.status === 'selesai' && canSetStatus(role, 'lunas'));
       setCorrectAmount(service.finalCost ? fmtRpInput(String(service.finalCost)) : '');
       setCorrectWalletId(defaultWallet());
     }
@@ -164,8 +182,11 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   const noteRequired = target === 'batal';
   const needsHandling = target === 'selesai';
   // Pelunasan terjadi di modal ini: Lunas biasa, atau Selesai + "langsung lunas".
-  const canExpress = target === 'selesai' && canSetStatus(role, 'lunas');
-  const paying = target === 'lunas' || (canExpress && express);
+  // "Langsung lunas & diambil": dari Selesai (servis ditunggu), atau saat
+  // melunasi unit yang belum diambil — keduanya berakhir di panel serah unit.
+  const canExpress =
+    (target === 'selesai' && canSetStatus(role, 'lunas')) || (target === 'lunas' && !service.pickedUp);
+  const paying = target === 'lunas' || (target === 'selesai' && canExpress && express);
   const warrantyPresets = getWarrantyPresets();
   // Part stok yang masih dipegang tiket — yang bisa dipilih nasibnya saat Batal.
   const heldParts = service.spareparts
@@ -196,7 +217,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
   const onTargetChange = (next: ServiceStatus | '') => {
     setTarget(next);
-    if (next !== 'selesai') setExpress(false);
+    setExpress(false);
     if (next === 'selesai') {
       setWarrantyService((v) => (v === '' ? String(getWarrantyServiceDays()) : v));
       setPartDays((prev) =>
@@ -211,6 +232,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       setRefundAmount(fmtRpInput(String(service.downPayment)));
     }
   };
+
+  if (pendingHandover) {
+    setPendingHandover(false);
+    onTargetChange('lunas');
+    setExpress(true);
+  }
 
   // --- Split payment editing helpers (UI-local) ---
   const setSplitWallet = (i: number, walletId: string) =>
@@ -320,6 +347,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 .filter(Boolean)
                 .join(' · ') || STATUS_LABELS[target],
             internal: false,
+            ...(target === 'batal'
+              ? { refund: service.downPayment > 0 ? Math.min(parseRpInput(refundAmount), service.downPayment) : 0 }
+              : {}),
           },
         ],
       } satisfies Partial<Service>;
@@ -484,11 +514,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       });
       toast.success(
         express && paying
-          ? t('serviceStatus.expressDone')
+          ? t(target === 'lunas' ? 'serviceStatus.paidPickedDone' : 'serviceStatus.expressDone')
           : interpolate(t('serviceStatus.statusDone'), { status: t(`statusLabel.${target}`) }),
       );
       onSaved();
       onClose();
+      if (express && paying) onHandedOver?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceStatus.updateFailed'));
     } finally {
@@ -688,7 +719,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             : t('serviceStatus.cancelTicket')
           : paying
             ? express
-              ? `${t('serviceStatus.expressApply')}${settleDue > 0 ? ` · ${fmtRp(settleDue)}` : ''}`
+              ? `${t(target === 'lunas' ? 'serviceStatus.handoverApply' : 'serviceStatus.expressApply')}${settleDue > 0 ? ` · ${fmtRp(settleDue)}` : ''}`
               : settleDue > 0
                 ? t('serviceStatus.receive').replace('{amount}', fmtRp(settleDue))
                 : t('serviceStatus.markPaid')
@@ -849,7 +880,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               <div className={styles.expressRow}>
                 <span className={styles.expressText}>
                   <strong>{t('serviceStatus.expressQ')}</strong>
-                  <small>{t('serviceStatus.expressSub')}</small>
+                  <small>{t(target === 'lunas' ? 'serviceStatus.expressSubPaid' : 'serviceStatus.expressSub')}</small>
                 </span>
                 <button
                   type="button"
@@ -857,7 +888,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                   aria-pressed={express}
                   aria-label={t('serviceStatus.expressAria')}
                   onClick={() => {
-                    if (!express) seedPayment(finalCost);
+                    if (!express && target === 'selesai') seedPayment(finalCost);
                     setExpress(!express);
                   }}
                 >

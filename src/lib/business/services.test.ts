@@ -27,6 +27,8 @@ import {
   isAwaitingPickup,
   isUnderWarranty,
   canClaimWarranty,
+  retainedDownPayment,
+  cancelledProfit,
 } from './services';
 import type { ServiceSparepart } from '@/data/types';
 
@@ -357,5 +359,27 @@ describe('warranty claim eligibility', () => {
     expect(canClaimWarranty(base, '2026-08-01')).toBe(false);
     // already a claim ticket
     expect(canClaimWarranty({ ...base, warrantyClaimOf: 's-original' }, '2026-06-15')).toBe(false);
+  });
+});
+
+describe('retainedDownPayment / cancelledProfit', () => {
+  const entry = (refund?: number) => ({ at: '2026-06-02T03:00:00.000Z', status: 'batal' as const, by: 'e1', byName: 'A', note: '', internal: false, refund });
+  const part = (over: Partial<ServiceSparepart>): ServiceSparepart => ({
+    itemId: 'i1', name: 'LCD', qty: 1, costPrice: 40000, sellPrice: 80000, deducted: true, kind: 'inventory', ...over,
+  });
+  it('is DP minus the recorded refund, only for cancelled tickets', () => {
+    expect(retainedDownPayment({ status: 'batal', downPayment: 150000, history: [entry(50000)] })).toBe(100000);
+    expect(retainedDownPayment({ status: 'batal', downPayment: 0, history: [] })).toBe(0);
+    expect(retainedDownPayment({ status: 'batal', downPayment: 150000, history: [entry()] })).toBeNull();
+    expect(retainedDownPayment({ status: 'lunas', downPayment: 150000, history: [] })).toBeNull();
+  });
+  it('subtracts only costs the shop still carries (used parts + ad-hoc cash)', () => {
+    const spareparts = [
+      part({}),
+      part({ deducted: false, costPrice: 999 }),
+      part({ kind: 'manual', itemId: null, deducted: false, costPrice: 10000 }),
+    ];
+    expect(cancelledProfit({ status: 'batal', downPayment: 100000, history: [entry(0)], spareparts })).toBe(50000);
+    expect(cancelledProfit({ status: 'batal', downPayment: 100000, history: [entry()], spareparts })).toBeNull();
   });
 });

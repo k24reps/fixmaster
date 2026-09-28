@@ -230,6 +230,24 @@ describe('profitByDeviceCategory', () => {
     expect(hp.revenue).toBe(300000);
     expect(hp.profit).toBe(250000); // (200k-50k) + 100k
   });
+
+  it('counts DP kept on a cancelled ticket as revenue, not as a unit', () => {
+    const batal = (refund: number | undefined, over: Partial<Service> = {}) =>
+      svc({
+        id: `b${refund}`,
+        status: 'batal',
+        downPayment: 100000,
+        finalCost: 0,
+        history: [{ at: '2026-06-02T03:00:00.000Z', status: 'batal', by: 'e1', byName: 'A', note: '', internal: false, refund }],
+        ...over,
+      });
+    const result = profitByDeviceCategory([
+      batal(30000, { spareparts: [part({ costPrice: 20000, deducted: true }), part({ costPrice: 99000, deducted: false })] }),
+      batal(100000), // DP dikembalikan penuh, tak ada biaya → tidak ikut
+      batal(undefined), // tiket lama: DP ditahan tak diketahui → tidak ikut
+    ]);
+    expect(result).toEqual([{ category: 'HP', count: 0, revenue: 70000, profit: 50000 }]);
+  });
 });
 
 describe('sparepartUsage', () => {

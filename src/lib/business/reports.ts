@@ -27,7 +27,10 @@ import {
   type FinanceSummary,
 } from './finance';
 import {
+  cancelledProfit,
+  heldCost,
   outstandingBalance,
+  retainedDownPayment,
   serviceProfit,
   sparepartCost,
   STATUS_LABELS,
@@ -259,16 +262,28 @@ export interface CategoryProfit {
 /**
  * Revenue + gross profit grouped by device category, for realized services
  * (selesai/lunas). Profit = finalCost − sparepart cost.
+ *
+ * Tiket batal ikut bila ada uang yang tertinggal di toko: DP yang ditahan jadi
+ * pendapatan, part terpakai & modal dadakan jadi biaya. Ia tidak menambah
+ * `count` — unitnya tidak selesai. Cermin `category_profit` (0093).
  */
 export function profitByDeviceCategory(services: Service[]): CategoryProfit[] {
   const map = new Map<string, CategoryProfit>();
   for (const s of services) {
-    if (s.status !== 'selesai' && s.status !== 'lunas') continue;
+    const cancelled = s.status === 'batal';
+    if (s.status !== 'selesai' && s.status !== 'lunas' && !cancelled) continue;
+    const kept = cancelled ? retainedDownPayment(s) : null;
+    if (cancelled && (kept === null || (kept === 0 && heldCost(s.spareparts) === 0))) continue;
     const cat = s.category || 'Lainnya';
     const cur = map.get(cat) ?? { category: cat, count: 0, revenue: 0, profit: 0 };
-    cur.count += 1;
-    cur.revenue += s.finalCost;
-    cur.profit += serviceProfit(s);
+    if (cancelled) {
+      cur.revenue += kept ?? 0;
+      cur.profit += cancelledProfit(s) ?? 0;
+    } else {
+      cur.count += 1;
+      cur.revenue += s.finalCost;
+      cur.profit += serviceProfit(s);
+    }
     map.set(cat, cur);
   }
   return [...map.values()].sort((a, b) => b.profit - a.profit);
@@ -348,6 +363,12 @@ export function serviceFunnel(services: Service[]): FunnelStage[] {
 export function completionDate(service: Service): string | null {
   if (service.completedAt) return localDateOf(service.completedAt);
   const entry = (service.history ?? []).find((h) => h.status === 'selesai');
+  return entry ? localDateOf(entry.at) : null;
+}
+
+/** Tanggal lokal tiket dibatalkan (entri `batal` terakhir), else null. */
+export function cancelDate(service: Service): string | null {
+  const entry = [...(service.history ?? [])].reverse().find((h) => h.status === 'batal');
   return entry ? localDateOf(entry.at) : null;
 }
 

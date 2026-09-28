@@ -165,6 +165,36 @@ export function serviceProfit(service: Pick<Service, 'finalCost' | 'spareparts'>
 }
 
 /**
+ * Biaya yang tetap ditanggung tiket batal: modal dadakan (uangnya sudah keluar)
+ * dan part stok yang tetap terpakai (`deducted` — tidak kembali ke rak, 0088).
+ */
+export function heldCost(spareparts: ServiceSparepart[]): number {
+  return sparepartCost(spareparts.filter((sp) => sp.kind === 'manual' || sp.deducted));
+}
+
+/**
+ * DP yang ditahan toko saat tiket batal (mis. biaya diagnosa). Pemasukan DP-nya
+ * tetap di Keuangan (0031), jadi inilah pendapatan tiket batal. null = tak
+ * diketahui: tiket dibatalkan sebelum refund dicatat di riwayat (28 Sep 2026).
+ */
+export function retainedDownPayment(
+  service: Pick<Service, 'status' | 'downPayment' | 'history'>,
+): number | null {
+  if (service.status !== 'batal') return null;
+  if (!(service.downPayment > 0)) return 0;
+  const entry = [...(service.history ?? [])].reverse().find((h) => h.status === 'batal');
+  return typeof entry?.refund === 'number' ? Math.max(0, service.downPayment - entry.refund) : null;
+}
+
+/** Profit tiket batal = DP ditahan − biaya yang tetap ditanggung; null bila DP-nya tak diketahui. */
+export function cancelledProfit(
+  service: Pick<Service, 'status' | 'downPayment' | 'history' | 'spareparts'>,
+): number | null {
+  const kept = retainedDownPayment(service);
+  return kept === null ? null : kept - heldCost(service.spareparts);
+}
+
+/**
  * Net wallet balance deltas when editing a manual "modal dadakan" line: refund
  * the old debit (+oldAmount to the old wallet) and apply the new debit
  * (−newAmount to the new wallet), netted per wallet so editing the amount on

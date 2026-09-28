@@ -117,7 +117,7 @@ export function serviceVars(service: Service, org: Organization): Record<string,
  * dicari pelanggan sekilas (no servis, nominal, status).
  *
  * Urutan kuncinya mengikuti alur tiket (diterima → konfirmasi → tunggu →
- * selesai → ingatkan → batal), karena urutan di sini juga urutan tab di
+ * selesai → ingatkan → diambil → batal), karena urutan di sini juga urutan tab di
  * NotifyModal dan urutan kotak edit di Pengaturan.
  *
  * `{tautan}` hanya dipakai di pesan yang statusnya memang bisa dilihat sendiri
@@ -173,6 +173,14 @@ Mohon dijadwalkan pengambilannya ya, agar unit tidak terlalu lama tersimpan.
 
 Terima kasih, {toko}`,
 
+  diambil: `Halo {nama}, terima kasih — unit *{perangkat}* (No. Servis *{no_servis}*) sudah diambil dan lunas.
+Total biaya: *{biaya}*{garansi}
+
+Riwayat servis dan masa garansi bisa dicek kapan saja di:
+{tautan}
+
+Simpan pesan ini sebagai bukti garansi. Salam, {toko}`,
+
   batal: `Halo {nama}, mohon maaf — pengerjaan unit *{perangkat}* (No. Servis *{no_servis}*) kami hentikan.
 
 Setelah diperiksa, perbaikan tidak dapat kami lanjutkan. Alasannya kami jelaskan selengkapnya saat pengambilan unit.
@@ -191,6 +199,7 @@ export const WA_TEMPLATE_LABELS: Record<WaTemplateKey, string> = {
   tunggu: 'Tunggu Part',
   selesai: 'Selesai',
   pengingat_ambil: 'Ingatkan Ambil',
+  diambil: 'Diambil',
   batal: 'Batal',
 };
 

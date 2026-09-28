@@ -4,6 +4,7 @@ import {
   agingFromRows,
   receivablesAging,
   profitByDeviceCategory,
+  cancelDate,
   completionDate,
   type Receivable,
   type CategoryProfit,
@@ -59,7 +60,7 @@ export function useCategoryProfit(from: string, to: string) {
       const services = await repository.list('services');
       // Lokal/demo: himpunan yang sama, disaring dengan aturan yang sama.
       const done = services.filter((s) => {
-        const at = completionDate(s);
+        const at = s.status === 'batal' ? cancelDate(s) : completionDate(s);
         return at !== null && isInRange(at, from, to);
       });
       return profitByDeviceCategory(done);
