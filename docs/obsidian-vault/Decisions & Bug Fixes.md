@@ -3447,5 +3447,5 @@ tak bisa membuat pelanggan; (2) di cloud pencarian baru jalan setelah 3 huruf + 
   kali membawa isian lama). `onSaved(customer)` mengembalikan rekamannya.
 - Diverifikasi (demo, desktop + ponsel): saran, tidak ditemukan → tambah → terpilih, transaksi
   → link WA LUNAS berisi nomor & struk, kirim ulang WA dari Riwayat membuka WhatsApp, No. HP
-  ganda ditolak dengan nama pemiliknya. Jalur cloud (min 3 huruf, "Mencari…") belum teruji di
-  browser — demo tak memakai pencarian server.
+  ganda ditolak dengan nama pemiliknya. Jalur cloud (min 3 huruf, "Mencari…", tambah pelanggan,
+  kirim WA) dicoba pemilik di fixmaster.app 28 Sep: berjalan normal.
