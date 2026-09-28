@@ -20,7 +20,9 @@
   background: var(--danger-soft);
   border: 1px solid var(--danger);
   border-left-width: 3px;
-  color: var(--danger);
+  /* --danger-text, bukan --danger: di tema gelap --danger di atas --danger-soft
+     terukur 2,54:1 (28 Sep 2026). */
+  color: var(--danger-text);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
 }

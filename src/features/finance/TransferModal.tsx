@@ -91,12 +91,20 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
           <Button variant="secondary" onClick={onClose}>
             Batal
           </Button>
-          <Button onClick={save} loading={busy}>
+          <Button type="submit" form="wallet-transfer" loading={busy}>
             {editing ? 'Simpan' : 'Transfer'}
           </Button>
         </>
       }
     >
+      {/* <form>: Enter menyimpan, sama seperti jendela Pemasukan/Pengeluaran. */}
+      <form
+        id="wallet-transfer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
       <FormFields>
         <FormError>{error}</FormError>
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
@@ -140,6 +148,7 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
           autoFocus={moneyLocked}
         />
       </FormFields>
+      </form>
     </Modal>
   );
 }

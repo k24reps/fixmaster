@@ -508,13 +508,18 @@ export const id = {
   'finance.deleteServiceIncome': 'Pemasukan ini dari tiket servis: saldo dikembalikan, dan bila ini pelunasan, tiketnya kembali ke status Selesai.',
   'finance.lockMonth': 'terkunci · bulan lalu',
   'finance.lockLinked': 'terkunci · ubah dari PO/tiket',
-  'finance.lockSource': 'ubah dari tiket/Kasir',
+  'finance.lockSource': 'ubah dari tiket',
   'finance.prevMonth': 'Bulan sebelumnya',
   'finance.nextMonth': 'Bulan berikutnya',
   'finance.thisMonth': 'bulan ini',
   'finance.totalBalance': 'Total saldo',
   'finance.allBranches': 'semua cabang',
   'finance.summaryAria': 'Ringkasan bulan yang dilihat',
+  'finance.lockSale': 'terkunci · batalkan dari Kasir',
+  'finance.opening': 'awal',
+  'finance.branchMove': 'gerak cabang ini',
+  'finance.balanceNow': 'Saldo sekarang',
+  'finance.overdrawWarn': 'Saldo {wallet} hanya {balance} — pengeluaran ini membuatnya minus. Tekan Simpan sekali lagi bila memang benar.',
 } as const;
 
 export type TranslationKey = keyof typeof id;

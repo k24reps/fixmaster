@@ -142,6 +142,8 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const [busy, setBusy] = useState(false);
   // Peringatan catat ganda sudah ditampilkan untuk isian ini; Simpan berikutnya lanjut.
   const [dupAck, setDupAck] = useState(false);
+  // Pengeluaran melebihi saldo wallet: diperingatkan sekali (Transfer menolaknya).
+  const [overAck, setOverAck] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
 
   const today = localDateStr();
@@ -172,6 +174,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     }
     setOutletId('');
     setDupAck(false);
+    setOverAck(false);
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
@@ -180,6 +183,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     set(v);
     setError('');
     setDupAck(false);
+    setOverAck(false);
   };
 
   const save = async (again = false) => {
@@ -192,6 +196,13 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     const dateError = entryDateError(date, today);
     if (dateError) return setError(dateError);
     const note = description.trim();
+    const target = wallets.find((w) => w.id === walletId);
+    if (kind === 'expense' && !editing && target && value > target.balance && !overAck) {
+      setOverAck(true);
+      return setError(
+        t('finance.overdrawWarn').replace('{wallet}', target.name).replace('{balance}', fmtRp(target.balance)),
+      );
+    }
     if (!editing && !dupAck) {
       const dup = findRecentDuplicate(existing, { amount: value, walletId, description: note, date });
       if (dup) {
@@ -232,6 +243,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
         setAmount('');
         setDescription('');
         setDupAck(false);
+        setOverAck(false);
         setError('');
         amountRef.current?.focus();
       } else {
@@ -268,7 +280,13 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             Batal
           </Button>
           {!editing && (
-            <Button variant="secondary" onClick={() => void save(true)} disabled={busy}>
+            <Button
+              variant="secondary"
+              className={styles.saveAgain}
+              onClick={() => void save(true)}
+              disabled={busy}
+              title="Ctrl+Enter"
+            >
               {t('finance.saveAgain')}
             </Button>
           )}
@@ -285,6 +303,13 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           e.preventDefault();
           void save();
         }}
+        // Ctrl/Shift+Enter = Simpan & tambah lagi: catat beruntun tanpa meninggalkan keyboard.
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !editing && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+            e.preventDefault();
+            void save(true);
+          }
+        }}
       >
         <FormFields>
           <FormError>{error}</FormError>
@@ -295,6 +320,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               onChange={(e) => change(setOutletId)(e.target.value)}
               options={outletOptions}
               placeholder={t('finance.outletPlaceholder')}
+              autoFocus
             />
           )}
           <FormRow>
@@ -326,7 +352,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               inputMode="numeric"
               onChange={(e) => change(setAmount)(fmtRpInput(e.target.value))}
               placeholder="100.000"
-              autoFocus
+              autoFocus={!needOutlet}
             />
             <Select
               label="Wallet"

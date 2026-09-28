@@ -3501,3 +3501,25 @@ Diperbaiki:
   "bulan ini"; umur siap-diambil memakai riwayat Selesai bila `completedAt` kosong.
 - **Pertanyaan ke pemilik:** admin melihat Laba servis padahal Laporan owner-only; Target Servis =
   unit masuk atau selesai; seed demo disebar sebulan agar sakelar periode terasa.
+
+## Critique ulang Keuangan — 19 → 27/40 (28 Sep 2026)
+
+Arsip `.impeccable/critique/2026-09-28T04-30-27Z__src-features-finance.md`. Aritmetika benar di 20 titik
+rekonsiliasi + 9 cek delta wallet; Dashboard & Laporan sepakat. Diperbaiki:
+
+- **[P1] Pemasukan penjualan Kasir bisa dihapus dari Keuangan** (juga di produksi): saldo turun,
+  tapi penjualan tetap, stok tak kembali, dan Laporan menulis "sudah termasuk di Pemasukan" yang
+  salah. Tombol hapus kini tak ada untuk baris ber-`saleId` (tag "terkunci · batalkan dari Kasir"),
+  dan **0092** menambah penjaga `sale_id` di `delete_finance_entry` (update sudah menolaknya sejak 0071).
+- **`FormError` tema gelap 2,54:1** (semua formulir): `--danger` → `--danger-text` (terukur 4,61:1).
+  Nama wallet aktif 4,33:1 → `--text-secondary`.
+- **Rekonsiliasi:** baris "awal Rp X" per wallet (saldo − pergerakan bulan berjalan) — hanya bulan
+  ini dan tampilan semua cabang; di tampilan satu cabang ditandai "gerak cabang ini" (wallet milik
+  seluruh usaha, pemasukan per cabang). Bulan lalu berlabel "Saldo sekarang".
+- **Mencatat dari tampilan bulan lalu** tersimpan ke hari ini tanpa jejak di tampilan → tombol
+  catat kembali ke bulan ini dulu (cek catat ganda pun memakai baris bulan ini).
+- **Pengeluaran melebihi saldo** kini diperingatkan sekali (Transfer menolaknya). Pengeluaran jadi
+  tombol utama; Ctrl/Shift+Enter = Simpan & tambah lagi (label boleh patah di ponsel); Cabang
+  mendapat fokus pertama bila wajib; TransferModal jadi `<form>` (Enter menyimpan).
+- **Belum:** fokus hilang setelah hapus/batal (barisnya lenyap); ±40 literal i18n; Laporan
+  "per kategori" memuat Modal/Prive tanpa penanda "di luar laba".

@@ -94,6 +94,10 @@ button.walletCell:focus-visible {
 button.walletCell[aria-pressed='true'] {
   background: var(--brand-soft);
 }
+/* Nama wallet aktif: --text-muted di atas --brand-soft terukur 4,33:1 (gelap). */
+button.walletCell[aria-pressed='true'] .walletName {
+  color: var(--text-secondary);
+}
 .walletTotal {
   background: var(--bg-surface-2);
 }
@@ -201,6 +205,12 @@ button.walletCell[aria-pressed='true'] .walletLed {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* "Simpan & tambah lagi" boleh patah di ponsel (dulu terpotong di 375px). */
+.saveAgain {
+  white-space: normal;
+  line-height: 1.2;
 }
 
 /* Petunjuk kecil di jendela Entry. */

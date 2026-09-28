@@ -482,7 +482,8 @@ export function FinancePage() {
       r.kind === 'expense' &&
       (!!(r.record as Expense).poId || r.description.startsWith('Modal servis '));
     // Pemasukan dari tiket/Kasir diubah dari halaman asalnya.
-    const linkedIncome = inc && (!!(r.record as Income).serviceId || !!(r.record as Income).saleId);
+    const saleIncome = inc && !!(r.record as Income).saleId;
+    const linkedIncome = inc && (!!(r.record as Income).serviceId || saleIncome);
     // Bulan lalu terkunci (0071), sama seperti pembatalan penjualan:
     // laporannya sudah berjalan, jadi koreksinya dicatat bulan ini.
     const closedMonth = r.date < openFrom;
@@ -491,8 +492,10 @@ export function FinancePage() {
       ? t('finance.lockMonth')
       : lockedExpense
         ? t('finance.lockLinked')
-        : linkedIncome
-          ? t('finance.lockSource')
+        : saleIncome
+          ? t('finance.lockSale')
+          : linkedIncome
+            ? t('finance.lockSource')
           : null;
     return (
       <div
@@ -536,7 +539,10 @@ export function FinancePage() {
               <Icon name="pen" aria-hidden />
             </button>
           )}
-          {!lockedExpense && !closedMonth && (
+          {/* Pemasukan Kasir hanya dibatalkan dari Kasir (void_sale mengembalikan
+              stok & menandai penjualannya). Dulu tombol ini ada: penjualannya
+              menggantung dan stok tak kembali. Server menolaknya juga (0092). */}
+          {!lockedExpense && !closedMonth && !saleIncome && (
             <button
               type="button"
               className={[styles.iconBtn, styles.danger].join(' ')}
@@ -596,7 +602,9 @@ export function FinancePage() {
       ) : (
         <div className={styles.walletStrip}>
           <div className={[styles.walletCell, styles.walletTotal].join(' ')}>
-            <span className={styles.walletName}>{t('finance.totalBalance')}</span>
+            <span className={styles.walletName}>
+              {t(monthOffset > 0 ? 'finance.balanceNow' : 'finance.totalBalance')}
+            </span>
             <strong className={styles.walletBalance}>{fmtRp(totalBalance)}</strong>
             <span className={styles.walletMove}>
               {orgWide ? t('finance.allBranches') : `${wallets.length} wallet`}
@@ -620,6 +628,16 @@ export function FinancePage() {
                 <strong className={styles.walletBalance}>{fmtRp(w.balance)}</strong>
                 {m && (
                   <span className={styles.walletMove}>
+                    {/* Persamaan yang bisa dicocokkan dengan laci: saldo awal bulan
+                        + masuk − keluar ± transfer = saldo. Hanya untuk bulan berjalan
+                        dan tampilan semua cabang — wallet milik seluruh usaha,
+                        pergerakan per cabang tak akan menutup persamaannya. */}
+                    {monthOffset === 0 && !orgWide && (
+                      <span className={styles.trf}>
+                        {t('finance.opening')} {fmtRp(w.balance - (m.in - m.out + m.transfer))}
+                      </span>
+                    )}
+                    {orgWide && <span className={styles.trf}>{t('finance.branchMove')}</span>}
                     <span className={styles.inc}>+{fmtRp(m.in)}</span>{' '}
                     <span className={styles.exp}>−{fmtRp(m.out)}</span>
                     {m.transfer !== 0 && (
@@ -647,7 +665,7 @@ export function FinancePage() {
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
-          <span>Arus Kas Bersih</span>
+          <span>Arus Kas Bersih{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
       </div>
@@ -673,19 +691,29 @@ export function FinancePage() {
         </p>
       )}
 
+      {/* Pengeluaran = aksi utama: pemasukan manual tinggal Modal/Lainnya, yang
+          dicatat berkali-kali sehari adalah pengeluaran. Mencatat dari tampilan
+          bulan lalu kembali ke bulan ini dulu — entrinya selalu bertanggal bulan
+          ini, dan dulu "hilang" dari tampilan yang sedang dibuka. */}
       <div className={styles.actions}>
         <Button
-          onClick={() => setModalKind('income')}
-          iconLeft={<Icon name="arrow-down" aria-hidden />}
-        >
-          Pemasukan
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => setModalKind('expense')}
+          onClick={() => {
+            setMonthOffset(0);
+            setModalKind('expense');
+          }}
           iconLeft={<Icon name="arrow-up" aria-hidden />}
         >
           Pengeluaran
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setMonthOffset(0);
+            setModalKind('income');
+          }}
+          iconLeft={<Icon name="arrow-down" aria-hidden />}
+        >
+          Pemasukan
         </Button>
         {wallets.length >= 2 && (
           <Button
