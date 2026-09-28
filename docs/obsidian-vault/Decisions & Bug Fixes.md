@@ -3663,3 +3663,14 @@ dan tujuh tab Pengaturan — nol kunci mentah.
   Onboarding, dan landing belum masuk kamus.
 - Dev lokal: tab Tim/Sistem di demo memanggil Supabase cloud lama (`.env` lokal) dan kena 402 —
   bukan regresi, produksi memakai server VPS.
+
+## Tahap 6: PRODUCT.md & kode keluar peluncur impeccable (29 Sep 2026)
+
+- **PRODUCT.md** masih menulis produk "berjalan di cloud (Supabase)" sejak sebelum pindah ke VPS —
+  konteks yang dibaca skill desain tiap sesi. Kini: frontend Vercel, backend Supabase self-host di
+  VPS Jakarta via Cloudflare Tunnel; "cloud" di kode = mode server. Baris backup ikut diperbarui
+  (salinan malam per toko, email mingguan, arsip offsite Drive, kunci layar dikecualikan).
+- **`impeccable.cmd` selalu keluar 0.** Direproduksi: berkas dengan 4 anti-pattern → biner keluar 2,
+  peluncur 0 (`exit /b` polos lewat `cmd /c`). Tambalan `exit /b %ERRORLEVEL%` di dua jalur jalan;
+  terverifikasi 2 (bermasalah) / 0 (bersih). Peluncur sh sudah benar (`exec`). Tambalan lokal ini
+  tercatat di AGENTS.md §7 supaya tidak hilang saat skill disalin ulang.

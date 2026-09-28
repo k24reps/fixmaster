@@ -174,7 +174,12 @@ tindih**:
   hash saat pertama dipakai (butuh `curl`). `.impeccable/live/` juga di-gitignore —
   skrip sesi live tidak boleh ter-commit, begitu pula suntikannya ke `index.html`.
 - Memperbarui skill: salin ulang dari sumbernya, pertahankan catatan FixMaster di
-  kepala berkas antislop, dan perbarui versi di tabel ini.
+  kepala berkas antislop, dan perbarui versi di tabel ini. **Tambalan lokal
+  impeccable (29 Sep 2026):** `scripts/impeccable.cmd` menutup dua jalur jalannya
+  dengan `exit /b %ERRORLEVEL%` (baris bertanda "FixMaster:"). `exit /b` polos
+  membuat peluncur selalu keluar 0 lewat `cmd /c`, sehingga gerbang yang memakai
+  `detect` selalu lolos (biner: 2 = ada temuan). Pasang ulang tambalan ini bila
+  skill disalin ulang, kecuali upstream sudah memperbaikinya.
 
 ---
 

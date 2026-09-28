@@ -29,8 +29,11 @@ Berhasil kalau pemilik bisa menutup toko tanpa menghitung ulang apa pun, dan tek
 
 Satu unit masuk, semua bagian usaha ikut tercatat — tanpa entri ulang. Pemakaian sparepart pada satu tiket servis otomatis mengurangi stok dan masuk ke biaya serta margin tiket itu; tidak ada langkah rekonsiliasi terpisah.
 
-Produk yang dipakai pelanggan berbayar **berjalan di cloud** (Supabase) dan
-membutuhkan koneksi. `LocalAdapter` (IndexedDB) ada dan berfungsi penuh, tapi
+Produk yang dipakai pelanggan berbayar **berjalan di server** dan membutuhkan
+koneksi: frontend di Vercel (`fixmaster.app`), backend **Supabase self-host** di
+VPS Jakarta sejak 27 Sep 2026 (lewat Cloudflare Tunnel — bukan lagi Supabase
+cloud; lihat `docs/obsidian-vault/Self-Hosting.md`). "Cloud" di kode dan dokumen
+berarti mode server ini, bukan layanan Supabase terkelola. `LocalAdapter` (IndexedDB) ada dan berfungsi penuh, tapi
 adapternya dipilih `createRepository()` dari **variabel env saat build** —
 tidak ada saklar runtime, sehingga build produksi selalu cloud. Saat koneksi
 putus, tulis gagal: tidak ada antrean, tidak ada cache, dan service worker
@@ -51,7 +54,7 @@ perlu login ulang.
 - **Multi-outlet** untuk usaha yang sudah punya cabang (fitur Pro).
 - **Absensi memakai geofence** — produk meminta izin `geolocation` (dibatasi `geolocation=(self)` di `vercel.json`). Kamera & mikrofon dimatikan.
 - **WhatsApp** adalah kanal komunikasi ke pelanggan yang nyata dipakai (template WA fitur Pro; tombol WA di halaman publik).
-- **Backup manual** — aplikasi web tidak bisa menjadwalkan pekerjaan saat tertutup, jadi pengingat backup muncul saat aplikasi dibuka (mode lokal). Pengguna cloud dapat backup Supabase.
+- **Backup** — di server: salinan otomatis per toko tiap malam (7 terakhir) + tautan email mingguan untuk toko berlangganan, dan arsip offsite terenkripsi seluruh database ke Google Drive dua kali sehari. Pengingat backup manual tetap muncul saat aplikasi dibuka (mode lokal). Kunci layar unit pelanggan tidak pernah ikut arsip offsite (0094).
 - Halaman publik `/demo` menjalankan aplikasi asli di atas adapter RAM — pengunjung anonim memakai produk sungguhan tanpa menyentuh IndexedDB miliknya.
 
 ## Capabilities and Constraints
@@ -82,7 +85,7 @@ menahannya merugikan toko di mata pelanggannya sendiri tanpa menambah alasan
 nyata untuk naik paket.
 
 - Enum `plan_type` di Postgres terkunci (`free`,`standard`,`enterprise`,`trial`,`suspended`). `free` adalah nilai **legacy yang sengaja tidak ditawarkan** — jangan hidupkan tanpa migrasi.
-- **Dua mode auth:** lokal (tanpa akun) dan cloud (Supabase Auth email+password). Keduanya harus tetap jalan.
+- **Dua mode auth:** lokal (tanpa akun) dan server (Supabase Auth email+password, self-host). Keduanya harus tetap jalan.
 - **Zoom aplikasi** 80%–125% adalah preferensi pengguna (`src/stores/zoom.ts`), memakai properti CSS `zoom` — bukan zoom browser. Konsekuensi terukur: `zoom` **tidak** menggeser media query, dan unit viewport ikut terskala. Breakpoint yang menentukan "muat / tidak muat" wajib `@container`; ukuran setinggi layar wajib lewat `--app-vh`.
 - **Bahasa & pasar:** Indonesia adalah bahasa produk dan pasar yang dikejar sekarang. Inggris menyusul, jadi locale `en` harus **tetap dijaga hidup** supaya ekspansi tidak mahal — setiap copy baru wajib punya pasangan di `src/i18n/en.ts` dan `src/i18n/id.ts`. Semua teks UI lewat `useT()` + translation key, tidak pernah string literal.
 
@@ -117,7 +120,7 @@ Yang boleh dipakai:
 ## Product Principles
 
 1. **Satu unit, satu pencatatan.** Data yang sudah masuk tidak pernah diminta ulang. Setiap fitur baru harus menjawab: apakah ini menambah entri manual? Kalau ya, cari jalan lain.
-2. **Putusnya koneksi harus jujur dan pulih sendiri.** Produk ini cloud, dan
+2. **Putusnya koneksi harus jujur dan pulih sendiri.** Produk ini butuh server, dan
    itu disebut apa adanya ke calon pelanggan. Yang wajib dijaga: kegagalan
    tulis saat offline tidak boleh diam-diam, dan begitu jaringan kembali data
    termuat ulang tanpa langkah manual. Kalau suatu saat mode lokal benar-benar
