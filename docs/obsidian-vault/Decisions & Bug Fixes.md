@@ -3449,3 +3449,30 @@ tak bisa membuat pelanggan; (2) di cloud pencarian baru jalan setelah 3 huruf + 
   → link WA LUNAS berisi nomor & struk, kirim ulang WA dari Riwayat membuka WhatsApp, No. HP
   ganda ditolak dengan nama pemiliknya. Jalur cloud (min 3 huruf, "Mencari…", tambah pelanggan,
   kirim WA) dicoba pemilik di fixmaster.app 28 Sep: berjalan normal.
+
+## Critique ulang Servis — 24 → 25/40 (28 Sep 2026)
+
+Arsip `.impeccable/critique/2026-09-28T02-25-56Z__src-features-services.md`. Hitungan uang benar di
+semua alur yang dicoba (DP, potong stok, split, modal dadakan, refund, koreksi, batal, ekspres).
+Bug yang diperbaiki:
+
+- **Tiket batal** terbaca "Tagihan: Menunggu biaya final" (amber) + profit negatif → readout
+  "Status: Dibatalkan"; profit unit "—" untuk tiket batal DAN sebelum biaya final ada (sama
+  dengan daftar Servis).
+- **Baris BOM modal dadakan**: 7 anak di grid 6 trek → tombol hapus turun baris. Tombol baris
+  kini satu sel `.bomActions`.
+- **Chip "Pakai estimasi"** muncul setelah harga disepakati dan bisa menurunkannya → hanya bila
+  `service.finalCost <= 0`.
+- **Hapus baris BOM** memindahkan kas/stok seketika → `ConfirmDialog` yang menyebut nominal &
+  akibatnya.
+- **Servis Baru:** kategori diam-diam kategori pertama ("Redmi Note 12" tersimpan Laptop) →
+  kosong + wajib dipilih; Cabang mendapat fokus pertama bila wajib; `<form>` (Enter menyimpan).
+- **`FormError` (semua formulir)** menggulir dirinya ke pandangan — error di puncak jendela yang
+  sudah digulir ke Simpan dulu tak terlihat, tombol terasa mati.
+- **Ponsel:** label tombol utama StatusModal boleh patah (dulu "Selesai & Lunas · Rp 12.500.000"
+  meluber keluar tombol); nama panjang di kartu daftar patah alih-alih terpotong di bawah badge.
+- Baris pelunasan: wallet & nominal diberi nama aksesibel, nominal `inputMode="numeric"`.
+- **Belum / keputusan pemilik:** part ditambah setelah Selesai tak menyentuh biaya final (profit
+  bisa negatif diam-diam); DP yang ditahan saat batal belum dihitung sebagai pendapatan tiket;
+  part/modal masih bisa ditambah ke tiket Lunas; pengambilan tercatat "Edit" di Log Teknisi;
+  fokus hilang ke `<body>` setelah Lunas (tombol Update Status lenyap).

@@ -251,6 +251,14 @@
   color: var(--brand-hover);
   text-decoration: none;
 }
+/* min-width 0 + patah di mana saja: nama panjang di kartu ponsel dulu melebar
+   ke ukuran aslinya dan terpotong kasar di bawah badge status. */
+.jobDevice,
+.jobMeta,
+.jobMeta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .jobDevice strong {
   display: block;
   font-size: var(--text-base);

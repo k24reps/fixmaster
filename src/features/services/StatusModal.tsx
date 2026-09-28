@@ -702,7 +702,13 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
-          <Button variant={cancelling ? 'danger' : 'primary'} onClick={apply} loading={busy} disabled={noActions}>
+          <Button
+            variant={cancelling ? 'danger' : 'primary'}
+            className={styles.applyBtn}
+            onClick={apply}
+            loading={busy}
+            disabled={noActions}
+          >
             {applyLabel}
           </Button>
         </>
@@ -813,7 +819,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                   inputMode="numeric"
                 />
                 {/* Estimasi saat intake tak perlu diingat lalu diketik ulang. */}
-                {estimate > 0 && parseRpInput(finalCost) !== estimate && (
+                {/* Hanya sebelum harga disepakati: setelah Konfirmasi, chip ini bisa
+                    menurunkan harga yang sudah disetujui pelanggan dengan satu ketukan. */}
+                {estimate > 0 && service.finalCost <= 0 && parseRpInput(finalCost) !== estimate && (
                   <button
                     type="button"
                     className={styles.estimateChip}
@@ -858,12 +866,15 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 {splits.map((s, i) => (
                   <div key={i} className={styles.splitRow}>
                     <Select
+                      aria-label={`Wallet pembayaran ${i + 1}`}
                       value={s.walletId}
                       onChange={(e) => setSplitWallet(i, e.target.value)}
                       options={walletOptions}
                       placeholder="Wallet…"
                     />
                     <Input
+                      aria-label={`Nominal pembayaran ${i + 1}`}
+                      inputMode="numeric"
                       value={s.amount}
                       onChange={(e) => setSplitAmount(i, e.target.value)}
                       placeholder="0"

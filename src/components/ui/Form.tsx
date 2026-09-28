@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import styles from './Form.module.css';
 
 /**
@@ -21,9 +21,15 @@ export function FormRow({ children }: { children: ReactNode }) {
  * + message on a danger-toned plate. Renders nothing when empty.
  */
 export function FormError({ children }: { children?: ReactNode }) {
+  // Error duduk di puncak form; saat jendela sudah digulir ke tombol Simpan,
+  // pesannya dulu muncul di luar pandangan dan tombol terasa tidak berbuat apa-apa.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (children) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [children]);
   if (!children) return null;
   return (
-    <div className={styles.error} role="alert">
+    <div ref={ref} className={styles.error} role="alert">
       <span className={styles.errorLed} aria-hidden />
       <span>{children}</span>
     </div>

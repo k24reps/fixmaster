@@ -447,6 +447,11 @@
   flex-direction: column;
   container: bom / inline-size;
 }
+.bomActions {
+  display: inline-flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
 .bomRow {
   display: grid;
   grid-template-columns: 28px 1fr auto auto auto auto;

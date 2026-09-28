@@ -68,7 +68,8 @@ export function ServiceModal({
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [category, setCategory] = useState(categories[0] ?? '');
+  // Kosong, bukan kategori pertama: dulu "Redmi Note 12" diam-diam tersimpan sebagai Laptop.
+  const [category, setCategory] = useState('');
   const [device, setDevice] = useState('');
   const [complaint, setComplaint] = useState('');
   const [accessories, setAccessories] = useState('');
@@ -104,7 +105,7 @@ export function ServiceModal({
   const applyDraft = (d: IntakeDraft | null) => {
     setCustomerName(d?.customerName ?? '');
     setCustomerPhone(d?.customerPhone ?? '');
-    setCategory(d?.category ?? categories[0] ?? '');
+    setCategory(d?.category ?? '');
     setDevice(d?.device ?? '');
     setComplaint(d?.complaint ?? '');
     setAccessories(d?.accessories ?? '');
@@ -204,6 +205,7 @@ export function ServiceModal({
     if (!customerName.trim()) return setError('Nama pelanggan wajib diisi');
     if (!customerPhone.trim()) return setError('No. HP pelanggan wajib diisi');
     if (!device.trim()) return setError('Nama perangkat wajib diisi');
+    if (categories.length && !category) return setError('Pilih kategori perangkat');
     // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
     // branch first so the ticket isn't silently stamped to the primary outlet.
     if (needOutlet && !outletId) return setError(t('serviceForm.outletRequired'));
@@ -368,12 +370,20 @@ export function ServiceModal({
           <Button variant="secondary" onClick={close}>
             Batal
           </Button>
-          <Button onClick={save} loading={busy}>
+          <Button type="submit" form="service-intake" loading={busy}>
             Simpan
           </Button>
         </>
       }
     >
+      {/* <form>: Enter di field satu baris menyimpan (Keluhan tetap baris baru). */}
+      <form
+        id="service-intake"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
       <FormFields>
         <FormError>{error}</FormError>
         {needOutlet && (
@@ -386,6 +396,7 @@ export function ServiceModal({
             }}
             options={outletOptions}
             placeholder={t('serviceForm.outletPlaceholder')}
+            autoFocus
           />
         )}
         <FormRow>
@@ -400,7 +411,7 @@ export function ServiceModal({
               }}
               onFocus={() => setSuggestField('name')}
               onBlur={() => hideSuggest('name')}
-              autoFocus
+              autoFocus={!needOutlet}
             />
             {suggestField === 'name' && suggestList}
           </div>
@@ -425,7 +436,7 @@ export function ServiceModal({
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             options={categories.map((c) => ({ value: c, label: c }))}
-            placeholder={categories.length ? undefined : 'Belum ada kategori'}
+            placeholder={categories.length ? 'Pilih jenis perangkat…' : 'Belum ada kategori'}
           />
           <Input
             label="Perangkat"
@@ -492,6 +503,7 @@ export function ServiceModal({
           />
         </FormRow>
       </FormFields>
+      </form>
     </Modal>
   );
 }

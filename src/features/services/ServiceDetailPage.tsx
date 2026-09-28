@@ -85,6 +85,8 @@ export function ServiceDetailPage() {
   const isManager = role === 'owner' || role === 'admin';
 
   const [editOpen, setEditOpen] = useState(false);
+  // Baris BOM yang akan dihapus — menghapus memindahkan kas/stok, jadi dikonfirmasi dulu.
+  const [toRemove, setToRemove] = useState<number | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -145,13 +147,20 @@ export function ServiceDetailPage() {
   const cancelled = service.status === 'batal';
   const currentIndex = TRAVELER.indexOf(service.status);
   const outstanding = service.status === 'lunas' ? 0 : outstandingBalance(service);
+  // Tiket batal tak punya tagihan: dulu terbaca "Menunggu biaya final" (amber)
+  // seolah pelanggan masih berutang.
   const billingReadout =
     service.status === 'lunas'
       ? { label: 'Pembayaran', value: 'Lunas' }
-      : service.finalCost <= 0
+      : cancelled
+        ? { label: 'Status', value: 'Dibatalkan' }
+        : service.finalCost <= 0
         ? { label: 'Tagihan', value: 'Menunggu biaya final' }
         : { label: 'Sisa tagihan', value: fmtMoney(outstanding) };
   const profit = serviceProfit(service);
+  // Profit baru bermakna bila biaya final ada dan tiket tidak batal — sebelum itu
+  // angkanya negatif palsu (daftar Servis sudah menampilkan "—" untuk kasus sama).
+  const profitKnown = !cancelled && service.finalCost > 0;
   const modalTotal = serviceModalTotal(service.spareparts);
   // Satu klaim berjalan per tiket asli (juga dijaga server, 0064).
   const openClaim = openClaimFor(services, service.id);
@@ -838,6 +847,9 @@ export function ServiceDetailPage() {
                             ? 'Terpasang'
                             : 'Menunggu'}
                     </span>
+                    {/* Satu sel untuk semua tombol baris: 7 anak di grid 6 trek dulu
+                        menurunkan tombol hapus ke baris baru. */}
+                    <span className={styles.bomActions}>
                     {!cancelled && manual && isManager && (
                       <button
                         className={styles.bomEdit}
@@ -852,13 +864,14 @@ export function ServiceDetailPage() {
                     {!cancelled && !(manual && !isManager) && !(service.status === 'lunas' && !manual && p.deducted) && (
                       <button
                         className={styles.bomDel}
-                        onClick={() => removeCostLine(i)}
+                        onClick={() => setToRemove(i)}
                         title="Hapus baris"
-                        aria-label="Hapus baris"
+                        aria-label={`Hapus ${p.name}`}
                       >
                         <Icon name="trash" aria-hidden />
                       </button>
                     )}
+                    </span>
                   </div>
                 );
               })}
@@ -895,9 +908,9 @@ export function ServiceDetailPage() {
                     <dt>Modal (part + dadakan)</dt>
                     <dd className={styles.dp}>− {fmtMoney(modalTotal)}</dd>
                   </div>
-                  <div className={styles.costProfit} data-loss={profit < 0}>
+                  <div className={styles.costProfit} data-loss={profitKnown && profit < 0}>
                     <dt>Profit unit</dt>
-                    <dd>{fmtMoney(profit)}</dd>
+                    <dd>{profitKnown ? fmtMoney(profit) : '—'}</dd>
                   </div>
                 </>
               )}
@@ -1003,6 +1016,27 @@ export function ServiceDetailPage() {
         onConfirm={() => {
           setConfirmPickup(false);
           void togglePickup(true);
+        }}
+      />
+      {/* Hapus baris BOM memindahkan uang (modal dadakan → saldo kembali) atau
+          stok (part → rak). Dulu terjadi seketika tanpa konfirmasi. */}
+      <ConfirmDialog
+        open={toRemove !== null}
+        title="Hapus baris?"
+        message={(() => {
+          const line = toRemove !== null ? service.spareparts[toRemove] : null;
+          if (!line) return '';
+          return line.kind === 'manual'
+            ? `${line.name} · ${fmtMoney(line.costPrice)}. Pengeluarannya dihapus dan saldo wallet dikembalikan.`
+            : `${line.name} ×${line.qty}. ${line.deducted ? 'Stoknya dikembalikan ke inventori.' : 'Belum memotong stok.'}`;
+        })()}
+        confirmLabel="Hapus"
+        danger
+        onCancel={() => setToRemove(null)}
+        onConfirm={() => {
+          const i = toRemove;
+          setToRemove(null);
+          if (i !== null) void removeCostLine(i);
         }}
       />
     </div>
