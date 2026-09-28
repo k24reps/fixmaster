@@ -22,7 +22,11 @@ const NONE: Customer[] = [];
  * Adapter lokal/demo tidak punya `queryCustomers`; di sana daftarnya sudah
  * lengkap di memori dan pemanggil memakai jalur mundurnya.
  */
-export function useCustomerSearch(opts: { enabled: boolean; term: string }): Customer[] {
+export function useCustomerSearch(opts: { enabled: boolean; term: string }): {
+  results: Customer[];
+  /** Masih menunggu jeda ketik atau jawaban server — jangan tampilkan "tidak ditemukan". */
+  pending: boolean;
+} {
   // Pelanggan TIDAK outlet-scoped (lihat OUTLET_SCOPED di supabase-adapter),
   // jadi cabang aktif tidak ikut jadi kunci.
   const [term, setTerm] = useState(opts.term.trim());
@@ -33,11 +37,14 @@ export function useCustomerSearch(opts: { enabled: boolean; term: string }): Cus
 
   const active = opts.enabled && !!repository.queryCustomers && term.length >= 3;
 
-  const { data } = useQuery({
+  const { data, isFetching } = useQuery({
     queryKey: ['collection', 'customers', 'search', term],
     queryFn: () => repository.queryCustomers!({ term, limit: 50 }),
     enabled: active,
   });
 
-  return active ? (data ?? NONE) : NONE;
+  return {
+    results: active ? (data ?? NONE) : NONE,
+    pending: opts.term.trim() !== term || (active && (isFetching || data === undefined)),
+  };
 }

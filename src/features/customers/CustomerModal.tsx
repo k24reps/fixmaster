@@ -15,10 +15,12 @@ interface CustomerModalProps {
   onClose: () => void;
   editing: Customer | null;
   customers: Customer[];
-  onSaved: () => void;
+  onSaved: (customer: Customer) => void;
+  /** Isian awal untuk pelanggan baru — mis. yang sudah diketik di kolom cari Kasir. */
+  initialQuery?: string;
 }
 
-export function CustomerModal({ open, onClose, editing, customers, onSaved }: CustomerModalProps) {
+export function CustomerModal({ open, onClose, editing, customers, onSaved, initialQuery = '' }: CustomerModalProps) {
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -26,13 +28,17 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Sync form state when the modal opens for a new target.
-  const [lastId, setLastId] = useState<string | null>(null);
-  const currentKey = editing?.id ?? 'new';
-  if (open && lastId !== currentKey) {
-    setLastId(currentKey);
-    setName(editing?.name ?? '');
-    setPhone(editing?.phone ?? '');
+  // Isi ulang setiap kali jendela DIBUKA. Dulu hanya saat targetnya berganti,
+  // jadi "Pelanggan Baru" kedua kali masih membawa isian yang lama.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (!open && wasOpen) setWasOpen(false);
+  if (open && !wasOpen) {
+    setWasOpen(true);
+    // Kueri berupa angka = nomor HP, selain itu nama.
+    const q = initialQuery.trim();
+    const qIsPhone = /^[+\d][\d\s-]*$/.test(q);
+    setName(editing?.name ?? (qIsPhone ? '' : q));
+    setPhone(editing?.phone ?? (qIsPhone ? q : ''));
     setNote(editing?.note ?? '');
     setError('');
   }
@@ -41,10 +47,18 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
     if (!name.trim()) return setError('Nama wajib diisi');
     if (!phone.trim()) return setError('No. HP wajib diisi');
 
-    const dup = checkDuplicate(customers, { id: editing?.id, name, phone });
-    if (!dup.ok) return setError(dup.reason ?? 'Duplikat');
-
     setBusy(true);
+    // Cloud: daftar di tangan hanya potongan (hasil cari/halaman), jadi nomor
+    // dicek ke server — kalau tidak, pelanggan GANDA lolos.
+    const candidates = repository.queryCustomers
+      ? [...customers, ...(await repository.queryCustomers({ phone, limit: 50 }).catch(() => []))]
+      : customers;
+    const dup = checkDuplicate(candidates, { id: editing?.id, name, phone });
+    if (!dup.ok) {
+      setBusy(false);
+      return setError(dup.reason ?? 'Duplikat');
+    }
+
     const now = new Date().toISOString();
     const record: Customer = {
       id: editing?.id ?? newId(),
@@ -94,7 +108,7 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved }: Cu
         entityLabel: record.name,
         meta: { phone: record.phone },
       });
-      onSaved();
+      onSaved(record);
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menyimpan pelanggan');

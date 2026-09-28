@@ -148,7 +148,7 @@ export function ServiceModal({
   ];
 
   const suggestTerm = suggestField === 'name' ? customerName : customerPhone;
-  const remoteMatches = useCustomerSearch({
+  const { results: remoteMatches } = useCustomerSearch({
     enabled: !editing && !!suggestField,
     term: suggestTerm,
   });

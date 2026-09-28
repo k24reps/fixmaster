@@ -3429,3 +3429,23 @@ buatan tahap 2 — langsung diperbaiki:
   riwayat per hari (`groupSalesByDay`: jumlah trx + total tanpa yang batal) dengan jam, wallet,
   kasir, penanda cabang aktif, dan **kirim ulang struk WA** (nomor diambil saat diklik; jendela
   dibuka sinkron dulu agar tak diblokir). **Belum:** i18n ±15 literal lama.
+
+## Pelanggan di Kasir: saran menjelaskan diri + tambah langsung (28 Sep 2026)
+
+Laporan pemilik: mengetik nama pelanggan di Kasir tidak memunculkan saran. Penyebabnya bukan
+satu bug, melainkan tiga aturan tak terlihat: (1) hanya pelanggan tersimpan yang dicari, dan Kasir
+tak bisa membuat pelanggan; (2) di cloud pencarian baru jalan setelah 3 huruf + jeda 300 ms
+(`useCustomerSearch`); (3) tanpa hasil, kolom diam saja.
+
+- Daftar saran kini selalu tampil saat ada kueri: "Ketik minimal 3 huruf…", "Mencari…" (hook
+  kini mengembalikan `{ results, pending }`), atau "Belum ada pelanggan "X"" — dan selalu diakhiri
+  **Tambah pelanggan baru**, yang membuka `CustomerModal` terisi dari kueri (angka → No. HP,
+  selain itu nama) lalu langsung memilih pelanggan itu.
+- `CustomerModal`: cek No. HP ganda kini bertanya ke server (`queryCustomers({ phone })`) —
+  sebelumnya hanya daftar di tangan, yang di cloud hanya potongan, jadi pelanggan ganda bisa
+  lolos dari menu Pelanggan juga. Jendela diisi ulang setiap DIBUKA (dulu "Pelanggan Baru" kedua
+  kali membawa isian lama). `onSaved(customer)` mengembalikan rekamannya.
+- Diverifikasi (demo, desktop + ponsel): saran, tidak ditemukan → tambah → terpilih, transaksi
+  → link WA LUNAS berisi nomor & struk, kirim ulang WA dari Riwayat membuka WhatsApp, No. HP
+  ganda ditolak dengan nama pemiliknya. Jalur cloud (min 3 huruf, "Mencari…") belum teruji di
+  browser — demo tak memakai pencarian server.

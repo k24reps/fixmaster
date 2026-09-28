@@ -44,6 +44,7 @@ import { interpolate, waLink } from '@/lib/business/notify';
 import { useT } from '@/i18n';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { printSaleReceipt } from './printSaleReceipt';
+import { CustomerModal } from '@/features/customers/CustomerModal';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import type { Customer, InventoryItem, Sale, PaymentAllocation } from '@/data/types';
@@ -121,7 +122,8 @@ export function PosPage() {
     [sales],
   );
 
-  const remoteCustomers = useCustomerSearch({ enabled: true, term: custQuery });
+  const { results: remoteCustomers, pending: custPending } = useCustomerSearch({ enabled: true, term: custQuery });
+  const [custModal, setCustModal] = useState(false);
   // `searchCustomers` tetap yang memutuskan — server hanya mempersempit kandidat.
   const custMatches = useMemo(
     () => searchCustomers(serverSearch ? remoteCustomers : customers, custQuery),
@@ -919,22 +921,41 @@ export function PosPage() {
                     onChange={(e) => setCustQuery(e.target.value)}
                     iconLeft={<Icon name="magnifying-glass" aria-hidden />}
                   />
-                  {custMatches.length > 0 && (
+                  {/* Saran selalu menjelaskan dirinya: kurang huruf, masih mencari,
+                      tidak ditemukan — dan selalu menawarkan pelanggan baru. Dulu
+                      kolom ini diam saja bila tak ada yang cocok, dan Kasir tak bisa
+                      membuat pelanggan. */}
+                  {custQuery.trim() && (
                     <ul className={styles.custSuggest}>
-                      {custMatches.map((c) => (
-                        <li key={c.id}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCustomer(c);
-                              setCustQuery('');
-                            }}
-                          >
-                            <strong>{c.name}</strong>
-                            <small>{c.phone || 'tanpa nomor'}</small>
-                          </button>
+                      {serverSearch && custQuery.trim().length < 3 ? (
+                        <li className={styles.custHint}>{t('pos.custMinChars')}</li>
+                      ) : custMatches.length === 0 ? (
+                        <li className={styles.custHint}>
+                          {serverSearch && custPending
+                            ? t('pos.custSearching')
+                            : t('pos.custNotFound').replace('{q}', custQuery.trim())}
                         </li>
-                      ))}
+                      ) : (
+                        custMatches.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCustomer(c);
+                                setCustQuery('');
+                              }}
+                            >
+                              <strong>{c.name}</strong>
+                              <small>{c.phone || 'tanpa nomor'}</small>
+                            </button>
+                          </li>
+                        ))
+                      )}
+                      <li>
+                        <button type="button" className={styles.custAdd} onClick={() => setCustModal(true)}>
+                          <Icon name="plus" aria-hidden /> {t('pos.custAdd')}
+                        </button>
+                      </li>
                     </ul>
                   )}
                 </>
@@ -1214,6 +1235,18 @@ export function PosPage() {
           onChange={(e) => setVoidReason(e.target.value)}
         />
       </Modal>
+
+      <CustomerModal
+        open={custModal}
+        onClose={() => setCustModal(false)}
+        editing={null}
+        customers={serverSearch ? remoteCustomers : customers}
+        initialQuery={custQuery}
+        onSaved={(c) => {
+          setCustomer(c);
+          setCustQuery('');
+        }}
+      />
 
       <Modal
         open={outletModal}
