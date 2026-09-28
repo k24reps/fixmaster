@@ -89,31 +89,44 @@ export interface TenderSettlement {
 }
 
 /**
+ * Baris yang menyerahkan kembalian: pembayaran TUNAI terakhir (0095) — laci
+ * adalah satu-satunya tempat kembalian berasal. Tanpa wallet bertanda tunai,
+ * baris terakhir (perilaku lama: QRIS/transfer diisi pas, tunai paling akhir).
+ */
+export function changeRowIndex(
+  lines: readonly PaymentAllocation[],
+  cashWalletIds: ReadonlySet<string> = new Set(),
+): number {
+  for (let i = lines.length - 1; i >= 0; i--) if (cashWalletIds.has(lines[i].walletId)) return i;
+  return lines.length - 1;
+}
+
+/**
  * Tender kasir: tiap baris = uang yang diterima per wallet. Lebih bayar menjadi
- * kembalian yang dipotong dari baris TERAKHIR — urutan yang wajar di meja
- * kasir (QRIS/transfer diisi pas, tunai diterima paling akhir), sehingga yang
+ * kembalian yang dipotong dari baris kembalian (`changeRowIndex`), sehingga yang
  * tercatat di wallet adalah uang yang benar-benar tinggal, bukan uang yang
  * sempat dipegang. process_sale (0069) tetap menerima jumlah = total.
- * ponytail: wallet tak punya tipe "tunai", jadi baris terakhir yang dianggap
- * laci; tambah `kind` di Wallet bila perlu memaksa kembalian hanya dari tunai.
  */
-export function settleTender(tendered: PaymentAllocation[], total: number): TenderSettlement {
+export function settleTender(
+  tendered: PaymentAllocation[],
+  total: number,
+  cashWalletIds: ReadonlySet<string> = new Set(),
+): TenderSettlement {
   const lines = tendered.filter((p) => p.amount > 0);
   const paid = lines.reduce((sum, p) => sum + p.amount, 0);
   const base = { paid, due: 0, change: 0, changeWalletId: null, excess: false, allocations: lines };
   if (paid < total - 0.5) return { ...base, ok: false, due: total - paid };
   const change = Math.round(paid - total);
   if (change < 1) return { ...base, ok: true };
-  const last = lines[lines.length - 1];
-  if (paid - last.amount >= total) return { ...base, ok: false, change, excess: true };
+  const at = changeRowIndex(lines, cashWalletIds);
+  const row = lines[at];
+  if (paid - row.amount >= total) return { ...base, ok: false, change, excess: true };
   return {
     ...base,
     ok: true,
     change,
-    changeWalletId: last.walletId,
-    allocations: lines.map((p, i) =>
-      i === lines.length - 1 ? { ...p, amount: p.amount - change } : p,
-    ),
+    changeWalletId: row.walletId,
+    allocations: lines.map((p, i) => (i === at ? { ...p, amount: p.amount - change } : p)),
   };
 }
 

@@ -197,6 +197,8 @@ Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa
 
 ## Kasir POS — Register Readout
 
+- **Bayar via & kembalian tunai (0095, 28 Sep 2026).** Pad tender berlabel **Bayar via** (bukan "wallet"/"baris") dan hanya menawarkan wallet bersama + wallet cabang aktif. Kembalian selalu dipotong dari pembayaran **tunai** (`changeRowIndex`), berapa pun urutan ketukannya — aturan tertulis "Kembalian selalu diambil dari Tunai (uang tunai)."; chip nominal cepat mengisi baris tunai. Tanpa wallet bertanda tunai: perilaku lama (baris terakhir). LCD menulis "{n} jenis barang".
+
 Panel keranjang jadi **mesin kasir**: layar LCD total bergaya segment-display (digit mono, glow amber, ghost "88.888", scanline, indikator LIVE), badan **struk thermal monospace** dengan garis titik-titik, **perforasi sobek**, footer checkout. Tombol qty mekanis (turun saat ditekan).
 
 **Tab bar (11 Jun 2026).** Halaman dipecah jadi dua tab bergaya bench (mono uppercase, underline brand saat aktif): **Kasir** (grid produk + register) dan **Transaksi Terakhir** (riwayat + void, manager-only, dengan badge jumlah). Sebelumnya panel riwayat menumpuk di bawah register dan mengganggu alur kasir; kini terpisah sehingga layar kasir bersih dan riwayat punya ruang sendiri. Modal void diangkat ke level halaman agar bisa dipanggil dari tab manapun.
@@ -306,6 +308,8 @@ tetap memberi orientasi saat data sedikit; tombol aksi memenuhi target sentuh mo
 ![[sup-dark.png]]
 
 ## Keuangan — Cashbook Tape
+
+- **Per cabang & ponsel (0095, 28 Sep 2026).** Tampilan satu cabang hanya memuat wallet bersama + wallet cabang itu; wallet khusus cabang punya persamaan lengkap (awal + masuk − keluar ± transfer), wallet bersama tetap "gerak cabang ini"; Total berlabel "cabang ini + bersama". Catat Pemasukan/Pengeluaran menawarkan wallet yang sah untuk cabangnya (memilih wallet cabang di "Semua Outlet" mengisi cabangnya), Hitung saldo membuka Tunai cabang dan tak bertanya cabang untuk wallet khusus cabang. Ponsel (≤560px wadah): ringkasan satu baris tiga sel, gerak wallet tanpa "Rp", tombol **Hitung** menempel di sel Total — baris pertama buku kas naik dari y=735 (tertutup navigasi) ke y=709 di 375×812. Pengaturan › Wallet: wallet bisa diubah cabang & penanda **Uang tunai (laci)** kapan saja (dulu hanya ganti nama).
 
 Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan spine income/expense (hijau/merah), nominal +/- mono — senada struk POS.
 

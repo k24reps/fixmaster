@@ -197,6 +197,11 @@ export interface Wallet extends BaseEntity {
   name: string;
   balance: number;
   sortOrder: number;
+  /**
+   * Uang fisik di laci (0095). Kembalian Kasir selalu diambil dari wallet ini,
+   * bukan dari pembayaran yang kebetulan diisi terakhir. Opsional: baris lama.
+   */
+  isCash?: boolean;
 }
 
 /**

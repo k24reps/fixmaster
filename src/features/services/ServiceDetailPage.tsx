@@ -11,6 +11,7 @@ import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
 import { useFormat } from '@/lib/useFormat';
 import { useT } from '@/i18n';
+import { walletsForOutlet } from '@/lib/business/finance';
 import {
   outstandingBalance,
   serviceProfit,
@@ -81,7 +82,7 @@ export function ServiceDetailPage() {
   // membuatnya tidak pernah MEMICU pengambilan — dulu membuka satu tiket lewat
   // tautan langsung menarik seluruh tabel servis hanya untuk mencari satu baris.
   const { data: services } = useCollection('services', { enabled: false });
-  const { data: wallets } = useCollection('wallets');
+  const { data: allWallets } = useCollection('wallets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
@@ -123,6 +124,8 @@ export function ServiceDetailPage() {
     enabled: !!id && !listed,
   });
   const service = listed ?? oneQuery.data ?? null;
+  // Modal dadakan dibayar dari wallet cabang tiket atau wallet bersama (0095).
+  const wallets = walletsForOutlet(allWallets, service?.outletId ?? null);
   const history = useServiceHistory(service);
 
   if (!service) {

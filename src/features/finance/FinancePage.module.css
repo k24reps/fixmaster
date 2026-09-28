@@ -101,6 +101,26 @@ button.walletCell[aria-pressed='true'] .walletName {
 .walletTotal {
   background: var(--bg-surface-2);
 }
+/* Baris kaki sel Total: jumlah wallet + (ponsel) tombol Hitung, patah bila sempit. */
+.totalFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--space-2);
+}
+/* Hitung saldo di sel Total — hanya di layar sempit (lihat @container finance). */
+.countInline {
+  display: none;
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
 .walletName {
   display: inline-flex;
   align-items: center;
@@ -569,20 +589,35 @@ button.walletCell[aria-pressed='true'] .walletLed {
    selebar pita, lalu nominal + aksi. Satu baris empat kolom dulu memeras
    keterangan jadi 81px dan memotong nomor tiket ("Pelunasan servis FM…"). */
 @container finance (max-width: 560px) {
-  .walletStrip,
-  .summaryStrip {
+  .walletStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .walletStrip > :last-child:nth-child(odd),
-  .summaryStrip > :last-child:nth-child(odd) {
+  .walletStrip > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
   .walletCell,
   .summaryCell {
-    padding: var(--space-3);
+    padding: 10px var(--space-3);
+    gap: 2px;
   }
+  /* Ringkasan satu baris tiga sel (dulu 2+1, 145px) — buku kas naik ke layar pertama. */
+  .summaryStrip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .summaryCell {
+    padding: 8px;
+  }
+  /* Nominal utuh sebaris: 12px mono muat di sepertiga lebar 320px (terukur). */
   .summaryCell strong {
-    font-size: var(--text-md);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+  .countInline {
+    display: inline-flex;
+    align-items: center;
+  }
+  .countAction {
+    display: none;
   }
   .tapeRow {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -623,5 +658,12 @@ button.walletCell[aria-pressed='true'] .walletLed {
 @container finance (max-width: 360px) {
   .actions svg {
     display: none;
+  }
+}
+
+/* Ponsel: jarak antarbagian dirapatkan supaya baris pertama buku kas terlihat. */
+@media (max-width: 720px) {
+  .wrap {
+    gap: var(--space-3);
   }
 }

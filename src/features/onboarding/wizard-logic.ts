@@ -11,6 +11,7 @@ import { repository } from '@/data';
 import { getSupabase, isSupabaseConfigured } from '@/data/supabase-client';
 import { newId, derivePrefix } from '@/lib/id';
 import { hashPin } from '@/lib/pin';
+import { looksLikeCash } from '@/lib/business/finance';
 
 export interface WizardWalletDraft {
   name: string;
@@ -204,6 +205,7 @@ export async function commitWizard(
       name: w.name.trim(),
       balance: w.balance,
       sortOrder: i,
+      isCash: looksLikeCash(w.name),
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -289,6 +291,7 @@ async function commitWizardCloud(
       name: w.name.trim(),
       balance: w.balance,
       sortOrder: i,
+      isCash: looksLikeCash(w.name),
       createdAt: now,
       updatedAt: now,
       deletedAt: null,

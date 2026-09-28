@@ -15,6 +15,7 @@ import {
   reconcileWallet,
 } from './finance';
 import type { Wallet } from '@/data/types';
+import { walletsForOutlet, looksLikeCash } from './finance';
 
 const wallet = (over: Partial<Wallet>): Wallet => ({
   id: over.id ?? 'w1',
@@ -247,3 +248,23 @@ describe('reconcileWallet', () => {
   });
 });
 
+describe('looksLikeCash', () => {
+  it('mengenali laci dari namanya', () => {
+    expect(['Tunai', 'Tunai Dago', 'Cash', 'Kas kecil'].every(looksLikeCash)).toBe(true);
+    expect(['Bank BCA', 'QRIS', 'Seabank'].some(looksLikeCash)).toBe(false);
+  });
+});
+
+describe('walletsForOutlet', () => {
+  const ws = [
+    { id: 'bca', outletId: null },
+    { id: 'tunai-pusat', outletId: 'pusat' },
+    { id: 'tunai-dago', outletId: 'dago' },
+  ];
+  it('cabang: wallet bersama + wallet cabang itu saja', () => {
+    expect(walletsForOutlet(ws, 'dago').map((w) => w.id)).toEqual(['bca', 'tunai-dago']);
+  });
+  it('semua cabang: semua wallet', () => {
+    expect(walletsForOutlet(ws, null)).toHaveLength(3);
+  });
+});

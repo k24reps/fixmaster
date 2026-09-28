@@ -11,7 +11,7 @@ import {
 import { repository } from '@/data';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
-import { applyBalance, entryDateError, findRecentDuplicate } from '@/lib/business/finance';
+import { walletsForOutlet, applyBalance, entryDateError, findRecentDuplicate } from '@/lib/business/finance';
 import { createFinanceEntry } from '@/data/financeEntry';
 import { updateFinanceEntry } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
@@ -128,8 +128,8 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
-  // Dibaca supaya komponen render ulang saat cabang berganti (mustPickOutlet membaca store).
-  useSessionStore((s) => s.activeOutletId);
+  // Juga membuat komponen render ulang saat cabang berganti (mustPickOutlet membaca store).
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const { data: outlets } = useCollection('outlets');
   const [date, setDate] = useState(localDateStr());
   const [category, setCategory] = useState('');
@@ -153,6 +153,11 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const outletOptions = outlets
     .filter((o) => allowedOutletIds.length === 0 || allowedOutletIds.includes(o.id))
     .map((o) => ({ value: o.id, label: o.name }));
+  // Wallet cabang lain tidak ditawarkan (server menolaknya, 0095). Di "Semua
+  // Outlet" sebelum cabang dipilih: semua wallet — memilih wallet cabang
+  // langsung mengisi cabangnya.
+  const entryOutlet = editing ? editing.outletId : needOutlet ? outletId || null : activeOutletId;
+  const usableWallets = walletsForOutlet(wallets, entryOutlet);
 
   const [lastOpen, setLastOpen] = useState(false);
   if (open && !lastOpen) {
@@ -168,7 +173,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
       setDate(localDateStr());
       setCategory(kind === 'income' ? 'Lainnya' : 'Operasional');
       setAmount('');
-      setWalletId(wallets[0]?.id ?? '');
+      setWalletId(walletsForOutlet(wallets, activeOutletId)[0]?.id ?? '');
       setDescription('');
     }
     setOutletId('');
@@ -177,6 +182,9 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     setError('');
   }
   if (!open && lastOpen) setLastOpen(false);
+  if (open && !editing && walletId && usableWallets.length && !usableWallets.some((w) => w.id === walletId)) {
+    setWalletId(usableWallets[0].id);
+  }
 
   const change = <T,>(set: (v: T) => void) => (v: T) => {
     set(v);
@@ -358,8 +366,12 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             <Select
               label={t('finance.wallet')}
               value={walletId}
-              onChange={(e) => change(setWalletId)(e.target.value)}
-              options={wallets.map((w) => ({ value: w.id, label: `${w.name} · ${fmtRp(w.balance)}` }))}
+              onChange={(e) => {
+                change(setWalletId)(e.target.value);
+                const picked = wallets.find((w) => w.id === e.target.value);
+                if (needOutlet && picked?.outletId) setOutletId(picked.outletId);
+              }}
+              options={usableWallets.map((w) => ({ value: w.id, label: `${w.name} · ${fmtRp(w.balance)}` }))}
             />
           </FormRow>
           <Input

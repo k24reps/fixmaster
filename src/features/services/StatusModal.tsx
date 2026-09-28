@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge, ConfirmDialog, Icon } from '@/components/ui';
 import { useT } from '@/i18n';
+import { walletsForOutlet } from '@/lib/business/finance';
 import { PartWarrantyFields, WarrantyPresets } from './PartWarrantyFields';
 import { repository } from '@/data';
 import { saveServiceParts } from '@/data/serviceParts';
@@ -85,7 +86,9 @@ export function StatusModal({
   const me = useSessionStore((s) => s.currentEmployee);
   const role = me?.role ?? 'karyawan';
   const isManager = role === 'owner' || role === 'admin';
-  const { data: wallets } = useCollection('wallets');
+  const { data: allWallets } = useCollection('wallets');
+  // Uang tiket masuk/keluar lewat wallet cabang tiketnya atau wallet bersama (0095).
+  const wallets = walletsForOutlet(allWallets, service?.outletId ?? null);
   const history = useServiceHistory(service);
 
   const [mode, setMode] = useState<Mode>('status');

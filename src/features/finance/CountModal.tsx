@@ -51,7 +51,8 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
   const wallet = wallets.find((w) => w.id === walletId) ?? null;
   const hasCount = counted.trim() !== '';
   const { diff, entry } = reconcileWallet(wallet?.balance ?? 0, parseRpInput(counted));
-  const needOutlet = !!entry && mustPickOutlet(outlets.length);
+  // Wallet khusus cabang: selisihnya milik cabang itu, tak perlu ditanya.
+  const needOutlet = !!entry && !wallet?.outletId && mustPickOutlet(outlets.length);
   const outletOptions = outlets
     .filter((o) => allowedOutletIds.length === 0 || allowedOutletIds.includes(o.id))
     .map((o) => ({ value: o.id, label: o.name }));
@@ -77,7 +78,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
         amount: entry.amount,
         walletId: wallet.id,
         description,
-        outletId: needOutlet ? outletId : resolveCreateOutlet(outlets),
+        outletId: wallet.outletId ?? (needOutlet ? outletId : resolveCreateOutlet(outlets)),
       });
       logActivity({
         action: `${entry.kind}.create` as ActivityAction,

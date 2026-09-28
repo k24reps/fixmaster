@@ -32,6 +32,7 @@ import {
   cartTotal,
   validateCart,
   settleTender,
+  changeRowIndex,
   cashSuggestions,
   pickOnEnter,
   groupSalesByDay,
@@ -42,6 +43,7 @@ import {
 import { searchCustomers } from '@/lib/business/customers';
 import { interpolate, waLink } from '@/lib/business/notify';
 import { useT } from '@/i18n';
+import { walletsForOutlet } from '@/lib/business/finance';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { printSaleReceipt } from './printSaleReceipt';
 import { CustomerModal } from '@/features/customers/CustomerModal';
@@ -52,7 +54,7 @@ import styles from './PosPage.module.css';
 
 export function PosPage() {
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
-  const { data: wallets } = useCollection('wallets');
+  const { data: allWallets } = useCollection('wallets');
   const { data: sales, ...salesLoad } = useCollection('sales');
   const { data: outlets } = useCollection('outlets');
   // Pelanggan dicari di server; daftar lokal hanya untuk adapter lokal/demo.
@@ -62,6 +64,10 @@ export function PosPage() {
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  // Cara bayar = wallet bersama + wallet cabang ini (0095). "Tunai Pusat" tidak
+  // ditawarkan di meja Dago; server menolaknya juga.
+  const wallets = walletsForOutlet(allWallets, activeOutletId);
+  const cashIds = new Set(wallets.filter((w) => w.isCash).map((w) => w.id));
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   const setActiveOutlet = useSessionStore((s) => s.setActiveOutlet);
   const reachableOutlets = allowedOutletIds.length
@@ -215,11 +221,13 @@ export function PosPage() {
   const subtotal = cartSubtotal(cart);
   const discountValue = resolveDiscount(subtotal, parseRpInput(discount), discountType);
   const total = cartTotal(cart, parseRpInput(discount), discountType);
-  const settle = settleTender(tender, total);
-  const walletName = (id: string | null) => wallets.find((w) => w.id === id)?.name ?? '';
-  const lastTender = tender[tender.length - 1];
-  const quickCash = lastTender
-    ? cashSuggestions(total - (settle.paid - Math.max(0, lastTender.amount)))
+  const settle = settleTender(tender, total, cashIds);
+  // Riwayat bisa memuat wallet cabang lain / yang sudah dipindah — cari di semua.
+  const walletName = (id: string | null) => allWallets.find((w) => w.id === id)?.name ?? '';
+  // Baris yang menyerahkan kembalian: tunai terakhir, atau baris terakhir.
+  const changeTender = tender[changeRowIndex(tender, cashIds)];
+  const quickCash = changeTender
+    ? cashSuggestions(total - (settle.paid - Math.max(0, changeTender.amount)))
     : [];
   // Diskon besar = uang toko keluar tanpa persetujuan. Karyawan dibatasi;
   // server menolaknya juga (0070), ini hanya supaya batasnya terbaca lebih awal.
@@ -404,7 +412,7 @@ export function PosPage() {
         })
       : t('pos.statusExact')
     : settle.excess
-      ? interpolate(t('pos.statusExcess'), { wallet: walletName(lastTender?.walletId ?? null) })
+      ? interpolate(t('pos.statusExcess'), { wallet: walletName(changeTender?.walletId ?? null) })
       : settle.paid === 0
         ? interpolate(t('pos.statusEmpty'), { amount: fmtRp(total) })
         : interpolate(t('pos.statusDue'), { amount: fmtRp(settle.due) });
@@ -1060,15 +1068,18 @@ export function PosPage() {
                   </div>
                 );
               })}
-              {tender.length > 1 && lastTender && (
+              {tender.length > 1 && changeTender && (
                 <p className={styles.tenderRule}>
-                  {t('pos.changeRule').replace('{wallet}', walletName(lastTender.walletId))}
+                  {t(cashIds.has(changeTender.walletId) ? 'pos.changeRuleCash' : 'pos.changeRule').replace(
+                    '{wallet}',
+                    walletName(changeTender.walletId),
+                  )}
                 </p>
               )}
-              {quickCash.length > 1 && lastTender && (
+              {quickCash.length > 1 && changeTender && (
                 <div className={styles.quickCash} role="group" aria-label={t('pos.cashQuick')}>
                   {quickCash.map((v, i) => (
-                    <button key={v} type="button" onClick={() => setTenderAmount(lastTender.walletId, v)}>
+                    <button key={v} type="button" onClick={() => setTenderAmount(changeTender.walletId, v)}>
                       {i === 0 ? t('pos.exact') : fmtRp(v)}
                     </button>
                   ))}

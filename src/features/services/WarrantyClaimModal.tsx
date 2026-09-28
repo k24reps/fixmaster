@@ -14,6 +14,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { ClaimItem, Service } from '@/data/types';
 import { useT } from '@/i18n';
+import { walletsForOutlet } from '@/lib/business/finance';
 import { interpolate } from '@/lib/business/notify';
 
 const itemKey = (item: ClaimItem) => `${item.kind}:${item.name}`;
@@ -43,7 +44,8 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
   const t = useT();
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
-  const { data: wallets } = useCollection('wallets');
+  const { data: allWallets } = useCollection('wallets');
+  const wallets = walletsForOutlet(allWallets, origin?.outletId ?? null);
 
   const [complaint, setComplaint] = useState('');
   const [recordLoss, setRecordLoss] = useState(false);

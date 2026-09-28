@@ -229,6 +229,20 @@ export interface WalletMovement {
 }
 
 /** Pergerakan satu wallet dalam himpunan baris yang sudah disaring periodenya. */
+/**
+ * Wallet yang boleh dipakai transaksi sebuah cabang: wallet bersama (tanpa
+ * cabang) + wallet khusus cabang itu (model hybrid, 0023/0028). `outletId` null
+ * = tampilan semua cabang → semua wallet. Server menolak kombinasi lain (0095).
+ */
+export function walletsForOutlet<T extends Pick<Wallet, 'outletId'>>(wallets: readonly T[], outletId: string | null): T[] {
+  return outletId ? wallets.filter((w) => !w.outletId || w.outletId === outletId) : [...wallets];
+}
+
+/** Nama yang jelas uang laci — penanda tunai awal, cermin backfill 0095. */
+export function looksLikeCash(name: string): boolean {
+  return /(tunai|cash|laci|kas kecil)/i.test(name);
+}
+
 export function walletMovement(
   walletId: string,
   incomes: readonly Pick<Income, 'amount' | 'walletId'>[],

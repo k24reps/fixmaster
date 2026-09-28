@@ -9,6 +9,7 @@ import {
   checkoutStockDeltas,
   voidStockDeltas,
   settleTender,
+  changeRowIndex,
   cashSuggestions,
   pickOnEnter,
   groupSalesByDay,
@@ -156,5 +157,26 @@ describe('groupSalesByDay', () => {
       ['2026-09-28', 100, 1, 2],
       ['2026-09-27', 70, 1, 1],
     ]);
+  });
+});
+
+describe('settleTender dengan wallet tunai', () => {
+  const cash = new Set(['tunai']);
+  it('kembalian selalu dari tunai walau tunai diisi lebih dulu', () => {
+    const r = settleTender(
+      [{ walletId: 'tunai', amount: 500000 }, { walletId: 'qris', amount: 1500000 }],
+      1800000,
+      cash,
+    );
+    expect(r).toMatchObject({ ok: true, change: 200000, changeWalletId: 'tunai' });
+    expect(r.allocations).toEqual([{ walletId: 'tunai', amount: 300000 }, { walletId: 'qris', amount: 1500000 }]);
+  });
+  it('non-tunai yang sudah menutup total = lebih bayar, bukan kembalian', () => {
+    const r = settleTender([{ walletId: 'tunai', amount: 100000 }, { walletId: 'qris', amount: 900000 }], 800000, cash);
+    expect(r).toMatchObject({ ok: false, excess: true });
+  });
+  it('tanpa wallet tunai: baris terakhir', () => {
+    expect(changeRowIndex([{ walletId: 'a', amount: 1 }, { walletId: 'b', amount: 1 }])).toBe(1);
+    expect(changeRowIndex([{ walletId: 'tunai', amount: 1 }, { walletId: 'b', amount: 1 }], cash)).toBe(0);
   });
 });

@@ -3596,3 +3596,22 @@ itu bisa langsung hilang saat unit diambil. Keputusan:
 - **Yang tersisa di tiket hanya `secret_kind`**, supaya riwayat jujur ("PIN diberikan · dihapus saat
   diambil") tanpa menyimpan isinya. IMEI/SN & kondisi fisik justru dicetak di nota: itu bukti
   pelanggan tentang unit yang ia titipkan.
+
+## Wallet per cabang ditepati & kembalian dari tunai (0095, 28 Sep 2026)
+
+Pengaturan › Wallet sudah lama berjanji "saat transaksi, hanya kas bersama + kas cabang aktif yang
+tampil", dan database (0023/0028) sudah menyimpan cabang tiap wallet — tapi tak satu layar pun
+memfilternya, dan server tak menolak apa pun. Laci per cabang (kebiasaan konter bercabang: tunai per
+cabang, QRIS/BCA bersama, pembayaran pecah) jadi mustahil dicocokkan. Keputusan pemilik: 7b hybrid.
+
+- **Penjaga di tabel, bukan di tiap RPC.** Semua uang berakhir sebagai baris incomes/expenses dengan
+  wallet_id + outlet_id, jadi satu trigger menjaga belasan RPC tanpa menyalin ulang isinya.
+- **Kembalian dari tunai.** Dulu kembalian dipotong dari pembayaran yang diisi TERAKHIR (catatan
+  `ponytail` di settleTender), sehingga kasir harus mengisi tunai paling akhir. Kini `wallets.is_cash`
+  menentukan: tunai terakhir, lalu fallback baris terakhir. Non-tunai yang sudah menutup total tetap
+  "lebih bayar", bukan kembalian.
+- **Istilah Kasir (10a).** "wallet"/"baris" diganti "Bayar via"/"pembayaran"/"jenis barang" hanya di
+  Kasir; Keuangan & Pengaturan tetap "wallet" — di sana pemilik memang mengelola kas.
+- **Catatan migrasi data:** menjadikan wallet lama khusus cabang tidak memindahkan riwayatnya; saldo
+  awal bulan per cabang baru jujur sejak wallet cabang dipakai. Anjuran ke pemilik: buat "Tunai
+  <cabang>" baru dan isi lewat Transfer.

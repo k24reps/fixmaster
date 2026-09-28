@@ -2128,6 +2128,8 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
   // Hybrid wallet (OQ Q2): a wallet is either shared org-wide (null) or tied
   // to a specific branch. '' = Bersama (shared).
   const [outletId, setOutletId] = useState('');
+  // Uang fisik di laci: kembalian Kasir selalu diambil dari wallet ini (0095).
+  const [isCash, setIsCash] = useState(false);
   // Transfer sub-action: move funds between two wallets.
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
@@ -2161,6 +2163,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         name: name.trim(),
         balance: 0,
         sortOrder: wallets.length,
+        isCash,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -2183,6 +2186,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
       setName('');
       setBalance('');
       setOutletId('');
+      setIsCash(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal menambah wallet');
     } finally {
@@ -2222,7 +2226,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         </p>
         <ul className={styles.walletList}>
           {wallets.map((w) => (
-            <WalletRow key={w.id} wallet={w} outletLabel={outletName(w.outletId)} />
+            <WalletRow key={w.id} wallet={w} outletLabel={outletName(w.outletId)} outlets={outlets} />
           ))}
         </ul>
         <div className={styles.addRow}>
@@ -2256,6 +2260,13 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
             Tambah
           </Button>
         </div>
+        <label className={styles.columnOption}>
+          <input type="checkbox" checked={isCash} onChange={(e) => setIsCash(e.target.checked)} />
+          <span className={styles.columnText}>
+            <strong>Uang tunai (laci)</strong>
+            <small>Kembalian Kasir selalu diambil dari wallet ini. Untuk toko bercabang: satu wallet tunai per cabang.</small>
+          </span>
+        </label>
         {!canAddWallet && (
           <ProNotice>
             Paket ini dibatasi {PLANS[walletPlan].maxWallets} wallet. Pro membuka wallet
@@ -2316,9 +2327,11 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
  * muncul di setiap form pembayaran. Penghapusan dijaga server (0077): kas yang
  * masih memegang saldo atau masih dipakai baris kas tidak boleh hilang.
  */
-function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: string }) {
+function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLabel: string; outlets: Outlet[] }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(wallet.name);
+  const [outletId, setOutletId] = useState(wallet.outletId ?? '');
+  const [isCash, setIsCash] = useState(!!wallet.isCash);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
 
@@ -2329,9 +2342,12 @@ function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: strin
       await repository.put('wallets', {
         ...wallet,
         name: name.trim(),
+        // Cabang & tunai bisa diatur belakangan — wallet lama lahir "Bersama".
+        outletId: outletId || null,
+        isCash,
         updatedAt: new Date().toISOString(),
       });
-      toast.success('Nama wallet diperbarui');
+      toast.success('Wallet diperbarui');
       setEditing(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal mengganti nama wallet');
@@ -2368,6 +2384,23 @@ function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: strin
             onChange={(e) => setName(e.target.value)}
             aria-label={`Nama ${wallet.name}`}
           />
+          {outlets.length > 0 && (
+            <Select
+              aria-label={`Cabang ${wallet.name}`}
+              value={outletId}
+              onChange={(e) => setOutletId(e.target.value)}
+              options={[
+                { value: '', label: 'Bersama (semua cabang)' },
+                ...outlets.map((o) => ({ value: o.id, label: o.name })),
+              ]}
+            />
+          )}
+          <label className={styles.columnOption}>
+            <input type="checkbox" checked={isCash} onChange={(e) => setIsCash(e.target.checked)} />
+            <span className={styles.columnText}>
+              <strong>Uang tunai (laci)</strong>
+            </span>
+          </label>
           <span className={styles.itemActions}>
             <Button size="sm" onClick={rename} loading={busy}>
               Simpan
@@ -2377,6 +2410,8 @@ function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: strin
               variant="secondary"
               onClick={() => {
                 setName(wallet.name);
+                setOutletId(wallet.outletId ?? '');
+                setIsCash(!!wallet.isCash);
                 setEditing(false);
               }}
             >
@@ -2389,6 +2424,7 @@ function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: strin
           <span>
             {wallet.name}
             <Badge tone={wallet.outletId ? 'info' : 'neutral'}>{outletLabel}</Badge>
+            {wallet.isCash && <Badge tone="success">Tunai</Badge>}
           </span>
           <strong>{fmtRp(wallet.balance)}</strong>
           <span className={styles.itemActions}>
@@ -2398,7 +2434,7 @@ function WalletRow({ wallet, outletLabel }: { wallet: Wallet; outletLabel: strin
               onClick={() => setEditing(true)}
               iconLeft={<Icon name="pen" aria-hidden />}
             >
-              Ganti nama
+              Ubah
             </Button>
             <Button
               size="sm"

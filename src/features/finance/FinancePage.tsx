@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
-import { fmtRp } from '@/lib/format';
+import { fmtNumber, fmtRp } from '@/lib/format';
 import { fmtDate, localDateStr, monthRange } from '@/lib/time';
 import {
   summarize,
@@ -16,6 +16,7 @@ import {
   transferMoneyLocked,
   isCapitalFlow,
   walletMovement,
+  walletsForOutlet,
   CAPITAL_INCOME_CATEGORY,
   CAPITAL_EXPENSE_CATEGORY,
 } from '@/lib/business/finance';
@@ -112,7 +113,10 @@ export function FinancePage() {
       ),
     [incomes, expenses, walletFilter],
   );
-  const totalBalance = wallets.reduce((n, w) => n + w.balance, 0);
+  // Tampilan satu cabang: wallet bersama + wallet cabang itu (0095). Laci cabang
+  // lain bukan urusan tampilan ini.
+  const shownWallets = useMemo(() => walletsForOutlet(wallets, activeOutletId), [wallets, activeOutletId]);
+  const totalBalance = shownWallets.reduce((n, w) => n + w.balance, 0);
   const moves = useMemo(
     () => new Map(wallets.map((w) => [w.id, walletMovement(w.id, incomes, expenses, walletTransfers)])),
     [wallets, incomes, expenses, walletTransfers],
@@ -609,11 +613,19 @@ export function FinancePage() {
               {t(monthOffset > 0 ? 'finance.balanceNow' : 'finance.totalBalance')}
             </span>
             <strong className={styles.walletBalance}>{fmtRp(totalBalance)}</strong>
+            <span className={styles.totalFoot}>
             <span className={styles.walletMove}>
-              {orgWide ? t('finance.allBranches') : interpolate(t('finance.walletCount'), { n: String(wallets.length) })}
+              {orgWide
+                ? t('finance.branchPlusShared')
+                : interpolate(t('finance.walletCount'), { n: String(shownWallets.length) })}
+            </span>
+            {/* Ponsel: Hitung saldo menempel di Total, tombol di baris aksi disembunyikan. */}
+            <button type="button" className={styles.countInline} onClick={() => setCountOpen(true)}>
+              {t('finance.countShort')}
+            </button>
             </span>
           </div>
-          {wallets.map((w) => {
+          {shownWallets.map((w) => {
             const m = moves.get(w.id);
             const on = walletFilter === w.id;
             return (
@@ -635,19 +647,20 @@ export function FinancePage() {
                         + masuk − keluar ± transfer = saldo. Hanya untuk bulan berjalan
                         dan tampilan semua cabang — wallet milik seluruh usaha,
                         pergerakan per cabang tak akan menutup persamaannya. */}
-                    {monthOffset === 0 && !orgWide && (
+                    {monthOffset === 0 && (!orgWide || !!w.outletId) && (
                       <span className={styles.trf}>
-                        {t('finance.opening')} {fmtRp(w.balance - (m.in - m.out + m.transfer))}
+                        {t('finance.opening')} {fmtNumber(w.balance - (m.in - m.out + m.transfer))}
                       </span>
                     )}
-                    {orgWide && <span className={styles.trf}>{t('finance.branchMove')}</span>}
-                    <span className={styles.inc}>+{fmtRp(m.in)}</span>{' '}
-                    <span className={styles.exp}>−{fmtRp(m.out)}</span>
+                    {orgWide && !w.outletId && <span className={styles.trf}>{t('finance.branchMove')}</span>}
+                    {/* Tanpa "Rp": saldo di atasnya sudah bermata uang, dan gerak muat sebaris di ponsel. */}
+                    <span className={styles.inc}>+{fmtNumber(m.in)}</span>{' '}
+                    <span className={styles.exp}>−{fmtNumber(m.out)}</span>
                     {m.transfer !== 0 && (
                       <span className={styles.trf}>
                         {' '}
                         {m.transfer > 0 ? '⇄ +' : '⇄ −'}
-                        {fmtRp(Math.abs(m.transfer))}
+                        {fmtNumber(Math.abs(m.transfer))}
                       </span>
                     )}
                   </span>
@@ -732,6 +745,7 @@ export function FinancePage() {
         {wallets.length > 0 && (
           <Button
             variant="secondary"
+            className={styles.countAction}
             onClick={() => setCountOpen(true)}
             iconLeft={<Icon name="list-check" aria-hidden />}
           >
@@ -846,8 +860,10 @@ export function FinancePage() {
       <CountModal
         open={countOpen}
         onClose={() => setCountOpen(false)}
-        wallets={wallets}
-        initialWalletId={walletFilter}
+        wallets={shownWallets}
+        initialWalletId={
+          walletFilter ?? shownWallets.find((w) => w.isCash && w.outletId)?.id ?? shownWallets.find((w) => w.isCash)?.id
+        }
       />
       <TransferModal
         open={transferOpen}
