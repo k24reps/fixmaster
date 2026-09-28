@@ -68,7 +68,8 @@ import {
   DEFAULT_MOBILE_NAV_PATHS,
   sanitizeMobileNavPaths,
 } from '@/lib/business/navigation';
-import { useT } from '@/i18n';
+import { translate, useT } from '@/i18n';
+import { useSettingsStore } from '@/stores/settings';
 import {
   DEFAULT_WA_TEMPLATES,
   WA_TEMPLATE_LABELS,
@@ -136,6 +137,8 @@ import {
   type ServiceColumnId,
 } from '@/lib/business/serviceColumns';
 import styles from './SettingsPage.module.css';
+import { interpolate } from '@/lib/business/notify';
+import type { TranslationKey } from '@/i18n';
 
 /**
  * Downscale a picked image to a PNG Blob (max 256 px) without using
@@ -159,9 +162,8 @@ async function fileToLogoBlob(file: File): Promise<Blob> {
   // sidebar — ukurannya lolos (≤500KB), hasilnya yang tidak terbaca.
   const ratio = Math.max(img.width, img.height) / Math.max(1, Math.min(img.width, img.height));
   if (ratio > 4) {
-    throw new Error(
-      'Logo terlalu memanjang (perbandingan sisi lebih dari 4:1). Pakai gambar yang lebih persegi supaya tidak terpotong di nota.',
-    );
+    // Di luar komponen: tak ada hook, jadi bahasa dibaca langsung dari store.
+    throw new Error(translate(useSettingsStore.getState().language, 'settingsPage.logoRatio'));
   }
   const MAX = 256;
   const scale = Math.min(1, MAX / Math.max(img.width, img.height));
@@ -236,14 +238,14 @@ export function SettingsPage() {
     ownerOnly?: boolean;
     cloudOnly?: boolean;
   }[] = [
-    { id: 'usaha', label: 'Usaha', icon: 'fa-store' },
-    { id: 'operasional', label: 'Operasional', icon: 'fa-sliders' },
-    { id: 'tim', label: 'Tim', icon: 'fa-users', ownerOnly: true },
-    { id: 'keuangan', label: 'Wallet', icon: 'fa-wallet', ownerOnly: true },
-    { id: 'outlet', label: 'Outlet', icon: 'fa-shop', ownerOnly: true },
+    { id: 'usaha', label: t('settingsPage.tabBusiness'), icon: 'fa-store' },
+    { id: 'operasional', label: t('settingsPage.tabOps'), icon: 'fa-sliders' },
+    { id: 'tim', label: t('settingsPage.tabTeam'), icon: 'fa-users', ownerOnly: true },
+    { id: 'keuangan', label: t('settingsPage.tabWallet'), icon: 'fa-wallet', ownerOnly: true },
+    { id: 'outlet', label: t('settingsPage.tabOutlet'), icon: 'fa-shop', ownerOnly: true },
     {
       id: 'langganan',
-      label: 'Langganan',
+      label: t('settingsPage.tabBilling'),
       icon: 'fa-crown',
       ownerOnly: true,
       cloudOnly: true,
@@ -254,22 +256,22 @@ export function SettingsPage() {
       icon: 'fa-bars',
       ownerOnly: true,
     },
-    { id: 'sistem', label: 'Sistem', icon: 'fa-gear' },
+    { id: 'sistem', label: t('settingsPage.tabSystem'), icon: 'fa-gear' },
   ];
   const visibleTabs = TABS.filter(
-    (t) => (!t.ownerOnly || isOwner) && (!t.cloudOnly || isSupabaseConfigured),
+    (item) => (!item.ownerOnly || isOwner) && (!item.cloudOnly || isSupabaseConfigured),
   );
 
   return (
     <div className={styles.wrap}>
       <div className={styles.tabs}>
-        {visibleTabs.map((t) => (
+        {visibleTabs.map((item) => (
           <button
-            key={t.id}
-            className={[styles.tab, tab === t.id ? styles.tabActive : ''].join(' ')}
-            onClick={() => setTab(t.id)}
+            key={item.id}
+            className={[styles.tab, tab === item.id ? styles.tabActive : ''].join(' ')}
+            onClick={() => setTab(item.id)}
           >
-            <Icon name={t.icon} aria-hidden /> {t.label}
+            <Icon name={item.icon} aria-hidden /> {item.label}
           </button>
         ))}
       </div>
@@ -302,7 +304,7 @@ export function SettingsPage() {
           onReset={() => {
             if (
               demoGuard(
-                'Reset data dinonaktifkan di demo. Pakai tombol "Reset Demo" di atas untuk mengembalikan data contoh.',
+                t('settingsPage.resetDemo'),
               )
             )
               return;
@@ -314,20 +316,20 @@ export function SettingsPage() {
 
       <ConfirmDialog
         open={confirmReset}
-        title="Reset Seluruh Data?"
+        title={t('settingsPage.resetSeluruhData')}
         message={
           isSupabaseConfigured
-            ? 'SEMUA data operasional (servis, transaksi, stok, keuangan) akan dihapus permanen — TERMASUK wallet beserta saldonya, jadi kasir tidak bisa dipakai sampai wallet dibuat ulang. Tim, langganan, profil usaha, dan log aktivitas TETAP. Tindakan ini tidak dapat dibatalkan.'
-            : 'SEMUA data (servis, transaksi, stok, dll) akan dihapus permanen dan Anda kembali ke setup awal. Tindakan ini tidak dapat dibatalkan.'
+            ? t('settingsPage.resetCloudMsg')
+            : t('settingsPage.resetLocalMsg')
         }
-        confirmLabel="Ya, Reset Semua"
+        confirmLabel={t('settingsPage.yaResetSemua')}
         danger
         onConfirm={async () => {
           try {
             await resetWorkspace();
-            toast.success('Workspace direset');
+            toast.success(t('settingsPage.workspaceDireset'));
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Gagal mereset workspace');
+            toast.error(e instanceof Error ? e.message : t('settingsPage.resetFailed'));
           } finally {
             // In cloud the workspace stays mounted (empty), so the dialog must
             // be closed explicitly — it isn't unmounted like the local wizard path.
@@ -467,6 +469,7 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
 }
 
 function BusinessTab() {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const setOrg = useSessionStore((s) => s.setOrg);
   const [name, setName] = useState(org?.name ?? '');
@@ -480,12 +483,12 @@ function BusinessTab() {
     // Nama, alamat, dan telepon ini tercetak di nota yang dibawa pulang
     // pelanggan dan tampil di halaman lacak publik — dulu ketiganya diterima
     // apa adanya, termasuk nomor yang jelas bukan nomor.
-    if (!name.trim()) return toast.error('Nama usaha wajib diisi');
-    if (name.trim().length > 60) return toast.error('Nama usaha terlalu panjang (maks 60 karakter)');
+    if (!name.trim()) return toast.error(t('settingsPage.namaUsahaWajibDiisi'));
+    if (name.trim().length > 60) return toast.error(t('settingsPage.namaUsahaTerlaluPanjang'));
     if (address.trim().length > 160)
-      return toast.error('Alamat terlalu panjang untuk nota (maks 160 karakter)');
+      return toast.error(t('settingsPage.alamatTerlaluPanjangUntuk'));
     if (phone.trim() && normalizePhone(phone).length < 8)
-      return toast.error('No. telepon tidak valid — minimal 8 angka');
+      return toast.error(t('settingsPage.noTeleponTidakValid'));
 
     setBusy(true);
     const updated = {
@@ -504,9 +507,9 @@ function BusinessTab() {
         entityLabel: updated.name,
         meta: { address: updated.address, phone: updated.phone },
       });
-      toast.success('Profil usaha disimpan');
+      toast.success(t('settingsPage.profilUsahaDisimpan'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan profil');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.profileFailed'));
     } finally {
       setBusy(false);
     }
@@ -516,8 +519,8 @@ function BusinessTab() {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-picking the same file
     if (!file || !org) return;
-    if (!file.type.startsWith('image/')) return toast.error('File harus berupa gambar');
-    if (file.size > 500 * 1024) return toast.error('Ukuran logo maksimal 500KB');
+    if (!file.type.startsWith('image/')) return toast.error(t('settingsPage.fileHarusBerupaGambar'));
+    if (file.size > 500 * 1024) return toast.error(t('settingsPage.ukuranLogoMaksimal500kb'));
     try {
       // Downscale to PNG Blob via canvas (no fetch(data:URL) — CSP blocks it).
       // Cloud mode: uploads to `org-logos` bucket, returns public CDN URL.
@@ -527,7 +530,7 @@ function BusinessTab() {
       const updated = { ...org, logoDataUrl };
       await repository.setSingleton('organization', updated);
       setOrg(updated);
-      toast.success('Logo diperbarui');
+      toast.success(t('settingsPage.logoDiperbarui'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error(`Gagal upload logo: ${msg}`);
@@ -551,12 +554,12 @@ function BusinessTab() {
     const updated = { ...org, logoDataUrl: null };
     await repository.setSingleton('organization', updated);
     setOrg(updated);
-    toast.success('Logo dihapus');
+    toast.success(t('settingsPage.logoDihapus'));
   };
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="store" aria-hidden />} title="Profil Usaha" />
+      <CardHeader icon={<Icon name="store" aria-hidden />} title={t('settingsPage.profilUsaha')} />
       <CardBody>
         <div className={styles.form}>
           <div className={styles.logoRow}>
@@ -570,8 +573,8 @@ function BusinessTab() {
               )}
             </span>
             <div className={styles.logoMeta}>
-              <strong>Logo Toko</strong>
-              <small>PNG/JPG, maks 500KB. Tampil di sidebar &amp; struk.</small>
+              <strong>{t('settingsPage.logoToko')}</strong>
+              <small>{t('settingsPage.pngJpgMaks500kb')}</small>
               <div className={styles.logoActions}>
                 <Button
                   variant="secondary"
@@ -579,7 +582,7 @@ function BusinessTab() {
                   onClick={() => fileRef.current?.click()}
                   iconLeft={<Icon name="download" aria-hidden />}
                 >
-                  {org?.logoDataUrl ? 'Ganti Logo' : 'Unggah Logo'}
+                  {org?.logoDataUrl ? t('settingsPage.changeLogo') : t('settingsPage.uploadLogo')}
                 </Button>
                 {org?.logoDataUrl && (
                   <Button
@@ -587,14 +590,13 @@ function BusinessTab() {
                     onClick={removeLogo}
                     iconLeft={<Icon name="trash" aria-hidden />}
                   >
-                    Hapus
+                    {t('settingsPage.hapus')}
                   </Button>
                 )}
               </div>
               {!canLogo && (
                 <ProNotice>
-                  Logo toko tampil di sidebar, nota cetak, dan halaman lacak yang dilihat
-                  pelanggan Anda.
+                  {t('settingsPage.pLogoTokoTampilDi')}
                 </ProNotice>
               )}
               <input
@@ -607,23 +609,23 @@ function BusinessTab() {
             </div>
           </div>
           <Input
-            label="Nama Usaha"
+            label={t('settingsPage.namaUsaha')}
             value={name}
             autoCapWords
             onChange={(e) => setName(e.target.value)}
           />
           <Input
-            label="Alamat"
+            label={t('settingsPage.alamat')}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
           <Input
-            label="No. Telepon"
+            label={t('settingsPage.noTelepon')}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
           <Button onClick={save} loading={busy}>
-            Simpan Perubahan
+            {t('settingsPage.simpanPerubahan')}
           </Button>
         </div>
       </CardBody>
@@ -637,6 +639,7 @@ function BusinessTab() {
  * state in sync after each mutation.
  */
 function ServiceTemplatesCard() {
+  const t = useT();
   const [complaints, setComplaints] = useState<string[]>(() => getComplaintTemplates());
   const [accessories, setAccessories] = useState<string[]>(() => getAccessoryTemplates());
   const [busy, setBusy] = useState(false);
@@ -649,7 +652,7 @@ function ServiceTemplatesCard() {
       await save(next);
       apply(next);
     } catch {
-      toast.error('Gagal menyimpan template');
+      toast.error(t('settingsPage.gagalMenyimpanTemplate'));
     } finally {
       setBusy(false);
     }
@@ -668,23 +671,23 @@ function ServiceTemplatesCard() {
     <Card glass>
       <CardHeader
         icon={<Icon name="clipboard-list" aria-hidden />}
-        title="Template Servis"
+        title={t('settingsPage.templateServis')}
       />
       <CardBody>
         <p className={styles.tplHint}>
           Pilihan cepat keluhan &amp; kelengkapan saat membuat servis baru.
         </p>
         <StringListEditor
-          label="Template Keluhan"
-          placeholder="mis. Mati total"
+          label={t('settingsPage.templateKeluhan')}
+          placeholder={t('settingsPage.misMatiTotal')}
           items={complaints}
           onAdd={addComplaint}
           onRemove={removeComplaint}
           disabled={busy}
         />
         <StringListEditor
-          label="Template Kelengkapan"
-          placeholder="mis. Charger"
+          label={t('settingsPage.templateKelengkapan')}
+          placeholder={t('settingsPage.misCharger')}
           items={accessories}
           onAdd={addAccessory}
           onRemove={removeAccessory}
@@ -705,6 +708,7 @@ function ServiceTemplatesCard() {
  * perangkat toko melihat tabel yang sama. No. Servis, Status, dan Aksi selalu ada.
  */
 function ServiceColumnsCard() {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const columns = resolveServiceColumns(org?.settings?.serviceColumns);
   const [busy, setBusy] = useState(false);
@@ -715,7 +719,7 @@ function ServiceColumnsCard() {
     try {
       await saveServiceColumns(next);
     } catch {
-      toast.error('Gagal menyimpan kolom tabel');
+      toast.error(t('settingsPage.gagalMenyimpanKolomTabel'));
     } finally {
       setBusy(false);
     }
@@ -723,11 +727,10 @@ function ServiceColumnsCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="clipboard-list" aria-hidden />} title="Kolom Tabel Servis" />
+      <CardHeader icon={<Icon name="clipboard-list" aria-hidden />} title={t('settingsPage.kolomTabelServis')} />
       <CardBody>
         <p className={styles.tplHint}>
-          Pilih kolom yang tampil di tabel Servis. No. Servis, Status, dan Aksi selalu tampil.
-          Tersinkron di semua perangkat.
+          {t('settingsPage.pPilihKolomYangTampil')}
         </p>
         <div className={styles.columnList}>
           {SERVICE_COLUMNS.map((c) => (
@@ -751,6 +754,7 @@ function ServiceColumnsCard() {
 }
 
 function DeviceCategoriesCard() {
+  const t = useT();
   // Read reactively from the org slice so a save here (and realtime updates
   // from other devices) re-render the list immediately.
   const org = useSessionStore((s) => s.org);
@@ -767,7 +771,7 @@ function DeviceCategoriesCard() {
     try {
       await setCategories(next);
     } catch {
-      toast.error('Gagal menyimpan kategori');
+      toast.error(t('settingsPage.gagalMenyimpanKategori'));
     } finally {
       setBusy(false);
     }
@@ -783,15 +787,14 @@ function DeviceCategoriesCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="laptop" aria-hidden />} title="Kategori Perangkat" />
+      <CardHeader icon={<Icon name="laptop" aria-hidden />} title={t('settingsPage.kategoriPerangkat')} />
       <CardBody>
         <p className={styles.tplHint}>
-          Jenis perangkat yang dilayani (mis. Laptop, HP, Printer). Muncul sebagai pilihan
-          kategori saat membuat servis baru. Tersinkron di semua perangkat.
+          {t('settingsPage.pJenisPerangkatYangDilayani')}
         </p>
         <StringListEditor
-          label="Kategori"
-          placeholder="mis. Tablet"
+          label={t('settingsPage.kategori')}
+          placeholder={t('settingsPage.misTablet')}
           items={categories}
           onAdd={addCategory}
           onRemove={removeCategory}
@@ -817,12 +820,13 @@ function StringListEditor({
   onRemove: (value: string) => void;
   disabled?: boolean;
 }) {
+  const t = useT();
   const [value, setValue] = useState('');
   const commit = () => {
     const v = value.trim();
     if (!v) return;
     if (items.includes(v)) {
-      toast.warning('Template sudah ada');
+      toast.warning(t('settingsPage.templateSudahAda'));
       return;
     }
     onAdd(v);
@@ -839,7 +843,7 @@ function StringListEditor({
               <button
                 onClick={() => onRemove(item)}
                 aria-label={`Hapus ${item}`}
-                title="Hapus"
+                title={t('settingsPage.hapus')}
                 disabled={disabled}
               >
                 <Icon name="times" aria-hidden />
@@ -861,7 +865,7 @@ function StringListEditor({
           iconLeft={<Icon name="plus" aria-hidden />}
           disabled={disabled}
         >
-          Tambah
+          {t('settingsPage.tambah')}
         </Button>
       </div>
     </div>
@@ -873,6 +877,7 @@ function StringListEditor({
  * job is finished, plus quick-pick duration presets. Stored in orgConfig.
  */
 function WarrantyCard() {
+  const t = useT();
   const [svcDays, setSvcDays] = useState(() => String(getWarrantyServiceDays()));
   const [partsDays, setPartsDays] = useState(() => String(getWarrantyPartsDays()));
   const [presets, setPresets] = useState<number[]>(() => getWarrantyPresets());
@@ -885,9 +890,9 @@ function WarrantyCard() {
     try {
       // Clamp to non-negative: a "number" input still accepts "-5".
       await setWarrantyDays(Number(svcDays) || 0, Number(partsDays) || 0);
-      toast.success('Default garansi disimpan');
+      toast.success(t('settingsPage.defaultGaransiDisimpan'));
     } catch {
-      toast.error('Gagal menyimpan default garansi');
+      toast.error(t('settingsPage.gagalMenyimpanDefaultGaransi'));
     } finally {
       setSaving(false);
     }
@@ -895,15 +900,15 @@ function WarrantyCard() {
 
   const addPreset = async () => {
     const n = Math.max(0, Math.round(Number(presetInput) || 0));
-    if (!n) return toast.warning('Masukkan jumlah hari yang valid');
-    if (presets.includes(n)) return toast.warning('Preset sudah ada');
+    if (!n) return toast.warning(t('settingsPage.masukkanJumlahHariYang'));
+    if (presets.includes(n)) return toast.warning(t('settingsPage.presetSudahAda'));
     const next = [...presets, n].sort((a, b) => a - b);
     try {
       await setWarrantyPresets(next);
       setPresets(next);
       setPresetInput('');
     } catch {
-      toast.error('Gagal menyimpan preset');
+      toast.error(t('settingsPage.gagalMenyimpanPreset'));
     }
   };
   const removePreset = async (n: number) => {
@@ -912,28 +917,28 @@ function WarrantyCard() {
       await setWarrantyPresets(next);
       setPresets(next);
     } catch {
-      toast.error('Gagal menyimpan preset');
+      toast.error(t('settingsPage.gagalMenyimpanPreset'));
     }
   };
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="shield-halved" aria-hidden />} title="Garansi" />
+      <CardHeader icon={<Icon name="shield-halved" aria-hidden />} title={t('settingsPage.garansi')} />
       <CardBody>
         <p className={styles.tplHint}>
-          Lama garansi default (hari) yang otomatis terisi saat servis ditandai{' '}
-          <strong>selesai</strong>. Bisa diubah per servis.
+          {t('settingsPage.warrantyIntro')}{' '}
+          <strong>{t('settingsPage.warrantyDone')}</strong>. {t('settingsPage.warrantyPerService')}
         </p>
         <div className={styles.warrantyDefaults}>
           <Input
-            label="Garansi Jasa (hari)"
+            label={t('settingsPage.garansiJasaHari')}
             type="number"
             inputMode="numeric"
             value={svcDays}
             onChange={(e) => setSvcDays(e.target.value)}
           />
           <Input
-            label="Garansi Sparepart (hari)"
+            label={t('settingsPage.garansiSparepartHari')}
             type="number"
             inputMode="numeric"
             value={partsDays}
@@ -941,11 +946,11 @@ function WarrantyCard() {
           />
         </div>
         <Button onClick={saveDefaults} loading={saving}>
-          Simpan Default
+          {t('settingsPage.simpanDefault')}
         </Button>
 
         <div className={styles.tplGroup}>
-          <span className={styles.tplLabel}>Preset Durasi (quick-pick)</span>
+          <span className={styles.tplLabel}>{t('settingsPage.presetDurasiQuickPick')}</span>
           {presets.length > 0 && (
             <div className={styles.tplChips}>
               {presets.map((p) => (
@@ -954,7 +959,7 @@ function WarrantyCard() {
                   <button
                     onClick={() => void removePreset(p)}
                     aria-label={`Hapus ${p} hari`}
-                    title="Hapus"
+                    title={t('settingsPage.hapus')}
                   >
                     <Icon name="times" aria-hidden />
                   </button>
@@ -964,7 +969,7 @@ function WarrantyCard() {
           )}
           <div className={styles.addRow}>
             <Input
-              placeholder="mis. 60"
+              placeholder={t('settingsPage.mis60')}
               type="number"
               inputMode="numeric"
               value={presetInput}
@@ -972,7 +977,7 @@ function WarrantyCard() {
               onKeyDown={(e) => e.key === 'Enter' && void addPreset()}
             />
             <Button onClick={() => void addPreset()} iconLeft={<Icon name="plus" aria-hidden />}>
-              Tambah
+              {t('settingsPage.tambah')}
             </Button>
           </div>
         </div>
@@ -987,6 +992,7 @@ function WarrantyCard() {
  * tempat untuk mengubahnya.
  */
 function MonthlyTargetCard() {
+  const t = useT();
   const current = getTarget();
   const [revenue, setRevenue] = useState(() => (current.revenue ? fmtRpInput(String(current.revenue)) : ''));
   const [units, setUnits] = useState(() => (current.serviceCount ? String(current.serviceCount) : ''));
@@ -1009,9 +1015,9 @@ function MonthlyTargetCard() {
     setBusy(true);
     try {
       await setMonthlyTarget(next);
-      toast.success('Target bulanan disimpan');
+      toast.success(t('settingsPage.targetBulananDisimpan'));
     } catch {
-      toast.error('Gagal menyimpan target');
+      toast.error(t('settingsPage.gagalMenyimpanTarget'));
     } finally {
       setBusy(false);
     }
@@ -1019,40 +1025,39 @@ function MonthlyTargetCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="bullseye" aria-hidden />} title="Target Bulanan" />
+      <CardHeader icon={<Icon name="bullseye" aria-hidden />} title={t('settingsPage.targetBulanan')} />
       <CardBody>
         <p className={styles.tplHint}>
-          Dipakai gauge target di Dashboard (dengan penanda laju bulan) dan indikator
-          break-even di Laporan. Kosongkan untuk menyembunyikan target.
+          {t('settingsPage.pDipakaiGaugeTargetDi')}
         </p>
         <div className={styles.targetGrid}>
           <Input
-            label="Target pendapatan / bulan"
+            label={t('settingsPage.targetPendapatanBulan')}
             inputMode="numeric"
             value={revenue}
             onChange={(e) => setRevenue(fmtRpInput(e.target.value))}
             placeholder="50.000.000"
           />
           <Input
-            label="Target unit servis selesai / bulan"
+            label={t('settingsPage.targetUnitServisSelesai')}
             inputMode="numeric"
             value={units}
             onChange={(e) => setUnits(e.target.value.replace(/\D/g, ''))}
             placeholder="60"
           />
           <Input
-            label="Anggaran overhead / bulan"
+            label={t('settingsPage.anggaranOverheadBulan')}
             inputMode="numeric"
             value={overhead}
             onChange={(e) => setOverhead(fmtRpInput(e.target.value))}
             placeholder="8.000.000"
-            hint="Sewa, gaji, listrik — batas break-even di Laporan"
+            hint={t('settingsPage.sewaGajiListrikBatas')}
           />
         </div>
         <div className={styles.noteFoot}>
           <span />
           <Button onClick={save} disabled={busy || !dirty}>
-            Simpan Target
+            {t('settingsPage.simpanTarget')}
           </Button>
         </div>
       </CardBody>
@@ -1067,6 +1072,7 @@ function MonthlyTargetCard() {
  * toko tersebut, bukan cetakan seragam dari sebuah aplikasi.
  */
 function PublicNoteCard() {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const [draft, setDraft] = useState(() => org?.settings?.publicNote ?? '');
   const [busy, setBusy] = useState(false);
@@ -1077,9 +1083,9 @@ function PublicNoteCard() {
     setBusy(true);
     try {
       await setPublicNote(draft);
-      toast.success('Catatan toko disimpan');
+      toast.success(t('settingsPage.catatanTokoDisimpan'));
     } catch {
-      toast.error('Gagal menyimpan catatan');
+      toast.error(t('settingsPage.gagalMenyimpanCatatan'));
     } finally {
       setBusy(false);
     }
@@ -1087,12 +1093,10 @@ function PublicNoteCard() {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="note" aria-hidden />} title="Catatan Toko" />
+      <CardHeader icon={<Icon name="note" aria-hidden />} title={t('settingsPage.catatanToko')} />
       <CardBody>
         <p className={styles.tplHint}>
-          Tampil di nota cetak dan halaman lacak publik. Isi hal yang selalu ditanyakan
-          pelanggan — jam operasional, syarat garansi, batas waktu pengambilan. Kosongkan
-          bila tidak ingin menampilkan apa pun.
+          {t('settingsPage.pTampilDiNotaCetak')}
         </p>
         <textarea
           className={styles.waTextarea}
@@ -1107,7 +1111,7 @@ function PublicNoteCard() {
             {left} karakter tersisa
           </span>
           <Button onClick={save} disabled={busy || draft === (org?.settings?.publicNote ?? '')}>
-            Simpan Catatan
+            {t('settingsPage.simpanCatatan')}
           </Button>
         </div>
       </CardBody>
@@ -1121,6 +1125,7 @@ function PublicNoteCard() {
  * blank fields fall back to the built-in default via resolveWaTemplates.
  */
 function WhatsAppTemplatesCard() {
+  const t = useT();
   // Menyunting template adalah fitur Pro; MEMAKAI-nya tidak. Solo tetap
   // mengirim WhatsApp dengan template bawaan — yang dibeli adalah menulis
   // ulang suaranya, bukan kemampuan mengabari pelanggan.
@@ -1146,9 +1151,9 @@ function WhatsAppTemplatesCard() {
     setSaving(true);
     try {
       await setWaTemplateOverrides(next);
-      toast.success('Template WhatsApp disimpan');
+      toast.success(t('settingsPage.templateWhatsappDisimpan'));
     } catch {
-      toast.error('Gagal menyimpan template WhatsApp');
+      toast.error(t('settingsPage.gagalMenyimpanTemplateWhatsapp'));
     } finally {
       setSaving(false);
     }
@@ -1163,7 +1168,7 @@ function WhatsAppTemplatesCard() {
     <Card glass>
       <CardHeader
         icon={<Icon name="whatsapp" aria-hidden />}
-        title="Template WhatsApp"
+        title={t('settingsPage.templateWhatsapp')}
         action={canEdit ? undefined : <ProBadge />}
       />
       <CardBody>
@@ -1191,7 +1196,7 @@ function WhatsAppTemplatesCard() {
                   onClick={() => resetKey(k)}
                   type="button"
                 >
-                  Reset default
+                  {t('settingsPage.resetDefault')}
                 </button>
               )}
             </div>
@@ -1210,12 +1215,11 @@ function WhatsAppTemplatesCard() {
         ))}
         {canEdit ? (
           <Button onClick={save} loading={saving}>
-            Simpan Template
+            {t('settingsPage.simpanTemplate')}
           </Button>
         ) : (
           <ProNotice>
-            Template bawaan tetap terkirim seperti biasa. Pro membuka penyuntingannya,
-            supaya pesan ke pelanggan memakai kalimat dan nama toko Anda sendiri.
+            {t('settingsPage.pTemplateBawaanTetapTerkirim')}
           </ProNotice>
         )}
       </CardBody>
@@ -1223,10 +1227,10 @@ function WhatsAppTemplatesCard() {
   );
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  karyawan: 'Karyawan',
+const ROLE_LABEL: Record<string, TranslationKey> = {
+  owner: 'settingsPage.owner',
+  admin: 'settingsPage.admin',
+  karyawan: 'settingsPage.karyawan',
 };
 
 /**
@@ -1244,6 +1248,7 @@ function MemberOutletsEditor({
   outlets: Outlet[];
   onClose: () => void;
 }) {
+  const t = useT();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -1255,7 +1260,7 @@ function MemberOutletsEditor({
         if (!cancelled) setSelected(ids);
       })
       .catch((err) =>
-        toast.error(err instanceof Error ? err.message : 'Gagal memuat cabang'),
+        toast.error(err instanceof Error ? err.message : t('settingsPage.loadBranchesFailed')),
       )
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1263,7 +1268,7 @@ function MemberOutletsEditor({
     return () => {
       cancelled = true;
     };
-  }, [memberId]);
+  }, [memberId, t]);
 
   const toggle = (id: string) =>
     setSelected((prev) =>
@@ -1274,10 +1279,10 @@ function MemberOutletsEditor({
     setBusy(true);
     try {
       await setMemberOutlets(memberId, selected);
-      toast.success('Penugasan cabang disimpan');
+      toast.success(t('settingsPage.penugasanCabangDisimpan'));
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan cabang');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.saveBranchesFailed'));
     } finally {
       setBusy(false);
     }
@@ -1286,13 +1291,13 @@ function MemberOutletsEditor({
   return (
     <div className={styles.outletEditor}>
       <div className={styles.outletEditorHead}>
-        <strong>Cabang yang dapat diakses</strong>
+        <strong>{t('settingsPage.cabangYangDapatDiakses')}</strong>
         <small className={styles.hint}>
           Anggota ini hanya melihat &amp; mengelola data cabang terpilih.
         </small>
       </div>
       {loading ? (
-        <small className={styles.hint}>Memuat…</small>
+        <small className={styles.hint}>{t('settingsPage.memuat')}</small>
       ) : (
         <div className={styles.tplChips}>
           {outlets.map((o) => {
@@ -1313,16 +1318,15 @@ function MemberOutletsEditor({
       )}
       {!loading && selected.length === 0 && (
         <small className={styles.hint} role="note">
-          Pilih minimal satu cabang — tanpa cabang, anggota ini tak akan melihat data
-          transaksi cabang mana pun.
+          {t('settingsPage.pPilihMinimalSatuCabang')}
         </small>
       )}
       <div className={styles.addRow}>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Tutup
+          {t('settingsPage.tutup')}
         </Button>
         <Button size="sm" onClick={save} loading={busy} disabled={selected.length === 0}>
-          Simpan
+          {t('settingsPage.simpan')}
         </Button>
       </div>
     </div>
@@ -1336,6 +1340,7 @@ function TeamTab({
   employees: ReturnType<typeof useCollection<'employees'>>['data'];
   outlets: Outlet[];
 }) {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
   const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
@@ -1375,9 +1380,9 @@ function TeamTab({
     try {
       setInvites(await listPendingInvites(orgId));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.loadInvitesFailed'));
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !orgId) return;
@@ -1387,12 +1392,12 @@ function TeamTab({
         if (!cancelled) setInvites(data);
       })
       .catch((err) =>
-        toast.error(err instanceof Error ? err.message : 'Gagal memuat undangan'),
+        toast.error(err instanceof Error ? err.message : t('settingsPage.loadInvitesFailed')),
       );
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, t]);
 
   // Load the per-member outlet assignment summary (for the team list badges).
   // Inline .then() with a cancelled guard — mirrors the invites effect so the
@@ -1424,10 +1429,10 @@ function TeamTab({
   const invite = async () => {
     if (!canInvite)
       return toast.error(
-        'Paket Solo hanya untuk 1 pengguna. Upgrade ke Pro untuk menambah anggota tim.',
+        t('settingsPage.soloLimit'),
       );
-    if (!name.trim()) return toast.error('Nama wajib diisi');
-    if (!isValidInviteEmail(email)) return toast.error('Email tidak valid');
+    if (!name.trim()) return toast.error(t('settingsPage.namaWajibDiisi'));
+    if (!isValidInviteEmail(email)) return toast.error(t('settingsPage.emailTidakValid'));
     setBusy(true);
     try {
       await inviteMember({ orgId, email, name, role, outletIds: inviteOutlets });
@@ -1438,14 +1443,14 @@ function TeamTab({
         entityLabel: name.trim(),
         meta: { email: email.trim(), role },
       });
-      toast.success(`Undangan untuk ${email.trim()} dibuat`);
+      toast.success(interpolate(t('settingsPage.inviteCreated'), { email: email.trim() }));
       setName('');
       setEmail('');
       setRole('karyawan');
       setInviteOutlets([]);
       await loadInvites();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengundang');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.inviteFailed'));
     } finally {
       setBusy(false);
     }
@@ -1464,7 +1469,7 @@ function TeamTab({
       });
       await loadInvites();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal membatalkan undangan');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.cancelInviteFailed'));
     }
   };
 
@@ -1478,10 +1483,10 @@ function TeamTab({
         entityLabel: employees.find((e) => e.id === memberId)?.name ?? '',
         meta: { role: newRole },
       });
-      toast.success('Peran diperbarui');
+      toast.success(t('settingsPage.peranDiperbarui'));
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengubah peran');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.roleFailed'));
     }
   };
 
@@ -1495,10 +1500,10 @@ function TeamTab({
         entityId: memberId,
         entityLabel: employees.find((e) => e.id === memberId)?.name ?? '',
       });
-      toast.success('Anggota dinonaktifkan');
+      toast.success(t('settingsPage.anggotaDinonaktifkan'));
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal menonaktifkan');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.deactivateFailed'));
     }
   };
 
@@ -1514,10 +1519,10 @@ function TeamTab({
         entityLabel: gone?.name ?? '',
         meta: { role: gone?.role ?? null },
       });
-      toast.success('Anggota dihapus permanen');
+      toast.success(t('settingsPage.anggotaDihapusPermanen'));
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal menghapus anggota');
+      toast.error(err instanceof Error ? err.message : t('settingsPage.removeMemberFailed'));
     }
   };
 
@@ -1527,27 +1532,26 @@ function TeamTab({
         <Card glass>
           <CardHeader
             icon={<Icon name="user-plus" aria-hidden />}
-            title="Undang Anggota"
+            title={t('settingsPage.undangAnggota')}
           />
           <CardBody>
             <p className={styles.hint}>
-              Karyawan mendaftar sendiri dengan email yang diundang, lalu otomatis
-              bergabung ke organisasi ini saat masuk pertama kali.
+              {t('settingsPage.pKaryawanMendaftarSendiriDengan')}
             </p>
             {!canInvite ? (
               <p className={styles.hint} role="note">
-                Paket <strong>{PLANS[plan].name}</strong> hanya untuk 1 pengguna. Upgrade
-                ke <strong>Pro</strong> untuk menambah anggota tim tanpa batas.
+                {t('settingsPage.planWord')} <strong>{PLANS[plan].name}</strong> {t('settingsPage.oneUserUpgrade')}{' '}
+                <strong>{t('settingsPage.pro')}</strong> {t('settingsPage.unlimitedMembers')}
               </p>
             ) : (
               <div className={styles.inviteRow}>
                 <Input
-                  placeholder="Nama"
+                  placeholder={t('settingsPage.nama')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
                 <Input
-                  placeholder="email@contoh.com"
+                  placeholder={t('settingsPage.emailContohCom')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -1555,23 +1559,23 @@ function TeamTab({
                   className={styles.roleSelect}
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
-                  aria-label="Peran"
+                  aria-label={t('settingsPage.peran')}
                 >
-                  <option value="karyawan">Karyawan</option>
-                  <option value="admin">Admin</option>
+                  <option value="karyawan">{t('settingsPage.karyawan')}</option>
+                  <option value="admin">{t('settingsPage.admin')}</option>
                 </select>
                 <Button
                   onClick={invite}
                   loading={busy}
                   iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}
                 >
-                  Undang
+                  {t('settingsPage.undang')}
                 </Button>
               </div>
             )}
             {canInvite && role !== 'owner' && outlets.length > 0 && (
               <div className={styles.outletPick}>
-                <span className={styles.tplLabel}>Tugaskan cabang (opsional)</span>
+                <span className={styles.tplLabel}>{t('settingsPage.tugaskanCabangOpsional')}</span>
                 <div className={styles.tplChips}>
                   {outlets.map((o) => {
                     const on = inviteOutlets.includes(o.id);
@@ -1589,7 +1593,7 @@ function TeamTab({
                   })}
                 </div>
                 <small className={styles.hint}>
-                  Kosongkan untuk akses semua cabang. Bisa diubah nanti per anggota.
+                  {t('settingsPage.kosongkanUntukAksesSemua')}
                 </small>
               </div>
             )}
@@ -1606,12 +1610,12 @@ function TeamTab({
                           sebelumnya email salah ketik pun bisa diklaim setahun
                           kemudian dan langsung membuka seluruh data toko. */}
                       <small>
-                        {ROLE_LABEL[inv.role]} ·{' '}
+                        {t(ROLE_LABEL[inv.role])} ·{' '}
                         {inv.expiresAt && new Date(inv.expiresAt) < new Date()
-                          ? 'kedaluwarsa — undang ulang untuk memperbarui'
+                          ? t('settingsPage.inviteExpired')
                           : inv.expiresAt
-                            ? `berlaku s/d ${new Date(inv.expiresAt).toLocaleDateString('id-ID')}`
-                            : 'menunggu pendaftaran'}
+                            ? interpolate(t('settingsPage.inviteValidUntil'), { date: new Date(inv.expiresAt).toLocaleDateString('id-ID') })
+                            : t('settingsPage.invitePending')}
                       </small>
                     </div>
                     <span className={styles.itemActions}>
@@ -1621,7 +1625,7 @@ function TeamTab({
                         onClick={() => void revoke(inv.id)}
                         iconLeft={<Icon name="x" aria-hidden />}
                       >
-                        Batalkan
+                        {t('settingsPage.batalkan')}
                       </Button>
                     </span>
                   </li>
@@ -1633,7 +1637,7 @@ function TeamTab({
       )}
 
       <Card glass>
-        <CardHeader icon={<Icon name="users" aria-hidden />} title="Anggota Tim" />
+        <CardHeader icon={<Icon name="users" aria-hidden />} title={t('settingsPage.anggotaTim')} />
         <CardBody className={styles.noPad}>
           <ul className={styles.list}>
             {employees.map((e) => {
@@ -1649,12 +1653,12 @@ function TeamTab({
                   <span className={styles.avatar}>{e.name.charAt(0).toUpperCase()}</span>
                   <div className={styles.itemInfo}>
                     <strong>{e.name}</strong>
-                    <small>{ROLE_LABEL[e.role]}</small>
+                    <small>{t(ROLE_LABEL[e.role])}</small>
                     {isSupabaseConfigured && e.role !== 'owner' && outlets.length > 0 && (
                       <small className={styles.memberOutlets}>
                         <Icon name="shop" aria-hidden />{' '}
                         {(memberOutlets[e.id] ?? []).length === 0
-                          ? 'Belum ada cabang'
+                          ? t('settingsPage.noBranch')
                           : outlets
                               .filter((o) => (memberOutlets[e.id] ?? []).includes(o.id))
                               .map((o) => o.name)
@@ -1675,17 +1679,17 @@ function TeamTab({
                         className={styles.roleSelect}
                         value={e.role}
                         onChange={(ev) => void changeRole(e.id, ev.target.value as Role)}
-                        aria-label={`Peran ${e.name}`}
+                        aria-label={interpolate(t('settingsPage.roleOf'), { name: e.name })}
                         disabled={lockedOwner}
                         title={
                           lockedOwner
-                            ? 'Owner terakhir tidak bisa diturunkan perannya — angkat owner lain dulu'
+                            ? t('settingsPage.lastOwnerRole')
                             : undefined
                         }
                       >
-                        <option value="owner">Owner</option>
-                        <option value="admin">Admin</option>
-                        <option value="karyawan">Karyawan</option>
+                        <option value="owner">{t('settingsPage.owner')}</option>
+                        <option value="admin">{t('settingsPage.admin')}</option>
+                        <option value="karyawan">{t('settingsPage.karyawan')}</option>
                       </select>
                       {e.role !== 'owner' && outlets.length > 0 ? (
                         <Button
@@ -1696,14 +1700,14 @@ function TeamTab({
                           }
                           iconLeft={<Icon name="shop" aria-hidden />}
                         >
-                          Cabang
+                          {t('settingsPage.cabang')}
                         </Button>
                       ) : (
                         outlets.length > 0 && (
                           // Owner selalu mencakup semua cabang (RLS is_org_owner),
                           // jadi penugasan outlet tak berlaku untuknya. Admin kini
                           // di-scope per-cabang (0036) lewat tombol "Cabang" di atas.
-                          <span title="Owner mencakup semua cabang">
+                          <span title={t('settingsPage.ownerMencakupSemuaCabang')}>
                             <Badge tone="info">
                               <Icon name="boxes-stacked" aria-hidden /> Semua cabang
                             </Badge>
@@ -1714,7 +1718,7 @@ function TeamTab({
                         title={
                           canTurnOff
                             ? undefined
-                            : 'Owner terakhir tidak bisa dinonaktifkan — angkat owner lain dulu'
+                            : t('settingsPage.lastOwnerOff')
                         }
                       >
                         <Button
@@ -1724,14 +1728,14 @@ function TeamTab({
                           disabled={!canTurnOff}
                           iconLeft={<Icon name="user-minus" aria-hidden />}
                         >
-                          Nonaktifkan
+                          {t('settingsPage.nonaktifkan')}
                         </Button>
                       </span>
                     </span>
                   ) : (
                     <span className={styles.itemActions}>
                       <Badge tone={e.active ? 'success' : 'neutral'}>
-                        {e.active ? 'Aktif' : 'Nonaktif'}
+                        {e.active ? t('settingsPage.active') : t('settingsPage.inactive')}
                       </Badge>
                       {isSupabaseConfigured && !isSelf && !e.active && (
                         <Button
@@ -1740,7 +1744,7 @@ function TeamTab({
                           onClick={() => setConfirmDelete(e.id)}
                           iconLeft={<Icon name="trash" aria-hidden />}
                         >
-                          Hapus
+                          {t('settingsPage.hapus')}
                         </Button>
                       )}
                     </span>
@@ -1765,18 +1769,18 @@ function TeamTab({
 
       <ConfirmDialog
         open={confirmOff !== null}
-        title="Nonaktifkan anggota?"
-        message="Anggota tidak akan bisa masuk sampai diaktifkan kembali. Data terkait tetap utuh."
-        confirmLabel="Nonaktifkan"
+        title={t('settingsPage.nonaktifkanAnggota')}
+        message={t('settingsPage.anggotaTidakAkanBisa')}
+        confirmLabel={t('settingsPage.nonaktifkan')}
         danger
         onConfirm={() => confirmOff && void deactivate(confirmOff)}
         onCancel={() => setConfirmOff(null)}
       />
       <ConfirmDialog
         open={confirmDelete !== null}
-        title="Hapus anggota permanen?"
-        message="Anggota akan dihapus dari tim ini. History aktivitas, servis, dan transaksi yang dibuat anggota ini tetap tersimpan. Tindakan ini tidak dapat dibatalkan."
-        confirmLabel="Hapus Permanen"
+        title={t('settingsPage.hapusAnggotaPermanen')}
+        message={t('settingsPage.anggotaAkanDihapusDari')}
+        confirmLabel={t('settingsPage.hapusPermanen')}
         danger
         onConfirm={() => confirmDelete && void deleteMemberAction(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
@@ -1809,12 +1813,12 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         if (!cancelled) setInvoices(data);
       })
       .catch((err) =>
-        toast.error(err instanceof Error ? err.message : 'Gagal memuat invoice'),
+        toast.error(err instanceof Error ? err.message : t('settingsPage.invoiceFailed')),
       );
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, t]);
 
   // Auto-refresh: when the webhook (or another device) changes an invoice or
   // the org's plan, Supabase Realtime notifies us — re-fetch invoices and
@@ -1839,7 +1843,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
   const requestPayment = (tier: PlanType) => {
     if (!withinOutletQuota(tier, outletCount)) {
       return toast.error(
-        `Tier ${PLANS[tier].name} maksimal ${PLANS[tier].maxOutlets} outlet`,
+        interpolate(t('settingsPage.tierMaxOutlets'), { tier: PLANS[tier].name, n: String(PLANS[tier].maxOutlets) }),
       );
     }
     if (!org) return;
@@ -1914,7 +1918,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
               {expiry && phase !== 'expired' && days != null && (
                 <div className={styles.daysReadout}>
                   <span className={styles.daysNum}>{Math.max(0, days)}</span>
-                  <span className={styles.daysUnit}>hari</span>
+                  <span className={styles.daysUnit}>{t('settingsPage.days')}</span>
                 </div>
               )}
             </div>
@@ -1926,7 +1930,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                 aria-valuenow={chargePct}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`Sisa masa langganan ${chargePct}%`}
+                aria-label={interpolate(t('settingsPage.subRemaining'), { pct: String(chargePct) })}
               >
                 {Array.from({ length: TICKS }).map((_, i) => (
                   <span
@@ -1952,7 +1956,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   </>
                 )
               ) : (
-                <>Tanpa batas masa aktif</>
+                <>{t('settingsPage.tanpaBatasMasaAktif')}</>
               )}
             </div>
           </div>
@@ -1961,10 +1965,10 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
             <p className={styles.billingBanner}>
               <Icon name="warning" aria-hidden />{' '}
               {phase === 'expired'
-                ? 'Langganan kedaluwarsa. Perpanjang untuk membuka kembali operasi tulis.'
+                ? t('settingsPage.subExpired')
                 : phase === 'grace'
-                  ? 'Masa tenggang aktif. Segera bayar agar layanan tidak terhenti.'
-                  : 'Langganan akan jatuh tempo. Perpanjang sekarang.'}
+                  ? t('settingsPage.subGrace')
+                  : t('settingsPage.subDue')}
             </p>
           )}
         </CardBody>
@@ -1999,7 +2003,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
           <div
             className={styles.termBar}
             role="radiogroup"
-            aria-label="Termin pembayaran"
+            aria-label={t('settingsPage.terminPembayaran')}
           >
             {BILLING_TERM_IDS.map((id) => {
               const termDef = BILLING_TERMS[id];
@@ -2041,7 +2045,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   className={[styles.planCard, isRec ? styles.planCardRec : ''].join(' ')}
                 >
                   <span className={styles.planSpine} aria-hidden />
-                  {isRec && <span className={styles.planRecTag}>Disarankan</span>}
+                  {isRec && <span className={styles.planRecTag}>{t('settingsPage.disarankan')}</span>}
                   <strong className={styles.planCardName}>{def.name}</strong>
                   <span className={styles.planPrice}>{fmtRp(rate)}/bln</span>
                   {saving > 0 && (
@@ -2052,7 +2056,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
                   )}
                   <small className={styles.planQuota}>
                     {def.maxOutlets < 0
-                      ? 'Outlet tanpa batas'
+                      ? t('settingsPage.unlimitedOutlets')
                       : `s/d ${def.maxOutlets} outlet`}{' '}
                     ·{' '}
                     {def.maxUsers < 0 ? 'user tak terbatas' : `${def.maxUsers} pengguna`}
@@ -2117,6 +2121,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
 
 
 function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] }) {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   // Kuota wallet (Solo 2, Pro 99) sudah lama ada di plans.ts tapi tidak
   // pernah dibaca siapa pun. Dicek di sini terhadap jumlah SESUDAH
@@ -2138,14 +2143,14 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
   const [adding, setAdding] = useState(false);
 
   const outletName = (id: string | null) =>
-    id ? (outlets.find((o) => o.id === id)?.name ?? 'Cabang') : 'Bersama';
+    id ? (outlets.find((o) => o.id === id)?.name ?? t('settingsPage.cabang')) : t('settingsPage.bersama');
 
   const add = async () => {
     if (!canAddWallet)
       return toast.error(
-        `Paket ini dibatasi ${PLANS[walletPlan].maxWallets} wallet. Naik ke Pro untuk menambah.`,
+        interpolate(t('settingsPage.walletQuota'), { n: String(PLANS[walletPlan].maxWallets) }),
       );
-    if (!name.trim()) return toast.error('Nama wallet wajib diisi');
+    if (!name.trim()) return toast.error(t('settingsPage.namaWalletWajibDiisi'));
     if (adding) return;
     setAdding(true);
     const now = new Date().toISOString();
@@ -2181,14 +2186,14 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         });
       }
       toast.success(
-        initial > 0 ? 'Wallet ditambahkan, saldo awal dicatat sebagai Modal' : 'Wallet ditambahkan',
+        initial > 0 ? t('settingsPage.walletAddedModal') : t('settingsPage.walletAdded'),
       );
       setName('');
       setBalance('');
       setOutletId('');
       setIsCash(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menambah wallet');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.walletAddFailed'));
     } finally {
       setAdding(false);
     }
@@ -2198,18 +2203,18 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
     const amount = parseRpInput(transferAmount);
     const from = wallets.find((w) => w.id === fromId);
     const to = wallets.find((w) => w.id === toId);
-    if (!from || !to) return toast.error('Pilih wallet asal & tujuan');
+    if (!from || !to) return toast.error(t('settingsPage.pilihWalletAsalTujuan'));
     setTransferring(true);
     try {
       // Jalur yang sama dengan Buku Kas (0086): validasi kembar server, RPC di
       // cloud, tabel wallet_transfers + log di lokal.
       await createTransfer({ wallets, fromWalletId: fromId, toWalletId: toId, amount, note: '' });
-      toast.success(`Transfer ${fmtRp(amount)}: ${from.name} → ${to.name}`);
+      toast.success(interpolate(t('settingsPage.transferDone'), { amount: fmtRp(amount), from: from.name, to: to.name }));
       setTransferAmount('');
       setFromId('');
       setToId('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Transfer gagal');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.transferFailed'));
     } finally {
       setTransferring(false);
     }
@@ -2218,10 +2223,10 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="wallet" aria-hidden />} title="Wallet / Kas" />
+      <CardHeader icon={<Icon name="wallet" aria-hidden />} title={t('settingsPage.walletKas')} />
       <CardBody>
         <p className={styles.hint}>
-          Kas bisa <strong>Bersama</strong> (dipakai semua cabang) atau dikhususkan ke
+          Kas bisa <strong>{t('settingsPage.bersama')}</strong> (dipakai semua cabang) atau dikhususkan ke
           satu cabang. Saat transaksi, hanya kas bersama + kas cabang aktif yang tampil.
         </p>
         <ul className={styles.walletList}>
@@ -2231,18 +2236,18 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
         </ul>
         <div className={styles.addRow}>
           <Input
-            placeholder="Nama wallet"
+            placeholder={t('settingsPage.namaWallet')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Input
-            placeholder="Saldo awal"
+            placeholder={t('settingsPage.saldoAwal')}
             value={balance}
             onChange={(e) => setBalance(fmtRpInput(e.target.value))}
           />
           {outlets.length > 0 && (
             <Select
-              aria-label="Cabang wallet"
+              aria-label={t('settingsPage.cabangWallet')}
               value={outletId}
               onChange={(e) => setOutletId(e.target.value)}
               options={[
@@ -2257,14 +2262,14 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
             disabled={!canAddWallet}
             iconLeft={<Icon name="plus" aria-hidden />}
           >
-            Tambah
+            {t('settingsPage.tambah')}
           </Button>
         </div>
         <label className={styles.columnOption}>
           <input type="checkbox" checked={isCash} onChange={(e) => setIsCash(e.target.checked)} />
           <span className={styles.columnText}>
-            <strong>Uang tunai (laci)</strong>
-            <small>Kembalian Kasir selalu diambil dari wallet ini. Untuk toko bercabang: satu wallet tunai per cabang.</small>
+            <strong>{t('settingsPage.uangTunaiLaci')}</strong>
+            <small>{t('settingsPage.kembalianKasirSelaluDiambil')}</small>
           </span>
         </label>
         {!canAddWallet && (
@@ -2276,33 +2281,32 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
 
         {wallets.length >= 2 && (
           <div className={styles.tplGroup}>
-            <span className={styles.tplLabel}>Transfer Saldo Antar Wallet</span>
+            <span className={styles.tplLabel}>{t('settingsPage.transferSaldoAntarWallet')}</span>
             <p className={styles.tplHint}>
-              Pindahkan saldo antar kas. Tidak tercatat sebagai pemasukan/pengeluaran
-              (bukan untung/rugi).
+              {t('settingsPage.pPindahkanSaldoAntarKas')}
             </p>
             <div className={styles.addRow}>
               <Select
-                aria-label="Wallet asal"
+                aria-label={t('settingsPage.walletAsal')}
                 value={fromId}
                 onChange={(e) => setFromId(e.target.value)}
                 options={wallets.map((w) => ({
                   value: w.id,
                   label: `${w.name} (${fmtRp(w.balance)})`,
                 }))}
-                placeholder="Dari wallet…"
+                placeholder={t('settingsPage.dariWallet')}
               />
               <Select
-                aria-label="Wallet tujuan"
+                aria-label={t('settingsPage.walletTujuan')}
                 value={toId}
                 onChange={(e) => setToId(e.target.value)}
                 options={wallets
                   .filter((w) => w.id !== fromId)
                   .map((w) => ({ value: w.id, label: w.name }))}
-                placeholder="Ke wallet…"
+                placeholder={t('settingsPage.keWallet')}
               />
               <Input
-                placeholder="Nominal"
+                placeholder={t('settingsPage.nominal')}
                 value={transferAmount}
                 onChange={(e) => setTransferAmount(fmtRpInput(e.target.value))}
               />
@@ -2311,7 +2315,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
                 disabled={transferring}
                 iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
               >
-                Transfer
+                {t('settingsPage.transfer')}
               </Button>
             </div>
           </div>
@@ -2328,6 +2332,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
  * masih memegang saldo atau masih dipakai baris kas tidak boleh hilang.
  */
 function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLabel: string; outlets: Outlet[] }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(wallet.name);
   const [outletId, setOutletId] = useState(wallet.outletId ?? '');
@@ -2336,7 +2341,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
   const [confirm, setConfirm] = useState(false);
 
   const rename = async () => {
-    if (!name.trim()) return toast.error('Nama wallet wajib diisi');
+    if (!name.trim()) return toast.error(t('settingsPage.namaWalletWajibDiisi'));
     setBusy(true);
     try {
       await repository.put('wallets', {
@@ -2347,10 +2352,10 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
         isCash,
         updatedAt: new Date().toISOString(),
       });
-      toast.success('Wallet diperbarui');
+      toast.success(t('settingsPage.walletDiperbarui'));
       setEditing(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mengganti nama wallet');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.walletRenameFailed'));
     } finally {
       setBusy(false);
     }
@@ -2367,9 +2372,9 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
     setBusy(true);
     try {
       await repository.remove('wallets', wallet.id);
-      toast.success('Wallet dihapus');
+      toast.success(t('settingsPage.walletDihapus'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus wallet');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.walletDeleteFailed'));
     } finally {
       setBusy(false);
     }
@@ -2382,11 +2387,11 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            aria-label={`Nama ${wallet.name}`}
+            aria-label={interpolate(t('settingsPage.walletNameOf'), { name: wallet.name })}
           />
           {outlets.length > 0 && (
             <Select
-              aria-label={`Cabang ${wallet.name}`}
+              aria-label={interpolate(t('settingsPage.walletBranchOf'), { name: wallet.name })}
               value={outletId}
               onChange={(e) => setOutletId(e.target.value)}
               options={[
@@ -2398,12 +2403,12 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
           <label className={styles.columnOption}>
             <input type="checkbox" checked={isCash} onChange={(e) => setIsCash(e.target.checked)} />
             <span className={styles.columnText}>
-              <strong>Uang tunai (laci)</strong>
+              <strong>{t('settingsPage.uangTunaiLaci')}</strong>
             </span>
           </label>
           <span className={styles.itemActions}>
             <Button size="sm" onClick={rename} loading={busy}>
-              Simpan
+              {t('settingsPage.simpan')}
             </Button>
             <Button
               size="sm"
@@ -2415,7 +2420,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
                 setEditing(false);
               }}
             >
-              Batal
+              {t('settingsPage.batal')}
             </Button>
           </span>
         </>
@@ -2424,7 +2429,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
           <span>
             {wallet.name}
             <Badge tone={wallet.outletId ? 'info' : 'neutral'}>{outletLabel}</Badge>
-            {wallet.isCash && <Badge tone="success">Tunai</Badge>}
+            {wallet.isCash && <Badge tone="success">{t('settingsPage.tunai')}</Badge>}
           </span>
           <strong>{fmtRp(wallet.balance)}</strong>
           <span className={styles.itemActions}>
@@ -2434,7 +2439,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
               onClick={() => setEditing(true)}
               iconLeft={<Icon name="pen" aria-hidden />}
             >
-              Ubah
+              {t('settingsPage.ubah')}
             </Button>
             <Button
               size="sm"
@@ -2443,16 +2448,16 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
               disabled={busy}
               iconLeft={<Icon name="trash" aria-hidden />}
             >
-              Hapus
+              {t('settingsPage.hapus')}
             </Button>
           </span>
         </>
       )}
       <ConfirmDialog
         open={confirm}
-        title="Hapus wallet?"
+        title={t('settingsPage.hapusWallet')}
         message={`"${wallet.name}" akan dihapus. Hanya bisa dihapus bila saldonya nol dan belum pernah dipakai di pemasukan atau pengeluaran.`}
-        confirmLabel="Hapus"
+        confirmLabel={t('settingsPage.hapus')}
         danger
         onConfirm={remove}
         onCancel={() => setConfirm(false)}
@@ -2462,6 +2467,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
 }
 
 function OutletTab({ outlets }: { outlets: Outlet[] }) {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
   const [name, setName] = useState('');
@@ -2469,13 +2475,13 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
   const [adding, setAdding] = useState(false);
 
   const add = async () => {
-    if (!name.trim()) return toast.error('Nama outlet wajib diisi');
+    if (!name.trim()) return toast.error(t('settingsPage.namaOutletWajibDiisi'));
     // Enforce the plan's outlet limit client-side (mirrors TeamTab's seat check).
     // `outlets` already includes the primary row, so the count after adding is
     // outlets.length + 1.
     if (!withinOutletQuota(plan, outlets.length + 1)) {
       return toast.error(
-        `Paket ${PLANS[plan].name} maksimal ${PLANS[plan].maxOutlets} outlet. Upgrade ke Pro untuk menambah cabang.`,
+        interpolate(t('settingsPage.outletQuota'), { plan: PLANS[plan].name, n: String(PLANS[plan].maxOutlets) }),
       );
     }
     if (adding) return;
@@ -2493,11 +2499,11 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         updatedAt: now,
         deletedAt: null,
       });
-      toast.success('Outlet ditambahkan');
+      toast.success(t('settingsPage.outletDitambahkan'));
       setName('');
       setAddress('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menambah outlet');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.outletAddFailed'));
     } finally {
       setAdding(false);
     }
@@ -2505,13 +2511,13 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
 
   return (
     <Card glass>
-      <CardHeader icon={<Icon name="shop" aria-hidden />} title="Outlet / Cabang" />
+      <CardHeader icon={<Icon name="shop" aria-hidden />} title={t('settingsPage.outletCabang')} />
       <CardBody>
         {outlets.length === 0 ? (
           <EmptyState
             icon={<Icon name="shop" aria-hidden />}
-            title="Belum ada outlet tambahan"
-            description="Outlet utama digunakan secara default. Tambahkan cabang untuk multi-outlet."
+            title={t('settingsPage.belumAdaOutletTambahan')}
+            description={t('settingsPage.outletUtamaDigunakanSecara')}
           />
         ) : (
           <ul className={styles.list}>
@@ -2522,12 +2528,12 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
         )}
         <div className={styles.addRow}>
           <Input
-            placeholder="Nama outlet"
+            placeholder={t('settingsPage.namaOutlet')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Input
-            placeholder="Alamat"
+            placeholder={t('settingsPage.alamat')}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
@@ -2536,7 +2542,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
             loading={adding}
             iconLeft={<Icon name="plus" aria-hidden />}
           >
-            Tambah
+            {t('settingsPage.tambah')}
           </Button>
         </div>
       </CardBody>
@@ -2551,6 +2557,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
  * device GPS (owner is expected to set it while physically at the outlet).
  */
 function OutletRow({ outlet }: { outlet: Outlet }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [lat, setLat] = useState(outlet.lat != null ? String(outlet.lat) : '');
   const [lng, setLng] = useState(outlet.lng != null ? String(outlet.lng) : '');
@@ -2580,13 +2587,13 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       // keluar pagar — dikatakan sekarang, bukan setelah absensi ditolak.
       if (radN > 0 && pos.accuracyM > radN) {
         toast.warning(
-          `Akurasi GPS ±${Math.round(pos.accuracyM)}m lebih lebar dari radius ${radN}m. Ambil ulang di tempat terbuka, atau perbesar radiusnya.`,
+          interpolate(t('settingsPage.gpsWide'), { acc: String(Math.round(pos.accuracyM)), radius: String(radN) }),
         );
       } else {
-        toast.success(`Lokasi terdeteksi (akurasi ±${Math.round(pos.accuracyM)}m)`);
+        toast.success(interpolate(t('settingsPage.locationFound'), { acc: String(Math.round(pos.accuracyM)) }));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mengambil lokasi');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.locationFailed'));
     } finally {
       setLocating(false);
     }
@@ -2597,22 +2604,22 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
     const lngN = lng.trim() === '' ? null : Number(lng);
     const radN = radius.trim() === '' ? null : Math.round(Number(radius));
     if (latN != null && (Number.isNaN(latN) || latN < -90 || latN > 90)) {
-      return toast.error('Latitude tidak valid (-90..90)');
+      return toast.error(t('settingsPage.latitudeTidakValid90'));
     }
     if (lngN != null && (Number.isNaN(lngN) || lngN < -180 || lngN > 180)) {
-      return toast.error('Longitude tidak valid (-180..180)');
+      return toast.error(t('settingsPage.longitudeTidakValid180'));
     }
     if (radN != null && (Number.isNaN(radN) || radN <= 0)) {
-      return toast.error('Radius harus lebih dari 0 meter');
+      return toast.error(t('settingsPage.radiusHarusLebihDari'));
     }
     // Radius sebesar satu kota bukan pagar: ia meloloskan siapa pun sambil
     // tetap terlihat seperti penjagaan.
     if (radN != null && radN > MAX_GEOFENCE_M) {
       return toast.error(
-        `Radius maksimal ${MAX_GEOFENCE_M.toLocaleString('id-ID')} m — lebih dari itu absensi bisa dilakukan dari mana saja`,
+        interpolate(t('settingsPage.radiusMax'), { max: MAX_GEOFENCE_M.toLocaleString('id-ID') }),
       );
     }
-    if (!name.trim()) return toast.error('Nama cabang wajib diisi');
+    if (!name.trim()) return toast.error(t('settingsPage.namaCabangWajibDiisi'));
     setBusy(true);
     try {
       await repository.put('outlets', {
@@ -2624,10 +2631,10 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
         geofenceRadiusM: radN,
         updatedAt: new Date().toISOString(),
       });
-      toast.success('Cabang disimpan');
+      toast.success(t('settingsPage.cabangDisimpan'));
       setOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan geofence');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.geofenceFailed'));
     } finally {
       setBusy(false);
     }
@@ -2646,9 +2653,9 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       setLat('');
       setLng('');
       setRadius('100');
-      toast.success('Geofence dimatikan (absensi bebas lokasi)');
+      toast.success(t('settingsPage.geofenceDimatikanAbsensiBebas'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mematikan geofence');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.geofenceOffFailed'));
     } finally {
       setBusy(false);
     }
@@ -2669,23 +2676,23 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
             <Icon name="map-pin" aria-hidden /> {outlet.geofenceRadiusM}m
           </Badge>
         )}
-        {outlet.isPrimary && <Badge tone="brand">Utama</Badge>}
+        {outlet.isPrimary && <Badge tone="brand">{t('settingsPage.utama')}</Badge>}
         <Button
           variant="secondary"
           size="sm"
           onClick={() => setOpen((v) => !v)}
           iconLeft={<Icon name="map-pin" aria-hidden />}
         >
-          {open ? 'Tutup' : 'Geofence'}
+          {open ? t('settingsPage.tutup') : t('settingsPage.geofence')}
         </Button>
       </div>
 
       {open && (
         <div className={styles.geofenceBox}>
           <div className={styles.geofenceRow}>
-            <Input label="Nama Cabang" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input label={t('settingsPage.namaCabang')} value={name} onChange={(e) => setName(e.target.value)} />
             <Input
-              label="Alamat"
+              label={t('settingsPage.alamat')}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
@@ -2698,19 +2705,19 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
           </p>
           <div className={styles.geofenceRow}>
             <Input
-              label="Latitude"
+              label={t('settingsPage.latitude')}
               placeholder="-6.200000"
               value={lat}
               onChange={(e) => setLat(e.target.value)}
             />
             <Input
-              label="Longitude"
+              label={t('settingsPage.longitude')}
               placeholder="106.816666"
               value={lng}
               onChange={(e) => setLng(e.target.value)}
             />
             <Input
-              label="Radius (m)"
+              label={t('settingsPage.radiusM')}
               type="number"
               placeholder="100"
               value={radius}
@@ -2725,7 +2732,7 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
               loading={locating}
               iconLeft={<Icon name="map-pin" aria-hidden />}
             >
-              Gunakan lokasi saya
+              {t('settingsPage.gunakanLokasiSaya')}
             </Button>
             <span className={styles.geofenceSpacer} />
             {!outlet.isPrimary && (
@@ -2736,12 +2743,12 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
                 disabled={busy}
                 iconLeft={<Icon name="trash" aria-hidden />}
               >
-                Hapus cabang
+                {t('settingsPage.hapusCabang')}
               </Button>
             )}
             {geofenceOn && (
               <Button variant="ghost" size="sm" onClick={clear} disabled={busy}>
-                Matikan
+                {t('settingsPage.matikan')}
               </Button>
             )}
             <Button
@@ -2750,7 +2757,7 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
               loading={busy}
               iconLeft={<Icon name="check" aria-hidden />}
             >
-              Simpan
+              {t('settingsPage.simpan')}
             </Button>
           </div>
         </div>
@@ -2758,18 +2765,18 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
 
       <ConfirmDialog
         open={confirm}
-        title="Hapus cabang?"
+        title={t('settingsPage.hapusCabang2')}
         message={`"${outlet.name}" akan dihapus. Hanya bisa dihapus bila belum pernah dipakai transaksi, absensi, kas, atau penugasan anggota — cabang utama tidak bisa dihapus.`}
-        confirmLabel="Hapus"
+        confirmLabel={t('settingsPage.hapus')}
         danger
         onConfirm={async () => {
           setConfirm(false);
           setBusy(true);
           try {
             await repository.remove('outlets', outlet.id);
-            toast.success('Cabang dihapus');
+            toast.success(t('settingsPage.cabangDihapus'));
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Gagal menghapus cabang');
+            toast.error(e instanceof Error ? e.message : t('settingsPage.branchDeleteFailed'));
           } finally {
             setBusy(false);
           }
@@ -2782,6 +2789,7 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
 
 /** CSV export of each major dataset. Owner-only (includes finance + PII). */
 function ExportDataCard() {
+  const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
 
   // Ekspor data adalah portabilitas: fitur Pro, dan sengaja juga dikunci
@@ -2795,9 +2803,9 @@ function ExportDataCard() {
       if (!def) return;
       const csv = await def.toCsv();
       downloadCsv(def.label, csv);
-      toast.success(`Data ${label} diekspor`);
+      toast.success(interpolate(t('settingsPage.exported'), { label }));
     } catch {
-      toast.error('Gagal mengekspor data');
+      toast.error(t('settingsPage.gagalMengeksporData'));
     } finally {
       setBusy(null);
     }
@@ -2807,17 +2815,16 @@ function ExportDataCard() {
     <Card glass>
       <CardHeader
         icon={<Icon name="download" aria-hidden />}
-        title="Export Data"
+        title={t('settingsPage.exportData')}
         action={canExport ? undefined : <ProBadge />}
       />
       <CardBody>
         <p className={styles.dangerNote}>
-          Unduh data sebagai CSV (bisa dibuka di Excel/Spreadsheet) — untuk cadangan,
-          laporan, atau pindah sistem.
+          {t('settingsPage.pUnduhDataSebagaiCsv')}
         </p>
         {!canExport && (
           <ProNotice>
-            Ekspor CSV membuat data Anda bisa dibawa ke Excel, akuntan, atau sistem lain.
+            {t('settingsPage.eksporCsvMembuatData')}
           </ProNotice>
         )}
         <div className={styles.exportGrid}>
@@ -2846,6 +2853,7 @@ function ExportDataCard() {
  * mode (rely on Supabase backups/PITR there).
  */
 function BackupCard() {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(org?.isDemo);
@@ -2932,7 +2940,7 @@ function BackupCard() {
     try {
       stageRestore(await readCloudBackup(backup.path));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal membaca backup');
+      toast.error(e instanceof Error ? e.message : t('settingsPage.backupReadFailed'));
     }
   };
 
@@ -2940,9 +2948,9 @@ function BackupCard() {
     setSavingEmail(true);
     try {
       await setBackupEmail(!emailOn);
-      toast.success(emailOn ? 'Email backup mingguan dimatikan' : 'Email backup mingguan diaktifkan');
+      toast.success(emailOn ? t('settingsPage.backupEmailOff') : t('settingsPage.backupEmailOn'));
     } catch {
-      toast.error('Gagal menyimpan pengaturan');
+      toast.error(t('settingsPage.gagalMenyimpanPengaturan'));
     } finally {
       setSavingEmail(false);
     }
@@ -2961,9 +2969,9 @@ function BackupCard() {
       await setLastBackupAt(new Date().toISOString()).catch(() => {
         /* pengingat lokal sudah tercatat; sinkronisasi bukan syarat backup */
       });
-      toast.success('Backup berhasil diunduh');
+      toast.success(t('settingsPage.backupBerhasilDiunduh'));
     } catch {
-      toast.error('Gagal membuat backup');
+      toast.error(t('settingsPage.gagalMembuatBackup'));
     } finally {
       setBusy(false);
     }
@@ -2977,7 +2985,7 @@ function BackupCard() {
     try {
       stageRestore(await file.text());
     } catch {
-      toast.error('Gagal membaca file');
+      toast.error(t('settingsPage.gagalMembacaFile'));
     }
   };
 
@@ -2989,7 +2997,7 @@ function BackupCard() {
     try {
       const res = await restoreBackup(pendingText);
       if (res.ok) {
-        toast.success(`Berhasil memulihkan ${res.restored} data. Memuat ulang\u2026`);
+        toast.success(interpolate(t('settingsPage.restored'), { n: String(res.restored) }));
         setTimeout(() => window.location.reload(), 900);
       } else {
         toast.error(res.error);
@@ -3004,26 +3012,24 @@ function BackupCard() {
   // hanya browser yang sedang dipakai.
   const sharedBackupAt = getLastBackupAt();
   const backupHint = sharedBackupAt
-    ? `Backup terakhir toko ini: ${new Date(sharedBackupAt).toLocaleString('id-ID')}`
+    ? interpolate(t('settingsPage.lastBackupShop'), { at: new Date(sharedBackupAt).toLocaleString('id-ID') })
     : lastBackupAt
-      ? `Backup terakhir di perangkat ini: ${new Date(lastBackupAt).toLocaleString('id-ID')}`
-      : 'Belum pernah backup';
+      ? interpolate(t('settingsPage.lastBackupDevice'), { at: new Date(lastBackupAt).toLocaleString('id-ID') })
+      : t('settingsPage.neverBackedUp');
 
   return (
     <Card glass>
       <CardHeader
         icon={<Icon name="clock-rotate-left" aria-hidden />}
-        title="Backup & Restore"
+        title={t('settingsPage.backupRestore')}
       />
       <CardBody>
         <p className={styles.dangerNote}>
-          Backup menyimpan SELURUH data sebagai satu file JSON yang bisa dipulihkan utuh
-          (berbeda dari Export CSV yang untuk laporan). Simpan file di tempat aman.
+          {t('settingsPage.pBackupMenyimpanSeluruhData')}
         </p>
         {!canBackup && (
           <ProNotice>
-            Backup JSON membawa seluruh data toko keluar dalam satu file, tersedia di
-            paket berbayar.
+            {t('settingsPage.pBackupJsonMembawaSeluruh')}
           </ProNotice>
         )}
         <div className={styles.backupRow}>
@@ -3033,7 +3039,7 @@ function BackupCard() {
             disabled={!canBackup}
             iconLeft={<Icon name="download" aria-hidden />}
           >
-            Backup Sekarang
+            {t('settingsPage.backupSekarang')}
           </Button>
           {canRestore && (
             <Button
@@ -3041,7 +3047,7 @@ function BackupCard() {
               onClick={() => fileRef.current?.click()}
               iconLeft={<Icon name="clock-rotate-left" aria-hidden />}
             >
-              Pulihkan dari File
+              {t('settingsPage.pulihkanDariFile')}
             </Button>
           )}
           <input
@@ -3064,7 +3070,7 @@ function BackupCard() {
           <>
             <hr className={styles.dangerDivider} />
             <div className={styles.autoBackupHead}>
-              <span className={styles.autoBackupLabel}>Backup otomatis</span>
+              <span className={styles.autoBackupLabel}>{t('settingsPage.backupOtomatis')}</span>
               {lastRun && (
                 <span
                   className={styles.autoBackupStatus}
@@ -3076,9 +3082,7 @@ function BackupCard() {
               )}
             </div>
             <p className={styles.planNote}>
-              Server membuat salinan penuh tiap malam dan menyimpan 7 terakhir. Tidak
-              perlu membuka aplikasi — berbeda dari pengingat di bawah, yang hanya
-              menepuk bahu Anda saat aplikasi dibuka.
+              {t('settingsPage.pServerMembuatSalinanPenuh')}
             </p>
             {/* Kegagalan ditampilkan, bukan disembunyikan: backup yang diam-diam
                 berhenti membuat pemilik merasa aman padahal tidak. */}
@@ -3089,11 +3093,10 @@ function BackupCard() {
                 {lastRun.error ? ` — ${lastRun.error}` : ''}
               </p>
             )}
-            {loadingCloud && <p className={styles.planNote}>Memuat daftar…</p>}
+            {loadingCloud && <p className={styles.planNote}>{t('settingsPage.memuatDaftar')}</p>}
             {!loadingCloud && cloudBackups.length === 0 && (
               <p className={styles.planNote}>
-                Belum ada salinan otomatis. Yang pertama dibuat pada jadwal malam
-                berikutnya.
+                {t('settingsPage.pBelumAdaSalinanOtomatis')}
               </p>
             )}
             {cloudBackups.length > 0 && (
@@ -3113,7 +3116,7 @@ function BackupCard() {
                       className={styles.autoBackupAction}
                       onClick={() => void restoreFromCloud(b)}
                     >
-                      Pulihkan
+                      {t('settingsPage.pulihkan')}
                     </button>
                   </li>
                 ))}
@@ -3125,29 +3128,27 @@ function BackupCard() {
           <>
             <hr className={styles.dangerDivider} />
             <div className={styles.autoBackupHead}>
-              <span className={styles.autoBackupLabel}>Email backup mingguan</span>
+              <span className={styles.autoBackupLabel}>{t('settingsPage.emailBackupMingguan')}</span>
               <button
                 type="button"
                 role="switch"
                 aria-checked={emailOn && canBackup}
-                aria-label="Email backup mingguan"
+                aria-label={t('settingsPage.emailBackupMingguan')}
                 className={styles.channelSwitch}
                 data-on={emailOn && canBackup}
                 disabled={!canBackup || savingEmail}
                 onClick={() => void toggleBackupEmail()}
               >
                 <span className={styles.channelSwitchLed} aria-hidden />
-                {emailOn && canBackup ? 'Aktif' : 'Mati'}
+                {emailOn && canBackup ? t('settingsPage.active') : t('settingsPage.off')}
               </button>
             </div>
             <p className={styles.planNote}>
-              Tiap Senin 07.00 WIB server mengirim tautan unduh salinan otomatis terbaru
-              ke email owner. Tautannya kedaluwarsa setelah 7 hari; berkasnya tetap di
-              server, jadi email lama tidak berisi data apa pun.
+              {t('settingsPage.backupEmailNote')}
             </p>
             {!canBackup ? (
               <p className={styles.planNote}>
-                Mulai dikirim setelah toko berlangganan — sama seperti backup JSON.
+                {t('settingsPage.mulaiDikirimSetelahToko')}
               </p>
             ) : (
               emailOn && (
@@ -3167,11 +3168,11 @@ function BackupCard() {
           <>
             <hr className={styles.dangerDivider} />
             <Select
-              label="Pengingat backup manual (perangkat ini)"
+              label={t('settingsPage.pengingatBackupManualPerangkat')}
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
               options={[
-                { value: 'off', label: 'Nonaktif' },
+                { value: 'off', label: t('settingsPage.inactive') },
                 { value: 'daily', label: 'Harian' },
                 { value: 'weekly', label: 'Mingguan' },
                 { value: 'monthly', label: 'Bulanan' },
@@ -3184,9 +3185,9 @@ function BackupCard() {
 
       <ConfirmDialog
         open={pendingText !== null}
-        title="Pulihkan dari Backup?"
-        message={`File ini berisi ${pendingCount.toLocaleString('id-ID')} data. SEMUA data saat ini akan DIGANTI dengan isinya — yang tidak ada di file akan hilang. Tindakan ini tidak dapat dibatalkan; disarankan backup data saat ini lebih dulu.`}
-        confirmLabel={restoring ? 'Memulihkan\u2026' : 'Ya, Ganti & Pulihkan'}
+        title={t('settingsPage.pulihkanDariBackup')}
+        message={interpolate(t('settingsPage.restoreMsg'), { n: pendingCount.toLocaleString('id-ID') })}
+        confirmLabel={t(restoring ? 'settingsPage.restoring' : 'settingsPage.confirmRestore')}
         danger
         onConfirm={handleRestore}
         onCancel={() => setPendingText(null)}
@@ -3196,6 +3197,7 @@ function BackupCard() {
 }
 
 function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean }) {
+  const t = useT();
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(useSessionStore((s) => s.org)?.isDemo);
   const signOut = useAuthStore((s) => s.signOut);
@@ -3217,12 +3219,12 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
       await deleteAccountCredential();
 
       await signOut();
-      toast.success('Akun & seluruh data dihapus permanen');
+      toast.success(t('settingsPage.akunSeluruhDataDihapus'));
     } catch (e) {
       toast.error(
         e instanceof Error
           ? e.message
-          : 'Gagal menghapus akun. Data Anda tetap aman — coba lagi atau hubungi dukungan.',
+          : t('settingsPage.deleteAccountFailed'),
       );
     } finally {
       setDeleting(false);
@@ -3240,36 +3242,34 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
         <Card glass accent="danger">
           <CardHeader
             icon={<Icon name="triangle-exclamation" aria-hidden />}
-            title="Zona Berbahaya"
+            title={t('settingsPage.zonaBerbahaya')}
           />
           <CardBody>
             <p className={styles.dangerNote}>
               {cloud
-                ? 'Reset mengosongkan seluruh data operasional org ini (servis, transaksi, stok, keuangan). Tim, langganan, dan profil usaha tetap.'
-                : 'Reset menghapus seluruh data dan mengembalikan ke setup awal.'}
+                ? t('settingsPage.resetCloudNote')
+                : t('settingsPage.resetLocalNote')}
             </p>
             <Button
               variant="danger"
               onClick={onReset}
               iconLeft={<Icon name="trash" aria-hidden />}
             >
-              Reset Seluruh Data
+              {t('settingsPage.resetSeluruhData2')}
             </Button>
 
             {cloud && !isDemo && (
               <>
                 <hr className={styles.dangerDivider} />
                 <p className={styles.dangerNote}>
-                  Hapus akun permanen: seluruh data usaha dihapus, kredensial login (email
-                  &amp; sandi) dihapus dari server, lalu kamu keluar. Tindakan ini tidak
-                  dapat dibatalkan — export data lebih dulu bila perlu.
+                  {t('settingsPage.deleteAccountNote')}
                 </p>
                 <Button
                   variant="danger"
                   onClick={() => setConfirmDelete(true)}
                   iconLeft={<Icon name="trash" aria-hidden />}
                 >
-                  Hapus Akun Permanen
+                  {t('settingsPage.hapusAkunPermanen')}
                 </Button>
               </>
             )}
@@ -3279,9 +3279,9 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Hapus Akun Permanen?"
-        message="SEMUA data usaha (servis, transaksi, pelanggan, stok, keuangan) akan dihapus permanen, akun login (email & sandi) dihapus dari server, dan kamu akan keluar. Tindakan ini TIDAK dapat dibatalkan. Pertimbangkan export data lebih dulu."
-        confirmLabel={deleting ? 'Menghapus…' : 'Ya, Hapus Permanen'}
+        title={t('settingsPage.hapusAkunPermanen2')}
+        message={t('settingsPage.semuaDataUsahaServis')}
+        confirmLabel={deleting ? t('settingsPage.deleting') : t('settingsPage.confirmDeleteForever')}
         danger
         onConfirm={handleDeleteAccount}
         onCancel={() => setConfirmDelete(false)}

@@ -7,6 +7,7 @@
  * Language comes from the settings store, so switching is reactive across
  * the whole app. Migratable to react-i18next later if many languages appear.
  */
+import { useCallback } from 'react';
 import { id, type TranslationKey, type Dictionary } from './id';
 import { en } from './en';
 import { useSettingsStore, type Language } from '@/stores/settings';
@@ -18,10 +19,14 @@ export function translate(lang: Language, key: TranslationKey): string {
   return DICTIONARIES[lang][key] ?? id[key] ?? key;
 }
 
-/** Hook returning a reactive translator bound to the current language. */
+/**
+ * Hook returning a reactive translator bound to the current language. Stable
+ * per language, so `t` can sit in effect/memo dependency lists without
+ * re-running them every render (loaders that toast errors need it there).
+ */
 export function useT() {
   const lang = useSettingsStore((s) => s.language);
-  return (key: TranslationKey): string => translate(lang, key);
+  return useCallback((key: TranslationKey): string => translate(lang, key), [lang]);
 }
 
 export type { TranslationKey };

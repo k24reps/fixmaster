@@ -27,6 +27,8 @@ import { toast } from '@/stores/toast';
 import { TrendChart } from './TrendChart';
 import { printReport } from './printReport';
 import styles from './ReportsPage.module.css';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 function monthRange() {
   const now = new Date();
@@ -41,6 +43,7 @@ const byCapitalLast = (a: [string, number], b: [string, number]) =>
   Number(isCapitalFlow({ category: a[0] })) - Number(isCapitalFlow({ category: b[0] })) || b[1] - a[1];
 
 export function ReportsPage() {
+  const t = useT();
   const [from, setFrom] = useState(monthRange().from);
   const [to, setTo] = useState(monthRange().to);
   const rangeValid = from <= to;
@@ -88,8 +91,8 @@ export function ReportsPage() {
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   const org = useSessionStore((s) => s.org);
   const scopeLabel = activeOutletId
-    ? (outlets.find((o) => o.id === activeOutletId)?.name ?? 'Cabang')
-    : 'Semua Outlet';
+    ? (outlets.find((o) => o.id === activeOutletId)?.name ?? t('reports.branch'))
+    : t('reports.allOutlets');
 
   const target = getTarget();
 
@@ -141,26 +144,26 @@ export function ReportsPage() {
   // lebih berguna daripada kalimat percaya diri yang dikarang.
   const verdict = useMemo(() => {
     if (!rangeValid) {
-      return { headline: 'Rentang tanggal belum sah.', source: 'Perbaiki tanggal untuk melihat hasilnya.' };
+      return { headline: t('reports.rangeInvalid'), source: t('reports.rangeFix') };
     }
     const net = fmtRp(summary.net);
     const src = `${fmtRp(summary.income)} − ${fmtRp(summary.expense)} = ${net}`;
     if (noBaseline) {
       return {
-        headline: `Arus kas bersih ${net}.`,
-        source: `${src} · tidak ada data periode lalu untuk dibandingkan`,
+        headline: interpolate(t('reports.netHeadline'), { net }),
+        source: `${src} · ${t('reports.noBaseline')}`,
       };
     }
     const d = comparison.netDelta;
     if (d === null || !Number.isFinite(d)) {
-      return { headline: `Arus kas bersih ${net}.`, source: src };
+      return { headline: interpolate(t('reports.netHeadline'), { net }), source: src };
     }
-    const arah = d >= 0 ? 'lebih baik' : 'lebih buruk';
+    const arah = d >= 0 ? t('reports.better') : t('reports.worse');
     return {
-      headline: `Arus kas bersih ${net} — ${arah} ${fmtPercent(Math.abs(d))} dari periode lalu.`,
-      source: `${src} · periode lalu ${fmtRp(comparison.previous.net)}`,
+      headline: interpolate(t('reports.netVsPrev'), { net, dir: arah, pct: fmtPercent(Math.abs(d)) }),
+      source: `${src} · ${interpolate(t('reports.prevPeriod'), { amount: fmtRp(comparison.previous.net) })}`,
     };
-  }, [rangeValid, summary, noBaseline, comparison]);
+  }, [rangeValid, summary, noBaseline, comparison, t]);
 
   // Break-even indicator: net profit vs overhead budget (target, not deducted).
   const breakEvenPct = target.overheadBudget > 0 ? summary.net / target.overheadBudget : 0;
@@ -181,7 +184,7 @@ export function ReportsPage() {
 
   const maxIncome = Math.max(1, ...incomeByCategory.map(([, v]) => v));
   const maxExpense = Math.max(1, ...expenseByCategory.map(([, v]) => v));
-  const maxLeaderRev = Math.max(1, ...leaderboard.map((t) => t.revenue));
+  const maxLeaderRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
   const maxCatProfit = Math.max(1, ...catProfit.map((c) => c.profit));
   const maxPartQty = Math.max(1, ...partUsage.map((p) => p.qty));
   const maxFunnel = Math.max(1, ...funnel.map((f) => f.count));
@@ -197,7 +200,7 @@ export function ReportsPage() {
   const exportCsv = () => {
     if (!canExport) return;
     if (txnRows.length === 0) {
-      toast.error('Tidak ada transaksi pada periode ini');
+      toast.error(t('reports.tidakAdaTransaksiPada'));
       return;
     }
     // buildCsv, bukan perakit lokal: ia melolosi sel yang diawali `=`, `+`,
@@ -223,13 +226,13 @@ export function ReportsPage() {
     if (!canExport) return;
     if (!org) return;
     if (!rangeValid) {
-      toast.error('Perbaiki rentang tanggal dulu');
+      toast.error(t('reports.perbaikiRentangTanggalDulu'));
       return;
     }
     // Laporan yang dicetak selagi angkanya masih dimuat akan membekukan nol
     // sebagai fakta di atas kertas — dan kertas tidak bisa memperbarui diri.
     if (reportPending) {
-      toast.error('Data laporan belum selesai dimuat — tunggu sebentar');
+      toast.error(t('reports.dataLaporanBelumSelesai'));
       return;
     }
     const opened = printReport({
@@ -260,7 +263,7 @@ export function ReportsPage() {
     // Tujuan "Simpan sebagai PDF" ada di dalam dialog cetak, dan tidak semua
     // pemilik tahu itu — tanpa kalimat ini tombol bernama "Ekspor PDF" terasa
     // seperti salah membuka dialog printer.
-    if (opened) toast.success('Pilih "Simpan sebagai PDF" di tujuan cetak');
+    if (opened) toast.success(t('reports.pilihSimpanSebagaiPdf'));
   };
 
   // Piutang punya ekspornya sendiri: daftar inilah yang dibawa saat menagih,
@@ -268,7 +271,7 @@ export function ReportsPage() {
   const exportReceivables = () => {
     if (!canExport) return;
     if (receivables.length === 0) {
-      toast.error('Tidak ada piutang untuk diekspor');
+      toast.error(t('reports.tidakAdaPiutangUntuk'));
       return;
     }
     const csv = buildCsv(receivables, [
@@ -293,7 +296,7 @@ export function ReportsPage() {
                 diberi tahu tokonya menghasilkan Rp 0 — bukan bahwa ia salah
                 mengisi tanggal. */}
             <label>
-              Dari
+              {t('reports.dari')}
               <input
                 type="date"
                 value={from}
@@ -303,7 +306,7 @@ export function ReportsPage() {
               />
             </label>
             <label>
-              Sampai
+              {t('reports.sampai')}
               <input
                 type="date"
                 value={to}
@@ -319,7 +322,7 @@ export function ReportsPage() {
                 <Icon name="triangle-exclamation" aria-hidden /> Tanggal &ldquo;Dari&rdquo; melewati &ldquo;Sampai&rdquo;
               </span>
             )}
-            <span className={styles.scopeTag} title="Cakupan laporan">
+            <span className={styles.scopeTag} title={t('reports.cakupanLaporan')}>
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
             {canExport && (
@@ -330,7 +333,7 @@ export function ReportsPage() {
                   iconLeft={<Icon name="file-invoice" aria-hidden />}
                   className={styles.exportBtn}
                 >
-                  Ekspor PDF
+                  {t('reports.eksporPdf')}
                 </Button>
                 <Button
                   variant="secondary"
@@ -338,7 +341,7 @@ export function ReportsPage() {
                   iconLeft={<Icon name="download" aria-hidden />}
                   className={styles.exportBtn}
                 >
-                  Ekspor CSV
+                  {t('reports.eksporCsv')}
                 </Button>
               </span>
             )}
@@ -362,7 +365,7 @@ export function ReportsPage() {
             ].join(' ')}
             aria-hidden
           />
-          Periode ini
+          {t('reports.periodeIni')}
         </span>
         <p className={styles.verdictLine}>{verdict.headline}</p>
         <p className={styles.verdictSource}>{verdict.source}</p>
@@ -370,7 +373,7 @@ export function ReportsPage() {
 
       <div className={styles.metrics}>
         <Metric
-          label="Pemasukan"
+          label={t('reports.pemasukan')}
           value={fmtRp(summary.income)}
           icon={<Icon name="arrow-down" aria-hidden />}
           tone="success"
@@ -378,7 +381,7 @@ export function ReportsPage() {
           noBaseline={noBaseline}
         />
         <Metric
-          label="Pengeluaran"
+          label={t('reports.pengeluaran')}
           value={fmtRp(summary.expense)}
           icon={<Icon name="arrow-up" aria-hidden />}
           tone="danger"
@@ -387,7 +390,7 @@ export function ReportsPage() {
           noBaseline={noBaseline}
         />
         <Metric
-          label="Arus Kas Bersih"
+          label={t('reports.arusKasBersih')}
           value={fmtRp(summary.net)}
           icon={<Icon name="chart-line" aria-hidden />}
           tone="brand"
@@ -395,7 +398,7 @@ export function ReportsPage() {
           noBaseline={noBaseline}
         />
         <Metric
-          label="Penjualan POS"
+          label={t('reports.penjualanPos')}
           value={fmtRp(salesTotal)}
           icon={<Icon name="cash-register" aria-hidden />}
           tone="accent"
@@ -407,12 +410,12 @@ export function ReportsPage() {
 
       {/* 1. Income vs expense trend chart */}
       <Card glass>
-        <CardHeader icon={<Icon name="chart-line" aria-hidden />} title="Tren Pemasukan vs Pengeluaran" />
+        <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
         <CardBody>
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : trend.length === 0 ? (
-            <EmptyState icon={<Icon name="chart-line" aria-hidden />} title="Belum ada data periode ini" />
+            <EmptyState icon={<Icon name="chart-line" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
           ) : (
             <TrendChart points={trend} />
           )}
@@ -421,11 +424,11 @@ export function ReportsPage() {
 
       {target.overheadBudget > 0 && (
         <Card glass accent={breakEvenPct >= 1 ? 'success' : 'warning'}>
-          <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title="Indikator Break-Even" />
+          <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={t('reports.indikatorBreakEven')} />
           <CardBody>
             <div className={styles.breakEven}>
               <div>
-                <span className={styles.beLabel}>Arus kas bersih vs Overhead Budget</span>
+                <span className={styles.beLabel}>{t('reports.arusKasBersihVs')}</span>
                 <strong className={styles.beValue}>
                   {fmtRp(summary.net)} / {fmtRp(target.overheadBudget)}
                 </strong>
@@ -449,12 +452,12 @@ export function ReportsPage() {
 
       <div className={styles.grid}>
         <Card glass>
-          <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title="Pemasukan per Kategori" />
+          <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title={t('reports.pemasukanPerKategori')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
             ) : incomeByCategory.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
+              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
             ) : (
               <ul className={styles.breakdown}>
                 {incomeByCategory.map(([cat, amt]) => (
@@ -462,7 +465,7 @@ export function ReportsPage() {
                     <div className={styles.channelTop}>
                       <span className={styles.channelName}>
                         {cat}
-                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>bukan omzet</span>}
+                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notRevenue')}</span>}
                       </span>
                       <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.inc].join(' ')}>{fmtRp(amt)}</span>
                     </div>
@@ -480,12 +483,12 @@ export function ReportsPage() {
         </Card>
 
         <Card glass>
-          <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title="Pengeluaran per Kategori" />
+          <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title={t('reports.pengeluaranPerKategori')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
             ) : expenseByCategory.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
+              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
             ) : (
               <ul className={styles.breakdown}>
                 {expenseByCategory.map(([cat, amt]) => (
@@ -493,7 +496,7 @@ export function ReportsPage() {
                     <div className={styles.channelTop}>
                       <span className={styles.channelName}>
                         {cat}
-                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>bukan biaya</span>}
+                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notCost')}</span>}
                       </span>
                       <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.exp].join(' ')}>{fmtRp(amt)}</span>
                     </div>
@@ -515,16 +518,16 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="microchip" aria-hidden />}
-          title="Laba per Kategori Perangkat"
+          title={t('reports.labaPerKategoriPerangkat')}
           /* Periode kartu ini dihitung dari tanggal SELESAI, sama seperti
              Performa Teknisi di bawah — dulu ia memakai tanggal tiket masuk. */
-          action={<span className={styles.liveTag}>Selesai periode ini</span>}
+          action={<span className={styles.liveTag}>{t('reports.selesaiPeriodeIni')}</span>}
         />
         <CardBody className={styles.noPad}>
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : catProfit.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada servis selesai" />
+            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
           ) : (
             <ul className={styles.breakdown}>
               {catProfit.map((c) => (
@@ -546,12 +549,12 @@ export function ReportsPage() {
       <div className={styles.grid}>
         {/* 4a. Sparepart usage */}
         <Card glass>
-          <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title="Sparepart Terlaris" />
+          <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title={t('reports.sparepartTerlaris')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
             ) : partUsage.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada pemakaian sparepart periode ini" />
+              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaPemakaianSparepart')} />
             ) : (
               <ul className={styles.breakdown}>
                 {partUsage.slice(0, 8).map((p) => (
@@ -577,14 +580,14 @@ export function ReportsPage() {
               disebutkan sama sekali. */}
           <CardHeader
             icon={<Icon name="boxes-stacked" aria-hidden />}
-            title="Saran Restok"
-            action={<span className={styles.liveTag}>Stok saat ini</span>}
+            title={t('reports.saranRestok')}
+            action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
           />
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
             ) : restock.length === 0 ? (
-              <EmptyState icon={<Icon name="circle-check" aria-hidden />} title="Stok semua aman" />
+              <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.stokSemuaAman')} />
             ) : (
               <ul className={styles.breakdown}>
                 {restock.slice(0, 8).map((i) => {
@@ -623,7 +626,7 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="filter" aria-hidden />}
-          title="Funnel Servis (tiket masuk periode ini)"
+          title={t('reports.funnelServisTiketMasuk')}
           action={
             /* `avgTurnaroundDays` mengembalikan 0 untuk himpunan kosong, jadi
                toko yang tidak menyelesaikan apa pun diberi tahu rata-ratanya
@@ -634,7 +637,7 @@ export function ReportsPage() {
               <Icon name="clock" aria-hidden />{' '}
               {turnaround > 0
                 ? `Rata-rata ${turnaround.toFixed(1).replace('.', ',')} hari`
-                : 'Belum ada servis selesai'}
+                : t('reports.belumAdaServisSelesai')}
             </span>
           }
         />
@@ -642,7 +645,7 @@ export function ReportsPage() {
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : funnel.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada servis periode ini" />
+            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisPeriode')} />
           ) : (
             <ul className={styles.breakdown}>
               {funnel.map((f) => (
@@ -664,7 +667,7 @@ export function ReportsPage() {
       {/* 7. Per-outlet comparison (only when multiple outlets) */}
       {outlets.length > 1 && (
         <Card glass>
-          <CardHeader icon={<Icon name="store" aria-hidden />} title="Perbandingan Antar-Outlet" />
+          <CardHeader icon={<Icon name="store" aria-hidden />} title={t('reports.perbandinganAntarOutlet')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
               <LoadState queries={reportLoad} />
@@ -676,7 +679,7 @@ export function ReportsPage() {
                 selektor cabang untuk membandingkan antar-cabang.
               </p>
             ) : outletStats.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada data periode ini" />
+              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
             ) : (
               <ul className={styles.breakdown}>
                 {outletStats.map((o) => (
@@ -712,22 +715,22 @@ export function ReportsPage() {
 
       {/* Technician leaderboard (existing) */}
       <Card glass>
-        <CardHeader icon={<Icon name="trophy" aria-hidden />} title="Performa Teknisi (periode)" />
+        <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('reports.performaTeknisiPeriode')} />
         <CardBody className={styles.noPad}>
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : leaderboard.length === 0 ? (
-            <EmptyState icon={<Icon name="users" aria-hidden />} title="Belum ada servis selesai" />
+            <EmptyState icon={<Icon name="users" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
           ) : (
             <ul className={styles.breakdown}>
-              {leaderboard.map((t) => (
-                <li key={t.key} className={styles.channel}>
+              {leaderboard.map((tech) => (
+                <li key={tech.key} className={styles.channel}>
                   <div className={styles.channelTop}>
-                    <span className={styles.channelName}>{t.name} · {t.completed} selesai</span>
-                    <span className={styles.channelValue}>{fmtRp(t.revenue)}</span>
+                    <span className={styles.channelName}>{tech.name} · {tech.completed} selesai</span>
+                    <span className={styles.channelValue}>{fmtRp(tech.revenue)}</span>
                   </div>
                   <div className={styles.bar}>
-                    <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(t.revenue / maxLeaderRev) * 100}%` }} />
+                    <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(tech.revenue / maxLeaderRev) * 100}%` }} />
                   </div>
                 </li>
               ))}
@@ -740,13 +743,14 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="coins" aria-hidden />}
-          title="Piutang (Servis Selesai Belum Lunas)"
+          title={t('reports.piutangServisSelesaiBelum')}
           /* Satu-satunya kartu selain Saran Restok yang TIDAK mengikuti periode
              di header: piutang adalah keadaan sekarang, dan yang paling tua
              justru selalu di luar periode yang sedang dilihat. */
           action={
             <span className={styles.turnaround}>
-              {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}semua periode
+              {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}
+              {t('reports.allPeriods')}
               {canExport && receivables.length > 0 && (
                 <Button
                   variant="secondary"
@@ -754,7 +758,7 @@ export function ReportsPage() {
                   onClick={exportReceivables}
                   iconLeft={<Icon name="download" aria-hidden />}
                 >
-                  Ekspor
+                  {t('reports.ekspor')}
                 </Button>
               )}
             </span>
@@ -764,19 +768,19 @@ export function ReportsPage() {
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : receivables.length === 0 ? (
-            <EmptyState icon={<Icon name="circle-check" aria-hidden />} title="Tidak ada piutang" />
+            <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.tidakAdaPiutang')} />
           ) : (
             <div className={styles.tableScroll}>
               <table className={styles.table}>
                 <caption className={styles.srOnly}>
-                  Piutang servis yang sudah selesai tapi belum lunas
+                  {t('reports.piutangServisYangSudah')}
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col">No. Servis</th>
-                    <th scope="col">Pelanggan</th>
-                    <th scope="col" className={styles.num}>Sisa</th>
-                    <th scope="col" className={styles.num}>Umur</th>
+                    <th scope="col">{t('reports.noServis')}</th>
+                    <th scope="col">{t('reports.pelanggan')}</th>
+                    <th scope="col" className={styles.num}>{t('reports.sisa')}</th>
+                    <th scope="col" className={styles.num}>{t('reports.umur')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -803,27 +807,27 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="clipboard-list" aria-hidden />}
-          title="Rincian Transaksi"
+          title={t('reports.rincianTransaksi')}
           action={<span className={styles.turnaround}>{txnRows.length} baris</span>}
         />
         <CardBody className={styles.noPad}>
           {reportPending ? (
             <LoadState queries={reportLoad} />
           ) : txnRows.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title="Belum ada transaksi periode ini" />
+            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaTransaksiPeriode')} />
           ) : (
             <div className={styles.tableScroll}>
               <table className={styles.table}>
                 <caption className={styles.srOnly}>
-                  Rincian transaksi pemasukan dan pengeluaran pada periode terpilih
+                  {t('reports.rincianTransaksiPemasukanDan')}
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col">Tanggal</th>
-                    <th scope="col">Jenis</th>
-                    <th scope="col">Kategori</th>
-                    <th scope="col">Keterangan</th>
-                    <th scope="col" className={styles.num}>Nominal</th>
+                    <th scope="col">{t('reports.tanggal')}</th>
+                    <th scope="col">{t('reports.jenis')}</th>
+                    <th scope="col">{t('reports.kategori')}</th>
+                    <th scope="col">{t('reports.keterangan')}</th>
+                    <th scope="col" className={styles.num}>{t('reports.nominal')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -883,6 +887,7 @@ function Metric({
    *  (delta `undefined`) supaya kekosongan itu dikatakan, bukan disembunyikan. */
   noBaseline?: boolean;
 }) {
+  const t = useT();
   // For expense, a rise is "bad" → invert the good/bad color mapping.
   const showDelta = delta != null && Number.isFinite(delta);
   const isUp = (delta ?? 0) >= 0;
@@ -904,7 +909,7 @@ function Metric({
         )}
         {!showDelta && noBaseline && (
           <span className={[styles.metricDelta, styles.metricNoBase].join(' ')}>
-            Tidak ada data periode lalu
+            {t('reports.tidakAdaDataPeriode')}
           </span>
         )}
         {note && (

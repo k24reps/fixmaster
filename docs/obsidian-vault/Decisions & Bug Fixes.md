@@ -3644,3 +3644,22 @@ Sisa temuan kecil dari critique Servis/Kasir/Dashboard/Keuangan, dikerjakan seka
   sudah memberi `aria-pressed`.
 - Skip link awalnya putih di atas `--brand` (2,03:1 gelap) — tertangkap `audit-contrast`, kini
   pasangan tombol utama `--gradient-brand` + `--on-brand`.
+
+## i18n Inventori, Laporan, Pengaturan (29 Sep 2026)
+
+±380 teks tampilan di `features/inventory`, `reports/ReportsPage`, dan `settings/SettingsPage` (3.300
+baris, 20 komponen) dipindah ke `useT()` — namespace `inventory.*`, `reports.*`, `settingsPage.*`.
+Kali ini sebagian besar lewat pengubah otomatis untuk pola yang terbukti aman (atribut string,
+teks satu-satunya anak elemen, toast/setError literal, paragraf teks-polos multi-baris → satu
+kunci), lalu sisa ternary/template/label modul (`ROLE_LABEL`, `STATE_LABEL` jadi peta kunci)
+dikerjakan tangan. Teks Indonesia tak berubah; diperiksa di demo: Inventori + jendelanya, Laporan,
+dan tujuh tab Pengaturan — nol kunci mentah.
+
+- Pelajaran: teks JSX yang bersambung ke baris berikut TIDAK boleh diubah per baris — JSX memangkas
+  spasi antara teks dan `{ekspresi}` di baris baru ("dikhususkan ke" + "satu cabang" jadi "kesatu").
+  Karena itu pengubah hanya menyentuh teks yang menjadi satu-satunya anak, atau seluruh paragraf.
+- Tetap literal: kolom CSV ekspor (data berkas), pesan `demoGuard`, `printReport.ts`.
+- Pilihan bahasa masih dikunci ke Indonesia: Pelanggan, Supplier, Tugas, Absensi, Log Aktivitas,
+  Onboarding, dan landing belum masuk kamus.
+- Dev lokal: tab Tim/Sistem di demo memanggil Supabase cloud lama (`.env` lokal) dan kena 402 —
+  bukan regresi, produksi memakai server VPS.

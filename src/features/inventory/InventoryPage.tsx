@@ -25,11 +25,17 @@ import { logActivity } from '@/lib/activity';
 import { InventoryModal } from './InventoryModal';
 import type { InventoryItem } from '@/data/types';
 import styles from './InventoryPage.module.css';
+import { useT } from '@/i18n';
+import type { TranslationKey } from '@/i18n';
 
 type SortKey = 'low_first' | 'name_asc' | 'stock_desc';
 type StockFilter = 'all' | 'low' | 'out';
 
-const STATE_LABEL = { out: 'HABIS', low: 'MENIPIS', ok: 'AMAN' } as const;
+const STATE_LABEL: Record<'out' | 'low' | 'ok', TranslationKey> = {
+  out: 'inventory.stateOut',
+  low: 'inventory.stateLow',
+  ok: 'inventory.stateOk',
+};
 
 function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
   if (item.stock <= 0) return 'out';
@@ -38,6 +44,7 @@ function stockState(item: InventoryItem): 'out' | 'low' | 'ok' {
 }
 
 export function InventoryPage() {
+  const t = useT();
   const [searchParams] = useSearchParams();
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   // Servis hanya dipakai untuk peringatan "dipakai di N servis aktif" saat
@@ -101,7 +108,7 @@ export function InventoryPage() {
     if (!toDelete) return;
     try {
       await repository.remove('inventory', toDelete.id);
-      toast.success('Sparepart dihapus');
+      toast.success(t('inventory.sparepartDihapus'));
       logActivity({
         action: 'inventory.delete',
         entityType: 'inventory',
@@ -109,7 +116,7 @@ export function InventoryPage() {
         entityLabel: toDelete.name,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus sparepart');
+      toast.error(e instanceof Error ? e.message : t('inventory.deleteFailed'));
     } finally {
       setToDelete(null);
     }
@@ -145,10 +152,10 @@ export function InventoryPage() {
   const renderActions = (i: InventoryItem) =>
     isMgr && (
       <>
-        <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label="Edit">
+        <button className={styles.iconBtn} onClick={() => { setEditing(i); setModalOpen(true); }} aria-label={t('inventory.edit')}>
           <Icon name="pen" aria-hidden />
         </button>
-        <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label="Hapus">
+        <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => requestDelete(i)} aria-label={t('inventory.hapus')}>
           <Icon name="trash" aria-hidden />
         </button>
       </>
@@ -157,17 +164,17 @@ export function InventoryPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.statsBar}>
-        <span><strong>{stats.total}</strong> item</span>
-        <span className={styles.low}><strong>{stats.low}</strong> menipis</span>
-        <span className={styles.out}><strong>{stats.out}</strong> habis</span>
+        <span><strong>{stats.total}</strong> {t('inventory.statItems')}</span>
+        <span className={styles.low}><strong>{stats.low}</strong> {t('inventory.statLow')}</span>
+        <span className={styles.out}><strong>{stats.out}</strong> {t('inventory.statOut')}</span>
         {/* Nilai stok & HPP = modal dan margin toko; hanya owner/admin (audit #14). */}
-        {isMgr && <span><strong>{fmtRp(stats.value)}</strong> nilai stok</span>}
+        {isMgr && <span><strong>{fmtRp(stats.value)}</strong> {t('inventory.statValue')}</span>}
       </div>
 
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <Input
-            placeholder="Cari sparepart atau kategori…"
+            placeholder={t('inventory.cariSparepartAtauKategori')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -178,20 +185,20 @@ export function InventoryPage() {
             className={styles.select}
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-            aria-label="Filter kondisi stok"
+            aria-label={t('inventory.filterKondisiStok')}
           >
-            <option value="all">Semua Kondisi</option>
-            <option value="out">Stok Habis</option>
-            <option value="low">Stok Menipis</option>
+            <option value="all">{t('inventory.semuaKondisi')}</option>
+            <option value="out">{t('inventory.stokHabis')}</option>
+            <option value="low">{t('inventory.stokMenipis')}</option>
           </select>
           <select className={styles.select} value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            <option value="low_first">Stok Rendah Dulu</option>
-            <option value="name_asc">Nama A-Z</option>
-            <option value="stock_desc">Stok Terbanyak</option>
+            <option value="low_first">{t('inventory.stokRendahDulu')}</option>
+            <option value="name_asc">{t('inventory.namaAZ')}</option>
+            <option value="stock_desc">{t('inventory.stokTerbanyak')}</option>
           </select>
-          <ViewToggle value={view} onChange={chooseView} label="Tampilan sparepart" />
+          <ViewToggle value={view} onChange={chooseView} label={t('inventory.tampilanSparepart')} />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />} hidden={!isMgr} style={isMgr ? undefined : { display: 'none' }}>
-            Tambah Sparepart
+            {t('inventory.tambahSparepart')}
           </Button>
         </div>
       </div>
@@ -201,7 +208,7 @@ export function InventoryPage() {
         total={inventory.length}
         value={activeCategory}
         onChange={setCategoryFilter}
-        label="Kategori sparepart"
+        label={t('inventory.kategoriSparepart')}
       />
 
       {loadPending(inventoryLoad) ? (
@@ -212,12 +219,12 @@ export function InventoryPage() {
         <Card glass>
           <EmptyState
             icon={<Icon name="boxes-stacked" aria-hidden />}
-            title={inventory.length === 0 ? 'Belum ada sparepart' : 'Tidak ada hasil'}
-            description={inventory.length === 0 ? 'Tambahkan stok pertama Anda.' : 'Ubah filter atau pencarian.'}
+            title={inventory.length === 0 ? t('inventory.emptyTitle') : t('inventory.noResults')}
+            description={inventory.length === 0 ? t('inventory.emptyFirst') : t('inventory.emptyFiltered')}
             action={
               inventory.length === 0 && (
                 <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
-                  Tambah Sparepart
+                  {t('inventory.tambahSparepart')}
                 </Button>
               )
             }
@@ -242,7 +249,7 @@ export function InventoryPage() {
                 <div className={styles.itemStock}>
                   <span className={styles.stockNum}>{i.stock}</span>
                   <span>
-                    min {i.minStock} · {STATE_LABEL[st]}
+                    min {i.minStock} · {t(STATE_LABEL[st])}
                   </span>
                 </div>
                 <div className={styles.itemPrice}>
@@ -262,7 +269,7 @@ export function InventoryPage() {
               <div key={i.id} className={[styles.itemTile, styles[st]].join(' ')}>
                 <span className={styles.led}>
                   <span className={styles.ledDot} aria-hidden />
-                  {STATE_LABEL[st]}
+                  {t(STATE_LABEL[st])}
                 </span>
                 <span className={styles.tileName} title={i.name}>
                   {i.name}
@@ -329,9 +336,9 @@ export function InventoryPage() {
       />
       <ConfirmDialog
         open={!!toDelete}
-        title="Hapus Sparepart?"
+        title={t('inventory.hapusSparepart')}
         message={`"${toDelete?.name}" akan dihapus dari inventori.`}
-        confirmLabel="Hapus"
+        confirmLabel={t('inventory.hapus')}
         danger
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}

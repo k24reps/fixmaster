@@ -11,6 +11,8 @@ import { useSessionStore } from '@/stores/session';
 import { isCloudMode } from '@/stores/demo';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { InventoryItem } from '@/data/types';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 interface InventoryModalProps {
   open: boolean;
@@ -20,6 +22,7 @@ interface InventoryModalProps {
 }
 
 export function InventoryModal({ open, onClose, editing, categories }: InventoryModalProps) {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: outlets } = useCollection('outlets');
   const [name, setName] = useState('');
@@ -55,8 +58,8 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const stockDelta = editing ? stockNum - editing.stock : 0;
 
   const save = async () => {
-    if (!name.trim()) return setError('Nama barang wajib diisi');
-    if (stockNum < 0) return setError('Stok tidak boleh negatif');
+    if (!name.trim()) return setError(t('inventory.namaBarangWajibDiisi'));
+    if (stockNum < 0) return setError(t('inventory.stokTidakBolehNegatif'));
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -68,7 +71,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
       const fresh = editing ? await repository.get('inventory', editing.id) : null;
       const currentStock = fresh?.stock ?? editing?.stock ?? 0;
       if (editing && currentStock + stockDelta < 0) {
-        throw new Error(`Stok terkini ${currentStock}; perubahan ${stockDelta} membuatnya negatif`);
+        throw new Error(interpolate(t('inventory.negativeStock'), { stock: String(currentStock), delta: String(stockDelta) }));
       }
       const record: InventoryItem = {
         id: editing?.id ?? newId(),
@@ -105,10 +108,10 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
           ...(stockDelta !== 0 ? { stockDelta, reason: stockReason.trim() } : {}),
         },
       });
-      toast.success(editing ? 'Sparepart diperbarui' : 'Sparepart ditambahkan');
+      toast.success(editing ? t('inventory.updated') : t('inventory.added'));
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan sparepart');
+      toast.error(e instanceof Error ? e.message : t('inventory.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -118,27 +121,27 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Sparepart' : 'Sparepart Baru'}
+      title={editing ? t('inventory.editTitle') : t('inventory.newTitle')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('inventory.batal')}
           </Button>
           <Button onClick={save} loading={busy}>
-            Simpan
+            {t('inventory.simpan')}
           </Button>
         </>
       }
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama Sparepart / Produk" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input label={t('inventory.namaSparepartProduk')} value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <Input
-          label="Kategori"
+          label={t('inventory.kategori')}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           list="inv-categories"
-          placeholder="Contoh: RAM, LCD, Baterai"
+          placeholder={t('inventory.contohRamLcdBaterai')}
         />
         <datalist id="inv-categories">
           {categories.map((c) => (
@@ -147,53 +150,53 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
         </datalist>
         {outlets.length > 1 && (
           <Select
-            label="Cabang Pemilik Stok"
+            label={t('inventory.cabangPemilikStok')}
             value={outletId}
             onChange={(e) => setOutletId(e.target.value)}
             options={[
               { value: '', label: 'Semua cabang (stok bersama)' },
               ...outlets.map((o) => ({ value: o.id, label: o.name })),
             ]}
-            hint="Dipilih salah satu cabang: barang ini hanya muncul & terjual di cabang itu"
+            hint={t('inventory.dipilihSalahSatuCabang')}
           />
         )}
         <FormRow>
           <Input
-            label="Stok"
+            label={t('inventory.stok')}
             type="number"
             value={stock}
             onChange={(e) => setStock(e.target.value)}
-            hint={editing ? 'Perubahan diterapkan sebagai selisih dari stok terkini' : undefined}
+            hint={editing ? t('inventory.deltaHint') : undefined}
           />
           <Input
-            label="Stok Minimum"
+            label={t('inventory.stokMinimum')}
             type="number"
             value={minStock}
             onChange={(e) => setMinStock(e.target.value)}
-            hint="Untuk peringatan stok menipis"
+            hint={t('inventory.untukPeringatanStokMenipis')}
           />
         </FormRow>
         {editing && stockDelta !== 0 && (
           <Input
-            label={`Alasan perubahan stok (${stockDelta > 0 ? '+' : ''}${stockDelta})`}
+            label={interpolate(t('inventory.deltaReason'), { delta: `${stockDelta > 0 ? '+' : ''}${stockDelta}` })}
             value={stockReason}
             onChange={(e) => setStockReason(e.target.value)}
-            placeholder="Contoh: hasil stok opname, barang rusak"
+            placeholder={t('inventory.contohHasilStokOpname')}
           />
         )}
         <FormRow>
-          <Input label="Harga Modal (HPP)" value={costPrice} onChange={(e) => setCostPrice(fmtRpInput(e.target.value))} placeholder="60.000" />
-          <Input label="Harga Jual" value={sellPrice} onChange={(e) => setSellPrice(fmtRpInput(e.target.value))} placeholder="100.000" />
+          <Input label={t('inventory.hargaModalHpp')} value={costPrice} onChange={(e) => setCostPrice(fmtRpInput(e.target.value))} placeholder="60.000" />
+          <Input label={t('inventory.hargaJual')} value={sellPrice} onChange={(e) => setSellPrice(fmtRpInput(e.target.value))} placeholder="100.000" />
         </FormRow>
         <Input
-          label="Garansi Bawaan (hari)"
+          label={t('inventory.garansiBawaanHari')}
           type="number"
           inputMode="numeric"
           min={0}
           value={warrantyDays}
           onChange={(e) => setWarrantyDays(e.target.value)}
-          placeholder="Kosongkan = garansi part toko"
-          hint="Isian awal garansi saat part ini dipasang di tiket; tetap bisa diubah saat Selesai"
+          placeholder={t('inventory.kosongkanGaransiPartToko')}
+          hint={t('inventory.isianAwalGaransiSaat')}
         />
       </FormFields>
     </Modal>
