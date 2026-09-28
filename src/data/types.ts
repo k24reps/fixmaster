@@ -343,6 +343,9 @@ export interface ClaimItem {
   inferred?: boolean;
 }
 
+/** Jenis kunci layar unit (0094). Isinya TIDAK di tiket — lihat data/serviceSecret. */
+export type ScreenLockKind = 'pin' | 'pola' | 'sandi';
+
 export interface Service extends BaseEntity {
   serviceNo: string;
   customerId: ID;
@@ -368,6 +371,12 @@ export interface Service extends BaseEntity {
    */
   completedAt?: ISODateTime;
   accessories: string;
+  /** IMEI / nomor seri saat unit diterima (0094). Opsional: baris lama belum membawanya. */
+  deviceSerial?: string;
+  /** Kondisi fisik saat diterima — lecet, retak, bekas air (0094). */
+  deviceCondition?: string;
+  /** Hanya JENIS kunci layar yang dititipkan; isinya di `service_secrets`. */
+  secretKind?: ScreenLockKind | null;
   status: ServiceStatus;
   technicianId: ID | null;
   technicianName: string;
@@ -405,7 +414,8 @@ export interface Service extends BaseEntity {
  */
 export const SERVICE_LIST_COLUMNS: string =
   'id,org_id,outlet_id,service_no,customer_id,customer_name,customer_phone,category,device,' +
-  'complaint,completion_note,completed_at,accessories,status,technician_id,technician_name,' +
+  'complaint,completion_note,completed_at,accessories,device_serial,device_condition,secret_kind,' +
+  'status,technician_id,technician_name,' +
   'estimate_cost,final_cost,' +
   'down_payment,spareparts,warranty_until,warranty_service_until,warranty_parts_until,' +
   'picked_up,picked_up_at,warranty_claim_of,claimed_items,archived,created_at,updated_at,deleted_at';

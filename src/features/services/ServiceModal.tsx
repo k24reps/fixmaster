@@ -14,7 +14,9 @@ import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { trackEvent } from '@/lib/analytics';
 import { useDemoStore } from '@/stores/demo';
-import type { Service, Customer, Employee } from '@/data/types';
+import type { Service, Customer, Employee, ScreenLockKind } from '@/data/types';
+import type { TranslationKey } from '@/i18n';
+import { saveScreenLock } from '@/data/serviceSecret';
 import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
 import { interpolate } from '@/lib/business/notify';
@@ -29,7 +31,20 @@ interface IntakeDraft {
   technicianId: string;
   estimateCost: string;
   outletId: string;
+  deviceSerial: string;
+  deviceCondition: string;
+  // Jenis saja — isi kunci layar sengaja TIDAK ikut draf.
+  lockKind: ScreenLockKind | '';
 }
+
+/** Pilihan cepat kondisi fisik; teksnya ikut tersimpan di tiket (data, bukan label UI). */
+const CONDITION_CHIPS: TranslationKey[] = [
+  'serviceForm.condNormal',
+  'serviceForm.condScratch',
+  'serviceForm.condCracked',
+  'serviceForm.condDent',
+  'serviceForm.condWater',
+];
 
 // Isian tiket BARU yang ditutup tanpa disimpan (Esc, ketuk latar, Batal). Dulu
 // hilang seketika — di meja konter itu berarti mengetik ulang semuanya sementara
@@ -75,6 +90,10 @@ export function ServiceModal({
   const [device, setDevice] = useState('');
   const [complaint, setComplaint] = useState('');
   const [accessories, setAccessories] = useState('');
+  const [deviceSerial, setDeviceSerial] = useState('');
+  const [deviceCondition, setDeviceCondition] = useState('');
+  const [lockKind, setLockKind] = useState<ScreenLockKind | ''>('');
+  const [lockSecret, setLockSecret] = useState('');
   const [technicianId, setTechnicianId] = useState('');
   const [estimateCost, setEstimateCost] = useState('');
   const [outletId, setOutletId] = useState('');
@@ -100,6 +119,9 @@ export function ServiceModal({
     technicianId,
     estimateCost,
     outletId,
+    deviceSerial,
+    deviceCondition,
+    lockKind,
   });
   const hasContent = [customerName, customerPhone, device, complaint, accessories, estimateCost].some((v) =>
     v.trim(),
@@ -114,6 +136,10 @@ export function ServiceModal({
     setTechnicianId(d?.technicianId ?? '');
     setEstimateCost(d?.estimateCost ?? '');
     setOutletId(d?.outletId ?? '');
+    setDeviceSerial(d?.deviceSerial ?? '');
+    setDeviceCondition(d?.deviceCondition ?? '');
+    setLockKind(d?.lockKind ?? '');
+    setLockSecret('');
     setError('');
   };
   const close = () => {
@@ -142,6 +168,9 @@ export function ServiceModal({
       technicianId: editing.technicianId ?? '',
       estimateCost: editing.estimateCost ? fmtRpInput(String(editing.estimateCost)) : '',
       outletId: '',
+      deviceSerial: editing.deviceSerial ?? '',
+      deviceCondition: editing.deviceCondition ?? '',
+      lockKind: editing.secretKind ?? '',
     });
   });
 
@@ -211,6 +240,10 @@ export function ServiceModal({
     // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
     // branch first so the ticket isn't silently stamped to the primary outlet.
     if (needOutlet && !outletId) return setError(t('serviceForm.outletRequired'));
+    // Jenis dipilih tanpa isi = lupa mengetik. Saat edit, kosong berarti "tetap".
+    if (lockKind && !lockSecret.trim() && !(editing?.secretKind === lockKind)) {
+      return setError(t('serviceForm.lockRequired'));
+    }
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -262,6 +295,8 @@ export function ServiceModal({
           device: device.trim(),
           complaint: complaint.trim(),
           accessories: accessories.trim(),
+          deviceSerial: deviceSerial.trim(),
+          deviceCondition: deviceCondition.trim(),
           technicianId: technicianId || null,
           technicianName: tech?.name ?? '',
           estimateCost: parseRpInput(estimateCost),
@@ -278,6 +313,10 @@ export function ServiceModal({
             },
           ],
         });
+        if (!editing.pickedUp) {
+          if (!lockKind && editing.secretKind) await saveScreenLock(editing, editing.secretKind, '');
+          else if (lockKind && lockSecret.trim()) await saveScreenLock(editing, lockKind, lockSecret);
+        }
         toast.success(t('serviceForm.updated'));
       } else {
         const serviceNo = nextDocNumber(
@@ -296,6 +335,9 @@ export function ServiceModal({
           device: device.trim(),
           complaint: complaint.trim(),
           accessories: accessories.trim(),
+          deviceSerial: deviceSerial.trim(),
+          deviceCondition: deviceCondition.trim(),
+          secretKind: null,
           status: 'diterima',
           technicianId: technicianId || null,
           technicianName: tech?.name ?? '',
@@ -327,6 +369,16 @@ export function ServiceModal({
         // memakai nomor yang benar-benar tersimpan.
         const saved = await repository.put('services', record);
         created = saved;
+        // Kunci layar disimpan terpisah (0094). Gagal di sini tidak membatalkan
+        // tiket yang sudah tersimpan — cukup diberi tahu, bisa diulang dari Edit.
+        if (lockKind && lockSecret.trim()) {
+          try {
+            await saveScreenLock(saved, lockKind, lockSecret);
+            created = { ...saved, secretKind: lockKind };
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : t('serviceForm.lockFailed'));
+          }
+        }
         if (services.length === 0 && !useDemoStore.getState().isDemo) {
           trackEvent('first_service_created', {
             workspace_mode: isSupabaseConfigured ? 'cloud' : 'local',
@@ -451,6 +503,14 @@ export function ServiceModal({
           />
         </FormRow>
         <Input
+          label={t('serviceForm.serial')}
+          placeholder={t('serviceForm.serialPh')}
+          value={deviceSerial}
+          noAutoCap
+          spellCheck={false}
+          onChange={(e) => setDeviceSerial(e.target.value)}
+        />
+        <Input
           label={t('serviceForm.complaint')}
           placeholder={t('serviceForm.complaintPh')}
           value={complaint}
@@ -491,6 +551,66 @@ export function ServiceModal({
               </button>
             ))}
           </div>
+        )}
+        <Input
+          label={t('serviceForm.condition')}
+          placeholder={t('serviceForm.conditionPh')}
+          value={deviceCondition}
+          onChange={(e) => setDeviceCondition(e.target.value)}
+        />
+        <div className={styles.chips}>
+          <span className={styles.chipsLabel}>{t('serviceForm.conditionQuick')}</span>
+          {CONDITION_CHIPS.map((k) => (
+            <button
+              type="button"
+              key={k}
+              className={styles.chip}
+              onClick={() => appendToField(deviceCondition, t(k), setDeviceCondition)}
+            >
+              <Icon name="plus" aria-hidden /> {t(k)}
+            </button>
+          ))}
+        </div>
+        {/* Kunci layar: tidak ditawarkan lagi setelah unit diambil (sudah dihapus server). */}
+        {!editing?.pickedUp && (
+          <FormRow>
+            <Select
+              label={t('serviceForm.lockKind')}
+              value={lockKind}
+              onChange={(e) => {
+                setLockKind(e.target.value as ScreenLockKind | '');
+                setLockSecret('');
+              }}
+              options={[
+                { value: '', label: t('serviceForm.lockNone') },
+                { value: 'pin', label: t('serviceForm.lock_pin') },
+                { value: 'pola', label: t('serviceForm.lock_pola') },
+                { value: 'sandi', label: t('serviceForm.lock_sandi') },
+              ]}
+            />
+            {lockKind && (
+              <Input
+                label={t('serviceForm.lockValue')}
+                value={lockSecret}
+                onChange={(e) => setLockSecret(e.target.value)}
+                inputMode={lockKind === 'sandi' ? 'text' : 'numeric'}
+                autoComplete="off"
+                spellCheck={false}
+                noAutoCap
+                maxLength={64}
+                data-1p-ignore
+                data-lpignore="true"
+                placeholder={
+                  editing?.secretKind === lockKind
+                    ? t('serviceForm.lockKeep')
+                    : lockKind === 'pola'
+                      ? t('serviceForm.lockPolaPh')
+                      : ''
+                }
+                hint={t('serviceForm.lockHint')}
+              />
+            )}
+          </FormRow>
         )}
         <FormRow>
           <Select

@@ -73,6 +73,12 @@ describe('DEFAULT_WA_TEMPLATES', () => {
 });
 
 describe('serviceReceiptLines', () => {
+  it('prints serial & condition as proof of the unit left, never the screen lock', () => {
+    const lines = serviceReceiptLines(svc({ deviceSerial: '356789104512345', deviceCondition: 'Lecet', secretKind: 'pin' }));
+    expect(lines.find((l) => l.label === 'IMEI/SN')?.value).toBe('356789104512345');
+    expect(lines.find((l) => l.label === 'Kondisi')?.value).toBe('Lecet');
+    expect(JSON.stringify(lines)).not.toMatch(/pin|kunci/i);
+  });
   it('includes core fields', () => {
     const lines = serviceReceiptLines(svc({}));
     const labels = lines.map((l) => l.label);

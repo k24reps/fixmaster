@@ -329,6 +329,10 @@ Skrip di repo: `scripts/selfhost/backup/` → dipasang ke `C:\fixmaster-server\b
   --no-privileges`, memuat `auth.users` + policy storage) + `public.dump` (dengan
   ACL) + folder `volumes/storage`. Format sama dengan dump migrasi — pulihkan dengan
   urutan runbook di atas. Tanpa downtime (pg_dump saat hidup).
+- **Isi tabel `service_secrets` (kunci layar unit, 0094) sengaja TIDAK ikut** —
+  kedua `pg_dump` memakai `--exclude-table-data=public.service_secrets`, jadi arsip
+  Drive tak pernah memuat PIN pelanggan; hasil pulihkan = tabel kosong (skema tetap).
+  Perubahan skrip ini harus disalin ulang ke `/opt/fixmaster/backup/` di VPS.
 - **Enkripsi** 7-Zip AES-256 `-mhe=on` (daftar isi ikut terenkripsi). Password
   disimpan Windows DPAPI (`simpan-password.ps1` → `backup-pw.dat`, hanya terbuka oleh
   akun itu di mesin itu) — **pemilik wajib mencatat password di tempat lain**; tanpa

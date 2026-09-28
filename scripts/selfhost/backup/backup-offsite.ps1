@@ -53,9 +53,9 @@ try {
 
   # Dump di DALAM kontainer lalu docker cp: menyalurkan stdout biner lewat pipa
   # PowerShell 5.1 merusak berkasnya (diperlakukan sebagai teks).
-  & $docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --no-owner --no-privileges -f /tmp/fm-full.dump
+  & $docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --exclude-table-data=public.service_secrets --no-owner --no-privileges -f /tmp/fm-full.dump
   Native 'pg_dump lengkap'
-  & $docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc -n public --no-owner -f /tmp/fm-public.dump
+  & $docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --exclude-table-data=public.service_secrets -n public --no-owner -f /tmp/fm-public.dump
   Native 'pg_dump public'
   & $docker cp supabase-db:/tmp/fm-full.dump (Join-Path $work 'full.dump') | Out-Null
   Native 'docker cp full'

@@ -31,8 +31,8 @@ fail() { log "GAGAL: $*"; status "GAGAL: $*"; exit 1; }
 [ -f "$ROOT/.env" ] || fail ".env tidak ada di $ROOT"
 PW="$(cat "$PW_FILE")"
 
-docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --no-owner --no-privileges -f /tmp/fm-full.dump || fail "pg_dump lengkap"
-docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc -n public --no-owner -f /tmp/fm-public.dump || fail "pg_dump public"
+docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --exclude-table-data=public.service_secrets --no-owner --no-privileges -f /tmp/fm-full.dump || fail "pg_dump lengkap"
+docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --exclude-table-data=public.service_secrets -n public --no-owner -f /tmp/fm-public.dump || fail "pg_dump public"
 # Volume db-config terpasang di /etc/postgresql-custom: berisi pgsodium_root.key (vault).
 docker exec supabase-db tar czf /tmp/fm-db-config.tgz -C /etc/postgresql-custom . || fail "tar db-config"
 for f in full public db-config; do

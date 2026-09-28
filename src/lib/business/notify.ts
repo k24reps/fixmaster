@@ -105,6 +105,8 @@ export function serviceVars(service: Service, org: Organization): Record<string,
     // WhatsApp tidak — di sinilah bukti "apa yang saya titipkan" bertahan.
     keluhan: optionalLine('Keluhan', service.complaint),
     kelengkapan: optionalLine('Kelengkapan', service.accessories),
+    imei: optionalLine('IMEI/SN', service.deviceSerial),
+    kondisi: optionalLine('Kondisi', service.deviceCondition),
     alamat: optionalLine('Alamat', org.address),
     garansi: warrantyBlock(service),
     rincian_bayar: paymentBlock(service),
@@ -128,7 +130,7 @@ export const DEFAULT_WA_TEMPLATES = {
   diterima: `Halo {nama}, terima kasih sudah mempercayakan perangkat Anda kepada kami.
 
 Unit *{perangkat}* sudah kami terima dan masuk antrean pengerjaan.
-No. Servis: *{no_servis}*{keluhan}{kelengkapan}
+No. Servis: *{no_servis}*{imei}{keluhan}{kelengkapan}{kondisi}
 Estimasi biaya: {estimasi}
 
 Status pengerjaan bisa dipantau kapan saja di:
@@ -219,6 +221,8 @@ export const WA_TEMPLATE_VARS = [
   'tautan',
   'keluhan',
   'kelengkapan',
+  'imei',
+  'kondisi',
   'alamat',
   'garansi',
   'rincian_bayar',
@@ -277,6 +281,11 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
     { label: 'Pelanggan', value: service.customerName, group: 'unit' },
     { label: 'Perangkat', value: service.device, group: 'unit' },
   );
+  // Bukti "unit seperti apa yang saya titipkan" — nomor seri & kondisi fisik.
+  if (service.deviceSerial)
+    lines.push({ label: 'IMEI/SN', value: service.deviceSerial, group: 'unit' });
+  if (service.deviceCondition)
+    lines.push({ label: 'Kondisi', value: service.deviceCondition, group: 'unit' });
   if (service.complaint)
     lines.push({ label: 'Keluhan', value: service.complaint, group: 'unit' });
   if (service.accessories)

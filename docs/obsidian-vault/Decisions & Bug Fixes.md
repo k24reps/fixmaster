@@ -3577,3 +3577,22 @@ Jawaban pemilik atas rekap pertanyaan UX (nomor 1, 2, 3, 11/12, 15):
   di server (juga mencakup tiket lama). Tiket batal lama di halaman detail tetap "—".
 - **Tiket Lunas (3).** Menambah part hanya owner/admin — tombol disembunyikan untuk karyawan dan
   `update_service_parts` menolaknya (0093). Modal dadakan memang sudah owner/admin (0087).
+
+## Kunci layar unit terhapus otomatis (0094, 28 Sep 2026)
+
+Pemilik ingin mencatat PIN/pola unit (teknisi butuh untuk menguji) dan bertanya apakah data sensitif
+itu bisa langsung hilang saat unit diambil. Keputusan:
+
+- **Tabel terpisah tanpa akses langsung.** Menyimpannya di kolom `services` berarti ikut daftar
+  Servis, realtime, cadangan per toko, dan ekspor — lima jalur bocor. `service_secrets` ber-RLS
+  tanpa policy; hanya dua RPC security definer yang bisa menyentuhnya, dan pembacaan dibatasi
+  owner/admin + teknisi yang ditugaskan (resepsionis boleh menulis, tidak membaca).
+- **Penghapusan milik database, bukan aplikasi.** Trigger pada `picked_up` — semua jalur ambil
+  (tombol, Serahkan unit, express) lewat kolom itu, jadi tidak ada jalur yang lupa memanggil hapus,
+  dan tetap terjadi walau perangkat kasir mati di tengah proses. Tiket batal yang tak pernah
+  diambil dibersihkan pg_cron setelah 30 hari tanpa aktivitas.
+- **Cadangan offsite.** Batasan yang semula disampaikan ke pemilik ("arsip Drive menyimpan salinan
+  sampai rotasi") ternyata bisa dihapus sama sekali: `pg_dump --exclude-table-data` untuk tabel ini.
+- **Yang tersisa di tiket hanya `secret_kind`**, supaya riwayat jujur ("PIN diberikan · dihapus saat
+  diambil") tanpa menyimpan isinya. IMEI/SN & kondisi fisik justru dicetak di nota: itu bukti
+  pelanggan tentang unit yang ia titipkan.

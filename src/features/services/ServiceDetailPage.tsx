@@ -39,6 +39,7 @@ import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import { TicketDoneModal } from './TicketDoneModal';
+import { ScreenLockReadout } from './ScreenLockReadout';
 import { printServiceReceipt } from './printReceipt';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
@@ -766,6 +767,29 @@ export function ServiceDetailPage() {
                 <dt>{t('serviceDetail.category')}</dt>
                 <dd>{service.category}</dd>
               </div>
+              {service.deviceSerial && (
+                <div>
+                  <dt>{t('serviceDetail.serial')}</dt>
+                  <dd className={styles.serial}>{service.deviceSerial}</dd>
+                </div>
+              )}
+              {service.deviceCondition && (
+                <div>
+                  <dt>{t('serviceDetail.condition')}</dt>
+                  <dd>{service.deviceCondition}</dd>
+                </div>
+              )}
+              {service.secretKind && (
+                <div>
+                  <dt>{t('serviceDetail.screenLock')}</dt>
+                  <dd>
+                    <ScreenLockReadout
+                      service={service}
+                      canView={isManager || (!!me && service.technicianId === me.id)}
+                    />
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
         </section>

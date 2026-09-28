@@ -497,6 +497,40 @@ export async function correctServiceCost(args: {
  * `deducted` dan mengunci baris inventori, jadi aman terhadap penjualan kasir
  * yang bersamaan — dan karyawan tak butuh akses tulis inventori.
  */
+/** Simpan / hapus kunci layar unit (0094). `secret` kosong = hapus. */
+export async function setServiceSecretRpc(args: {
+  orgId: string;
+  serviceId: string;
+  kind: string;
+  secret: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('set_service_secret', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_kind: args.kind,
+    p_secret: args.secret,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Baca kunci layar — server hanya mengizinkan teknisi tiket & owner/admin (0094). */
+export async function getServiceSecretRpc(args: {
+  orgId: string;
+  serviceId: string;
+}): Promise<{ kind: 'pin' | 'pola' | 'sandi'; secret: string } | null> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('get_service_secret', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+  });
+  if (error) throw new Error(error.message);
+  const row = ((data ?? []) as { kind: 'pin' | 'pola' | 'sandi'; secret: string }[])[0];
+  return row ? { kind: row.kind, secret: row.secret } : null;
+}
+
 export async function updateServiceParts(args: {
   orgId: string;
   serviceId: string;
