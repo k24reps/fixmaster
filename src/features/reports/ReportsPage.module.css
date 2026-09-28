@@ -319,6 +319,22 @@
 .barFill.brand {
   background: var(--gradient-brand);
 }
+/* Modal/Prive: uang pemilik — netral, dengan tag mono, bukan hijau/merah operasional. */
+.barFill.capital {
+  background: var(--text-muted);
+  opacity: 0.55;
+}
+.capitalTag {
+  margin-left: var(--space-2);
+  padding: 1px 6px;
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 
 /* ---------- Metric delta (vs previous period) ---------- */
 .metricDelta {

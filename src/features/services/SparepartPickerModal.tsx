@@ -73,12 +73,20 @@ export function SparepartPickerModal({
       kind: 'inventory',
       defaultWarrantyDays: item.warrantyDays ?? null,
     };
+    // Tetap terbuka: satu unit sering butuh beberapa part (LCD + baterai + lem).
+    // Barisnya berubah jadi "Tambah lagi" begitu tersimpan; Selesai menutup.
     onPick(line);
-    onClose();
+    setQtyById((m) => ({ ...m, [itemId]: '1' }));
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t('partPicker.title')} size="lg">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('partPicker.title')}
+      size="lg"
+      footer={<Button onClick={onClose}>{t('partPicker.done')}</Button>}
+    >
       <div className={styles.body}>
         <Input
           placeholder={t('partPicker.searchPh')}

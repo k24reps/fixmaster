@@ -468,7 +468,7 @@ export const id = {
   'pos.exact': 'Pas',
   'pos.statusEmpty': 'Pilih cara bayar untuk menerima {amount}',
   'pos.statusDue': 'Kurang {amount}',
-  'pos.statusExact': 'Pembayaran pas',
+  'pos.statusExact': 'Siap diproses',
   'pos.statusChange': 'Kembalian {amount} dari {wallet}',
   'pos.statusExcess': 'Pembayaran lain sudah menutup total — hapus pembayaran {wallet}',
   'pos.lcdDue': 'Sisa',
@@ -654,7 +654,7 @@ export const id = {
   'services.pickHint': 'Klik untuk menandai sudah diambil',
   'services.stallHint': 'Tidak ada aktivitas pada tiket ini',
   'services.stalledDays': 'Tertahan {n} hari',
-  'services.statusHint': 'Klik untuk update status',
+  'services.statusHint': 'Klik untuk ubah status',
   'services.estimateHint': 'Estimasi, biaya final belum ditetapkan',
   'services.estimateShort': 'Est. {amount}',
   'services.modalAria': 'Modal {amount}',
@@ -752,7 +752,7 @@ export const id = {
   'serviceDetail.claimWarranty': 'Klaim Garansi',
   'serviceDetail.claimRunning': 'Klaim {no} berjalan',
   'serviceDetail.receiveDp': 'Terima DP',
-  'serviceDetail.updateStatus': 'Update Status',
+  'serviceDetail.updateStatus': 'Ubah Status',
   'serviceDetail.correctCost': 'Koreksi Biaya',
   'serviceDetail.claimBanner': 'Tiket ini adalah',
   'serviceDetail.claimBannerStrong': 'klaim garansi',
@@ -863,7 +863,7 @@ export const id = {
   'serviceStatus.correctFailed': 'Gagal mengoreksi biaya final',
   'serviceStatus.saveDp': 'Simpan DP',
   'serviceStatus.updateCost': 'Perbarui Biaya',
-  'serviceStatus.title': 'Update — {no}',
+  'serviceStatus.title': 'Ubah Status — {no}',
   'serviceStatus.current': 'Status saat ini',
   'serviceStatus.partsAndCost': 'Sparepart & Modal',
   'serviceStatus.partsHint': 'Kelola sparepart & modal di halaman detail servis.',
@@ -1046,6 +1046,12 @@ export const id = {
   'pos.changeRuleCash': 'Kembalian selalu diambil dari {wallet} (uang tunai).',
   'finance.countShort': 'Hitung',
   'finance.branchPlusShared': 'cabang ini + bersama',
+  // ---------- Catatan kecil UX (28 Sep 2026) ----------
+  'serviceDetail.unpicked': 'Batal diambil',
+  'serviceDetail.qrAria': 'Kode QR halaman lacak servis',
+  'partPicker.done': 'Selesai',
+  'common.skipToContent': 'Lewati ke isi halaman',
+  'pos.custNoPhone': 'tanpa nomor',
 } as const;
 
 export type TranslationKey = keyof typeof id;

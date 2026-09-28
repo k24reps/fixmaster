@@ -51,6 +51,7 @@ import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import type { Customer, InventoryItem, Sale, PaymentAllocation } from '@/data/types';
 import styles from './PosPage.module.css';
+import { useListNav } from '@/hooks/useListNav';
 
 export function PosPage() {
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
@@ -135,6 +136,15 @@ export function PosPage() {
     () => searchCustomers(serverSearch ? remoteCustomers : customers, custQuery),
     [serverSearch, remoteCustomers, customers, custQuery],
   );
+  // Panah + Enter di kolom pelanggan: baris cocok, lalu "Tambah pelanggan baru".
+  const showCustMatches = !!custQuery.trim() && !(serverSearch && custQuery.trim().length < 3);
+  const custOptions = showCustMatches ? custMatches.length : 0;
+  const custNav = useListNav(custQuery.trim() ? custOptions + 1 : 0, (i) => {
+    if (i < custOptions) {
+      setCustomer(custMatches[i]);
+      setCustQuery('');
+    } else setCustModal(true);
+  });
 
   // Void a sale (manager-only). Cloud → atomic RPC; local → mirror the
   // reversal (restore stock, reverse wallet, delete linked income, mark void).
@@ -929,6 +939,9 @@ export function PosPage() {
                     aria-label={t('pos.custOptional')}
                     value={custQuery}
                     onChange={(e) => setCustQuery(e.target.value)}
+                    onKeyDown={custNav.onKeyDown}
+                    aria-controls="pos-customer-suggest"
+                    aria-activedescendant={custNav.active >= 0 ? `pos-cust-${custNav.active}` : undefined}
                     iconLeft={<Icon name="magnifying-glass" aria-hidden />}
                   />
                   {/* Saran selalu menjelaskan dirinya: kurang huruf, masih mencari,
@@ -936,7 +949,7 @@ export function PosPage() {
                       kolom ini diam saja bila tak ada yang cocok, dan Kasir tak bisa
                       membuat pelanggan. */}
                   {custQuery.trim() && (
-                    <ul className={styles.custSuggest}>
+                    <ul className={styles.custSuggest} id="pos-customer-suggest" role="listbox">
                       {serverSearch && custQuery.trim().length < 3 ? (
                         <li className={styles.custHint}>{t('pos.custMinChars')}</li>
                       ) : custMatches.length === 0 ? (
@@ -946,23 +959,34 @@ export function PosPage() {
                             : t('pos.custNotFound').replace('{q}', custQuery.trim())}
                         </li>
                       ) : (
-                        custMatches.map((c) => (
+                        custMatches.map((c, i) => (
                           <li key={c.id}>
                             <button
                               type="button"
+                              id={`pos-cust-${i}`}
+                              role="option"
+                              aria-selected={i === custNav.active}
+                              tabIndex={-1}
                               onClick={() => {
                                 setCustomer(c);
                                 setCustQuery('');
                               }}
                             >
                               <strong>{c.name}</strong>
-                              <small>{c.phone || 'tanpa nomor'}</small>
+                              <small>{c.phone || t('pos.custNoPhone')}</small>
                             </button>
                           </li>
                         ))
                       )}
                       <li>
-                        <button type="button" className={styles.custAdd} onClick={() => setCustModal(true)}>
+                        <button
+                          type="button"
+                          id={`pos-cust-${custOptions}`}
+                          role="option"
+                          aria-selected={custNav.active === custOptions}
+                          className={styles.custAdd}
+                          onClick={() => setCustModal(true)}
+                        >
                           <Icon name="plus" aria-hidden /> {t('pos.custAdd')}
                         </button>
                       </li>

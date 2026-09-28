@@ -842,7 +842,8 @@
   padding: 7px var(--space-3);
   text-align: left;
 }
-.custSuggest button:hover {
+.custSuggest button:hover,
+.custSuggest button[aria-selected='true'] {
   background: var(--bg-hover);
 }
 .custSuggest strong {

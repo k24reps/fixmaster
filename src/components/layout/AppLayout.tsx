@@ -95,6 +95,10 @@ export function AppLayout() {
 
   return (
     <div className={[styles.layout, collapsed ? styles.collapsed : '', hasMobileNav ? styles.hasMobileNav : ''].join(' ')}>
+      {/* Pertama di urutan Tab: sidebar berisi belasan tautan sebelum isi halaman. */}
+      <a href="#konten" className={styles.skip}>
+        {t('common.skipToContent')}
+      </a>
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -107,7 +111,7 @@ export function AppLayout() {
           subtitle={subtitle}
           onToggleMobile={() => setMobileOpen((o) => !o)}
         />
-        <main ref={contentRef} className={styles.content}>
+        <main ref={contentRef} id="konten" tabIndex={-1} className={styles.content}>
           <ErrorBoundary resetKey={location.pathname}>
             <Suspense
               fallback={

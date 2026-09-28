@@ -85,7 +85,20 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
       if (openStack.length === 0) document.body.style.overflow = '';
       const opener = openerRef.current;
       openerRef.current = null;
-      if (opener?.isConnected) opener.focus();
+      // Pemicu bisa ikut hilang (baris yang dihapus/dibatalkan) — sering SETELAH
+      // jendela tertutup, saat datanya dimuat ulang. Fokus lalu jatuh ke <body> dan
+      // Tab mulai dari atas halaman. Cadangannya: isi halaman.
+      const toContent = () => document.getElementById('konten')?.focus({ preventScroll: true });
+      if (opener?.isConnected) {
+        opener.focus();
+        const until = Date.now() + 3000;
+        const watch = () => {
+          if (!opener.isConnected) {
+            if (document.activeElement === document.body) toContent();
+          } else if (Date.now() < until) requestAnimationFrame(watch);
+        };
+        requestAnimationFrame(watch);
+      } else toContent();
     };
   }, [open]);
 

@@ -48,6 +48,8 @@ import type { Service, ServiceStatus } from '@/data/types';
 import styles from './StatusModal.module.css';
 import { interpolate } from '@/lib/business/notify';
 import type { TranslationKey } from '@/i18n';
+import { PICKUP_NOTE } from '@/lib/business/services';
+import { historyKind } from '@/lib/business/services';
 
 /** Sub-actions this modal hosts. It is the single hub for all financial input. */
 type Mode = 'status' | 'dp' | 'koreksi';
@@ -424,7 +426,7 @@ export function StatusModal({
           updatedAt: now,
           history: [
             ...settleHistory,
-            { at: now, status: 'edit', by: me?.id ?? '', byName: me?.name ?? '', note: 'Barang diambil pelanggan', internal: false },
+            { at: now, status: 'edit', by: me?.id ?? '', byName: me?.name ?? '', note: PICKUP_NOTE, internal: false },
           ],
         });
       }
@@ -1164,7 +1166,16 @@ export function StatusModal({
               <li key={i} className={styles.timelineItem}>
                 <span className={styles.dot} data-tone={h.status === 'edit' ? 'neutral' : STATUS_TONE[h.status as ServiceStatus]} />
                 <div>
-                  <strong>{h.status === 'edit' ? t('serviceDetail.edit') : t(`statusLabel.${h.status as ServiceStatus}`)}</strong>
+                  <strong>{(() => {
+                    const k = historyKind(h);
+                    return k === 'pickup'
+                      ? t('services.pickedUp')
+                      : k === 'unpickup'
+                        ? t('serviceDetail.unpicked')
+                        : k === 'edit'
+                          ? t('serviceDetail.edit')
+                          : t(`statusLabel.${k}`);
+                  })()}</strong>
                   <small>
                     {fmtDate(localDateOf(h.at))} · {h.byName || '—'}
                     {h.note ? ` · ${h.note}` : ''}

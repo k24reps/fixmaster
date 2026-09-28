@@ -3,7 +3,7 @@
  * No DOM/repository dependencies → fully unit-testable. The UI layer
  * calls these to compute next states, then persists via the repository.
  */
-import type {
+import type { ServiceHistoryEntry,
   ClaimItem,
   Service,
   ServiceStatus,
@@ -157,6 +157,24 @@ export function serviceModalTotal(spareparts: ServiceSparepart[]): number {
 /** Total sparepart cost (HPP) for margin calculations. */
 export function sparepartCost(spareparts: ServiceSparepart[]): number {
   return spareparts.reduce((sum, sp) => sum + sp.costPrice * sp.qty, 0);
+}
+
+/** Catatan riwayat tanda ambil — konstanta, jadi `historyKind` bisa mengenalinya. */
+export const PICKUP_NOTE = 'Barang diambil pelanggan';
+export const UNPICK_NOTE = 'Tanda ambil dibatalkan';
+
+/**
+ * Jenis entri riwayat untuk ditampilkan. Tanda ambil tercatat sebagai `edit`
+ * biasa, sehingga Log Teknisi menulis "Edit" dan halaman lacak pelanggan "edit"
+ * mentah; catatannya yang membedakan.
+ */
+export function historyKind(
+  entry: Pick<ServiceHistoryEntry, 'status' | 'note'>,
+): ServiceStatus | 'pickup' | 'unpickup' | 'edit' {
+  if (entry.status !== 'edit') return entry.status;
+  if (entry.note === PICKUP_NOTE) return 'pickup';
+  if (entry.note === UNPICK_NOTE) return 'unpickup';
+  return 'edit';
 }
 
 /** Estimated profit = final cost − total modal (HPP parts + ad-hoc costs). */

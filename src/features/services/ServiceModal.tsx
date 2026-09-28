@@ -20,6 +20,7 @@ import { saveScreenLock } from '@/data/serviceSecret';
 import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
 import { interpolate } from '@/lib/business/notify';
+import { useListNav } from '@/hooks/useListNav';
 
 interface IntakeDraft {
   customerName: string;
@@ -202,16 +203,19 @@ export function ServiceModal({
   const hideSuggest = (field: 'name' | 'phone') =>
     window.setTimeout(() => setSuggestField((f) => (f === field ? null : f)), 150);
 
+  const nav = useListNav(suggestions.length, (i) => pickCustomer(suggestions[i]));
   const suggestList = suggestions.length > 0 && (
-    <div className={styles.suggest} role="listbox">
+    <div className={styles.suggest} role="listbox" id="intake-customer-suggest">
       <span className={styles.suggestHint}>{t('serviceForm.suggestHint')}</span>
-      {suggestions.map((c) => (
+      {suggestions.map((c, i) => (
         <button
           type="button"
           key={c.id}
+          id={`intake-cust-${i}`}
           className={styles.suggestItem}
           role="option"
-          aria-selected={false}
+          aria-selected={i === nav.active}
+          tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => pickCustomer(c)}
         >
@@ -467,6 +471,9 @@ export function ServiceModal({
               }}
               onFocus={() => setSuggestField('name')}
               onBlur={() => hideSuggest('name')}
+              onKeyDown={nav.onKeyDown}
+              aria-controls="intake-customer-suggest"
+              aria-activedescendant={suggestField === 'name' && nav.active >= 0 ? `intake-cust-${nav.active}` : undefined}
               autoFocus={!needOutlet}
             />
             {suggestField === 'name' && suggestList}
@@ -482,6 +489,9 @@ export function ServiceModal({
               }}
               onFocus={() => setSuggestField('phone')}
               onBlur={() => hideSuggest('phone')}
+              onKeyDown={nav.onKeyDown}
+              aria-controls="intake-customer-suggest"
+              aria-activedescendant={suggestField === 'phone' && nav.active >= 0 ? `intake-cust-${nav.active}` : undefined}
             />
             {suggestField === 'phone' && suggestList}
           </div>

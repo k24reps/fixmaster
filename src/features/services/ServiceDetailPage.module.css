@@ -399,17 +399,21 @@
   align-items: center;
   gap: var(--space-3);
 }
+/* QR selalu gelap di atas kertas putih — pemindai tak andal membaca QR terbalik
+   di tema gelap. */
 .qr {
-  width: 50px;
-  height: 50px;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
   border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface-2);
+  background: var(--paper);
   border: 1px solid var(--border);
-  font-size: 26px;
-  color: var(--text-secondary);
+  overflow: hidden;
+}
+.qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .qrText {
   font-size: var(--text-xs);

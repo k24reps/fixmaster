@@ -5,7 +5,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { fmtRp, fmtPercent } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, isInRange } from '@/lib/time';
-import { summarize } from '@/lib/business/finance';
+import { isCapitalFlow, summarize } from '@/lib/business/finance';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import {
   trendSeries,
@@ -35,6 +35,10 @@ function monthRange() {
     to: localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
   };
 }
+
+/** Urut nominal, tetapi Modal/Prive (arus kas pemilik) selalu di dasar. */
+const byCapitalLast = (a: [string, number], b: [string, number]) =>
+  Number(isCapitalFlow({ category: a[0] })) - Number(isCapitalFlow({ category: b[0] })) || b[1] - a[1];
 
 export function ReportsPage() {
   const [from, setFrom] = useState(monthRange().from);
@@ -165,13 +169,14 @@ export function ReportsPage() {
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const i of fIncomes) map.set(i.category, (map.get(i.category) ?? 0) + i.amount);
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+    // Modal/Prive di dasar daftar: uang pemilik, bukan omzet/biaya (isCapitalFlow).
+    return [...map.entries()].sort(byCapitalLast);
   }, [fIncomes]);
 
   const expenseByCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of fExpenses) map.set(e.category, (map.get(e.category) ?? 0) + e.amount);
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+    return [...map.entries()].sort(byCapitalLast);
   }, [fExpenses]);
 
   const maxIncome = Math.max(1, ...incomeByCategory.map(([, v]) => v));
@@ -455,11 +460,17 @@ export function ReportsPage() {
                 {incomeByCategory.map(([cat, amt]) => (
                   <li key={cat} className={styles.channel}>
                     <div className={styles.channelTop}>
-                      <span className={styles.channelName}>{cat}</span>
-                      <span className={[styles.channelValue, styles.inc].join(' ')}>{fmtRp(amt)}</span>
+                      <span className={styles.channelName}>
+                        {cat}
+                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>bukan omzet</span>}
+                      </span>
+                      <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.inc].join(' ')}>{fmtRp(amt)}</span>
                     </div>
                     <div className={styles.bar}>
-                      <div className={[styles.barFill, styles.inc].join(' ')} style={{ width: `${(amt / maxIncome) * 100}%` }} />
+                      <div
+                        className={[styles.barFill, isCapitalFlow({ category: cat }) ? styles.capital : styles.inc].join(' ')}
+                        style={{ width: `${(amt / maxIncome) * 100}%` }}
+                      />
                     </div>
                   </li>
                 ))}
@@ -480,11 +491,17 @@ export function ReportsPage() {
                 {expenseByCategory.map(([cat, amt]) => (
                   <li key={cat} className={styles.channel}>
                     <div className={styles.channelTop}>
-                      <span className={styles.channelName}>{cat}</span>
-                      <span className={[styles.channelValue, styles.exp].join(' ')}>{fmtRp(amt)}</span>
+                      <span className={styles.channelName}>
+                        {cat}
+                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>bukan biaya</span>}
+                      </span>
+                      <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.exp].join(' ')}>{fmtRp(amt)}</span>
                     </div>
                     <div className={styles.bar}>
-                      <div className={[styles.barFill, styles.exp].join(' ')} style={{ width: `${(amt / maxExpense) * 100}%` }} />
+                      <div
+                        className={[styles.barFill, isCapitalFlow({ category: cat }) ? styles.capital : styles.exp].join(' ')}
+                        style={{ width: `${(amt / maxExpense) * 100}%` }}
+                      />
                     </div>
                   </li>
                 ))}

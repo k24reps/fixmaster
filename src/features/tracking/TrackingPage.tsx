@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { repository, isSupabaseConfigured } from '@/data';
 import { trackService } from '@/data/supabase-client';
-import { STATUS_LABELS, STATUS_TONE, partWarranties } from '@/lib/business/services';
+import { STATUS_LABELS, STATUS_TONE, historyKind, partWarranties } from '@/lib/business/services';
+import type { ServiceStatus } from '@/data/types';
 import { nextStepFor, relativeSince } from '@/lib/business/tracking';
 import { waLink } from '@/lib/business/notify';
 import { slidingWindowAllow } from '@/lib/rate-limit';
@@ -313,7 +314,18 @@ export function TrackingPage() {
                 <li key={i} className={[styles.timelineItem, i === 0 ? styles.current : ''].join(' ')}>
                   <span className={styles.dot} data-tone={STATUS_TONE[h.status as keyof typeof STATUS_TONE]} />
                   <div>
-                    <strong>{STATUS_LABELS[h.status as keyof typeof STATUS_LABELS] ?? h.status}</strong>
+                    <strong>
+                      {(() => {
+                        const k = historyKind(h as { status: ServiceStatus | 'edit'; note: string });
+                        return k === 'pickup'
+                          ? 'Diambil'
+                          : k === 'unpickup'
+                            ? 'Tanda ambil dibatalkan'
+                            : k === 'edit'
+                              ? 'Diperbarui'
+                              : (STATUS_LABELS[k] ?? h.status);
+                      })()}
+                    </strong>
                     <small>
                       <span className={styles.stamp}>{stepStamp(h.at)}</span>
                       {h.note ? ' · ' + h.note : ''}

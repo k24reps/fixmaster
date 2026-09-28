@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Card,
@@ -52,6 +52,7 @@ import type { Service, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
+import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
 
 /**
  * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
@@ -323,6 +324,21 @@ export function ServicesPage() {
     setEditing(null);
     setEditOpen(true);
   };
+  // "N" = Servis Baru, seperti "/" untuk cari di Kasir. Diabaikan saat mengetik
+  // atau saat jendela lain terbuka.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'n' || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      setEditing(null);
+      setEditOpen(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Toggle physical collection (manager-only). Mirrors ServiceDetailPage so the
   // list and detail stay consistent; pickup is independent of payment status.
@@ -346,7 +362,7 @@ export function ServicesPage() {
             status: 'edit',
             by: me?.id ?? '',
             byName: me?.name ?? '',
-            note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
+            note: nowPicked ? PICKUP_NOTE : UNPICK_NOTE,
             internal: false,
           },
         ],

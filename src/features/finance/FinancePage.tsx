@@ -140,7 +140,8 @@ export function FinancePage() {
         kind: 'transfer' as const,
         date: t.date,
         category: 'Transfer',
-        description: t.note || 'Transfer antar wallet',
+        // Tanpa catatan: kosong (tampil "Tanpa keterangan"), bukan teks generik.
+        description: t.note,
         amount: t.amount,
         walletId: t.fromWalletId,
         toWalletId: t.toWalletId,
@@ -430,7 +431,9 @@ export function FinancePage() {
           className={[styles.tapeRow, styles.transfer, voided ? styles.voided : ''].join(' ')}
         >
           <div className={styles.tapeBody}>
-            <span className={styles.tapeDesc}>{r.description}</span>
+            <span className={styles.tapeDesc}>
+              {r.description || <span className={styles.muted}>{t('finance.noNote')}</span>}
+            </span>
             <span className={styles.tapeMeta}>
               <span className={[styles.tapeCat, styles.trf].join(' ')}>
                 {t(voided ? 'finance.voided' : 'finance.transfer')}

@@ -55,3 +55,22 @@
     padding: var(--space-3) var(--space-4) var(--space-8);
   }
 }
+
+/* Lewati navigasi: tak terlihat sampai difokus dengan Tab (dulu 21× Tab ke isi). */
+.skip {
+  position: absolute;
+  left: var(--space-3);
+  top: -60px;
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand);
+  color: var(--on-brand);
+  font-weight: var(--fw-semibold);
+}
+.skip:focus {
+  top: var(--space-3);
+}
+.content:focus {
+  outline: none;
+}

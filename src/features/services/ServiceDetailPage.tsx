@@ -45,9 +45,12 @@ import { printServiceReceipt } from './printReceipt';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
 import { PartWarrantyModal } from './PartWarrantyModal';
-import type { ServiceStatus, ServiceSparepart } from '@/data/types';
+import type { ServiceHistoryEntry, ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
 import { interpolate } from '@/lib/business/notify';
+import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
+import { historyKind } from '@/lib/business/services';
+import { qrSvg } from '@/lib/qr';
 
 /** Linear "job traveler" stages (cancel handled separately). */
 interface TicketAction {
@@ -511,7 +514,7 @@ export function ServiceDetailPage() {
             status: 'edit',
             by: me?.id ?? '',
             byName: me?.name ?? '',
-            note: nowPicked ? 'Barang diambil pelanggan' : 'Tanda ambil dibatalkan',
+            note: nowPicked ? PICKUP_NOTE : UNPICK_NOTE,
             internal: false,
           },
         ],
@@ -521,6 +524,16 @@ export function ServiceDetailPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('services.pickupFailed'));
     }
+  };
+  const historyLabel = (h: ServiceHistoryEntry) => {
+    const k = historyKind(h);
+    return k === 'pickup'
+      ? t('services.pickedUp')
+      : k === 'unpickup'
+        ? t('serviceDetail.unpicked')
+        : k === 'edit'
+          ? t('serviceDetail.edit')
+          : t(`statusLabel.${k}`);
   };
   const openStatus = (handover = false) => {
     setStatusHandover(handover);
@@ -648,7 +661,8 @@ export function ServiceDetailPage() {
               <span className={styles.code}>{service.serviceNo}</span>
               <span className={styles.codeMeta}>REPAIR TICKET</span>
             </div>
-            <h1 className={styles.device}>{service.device}</h1>
+            {/* h2: judul halaman (h1) ada di Topbar. */}
+            <h2 className={styles.device}>{service.device}</h2>
             <p className={styles.deviceMeta}>
               <span className={styles.cat}>{service.category}</span>
               <span className={styles.dot} />
@@ -751,9 +765,14 @@ export function ServiceDetailPage() {
               </button>
             </div>
             <div className={styles.qrRow}>
-              <div className={styles.qr}>
-                <Icon name="qrcode" aria-hidden />
-              </div>
+              {/* QR sungguhan (dulu ikon yang tampak bisa dipindai tapi bukan kode):
+                  pelanggan memindainya dari layar untuk membuka halaman lacak. */}
+              <div
+                className={styles.qr}
+                role="img"
+                aria-label={t('serviceDetail.qrAria')}
+                dangerouslySetInnerHTML={{ __html: qrSvg(trackingLink, { size: 72, margin: 2 }) }}
+              />
               <span className={styles.qrText}>{t('serviceDetail.qrText')}</span>
             </div>
           </div>
@@ -1009,7 +1028,7 @@ export function ServiceDetailPage() {
                   <span className={styles.logDot} />
                   <div>
                     <div className={styles.logHead}>
-                      <strong>{l.status === 'edit' ? t('serviceDetail.edit') : t(`statusLabel.${l.status as ServiceStatus}`)}</strong>
+                      <strong>{historyLabel(l)}</strong>
                       {l.internal && <span className={styles.internalTag}>{t('serviceDetail.internal')}</span>}
                     </div>
                     <span className={styles.logAt}>

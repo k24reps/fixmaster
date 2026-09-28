@@ -83,7 +83,8 @@
     border-color var(--dur-fast) var(--ease-out);
 }
 .suggestItem:hover,
-.suggestItem:focus-visible {
+.suggestItem:focus-visible,
+.suggestItem[aria-selected='true'] {
   outline: none;
   background: var(--bg-hover);
   border-left-color: var(--brand);

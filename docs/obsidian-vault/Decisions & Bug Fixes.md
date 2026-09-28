@@ -3623,3 +3623,24 @@ owner-only, jadi menampilkannya di Dashboard adalah celah yang tidak konsisten, 
 **Target Servis** dari unit selesai — unit masuk tidak menghasilkan uang, dan kartu target harus
 bergerak bersama Laba servis (satu sumber: `category_profit`). **Demo** kini sebulan: pengunjung demo
 melihat perbedaan Hari ini vs Bulan ini dan buku kas per hari. Karyawan tetap di "Meja saya".
+
+## Catatan kecil critique yang tertunda (28 Sep 2026)
+
+Sisa temuan kecil dari critique Servis/Kasir/Dashboard/Keuangan, dikerjakan sekaligus:
+
+- **Fokus hilang setelah hapus** — `Modal` memang mengembalikan fokus ke pemicu, tapi baris pemicu
+  sering baru hilang SETELAH jendela tertutup (data dimuat ulang), jadi pemeriksaan `isConnected` saat
+  menutup lolos lalu fokus jatuh ke `<body>`. Kini diawasi ±3 detik; bila pemicunya lenyap, fokus ke
+  `#konten`. Terukur: hapus baris Keuangan → `MAIN#konten` (dulu `BODY`).
+- **Tanda ambil tercatat "Edit"** — tanpa mengubah skema riwayat (status tetap `edit`), label
+  diturunkan dari catatan konstan `PICKUP_NOTE`/`UNPICK_NOTE`. Juga memperbaiki halaman lacak publik
+  yang menampilkan kata "edit" mentah ke pelanggan.
+- **Laporan: Modal/Prive** tampil sebagai batang netral bertag mono "bukan omzet"/"bukan biaya" dan
+  selalu di dasar daftar — dulu berwarna seperti pemasukan/pengeluaran operasional.
+- **Transfer tanpa catatan** tidak lagi berketerangan "Transfer antar wallet"; tampil "Tanpa
+  keterangan" seperti baris lain (pasangan wallet sudah terbaca di bawahnya).
+- **Kasir "uang pas" tiga kali** — status bayar pas kini "Siap diproses"; LCD & chip tetap.
+- Sudah beres sebelumnya (dicek, tidak diubah): "Lihat semua" Dashboard sudah tautan; tab buku kas
+  sudah memberi `aria-pressed`.
+- Skip link awalnya putih di atas `--brand` (2,03:1 gelap) — tertangkap `audit-contrast`, kini
+  pasangan tombol utama `--gradient-brand` + `--on-brand`.

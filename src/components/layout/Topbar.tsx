@@ -180,7 +180,7 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
       </button>
 
       <div className={styles.titleWrap}>
-        <h2 className={styles.title}>{title}</h2>
+        <h1 className={styles.title}>{title}</h1>
         {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
       </div>
 
