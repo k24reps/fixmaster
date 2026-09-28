@@ -7,6 +7,8 @@ import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import type { ServiceSparepart } from '@/data/types';
 import styles from './SparepartPickerModal.module.css';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 interface SparepartPickerModalProps {
   open: boolean;
@@ -30,6 +32,7 @@ export function SparepartPickerModal({
   existingItemIds,
   onPick,
 }: SparepartPickerModalProps) {
+  const t = useT();
   const { data: inventory } = useCollection('inventory');
   // HPP adalah margin toko; karyawan tidak perlu — dan tidak boleh biasa —
   // melihatnya saat memasang part (audit #14).
@@ -57,7 +60,7 @@ export function SparepartPickerModal({
     if (!item) return;
     const qty = Math.max(1, Math.round(Number(qtyById[itemId]) || 1));
     if (qty > item.stock) {
-      toast.warning(`Stok ${item.name} hanya ${item.stock}`);
+      toast.warning(interpolate(t('partPicker.stockLimit'), { name: item.name, n: String(item.stock) }));
       return;
     }
     const line: ServiceSparepart = {
@@ -75,10 +78,10 @@ export function SparepartPickerModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Ambil Sparepart dari Inventory" size="lg">
+    <Modal open={open} onClose={onClose} title={t('partPicker.title')} size="lg">
       <div className={styles.body}>
         <Input
-          placeholder="Cari nama, SKU, atau kategori…"
+          placeholder={t('partPicker.searchPh')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -87,8 +90,8 @@ export function SparepartPickerModal({
         {rows.length === 0 ? (
           <p className={styles.empty}>
             {inventory.length === 0
-              ? 'Belum ada item inventory. Tambahkan di menu Inventory dulu.'
-              : 'Tidak ada item yang cocok.'}
+              ? t('partPicker.noInventory')
+              : t('partPicker.noMatch')}
           </p>
         ) : (
           <ul className={styles.list}>
@@ -103,11 +106,11 @@ export function SparepartPickerModal({
                     <span className={styles.meta}>
                       <span className={styles.sku}>{item.sku || '—'}</span>
                       <span className={styles.dot} />
-                      Stok {item.stock}
+                      {interpolate(t('partPicker.stock'), { n: String(item.stock) })}
                       {isMgr && (
                         <>
                           <span className={styles.dot} />
-                          HPP {fmtRp(item.costPrice)}
+                          {interpolate(t('partPicker.cost'), { amount: fmtRp(item.costPrice) })}
                         </>
                       )}
                     </span>
@@ -122,7 +125,7 @@ export function SparepartPickerModal({
                       setQtyById((m) => ({ ...m, [item.id]: e.target.value }))
                     }
                     disabled={out}
-                    aria-label={`Qty ${item.name}`}
+                    aria-label={interpolate(t('partPicker.qtyAria'), { name: item.name })}
                   />
                   <Button
                     size="sm"
@@ -131,7 +134,7 @@ export function SparepartPickerModal({
                     disabled={out}
                     iconLeft={<Icon name="plus" aria-hidden />}
                   >
-                    {added ? 'Tambah lagi' : 'Tambah'}
+                    {added ? t('partPicker.addAgain') : t('common.add')}
                   </Button>
                 </li>
               );

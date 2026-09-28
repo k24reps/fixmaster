@@ -49,6 +49,8 @@ import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 /**
  * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
@@ -72,6 +74,7 @@ const SERVICE_WINDOW_DAYS = 31;
 const NO_WINDOW: { rows: Service[]; truncated: boolean } = { rows: [], truncated: false };
 
 export function ServicesPage() {
+  const t = useT();
   const [searchParams] = useSearchParams();
   // Cloud: daftar berjendela. Batasnya awal hari lokal, jadi kuncinya hanya
   // berganti sekali sehari. Lokal/demo: daftar lengkap — tidak ada ongkos
@@ -344,9 +347,9 @@ export function ServicesPage() {
           },
         ],
       });
-      toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+      toast.success(t(nowPicked ? 'services.pickedToast' : 'services.unpickedToast'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui tanda ambil');
+      toast.error(e instanceof Error ? e.message : t('services.pickupFailed'));
     }
   };
 
@@ -359,15 +362,15 @@ export function ServicesPage() {
     const cls = s.pickedUp ? styles.pickupDone : styles.pickupWait;
     const content = s.pickedUp ? (
       <>
-        <Icon name="circle-check" aria-hidden /> Diambil
+        <Icon name="circle-check" aria-hidden /> {t('services.pickedUp')}
       </>
     ) : (
       <>
-        <Icon name="box" aria-hidden /> Belum diambil
+        <Icon name="box" aria-hidden /> {t('services.notPickedUp')}
       </>
     );
     if (!isManager) return <span className={cls}>{content}</span>;
-    const action = s.pickedUp ? 'Klik untuk membatalkan tanda ambil' : 'Klik untuk menandai sudah diambil';
+    const action = t(s.pickedUp ? 'services.unpickHint' : 'services.pickHint');
     return (
       <button
         type="button"
@@ -385,8 +388,8 @@ export function ServicesPage() {
     const days = isClosedOut(s) ? null : stalledDays(s, today);
     if (days === null) return null;
     return (
-      <span className={styles.stallTag} title="Tidak ada aktivitas pada tiket ini">
-        Tertahan {days} hari
+      <span className={styles.stallTag} title={t('services.stallHint')}>
+        {interpolate(t('services.stalledDays'), { n: String(days) })}
       </span>
     );
   };
@@ -400,10 +403,10 @@ export function ServicesPage() {
         setStatusTarget(s);
         setStatusOpen(true);
       }}
-      title="Klik untuk update status"
+      title={t('services.statusHint')}
     >
       <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
-        {STATUS_LABELS[s.status]}
+        {t(`statusLabel.${s.status}`)}
       </Badge>
       <Icon name="pen" aria-hidden />
     </button>
@@ -414,8 +417,8 @@ export function ServicesPage() {
   const renderCost = (s: Service) => {
     if (s.finalCost <= 0) {
       return s.estimateCost > 0 ? (
-        <span className={styles.estimate} title="Estimasi, biaya final belum ditetapkan">
-          Est. {fmtRp(s.estimateCost)}
+        <span className={styles.estimate} title={t('services.estimateHint')}>
+          {interpolate(t('services.estimateShort'), { amount: fmtRp(s.estimateCost) })}
         </span>
       ) : (
         <span className={styles.muted}>—</span>
@@ -430,13 +433,13 @@ export function ServicesPage() {
             sub-baris cuma mengulang angka di atasnya. */}
         {isOwner && modal > 0 && (
           <span className={styles.breakdown}>
-            <span className={styles.modal} aria-label={`Modal ${fmtRp(modal)}`}>
+            <span className={styles.modal} aria-label={interpolate(t('services.modalAria'), { amount: fmtRp(modal) })}>
               -{fmtNumber(modal)}
             </span>
             <span
               className={styles.profit}
               data-loss={profit < 0 ? 'true' : undefined}
-              aria-label={`Profit ${fmtRp(profit)}`}
+              aria-label={interpolate(t('services.profitAria'), { amount: fmtRp(profit) })}
             >
               {profit >= 0 && '+'}
               {fmtNumber(profit)}
@@ -454,8 +457,8 @@ export function ServicesPage() {
       <Link
         className={styles.iconBtn}
         to={`/services/${s.id}`}
-        title="Lihat tiket"
-        aria-label="Lihat tiket"
+        title={t('services.viewTicket')}
+        aria-label={t('services.viewTicket')}
       >
         <Icon name="up-right-from-square" aria-hidden />
       </Link>
@@ -465,8 +468,8 @@ export function ServicesPage() {
           setNotifyTarget(s);
           setNotifyOpen(true);
         }}
-        title="Notifikasi & nota"
-        aria-label="Notifikasi & nota"
+        title={t('services.notifyReceipt')}
+        aria-label={t('services.notifyReceipt')}
       >
         <Icon name="whatsapp" aria-hidden />
       </button>
@@ -476,8 +479,8 @@ export function ServicesPage() {
           setEditing(s);
           setEditOpen(true);
         }}
-        title="Edit"
-        aria-label="Edit"
+        title={t('common.edit')}
+        aria-label={t('common.edit')}
       >
         <Icon name="pen" aria-hidden />
       </button>
@@ -488,13 +491,16 @@ export function ServicesPage() {
     <div className={styles.wrap}>
       <ConfirmDialog
         open={!!pickupConfirm}
-        title="Unit belum lunas"
+        title={t('services.unpaidTitle')}
         message={
           pickupConfirm
-            ? `${pickupConfirm.serviceNo} masih ada tagihan ${fmtRp(outstandingBalance(pickupConfirm))}. Tandai sudah diambil pelanggan?`
+            ? interpolate(t('services.unpaidMsg'), {
+                no: pickupConfirm.serviceNo,
+                amount: fmtRp(outstandingBalance(pickupConfirm)),
+              })
             : ''
         }
-        confirmLabel="Ya, sudah diambil"
+        confirmLabel={t('services.unpaidConfirm')}
         onCancel={() => setPickupConfirm(null)}
         onConfirm={() => {
           const s = pickupConfirm;
@@ -506,16 +512,16 @@ export function ServicesPage() {
           mendorong tiket pertama ke bawah navigasi bawah (nol tiket terlihat). */}
       <dl className={styles.readouts}>
         {[
-          { label: 'Total Servis', value: String(stats.total) },
-          { label: 'Dalam Proses', value: String(stats.inProcess), tone: stats.inProcess > 0 ? 'info' : undefined },
+          { label: t('services.statTotal'), value: String(stats.total) },
+          { label: t('services.statInProcess'), value: String(stats.inProcess), tone: stats.inProcess > 0 ? 'info' : undefined },
           {
-            label: 'Menunggu Diambil',
+            label: t('services.statAwaiting'),
             value: String(stats.awaitingPickup),
             tone: stats.awaitingPickup > 0 ? 'warning' : undefined,
           },
-          { label: 'Selesai / Lunas', value: String(stats.done) },
+          { label: t('services.statDone'), value: String(stats.done) },
           // Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan).
-          { label: 'Nilai Tiket Lunas', value: fmtRp(stats.lunasValue) },
+          { label: t('services.statPaidValue'), value: fmtRp(stats.lunasValue) },
         ].map((r) => (
           <div key={r.label} className={styles.readout}>
             <dt className={styles.readoutLabel}>
@@ -530,66 +536,66 @@ export function ServicesPage() {
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <Input
-            placeholder="Cari no. servis, pelanggan, no. HP, perangkat, keluhan…"
+            placeholder={t('services.searchPh')}
             value={query}
             onChange={(e) => change(() => setQuery(e.target.value))}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
-            aria-label="Cari servis"
+            aria-label={t('services.searchAria')}
           />
         </div>
         <div className={styles.toolbarActions}>
-          <ViewToggle value={view} onChange={chooseView} label="Tampilan servis" />
+          <ViewToggle value={view} onChange={chooseView} label={t('services.viewLabel')} />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
-            Servis Baru
+            {t('services.new')}
           </Button>
         </div>
       </div>
 
-      <div className={styles.filterBar} role="group" aria-label="Filter servis" data-more={moreOpen}>
+      <div className={styles.filterBar} role="group" aria-label={t('services.filterAria')} data-more={moreOpen}>
         {showTechFilter && (
           <select
             className={styles.select}
             value={techFilter}
             onChange={(e) => change(() => setTechFilter(e.target.value))}
-            aria-label="Filter teknisi"
+            aria-label={t('services.filterTech')}
           >
-            <option value="all">Semua Teknisi</option>
-            {me && <option value="me">Tiket saya</option>}
+            <option value="all">{t('services.allTechs')}</option>
+            {me && <option value="me">{t('services.myTickets')}</option>}
             {activeTechs.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name}
               </option>
             ))}
-            <option value="none">Belum ditugaskan</option>
+            <option value="none">{t('services.unassigned')}</option>
           </select>
         )}
         <select
           className={styles.select}
           value={sort}
           onChange={(e) => change(() => setSort(e.target.value as ServiceSort))}
-          aria-label="Urutkan servis"
+          aria-label={t('services.sortAria')}
         >
-          <option value="newest">Terbaru</option>
-          <option value="oldest">Terlama dulu</option>
+          <option value="newest">{t('services.sortNewest')}</option>
+          <option value="oldest">{t('services.sortOldest')}</option>
         </select>
         <button
           type="button"
           className={[styles.toggle, stalledOnly ? styles.toggleOn : ''].join(' ')}
           aria-pressed={stalledOnly}
           onClick={() => change(() => setStalledOnly((v) => !v))}
-          title="Konfirmasi biaya ≥ 2 hari, dikerjakan ≥ 3 hari, atau belum diambil ≥ 7 hari tanpa aktivitas"
+          title={t('services.stalledHint')}
         >
           <span className={styles.toggleLed} aria-hidden />
-          Tertahan <span className={styles.toggleCount}>{stalledCount}</span>
+          {t('services.stalled')} <span className={styles.toggleCount}>{stalledCount}</span>
         </button>
         <button
           type="button"
           className={[styles.toggle, hideClosed ? styles.toggleOn : ''].join(' ')}
           aria-pressed={hideClosed}
           onClick={() => change(() => setHideClosed((v) => !v))}
-          title="Sembunyikan tiket lunas atau batal yang barangnya sudah diambil"
+          title={t('services.hideClosedHint')}
         >
-          Sembunyikan tuntas <span className={styles.toggleCount}>{closedCount}</span>
+          {t('services.hideClosed')} <span className={styles.toggleCount}>{closedCount}</span>
         </button>
         <button
           type="button"
@@ -599,7 +605,7 @@ export function ServicesPage() {
           onClick={() => setMoreOpen((v) => !v)}
         >
           <Icon name="sliders" aria-hidden />
-          Filter lainnya
+          {t('services.moreFilters')}
           {moreActive > 0 && (
             <span className={[styles.toggleCount, styles.desktopCount].join(' ')}>{moreActive}</span>
           )}
@@ -613,15 +619,15 @@ export function ServicesPage() {
             type="button"
             className={[styles.toggle, styles.toggleOn].join(' ')}
             onClick={() => change(() => setPickupFilter('all'))}
-            aria-label="Lepas filter menunggu diambil"
-            title="Filter dari Dashboard — klik untuk melepas"
+            aria-label={t('services.awaitingOffAria')}
+            title={t('services.awaitingOffHint')}
           >
-            Menunggu diambil <Icon name="times" aria-hidden />
+            {t('services.awaiting')} <Icon name="times" aria-hidden />
           </button>
         )}
         {filtersActive && (
           <button type="button" className={styles.resetBtn} onClick={resetFilters}>
-            Reset filter
+            {t('services.resetFilters')}
           </button>
         )}
       </div>
@@ -631,15 +637,15 @@ export function ServicesPage() {
           id="servis-filter-lainnya"
           className={styles.morePanel}
           role="group"
-          aria-label="Filter lainnya"
+          aria-label={t('services.moreFilters')}
         >
           <select
             className={styles.select}
             value={categoryFilter}
             onChange={(e) => change(() => setCategoryFilter(e.target.value))}
-            aria-label="Filter perangkat"
+            aria-label={t('services.filterDevice')}
           >
-            <option value="all">Semua Perangkat</option>
+            <option value="all">{t('services.allDevices')}</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -650,12 +656,12 @@ export function ServicesPage() {
             className={styles.select}
             value={dateFilter}
             onChange={(e) => change(() => setDateFilter(e.target.value as DateFilter))}
-            aria-label="Filter tanggal masuk"
+            aria-label={t('services.filterDate')}
           >
-            <option value="all">Semua Tanggal</option>
-            <option value="last7">7 hari terakhir</option>
-            <option value="thisMonth">Bulan ini</option>
-            <option value="custom">Pilih tanggal…</option>
+            <option value="all">{t('services.allDates')}</option>
+            <option value="last7">{t('services.last7')}</option>
+            <option value="thisMonth">{t('services.thisMonth')}</option>
+            <option value="custom">{t('services.pickDates')}</option>
           </select>
           {dateFilter === 'custom' && (
             <span className={styles.dateRange}>
@@ -664,7 +670,7 @@ export function ServicesPage() {
                 className={styles.dateInput}
                 value={customFrom}
                 onChange={(e) => change(() => setCustomFrom(e.target.value))}
-                aria-label="Tanggal masuk dari"
+                aria-label={t('services.dateFrom')}
               />
               <span aria-hidden>–</span>
               <input
@@ -672,7 +678,7 @@ export function ServicesPage() {
                 className={styles.dateInput}
                 value={customTo}
                 onChange={(e) => change(() => setCustomTo(e.target.value))}
-                aria-label="Tanggal masuk sampai"
+                aria-label={t('services.dateTo')}
               />
             </span>
           )}
@@ -681,11 +687,11 @@ export function ServicesPage() {
             className={[styles.select, styles.wideSelect].join(' ')}
             value={paymentFilter}
             onChange={(e) => change(() => setPaymentFilter(e.target.value as PaymentFilter))}
-            aria-label="Filter pembayaran"
+            aria-label={t('services.filterPayment')}
           >
-            <option value="all">Semua Pembayaran</option>
-            <option value="unpaid">Belum lunas</option>
-            <option value="dp">Sudah DP, belum lunas</option>
+            <option value="all">{t('services.allPayments')}</option>
+            <option value="unpaid">{t('services.unpaid')}</option>
+            <option value="dp">{t('services.dpUnpaid')}</option>
           </select>
         </div>
       )}
@@ -695,38 +701,38 @@ export function ServicesPage() {
         total={filteredExceptStatus.length}
         value={activeStatus}
         onChange={(v) => change(() => setStatusFilter(v as ServiceStatus | 'all'))}
-        label="Status servis"
-        labelOf={(id) => STATUS_LABELS[id as ServiceStatus] ?? id}
+        label={t('services.statusAria')}
+        labelOf={(id) => t(`statusLabel.${id as ServiceStatus}`) ?? id}
       />
 
       <Card glass>
         {loading ? (
           <p className={styles.loading}>
-            <Icon name="circle-notch" className="spin" aria-hidden /> Memuat servis…
+            <Icon name="circle-notch" className="spin" aria-hidden /> {t('services.loading')}
           </p>
         ) : rows.length === 0 ? (
           <EmptyState
             icon={<Icon name="screwdriver-wrench" aria-hidden />}
-            title={visible.length === 0 ? 'Belum ada servis' : 'Tidak ada hasil'}
+            title={t(visible.length === 0 ? 'services.emptyTitle' : 'services.noResults')}
             description={
               visible.length === 0
-                ? 'Buat tiket servis pertama saat unit masuk.'
+                ? t('services.emptyFirst')
                 : !filtersActive && hideClosed && closedCount > 0
-                  ? 'Semua tiket sudah tuntas dan disembunyikan.'
-                  : 'Ubah filter atau kata kunci pencarian.'
+                  ? t('services.emptyAllClosed')
+                  : t('services.emptyFiltered')
             }
             action={
               visible.length === 0 ? (
                 <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
-                  Servis Baru
+                  {t('services.new')}
                 </Button>
               ) : filtersActive ? (
                 <Button variant="secondary" size="sm" onClick={resetFilters}>
-                  Reset filter
+                  {t('services.resetFilters')}
                 </Button>
               ) : hideClosed && closedCount > 0 ? (
                 <Button variant="secondary" size="sm" onClick={() => setHideClosed(false)}>
-                  Tampilkan tiket tuntas
+                  {t('services.showClosed')}
                 </Button>
               ) : null
             }
@@ -742,16 +748,16 @@ export function ServicesPage() {
               {/* Judul kolom: hanya di tata letak lebar, saat segmen berbaris dalam lajur. */}
               <div className={[styles.row, styles.rowHead, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}>
                 <div className={styles.rowMain}>
-                  <span>No. Servis</span>
-                  {cols.has('customer') && <span>Pelanggan</span>}
-                  {cols.has('device') && <span>Perangkat</span>}
-                  {cols.has('complaint') && <span>Keluhan</span>}
-                  {cols.has('completionNote') && <span>Penanganan</span>}
-                  {cols.has('technician') && <span>Teknisi</span>}
+                  <span>{t('services.colNo')}</span>
+                  {cols.has('customer') && <span>{t('services.colCustomer')}</span>}
+                  {cols.has('device') && <span>{t('services.colDevice')}</span>}
+                  {cols.has('complaint') && <span>{t('services.colComplaint')}</span>}
+                  {cols.has('completionNote') && <span>{t('services.colFix')}</span>}
+                  {cols.has('technician') && <span>{t('services.colTech')}</span>}
                 </div>
-                <span className={styles.rowStatus}>Status</span>
-                {cols.has('cost') && <span className={styles.rowCost}>Biaya</span>}
-                <span className={styles.rowActions}>Aksi</span>
+                <span className={styles.rowStatus}>{t('common.status')}</span>
+                {cols.has('cost') && <span className={styles.rowCost}>{t('services.colCost')}</span>}
+                <span className={styles.rowActions}>{t('common.actions')}</span>
               </div>
               <ul className={styles.rows}>
                 {shownRows.map((s) => (
@@ -785,7 +791,7 @@ export function ServicesPage() {
                       {cols.has('complaint') && (
                         <div className={styles.rowCell} data-seg="complaint">
                           <span className={styles.clamp} title={s.complaint || undefined}>
-                            <b>Keluhan</b> {s.complaint || '—'}
+                            <b>{t('services.colComplaint')}</b> {s.complaint || '—'}
                           </span>
                         </div>
                       )}
@@ -795,13 +801,13 @@ export function ServicesPage() {
                             className={[styles.clamp, styles.clamp3].join(' ')}
                             title={s.completionNote || undefined}
                           >
-                            <b>Penanganan</b> {s.completionNote || '—'}
+                            <b>{t('services.colFix')}</b> {s.completionNote || '—'}
                           </span>
                         </div>
                       )}
                       {cols.has('technician') && (
                         <div className={styles.rowCell} data-seg="technician">
-                          <span className={styles.rowTech} title="Teknisi">
+                          <span className={styles.rowTech} title={t('services.colTech')}>
                             <Icon name="screwdriver-wrench" aria-hidden />
                             <span>{s.technicianName || '—'}</span>
                           </span>
@@ -838,12 +844,12 @@ export function ServicesPage() {
                     {renderPickup(s)}
                     {cols.has('complaint') && s.complaint && (
                       <small className={styles.jobNote}>
-                        <b>Keluhan</b> {s.complaint}
+                        <b>{t('services.colComplaint')}</b> {s.complaint}
                       </small>
                     )}
                     {cols.has('completionNote') && s.completionNote && (
                       <small className={styles.jobNote}>
-                        <b>Penanganan</b> {s.completionNote}
+                        <b>{t('services.colFix')}</b> {s.completionNote}
                       </small>
                     )}
                     {renderStall(s)}
@@ -913,18 +919,14 @@ export function ServicesPage() {
                   onClick={() => setLimit((n) => n + PAGE_SIZE)}
                   iconLeft={<Icon name="arrow-down" aria-hidden />}
                 >
-                  Tampilkan lebih banyak
+                  {t('services.showMore')}
                 </Button>
               )}
               <span className={styles.loadMoreHint}>
-                {shownRows.length} dari {rows.length} tiket
-                {rows.length !== stats.total && ` · ${stats.total} total`}
-                {hideClosed && closedCount > 0 && ` · ${closedCount} tuntas disembunyikan`}
-                {windowed &&
-                  archive.length === 0 &&
-                  (truncated
-                    ? ' · daftar terpotong 1.000 tiket: cari nomor/nama atau pilih tanggal'
-                    : ' · tiket lebih lama: cari nomor/nama atau pilih tanggal')}
+                {interpolate(t('services.shownOf'), { shown: String(shownRows.length), total: String(rows.length) })}
+                {rows.length !== stats.total && interpolate(t('services.totalTail'), { n: String(stats.total) })}
+                {hideClosed && closedCount > 0 && interpolate(t('services.closedHiddenTail'), { n: String(closedCount) })}
+                {windowed && archive.length === 0 && t(truncated ? 'services.truncatedTail' : 'services.olderTail')}
               </span>
             </div>
           </div>

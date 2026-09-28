@@ -17,6 +17,7 @@ import { useDemoStore } from '@/stores/demo';
 import type { Service, Customer, Employee } from '@/data/types';
 import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
+import { interpolate } from '@/lib/business/notify';
 
 interface IntakeDraft {
   customerName: string;
@@ -144,7 +145,7 @@ export function ServiceModal({
   });
 
   const technicianOptions = [
-    { value: '', label: '— Belum ditentukan —' },
+    { value: '', label: t('serviceForm.techUnset') },
     ...employees.map((e) => ({ value: e.id, label: e.name })),
   ];
 
@@ -173,7 +174,7 @@ export function ServiceModal({
 
   const suggestList = suggestions.length > 0 && (
     <div className={styles.suggest} role="listbox">
-      <span className={styles.suggestHint}>Pelanggan terdaftar — klik untuk pakai:</span>
+      <span className={styles.suggestHint}>{t('serviceForm.suggestHint')}</span>
       {suggestions.map((c) => (
         <button
           type="button"
@@ -202,10 +203,10 @@ export function ServiceModal({
   };
 
   const save = async () => {
-    if (!customerName.trim()) return setError('Nama pelanggan wajib diisi');
-    if (!customerPhone.trim()) return setError('No. HP pelanggan wajib diisi');
-    if (!device.trim()) return setError('Nama perangkat wajib diisi');
-    if (categories.length && !category) return setError('Pilih kategori perangkat');
+    if (!customerName.trim()) return setError(t('serviceForm.nameRequired'));
+    if (!customerPhone.trim()) return setError(t('serviceForm.phoneRequired'));
+    if (!device.trim()) return setError(t('serviceForm.deviceRequired'));
+    if (categories.length && !category) return setError(t('serviceForm.categoryRequired'));
     // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
     // branch first so the ticket isn't silently stamped to the primary outlet.
     if (needOutlet && !outletId) return setError(t('serviceForm.outletRequired'));
@@ -275,7 +276,7 @@ export function ServiceModal({
             },
           ],
         });
-        toast.success('Servis diperbarui');
+        toast.success(t('serviceForm.updated'));
       } else {
         const serviceNo = nextDocNumber(
           org?.servicePrefix ?? 'FM',
@@ -335,13 +336,13 @@ export function ServiceModal({
           entityLabel: saved.serviceNo,
           meta: { device: record.device, customer: record.customerName },
         });
-        toast.success(`Servis ${saved.serviceNo} dibuat`);
+        toast.success(interpolate(t('serviceForm.created'), { no: saved.serviceNo }));
         intakeDraft = null;
       }
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan servis');
+      toast.error(e instanceof Error ? e.message : t('serviceForm.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -351,7 +352,7 @@ export function ServiceModal({
     <Modal
       open={open}
       onClose={close}
-      title={editing ? `Edit ${editing.serviceNo}` : 'Servis Baru'}
+      title={editing ? interpolate(t('serviceForm.editTitle'), { no: editing.serviceNo }) : t('serviceForm.newTitle')}
       size="lg"
       footer={
         <>
@@ -368,10 +369,10 @@ export function ServiceModal({
             </Button>
           )}
           <Button variant="secondary" onClick={close}>
-            Batal
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="service-intake" loading={busy}>
-            Simpan
+            {t('common.save')}
           </Button>
         </>
       }
@@ -402,7 +403,7 @@ export function ServiceModal({
         <FormRow>
           <div className={styles.suggestWrap}>
             <Input
-              label="Nama Pelanggan"
+              label={t('serviceForm.customerName')}
               value={customerName}
               autoCapWords
               onChange={(e) => {
@@ -417,7 +418,7 @@ export function ServiceModal({
           </div>
           <div className={styles.suggestWrap}>
             <Input
-              label="No. HP Pelanggan"
+              label={t('serviceForm.customerPhone')}
               value={customerPhone}
               inputMode="tel"
               onChange={(e) => {
@@ -432,29 +433,29 @@ export function ServiceModal({
         </FormRow>
         <FormRow>
           <Select
-            label="Kategori Perangkat"
+            label={t('serviceForm.category')}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             options={categories.map((c) => ({ value: c, label: c }))}
-            placeholder={categories.length ? 'Pilih jenis perangkat…' : 'Belum ada kategori'}
+            placeholder={t(categories.length ? 'serviceForm.categoryPh' : 'serviceForm.noCategory')}
           />
           <Input
-            label="Perangkat"
-            placeholder="Contoh: MacBook Pro 2019"
+            label={t('serviceForm.device')}
+            placeholder={t('serviceForm.devicePh')}
             value={device}
             autoCapWords
             onChange={(e) => setDevice(e.target.value)}
           />
         </FormRow>
         <Input
-          label="Keluhan"
-          placeholder="Contoh: Mati total, tidak mengisi daya"
+          label={t('serviceForm.complaint')}
+          placeholder={t('serviceForm.complaintPh')}
           value={complaint}
           onChange={(e) => setComplaint(e.target.value)}
         />
         {complaintTemplates.length > 0 && (
           <div className={styles.chips}>
-            <span className={styles.chipsLabel}>Pilihan cepat keluhan:</span>
+            <span className={styles.chipsLabel}>{t('serviceForm.complaintQuick')}</span>
             {complaintTemplates.map((tpl) => (
               <button
                 type="button"
@@ -468,14 +469,14 @@ export function ServiceModal({
           </div>
         )}
         <Input
-          label="Kelengkapan (opsional)"
-          placeholder="Contoh: Charger, tas"
+          label={t('serviceForm.accessories')}
+          placeholder={t('serviceForm.accessoriesPh')}
           value={accessories}
           onChange={(e) => setAccessories(e.target.value)}
         />
         {accessoryTemplates.length > 0 && (
           <div className={styles.chips}>
-            <span className={styles.chipsLabel}>Pilihan cepat kelengkapan:</span>
+            <span className={styles.chipsLabel}>{t('serviceForm.accessoriesQuick')}</span>
             {accessoryTemplates.map((tpl) => (
               <button
                 type="button"
@@ -490,13 +491,13 @@ export function ServiceModal({
         )}
         <FormRow>
           <Select
-            label="Teknisi"
+            label={t('serviceForm.technician')}
             value={technicianId}
             onChange={(e) => setTechnicianId(e.target.value)}
             options={technicianOptions}
           />
           <Input
-            label="Estimasi Biaya (opsional)"
+            label={t('serviceForm.estimate')}
             placeholder="150.000"
             value={estimateCost}
             onChange={(e) => setEstimateCost(fmtRpInput(e.target.value))}

@@ -1,6 +1,8 @@
 import { Input } from '@/components/ui';
 import type { ServiceSparepart } from '@/data/types';
 import styles from './PartWarrantyFields.module.css';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 /** Pilihan cepat hari garansi. "Tanpa" = 0, supaya tanpa garansi selalu disengaja. */
 export function WarrantyPresets({
@@ -12,6 +14,7 @@ export function WarrantyPresets({
   onPick: (days: number) => void;
   what: string;
 }) {
+  const t = useT();
   return (
     <div className={styles.presetRow}>
       {[0, ...presets.filter((d) => d > 0)].map((d) => (
@@ -20,9 +23,13 @@ export function WarrantyPresets({
           type="button"
           className={styles.presetChip}
           onClick={() => onPick(d)}
-          title={d === 0 ? `${what}: tanpa garansi` : `Garansi ${what} ${d} hari`}
+          title={
+            d === 0
+              ? interpolate(t('partWarranty.noneTitle'), { what })
+              : interpolate(t('partWarranty.daysTitle'), { what, n: String(d) })
+          }
         >
-          {d === 0 ? 'Tanpa' : `${d} hari`}
+          {d === 0 ? t('partWarranty.none') : interpolate(t('partWarranty.days'), { n: String(d) })}
         </button>
       ))}
     </div>
@@ -45,6 +52,7 @@ export function PartWarrantyFields({
   onChange: (index: number, value: string) => void;
   presets: number[];
 }) {
+  const t = useT();
   return (
     <div className={styles.list}>
       {parts.map((p, i) => (
@@ -60,7 +68,7 @@ export function PartWarrantyFields({
             value={values[i] ?? ''}
             onChange={(e) => onChange(i, e.target.value)}
             placeholder="0"
-            aria-label={`Garansi ${p.name} (hari)`}
+            aria-label={interpolate(t('partWarranty.fieldAria'), { name: p.name })}
           />
           <WarrantyPresets presets={presets} onPick={(d) => onChange(i, String(d))} what={p.name} />
         </div>

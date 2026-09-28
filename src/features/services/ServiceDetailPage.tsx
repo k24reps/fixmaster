@@ -12,7 +12,6 @@ import { useSessionStore } from '@/stores/session';
 import { useFormat } from '@/lib/useFormat';
 import { useT } from '@/i18n';
 import {
-  STATUS_LABELS,
   outstandingBalance,
   serviceProfit,
   serviceModalTotal,
@@ -42,6 +41,7 @@ import { SparepartPickerModal } from './SparepartPickerModal';
 import { PartWarrantyModal } from './PartWarrantyModal';
 import type { ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
+import { interpolate } from '@/lib/business/notify';
 
 /** Linear "job traveler" stages (cancel handled separately). */
 interface TicketAction {
@@ -119,9 +119,9 @@ export function ServiceDetailPage() {
     return (
       <div className={styles.notFound}>
         <span className={styles.nfCode}>404</span>
-        <p>Servis tidak ditemukan.</p>
+        <p>{t('serviceDetail.notFound')}</p>
         <Button variant="secondary" onClick={() => navigate('/services')}>
-          <Icon name="arrow-left" aria-hidden /> Kembali ke daftar
+          <Icon name="arrow-left" aria-hidden /> {t('serviceDetail.backToList')}
         </Button>
       </div>
     );
@@ -151,12 +151,12 @@ export function ServiceDetailPage() {
   // seolah pelanggan masih berutang.
   const billingReadout =
     service.status === 'lunas'
-      ? { label: 'Pembayaran', value: 'Lunas' }
+      ? { label: t('serviceDetail.billPayment'), value: t('serviceDetail.billPaid') }
       : cancelled
-        ? { label: 'Status', value: 'Dibatalkan' }
+        ? { label: t('common.status'), value: t('serviceDetail.billCancelled') }
         : service.finalCost <= 0
-        ? { label: 'Tagihan', value: 'Menunggu biaya final' }
-        : { label: 'Sisa tagihan', value: fmtMoney(outstanding) };
+        ? { label: t('serviceDetail.billLabel'), value: t('serviceDetail.billAwaitFinal') }
+        : { label: t('serviceDetail.billRemaining'), value: fmtMoney(outstanding) };
   const profit = serviceProfit(service);
   // Profit baru bermakna bila biaya final ada dan tiket tidak batal — sebelum itu
   // angkanya negatif palsu (daftar Servis sudah menampilkan "—" untuk kasus sama).
@@ -188,9 +188,9 @@ export function ServiceDetailPage() {
         ...sp,
         { ...line, deducted: line.itemId ? true : line.deducted },
       ]);
-      toast.success('Sparepart ditambahkan & stok dipotong');
+      toast.success(t('serviceDetail.partAdded'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menambah sparepart');
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.partAddFailed'));
     }
   };
 
@@ -231,9 +231,9 @@ export function ServiceDetailPage() {
    */
   const addManualModal = async () => {
     const amount = parseRpInput(modalAmount);
-    if (!modalName.trim()) return toast.warning('Isi keterangan modal');
-    if (amount <= 0) return toast.warning('Nominal modal harus lebih dari 0');
-    if (!modalWalletId) return toast.warning('Pilih wallet sumber dana');
+    if (!modalName.trim()) return toast.warning(t('serviceDetail.modalNameRequired'));
+    if (amount <= 0) return toast.warning(t('serviceDetail.modalAmountRequired'));
+    if (!modalWalletId) return toast.warning(t('serviceDetail.modalWalletRequired'));
     setSavingCost(true);
     const now = new Date().toISOString();
     try {
@@ -254,7 +254,7 @@ export function ServiceDetailPage() {
           entityLabel: `Modal ${service.serviceNo}`,
           meta: { amount, serviceId: service.id },
         });
-        toast.success('Modal dadakan dicatat & masuk keuangan');
+        toast.success(t('serviceDetail.modalAdded'));
         closeModalForm();
         return;
       }
@@ -294,10 +294,10 @@ export function ServiceDetailPage() {
         entityLabel: `Modal ${service.serviceNo}`,
         meta: { amount, serviceId: service.id },
       });
-      toast.success('Modal dadakan dicatat & masuk keuangan');
+      toast.success(t('serviceDetail.modalAdded'));
       closeModalForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mencatat modal');
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.modalAddFailed'));
     } finally {
       setSavingCost(false);
     }
@@ -315,9 +315,9 @@ export function ServiceDetailPage() {
     const line = service.spareparts[editIndex];
     if (!line || line.kind !== 'manual') return;
     const amount = parseRpInput(modalAmount);
-    if (!modalName.trim()) return toast.warning('Isi keterangan modal');
-    if (amount <= 0) return toast.warning('Nominal modal harus lebih dari 0');
-    if (!modalWalletId) return toast.warning('Pilih wallet sumber dana');
+    if (!modalName.trim()) return toast.warning(t('serviceDetail.modalNameRequired'));
+    if (amount <= 0) return toast.warning(t('serviceDetail.modalAmountRequired'));
+    if (!modalWalletId) return toast.warning(t('serviceDetail.modalWalletRequired'));
 
     setSavingCost(true);
     const now = new Date().toISOString();
@@ -340,7 +340,7 @@ export function ServiceDetailPage() {
           entityLabel: `Modal ${service.serviceNo}`,
           meta: { amount, prevAmount: oldAmount, serviceId: service.id },
         });
-        toast.success('Modal dadakan diperbarui');
+        toast.success(t('serviceDetail.modalUpdated'));
         closeModalForm();
         return;
       }
@@ -388,10 +388,10 @@ export function ServiceDetailPage() {
         entityLabel: `Modal ${service.serviceNo}`,
         meta: { amount, prevAmount: oldAmount, serviceId: service.id },
       });
-      toast.success('Modal dadakan diperbarui');
+      toast.success(t('serviceDetail.modalUpdated'));
       closeModalForm();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui modal');
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.modalUpdateFailed'));
     } finally {
       setSavingCost(false);
     }
@@ -408,7 +408,7 @@ export function ServiceDetailPage() {
     try {
       if (isCloudMode() && line.kind === 'manual' && line.expenseId) {
         await removeServiceModal({ orgId: service.orgId, serviceId: service.id, expenseId: line.expenseId });
-        toast.success('Baris dihapus');
+        toast.success(t('serviceDetail.lineRemoved'));
         return;
       }
       if (line.kind === 'manual') {
@@ -424,9 +424,9 @@ export function ServiceDetailPage() {
       }
       // Stok baris inventori yang sudah dipotong kembali lewat selisih di sini.
       await putServiceSpareparts((sp) => sp.filter((_, i) => i !== index));
-      toast.success('Baris dihapus');
+      toast.success(t('serviceDetail.lineRemoved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus baris');
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.lineRemoveFailed'));
     }
   };
 
@@ -461,9 +461,9 @@ export function ServiceDetailPage() {
         document.body.removeChild(ta);
         if (!ok) throw new Error('execCommand failed');
       }
-      toast.success('Link tracking disalin');
+      toast.success(t('serviceDetail.linkCopied'));
     } catch {
-      toast.error('Gagal menyalin link. Salin manual dari struk.');
+      toast.error(t('serviceDetail.linkCopyFailed'));
     }
   };
 
@@ -493,25 +493,25 @@ export function ServiceDetailPage() {
           },
         ],
       });
-      toast.success(nowPicked ? 'Ditandai sudah diambil' : 'Tanda ambil dibatalkan');
+      toast.success(t(nowPicked ? 'services.pickedToast' : 'services.unpickedToast'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui tanda ambil');
+      toast.error(e instanceof Error ? e.message : t('services.pickupFailed'));
     }
   };
 
   // Satu daftar aksi untuk bilah bawah DAN panel "Lainnya" di ponsel, supaya
   // syarat tampil tiap aksi tidak ditulis dua kali.
   const actions: TicketAction[] = [
-    { key: 'edit', icon: 'pen', label: 'Edit', onClick: () => setEditOpen(true) },
+    { key: 'edit', icon: 'pen', label: t('serviceDetail.edit'), onClick: () => setEditOpen(true) },
     ...(org
-      ? [{ key: 'print', icon: 'print' as const, label: 'Cetak Nota', onClick: () => printServiceReceipt(service, org) }]
+      ? [{ key: 'print', icon: 'print' as const, label: t('serviceDetail.printReceipt'), onClick: () => printServiceReceipt(service, org) }]
       : []),
     ...(isManager && (isAwaitingPickup(service) || service.pickedUp)
       ? [
           {
             key: 'pickup',
             icon: (service.pickedUp ? 'circle-check' : 'box') as IconName,
-            label: service.pickedUp ? t('serviceDetail.pickedUp') : 'Tandai Diambil',
+            label: service.pickedUp ? t('serviceDetail.pickedUp') : t('serviceDetail.markPickedUp'),
             primary: service.status === 'lunas' && !service.pickedUp,
             active: service.pickedUp,
             onClick: () => void togglePickup(),
@@ -519,20 +519,20 @@ export function ServiceDetailPage() {
         ]
       : []),
     ...(claimable
-      ? [{ key: 'claim', icon: 'shield-halved' as const, label: 'Klaim Garansi', primary: service.pickedUp, onClick: () => setClaimOpen(true) }]
+      ? [{ key: 'claim', icon: 'shield-halved' as const, label: t('serviceDetail.claimWarranty'), primary: service.pickedUp, onClick: () => setClaimOpen(true) }]
       : []),
     ...(openClaim
-      ? [{ key: 'open-claim', icon: 'shield-halved' as const, label: `Klaim ${openClaim.serviceNo} berjalan`, to: `/services/${openClaim.id}` }]
+      ? [{ key: 'open-claim', icon: 'shield-halved' as const, label: interpolate(t('serviceDetail.claimRunning'), { no: openClaim.serviceNo }), to: `/services/${openClaim.id}` }]
       : []),
     ...(!isTerminal(service.status)
       ? [
           onlyDp
-            ? { key: 'status', icon: 'money-bill-wave' as const, label: 'Terima DP', primary: true, onClick: () => setStatusOpen(true) }
-            : { key: 'status', icon: 'arrow-right' as const, iconRight: true, label: 'Update Status', primary: true, onClick: () => setStatusOpen(true) },
+            ? { key: 'status', icon: 'money-bill-wave' as const, label: t('serviceDetail.receiveDp'), primary: true, onClick: () => setStatusOpen(true) }
+            : { key: 'status', icon: 'arrow-right' as const, iconRight: true, label: t('serviceDetail.updateStatus'), primary: true, onClick: () => setStatusOpen(true) },
         ]
       : []),
     ...(service.status === 'lunas' && isManager
-      ? [{ key: 'correct', icon: 'pen' as const, label: 'Koreksi Biaya', onClick: () => setStatusOpen(true) }]
+      ? [{ key: 'correct', icon: 'pen' as const, label: t('serviceDetail.correctCost'), onClick: () => setStatusOpen(true) }]
       : []),
   ];
   const secondaryActions = actions.filter((a) => !a.primary);
@@ -576,22 +576,24 @@ export function ServiceDetailPage() {
         <div className={styles.claimBanner}>
           <Icon name="shield-halved" aria-hidden />
           <span>
-            Tiket ini adalah <strong>klaim garansi</strong>
+            {t('serviceDetail.claimBanner')} <strong>{t('serviceDetail.claimBannerStrong')}</strong>
             {originTicket ? (
               <>
-                {' '}dari{' '}
+                {' '}{t('serviceDetail.claimFrom')}{' '}
                 <Link to={`/services/${originTicket.id}`}>{originTicket.serviceNo}</Link>
               </>
             ) : (
-              ' (tiket asli tidak ditemukan)'
+              t('serviceDetail.claimOriginMissing')
             )}
             .
             {service.claimedItems && service.claimedItems.length > 0 && (
               <>
-                {' '}Diklaim
-                {service.claimedItems.some((item) => item.inferred) ? ' (perkiraan, klaim lama)' : ''}:{' '}
+                {' '}{t('serviceDetail.claimedItems')}
+                {service.claimedItems.some((item) => item.inferred) ? t('serviceDetail.claimedInferred') : ''}:{' '}
                 <strong>
-                  {service.claimedItems.map((item) => `${item.name} (s/d ${fmtDate(item.until)})`).join(', ')}
+                  {service.claimedItems
+                    .map((item) => interpolate(t('serviceDetail.until'), { name: item.name, date: fmtDate(item.until) }))
+                    .join(', ')}
                 </strong>
                 .
               </>
@@ -616,43 +618,43 @@ export function ServiceDetailPage() {
               {service.technicianName && (
                 <>
                   <span className={styles.dot} />
-                  Teknisi <strong>{service.technicianName}</strong>
+                  {t('serviceDetail.technician')} <strong>{service.technicianName}</strong>
                 </>
               )}
               {service.warrantyServiceUntil ? (
                 <>
                   <span className={styles.dot} />
-                  Garansi jasa s/d {fmtDate(service.warrantyServiceUntil)}
+                  {interpolate(t('serviceDetail.serviceWarranty'), { date: fmtDate(service.warrantyServiceUntil) })}
                 </>
               ) : (
                 warrantyDecided(service) && (
                   <>
                     <span className={styles.dot} />
-                    Jasa tanpa garansi
+                    {t('serviceDetail.noServiceWarranty')}
                   </>
                 )
               )}
               {service.warrantyPartsUntil && (
                 <>
                   <span className={styles.dot} />
-                  Garansi part s/d {fmtDate(service.warrantyPartsUntil)}
+                  {interpolate(t('serviceDetail.partWarranty'), { date: fmtDate(service.warrantyPartsUntil) })}
                 </>
               )}
               <span className={styles.dot} />
               {service.pickedUp ? (
                 <span className={styles.pickedUp}>
-                  <Icon name="circle-check" aria-hidden /> Sudah diambil
+                  <Icon name="circle-check" aria-hidden /> {t('serviceDetail.pickedUp')}
                   {service.pickedUpAt ? ` · ${fmtDate(service.pickedUpAt)}` : ''}
                 </span>
               ) : (
                 <span className={styles.notPicked}>
-                  <Icon name="box" aria-hidden /> Belum diambil
+                  <Icon name="box" aria-hidden /> {t('serviceDetail.notPickedUp')}
                 </span>
               )}
             </p>
           </div>
           <div className={[styles.stamp, cancelled ? styles.stampCancel : ''].join(' ')}>
-            <span className={styles.stampInner}>{STATUS_LABELS[service.status]}</span>
+            <span className={styles.stampInner}>{t(`statusLabel.${service.status}`)}</span>
           </div>
         </header>
 
@@ -707,27 +709,27 @@ export function ServiceDetailPage() {
                 className={styles.ghostBtn}
                 onClick={() => void copyTrackingLink()}
               >
-                <Icon name="link" aria-hidden /> Salin tracking
+                <Icon name="link" aria-hidden /> {t('serviceDetail.copyTracking')}
               </button>
             </div>
             <div className={styles.qrRow}>
               <div className={styles.qr}>
                 <Icon name="qrcode" aria-hidden />
               </div>
-              <span className={styles.qrText}>Bagikan link untuk lacak status servis</span>
+              <span className={styles.qrText}>{t('serviceDetail.qrText')}</span>
             </div>
           </div>
 
           <div className={styles.panel}>
-            <div className={styles.panelLabel}>INTAKE / KELUHAN</div>
+            <div className={styles.panelLabel}>{t('serviceDetail.intakeLabel')}</div>
             <p className={styles.complaint}>{service.complaint || '—'}</p>
             <dl className={styles.specList}>
               <div>
-                <dt>Kelengkapan</dt>
+                <dt>{t('serviceDetail.accessories')}</dt>
                 <dd>{service.accessories || '—'}</dd>
               </div>
               <div>
-                <dt>Kategori</dt>
+                <dt>{t('serviceDetail.category')}</dt>
                 <dd>{service.category}</dd>
               </div>
             </dl>
@@ -744,16 +746,16 @@ export function ServiceDetailPage() {
                     yang ditambahkan belakangan atau koreksi. */}
                 {warrantyDecided(service) && service.spareparts.length > 0 && (
                   <button className={styles.bomAddBtn} onClick={() => setPartWarrantyOpen(true)}>
-                    <Icon name="shield-halved" aria-hidden /> Garansi part
+                    <Icon name="shield-halved" aria-hidden /> {t('serviceDetail.partWarrantyBtn')}
                   </button>
                 )}
                 <button className={styles.bomAddBtn} onClick={() => setPickerOpen(true)}>
-                  <Icon name="plus" aria-hidden /> Sparepart
+                  <Icon name="plus" aria-hidden /> {t('serviceDetail.sparepart')}
                 </button>
                 {/* Modal Dadakan = pengeluaran kas: owner/admin saja (RLS & RPC 0087). */}
                 {isManager && (
                   <button className={styles.bomAddBtn} onClick={openModalForm}>
-                    <Icon name="plus" aria-hidden /> Modal Dadakan
+                    <Icon name="plus" aria-hidden /> {t('serviceDetail.extraCost')}
                   </button>
                 )}
               </div>
@@ -763,21 +765,21 @@ export function ServiceDetailPage() {
           {modalFormOpen && (
             <div className={styles.modalForm}>
               <Input
-                label="Keterangan modal"
+                label={t('serviceDetail.modalName')}
                 value={modalName}
                 onChange={(e) => setModalName(e.target.value)}
-                placeholder="mis. Beli LCD di toko sebelah"
+                placeholder={t('serviceDetail.modalNamePh')}
                 autoFocus
               />
               <div className={styles.modalFormRow}>
                 <Input
-                  label="Nominal modal"
+                  label={t('serviceDetail.modalAmount')}
                   value={modalAmount}
                   onChange={(e) => setModalAmount(fmtRpInput(e.target.value))}
                   placeholder="250.000"
                 />
                 <Select
-                  label="Dari wallet"
+                  label={t('serviceDetail.fromWallet')}
                   value={modalWalletId}
                   onChange={(e) => setModalWalletId(e.target.value)}
                   options={wallets.map((w) => ({ value: w.id, label: w.name }))}
@@ -786,26 +788,26 @@ export function ServiceDetailPage() {
               <p className={styles.modalHint}>
                 <Icon name="circle-info" aria-hidden />{' '}
                 {editIndex == null
-                  ? 'Mengurangi saldo wallet & tercatat di Keuangan (kategori Sparepart).'
-                  : 'Menyesuaikan saldo wallet & pengeluaran terkait di Keuangan.'}
+                  ? t('serviceDetail.modalAddHint')
+                  : t('serviceDetail.modalEditHint')}
               </p>
               <div className={styles.modalFormBtns}>
                 <Button variant="secondary" size="sm" onClick={closeModalForm}>
-                  Batal
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   size="sm"
                   onClick={editIndex == null ? addManualModal : updateManualModal}
                   loading={savingCost}
                 >
-                  {editIndex == null ? 'Simpan Modal' : 'Perbarui Modal'}
+                  {t(editIndex == null ? 'serviceDetail.saveModal' : 'serviceDetail.updateModal')}
                 </Button>
               </div>
             </div>
           )}
 
           {service.spareparts.length === 0 ? (
-            <p className={styles.emptyParts}>Belum ada sparepart atau modal ditambahkan.</p>
+            <p className={styles.emptyParts}>{t('serviceDetail.noParts')}</p>
           ) : (
             <div className={styles.bom}>
               {service.spareparts.map((p, i) => {
@@ -820,10 +822,10 @@ export function ServiceDetailPage() {
                       {warrantyDecided(service) && (
                         <small className={styles.bomWarranty}>
                           {p.warrantyDays == null
-                            ? 'Garansi belum diatur'
+                            ? t('serviceDetail.warrantyUnset')
                             : p.warrantyUntil
-                              ? `Garansi s/d ${fmtDate(p.warrantyUntil)}`
-                              : 'Tanpa garansi'}
+                              ? interpolate(t('serviceDetail.warrantyUntil'), { date: fmtDate(p.warrantyUntil) })
+                              : t('serviceDetail.noWarranty')}
                         </small>
                       )}
                     </span>
@@ -838,14 +840,14 @@ export function ServiceDetailPage() {
                       ].join(' ')}
                     >
                       {manual
-                        ? 'Modal (kas)'
+                        ? t('serviceDetail.stateCash')
                         : cancelled
                           ? p.deducted
-                            ? 'Terpakai'
-                            : 'Kembali ke stok'
+                            ? t('serviceDetail.stateUsed')
+                            : t('serviceDetail.stateReturned')
                           : p.deducted
-                            ? 'Terpasang'
-                            : 'Menunggu'}
+                            ? t('serviceDetail.stateFitted')
+                            : t('serviceDetail.stateWaiting')}
                     </span>
                     {/* Satu sel untuk semua tombol baris: 7 anak di grid 6 trek dulu
                         menurunkan tombol hapus ke baris baru. */}
@@ -854,8 +856,8 @@ export function ServiceDetailPage() {
                       <button
                         className={styles.bomEdit}
                         onClick={() => openEditModal(i)}
-                        title="Edit modal"
-                        aria-label="Edit modal"
+                        title={t('serviceDetail.editModal')}
+                        aria-label={t('serviceDetail.editModal')}
                       >
                         <Icon name="pen" aria-hidden />
                       </button>
@@ -865,8 +867,8 @@ export function ServiceDetailPage() {
                       <button
                         className={styles.bomDel}
                         onClick={() => setToRemove(i)}
-                        title="Hapus baris"
-                        aria-label={`Hapus ${p.name}`}
+                        title={t('serviceDetail.removeLine')}
+                        aria-label={interpolate(t('serviceDetail.removeAria'), { name: p.name })}
                       >
                         <Icon name="trash" aria-hidden />
                       </button>
@@ -882,19 +884,19 @@ export function ServiceDetailPage() {
         {/* ---------- Cost + Log ---------- */}
         <section className={styles.cols}>
           <div className={styles.panel}>
-            <div className={styles.panelLabel}>BIAYA</div>
+            <div className={styles.panelLabel}>{t('serviceDetail.costLabel')}</div>
             <dl className={styles.costList}>
               <div>
-                <dt>Estimasi</dt>
+                <dt>{t('serviceDetail.estimate')}</dt>
                 <dd>{fmtMoney(service.estimateCost)}</dd>
               </div>
               <div>
-                <dt>Biaya final</dt>
-                <dd>{service.finalCost > 0 ? fmtMoney(service.finalCost) : 'Belum ditetapkan'}</dd>
+                <dt>{t('serviceDetail.finalCost')}</dt>
+                <dd>{service.finalCost > 0 ? fmtMoney(service.finalCost) : t('serviceDetail.notSet')}</dd>
               </div>
               {service.downPayment > 0 && (
                 <div>
-                  <dt>DP diterima</dt>
+                  <dt>{t('serviceDetail.dpReceived')}</dt>
                   <dd className={styles.dp}>− {fmtMoney(service.downPayment)}</dd>
                 </div>
               )}
@@ -905,11 +907,11 @@ export function ServiceDetailPage() {
               {isOwner && (
                 <>
                   <div>
-                    <dt>Modal (part + dadakan)</dt>
+                    <dt>{t('serviceDetail.modalTotal')}</dt>
                     <dd className={styles.dp}>− {fmtMoney(modalTotal)}</dd>
                   </div>
                   <div className={styles.costProfit} data-loss={profitKnown && profit < 0}>
-                    <dt>Profit unit</dt>
+                    <dt>{t('serviceDetail.unitProfit')}</dt>
                     <dd>{profitKnown ? fmtMoney(profit) : '—'}</dd>
                   </div>
                 </>
@@ -918,15 +920,15 @@ export function ServiceDetailPage() {
           </div>
 
           <div className={styles.panel}>
-            <div className={styles.panelLabel}>LOG TEKNISI</div>
+            <div className={styles.panelLabel}>{t('serviceDetail.logLabel')}</div>
             <ul className={styles.log}>
               {log.map((l, i) => (
                 <li key={i} className={[styles.logItem, l.internal ? styles.logInternal : ''].join(' ')}>
                   <span className={styles.logDot} />
                   <div>
                     <div className={styles.logHead}>
-                      <strong>{l.status === 'edit' ? 'Edit' : STATUS_LABELS[l.status as ServiceStatus]}</strong>
-                      {l.internal && <span className={styles.internalTag}>internal</span>}
+                      <strong>{l.status === 'edit' ? t('serviceDetail.edit') : t(`statusLabel.${l.status as ServiceStatus}`)}</strong>
+                      {l.internal && <span className={styles.internalTag}>{t('serviceDetail.internal')}</span>}
                     </div>
                     <span className={styles.logAt}>
                       {fmtDateTime(l.at)} · {l.byName}
@@ -1009,9 +1011,9 @@ export function ServiceDetailPage() {
       />
       <ConfirmDialog
         open={confirmPickup}
-        title="Unit belum lunas"
-        message={`Masih ada tagihan ${fmtMoney(outstanding)}. Tandai sudah diambil pelanggan?`}
-        confirmLabel="Ya, sudah diambil"
+        title={t('services.unpaidTitle')}
+        message={interpolate(t('serviceDetail.unpaidMsg'), { amount: fmtMoney(outstanding) })}
+        confirmLabel={t('services.unpaidConfirm')}
         onCancel={() => setConfirmPickup(false)}
         onConfirm={() => {
           setConfirmPickup(false);
@@ -1022,15 +1024,19 @@ export function ServiceDetailPage() {
           stok (part → rak). Dulu terjadi seketika tanpa konfirmasi. */}
       <ConfirmDialog
         open={toRemove !== null}
-        title="Hapus baris?"
+        title={t('serviceDetail.removeTitle')}
         message={(() => {
           const line = toRemove !== null ? service.spareparts[toRemove] : null;
           if (!line) return '';
           return line.kind === 'manual'
-            ? `${line.name} · ${fmtMoney(line.costPrice)}. Pengeluarannya dihapus dan saldo wallet dikembalikan.`
-            : `${line.name} ×${line.qty}. ${line.deducted ? 'Stoknya dikembalikan ke inventori.' : 'Belum memotong stok.'}`;
+            ? interpolate(t('serviceDetail.removeManualMsg'), { name: line.name, amount: fmtMoney(line.costPrice) })
+            : interpolate(t('serviceDetail.removePartMsg'), {
+                name: line.name,
+                qty: String(line.qty),
+                effect: t(line.deducted ? 'serviceDetail.stockRestored' : 'serviceDetail.stockNotDeducted'),
+              });
         })()}
-        confirmLabel="Hapus"
+        confirmLabel={t('common.delete')}
         danger
         onCancel={() => setToRemove(null)}
         onConfirm={() => {

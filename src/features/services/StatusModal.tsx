@@ -45,6 +45,8 @@ import { useSessionStore } from '@/stores/session';
 import { isCloudMode } from '@/stores/demo';
 import type { Service, ServiceStatus } from '@/data/types';
 import styles from './StatusModal.module.css';
+import { interpolate } from '@/lib/business/notify';
+import type { TranslationKey } from '@/i18n';
 
 /** Sub-actions this modal hosts. It is the single hub for all financial input. */
 type Mode = 'status' | 'dp' | 'koreksi';
@@ -58,10 +60,10 @@ interface StatusModalProps {
   initialMode?: Mode;
 }
 
-const MODE_LABELS: Record<Mode, string> = {
-  status: 'Ubah Status',
-  dp: 'Terima DP',
-  koreksi: 'Koreksi Biaya',
+const MODE_LABELS: Record<Mode, TranslationKey> = {
+  status: 'serviceStatus.modeStatus',
+  dp: 'serviceStatus.modeDp',
+  koreksi: 'serviceStatus.modeCorrect',
 };
 
 export function StatusModal({ open, onClose, service, onSaved, initialMode = 'status' }: StatusModalProps) {
@@ -223,12 +225,12 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
   // ---- Sub-action: change status ----
   const applyStatus = async (opts?: { noWarrantyOk?: boolean; zeroCostOk?: boolean }) => {
-    if (!target) return toast.warning('Pilih status tujuan');
+    if (!target) return toast.warning(t('serviceStatus.targetRequired'));
     if (noteRequired && !note.trim()) {
-      return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS[target]}`);
+      return toast.warning(interpolate(t('serviceStatus.noteRequired'), { status: t(`statusLabel.${target}`) }));
     }
     if (needsHandling && !handling.trim()) {
-      return toast.warning('Penanganan wajib diisi untuk status Selesai');
+      return toast.warning(t('serviceStatus.handlingRequired'));
     }
     const svcDays = Math.max(0, Math.round(Number(warrantyService) || 0));
     const partsDays = service.spareparts.map((_, i) => Math.max(0, Math.round(Number(partDays[i]) || 0)));
@@ -246,17 +248,17 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     const settle = settlementAmount(cost, service.downPayment);
     if (paying && settle > 0) {
       const err = validateSplit(splitsAsNumbers(), settle);
-      if (err === 'empty') return toast.warning('Isi minimal satu pembayaran');
+      if (err === 'empty') return toast.warning(t('serviceStatus.paymentRequired'));
       if (err === 'mismatch')
-        return toast.warning(`Total pembayaran (${fmtRp(splitPaid)}) harus sama dengan sisa tagihan (${fmtRp(settle)})`);
+        return toast.warning(interpolate(t('serviceStatus.paymentMismatch'), { paid: fmtRp(splitPaid), due: fmtRp(settle) }));
     }
     // Kelebihan DP dikembalikan saat pelunasan, bukan hilang diam-diam.
     const excess = paying ? overpaidAmount(cost, service.downPayment) : 0;
     const excessRefund = excess > 0 ? parseRpInput(refundAmount) : 0;
     if (excessRefund > excess) {
-      return toast.warning(`Refund melebihi kelebihan DP (${fmtRp(excess)})`);
+      return toast.warning(interpolate(t('serviceStatus.refundTooBig'), { amount: fmtRp(excess) }));
     }
-    if (excessRefund > 0 && !refundWalletId) return toast.warning('Pilih wallet asal refund');
+    if (excessRefund > 0 && !refundWalletId) return toast.warning(t('serviceStatus.refundWalletRequired'));
     setBusy(true);
     const now = new Date().toISOString();
     try {
@@ -269,7 +271,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           fresh.downPayment !== service.downPayment ||
           JSON.stringify(fresh.spareparts) !== JSON.stringify(service.spareparts))
       ) {
-        throw new Error('Tiket ini berubah di perangkat lain. Tutup lalu buka lagi untuk melihat data terbaru.');
+        throw new Error(t('serviceStatus.staleTicket'));
       }
       const { deductions, updated } = computeStockDeduction(service.spareparts, target);
       // Baris lama yang belum dipotong: stok & tanda `deducted` ditulis bersama (0064).
@@ -480,11 +482,15 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         entityLabel: service.serviceNo,
         meta: { from: service.status, to: express && paying ? 'lunas' : target, ...(express && paying ? { express: true } : {}) },
       });
-      toast.success(express && paying ? 'Selesai, lunas & diambil' : `Status → ${STATUS_LABELS[target]}`);
+      toast.success(
+        express && paying
+          ? t('serviceStatus.expressDone')
+          : interpolate(t('serviceStatus.statusDone'), { status: t(`statusLabel.${target}`) }),
+      );
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memperbarui status');
+      toast.error(e instanceof Error ? e.message : t('serviceStatus.updateFailed'));
     } finally {
       setBusy(false);
     }
@@ -493,8 +499,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // ---- Sub-action: receive DP (real cash in) ----
   const applyDp = async () => {
     const amount = parseRpInput(dpAmount);
-    if (amount <= 0) return toast.warning('Nominal DP harus lebih dari 0');
-    if (!dpWalletId) return toast.warning('Pilih wallet tujuan');
+    if (amount <= 0) return toast.warning(t('serviceStatus.dpAmountRequired'));
+    if (!dpWalletId) return toast.warning(t('serviceStatus.dpWalletRequired'));
     setBusy(true);
     const now = new Date().toISOString();
     try {
@@ -542,11 +548,11 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         entityLabel: `DP ${service.serviceNo}`,
         meta: { amount, serviceId: service.id },
       });
-      toast.success('DP diterima & masuk keuangan');
+      toast.success(t('serviceStatus.dpDone'));
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mencatat DP');
+      toast.error(e instanceof Error ? e.message : t('serviceStatus.dpFailed'));
     } finally {
       setBusy(false);
     }
@@ -556,7 +562,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
   // Hanya selisihnya yang dibukukan, hari ini. Pelunasan lama tidak disentuh,
   // jadi pendapatan bulan lalu tidak pindah ke bulan ini (dulu dihapus & dibukukan ulang).
   const applyKoreksi = async () => {
-    if (!correctAmount.trim()) return toast.warning('Isi biaya final');
+    if (!correctAmount.trim()) return toast.warning(t('serviceStatus.finalRequired'));
     const newFinal = parseRpInput(correctAmount);
     const oldFinal = service.finalCost;
     const delta = newFinal - oldFinal;
@@ -565,9 +571,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       return;
     }
     const wallet = wallets.find((w) => w.id === correctWalletId);
-    if (!wallet) return toast.warning('Pilih wallet');
+    if (!wallet) return toast.warning(t('serviceStatus.walletRequired'));
     if (delta < 0 && wallet.balance < -delta) {
-      return toast.warning(`Saldo ${wallet.name} tidak cukup untuk mengembalikan ${fmtRp(-delta)}`);
+      return toast.warning(interpolate(t('serviceStatus.walletShort'), { wallet: wallet.name, amount: fmtRp(-delta) }));
     }
     setBusy(true);
     const now = new Date().toISOString();
@@ -619,13 +625,13 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
       });
       toast.success(
         delta > 0
-          ? `Biaya dikoreksi · selisih ${fmtRp(delta)} masuk ${wallet.name}`
-          : `Biaya dikoreksi · ${fmtRp(-delta)} dikembalikan dari ${wallet.name}`,
+          ? interpolate(t('serviceStatus.correctedIn'), { amount: fmtRp(delta), wallet: wallet.name })
+          : interpolate(t('serviceStatus.correctedOut'), { amount: fmtRp(-delta), wallet: wallet.name }),
       );
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mengoreksi biaya final');
+      toast.error(e instanceof Error ? e.message : t('serviceStatus.correctFailed'));
     } finally {
       setBusy(false);
     }
@@ -665,7 +671,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     .filter(Boolean)
     .join(' ');
   const requestCancel = () => {
-    if (!note.trim()) return toast.warning(`Catatan wajib diisi untuk status ${STATUS_LABELS.batal}`);
+    if (!note.trim()) return toast.warning(interpolate(t('serviceStatus.noteRequired'), { status: t('statusLabel.batal') }));
     setConfirmCancel(true);
   };
 
@@ -673,9 +679,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     mode === 'dp' ? applyDp : mode === 'koreksi' ? applyKoreksi : cancelling ? requestCancel : () => applyStatus();
   const applyLabel =
     mode === 'dp'
-      ? 'Simpan DP'
+      ? t('serviceStatus.saveDp')
       : mode === 'koreksi'
-        ? 'Perbarui Biaya'
+        ? t('serviceStatus.updateCost')
         : cancelling
           ? cancelRefund > 0
             ? t('serviceStatus.cancelRefund').replace('{amount}', fmtRp(cancelRefund))
@@ -696,7 +702,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     <Modal
       open={open}
       onClose={onClose}
-      title={`Update — ${service.serviceNo}`}
+      title={interpolate(t('serviceStatus.title'), { no: service.serviceNo })}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -716,8 +722,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     >
       <div className={styles.body}>
         <div className={styles.current}>
-          <span className={styles.label}>Status saat ini</span>
-          <Badge tone={STATUS_TONE[service.status] as 'brand'}>{STATUS_LABELS[service.status]}</Badge>
+          <span className={styles.label}>{t('serviceStatus.current')}</span>
+          <Badge tone={STATUS_TONE[service.status] as 'brand'}>{t(`statusLabel.${service.status}`)}</Badge>
         </div>
 
         {modes.length > 1 && (
@@ -729,7 +735,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 className={[styles.modeTab, mode === m ? styles.modeTabActive : ''].join(' ')}
                 onClick={() => setMode(m)}
               >
-                {MODE_LABELS[m]}
+                {t(MODE_LABELS[m])}
               </button>
             ))}
           </div>
@@ -737,7 +743,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
 
         {service.spareparts.length > 0 && (
           <div className={styles.partsSummary}>
-            <span className={styles.label}>Sparepart & Modal</span>
+            <span className={styles.label}>{t('serviceStatus.partsAndCost')}</span>
             <ul className={styles.partsList}>
               {service.spareparts.map((p, i) => (
                 <li key={`${p.itemId ?? 'm'}-${i}`}>
@@ -750,14 +756,14 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 </li>
               ))}
             </ul>
-            <p className={styles.partsHint}>Kelola sparepart & modal di halaman detail servis.</p>
+            <p className={styles.partsHint}>{t('serviceStatus.partsHint')}</p>
           </div>
         )}
 
         {noActions && (
           <p className={styles.terminal}>
-            Status ini final, tidak ada aksi lanjutan
-            {!canSetStatus(role, 'lunas') && ' (sebagian aksi butuh peran owner/admin)'}.
+            {t('serviceStatus.final')}
+            {!canSetStatus(role, 'lunas') && t('serviceStatus.finalRole')}.
           </p>
         )}
 
@@ -782,7 +788,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                       onClick={() => onTargetChange(s)}
                     >
                       <span className={styles.channelLed} aria-hidden />
-                      {STATUS_LABELS[s]}
+                      {t(`statusLabel.${s}`)}
                     </button>
                   ))}
                 </div>
@@ -798,21 +804,20 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                     onClick={() => onTargetChange('batal')}
                   >
                     <span className={styles.channelLed} aria-hidden />
-                    {STATUS_LABELS.batal}
+                    {t('statusLabel.batal')}
                   </button>
                 </div>
               )}
             </div>
             {reopening && (
               <p className={styles.dp}>
-                Tiket dibuka lagi untuk dikerjakan. Garansi yang ditetapkan saat Selesai dihapus dan diisi ulang saat
-                Selesai berikutnya.
+                {t('serviceStatus.reopenNote')}
               </p>
             )}
             {needsCost && (
               <div className={styles.costField}>
                 <Input
-                  label="Biaya Final"
+                  label={t('serviceStatus.finalCost')}
                   value={finalCost}
                   onChange={(e) => changeCost(fmtRpInput(e.target.value))}
                   placeholder="0"
@@ -834,46 +839,46 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             )}
             {needsHandling && (
               <Input
-                label="Penanganan (wajib)"
+                label={t('serviceStatus.handling')}
                 value={handling}
                 onChange={(e) => setHandling(e.target.value)}
-                placeholder="Contoh: ganti LCD, unit sudah dites normal"
+                placeholder={t('serviceStatus.handlingPh')}
               />
             )}
             {canExpress && (
               <div className={styles.expressRow}>
                 <span className={styles.expressText}>
-                  <strong>Pelanggan menunggu?</strong>
-                  <small>Selesai, lunas, dan diambil sekaligus.</small>
+                  <strong>{t('serviceStatus.expressQ')}</strong>
+                  <small>{t('serviceStatus.expressSub')}</small>
                 </span>
                 <button
                   type="button"
                   className={styles.expressToggle}
                   aria-pressed={express}
-                  aria-label="Langsung lunas dan tandai diambil"
+                  aria-label={t('serviceStatus.expressAria')}
                   onClick={() => {
                     if (!express) seedPayment(finalCost);
                     setExpress(!express);
                   }}
                 >
-                  {express ? 'Langsung lunas' : 'Tidak'}
+                  {t(express ? 'serviceStatus.expressOn' : 'serviceStatus.expressOff')}
                 </button>
               </div>
             )}
             {paying && settleDue > 0 && (
               <div className={styles.splitBlock}>
-                <span className={styles.splitLabel}>Pembayaran (bisa dipecah ke beberapa wallet)</span>
+                <span className={styles.splitLabel}>{t('serviceStatus.splitLabel')}</span>
                 {splits.map((s, i) => (
                   <div key={i} className={styles.splitRow}>
                     <Select
-                      aria-label={`Wallet pembayaran ${i + 1}`}
+                      aria-label={interpolate(t('serviceStatus.splitWallet'), { n: String(i + 1) })}
                       value={s.walletId}
                       onChange={(e) => setSplitWallet(i, e.target.value)}
                       options={walletOptions}
-                      placeholder="Wallet…"
+                      placeholder={t('serviceStatus.walletPh')}
                     />
                     <Input
-                      aria-label={`Nominal pembayaran ${i + 1}`}
+                      aria-label={interpolate(t('serviceStatus.splitAmount'), { n: String(i + 1) })}
                       inputMode="numeric"
                       value={s.amount}
                       onChange={(e) => setSplitAmount(i, e.target.value)}
@@ -884,8 +889,8 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                         type="button"
                         className={styles.splitRemove}
                         onClick={() => removeSplit(i)}
-                        title="Hapus pembayaran"
-                        aria-label="Hapus pembayaran"
+                        title={t('serviceStatus.splitRemove')}
+                        aria-label={t('serviceStatus.splitRemove')}
                       >
                         <Icon name="xmark" aria-hidden />
                       </button>
@@ -894,7 +899,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                 ))}
                 <div className={styles.splitFooter}>
                   <button type="button" className={styles.splitAdd} onClick={addSplit}>
-                    <Icon name="plus" aria-hidden /> Tambah wallet
+                    <Icon name="plus" aria-hidden /> {t('serviceStatus.splitAdd')}
                   </button>
                   <span
                     className={styles.splitTally}
@@ -907,10 +912,10 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             )}
             {needsWarranty && (
               <div className={styles.warranty}>
-                <span className={styles.warrantyLabel}>Garansi · isi 0 untuk tanpa garansi</span>
+                <span className={styles.warrantyLabel}>{t('serviceStatus.warrantyLabel')}</span>
                 <div className={styles.warrantyField}>
                   <Input
-                    label="Garansi Jasa (hari)"
+                    label={t('serviceStatus.warrantyService')}
                     type="number"
                     inputMode="numeric"
                     min={0}
@@ -921,7 +926,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                   <WarrantyPresets
                     presets={warrantyPresets}
                     onPick={(d) => setWarrantyService(String(d))}
-                    what="jasa"
+                    what={t('partWarranty.service')}
                   />
                 </div>
                 {service.spareparts.length > 0 && (
@@ -950,54 +955,56 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
             {paying && lunasExcess > 0 && (
               <div className={styles.warranty}>
                 <span className={styles.warrantyLabel}>
-                  Kelebihan DP {fmtRp(lunasExcess)} (DP {fmtRp(service.downPayment)} melebihi biaya final)
+                  {interpolate(t('serviceStatus.excessLabel'), { amount: fmtRp(lunasExcess), dp: fmtRp(service.downPayment) })}
                 </span>
                 <div className={styles.warrantyRow}>
                   <Input
-                    label="Refund ke pelanggan"
+                    label={t('serviceStatus.refundToCustomer')}
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(fmtRpInput(e.target.value))}
                     placeholder="0"
                   />
                   <Select
-                    label="Dari wallet"
+                    label={t('serviceStatus.fromWallet')}
                     value={refundWalletId}
                     onChange={(e) => setRefundWalletId(e.target.value)}
                     options={walletOptions}
-                    placeholder="Pilih wallet…"
+                    placeholder={t('serviceStatus.pickWallet')}
                   />
                 </div>
                 <p className={styles.dp}>
-                  Isi 0 bila kelebihan tidak dikembalikan (jadi pendapatan toko). Refund dicatat sebagai pengeluaran; income DP tetap tersimpan.
+                  {t('serviceStatus.excessHint')}
                 </p>
               </div>
             )}
             {target === 'batal' && service.downPayment > 0 && (
               <div className={styles.warranty}>
-                <span className={styles.warrantyLabel}>Refund DP (DP diterima: {fmtRp(service.downPayment)})</span>
+                <span className={styles.warrantyLabel}>
+                  {interpolate(t('serviceStatus.refundDpLabel'), { amount: fmtRp(service.downPayment) })}
+                </span>
                 <div className={styles.warrantyRow}>
                   <Input
-                    label="Nominal Refund"
+                    label={t('serviceStatus.refundAmount')}
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(fmtRpInput(e.target.value))}
                     placeholder="0"
                   />
                   <Select
-                    label="Dari wallet"
+                    label={t('serviceStatus.fromWallet')}
                     value={refundWalletId}
                     onChange={(e) => setRefundWalletId(e.target.value)}
                     options={walletOptions}
-                    placeholder="Pilih wallet…"
+                    placeholder={t('serviceStatus.pickWallet')}
                   />
                 </div>
                 <p className={styles.dp}>
-                  Kosongkan/0 jika DP tidak dikembalikan (jadi pendapatan toko). Refund dicatat sebagai pengeluaran; income DP tetap tersimpan.
+                  {t('serviceStatus.refundDpHint')}
                 </p>
               </div>
             )}
             {target === 'batal' && heldParts.length > 0 && (
               <div className={styles.warranty}>
-                <span className={styles.warrantyLabel}>Sparepart dari stok</span>
+                <span className={styles.warrantyLabel}>{t('serviceStatus.stockParts')}</span>
                 <div className={styles.partFate}>
                   {heldParts.map(({ part, index }) => {
                     const used = consumedParts.has(index);
@@ -1010,7 +1017,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                           type="button"
                           className={styles.partFateToggle}
                           aria-pressed={used}
-                          aria-label={`${part.name}: ${used ? 'terpakai, tidak kembali ke stok' : 'kembali ke stok'}`}
+                          aria-label={interpolate(t(used ? 'serviceStatus.partUsedAria' : 'serviceStatus.partBackAria'), { name: part.name })}
                           onClick={() =>
                             setConsumedParts((prev) => {
                               const next = new Set(prev);
@@ -1020,36 +1027,38 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
                             })
                           }
                         >
-                          {used ? 'Terpakai' : 'Ke stok'}
+                          {t(used ? 'serviceStatus.partUsed' : 'serviceStatus.partBack')}
                         </button>
                       </div>
                     );
                   })}
                 </div>
                 <p className={styles.dp}>
-                  Klik untuk menandai part yang sudah terpasang di unit atau rusak saat dipasang. Part terpakai tidak
-                  kembali ke stok.
+                  {t('serviceStatus.partFateHint')}
                 </p>
               </div>
             )}
             <Input
-              label={noteRequired ? 'Catatan (wajib)' : 'Catatan (opsional)'}
+              label={t(noteRequired ? 'serviceStatus.noteReq' : 'serviceStatus.noteOpt')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={
                 target === 'batal'
-                  ? 'Contoh: pelanggan menolak biaya, unit tidak bisa diperbaiki'
+                  ? t('serviceStatus.notePhCancel')
                   : target === 'selesai'
-                    ? 'Contoh: casing lama dikembalikan ke pelanggan'
-                    : 'Contoh: unit sudah dicek, menunggu sparepart'
+                    ? t('serviceStatus.notePhDone')
+                    : t('serviceStatus.notePhWork')
               }
             />
             {service.downPayment > 0 && (
               <p className={styles.dp}>
-                DP diterima: {fmtRp(service.downPayment)} ·{' '}
+                {interpolate(t('serviceStatus.dpLine'), { amount: fmtRp(service.downPayment) })}{' '}
                 {needsCost && lunasExcess > 0
-                  ? `Kelebihan DP: ${fmtRp(lunasExcess)}${paying ? '' : ' — dikembalikan saat pelunasan'}`
-                  : `Sisa: ${fmtRp(outstandingBalance({ ...service, finalCost: parseRpInput(finalCost) || service.finalCost }))}`}
+                  ? interpolate(t('serviceStatus.excessLine'), { amount: fmtRp(lunasExcess) }) +
+                    (paying ? '' : t('serviceStatus.excessLater'))
+                  : interpolate(t('serviceStatus.remaining'), {
+                      amount: fmtRp(outstandingBalance({ ...service, finalCost: parseRpInput(finalCost) || service.finalCost })),
+                    })}
               </p>
             )}
           </>
@@ -1060,26 +1069,25 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
           <>
             {staffDpOnly && (
               <p className={styles.staffNote}>
-                Pekerjaan {STATUS_LABELS[service.status].toLowerCase()}. Pelunasan hanya bisa
-                dilakukan owner/admin. Kamu masih bisa menerima DP.
+                {interpolate(t('serviceStatus.staffDpOnly'), { status: t(`statusLabel.${service.status}`).toLowerCase() })}
               </p>
             )}
             <Input
-              label="Nominal DP"
+              label={t('serviceStatus.dpAmount')}
               value={dpAmount}
               onChange={(e) => setDpAmount(fmtRpInput(e.target.value))}
               placeholder="100.000"
             />
             <Select
-              label="Ke wallet"
+              label={t('serviceStatus.toWallet')}
               value={dpWalletId}
               onChange={(e) => setDpWalletId(e.target.value)}
               options={walletOptions}
-              placeholder="Pilih wallet…"
+              placeholder={t('serviceStatus.pickWallet')}
             />
             <p className={styles.dp}>
-              Menambah saldo wallet & tercatat di Keuangan (kategori Servis). Saat lunas hanya sisa tagihan yang dicatat.
-              {service.downPayment > 0 && ` DP terkumpul saat ini: ${fmtRp(service.downPayment)}.`}
+              {t('serviceStatus.dpHint')}
+              {service.downPayment > 0 && interpolate(t('serviceStatus.dpSoFar'), { amount: fmtRp(service.downPayment) })}
             </p>
           </>
         )}
@@ -1088,25 +1096,25 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
         {mode === 'koreksi' && (
           <>
             <Input
-              label="Biaya final (koreksi)"
+              label={t('serviceStatus.correctLabel')}
               value={correctAmount}
               onChange={(e) => setCorrectAmount(fmtRpInput(e.target.value))}
               placeholder="0"
             />
             <Select
-              label={correctDelta < 0 ? 'Kembalikan selisih dari wallet' : 'Terima selisih ke wallet'}
+              label={t(correctDelta < 0 ? 'serviceStatus.correctOutWallet' : 'serviceStatus.correctInWallet')}
               value={correctWalletId}
               onChange={(e) => setCorrectWalletId(e.target.value)}
               options={walletOptions}
-              placeholder="Pilih wallet…"
+              placeholder={t('serviceStatus.pickWallet')}
             />
             <p className={styles.dp}>
               {correctDelta > 0
-                ? `Selisih ${fmtRp(correctDelta)} dicatat sebagai pemasukan hari ini.`
+                ? interpolate(t('serviceStatus.correctInHint'), { amount: fmtRp(correctDelta) })
                 : correctDelta < 0
-                  ? `Selisih ${fmtRp(-correctDelta)} dicatat sebagai pengeluaran (refund) hari ini.`
-                  : `Biaya final saat ini ${fmtRp(service.finalCost)}.`}{' '}
-              Pelunasan lama tidak diubah, jadi laporan bulan sebelumnya tetap. Tercatat di log internal.
+                  ? interpolate(t('serviceStatus.correctOutHint'), { amount: fmtRp(-correctDelta) })
+                  : interpolate(t('serviceStatus.correctNow'), { amount: fmtRp(service.finalCost) })}{' '}
+              {t('serviceStatus.correctTail')}
             </p>
           </>
         )}
@@ -1122,7 +1130,7 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
               <li key={i} className={styles.timelineItem}>
                 <span className={styles.dot} data-tone={h.status === 'edit' ? 'neutral' : STATUS_TONE[h.status as ServiceStatus]} />
                 <div>
-                  <strong>{h.status === 'edit' ? 'Edit' : STATUS_LABELS[h.status as ServiceStatus]}</strong>
+                  <strong>{h.status === 'edit' ? t('serviceDetail.edit') : t(`statusLabel.${h.status as ServiceStatus}`)}</strong>
                   <small>
                     {fmtDate(localDateOf(h.at))} · {h.byName || '—'}
                     {h.note ? ` · ${h.note}` : ''}
@@ -1149,9 +1157,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     />
     <ConfirmDialog
       open={confirmNoWarranty}
-      title="Selesai tanpa garansi?"
-      message="Garansi jasa dan semua sparepart bernilai 0 hari. Nota dan halaman lacak akan menulis “Tanpa garansi”."
-      confirmLabel="Ya, tanpa garansi"
+      title={t('serviceStatus.noWarrantyTitle')}
+      message={t('serviceStatus.noWarrantyMsg')}
+      confirmLabel={t('serviceStatus.noWarrantyOk')}
       onCancel={() => setConfirmNoWarranty(false)}
       onConfirm={() => {
         setConfirmNoWarranty(false);
@@ -1160,9 +1168,9 @@ export function StatusModal({ open, onClose, service, onSaved, initialMode = 'st
     />
     <ConfirmDialog
       open={confirmZeroCost}
-      title="Biaya final Rp 0?"
-      message="Tiket tercatat gratis: tidak ada tagihan dan tidak ada pemasukan. Lanjutkan hanya bila memang tidak dikenakan biaya."
-      confirmLabel="Ya, gratis"
+      title={t('serviceStatus.zeroTitle')}
+      message={t('serviceStatus.zeroMsg')}
+      confirmLabel={t('serviceStatus.zeroOk')}
       onCancel={() => setConfirmZeroCost(false)}
       onConfirm={() => {
         setConfirmZeroCost(false);

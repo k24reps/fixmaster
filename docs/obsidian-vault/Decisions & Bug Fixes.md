@@ -3533,3 +3533,24 @@ sebagai entri biasa (kurang = pengeluaran Lainnya, lebih = pemasukan Lainnya), j
 ada di buku kas, Dashboard, dan Laporan. Keputusan: penyesuaian lewat `createFinanceEntry`
 (RPC 0071 + penjaga tanggal 0091), bukan menimpa `wallets.balance` — saldo di FixMaster selalu
 turunan dari baris yang bisa ditelusuri. Selisih nol hanya dikonfirmasi, tidak dicatat.
+
+## i18n literal lama Servis, Kasir, Keuangan (28 Sep 2026)
+
+Tahap terakhir perbaikan UX: ±400 string literal di 14 berkas (`features/services/*`,
+`pos/PosPage`, `finance/*`) dipindah ke `useT()` — label, placeholder, aria-label, toast,
+pesan validasi, dialog konfirmasi. ±440 kunci baru di `id.ts` **dan** `en.ts`, dikelompokkan
+per namespace (`services.*`, `serviceDetail.*`, `serviceForm.*`, `serviceStatus.*`,
+`warrantyClaim.*`, `notify.*`, `partWarranty.*`, `partPicker.*`, `pos.*`, `finance.*`,
+`statusLabel.*`). Teks Indonesia sengaja **tidak diubah** satu huruf pun (diverifikasi di demo:
+tiap halaman & modal dirender, nol kunci mentah, nol error). Catatan "Preseden: FinancePage 100%
+literal" di entri super-admin di atas kini tak berlaku lagi.
+
+- **Batas yang dipegang:** string yang **tersimpan** (catatan riwayat, `description` keuangan,
+  `entityLabel`, kategori, nota cetak `printReceipt`/`printSaleReceipt`) tetap literal — itu data
+  atau dokumen pelanggan, bukan teks antarmuka operator. Juga tetap: pesan `demoGuard`,
+  `entryDateError` di `lib/business` (lapisan logika), label template WA.
+- **`STATUS_LABELS` tetap ada** untuk data (catatan riwayat "Lunas", laporan, notify); tampilan di
+  tiga berkas Servis memakai `statusLabel.*`. Dashboard, riwayat pelanggan, dan halaman lacak
+  masih memakai `STATUS_LABELS`.
+- **Pilihan bahasa tetap dikunci ke Indonesia** (`stores/settings.ts`): Inventori, Laporan,
+  Pengaturan, dll. masih literal, jadi membuka EN sekarang masih menghasilkan UI campur.

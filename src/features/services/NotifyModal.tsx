@@ -17,6 +17,7 @@ import { useSessionStore } from '@/stores/session';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { Service } from '@/data/types';
 import styles from './NotifyModal.module.css';
+import { useT } from '@/i18n';
 
 interface NotifyModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ interface NotifyModalProps {
 type TemplateKey = WaTemplateKey;
 
 export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const [templateKey, setTemplateKey] = useState<TemplateKey>('selesai');
   const [message, setMessage] = useState('');
@@ -55,7 +57,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
   const sendWa = () => {
     if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh — daftar gratis.')) return;
     window.open(waLink(service.customerPhone, message), '_blank');
-    toast.success('Membuka WhatsApp…');
+    toast.success(t('notify.waOpening'));
   };
 
   const copyTracking = async () => {
@@ -63,9 +65,9 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
     const url = trackingUrl(origin, org.id, service.serviceNo);
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Link tracking disalin');
+      toast.success(t('notify.linkCopied'));
     } catch {
-      toast.error('Gagal menyalin link');
+      toast.error(t('notify.linkFailed'));
     }
   };
 
@@ -75,14 +77,14 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title={`Notifikasi — ${service.serviceNo}`}
+      title={interpolate(t('notify.title'), { no: service.serviceNo })}
       footer={
         <>
           <Button variant="secondary" onClick={printReceipt} iconLeft={<Icon name="print" aria-hidden />}>
-            Cetak Nota
+            {t('notify.print')}
           </Button>
           <Button onClick={sendWa} iconLeft={<Icon name="whatsapp" aria-hidden />}>
-            Kirim WhatsApp
+            {t('notify.sendWa')}
           </Button>
         </>
       }
@@ -100,7 +102,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
           ))}
         </div>
 
-        <label className={styles.label}>Pesan</label>
+        <label className={styles.label}>{t('notify.message')}</label>
         <textarea
           className={styles.textarea}
           value={message}
@@ -109,7 +111,7 @@ export function NotifyModal({ open, onClose, service }: NotifyModalProps) {
         />
 
         <button className={styles.copyLink} onClick={copyTracking}>
-          <Icon name="link" aria-hidden /> Salin link tracking publik
+          <Icon name="link" aria-hidden /> {t('notify.copyLink')}
         </button>
       </div>
     </Modal>

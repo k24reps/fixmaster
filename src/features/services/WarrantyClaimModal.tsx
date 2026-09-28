@@ -13,6 +13,8 @@ import { isCloudMode } from '@/stores/demo';
 import { useCollection } from '@/hooks/useCollection';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { ClaimItem, Service } from '@/data/types';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 const itemKey = (item: ClaimItem) => `${item.kind}:${item.name}`;
 
@@ -38,6 +40,7 @@ interface WarrantyClaimModalProps {
  * ditolak selama klaim sebelumnya belum Lunas/Batal.
  */
 export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }: WarrantyClaimModalProps) {
+  const t = useT();
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
   const { data: wallets } = useCollection('wallets');
@@ -68,16 +71,16 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
 
   const save = async () => {
     const chosen = items.filter((i) => picked.includes(itemKey(i)));
-    if (chosen.length === 0) return setError('Pilih bagian yang diklaim');
-    if (!complaint.trim()) return setError('Jelaskan keluhan klaim garansi');
+    if (chosen.length === 0) return setError(t('warrantyClaim.pickItems'));
+    if (!complaint.trim()) return setError(t('warrantyClaim.complaintRequired'));
     const running = openClaimFor(services, origin.id);
-    if (running) return setError(`Klaim ${running.serviceNo} untuk tiket ini masih berjalan — selesaikan dulu`);
+    if (running) return setError(interpolate(t('warrantyClaim.running'), { no: running.serviceNo }));
     const loss = recordLoss ? parseRpInput(lossAmount) : 0;
     const wallet = wallets.find((w) => w.id === walletId);
     if (recordLoss) {
-      if (loss <= 0) return setError('Nominal kerugian garansi harus lebih dari 0');
-      if (!wallet) return setError('Pilih wallet sumber biaya garansi');
-      if (wallet.balance < loss) return setError(`Saldo ${wallet.name} (${fmtRp(wallet.balance)}) tidak cukup`);
+      if (loss <= 0) return setError(t('warrantyClaim.lossRequired'));
+      if (!wallet) return setError(t('warrantyClaim.walletRequired'));
+      if (wallet.balance < loss) return setError(interpolate(t('warrantyClaim.walletShort'), { wallet: wallet.name, amount: fmtRp(wallet.balance) }));
     }
 
     setBusy(true);
@@ -182,11 +185,11 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
         }
       }
 
-      toast.success(`Klaim garansi ${claimNo} dibuat`);
+      toast.success(interpolate(t('warrantyClaim.created'), { no: claimNo }));
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal membuat klaim garansi');
+      toast.error(e instanceof Error ? e.message : t('warrantyClaim.failed'));
     } finally {
       setBusy(false);
     }
@@ -196,14 +199,14 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
     <Modal
       open={open}
       onClose={onClose}
-      title={`Klaim Garansi — ${origin.serviceNo}`}
+      title={interpolate(t('warrantyClaim.title'), { no: origin.serviceNo })}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.cancel')}
           </Button>
           <Button onClick={save} loading={busy}>
-            Buat Tiket Klaim
+            {t('warrantyClaim.create')}
           </Button>
         </>
       }
@@ -211,11 +214,11 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
       <FormFields>
         <FormError>{error}</FormError>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          Tiket servis <strong>baru &amp; gratis</strong> akan dibuat untuk{' '}
-          <strong>{origin.device}</strong> ({origin.customerName}). Tiket asli tetap lunas dan tidak berubah.
+          {t('warrantyClaim.introA')} <strong>{t('warrantyClaim.introStrong')}</strong> {t('warrantyClaim.introB')}{' '}
+          <strong>{origin.device}</strong> ({origin.customerName}). {t('warrantyClaim.introC')}
         </p>
-        <div role="group" aria-label="Bagian yang diklaim" style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Bagian yang diklaim</span>
+        <div role="group" aria-label={t('warrantyClaim.items')} style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{t('warrantyClaim.items')}</span>
           {items.map((item) => {
             const key = itemKey(item);
             return (
@@ -228,16 +231,18 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
                   }
                 />
                 <span>{item.name}</span>
-                <span style={{ color: 'var(--text-secondary)' }}>garansi s/d {fmtDate(item.until)}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {interpolate(t('warrantyClaim.until'), { date: fmtDate(item.until) })}
+                </span>
               </label>
             );
           })}
         </div>
         <Input
-          label="Keluhan klaim"
+          label={t('warrantyClaim.complaint')}
           value={complaint}
           onChange={(e) => setComplaint(e.target.value)}
-          placeholder="mis. Masalah yang sama muncul lagi"
+          placeholder={t('warrantyClaim.complaintPh')}
           autoFocus
         />
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)' }}>
@@ -246,18 +251,18 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
             checked={recordLoss}
             onChange={(e) => setRecordLoss(e.target.checked)}
           />
-          Catat kerugian garansi (biaya part/jasa yang ditanggung toko)
+          {t('warrantyClaim.recordLoss')}
         </label>
         {recordLoss && (
           <FormRow>
             <Input
-              label="Nominal kerugian"
+              label={t('warrantyClaim.lossAmount')}
               value={lossAmount}
               onChange={(e) => setLossAmount(fmtRpInput(e.target.value))}
               placeholder="100.000"
             />
             <Select
-              label="Sumber wallet"
+              label={t('warrantyClaim.wallet')}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
               options={wallets.map((w) => ({ value: w.id, label: w.name }))}

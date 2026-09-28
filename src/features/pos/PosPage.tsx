@@ -135,7 +135,7 @@ export function PosPage() {
   const confirmVoid = async () => {
     if (!voidTarget) return;
     if (voidTarget.date < monthStart) {
-      toast.error('Penjualan bulan lalu tidak bisa dibatalkan — catat pengembaliannya sebagai pengeluaran');
+      toast.error(t('pos.voidLastMonth'));
       return;
     }
     setVoidBusy(true);
@@ -165,7 +165,7 @@ export function PosPage() {
           voidedReason: voidReason.trim(),
         });
       }
-      toast.success(`Transaksi ${voidTarget.saleNo} dibatalkan`);
+      toast.success(interpolate(t('pos.voided'), { no: voidTarget.saleNo }));
       // Di cloud ini dilewati: database yang mencatatnya sendiri (0073, lihat
       // SERVER_LOGGED di lib/activity).
       logActivity({
@@ -178,7 +178,7 @@ export function PosPage() {
       setVoidTarget(null);
       setVoidReason('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan transaksi');
+      toast.error(e instanceof Error ? e.message : t('pos.voidFailed'));
     } finally {
       setVoidBusy(false);
     }
@@ -275,7 +275,7 @@ export function PosPage() {
     // dan toast di dalamnya dulu muncul kembar.
     const inCart = cart.find((c) => c.itemId === item.id);
     if (inCart && inCart.qty >= item.stock) {
-      toast.warning(`Stok "${item.name}" hanya ${item.stock}`);
+      toast.warning(interpolate(t('pos.stockLimit'), { name: item.name, n: String(item.stock) }));
       return;
     }
     setDone(null);
@@ -305,7 +305,7 @@ export function PosPage() {
   const setQty = (itemId: string, qty: number) => {
     const item = cart.find((c) => c.itemId === itemId);
     if (item && qty > item.stock) {
-      toast.warning(`Stok "${item.name}" hanya ${item.stock}`);
+      toast.warning(interpolate(t('pos.stockLimit'), { name: item.name, n: String(item.stock) }));
     }
     setCart((prev) =>
       prev
@@ -369,7 +369,7 @@ export function PosPage() {
       else window.open(url, '_blank');
     } catch (e) {
       win?.close();
-      toast.error(e instanceof Error ? e.message : 'Gagal membuka WhatsApp');
+      toast.error(e instanceof Error ? e.message : t('pos.waFailed'));
     }
   };
 
@@ -422,7 +422,7 @@ export function PosPage() {
     const payments = settle.allocations;
     if (discountOver) {
       toast.error(
-        `Diskon karyawan maksimal ${STAFF_MAX_DISCOUNT_PCT}% (${fmtRp(maxDiscount)}) — minta owner/admin untuk diskon lebih besar`,
+        interpolate(t('pos.staffDiscountToast'), { pct: String(STAFF_MAX_DISCOUNT_PCT), amount: fmtRp(maxDiscount) }),
       );
       return;
     }
@@ -489,7 +489,7 @@ export function PosPage() {
           if (!item || item.stock < c.qty) {
             toast.error(
               item
-                ? `Stok "${c.name}" berubah, periksa ulang`
+                ? interpolate(t('pos.stockChanged'), { name: c.name })
                 : t('pos.notInOutlet').replace('{name}', c.name),
             );
             setBusy(false);
@@ -549,7 +549,7 @@ export function PosPage() {
       });
       reset();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memproses transaksi');
+      toast.error(e instanceof Error ? e.message : t('pos.processFailed'));
     } finally {
       setBusy(false);
     }
@@ -613,7 +613,7 @@ export function PosPage() {
           className={[styles.tab, tab === 'pos' ? styles.tabActive : ''].join(' ')}
           onClick={() => setTab('pos')}
         >
-          <Icon name="cart-shopping" aria-hidden /> Kasir
+          <Icon name="cart-shopping" aria-hidden /> {t('pos.tabRegister')}
         </button>
         {/* Kasir juga perlu tab ini — di situlah struk dicetak ulang. Pembatalan
             tetap milik manager (tombolnya di bawah). */}
@@ -624,7 +624,7 @@ export function PosPage() {
           className={[styles.tab, tab === 'history' ? styles.tabActive : ''].join(' ')}
           onClick={() => setTab('history')}
         >
-          <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
+          <Icon name="clock-rotate-left" aria-hidden /> {t('pos.tabHistory')}
           {recentSales.length > 0 && <span className={styles.tabCount}>{recentSales.length}</span>}
         </button>
       </div>
@@ -661,14 +661,14 @@ export function PosPage() {
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
           />
           {finePointer && <kbd className={styles.kbd} aria-hidden>/</kbd>}
-          <ViewToggle value={view} onChange={chooseView} label="Tampilan produk" />
+          <ViewToggle value={view} onChange={chooseView} label={t('pos.viewLabel')} />
         </div>
         <CategoryChips
           categories={categoryCounts}
           total={inStockCount}
           value={activeCategory}
           onChange={setCategory}
-          label="Kategori produk"
+          label={t('pos.categoryLabel')}
         />
         {loadPending(inventoryLoad) ? (
           <Card glass>
@@ -679,14 +679,14 @@ export function PosPage() {
             {inStockCount > 0 || query.trim() ? (
               <EmptyState
                 icon={<Icon name="magnifying-glass" aria-hidden />}
-                title="Tidak ada produk yang cocok"
-                description="Coba kata kunci atau kategori lain."
+                title={t('pos.noMatchTitle')}
+                description={t('pos.noMatchBody')}
               />
             ) : (
               <EmptyState
                 icon={<Icon name="boxes-stacked" aria-hidden />}
-                title="Tidak ada produk tersedia"
-                description="Tambahkan stok di menu Inventori terlebih dahulu."
+                title={t('pos.noStockTitle')}
+                description={t('pos.noStockBody')}
               />
             )}
           </Card>
@@ -783,17 +783,19 @@ export function PosPage() {
                 type="button"
                 className={styles.outletChip}
                 onClick={() => setOutletModal(true)}
-                aria-label={t('pos.outletChip').replace('{name}', activeOutlet?.name ?? 'Pilih cabang')}
+                aria-label={t('pos.outletChip').replace('{name}', activeOutlet?.name ?? t('pos.pickBranch'))}
               >
                 <span className={activeOutlet ? styles.outletLedOn : styles.outletLed} aria-hidden />
-                {activeOutlet?.name ?? 'Pilih cabang'}
+                {activeOutlet?.name ?? t('pos.pickBranch')}
                 <Icon name="chevron-down" aria-hidden />
               </button>
             ) : (
               <span>{done ? done.sale.saleNo : nextNo}</span>
             )}
             <span>
-              {done ? `${done.sale.lines.length} baris` : `${totalQty} unit · ${cart.length} baris`}
+              {done
+                ? interpolate(t('pos.lcdLinesDone'), { n: String(done.sale.lines.length) })
+                : interpolate(t('pos.lcdLines'), { qty: String(totalQty), n: String(cart.length) })}
             </span>
           </div>
         </div>
@@ -846,11 +848,11 @@ export function PosPage() {
         <>
         <div className={styles.cartHeader}>
           <h3>
-            <Icon name="cart-shopping" aria-hidden /> Keranjang
+            <Icon name="cart-shopping" aria-hidden /> {t('pos.cart')}
           </h3>
           {cart.length > 0 && (
             <button type="button" className={styles.clearBtn} onClick={clearCart}>
-              Kosongkan
+              {t('pos.clearCart')}
             </button>
           )}
         </div>
@@ -874,7 +876,7 @@ export function PosPage() {
                 <strong className={styles.cartItemName}>{c.name}</strong>
                 <small className={styles.cartItemUnit}>{fmtRp(c.sellPrice)} × {c.qty}</small>
                 <div className={styles.qtyControl}>
-                  <button type="button" onClick={() => setQty(c.itemId, c.qty - 1)} aria-label={`Kurangi ${c.name}`}>
+                  <button type="button" onClick={() => setQty(c.itemId, c.qty - 1)} aria-label={interpolate(t('pos.qtyMinus'), { name: c.name })}>
                     <Icon name="minus" aria-hidden />
                   </button>
                   {/* Qty bisa diketik — 12 kabel data bukan 11 ketukan "+". */}
@@ -889,7 +891,7 @@ export function PosPage() {
                       if (!Number.isNaN(n) && n > 0) setQty(c.itemId, n);
                     }}
                   />
-                  <button type="button" onClick={() => setQty(c.itemId, c.qty + 1)} aria-label={`Tambah ${c.name}`}>
+                  <button type="button" onClick={() => setQty(c.itemId, c.qty + 1)} aria-label={interpolate(t('pos.qtyPlus'), { name: c.name })}>
                     <Icon name="plus" aria-hidden />
                   </button>
                 </div>
@@ -908,15 +910,15 @@ export function PosPage() {
                 <div className={styles.customerChip}>
                   <Icon name="users" aria-hidden />
                   <span>{customer.name}</span>
-                  <button type="button" onClick={() => setCustomer(null)} aria-label="Lepas pelanggan">
+                  <button type="button" onClick={() => setCustomer(null)} aria-label={t('pos.custRemove')}>
                     <Icon name="xmark" aria-hidden />
                   </button>
                 </div>
               ) : (
                 <>
                   <Input
-                    placeholder="Pelanggan (opsional)"
-                    aria-label="Pelanggan (opsional)"
+                    placeholder={t('pos.custOptional')}
+                    aria-label={t('pos.custOptional')}
                     value={custQuery}
                     onChange={(e) => setCustQuery(e.target.value)}
                     iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -994,19 +996,18 @@ export function PosPage() {
 
             {discountOver && (
               <p className={styles.discountWarn}>
-                Diskon karyawan maksimal {STAFF_MAX_DISCOUNT_PCT}% ({fmtRp(maxDiscount)}). Untuk
-                lebih besar, transaksi diproses owner/admin.
+                {interpolate(t('pos.staffDiscountNote'), { pct: String(STAFF_MAX_DISCOUNT_PCT), amount: fmtRp(maxDiscount) })}
               </p>
             )}
 
             <div className={styles.summary}>
-              <div><span>Subtotal</span><span>{fmtRp(subtotal)}</span></div>
+              <div><span>{t('pos.subtotal')}</span><span>{fmtRp(subtotal)}</span></div>
               {discountValue > 0 && (
                 <div className={styles.discountLine}>
-                  <span>Diskon</span><span>−{fmtRp(discountValue)}</span>
+                  <span>{t('pos.discount')}</span><span>−{fmtRp(discountValue)}</span>
                 </div>
               )}
-              <div className={styles.totalLine}><span>Total</span><span>{fmtRp(total)}</span></div>
+              <div className={styles.totalLine}><span>{t('common.total')}</span><span>{fmtRp(total)}</span></div>
             </div>
 
             <div className={styles.payments}>
@@ -1108,10 +1109,10 @@ export function PosPage() {
           type="button"
           className={styles.mobileCartDock}
           onClick={() => document.getElementById('pos-cart')?.scrollIntoView({ behavior: 'smooth' })}
-          aria-label={`Buka keranjang, ${totalQty} unit, total ${totalText}`}
+          aria-label={interpolate(t('pos.dockAria'), { qty: String(totalQty), total: totalText })}
         >
           <span>
-            <Icon name="cart-shopping" aria-hidden /> {totalQty} unit
+            <Icon name="cart-shopping" aria-hidden /> {interpolate(t('pos.units'), { n: String(totalQty) })}
           </span>
           <strong>{totalText}</strong>
           <Icon name="arrow-right" aria-hidden />
@@ -1122,7 +1123,7 @@ export function PosPage() {
         <Card glass className={styles.history}>
           <div className={styles.historyHead}>
             <h3>
-              <Icon name="clock-rotate-left" aria-hidden /> Transaksi Terakhir
+              <Icon name="clock-rotate-left" aria-hidden /> {t('pos.tabHistory')}
             </h3>
             {/* Riwayat mengikuti cabang aktif — dulu tanpa tanda, sehingga cabang
                 tanpa penjualan tampak seperti data hilang. */}
@@ -1135,14 +1136,14 @@ export function PosPage() {
           {loadPending(salesLoad) ? (
             <LoadState queries={[salesLoad]} />
           ) : recentSales.length === 0 ? (
-            <p className={styles.emptyCart}>Belum ada transaksi.</p>
+            <p className={styles.emptyCart}>{t('pos.noSales')}</p>
           ) : (
             groupSalesByDay(recentSales).map((day) => (
               <section key={day.date} className={styles.historyDay} aria-label={fmtDate(day.date)}>
                 <div className={styles.historyDayHead}>
                   <span>{fmtDate(day.date)}</span>
                   <span>
-                    {day.count} trx · {fmtRp(day.total)}
+                    {interpolate(t('pos.dayCount'), { n: String(day.count) })} · {fmtRp(day.total)}
                   </span>
                 </div>
                 <ul className={styles.historyList}>
@@ -1158,7 +1159,7 @@ export function PosPage() {
                           </span>
                         </strong>
                         <small>
-                          {s.lines.length} item
+                          {interpolate(t('pos.itemCount'), { n: String(s.lines.length) })}
                           {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || '—').join(' + ')}`}
                           {s.cashierName ? ` · ${s.cashierName}` : ''}
                           {s.customerName ? ` · ${s.customerName}` : ''}
@@ -1181,21 +1182,21 @@ export function PosPage() {
                           type="button"
                           className={styles.iconBtn}
                           onClick={() => printSaleReceipt(s, org)}
-                          aria-label={`Cetak struk ${s.saleNo}`}
-                          title="Cetak struk"
+                          aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
+                          title={t('pos.printTitle')}
                         >
                           <Icon name="receipt" aria-hidden />
                         </button>
                       )}
                       {s.voided ? (
-                        <Badge tone="danger">Dibatalkan</Badge>
+                        <Badge tone="danger">{t('pos.voidedBadge')}</Badge>
                       ) : !isMgr || s.date < monthStart ? null : (
                         <button
                           type="button"
                           className={styles.voidBtn}
                           onClick={() => { setVoidTarget(s); setVoidReason(''); }}
-                          aria-label={`Batalkan ${s.saleNo}`}
-                          title="Batalkan transaksi"
+                          aria-label={interpolate(t('pos.voidAria'), { no: s.saleNo })}
+                          title={t('pos.voidTitle')}
                         >
                           <Icon name="circle-xmark" aria-hidden />
                         </button>
@@ -1212,7 +1213,7 @@ export function PosPage() {
       <Modal
         open={voidTarget !== null}
         onClose={() => setVoidTarget(null)}
-        title={`Batalkan ${voidTarget?.saleNo ?? ''}?`}
+        title={interpolate(t('pos.voidModalTitle'), { no: voidTarget?.saleNo ?? '' })}
         size="sm"
         footer={
           <>
@@ -1226,11 +1227,10 @@ export function PosPage() {
         }
       >
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-3)' }}>
-          Stok akan dikembalikan, saldo wallet dikurangi, dan pemasukan terkait dihapus.
-          Transaksi tetap tersimpan dengan status <strong>Dibatalkan</strong> untuk jejak audit.
+          {t('pos.voidBody')} <strong>{t('pos.voidedBadge')}</strong> {t('pos.voidBodyTail')}
         </p>
         <Input
-          placeholder="Alasan pembatalan (opsional)"
+          placeholder={t('pos.voidReason')}
           value={voidReason}
           onChange={(e) => setVoidReason(e.target.value)}
         />

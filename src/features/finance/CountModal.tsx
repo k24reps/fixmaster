@@ -89,7 +89,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
       toast.success(t('finance.countApplied').replace('{wallet}', wallet.name));
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal mencatat selisih');
+      toast.error(e instanceof Error ? e.message : t('finance.countFailed'));
     } finally {
       setBusy(false);
     }
@@ -105,7 +105,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="wallet-count" loading={busy} disabled={!hasCount}>
             {!hasCount || !entry
@@ -124,7 +124,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
       >
         <FormFields>
           <FormError>{error}</FormError>
-          <div className={styles.countWallets} role="group" aria-label="Wallet">
+          <div className={styles.countWallets} role="group" aria-label={t('finance.wallet')}>
             {wallets.map((w) => (
               <button
                 key={w.id}

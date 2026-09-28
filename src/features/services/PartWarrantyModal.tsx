@@ -8,6 +8,8 @@ import { applyPartWarranty, latestPartWarranty } from '@/lib/business/services';
 import { fmtDate, localDateOf, localDateStr } from '@/lib/time';
 import type { Service, ServiceHistoryEntry } from '@/data/types';
 import { PartWarrantyFields } from './PartWarrantyFields';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 /**
  * Atur garansi sparepart setelah tiket Selesai: untuk part yang ditambahkan
@@ -25,6 +27,7 @@ export function PartWarrantyModal({
   service: Service;
   history: ServiceHistoryEntry[];
 }) {
+  const t = useT();
   const [values, setValues] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -45,7 +48,7 @@ export function PartWarrantyModal({
       const fresh = (await repository.get('services', service.id)) ?? service;
       // Indeks isian milik daftar part saat modal dibuka.
       if (fresh.spareparts.length !== values.length) {
-        toast.warning('Daftar sparepart berubah. Buka ulang lalu atur lagi.');
+        toast.warning(t('partWarranty.changed'));
         return;
       }
       const days = values.map((v) => Math.max(0, Math.round(Number(v) || 0)));
@@ -55,10 +58,10 @@ export function PartWarrantyModal({
         warrantyPartsUntil: latestPartWarranty(spareparts),
         updatedAt: new Date().toISOString(),
       });
-      toast.success('Garansi sparepart diperbarui');
+      toast.success(t('partWarranty.saved'));
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan garansi sparepart');
+      toast.error(e instanceof Error ? e.message : t('partWarranty.failed'));
     } finally {
       setBusy(false);
     }
@@ -68,20 +71,20 @@ export function PartWarrantyModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Garansi Sparepart — ${service.serviceNo}`}
+      title={interpolate(t('partWarranty.title'), { no: service.serviceNo })}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.cancel')}
           </Button>
           <Button onClick={save} loading={busy}>
-            Simpan
+            {t('common.save')}
           </Button>
         </>
       }
     >
       <p style={{ margin: '0 0 var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-        Dihitung dari tanggal selesai {fmtDate(finishDate)}. Isi 0 untuk part tanpa garansi.
+        {interpolate(t('partWarranty.intro'), { date: fmtDate(finishDate) })}
       </p>
       <PartWarrantyFields
         parts={service.spareparts}

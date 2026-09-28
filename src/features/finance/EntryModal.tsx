@@ -29,6 +29,7 @@ import type {
   Income,
 } from '@/data/types';
 import styles from './FinancePage.module.css';
+import type { TranslationKey } from '@/i18n';
 
 interface EntryModalProps {
   open: boolean;
@@ -58,11 +59,9 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
 ];
 
 /** Penjelasan kategori arus kas pemilik — dua-duanya gampang disalahpahami. */
-const CATEGORY_HINT: Record<string, string> = {
-  Modal:
-    'Uang pribadi disuntik ke kas usaha. Saldo bertambah, tapi TIDAK dihitung sebagai omzet atau laba.',
-  Prive:
-    'Uang usaha ditarik untuk pemilik. Saldo berkurang, tapi TIDAK dihitung sebagai biaya usaha.',
+const CATEGORY_HINT: Record<string, TranslationKey> = {
+  Modal: 'finance.hintModal',
+  Prive: 'finance.hintPrive',
 };
 
 interface EditArgs {
@@ -190,8 +189,8 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     if (busy) return;
     const value = parseRpInput(amount);
     if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
-    if (value <= 0) return setError('Nominal harus lebih dari 0');
-    if (!walletId) return setError('Pilih wallet');
+    if (value <= 0) return setError(t('finance.amountRequired'));
+    if (!walletId) return setError(t('finance.walletRequired'));
     // Baris bulan lalu yang diedit tak pernah sampai di sini (tombolnya tak ada).
     const dateError = entryDateError(date, today);
     if (dateError) return setError(dateError);
@@ -250,7 +249,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
         onClose();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan');
+      toast.error(e instanceof Error ? e.message : t('finance.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -266,18 +265,20 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
       open={open}
       onClose={onClose}
       title={
-        editing
-          ? kind === 'income'
-            ? 'Edit Pemasukan'
-            : 'Edit Pengeluaran'
-          : kind === 'income'
-            ? 'Catat Pemasukan'
-            : 'Catat Pengeluaran'
+        t(
+          editing
+            ? kind === 'income'
+              ? 'finance.editIncome'
+              : 'finance.editExpense'
+            : kind === 'income'
+              ? 'finance.newIncome'
+              : 'finance.newExpense',
+        )
       }
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.cancel')}
           </Button>
           {!editing && (
             <Button
@@ -291,7 +292,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             </Button>
           )}
           <Button type="submit" form={formId} loading={busy}>
-            Simpan
+            {t('common.save')}
           </Button>
         </>
       }
@@ -325,7 +326,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           )}
           <FormRow>
             <Input
-              label="Tanggal"
+              label={t('finance.date')}
               type="date"
               value={date}
               min={editing ? undefined : monthStart}
@@ -334,20 +335,20 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               hint={editing ? undefined : t('finance.dateHint')}
             />
             <Select
-              label="Kategori"
+              label={t('finance.category')}
               value={category}
               onChange={(e) => change(setCategory)(e.target.value)}
               options={categories.map((c) => ({ value: c, label: c }))}
             />
           </FormRow>
-          {CATEGORY_HINT[category] && <p className={styles.formHint}>{CATEGORY_HINT[category]}</p>}
+          {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
           {kind === 'income' && !editing && (
             <p className={styles.formHint}>{t('finance.autoIncomeHint')}</p>
           )}
           <FormRow>
             <Input
               ref={amountRef}
-              label="Nominal"
+              label={t('finance.amount')}
               value={amount}
               inputMode="numeric"
               onChange={(e) => change(setAmount)(fmtRpInput(e.target.value))}
@@ -355,14 +356,14 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               autoFocus={!needOutlet}
             />
             <Select
-              label="Wallet"
+              label={t('finance.wallet')}
               value={walletId}
               onChange={(e) => change(setWalletId)(e.target.value)}
               options={wallets.map((w) => ({ value: w.id, label: `${w.name} · ${fmtRp(w.balance)}` }))}
             />
           </FormRow>
           <Input
-            label="Keterangan (opsional)"
+            label={t('finance.noteOptional')}
             value={description}
             onChange={(e) => change(setDescription)(e.target.value)}
           />

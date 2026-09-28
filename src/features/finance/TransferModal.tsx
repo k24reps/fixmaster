@@ -6,6 +6,8 @@ import { transferMoneyLocked } from '@/lib/business/finance';
 import { toast } from '@/stores/toast';
 import type { Wallet, WalletTransfer } from '@/data/types';
 import { createTransfer, editTransfer } from './transferActions';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 
 interface TransferModalProps {
   open: boolean;
@@ -21,6 +23,7 @@ interface TransferModalProps {
  * ia punya tabel sendiri, `wallet_transfers`.
  */
 export function TransferModal({ open, onClose, wallets, editing = null }: TransferModalProps) {
+  const t = useT();
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState('');
@@ -59,16 +62,16 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
     try {
       if (editing) {
         await editTransfer({ wallets, transfer: editing, fromWalletId: fromId, toWalletId: toId, amount: value, note });
-        toast.success('Transfer diperbarui');
+        toast.success(t('finance.transferUpdated'));
       } else {
         await createTransfer({ wallets, fromWalletId: fromId, toWalletId: toId, amount: value, note });
         const from = wallets.find((w) => w.id === fromId)?.name ?? '';
         const to = wallets.find((w) => w.id === toId)?.name ?? '';
-        toast.success(`Transfer ${fmtRp(value)}: ${from} → ${to}`);
+        toast.success(interpolate(t('finance.transferDone'), { amount: fmtRp(value), from, to }));
       }
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Transfer gagal');
+      setError(e instanceof Error ? e.message : t('finance.transferFailed'));
     } finally {
       setBusy(false);
     }
@@ -85,14 +88,14 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Transfer' : 'Transfer Saldo Antar Wallet'}
+      title={editing ? t('finance.editTransfer') : t('finance.transferTitle')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
-            Batal
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="wallet-transfer" loading={busy}>
-            {editing ? 'Simpan' : 'Transfer'}
+            {t(editing ? 'common.save' : 'finance.transfer')}
           </Button>
         </>
       }
@@ -109,19 +112,19 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
         <FormError>{error}</FormError>
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
           {moneyLocked
-            ? 'Transfer bulan lalu: wallet & nominal terkunci karena laporan bulan itu sudah berjalan. Keterangan tetap bisa diubah.'
-            : 'Memindahkan saldo antar kas. Tidak tercatat sebagai pemasukan/pengeluaran (bukan untung/rugi).'}
+            ? t('finance.transferLockedHint')
+            : t('finance.transferHint')}
         </p>
         <FormRow>
           <Select
-            label="Dari wallet"
+            label={t('finance.fromWallet')}
             value={fromId}
             onChange={(e) => onFromChange(e.target.value)}
             options={options(fromId, editing?.fromName ?? '')}
             disabled={moneyLocked}
           />
           <Select
-            label="Ke wallet"
+            label={t('finance.toWallet')}
             value={toId}
             onChange={(e) => setToId(e.target.value)}
             options={options(toId, editing?.toName ?? '')
@@ -131,7 +134,7 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
           />
         </FormRow>
         <Input
-          label="Nominal"
+          label={t('finance.amount')}
           value={amount}
           onChange={(e) => setAmount(fmtRpInput(e.target.value))}
           placeholder="100.000"
@@ -140,10 +143,10 @@ export function TransferModal({ open, onClose, wallets, editing = null }: Transf
           autoFocus={!moneyLocked}
         />
         <Input
-          label="Keterangan (opsional)"
+          label={t('finance.noteOptional')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="mis. setor ke bank, modal kasir pagi"
+          placeholder={t('finance.transferNotePh')}
           maxLength={120}
           autoFocus={moneyLocked}
         />

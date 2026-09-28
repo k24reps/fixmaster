@@ -35,6 +35,7 @@ import { CountModal } from './CountModal';
 import { voidTransfer } from './transferActions';
 import type { Income, Expense, WalletTransfer } from '@/data/types';
 import styles from './FinancePage.module.css';
+import { interpolate } from '@/lib/business/notify';
 
 type LedgerKind = 'income' | 'expense' | 'transfer';
 
@@ -219,10 +220,10 @@ export function FinancePage() {
     setVoiding(true);
     try {
       await voidTransfer({ wallets, transfer: toVoid });
-      toast.success(`Transfer ${fmtRp(toVoid.amount)} dibatalkan, saldo dikembalikan`);
+      toast.success(interpolate(t('finance.transferVoided'), { amount: fmtRp(toVoid.amount) }));
       setToVoid(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal membatalkan transfer');
+      toast.error(e instanceof Error ? e.message : t('finance.transferVoidFailed'));
     } finally {
       setVoiding(false);
     }
@@ -366,12 +367,12 @@ export function FinancePage() {
           meta: { amount: exp.amount, category: exp.category },
         });
       }
-      toast.success('Transaksi dihapus & saldo dikembalikan');
+      toast.success(t('finance.entryDeleted'));
       setToDelete(null);
     } catch (e) {
       // Surface the failing step — the local/demo path is multi-write (wallets →
       // incomes → services); cloud is atomic via delete_finance_entry (0068).
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus transaksi');
+      toast.error(e instanceof Error ? e.message : t('finance.entryDeleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -428,12 +429,12 @@ export function FinancePage() {
             <span className={styles.tapeDesc}>{r.description}</span>
             <span className={styles.tapeMeta}>
               <span className={[styles.tapeCat, styles.trf].join(' ')}>
-                {voided ? 'Dibatalkan' : 'Transfer'}
+                {t(voided ? 'finance.voided' : 'finance.transfer')}
               </span>
               <span>
                 {transferWalletName(tr.fromWalletId, tr.fromName)} →{' '}
                 {transferWalletName(tr.toWalletId, tr.toName)}
-                {voided && tr.voidedByName ? ` · oleh ${tr.voidedByName}` : ''}
+                {voided && tr.voidedByName ? interpolate(t('finance.voidedBy'), { name: tr.voidedByName }) : ''}
               </span>
             </span>
           </div>
@@ -450,8 +451,8 @@ export function FinancePage() {
                   setEditingTransfer(tr);
                   setTransferOpen(true);
                 }}
-                aria-label={`Edit transfer ${fmtRp(r.amount)}`}
-                title={locked ? 'Edit keterangan (nominal bulan lalu terkunci)' : 'Edit transfer'}
+                aria-label={interpolate(t('finance.editTransferAria'), { amount: fmtRp(r.amount) })}
+                title={t(locked ? 'finance.editTransferLocked' : 'finance.editTransfer')}
               >
                 <Icon name="pen" aria-hidden />
               </button>
@@ -461,8 +462,8 @@ export function FinancePage() {
                 type="button"
                 className={[styles.iconBtn, styles.danger].join(' ')}
                 onClick={() => setToVoid(tr)}
-                aria-label={`Batalkan transfer ${fmtRp(r.amount)}`}
-                title="Batalkan transfer — saldo dikembalikan, catatannya tetap ada"
+                aria-label={interpolate(t('finance.voidTransferAria'), { amount: fmtRp(r.amount) })}
+                title={t('finance.voidTransferHint')}
               >
                 <Icon name="circle-xmark" aria-hidden />
               </button>
@@ -506,7 +507,7 @@ export function FinancePage() {
       >
         <div className={styles.tapeBody}>
           <span className={styles.tapeDesc} title={r.description || undefined}>
-            {r.description || <span className={styles.muted}>Tanpa keterangan</span>}
+            {r.description || <span className={styles.muted}>{t('finance.noNote')}</span>}
           </span>
           <span className={styles.tapeMeta}>
             <span className={[styles.tapeCat, tone].join(' ')}>{r.category}</span>
@@ -536,7 +537,7 @@ export function FinancePage() {
                 }
                 setModalKind(r.kind as 'income' | 'expense');
               }}
-              aria-label={`Edit ${rowLabel(r)}`}
+              aria-label={interpolate(t('finance.editRowAria'), { row: rowLabel(r) })}
             >
               <Icon name="pen" aria-hidden />
             </button>
@@ -549,7 +550,7 @@ export function FinancePage() {
               type="button"
               className={[styles.iconBtn, styles.danger].join(' ')}
               onClick={() => setToDelete(r)}
-              aria-label={`Hapus ${rowLabel(r)}`}
+              aria-label={interpolate(t('finance.deleteRowAria'), { row: rowLabel(r) })}
             >
               <Icon name="trash" aria-hidden />
             </button>
@@ -599,7 +600,7 @@ export function FinancePage() {
         </Card>
       ) : wallets.length === 0 ? (
         <Card glass padding>
-          <p className={styles.noWallet}>Belum ada wallet. Tambahkan di Pengaturan.</p>
+          <p className={styles.noWallet}>{t('finance.noWallet')}</p>
         </Card>
       ) : (
         <div className={styles.walletStrip}>
@@ -609,7 +610,7 @@ export function FinancePage() {
             </span>
             <strong className={styles.walletBalance}>{fmtRp(totalBalance)}</strong>
             <span className={styles.walletMove}>
-              {orgWide ? t('finance.allBranches') : `${wallets.length} wallet`}
+              {orgWide ? t('finance.allBranches') : interpolate(t('finance.walletCount'), { n: String(wallets.length) })}
             </span>
           </div>
           {wallets.map((w) => {
@@ -659,37 +660,36 @@ export function FinancePage() {
 
       <div className={styles.summaryStrip} role="list" aria-label={t('finance.summaryAria')}>
         <div role="listitem" className={[styles.summaryCell, styles.income].join(' ')}>
-          <span>Pemasukan{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.income')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.income)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.expense].join(' ')}>
-          <span>Pengeluaran{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.expense')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
-          <span>Arus Kas Bersih{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.netCash')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
       </div>
 
       {(capital.modal > 0 || capital.prive > 0) && (
         <p className={styles.capitalNote}>
-          <Icon name="wallet" aria-hidden /> Arus kas pemilik bulan ini —
+          <Icon name="wallet" aria-hidden /> {t('finance.capitalLead')}
           {capital.modal > 0 && (
             <>
               {' '}
-              setoran modal <strong>{fmtRp(capital.modal)}</strong>
+              {t('finance.capitalModal')} <strong>{fmtRp(capital.modal)}</strong>
             </>
           )}
           {capital.modal > 0 && capital.prive > 0 && ' ·'}
           {capital.prive > 0 && (
             <>
               {' '}
-              prive <strong>{fmtRp(capital.prive)}</strong>
+              {t('finance.capitalPrive')} <strong>{fmtRp(capital.prive)}</strong>
             </>
           )}
-          . Saldo wallet sudah termasuk ini, tapi tidak dihitung sebagai pemasukan,
-          pengeluaran, maupun arus kas bersih di atas.
+          {t('finance.capitalTail')}
         </p>
       )}
 
@@ -705,7 +705,7 @@ export function FinancePage() {
           }}
           iconLeft={<Icon name="arrow-up" aria-hidden />}
         >
-          Pengeluaran
+          {t('finance.expense')}
         </Button>
         <Button
           variant="secondary"
@@ -715,7 +715,7 @@ export function FinancePage() {
           }}
           iconLeft={<Icon name="arrow-down" aria-hidden />}
         >
-          Pemasukan
+          {t('finance.income')}
         </Button>
         {wallets.length >= 2 && (
           <Button
@@ -726,7 +726,7 @@ export function FinancePage() {
             }}
             iconLeft={<Icon name="arrow-right-arrow-left" aria-hidden />}
           >
-            Transfer
+            {t('finance.transfer')}
           </Button>
         )}
         {wallets.length > 0 && (
@@ -743,7 +743,7 @@ export function FinancePage() {
       <Card glass id="buku-kas" className={styles.ledgerCard}>
         <CardHeader
           icon={<Icon name="receipt" aria-hidden />}
-          title={walletFilter ? `Buku Kas · ${walletName(walletFilter)}` : 'Buku Kas'}
+          title={walletFilter ? `${t('finance.ledger')} · ${walletName(walletFilter)}` : t('finance.ledger')}
           action={
             walletFilter ? (
               <Button
@@ -752,7 +752,7 @@ export function FinancePage() {
                 onClick={() => pickWallet(null)}
                 iconLeft={<Icon name="times" aria-hidden />}
               >
-                Semua wallet
+                {t('finance.allWallets')}
               </Button>
             ) : undefined
           }
@@ -760,10 +760,10 @@ export function FinancePage() {
         <div className={styles.tabBar}>
           {(
             [
-              ['all', 'Semua'],
-              ['income', 'Pemasukan'],
-              ['expense', 'Pengeluaran'],
-              ['transfer', 'Transfer'],
+              ['all', t('finance.tabAll')],
+              ['income', t('finance.income')],
+              ['expense', t('finance.expense')],
+              ['transfer', t('finance.transfer')],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -789,13 +789,13 @@ export function FinancePage() {
             ) : visibleLedger.length === 0 ? (
               <EmptyState
                 icon={<Icon name="receipt" aria-hidden />}
-                title="Belum ada transaksi"
+                title={t('finance.emptyTitle')}
                 description={
                   walletFilter
-                    ? `Belum ada transaksi untuk ${walletName(walletFilter)} di ${monthLabel}. Pilih bulan atau wallet lain.`
+                    ? interpolate(t('finance.emptyWallet'), { wallet: walletName(walletFilter), month: monthLabel })
                     : monthOffset > 0
-                      ? `Tidak ada transaksi di ${monthLabel}.`
-                      : 'Catat pemasukan atau pengeluaran pertama.'
+                      ? interpolate(t('finance.emptyMonth'), { month: monthLabel })
+                      : t('finance.emptyFirst')
                 }
               />
             ) : (
@@ -820,11 +820,11 @@ export function FinancePage() {
                   onClick={() => setLimit((n) => n + PAGE_SIZE)}
                   iconLeft={<Icon name="arrow-down" aria-hidden />}
                 >
-                  Tampilkan lebih banyak
+                  {t('finance.showMore')}
                 </Button>
               )}
               <span className={styles.loadMoreHint}>
-                {monthLabel} · {visibleLedger.length} dari {filteredLedger.length} baris
+                {interpolate(t('finance.rowsOf'), { month: monthLabel, shown: String(visibleLedger.length), total: String(filteredLedger.length) })}
               </span>
             </div>
           </div>
@@ -860,22 +860,26 @@ export function FinancePage() {
       />
       <ConfirmDialog
         open={!!toVoid}
-        title="Batalkan Transfer?"
+        title={t('finance.voidTransferTitle')}
         message={
           toVoid
-            ? `${fmtRp(toVoid.amount)} dikembalikan dari ${transferWalletName(toVoid.toWalletId, toVoid.toName)} ke ${transferWalletName(toVoid.fromWalletId, toVoid.fromName)}. Catatan transfernya tetap tampil dicoret di Buku Kas.`
+            ? interpolate(t('finance.voidTransferMsg'), {
+                amount: fmtRp(toVoid.amount),
+                to: transferWalletName(toVoid.toWalletId, toVoid.toName),
+                from: transferWalletName(toVoid.fromWalletId, toVoid.fromName),
+              })
             : ''
         }
-        confirmLabel={voiding ? 'Membatalkan…' : 'Batalkan Transfer'}
+        confirmLabel={t(voiding ? 'finance.voiding' : 'finance.voidTransfer')}
         danger
         onConfirm={() => void handleVoid()}
         onCancel={() => setToVoid(null)}
       />
       <ConfirmDialog
         open={!!toDelete}
-        title="Hapus Transaksi?"
+        title={t('finance.deleteTitle')}
         message={toDelete ? deleteMessage(toDelete) : ''}
-        confirmLabel={deleting ? 'Menghapus…' : 'Hapus'}
+        confirmLabel={t(deleting ? 'finance.deleting' : 'common.delete')}
         danger
         onConfirm={() => void confirmDelete()}
         onCancel={() => {
