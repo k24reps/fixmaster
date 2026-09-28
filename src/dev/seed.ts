@@ -5,9 +5,10 @@
  *
  * NOT bundled in production (guarded by import.meta.env.DEV in main.tsx).
  *
- * Scope of this dataset (per request): a SMALL but complete snapshot for a
- * SINGLE day — 4 June 2026 (= "today") — spread across one main store plus
- * two branches, and balanced so the month is clearly profitable.
+ * Scope of this dataset: a SMALL but complete snapshot of the CURRENT month —
+ * tickets, sales and cash spread over its days (28 Sep 2026; dulu semuanya
+ * "hari ini") — across one main store plus two branches, balanced so the month
+ * is clearly profitable. Also feeds the public /demo (DemoApp).
  */
 import { repository } from '@/data';
 import { commitWizard, emptyWizardData } from '@/features/onboarding/wizard-logic';
@@ -123,8 +124,14 @@ export async function seedDemoWorkspace(): Promise<void> {
 
   // 5) Services on 4 June — mix of paid (lunas) + still-active, per outlet.
   const tech = 'Rizal Pratama';
-  const entry = (status: ServiceHistoryEntry['status'], note: string): ServiceHistoryEntry => ({
-    at: now,
+  // Data contoh tersebar di bulan berjalan (dulu semuanya hari ini, sehingga
+  // sakelar Hari ini/Bulan ini di Dashboard tampak tak berfungsi). Dijepit ke
+  // tanggal 1: di awal bulan semuanya kembali ke hari ini, tetap "bulan ini".
+  const monthStartMs = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 9).getTime();
+  const daysAgoISO = (n: number) => new Date(Math.max(Date.now() - n * 86_400_000, monthStartMs)).toISOString();
+  const daysAgo = (n: number) => localDateStr(new Date(daysAgoISO(n)));
+  const entry = (status: ServiceHistoryEntry['status'], note: string, at = now): ServiceHistoryEntry => ({
+    at,
     status,
     by: owner.id,
     byName: owner.name,
@@ -147,17 +154,19 @@ export async function seedDemoWorkspace(): Promise<void> {
     finalCost: number,
     downPayment: number,
     spareparts: ServiceSparepart[] = [],
-    opts: { handling?: string; pickedUp?: boolean; idleDays?: number } = {},
+    opts: { handling?: string; pickedUp?: boolean; idleDays?: number; ageDays?: number; doneDays?: number } = {},
   ): Service => {
     const done = status === 'selesai' || status === 'lunas';
     const pickedUp = opts.pickedUp ?? false;
     // `idleDays`: tiket yang sudah lama tanpa aktivitas, supaya filter
     // "Tertahan" di halaman Servis punya contoh nyata di demo.
     const stamp = opts.idleDays ? new Date(Date.now() - opts.idleDays * 86_400_000).toISOString() : now;
+    const createdAt = opts.ageDays ? daysAgoISO(opts.ageDays) : stamp;
+    const doneAt = opts.doneDays !== undefined ? daysAgoISO(opts.doneDays) : now;
     return {
       ...at(outletId),
-      createdAt: stamp,
-      updatedAt: stamp,
+      createdAt,
+      updatedAt: opts.idleDays ? stamp : done ? doneAt : createdAt,
       id: newId(),
       serviceNo: `FM-${String(n).padStart(4, '0')}`,
       customerId: cust.id,
@@ -184,10 +193,12 @@ export async function seedDemoWorkspace(): Promise<void> {
       pickedUpAt: pickedUp ? now : null,
       warrantyClaimOf: null,
       history: [
-        entry('diterima', 'Unit diterima'),
-        ...(done ? [entry('pengerjaan', 'Mulai dikerjakan'), entry('selesai', opts.handling ?? 'Selesai')] : []),
-        ...(status === 'lunas' ? [entry('lunas', 'Lunas')] : []),
-        ...(pickedUp ? [entry('edit', 'Barang diambil pelanggan')] : []),
+        entry('diterima', 'Unit diterima', createdAt),
+        ...(done
+          ? [entry('pengerjaan', 'Mulai dikerjakan', createdAt), entry('selesai', opts.handling ?? 'Selesai', doneAt)]
+          : []),
+        ...(status === 'lunas' ? [entry('lunas', 'Lunas', doneAt)] : []),
+        ...(pickedUp ? [entry('edit', 'Barang diambil pelanggan', doneAt)] : []),
       ],
       archived: false,
     };
@@ -219,22 +230,29 @@ export async function seedDemoWorkspace(): Promise<void> {
     // Modal besar: 850.000 dari 1.500.000 -> profit 650.000.
     mkService(oPusat, 1, customers[0], 'Laptop', 'MacBook Pro 13" 2019', 'Keyboard mati total', 'lunas', 1_500_000, 0, [
       partUsed(inventory[0], 1),
-    ], { handling: 'Ganti keyboard A1989, semua tombol dites normal', pickedUp: true }),
-    mkService(oPusat, 2, customers[0], 'HP / Smartphone', 'iPhone 12', 'LCD retak', 'pengerjaan', 0, 200_000),
+    ], { handling: 'Ganti keyboard A1989, semua tombol dites normal', pickedUp: true, ageDays: 12, doneDays: 10 }),
+    mkService(oPusat, 2, customers[0], 'HP / Smartphone', 'iPhone 12', 'LCD retak', 'pengerjaan', 0, 200_000, [], {
+      ageDays: 3,
+    }),
     // Modal tipis: pekerjaan bersih-bersih, hanya pasta -> profit 1.155.000.
     mkService(oDago, 3, customers[1], 'Laptop', 'Asus ROG G14', 'Overheat & mati sendiri', 'lunas', 1_200_000, 0, [
       partUsed(inventory[3], 1),
-    ], { handling: 'Bersihkan kipas & ganti thermal paste, suhu idle 45°C', idleDays: 9 }),
+    ], { handling: 'Bersihkan kipas & ganti thermal paste, suhu idle 45°C', idleDays: 9, ageDays: 11, doneDays: 9 }),
     mkService(oDago, 4, customers[1], 'HP / Smartphone', 'Samsung A52', 'Baterai cepat habis', 'konfirmasi', 0, 0, [], {
       idleDays: 3,
+      ageDays: 4,
     }),
     mkService(oCimahi, 5, customers[2], 'Printer', 'Epson L3110', 'Hasil cetak bergaris', 'lunas', 850_000, 0, [], {
       handling: 'Cuci head & kalibrasi, hasil cetak uji bersih',
       pickedUp: true,
+      ageDays: 18,
+      doneDays: 15,
     }),
     mkService(oCimahi, 6, customers[2], 'PC / Komputer', 'PC Rakitan', 'Tidak mau menyala', 'diterima', 0, 0),
     mkService(oPusat, 7, customers[0], 'HP / Smartphone', 'Oppo Reno 8', 'Tidak mengisi daya', 'selesai', 350_000, 0, [], {
       handling: 'Ganti port charger, pengisian daya normal kembali',
+      ageDays: 2,
+      doneDays: 0,
     }),
   ];
   // Adapter selalu mengisi updatedAt = sekarang (jejak audit yang benar untuk
@@ -282,20 +300,20 @@ export async function seedDemoWorkspace(): Promise<void> {
   // serviceId (mirrors the real "lunas" flow), so deleting the income reverts
   // the service lunas → selesai.
   const incomes: Income[] = [
-    { ...at(oPusat), id: newId(), date: today, category: 'Servis', amount: 1_500_000, walletId: cash, description: 'Pelunasan servis FM-0001 (MacBook)', serviceId: services[0].id },
+    { ...at(oPusat), id: newId(), date: daysAgo(10), category: 'Servis', amount: 1_500_000, walletId: cash, description: 'Pelunasan servis FM-0001 (MacBook)', serviceId: services[0].id },
     { ...at(oPusat), id: newId(), date: today, category: 'Penjualan', amount: 950_000, walletId: qris, description: 'Penjualan SSD NVMe 512GB', serviceId: null },
-    { ...at(oDago), id: newId(), date: today, category: 'Servis', amount: 1_200_000, walletId: bca, description: 'Pelunasan servis FM-0003 (Asus ROG)', serviceId: services[2].id },
-    { ...at(oCimahi), id: newId(), date: today, category: 'Servis', amount: 850_000, walletId: cash, description: 'Pelunasan servis FM-0005 (Epson)', serviceId: services[4].id },
-    { ...at(oCimahi), id: newId(), date: today, category: 'Penjualan', amount: 1_950_000, walletId: qris, description: 'Penjualan LCD iPhone 12', serviceId: null },
+    { ...at(oDago), id: newId(), date: daysAgo(9), category: 'Servis', amount: 1_200_000, walletId: bca, description: 'Pelunasan servis FM-0003 (Asus ROG)', serviceId: services[2].id },
+    { ...at(oCimahi), id: newId(), date: daysAgo(15), category: 'Servis', amount: 850_000, walletId: cash, description: 'Pelunasan servis FM-0005 (Epson)', serviceId: services[4].id },
+    { ...at(oCimahi), id: newId(), date: daysAgo(5), category: 'Penjualan', amount: 1_950_000, walletId: qris, description: 'Penjualan LCD iPhone 12', serviceId: null },
   ];
   await repository.putMany('incomes', incomes);
 
   // Expense total = 1.350.000 → net profit +5.100.000
   const expenses: Expense[] = [
-    { ...at(oPusat), id: newId(), date: today, category: 'Sparepart', amount: 800_000, walletId: bca, description: 'Restock keyboard MacBook' },
-    { ...at(oPusat), id: newId(), date: today, category: 'Operasional', amount: 250_000, walletId: cash, description: 'Alat solder & timah' },
+    { ...at(oPusat), id: newId(), date: daysAgo(7), category: 'Sparepart', amount: 800_000, walletId: bca, description: 'Restock keyboard MacBook' },
+    { ...at(oPusat), id: newId(), date: daysAgo(4), category: 'Operasional', amount: 250_000, walletId: cash, description: 'Alat solder & timah' },
     { ...at(oDago), id: newId(), date: today, category: 'Operasional', amount: 150_000, walletId: cash, description: 'Listrik harian cabang' },
-    { ...at(oCimahi), id: newId(), date: today, category: 'Operasional', amount: 150_000, walletId: cash, description: 'Transport antar unit' },
+    { ...at(oCimahi), id: newId(), date: daysAgo(2), category: 'Operasional', amount: 150_000, walletId: cash, description: 'Transport antar unit' },
   ];
   await repository.putMany('expenses', expenses);
 
@@ -309,7 +327,7 @@ export async function seedDemoWorkspace(): Promise<void> {
       cashierId: owner.id, cashierName: owner.name, voided: false, voidedReason: '',
     },
     {
-      ...at(oCimahi), id: newId(), saleNo: 'INV-0002', date: today,
+      ...at(oCimahi), id: newId(), saleNo: 'INV-0002', date: daysAgo(5),
       lines: [{ itemId: inventory[4].id, name: inventory[4].name, qty: 1, sellPrice: inventory[4].sellPrice, costPrice: inventory[4].costPrice }],
       subtotal: 1_950_000, discount: 0, discountType: 'amount', total: 1_950_000,
       payments: [{ walletId: qris, amount: 1_950_000 }],

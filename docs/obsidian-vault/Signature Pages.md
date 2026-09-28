@@ -157,6 +157,8 @@ Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.htm
 
 ## Demo Interaktif — Bench Hidup (publik, tanpa login)
 
+- **Data sebulan (28 Sep 2026).** Seed (`src/dev/seed.ts`, juga dipakai `/demo`) menyebar tiket, penjualan, dan kas di hari-hari bulan berjalan (dijepit ke tanggal 1) — dulu semuanya "hari ini", sehingga sakelar Hari ini/Bulan ini tampak tak berfungsi. Total bulan tetap (Pemasukan 6,45 jt, Pengeluaran 1,35 jt); Hari ini: 1 unit masuk, 1 selesai (FM-0007), INV-0001.
+
 Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, bukan mockup statis. Route publik **`/demo`** (intersep di level `App`, bukan child router). Landing **meng-link** ke route ini (poster + tombol), **tidak** lagi meng-embed via iframe.
 
 **Arsitektur isolasi** (lihat [[Data Layer]] § InMemoryAdapter):
@@ -246,6 +248,8 @@ Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, denga
 ![[inv-dark.png]]
 
 ## Dashboard — Diagnostic Panel
+
+- **Peran & target (28 Sep 2026).** Sel hero **Laba servis** hanya untuk **owner** (Laporan, sumber angkanya, owner-only); admin tetap melihat arus kas, Pemasukan, Pengeluaran. **Target Servis** kini menghitung unit **selesai** bulan ini (`serviceMargin(profitMonth).units`, sumber yang sama dengan Laba servis), label "N / target unit selesai" — dulu unit masuk. Label target di Pengaturan & wizard ikut. Karyawan tetap mendarat di Dashboard "Meja saya" (keputusan pemilik, 13a).
 
 Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis()` di [[Data Layer]].
 

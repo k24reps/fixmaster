@@ -118,6 +118,7 @@ export const id = {
   'dashboard.revenueTarget': 'Target Pendapatan',
   'dashboard.serviceTarget': 'Target Servis',
   'dashboard.units': 'unit',
+  'dashboard.unitsDone': 'unit selesai',
   'dashboard.technicianPerformance': 'Performa Teknisi',
   'dashboard.noPerformance': 'Belum ada data',
   'dashboard.noPerformanceDescription':

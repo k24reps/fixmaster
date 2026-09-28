@@ -1034,7 +1034,7 @@ function MonthlyTargetCard() {
             placeholder="50.000.000"
           />
           <Input
-            label="Target unit servis masuk / bulan"
+            label="Target unit servis selesai / bulan"
             inputMode="numeric"
             value={units}
             onChange={(e) => setUnits(e.target.value.replace(/\D/g, ''))}

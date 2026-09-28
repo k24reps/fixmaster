@@ -74,6 +74,8 @@ export function DashboardPage() {
   const language = useSettingsStore((s) => s.language);
   const me = useSessionStore((s) => s.currentEmployee);
   const isMgr = me ? isManager(me.role) : false;
+  // Laba = angka Laporan, dan Laporan khusus owner. Admin tetap melihat arus kas.
+  const isOwner = me?.role === 'owner';
   const { from, to } = monthRange();
   const today = localDateStr();
   // Pilihan periode diingat per perangkat (dulu kembali ke Hari ini tiap pindah menu).
@@ -177,6 +179,8 @@ export function DashboardPage() {
   );
   const margin = serviceMargin(period === 'today' ? profitTodayQuery.data : profitMonthQuery.data);
   const doneToday = serviceMargin(profitTodayQuery.data).units;
+  // Target servis = unit SELESAI bulan ini (yang menghasilkan uang), bukan unit masuk.
+  const doneMonth = serviceMargin(profitMonthQuery.data).units;
   const summary = summaryQuery.data;
   const unitsIn = summary?.unitsIn ?? 0;
   const leaderboard = summary?.leaderboard ?? [];
@@ -201,7 +205,7 @@ export function DashboardPage() {
   const pace = monthPace();
   const revenuePct = target.revenue > 0 ? Math.min(100, (monthRevenue / target.revenue) * 100) : 0;
   const servicePct = target.serviceCount > 0
-    ? Math.min(100, (unitsIn / target.serviceCount) * 100)
+    ? Math.min(100, (doneMonth / target.serviceCount) * 100)
     : 0;
   const empty = recent.length === 0;
   const maxRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
@@ -427,6 +431,7 @@ export function DashboardPage() {
                     <span className={styles.heroStatKey}>{t('dashboard.expense')}</span>
                     <span className={[styles.heroStatVal, styles.statOut].join(' ')}>{fmtRpInline(kpis.expense)}</span>
                   </Link>
+                  {isOwner && (
                   <div className={styles.heroStat}>
                     <span className={styles.heroStatKey}>{t('dashboard.serviceProfit')}</span>
                     <span className={styles.heroStatVal}>{fmtRpInline(margin.profit)}</span>
@@ -438,6 +443,7 @@ export function DashboardPage() {
                             .replace('{units}', String(margin.units))}
                     </span>
                   </div>
+                  )}
                 </div>
                 <p className={styles.heroNote}>{t('dashboard.cashNote')}</p>
               </div>
@@ -543,7 +549,7 @@ export function DashboardPage() {
                         label={t('dashboard.serviceTarget')}
                         pct={servicePct}
                         pace={pace}
-                        detail={`${unitsIn} / ${target.serviceCount} ${t('dashboard.units')}`}
+                        detail={`${doneMonth} / ${target.serviceCount} ${t('dashboard.unitsDone')}`}
                       />
                     )}
                   </div>

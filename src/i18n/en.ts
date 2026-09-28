@@ -115,6 +115,7 @@ export const en: Dictionary = {
   'dashboard.revenueTarget': 'Revenue Target',
   'dashboard.serviceTarget': 'Service Target',
   'dashboard.units': 'units',
+  'dashboard.unitsDone': 'units done',
   'dashboard.technicianPerformance': 'Technician Performance',
   'dashboard.noPerformance': 'No data yet',
   'dashboard.noPerformanceDescription':

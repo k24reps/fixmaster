@@ -401,7 +401,7 @@ export function Wizard({ onComplete }: WizardProps) {
                   onChange={(e) => update({ targetRevenue: parseRpInput(e.target.value) })}
                 />
                 <Input
-                  label="Target Jumlah Servis"
+                  label="Target Servis Selesai / Bulan"
                   type="number"
                   placeholder="50"
                   value={data.targetServiceCount || ''}

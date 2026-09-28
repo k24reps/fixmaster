@@ -3615,3 +3615,11 @@ cabang, QRIS/BCA bersama, pembayaran pecah) jadi mustahil dicocokkan. Keputusan 
 - **Catatan migrasi data:** menjadikan wallet lama khusus cabang tidak memindahkan riwayatnya; saldo
   awal bulan per cabang baru jujur sejak wallet cabang dipakai. Anjuran ke pemilik: buat "Tunai
   <cabang>" baru dan isi lewat Transfer.
+
+## Dashboard: laba owner-only, target unit selesai, demo sebulan (28 Sep 2026)
+
+Jawaban pemilik 4a/5/6/13a. **Laba servis** disembunyikan dari admin: halaman sumbernya (Laporan)
+owner-only, jadi menampilkannya di Dashboard adalah celah yang tidak konsisten, bukan fitur.
+**Target Servis** dari unit selesai — unit masuk tidak menghasilkan uang, dan kartu target harus
+bergerak bersama Laba servis (satu sumber: `category_profit`). **Demo** kini sebulan: pengunjung demo
+melihat perbedaan Hari ini vs Bulan ini dan buku kas per hari. Karyawan tetap di "Meja saya".
