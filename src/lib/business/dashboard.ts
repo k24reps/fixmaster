@@ -223,14 +223,21 @@ export function targetState(pct: number, pace: number): 'ok' | 'on' | 'behind' {
  * sejak perubahan terakhir tiket, siap diambil sejak selesai dikerjakan.
  */
 export function alertAges(
-  open: readonly Pick<Service, 'status' | 'pickedUp' | 'updatedAt' | 'completedAt'>[],
+  open: readonly (Pick<Service, 'status' | 'pickedUp' | 'updatedAt' | 'completedAt'> &
+    Partial<Pick<Service, 'history'>>)[],
   now: Date = new Date(),
 ): Partial<Record<Alert['kind'], number>> {
   const days = (iso: string) => Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 86_400_000));
   const oldest = (dates: string[]) => (dates.length ? Math.max(...dates.map(days)) : undefined);
   const out: Partial<Record<Alert['kind'], number>> = {};
   const conf = oldest(open.filter((s) => s.status === 'konfirmasi').map((s) => s.updatedAt));
-  const pick = oldest(open.filter(isAwaitingPickup).map((s) => s.completedAt ?? s.updatedAt));
+  // completedAt kosong di baris lama/lokal: pakai entri riwayat Selesai, baru updatedAt
+  // (dulu tiket yang selesai hari ini terbaca "tertua 9 hari").
+  const doneAt = (s: (typeof open)[number]) =>
+    s.completedAt ??
+    s.history?.find((h) => h.status === 'selesai' || h.status === 'lunas')?.at ??
+    s.updatedAt;
+  const pick = oldest(open.filter(isAwaitingPickup).map(doneAt));
   if (conf !== undefined) out.confirmation = conf;
   if (pick !== undefined) out['awaiting-pickup'] = pick;
   return out;

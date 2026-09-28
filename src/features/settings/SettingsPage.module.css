@@ -1413,3 +1413,11 @@
 .autoBackupAction:hover {
   background: var(--brand-soft);
 }
+
+/* Target bulanan: tiga isian, menyusun diri sesuai lebar kartu. */
+.targetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}

@@ -3476,3 +3476,28 @@ Bug yang diperbaiki:
   bisa negatif diam-diam); DP yang ditahan saat batal belum dihitung sebagai pendapatan tiket;
   part/modal masih bisa ditambah ke tiket Lunas; pengambilan tercatat "Edit" di Log Teknisi;
   fokus hilang ke `<body>` setelah Lunas (tombol Update Status lenyap).
+
+## Critique ulang Dashboard — 22 → 27/40 (28 Sep 2026)
+
+Arsip `.impeccable/critique/2026-09-28T03-23-24Z__src-features-dashboard.md`. Semua angka dicocokkan
+dengan Servis, Keuangan, Inventori, dan Laporan (juga per cabang dan setelah data diubah): cocok.
+Diperbaiki:
+
+- **Tugas Internal menggandakan instance** (demo: 3 → 13 baris, "Buka toko" tiga kali; badge Tugas
+  2 → 6). Efek `generateInstances` di `TasksPage` berjalan sebelum daftar dimuat dan lagi sebelum
+  tulisan pertama kembali. Kini dilewati selama `instancesLoad.loading` + ref kunci yang sudah
+  dikirim. Cloud tertolong indeks unik 0041, lokal/demo tidak.
+- **Sel menaut ke daftar yang tak cocok:** Tiket saya → `/services?tech=me&open=1` (hitungan kini
+  = tiket saya belum tuntas); Unit masuk → `/services?date=month`. Servis membaca `?open=1` dan
+  `?date=month`. "Dalam proses" tetap ke daftar penuh — readout Servis di atasnya menunjukkan angka yang sama.
+- **Target bulanan tak bisa diubah** setelah onboarding (wizard berjanji "bisa diubah nanti") →
+  kartu **Target Bulanan** di Pengaturan › Usaha (owner; pendapatan, unit servis, overhead;
+  `setMonthlyTarget`), tautan "Ubah" di kartu target Dashboard.
+- Hero ponsel: rupiah mono mendorong grid `1fr 1fr` melewati layar (13px terpotong di 320) →
+  `minmax(0,1fr)` + patah. Baris Servis Terbaru ponsel jadi grid (no. | perangkat | panah, badge di bawah).
+- a11y: `role="listitem"` pada `<Link>` menghapus peran tautan sel strip → dilepas; periode
+  radiogroup tanpa panah → tombol `aria-pressed`. Periode diingat per perangkat (localStorage).
+- Rp 0 tampil SURPLUS → "IMPAS"; "Hadir" → "Di toko" (yang sedang shift); papan teknisi berlabel
+  "bulan ini"; umur siap-diambil memakai riwayat Selesai bila `completedAt` kosong.
+- **Pertanyaan ke pemilik:** admin melihat Laba servis padahal Laporan owner-only; Target Servis =
+  unit masuk atau selesai; seed demo disebar sebulan agar sakelar periode terasa.

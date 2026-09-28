@@ -127,14 +127,18 @@ export function ServicesPage() {
   // `?tech=me` = "Tiket saya" dari panel Meja Saya di Dashboard.
   const [techFilter, setTechFilter] = useState(() => (searchParams.get('tech') === 'me' ? 'me' : 'all'));
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  // `?date=month` = "Unit masuk bulan ini" dari Dashboard.
+  const [dateFilter, setDateFilter] = useState<DateFilter>(() =>
+    searchParams.get('date') === 'month' ? 'thisMonth' : 'all',
+  );
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [stalledOnly, setStalledOnly] = useState(false);
   const [sort, setSort] = useState<ServiceSort>('newest');
   // Tiket tuntas (lunas/batal DAN sudah diambil) ikut tampil menurut urutan
   // tanggal; "Sembunyikan tuntas" menyaringnya saat daftar dipakai sebagai antrean kerja.
-  const [hideClosed, setHideClosed] = useState(false);
+  // `?open=1` = "Tiket saya belum tuntas" dari Dashboard.
+  const [hideClosed, setHideClosed] = useState(() => searchParams.get('open') === '1');
   // `?new=1` membuka Servis Baru langsung (tombol cepat Dashboard).
   const [editOpen, setEditOpen] = useState(() => searchParams.get('new') === '1');
   const [editing, setEditing] = useState<Service | null>(null);

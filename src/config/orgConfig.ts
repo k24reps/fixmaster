@@ -278,6 +278,16 @@ const NO_TARGET: MonthlyTarget = { revenue: 0, serviceCount: 0, overheadBudget: 
  * Indikator Break-Even di Laporan berbeda antara laptop dan HP — dan hilang
  * begitu data browser dibersihkan.
  */
+/** Target bulanan & anggaran overhead — dulu hanya bisa diisi saat onboarding. */
+export async function setMonthlyTarget(target: MonthlyTarget): Promise<void> {
+  try {
+    localStorage.setItem(`fixmaster-target-${orgId()}`, JSON.stringify(target));
+  } catch {
+    /* salinan lokal hanya cadangan */
+  }
+  await patchSettings({ monthlyTarget: target });
+}
+
 export function getTarget(): MonthlyTarget {
   const cloud = settings().monthlyTarget;
   if (cloud) return cloud;

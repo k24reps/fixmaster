@@ -313,7 +313,7 @@
 .periodBtn:hover {
   color: var(--readout-text);
 }
-.periodBtn[aria-checked='true'] {
+.periodBtn[aria-pressed='true'] {
   background: color-mix(in srgb, var(--readout-text) 16%, transparent);
   color: var(--readout-text);
 }
@@ -336,6 +336,9 @@
 }
 a.heroStat:hover {
   background: color-mix(in srgb, var(--readout-text) 8%, transparent);
+}
+.heroStatVal {
+  overflow-wrap: anywhere;
 }
 .heroStatSub {
   font-family: var(--font-mono);
@@ -891,9 +894,11 @@ a.heroStat:hover {
     padding: var(--space-3) var(--space-4);
     gap: var(--space-3);
   }
+  /* minmax(0,…): 1fr berbatas bawah auto, jadi rupiah mono yang tak bisa patah
+     mendorong grid melewati layar (terukur 13px terpotong di 320px). */
   .heroAside {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     gap: var(--space-2) var(--space-4);
   }
@@ -905,6 +910,30 @@ a.heroStat:hover {
   }
   .strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Baris Servis Terbaru: no. | perangkat | panah, badge di bawah perangkat.
+     flex-wrap dulu membuat tinggi baris 84–108px dan panah terdampar sendirian. */
+  .recentItem {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'no detail arrow'
+      '. badge arrow';
+    row-gap: 4px;
+  }
+  .recentNo {
+    grid-area: no;
+  }
+  .recentDetail {
+    grid-area: detail;
+    min-width: 0;
+  }
+  .recentItem > :nth-child(3) {
+    grid-area: badge;
+    justify-self: start;
+  }
+  .recentArrow {
+    grid-area: arrow;
   }
   .strip > :last-child:nth-child(odd) {
     grid-column: 1 / -1;

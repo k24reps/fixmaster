@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -7,6 +7,7 @@ import { newId } from '@/lib/id';
 import { localDateStr, fmtDate } from '@/lib/time';
 import {
   generateInstances,
+  instanceKey,
   describeRecurrence,
   isOverdue,
   reorder,
@@ -48,9 +49,17 @@ export function TasksPage() {
   const orderedTemplates = useMemo(() => [...templates].sort(bySortOrder), [templates]);
   const templateById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates]);
 
+  // Kunci instance yang sudah dikirim dari halaman ini. Efek di bawah berjalan
+  // ulang setiap `instances` berubah; sebelum tulisan pertama kembali, daftar
+  // masih lama sehingga instance yang sama dibuat lagi (demo: 3 → 13 baris,
+  // "Buka toko" tiga kali). Cloud menolaknya lewat indeks unik 0041, lokal tidak.
+  const writtenKeys = useRef(new Set<string>());
+
   // Auto-generate due instances for a rolling window [today-7, today+1].
   useEffect(() => {
     if (!orgId || templates.length === 0) return;
+    // Daftar belum dimuat = semua tampak "hilang"; jangan membuat apa pun.
+    if (instancesLoad.loading) return;
     // 30 hari ke belakang: dengan 7 hari, toko yang tutup seminggu lebih (atau
     // tugas bulanan yang tanggalnya sudah lewat) kehilangan tugasnya permanen.
     const from = (() => {
@@ -63,7 +72,12 @@ export function TasksPage() {
       d.setDate(d.getDate() + 1);
       return localDateStr(d);
     })();
-    const missing = generateInstances(templates, instances, from, to, orgId);
+    const missing = generateInstances(templates, instances, from, to, orgId).filter((i) => {
+      const key = instanceKey(i.templateId, i.itemId, i.dueDate);
+      if (writtenKeys.current.has(key)) return false;
+      writtenKeys.current.add(key);
+      return true;
+    });
     if (missing.length) {
       // Kegagalan di sini dulu ditelan diam-diam: karyawan yang ditolak aturan
       // cabang tidak pernah melihat tugasnya, tanpa satu pun pesan.
@@ -75,7 +89,7 @@ export function TasksPage() {
         );
       });
     }
-  }, [templates, instances, orgId]);
+  }, [templates, instances, orgId, instancesLoad.loading]);
 
   // Manual order only (user choice (a)): ↑↓ must behave predictably across the
   // WHOLE list, so overdue items no longer jump the queue by date — their

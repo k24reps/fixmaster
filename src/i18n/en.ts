@@ -70,7 +70,7 @@ export const en: Dictionary = {
 
   // ---------- Dashboard ----------
   'dashboard.consoleAria': 'Operational status console',
-  'dashboard.staffPresent': 'Present',
+  'dashboard.staffPresent': 'On shift',
   'dashboard.people': 'people',
   'dashboard.data': 'Data',
   'dashboard.loading': 'Loading dashboard data…',
@@ -88,6 +88,8 @@ export const en: Dictionary = {
   'dashboard.netProfitAria': 'Net cash flow',
   'dashboard.surplus': 'SURPLUS',
   'dashboard.deficit': 'DEFICIT',
+  'dashboard.even': 'EVEN',
+  'dashboard.editTarget': 'Edit',
   'dashboard.actionsTitle': 'Action Required',
   'dashboard.alert.confirmation': 'units awaiting cost confirmation',
   'dashboard.alert.outOfStock': 'spareparts out of stock',
@@ -136,7 +138,7 @@ export const en: Dictionary = {
   'dashboard.orgWide': 'all branches',
   'dashboard.myDesk': 'My desk',
   'dashboard.myTickets': 'My tickets',
-  'dashboard.myTicketsUnit': 'in progress',
+  'dashboard.myTicketsUnit': 'still open',
   'dashboard.myTasks': 'Tasks',
   'dashboard.myTasksUnit': 'not checked off',
   'dashboard.myAttendance': 'Attendance',

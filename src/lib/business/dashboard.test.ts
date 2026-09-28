@@ -320,3 +320,20 @@ describe('alertAges', () => {
     expect(ages).toEqual({ confirmation: 3, 'awaiting-pickup': 7 });
   });
 });
+
+describe('alertAges — tanpa completedAt', () => {
+  it('memakai entri riwayat Selesai, bukan updatedAt', () => {
+    const ages = alertAges(
+      [
+        {
+          status: 'lunas',
+          pickedUp: false,
+          updatedAt: '2026-09-18T12:00:00Z',
+          history: [{ at: '2026-09-27T09:00:00Z', status: 'selesai', by: '', byName: '', note: '', internal: false }],
+        },
+      ],
+      new Date('2026-09-27T12:00:00Z'),
+    );
+    expect(ages['awaiting-pickup']).toBe(0);
+  });
+});

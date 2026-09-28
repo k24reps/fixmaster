@@ -73,7 +73,7 @@ export const id = {
 
   // ---------- Dashboard ----------
   'dashboard.consoleAria': 'Konsol status operasional',
-  'dashboard.staffPresent': 'Hadir',
+  'dashboard.staffPresent': 'Di toko',
   'dashboard.people': 'orang',
   'dashboard.data': 'Data',
   'dashboard.loading': 'Memuat data dashboard…',
@@ -91,6 +91,8 @@ export const id = {
   'dashboard.netProfitAria': 'Arus kas bersih',
   'dashboard.surplus': 'SURPLUS',
   'dashboard.deficit': 'DEFISIT',
+  'dashboard.even': 'IMPAS',
+  'dashboard.editTarget': 'Ubah',
   'dashboard.actionsTitle': 'Perlu Tindakan',
   'dashboard.alert.confirmation': 'unit menunggu konfirmasi biaya',
   'dashboard.alert.outOfStock': 'sparepart habis',
@@ -139,7 +141,7 @@ export const id = {
   'dashboard.orgWide': 'semua cabang',
   'dashboard.myDesk': 'Meja saya',
   'dashboard.myTickets': 'Tiket saya',
-  'dashboard.myTicketsUnit': 'sedang dikerjakan',
+  'dashboard.myTicketsUnit': 'belum tuntas',
   'dashboard.myTasks': 'Tugas',
   'dashboard.myTasksUnit': 'belum dicentang',
   'dashboard.myAttendance': 'Absensi',

@@ -124,6 +124,8 @@ import {
 } from '@/lib/business/backup';
 import {
   saveServiceColumns,
+  getTarget,
+  setMonthlyTarget,
   getLastBackupAt,
   setLastBackupAt,
   setBackupEmail,
@@ -272,7 +274,12 @@ export function SettingsPage() {
         ))}
       </div>
 
-      {tab === 'usaha' && <BusinessTab />}
+      {tab === 'usaha' && (
+        <>
+          <BusinessTab />
+          {isOwner && <MonthlyTargetCard />}
+        </>
+      )}
       {tab === 'operasional' && (
         <>
           <ServiceTemplatesCard />
@@ -968,6 +975,85 @@ function WarrantyCard() {
               Tambah
             </Button>
           </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+/**
+ * Target bulanan (Dashboard) & anggaran overhead (break-even Laporan). Wizard
+ * onboarding berjanji "bisa diubah nanti", tapi sampai 28 Sep 2026 tak ada
+ * tempat untuk mengubahnya.
+ */
+function MonthlyTargetCard() {
+  const current = getTarget();
+  const [revenue, setRevenue] = useState(() => (current.revenue ? fmtRpInput(String(current.revenue)) : ''));
+  const [units, setUnits] = useState(() => (current.serviceCount ? String(current.serviceCount) : ''));
+  const [overhead, setOverhead] = useState(() =>
+    current.overheadBudget ? fmtRpInput(String(current.overheadBudget)) : '',
+  );
+  const [busy, setBusy] = useState(false);
+  const next = {
+    revenue: parseRpInput(revenue),
+    serviceCount: Math.max(0, parseInt(units.replace(/\D/g, ''), 10) || 0),
+    overheadBudget: parseRpInput(overhead),
+  };
+  const dirty =
+    next.revenue !== current.revenue ||
+    next.serviceCount !== current.serviceCount ||
+    next.overheadBudget !== current.overheadBudget;
+
+  const save = async () => {
+    if (demoGuard()) return;
+    setBusy(true);
+    try {
+      await setMonthlyTarget(next);
+      toast.success('Target bulanan disimpan');
+    } catch {
+      toast.error('Gagal menyimpan target');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="bullseye" aria-hidden />} title="Target Bulanan" />
+      <CardBody>
+        <p className={styles.tplHint}>
+          Dipakai gauge target di Dashboard (dengan penanda laju bulan) dan indikator
+          break-even di Laporan. Kosongkan untuk menyembunyikan target.
+        </p>
+        <div className={styles.targetGrid}>
+          <Input
+            label="Target pendapatan / bulan"
+            inputMode="numeric"
+            value={revenue}
+            onChange={(e) => setRevenue(fmtRpInput(e.target.value))}
+            placeholder="50.000.000"
+          />
+          <Input
+            label="Target unit servis masuk / bulan"
+            inputMode="numeric"
+            value={units}
+            onChange={(e) => setUnits(e.target.value.replace(/\D/g, ''))}
+            placeholder="60"
+          />
+          <Input
+            label="Anggaran overhead / bulan"
+            inputMode="numeric"
+            value={overhead}
+            onChange={(e) => setOverhead(fmtRpInput(e.target.value))}
+            placeholder="8.000.000"
+            hint="Sewa, gaji, listrik — batas break-even di Laporan"
+          />
+        </div>
+        <div className={styles.noteFoot}>
+          <span />
+          <Button onClick={save} disabled={busy || !dirty}>
+            Simpan Target
+          </Button>
         </div>
       </CardBody>
     </Card>

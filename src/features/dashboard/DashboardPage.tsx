@@ -23,7 +23,6 @@ import {
   STATUS_TONE,
   visibleServices,
   isClosedOut,
-  isUnfinished,
 } from '@/lib/business/services';
 import { matchesTechnician } from '@/lib/business/serviceFilters';
 import { getTarget } from '@/config/orgConfig';
@@ -77,7 +76,22 @@ export function DashboardPage() {
   const isMgr = me ? isManager(me.role) : false;
   const { from, to } = monthRange();
   const today = localDateStr();
-  const [period, setPeriod] = useState<Period>('today');
+  // Pilihan periode diingat per perangkat (dulu kembali ke Hari ini tiap pindah menu).
+  const [period, setPeriodState] = useState<Period>(() => {
+    try {
+      return localStorage.getItem('fixmaster-dash-period') === 'month' ? 'month' : 'today';
+    } catch {
+      return 'today';
+    }
+  });
+  const setPeriod = (p: Period) => {
+    setPeriodState(p);
+    try {
+      localStorage.setItem('fixmaster-dash-period', p);
+    } catch {
+      /* penyimpanan diblokir — pilihan tetap berlaku untuk kunjungan ini */
+    }
+  };
 
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
   // Dashboard hanya MENAMPILKAN 6 tiket terbaru; hitungan & papan teknisinya
@@ -172,9 +186,9 @@ export function DashboardPage() {
     () => computeAlerts(summary ?? { confirmation: 0, awaitingPickup: 0 }, inventory),
     [summary, inventory],
   );
-  const myOpen = me
-    ? open.filter((s) => isUnfinished(s.status) && matchesTechnician(s, 'me', [], me)).length
-    : 0;
+  // Sama dengan daftar yang ditautnya (/services?tech=me&open=1): tiket saya yang
+  // belum tuntas. Dulu hanya "belum selesai" sementara tautannya membuka semua tiket saya.
+  const myOpen = me ? open.filter((s) => matchesTechnician(s, 'me', [], me)).length : 0;
   const myAttendance = me ? attendance.find((a) => a.date === today && a.employeeId === me.id) : undefined;
   const taskSignal = signals['/tasks'];
   // Tiket arsip sudah disaring di sumbernya (visibleOnly / visibleServices),
@@ -292,9 +306,9 @@ export function DashboardPage() {
           {!isMgr && (
             <section className={styles.desk} aria-label={t('dashboard.myDesk')}>
               <h2 className={styles.deskTitle}>{t('dashboard.myDesk')}</h2>
-              <div className={styles.strip} role="list">
+              <div className={styles.strip}>
                 <DeskCell
-                  to="/services?tech=me"
+                  to="/services?tech=me&open=1"
                   label={t('dashboard.myTickets')}
                   value={String(myOpen)}
                   unit={t('dashboard.myTicketsUnit')}
@@ -381,13 +395,12 @@ export function DashboardPage() {
                       <span className={styles.heroLed} aria-hidden />
                       {t('dashboard.netProfit')}
                     </span>
-                    <div className={styles.period} role="radiogroup" aria-label={t('dashboard.periodAria')}>
+                    <div className={styles.period} role="group" aria-label={t('dashboard.periodAria')}>
                       {(['today', 'month'] as const).map((p) => (
                         <button
                           key={p}
                           type="button"
-                          role="radio"
-                          aria-checked={period === p}
+                          aria-pressed={period === p}
                           className={styles.periodBtn}
                           onClick={() => setPeriod(p)}
                         >
@@ -398,7 +411,11 @@ export function DashboardPage() {
                   </div>
                   <span className={styles.heroValue}>{fmtRpInline(kpis.netCashFlow)}</span>
                   <span className={styles.heroTag}>
-                    {kpis.netCashFlow >= 0 ? t('dashboard.surplus') : t('dashboard.deficit')}
+                    {kpis.netCashFlow > 0
+                      ? t('dashboard.surplus')
+                      : kpis.netCashFlow < 0
+                        ? t('dashboard.deficit')
+                        : t('dashboard.even')}
                   </span>
                 </div>
                 <div className={styles.heroAside}>
@@ -430,8 +447,8 @@ export function DashboardPage() {
           {/* Strip readout (Design System), bukan deretan StatCard: tiap angka
               menaut ke daftar yang menjelaskannya. "Dalam proses" memakai definisi
               yang sama dengan readout halaman Servis. */}
-          <div className={styles.strip} role="list" aria-label={t('dashboard.metricsAria')}>
-            <DeskCell to="/services" label={t('dashboard.unitsIn')} value={String(unitsIn)} unit={t('dashboard.thisMonth')} />
+          <div className={styles.strip} aria-label={t('dashboard.metricsAria')}>
+            <DeskCell to="/services?date=month" label={t('dashboard.unitsIn')} value={String(unitsIn)} unit={t('dashboard.thisMonth')} />
             <DeskCell
               to="/services"
               label={t('dashboard.inProcess')}
@@ -500,7 +517,17 @@ export function DashboardPage() {
 
             {hasTarget && (
               <Card glass>
-                <CardHeader icon={<Icon name="bullseye" aria-hidden />} title={t('dashboard.monthlyTarget')} />
+                <CardHeader
+                  icon={<Icon name="bullseye" aria-hidden />}
+                  title={t('dashboard.monthlyTarget')}
+                  action={
+                    me?.role === 'owner' ? (
+                      <Link className={styles.viewAll} to="/settings?tab=usaha">
+                        {t('dashboard.editTarget')}
+                      </Link>
+                    ) : undefined
+                  }
+                />
                 <CardBody>
                   <div className={styles.targets}>
                     {isMgr && target.revenue > 0 && (
@@ -526,7 +553,10 @@ export function DashboardPage() {
           </div>
 
           <Card glass>
-            <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('dashboard.technicianPerformance')} />
+            <CardHeader
+              icon={<Icon name="trophy" aria-hidden />}
+              title={`${t('dashboard.technicianPerformance')} · ${t('dashboard.month').toLowerCase()}`}
+            />
             <CardBody className={styles.noPad}>
               {leaderboard.length === 0 ? (
                 <EmptyState icon={<Icon name="users" aria-hidden />} title={t('dashboard.noPerformance')} description={t('dashboard.noPerformanceDescription')} />
@@ -612,7 +642,7 @@ function DeskCell({ to, label, value, unit, tone, small }: {
   small?: boolean;
 }) {
   return (
-    <Link className={styles.cell} to={to} role="listitem">
+    <Link className={styles.cell} to={to}>
       <span className={styles.cellLabel}>
         {tone && <span className={styles.alertLed} data-tone={tone} aria-hidden />}
         {label}
