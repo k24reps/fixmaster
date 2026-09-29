@@ -14,6 +14,7 @@ import {
   computeAlerts,
   serviceMargin,
   monthPace,
+  dailyRevenueTarget,
   targetState,
   alertAges,
   type Alert,
@@ -26,6 +27,7 @@ import {
 } from '@/lib/business/services';
 import { matchesTechnician } from '@/lib/business/serviceFilters';
 import { getTarget } from '@/config/orgConfig';
+import { interpolate } from '@/lib/business/notify';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
 import { isManager } from '@/config/plans';
@@ -203,6 +205,11 @@ export function DashboardPage() {
   const branchScoped = !!activeOutletId && outlets.length > 1;
   const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? null;
   const pace = monthPace();
+  const todayRevenue = useMemo(
+    () => computeKpis(incomes, expenses, wallets, today, today).revenue,
+    [incomes, expenses, wallets, today],
+  );
+  const dailyNeed = dailyRevenueTarget(target.revenue, monthRevenue - todayRevenue);
   const revenuePct = target.revenue > 0 ? Math.min(100, (monthRevenue / target.revenue) * 100) : 0;
   const servicePct = target.serviceCount > 0
     ? Math.min(100, (doneMonth / target.serviceCount) * 100)
@@ -544,6 +551,17 @@ export function DashboardPage() {
                         detail={`${fmtRpInline(monthRevenue)} / ${fmtRpInline(target.revenue)}`}
                       />
                     )}
+                    {isMgr && target.revenue > 0 && dailyNeed > 0 && (
+                      <Target
+                        label={t('dashboard.todayNeed')}
+                        pct={Math.min(100, (todayRevenue / dailyNeed) * 100)}
+                        detail={`${fmtRpInline(todayRevenue)} / ${fmtRpInline(dailyNeed)} · ${
+                          todayRevenue >= dailyNeed
+                            ? t('dashboard.todayReached')
+                            : interpolate(t('dashboard.todayShort'), { amount: fmtRpInline(dailyNeed - todayRevenue) })
+                        }`}
+                      />
+                    )}
                     {target.serviceCount > 0 && (
                       <Target
                         label={t('dashboard.serviceTarget')}
@@ -614,11 +632,14 @@ function DashboardLoading({ label }: { label: string }) {
   );
 }
 
-/** Gauge target dengan penanda LAJU bulan: warnanya menyatakan jarak ke laju. */
-function Target({ label, pct, pace, detail }: { label: string; pct: number; pace: number; detail: string }) {
+/**
+ * Gauge target dengan penanda LAJU bulan: warnanya menyatakan jarak ke laju.
+ * Tanpa `pace` (target harian) tak ada laju yang dikejar — hanya tercapai/belum.
+ */
+function Target({ label, pct, pace, detail }: { label: string; pct: number; pace?: number; detail: string }) {
   const t = useT();
-  const state = targetState(pct, pace);
-  const pacePct = `${Math.round(pace * 100)}%`;
+  const state = pace === undefined ? (pct >= 100 ? 'ok' : 'on') : targetState(pct, pace);
+  const pacePct = `${Math.round((pace ?? 0) * 100)}%`;
   return (
     <div className={styles.targetItem}>
       <div className={styles.targetLabel}>
@@ -627,13 +648,18 @@ function Target({ label, pct, pace, detail }: { label: string; pct: number; pace
       </div>
       <div className={[styles.gauge, styles[state]].join(' ')}>
         <div className={styles.gaugeFill} style={{ transform: `scaleX(${pct / 100})` }} />
-        <span className={styles.paceTick} style={{ left: `${pace * 100}%` }} aria-hidden />
+        {pace !== undefined && <span className={styles.paceTick} style={{ left: `${pace * 100}%` }} aria-hidden />}
       </div>
       <small className={styles.targetDetail}>
-        {detail} ·{' '}
-        <span className={state === 'behind' ? styles.paceBehind : undefined}>
-          {t(state === 'behind' ? 'dashboard.targetBehind' : 'dashboard.targetOn').replace('{pace}', pacePct)}
-        </span>
+        {detail}
+        {pace !== undefined && (
+          <>
+            {' · '}
+            <span className={state === 'behind' ? styles.paceBehind : undefined}>
+              {t(state === 'behind' ? 'dashboard.targetBehind' : 'dashboard.targetOn').replace('{pace}', pacePct)}
+            </span>
+          </>
+        )}
       </small>
     </div>
   );

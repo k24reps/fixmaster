@@ -102,7 +102,7 @@ import {
   type PendingInvite,
   type Invoice,
 } from '@/data/supabase-client';
-import type { Wallet, Outlet, Role, PlanType } from '@/data/types';
+import type { Wallet, Outlet, Role, PlanType, OutletRent } from '@/data/types';
 import { DATASETS, downloadCsv } from './exportDatasets';
 import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
@@ -127,6 +127,8 @@ import {
   saveServiceColumns,
   getTarget,
   setMonthlyTarget,
+  getRent,
+  setRent,
   getLastBackupAt,
   setLastBackupAt,
   setBackupEmail,
@@ -280,6 +282,7 @@ export function SettingsPage() {
         <>
           <BusinessTab />
           {isOwner && <MonthlyTargetCard />}
+          {isOwner && <RentCard />}
         </>
       )}
       {tab === 'operasional' && (
@@ -1046,18 +1049,115 @@ function MonthlyTargetCard() {
             placeholder="60"
           />
           <Input
-            label={t('settingsPage.anggaranOverheadBulan')}
+            label={t('settingsPage.overheadStartLabel')}
             inputMode="numeric"
             value={overhead}
             onChange={(e) => setOverhead(fmtRpInput(e.target.value))}
             placeholder="8.000.000"
-            hint={t('settingsPage.sewaGajiListrikBatas')}
+            hint={t('settingsPage.overheadStartHint')}
           />
         </div>
         <div className={styles.noteFoot}>
           <span />
           <Button onClick={save} disabled={busy || !dirty}>
             {t('settingsPage.simpanTarget')}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+/**
+ * Sewa tempat per cabang untuk overhead Laporan. Bulanan = dari catatan Sewa di
+ * Keuangan; tahunan = nominal ÷ 12 tiap bulan, dan catatan Sewa cabang itu
+ * tidak dihitung lagi (pembayarannya tetap dicatat supaya saldo kas benar).
+ */
+function RentCard() {
+  const t = useT();
+  const { data: outlets } = useCollection('outlets');
+  const current = getRent();
+  const [draft, setDraft] = useState<Record<string, { mode: OutletRent['mode']; yearly: string }>>(() =>
+    Object.fromEntries(
+      Object.entries(current).map(([id, r]) => [id, { mode: r.mode, yearly: r.yearly ? fmtRpInput(String(r.yearly)) : '' }]),
+    ),
+  );
+  const [busy, setBusy] = useState(false);
+  const rowOf = (id: string) => draft[id] ?? { mode: 'bulanan' as const, yearly: '' };
+  const normalize = (r: OutletRent | undefined): OutletRent =>
+    r?.mode === 'tahunan' ? { mode: 'tahunan', yearly: r.yearly } : { mode: 'bulanan', yearly: 0 };
+  const next: Record<string, OutletRent> = Object.fromEntries(
+    outlets.map((o) => {
+      const r = rowOf(o.id);
+      return [o.id, normalize({ mode: r.mode, yearly: parseRpInput(r.yearly) })];
+    }),
+  );
+  const dirty = outlets.some((o) => JSON.stringify(next[o.id]) !== JSON.stringify(normalize(current[o.id])));
+  const missing = outlets.some((o) => next[o.id].mode === 'tahunan' && next[o.id].yearly <= 0);
+  const patch = (id: string, change: Partial<{ mode: OutletRent['mode']; yearly: string }>) =>
+    setDraft((d) => ({ ...d, [id]: { ...rowOf(id), ...change } }));
+
+  const save = async () => {
+    if (demoGuard()) return;
+    setBusy(true);
+    try {
+      await setRent(next);
+      toast.success(t('settingsPage.rentSaved'));
+    } catch {
+      toast.error(t('settingsPage.rentSaveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (outlets.length === 0) return null;
+  return (
+    <Card glass>
+      <CardHeader icon={<Icon name="store" aria-hidden />} title={t('settingsPage.rentTitle')} />
+      <CardBody>
+        <p className={styles.tplHint}>{t('settingsPage.rentHint')}</p>
+        <div className={styles.rentRows}>
+          {outlets.map((o) => {
+            const r = rowOf(o.id);
+            const yearly = parseRpInput(r.yearly);
+            return (
+              <div key={o.id} className={styles.rentRow}>
+                <span className={styles.rentName}>{o.name}</span>
+                <Select
+                  aria-label={interpolate(t('settingsPage.rentModeFor'), { outlet: o.name })}
+                  value={r.mode}
+                  onChange={(e) => patch(o.id, { mode: e.target.value as OutletRent['mode'] })}
+                  options={[
+                    { value: 'bulanan', label: t('settingsPage.rentMonthly') },
+                    { value: 'tahunan', label: t('settingsPage.rentYearly') },
+                  ]}
+                />
+                {r.mode === 'tahunan' ? (
+                  <>
+                    <Input
+                      aria-label={interpolate(t('settingsPage.rentYearlyFor'), { outlet: o.name })}
+                      inputMode="numeric"
+                      value={r.yearly}
+                      onChange={(e) => patch(o.id, { yearly: fmtRpInput(e.target.value) })}
+                      placeholder="24.000.000"
+                    />
+                    <span className={styles.rentReadout}>
+                      {yearly > 0 ? interpolate(t('settingsPage.rentPerMonth'), { amount: fmtRp(yearly / 12) }) : '—'}
+                    </span>
+                  </>
+                ) : (
+                  <span className={[styles.rentReadout, styles.rentFromFinance].join(' ')}>
+                    {t('settingsPage.rentFromFinance')}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className={styles.noteFoot}>
+          <span className={styles.tplHint}>{missing ? t('settingsPage.rentYearlyMissing') : ''}</span>
+          <Button onClick={save} disabled={busy || !dirty || missing}>
+            {t('settingsPage.rentSave')}
           </Button>
         </div>
       </CardBody>

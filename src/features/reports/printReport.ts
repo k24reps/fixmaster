@@ -2,6 +2,7 @@ import { openPrintWindow, escapeHtml } from '@/lib/print';
 import { fmtRp, fmtRpCompact, fmtPercent } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { trendGeometry } from '@/lib/business/reports';
+import { OVERHEAD_CATEGORIES, type OverheadResult } from '@/lib/business/overhead';
 import type {
   TrendPoint,
   CategoryProfit,
@@ -13,7 +14,7 @@ import type {
   PeriodComparison,
 } from '@/lib/business/reports';
 import type { TechStat } from '@/lib/business/dashboard';
-import type { InventoryItem, MonthlyTarget, Organization } from '@/data/types';
+import type { InventoryItem, Organization } from '@/data/types';
 
 /**
  * Laporan A4 untuk dicetak atau disimpan sebagai PDF.
@@ -164,8 +165,7 @@ export interface ReportDocData {
   comparison: PeriodComparison;
   noBaseline: boolean;
   salesTotal: number;
-  target: MonthlyTarget;
-  breakEvenPct: number;
+  breakEven: { gross: number; pct: number; overhead: OverheadResult } | null;
   trend: TrendPoint[];
   incomeByCategory: [string, number][];
   expenseByCategory: [string, number][];
@@ -321,20 +321,34 @@ function buildBody(d: ReportDocData): string {
     </div>
   </div>`;
 
-  const breakEven =
-    d.target.overheadBudget > 0
-      ? section(
-          'Indikator Break-Even',
-          `<div class="be">
-            <div>Arus kas bersih vs overhead budget<br/>
-              <strong class="num">${esc(fmtRp(d.summary.net))} / ${esc(fmtRp(d.target.overheadBudget))}</strong>
+  const be = d.breakEven;
+  const beParts = be
+    ? [
+        ...OVERHEAD_CATEGORIES.filter((c) => be.overhead.byCategory[c] > 0).map(
+          (c) => `${c} ${fmtRp(be.overhead.byCategory[c])}`,
+        ),
+        ...(be.overhead.budgetPart > 0 ? [`Perkiraan awal ${fmtRp(be.overhead.budgetPart)}`] : []),
+      ].join(' · ')
+    : '';
+  const BASIS_NOTE = {
+    actual: 'Overhead dari catatan Keuangan: Gaji, Sewa, Operasional, Lainnya.',
+    estimate: 'Bulan berjalan: biaya yang belum dicatat diperkirakan dari rata-rata bulan sebelumnya.',
+    budget: 'Belum ada bulan penuh tercatat — memakai perkiraan overhead awal di Pengaturan.',
+  };
+  const breakEven = be
+    ? section(
+        'Indikator Break-Even',
+        `<div class="be">
+            <div>Laba kotor vs overhead periode ini<br/>
+              <strong class="num">${esc(fmtRp(be.gross))} / ${esc(fmtRp(be.overhead.total))}</strong>
             </div>
-            <div class="pct num ${d.breakEvenPct >= 1 ? 'up' : ''}">${esc(fmtPercent(d.breakEvenPct))}</div>
+            <div class="pct num ${be.pct >= 1 ? 'up' : ''}">${esc(fmtPercent(be.pct))}</div>
           </div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct(d.breakEvenPct, 1)}%"></div></div>
-          <p class="note">Overhead budget hanya target, tidak dipotong otomatis dari arus kas.</p>`,
-        )
-      : '';
+          <div class="bar-track"><div class="bar-fill" style="width:${pct(be.pct, 1)}%"></div></div>
+          <p class="note num">${esc(beParts)}</p>
+          <p class="note">${esc(BASIS_NOTE[be.overhead.basis])}</p>`,
+      )
+    : '';
 
   const incomeCat = section(
     'Pemasukan per Kategori',

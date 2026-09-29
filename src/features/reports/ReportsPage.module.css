@@ -241,6 +241,36 @@
   color: var(--text-muted);
 }
 
+.beResult {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+/* Rincian overhead per kategori: readout mono di atas divider titik. */
+.beBreakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) 0 0;
+  list-style: none;
+  border-top: 1px dotted var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.beBreakdown b {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.beWarn {
+  color: var(--warning-text);
+}
+
 /* ---------- Grid + analyzer channels ---------- */
 .grid {
   display: grid;

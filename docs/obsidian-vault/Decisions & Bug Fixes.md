@@ -3674,3 +3674,36 @@ dan tujuh tab Pengaturan — nol kunci mentah.
   peluncur 0 (`exit /b` polos lewat `cmd /c`). Tambalan `exit /b %ERRORLEVEL%` di dua jalur jalan;
   terverifikasi 2 (bermasalah) / 0 (bersih). Peluncur sh sudah benar (`exec`). Tambalan lokal ini
   tercatat di AGENTS.md §7 supaya tidak hilang saat skill disalin ulang.
+
+## Break-even dari catatan Keuangan + target harian (29 Sep 2026)
+
+Pemilik bertanya apakah Target Pendapatan itu omzet atau profit, dan apakah overhead dibagi per
+hari. Jawabannya membuka dua cacat di Indikator Break-Even:
+
+- **Overhead terhitung dua kali.** Yang dibandingkan = arus kas bersih (SUDAH dipotong gaji/sewa
+  bila dicatat) vs anggaran overhead. Toko yang surplus 15 jt setelah semua biaya tampil "100%,
+  baru impas".
+- **Tak seporsi periode.** Filter seminggu dibanding overhead sebulan → selalu tampak gagal;
+  minggu bayar sewa bisa minus.
+- **Anggaran satu angka** tak mengikuti bonus, servis AC, atau tagihan yang berubah — pemilik harus
+  mengubah Pengaturan tiap bulan.
+
+Keputusan (`lib/business/overhead.ts`): laba kotor vs overhead yang dibaca dari kategori
+pengeluaran yang SUDAH ada (Gaji, Sewa, Operasional, Lainnya; Garansi & Refund = biaya langsung;
+Sparepart = stok; Prive = bukan biaya). Bulan berjalan diperkirakan **per kategori** —
+`max(tercatat, rata-rata bulan penuh sebelumnya)` — supaya gaji yang baru dibayar akhir bulan
+tetap terhitung tanpa menunggu, dan biaya yang naik langsung masuk. Bulan mulai memakai FixMaster
+(`trialStartedAt`) tak ikut rata-rata karena hampir pasti setengah tercatat. Anggaran Pengaturan
+turun pangkat jadi **perkiraan awal** untuk toko tanpa riwayat. **Sewa tahunan per cabang**
+diratakan ÷ 12 (kios servis banyak yang bayar setahun sekali); pembayarannya tetap dicatat
+supaya saldo kas benar, tetapi tidak dihitung lagi. Tidak ada migrasi: setelan di
+`organizations.settings`.
+
+Target harian Dashboard: (target − omzet s/d kemarin) ÷ sisa hari termasuk hari ini, bukan target
+÷ 30 — angkanya naik sendiri setelah hari yang kurang dan turun setelah hari yang lebih.
+ponytail: hari kalender; toko yang libur mingguan mendapat angka sedikit rendah.
+
+- Diverifikasi di demo (desktop + 375): jalur perkiraan awal (5 jt × 29/30), jalur estimasi
+  (riwayat Jul–Agu disuntik: Gaji rata-rata 8,5 jt, Sewa tahunan 24 jt → 2 jt/bln, catatan sewa
+  24 jt diabaikan), bulan lewat = realisasi 13,4 jt. Simpan Sewa ditolak `demoGuard` di demo — wajar.
+- Tabel `fixedCosts` dari onboarding masih tak dibaca siapa pun (wizard tak lagi menampilkannya).

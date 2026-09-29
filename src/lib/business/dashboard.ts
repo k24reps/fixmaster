@@ -209,6 +209,20 @@ export function monthPace(today: Date = new Date()): number {
 }
 
 /**
+ * Omzet yang perlu masuk HARI INI agar target bulan tercapai: sisa target
+ * (dari omzet sampai kemarin) dibagi sisa hari termasuk hari ini. Dihitung
+ * dari omzet kemarin supaya angkanya tetap sepanjang hari — yang bergerak
+ * progres hari ini. 0 = target bulan sudah tercapai.
+ * ponytail: hari kalender; toko yang libur mingguan mendapat angka sedikit rendah.
+ */
+export function dailyRevenueTarget(target: number, revenueBeforeToday: number, today: Date = new Date()): number {
+  const remaining = target - revenueBeforeToday;
+  if (remaining <= 0) return 0;
+  const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  return Math.ceil(remaining / (days - today.getDate() + 1));
+}
+
+/**
  * Keadaan gauge target terhadap LAJU bulan, bukan ambang tetap. 13% pada
  * tanggal 27 dulu tampil cyan tenang karena di bawah 60% = "live"; sekarang
  * tertinggal lebih dari 10 poin dari laju = `behind`.

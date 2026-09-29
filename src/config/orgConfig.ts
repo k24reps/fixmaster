@@ -1,6 +1,6 @@
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
-import type { MonthlyTarget, OrgSettings } from '@/data/types';
+import type { ID, MonthlyTarget, OrgSettings, OutletRent } from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
 import { resolveServiceColumns, type ServiceColumnId } from '@/lib/business/serviceColumns';
 
@@ -298,6 +298,24 @@ export function getTarget(): MonthlyTarget {
   } catch {
     return NO_TARGET;
   }
+}
+
+/** Sewa per cabang (bulanan/tahunan) untuk overhead Laporan. */
+export function getRent(): Record<ID, OutletRent> {
+  return settings().rent ?? {};
+}
+export async function setRent(rent: Record<ID, OutletRent>): Promise<void> {
+  await patchSettings({ rent });
+}
+
+/**
+ * Bulan mulai memakai FixMaster ('YYYY-MM'): bulan itu hampir pasti tercatat
+ * setengah jalan, jadi tidak ikut rata-rata overhead. Organisasi tak menyimpan
+ * tanggal dibuat; awal trial adalah tanggal daftar. ponytail: null untuk toko
+ * tanpa trial — overhead lalu menganggap bulan kosong sebagai belum tercatat.
+ */
+export function getStartMonth(): string | null {
+  return useSessionStore.getState().org?.trialStartedAt?.slice(0, 7) ?? null;
 }
 
 /**

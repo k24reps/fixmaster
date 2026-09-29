@@ -286,6 +286,10 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
      sama dengan readout Servis), Saldo ("semua cabang" saat satu cabang dipilih). Tiap sel = tautan.
   6. **Target** dengan **penanda laju** (`monthPace`) dan warna menurut jarak ke laju
      (`targetState`); disembunyikan saat satu cabang dipilih (targetnya milik seluruh usaha).
+     Sejak 29 Sep 2026 ada baris **Perlu hari ini** (owner/admin, target pendapatan > 0):
+     `dailyRevenueTarget` = (target − omzet s/d kemarin) ÷ sisa hari termasuk hari ini — angka
+     tetap sepanjang hari, progres hari ini yang bergerak; hilang begitu target bulan tercapai.
+     Target Pendapatan = **omzet** operasional (tanpa modal/prive), bukan laba.
   7. Papan teknisi: rupiah hanya untuk owner/admin; meter karyawan mengikuti unit selesai.
 
 ![[dash3-dark.png]]
@@ -377,6 +381,15 @@ pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
 7. **Perbandingan Antar-Outlet** — income/expense/net per cabang (hanya muncul bila >1 outlet; null = "Tanpa Cabang").
 8. **Aging Piutang** — tabel servis selesai yang belum lunas (sisa = finalCost − DP), umur dari tanggal selesai dengan tag 0-7 / 8-30 / 31+.
 
+- **Break-even (29 Sep 2026).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
+  − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang
+  periode (hari mendatang tak dihitung) — `lib/business/overhead.ts`, teruji. Overhead = Gaji,
+  Sewa, Operasional, Lainnya; Sparepart (stok) dan Prive tidak. Bulan lewat = realisasi; bulan
+  berjalan = per kategori `max(tercatat, rata-rata ≤3 bulan penuh sebelumnya)`; tanpa riwayat =
+  **perkiraan overhead awal** Pengaturan (disembunyikan saat satu cabang dipilih). Kartu
+  menampilkan rincian per kategori, basis angka, surplus/kekurangan, dan peringatan bila bulan
+  lalu tak ada catatan Gaji. Sewa cabang **tahunan** (Pengaturan › Usaha › Sewa Tempat) =
+  nominal ÷ 12, catatan Sewa cabang itu diabaikan agar tak dobel. PDF ikut.
 - **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Nama file memuat scope + rentang tanggal.
   > [!note] Koreksi (21 Sep 2026)
   > `lib/csv.ts` **tidak lagi** punya `toCsv()`/`downloadCsv()` sendiri. Itu dulu implementasi CSV KEDUA di repo — satu-satunya yang dipakai Laporan, dan satu-satunya yang **tanpa** guard formula-injection serta tanpa tes. Sekarang Laporan memakai `buildCsv`/`csvFilename` dari [`lib/business/export.ts`](src/lib/business/export.ts) yang sama dengan kartu Export Data di Pengaturan; `lib/csv.ts` hanya menyisakan `downloadCsvFile` (Blob + anchor).

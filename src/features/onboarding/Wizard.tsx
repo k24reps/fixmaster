@@ -409,8 +409,9 @@ export function Wizard({ onComplete }: WizardProps) {
                 />
               </div>
               <Input
-                label="Overhead Budget / bln"
+                label="Perkiraan overhead awal / bln"
                 placeholder="5.000.000"
+                hint="Gaji, sewa bulanan, listrik, dll. Setelah sebulan tercatat di Keuangan, dihitung otomatis."
                 value={data.overheadBudget ? fmtRpInput(String(data.overheadBudget)) : ''}
                 onChange={(e) => update({ overheadBudget: parseRpInput(e.target.value) })}
               />

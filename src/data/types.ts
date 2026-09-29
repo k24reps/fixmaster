@@ -88,6 +88,8 @@ export interface OrgSettings {
    * hilang begitu data browser dibersihkan.
    */
   monthlyTarget?: MonthlyTarget;
+  /** Sewa per cabang (id cabang → cara bayar). Tanpa entri = bulanan. */
+  rent?: Record<ID, OutletRent>;
   /**
    * Setelan operasional yang membentuk SETIAP tiket baru. Dulu semuanya hanya
    * di localStorage: teknisi di HP dan kasir di laptop memakai default garansi
@@ -580,6 +582,17 @@ export interface MonthlyTarget {
   revenue: number;
   serviceCount: number;
   overheadBudget: number;
+}
+
+/**
+ * Cara bayar sewa tempat per cabang. Kios servis ada yang bayar bulanan, ada
+ * yang tahunan — sewa tahunan yang dicatat sekaligus membuat satu bulan
+ * overhead-nya melonjak dan sebelas bulan lainnya terlihat terlalu sehat.
+ */
+export interface OutletRent {
+  mode: 'bulanan' | 'tahunan';
+  /** Nominal per tahun; dipakai hanya bila mode tahunan. */
+  yearly: number;
 }
 
 // ---------- Activity Log (audit trail, owner-only read) ----------

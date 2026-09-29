@@ -19,7 +19,14 @@ import {
   outletComparison,
 } from '@/lib/business/reports';
 import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
-import { getTarget } from '@/config/orgConfig';
+import { getTarget, getRent, getStartMonth } from '@/config/orgConfig';
+import {
+  overheadForRange,
+  grossProfit,
+  overheadFetchFrom,
+  overheadFetchTo,
+  OVERHEAD_CATEGORIES,
+} from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
 import { buildCsv, csvFilename } from '@/lib/business/export';
 import { downloadCsvFile } from '@/lib/csv';
@@ -62,6 +69,13 @@ export function ReportsPage() {
   const [prevFrom, prevTo] = previousWindow(from, to);
   const { data: prevIncomes } = useCollectionRange('incomes', 'date', prevFrom, prevTo);
   const { data: prevExpenses } = useCollectionRange('expenses', 'date', prevFrom, prevTo);
+  // Overhead butuh bulan penuh + 3 bulan riwayat, di luar jendela periode.
+  const { data: overheadExpenses } = useCollectionRange(
+    'expenses',
+    'date',
+    overheadFetchFrom(from),
+    overheadFetchTo(to),
+  );
   // services filters on createdAt (a UTC timestamp) but groups by LOCAL date,
   // so widen the query ±1 day; the exact localDateOf filter below trims edges.
   const [svcFrom, svcTo] = rangeForTimestamp(from, to);
@@ -165,9 +179,33 @@ export function ReportsPage() {
     };
   }, [rangeValid, summary, noBaseline, comparison, t]);
 
-  // Break-even indicator: net profit vs overhead budget (target, not deducted).
-  const breakEvenPct = target.overheadBudget > 0 ? summary.net / target.overheadBudget : 0;
   const salesTotal = fSales.reduce((sum, s) => sum + s.total, 0);
+
+  // Break-even: laba kotor vs overhead dari catatan Keuangan, seporsi panjang
+  // periode. Dulu arus kas bersih (sudah dipotong overhead) dibanding anggaran
+  // sebulan penuh — overhead terhitung dua kali dan filter seminggu selalu "gagal".
+  const branchScoped = !!activeOutletId && outlets.length > 1;
+  const breakEven = useMemo(() => {
+    if (!rangeValid) return null;
+    const overhead = overheadForRange({
+      expenses: overheadExpenses,
+      from,
+      to,
+      today: localDateStr(),
+      // Perkiraan awal berlaku seluruh usaha; tak bisa dibagi ke satu cabang.
+      budget: branchScoped ? 0 : target.overheadBudget,
+      rent: getRent(),
+      outletIds: activeOutletId ? [activeOutletId] : outlets.map((o) => o.id),
+      startMonth: getStartMonth(),
+    });
+    if (!overhead) return null;
+    const gross = grossProfit(
+      catProfit.reduce((sum, c) => sum + c.profit, 0),
+      fSales,
+      fExpenses,
+    );
+    return { overhead, gross, pct: gross / overhead.total };
+  }, [rangeValid, overheadExpenses, from, to, branchScoped, target.overheadBudget, activeOutletId, outlets, catProfit, fSales, fExpenses]);
 
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -245,8 +283,7 @@ export function ReportsPage() {
       comparison,
       noBaseline,
       salesTotal,
-      target,
-      breakEvenPct,
+      breakEven,
       trend,
       incomeByCategory,
       expenseByCategory,
@@ -422,30 +459,59 @@ export function ReportsPage() {
         </CardBody>
       </Card>
 
-      {target.overheadBudget > 0 && (
-        <Card glass accent={breakEvenPct >= 1 ? 'success' : 'warning'}>
+      {breakEven && (
+        <Card glass accent={breakEven.pct >= 1 ? 'success' : 'warning'}>
           <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={t('reports.indikatorBreakEven')} />
           <CardBody>
             <div className={styles.breakEven}>
               <div>
-                <span className={styles.beLabel}>{t('reports.arusKasBersihVs')}</span>
+                <span className={styles.beLabel}>{t('reports.beGrossVsOverhead')}</span>
                 <strong className={styles.beValue}>
-                  {fmtRp(summary.net)} / {fmtRp(target.overheadBudget)}
+                  {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
                 </strong>
               </div>
-              <span className={[styles.beValue, breakEvenPct >= 1 ? styles.inc : ''].join(' ')}>
-                {fmtPercent(breakEvenPct)}
+              <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
+                {fmtPercent(breakEven.pct)}
               </span>
             </div>
             <div className={styles.beGauge}>
               <div
-                className={[styles.beFill, breakEvenPct >= 1 ? styles.beOk : ''].join(' ')}
-                style={{ width: `${Math.min(100, Math.max(0, breakEvenPct * 100))}%` }}
+                className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
+                style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
               />
             </div>
+            <p className={styles.beResult}>
+              {interpolate(t(breakEven.pct >= 1 ? 'reports.beSurplus' : 'reports.beShort'), {
+                amount: fmtRp(Math.abs(breakEven.gross - breakEven.overhead.total)),
+              })}
+            </p>
+            <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
+              {OVERHEAD_CATEGORIES.filter((c) => breakEven.overhead.byCategory[c] > 0).map((c) => (
+                <li key={c}>
+                  {c} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
+                </li>
+              ))}
+              {breakEven.overhead.budgetPart > 0 && (
+                <li>
+                  {t('reports.beBudgetPart')} <b>{fmtRp(breakEven.overhead.budgetPart)}</b>
+                </li>
+              )}
+            </ul>
             <small className={styles.beNote}>
-              <Icon name="info-circle" aria-hidden /> Overhead budget hanya target, tidak dipotong otomatis dari arus kas.
+              <Icon name="info-circle" aria-hidden />{' '}
+              {t(
+                breakEven.overhead.basis === 'actual'
+                  ? 'reports.beBasisActual'
+                  : breakEven.overhead.basis === 'estimate'
+                    ? 'reports.beBasisEstimate'
+                    : 'reports.beBasisBudget',
+              )}
             </small>
+            {breakEven.overhead.missingPayroll && (
+              <small className={[styles.beNote, styles.beWarn].join(' ')}>
+                <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
+              </small>
+            )}
           </CardBody>
         </Card>
       )}

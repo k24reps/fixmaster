@@ -20,6 +20,8 @@ import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
+import { getRent } from '@/config/orgConfig';
+import { interpolate } from '@/lib/business/notify';
 import type {
   ActivityAction,
   Wallet,
@@ -267,6 +269,10 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const categories: string[] =
     editing && !(base as string[]).includes(editing.category) ? [editing.category, ...base] : base;
   const formId = `entry-${kind}`;
+  // Sewa cabang tahunan diratakan di Laporan — jelaskan kenapa angkanya tak melonjak.
+  const rentOutlet = entryOutlet ?? resolveCreateOutlet(outlets);
+  const rent = kind === 'expense' && category === 'Sewa' && rentOutlet ? getRent()[rentOutlet] : undefined;
+  const annualRent = rent?.mode === 'tahunan' && rent.yearly > 0 ? rent : null;
 
   return (
     <Modal
@@ -350,6 +356,11 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             />
           </FormRow>
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
+          {annualRent && (
+            <p className={styles.formHint}>
+              {interpolate(t('finance.rentYearlyHint'), { amount: fmtRp(annualRent.yearly / 12) })}
+            </p>
+          )}
           {kind === 'income' && !editing && (
             <p className={styles.formHint}>{t('finance.autoIncomeHint')}</p>
           )}

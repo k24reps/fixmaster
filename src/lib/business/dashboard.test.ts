@@ -7,6 +7,7 @@ import {
   revenueSeries,
   serviceMargin,
   monthPace,
+  dailyRevenueTarget,
   targetState,
   alertAges,
 } from './dashboard';
@@ -302,6 +303,14 @@ describe('monthPace & targetState', () => {
     expect(targetState(13, 0.9)).toBe('behind');
     expect(targetState(85, 0.9)).toBe('on');
     expect(targetState(100, 0.9)).toBe('ok');
+  });
+});
+
+describe('dailyRevenueTarget', () => {
+  it('sisa target ÷ sisa hari termasuk hari ini; tercapai = 0', () => {
+    expect(dailyRevenueTarget(60e6, 0, new Date(2026, 8, 1))).toBe(2e6);
+    expect(dailyRevenueTarget(60e6, 36e6, new Date(2026, 8, 20))).toBe(Math.ceil(24e6 / 11));
+    expect(dailyRevenueTarget(60e6, 61e6, new Date(2026, 8, 29))).toBe(0);
   });
 });
 
