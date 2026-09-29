@@ -59,7 +59,6 @@ export async function seedDemoWorkspace(): Promise<void> {
   ];
   data.targetRevenue = 50_000_000;
   data.targetServiceCount = 60;
-  data.overheadBudget = 5_000_000;
   // Opt out of wizard outlet creation — the seed defines its own 3 outlets below.
   data.outlets = [];
 
@@ -308,8 +307,10 @@ export async function seedDemoWorkspace(): Promise<void> {
   ];
   await repository.putMany('incomes', incomes);
 
-  // Expense total = 1.350.000 → net profit +5.100.000
+  // Expense total = 4.850.000 → net profit +1.600.000. Sewa awal bulan membuat
+  // kartu break-even demo berisi overhead sungguhan (tak ada lagi isian perkiraan).
   const expenses: Expense[] = [
+    { ...at(oPusat), id: newId(), date: daysAgo(40), category: 'Sewa', amount: 3_500_000, walletId: bca, description: 'Sewa ruko bulan ini' },
     { ...at(oPusat), id: newId(), date: daysAgo(7), category: 'Sparepart', amount: 800_000, walletId: bca, description: 'Restock keyboard MacBook' },
     { ...at(oPusat), id: newId(), date: daysAgo(4), category: 'Operasional', amount: 250_000, walletId: cash, description: 'Alat solder & timah' },
     { ...at(oDago), id: newId(), date: today, category: 'Operasional', amount: 150_000, walletId: cash, description: 'Listrik harian cabang' },

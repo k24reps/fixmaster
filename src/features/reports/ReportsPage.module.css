@@ -270,6 +270,12 @@
 .beWarn {
   color: var(--warning-text);
 }
+.beEmpty {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
 
 /* ---------- Grid + analyzer channels ---------- */
 .grid {

@@ -323,19 +323,17 @@ function buildBody(d: ReportDocData): string {
 
   const be = d.breakEven;
   const beParts = be
-    ? [
-        ...OVERHEAD_CATEGORIES.filter((c) => be.overhead.byCategory[c] > 0).map(
-          (c) => `${c} ${fmtRp(be.overhead.byCategory[c])}`,
-        ),
-        ...(be.overhead.budgetPart > 0 ? [`Perkiraan awal ${fmtRp(be.overhead.budgetPart)}`] : []),
-      ].join(' · ')
+    ? OVERHEAD_CATEGORIES.filter((c) => be.overhead.byCategory[c] > 0)
+        .map((c) => `${c} ${fmtRp(be.overhead.byCategory[c])}`)
+        .join(' · ')
     : '';
   const BASIS_NOTE = {
     actual: 'Overhead dari catatan Keuangan: Gaji, Sewa, Operasional, Lainnya.',
     estimate: 'Bulan berjalan: biaya yang belum dicatat diperkirakan dari rata-rata bulan sebelumnya.',
-    budget: 'Belum ada bulan penuh tercatat — memakai perkiraan overhead awal di Pengaturan.',
+    partial: 'Bulan pertama: overhead dari yang sudah dicatat saja, mungkin belum lengkap.',
   };
-  const breakEven = be
+  // Tanpa catatan overhead tak ada yang dibandingkan; di layar kartu kosongnya memberi petunjuk.
+  const breakEven = be && be.overhead.total > 0
     ? section(
         'Indikator Break-Even',
         `<div class="be">

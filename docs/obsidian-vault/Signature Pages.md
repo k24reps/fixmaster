@@ -385,11 +385,15 @@ pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang
   periode (hari mendatang tak dihitung) — `lib/business/overhead.ts`, teruji. Overhead = Gaji,
   Sewa, Operasional, Lainnya; Sparepart (stok) dan Prive tidak. Bulan lewat = realisasi; bulan
-  berjalan = per kategori `max(tercatat, rata-rata ≤3 bulan penuh sebelumnya)`; tanpa riwayat =
-  **perkiraan overhead awal** Pengaturan (disembunyikan saat satu cabang dipilih). Kartu
-  menampilkan rincian per kategori, basis angka, surplus/kekurangan, dan peringatan bila bulan
-  lalu tak ada catatan Gaji. Sewa cabang **tahunan** (Pengaturan › Usaha › Sewa Tempat) =
-  nominal ÷ 12, catatan Sewa cabang itu diabaikan agar tak dobel. PDF ikut.
+  berjalan = per kategori `max(tercatat, rata-rata ≤3 bulan penuh sebelumnya)`; tanpa riwayat
+  (bulan pertama) = yang sudah dicatat apa adanya, bertanda "mungkin belum lengkap". **Tidak ada
+  isian perkiraan overhead** di wizard maupun Pengaturan — kartu selalu tampil dan, tanpa
+  catatan, berisi petunjuk mencatat Gaji/Sewa/Operasional (itulah cara user baru menemukannya).
+  Kartu menampilkan rincian per kategori, basis angka, surplus/kekurangan, dan peringatan bila
+  bulan lalu tak ada catatan Gaji. Sewa cabang **tahunan** (wizard langkah Outlet, atau
+  Pengaturan › Usaha › Sewa Tempat) = nominal ÷ 12, catatan Sewa cabang itu diabaikan agar tak
+  dobel; form Keuangan memberi keterangan "dihitung sebagai overhead" dan, untuk Sewa, "bayar
+  tahunan? atur di Pengaturan" (owner). PDF ikut.
 - **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Nama file memuat scope + rentang tanggal.
   > [!note] Koreksi (21 Sep 2026)
   > `lib/csv.ts` **tidak lagi** punya `toCsv()`/`downloadCsv()` sendiri. Itu dulu implementasi CSV KEDUA di repo — satu-satunya yang dipakai Laporan, dan satu-satunya yang **tanpa** guard formula-injection serta tanpa tes. Sekarang Laporan memakai `buildCsv`/`csvFilename` dari [`lib/business/export.ts`](src/lib/business/export.ts) yang sama dengan kartu Export Data di Pengaturan; `lib/csv.ts` hanya menyisakan `downloadCsvFile` (Blob + anchor).

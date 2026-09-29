@@ -990,28 +990,23 @@ function WarrantyCard() {
 }
 
 /**
- * Target bulanan (Dashboard) & anggaran overhead (break-even Laporan). Wizard
- * onboarding berjanji "bisa diubah nanti", tapi sampai 28 Sep 2026 tak ada
- * tempat untuk mengubahnya.
+ * Target bulanan (Dashboard). Wizard onboarding berjanji "bisa diubah nanti",
+ * tapi sampai 28 Sep 2026 tak ada tempat untuk mengubahnya. Isian anggaran
+ * overhead ditiadakan 29 Sep 2026: break-even kini membaca catatan Keuangan.
  */
 function MonthlyTargetCard() {
   const t = useT();
   const current = getTarget();
   const [revenue, setRevenue] = useState(() => (current.revenue ? fmtRpInput(String(current.revenue)) : ''));
   const [units, setUnits] = useState(() => (current.serviceCount ? String(current.serviceCount) : ''));
-  const [overhead, setOverhead] = useState(() =>
-    current.overheadBudget ? fmtRpInput(String(current.overheadBudget)) : '',
-  );
   const [busy, setBusy] = useState(false);
   const next = {
     revenue: parseRpInput(revenue),
     serviceCount: Math.max(0, parseInt(units.replace(/\D/g, ''), 10) || 0),
-    overheadBudget: parseRpInput(overhead),
+    // Angka lama toko yang dulu mengisinya dibiarkan; tak dibaca lagi.
+    overheadBudget: current.overheadBudget,
   };
-  const dirty =
-    next.revenue !== current.revenue ||
-    next.serviceCount !== current.serviceCount ||
-    next.overheadBudget !== current.overheadBudget;
+  const dirty = next.revenue !== current.revenue || next.serviceCount !== current.serviceCount;
 
   const save = async () => {
     if (demoGuard()) return;
@@ -1047,14 +1042,6 @@ function MonthlyTargetCard() {
             value={units}
             onChange={(e) => setUnits(e.target.value.replace(/\D/g, ''))}
             placeholder="60"
-          />
-          <Input
-            label={t('settingsPage.overheadStartLabel')}
-            inputMode="numeric"
-            value={overhead}
-            onChange={(e) => setOverhead(fmtRpInput(e.target.value))}
-            placeholder="8.000.000"
-            hint={t('settingsPage.overheadStartHint')}
           />
         </div>
         <div className={styles.noteFoot}>

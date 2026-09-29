@@ -7,7 +7,7 @@ const ex = (date: string, category: string, amount: number, outletId: string | n
   amount,
   outletId,
 });
-const base = { budget: 0, rent: {}, outletIds: ['o1'], startMonth: '2026-05' };
+const base = { rent: {}, outletIds: ['o1'], startMonth: '2026-05' };
 
 // Jun–Agu tercatat penuh; Agustus ada bonus + servis AC.
 const history = [
@@ -38,22 +38,22 @@ describe('overheadForRange', () => {
     expect(r?.total).toBeCloseTo((17.1e6 * 7) / 31);
   });
 
-  it('toko baru tanpa riwayat memakai perkiraan Pengaturan', () => {
+  it('bulan pertama tanpa riwayat = yang sudah dicatat saja, ditandai belum lengkap', () => {
     const r = overheadForRange({
-      ...base, startMonth: '2026-09', budget: 10e6,
+      ...base, startMonth: '2026-09',
       expenses: [ex('2026-09-01', 'Sewa', 5e6)], from: '2026-09-01', to: '2026-09-30', today: '2026-09-15',
     })!;
-    expect(r.basis).toBe('budget');
-    expect(r.total).toBeCloseTo(5e6);
-    expect(r.budgetPart).toBeCloseTo(2.5e6);
+    expect(r.basis).toBe('partial');
+    expect(r.total).toBe(5e6);
   });
 
-  it('bulan mulai tidak ikut rata-rata', () => {
+  it('bulan mulai tidak ikut rata-rata; tanpa catatan = total 0', () => {
     const r = overheadForRange({
-      ...base, startMonth: '2026-08', budget: 0,
+      ...base, startMonth: '2026-08',
       expenses: history, from: '2026-09-01', to: '2026-09-30', today: '2026-09-20',
-    });
-    expect(r).toBeNull();
+    })!;
+    expect(r.total).toBe(0);
+    expect(r.basis).toBe('partial');
   });
 
   it('sewa tahunan diratakan ÷ 12 dan catatan sewanya tidak dihitung dobel', () => {

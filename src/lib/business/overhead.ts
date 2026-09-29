@@ -1,7 +1,9 @@
 import type { Expense, ID, OutletRent } from '@/data/types';
 
 /**
- * Overhead bulanan dari catatan Keuangan, bukan satu angka di Pengaturan.
+ * Overhead bulanan dari catatan Keuangan — satu-satunya sumber; isian perkiraan
+ * di onboarding/Pengaturan sengaja ditiadakan (29 Sep 2026): angka tebakan yang
+ * lalu ditinggal, sementara catatan Keuangan sudah memuat hal yang sama.
  * Anggaran di Pengaturan dulu satu-satunya sumber, padahal gaji, listrik, dan
  * bonus berubah tiap bulan — dan Indikator Break-Even membandingkannya dengan
  * arus kas bersih yang SUDAH dipotong pengeluaran itu, jadi overhead terhitung
@@ -12,14 +14,18 @@ export type OverheadCategory = (typeof OVERHEAD_CATEGORIES)[number];
 /** Biaya yang lahir dari transaksi: mengurangi laba kotor, bukan overhead. */
 export const DIRECT_COST_CATEGORIES = ['Garansi', 'Refund Penjualan'];
 
-export type OverheadBasis = 'actual' | 'estimate' | 'budget';
+/**
+ * actual = realisasi bulan lewat · estimate = bulan berjalan diperkirakan dari
+ * riwayat · partial = bulan tanpa riwayat (mis. bulan pertama), hanya yang
+ * sudah dicatat — hampir pasti belum lengkap karena gaji dibayar akhir bulan.
+ */
+export type OverheadBasis = 'actual' | 'estimate' | 'partial';
 
 export interface OverheadResult {
+  /** 0 = belum ada catatan overhead sama sekali dalam periode. */
   total: number;
   byCategory: Record<OverheadCategory, number>;
-  /** Porsi dari anggaran Pengaturan (bulan tanpa riwayat catatan). */
-  budgetPart: number;
-  /** Basis terlemah yang dipakai: actual < estimate < budget. */
+  /** Basis terlemah yang dipakai: actual < estimate < partial. */
   basis: OverheadBasis;
   /** Bulan penuh terakhir tercatat tanpa satu pun pengeluaran Gaji. */
   missingPayroll: boolean;
@@ -31,8 +37,6 @@ export interface OverheadInput {
   from: string;
   to: string;
   today: string;
-  /** Perkiraan awal dari Pengaturan; 0 bila tak dipakai (mis. tampilan satu cabang). */
-  budget: number;
   rent: Record<ID, OutletRent>;
   /** Cabang dalam cakupan laporan — sewa tahunannya dihitung ÷ 12. */
   outletIds: ID[];
@@ -60,7 +64,7 @@ export function overheadFetchTo(to: string): string {
 }
 
 export function overheadForRange(input: OverheadInput): OverheadResult | null {
-  const { from, today, budget, rent, outletIds, startMonth } = input;
+  const { from, today, rent, outletIds, startMonth } = input;
   // Hari yang belum terjadi tidak menanggung overhead: laba kotornya juga belum ada.
   const to = input.to < today ? input.to : today;
   if (to < from) return null;
@@ -71,11 +75,13 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     0,
   );
 
+  // Sewa cabang tahunan tetap dicatat (saldo kas benar), tapi diratakan lewat Pengaturan.
+  const kept = input.expenses.filter(
+    (e): e is typeof e & { category: OverheadCategory } =>
+      isOverhead(e.category) && !(e.category === 'Sewa' && e.outletId && annualOutlets.has(e.outletId)),
+  );
   const actual = new Map<string, Record<OverheadCategory, number>>();
-  for (const e of input.expenses) {
-    if (!isOverhead(e.category)) continue;
-    // Sewa cabang tahunan tetap dicatat (saldo kas benar), tapi diratakan lewat Pengaturan.
-    if (e.category === 'Sewa' && e.outletId && annualOutlets.has(e.outletId)) continue;
+  for (const e of kept) {
     const m = monthOf(e.date);
     const row = actual.get(m) ?? emptyCats();
     row[e.category] += e.amount;
@@ -89,8 +95,7 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     lastDay(m) < today && (startMonth ? m > startMonth : sumOf(actualOf(m)) > 0);
 
   const byCategory = emptyCats();
-  let budgetPart = 0;
-  let rank = 0; // 0 actual, 1 estimate, 2 budget
+  let rank = 0; // 0 actual, 1 estimate, 2 partial
   const bump = (r: number) => (rank = Math.max(rank, r));
 
   for (let m = monthOf(from); m <= monthOf(to); m = shiftMonth(m, 1)) {
@@ -99,7 +104,6 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     const frac = (Number(b.slice(8)) - Number(a.slice(8)) + 1) / daysIn(m);
     const got = actualOf(m);
     const monthly = emptyCats();
-    let fromBudget = 0;
 
     if (tracked(m)) {
       Object.assign(monthly, got);
@@ -115,24 +119,23 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
         }
         bump(1);
       } else {
-        Object.assign(monthly, got);
-        fromBudget = Math.max(0, budget - sumOf(got));
-        if (fromBudget > 0) bump(2);
+        // Tanpa riwayat tak ada yang bisa diratakan: yang tercatat dalam periode
+        // dipakai apa adanya (sewa 5 jt tanggal 1 tetap 5 jt, bukan separuhnya).
+        for (const e of kept) if (e.date >= a && e.date <= b) byCategory[e.category] += e.amount;
+        byCategory.Sewa += annualRent * frac;
+        bump(2);
+        continue;
       }
     }
     monthly.Sewa += annualRent;
     for (const c of OVERHEAD_CATEGORIES) byCategory[c] += monthly[c] * frac;
-    budgetPart += fromBudget * frac;
   }
 
-  const total = sumOf(byCategory) + budgetPart;
-  if (total <= 0) return null;
   const lastFull = shiftMonth(monthOf(today), -1);
   return {
-    total,
+    total: sumOf(byCategory),
     byCategory,
-    budgetPart,
-    basis: (['actual', 'estimate', 'budget'] as const)[rank],
+    basis: (['actual', 'estimate', 'partial'] as const)[rank],
     missingPayroll: tracked(lastFull) && actualOf(lastFull).Gaji === 0,
   };
 }

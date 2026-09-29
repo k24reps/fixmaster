@@ -392,7 +392,7 @@ export function Wizard({ onComplete }: WizardProps) {
           )}
 
           {step === 5 && (
-            <Step title="Target & Biaya Tetap" desc="Proyeksi bulanan (bisa diubah nanti)">
+            <Step title="Target Bulanan" desc="Proyeksi bulanan (bisa diubah nanti)">
               <div className={styles.row}>
                 <Input
                   label="Target Pendapatan / bln"
@@ -408,13 +408,10 @@ export function Wizard({ onComplete }: WizardProps) {
                   onChange={(e) => update({ targetServiceCount: Number(e.target.value) })}
                 />
               </div>
-              <Input
-                label="Perkiraan overhead awal / bln"
-                placeholder="5.000.000"
-                hint="Gaji, sewa bulanan, listrik, dll. Setelah sebulan tercatat di Keuangan, dihitung otomatis."
-                value={data.overheadBudget ? fmtRpInput(String(data.overheadBudget)) : ''}
-                onChange={(e) => update({ overheadBudget: parseRpInput(e.target.value) })}
-              />
+              <p className={styles.stepHint}>
+                <Icon name="info-circle" aria-hidden /> Biaya tetap (gaji, sewa, listrik) tidak perlu
+                ditebak di sini: catat pembayarannya di Keuangan, Laporan menghitung overhead-nya otomatis.
+              </p>
             </Step>
           )}
 
@@ -454,12 +451,41 @@ export function Wizard({ onComplete }: WizardProps) {
                         <Icon name="trash" aria-hidden />
                       </button>
                     )}
+                    <div className={styles.rentLine}>
+                      <select
+                        className={styles.roleSelect}
+                        aria-label={`Cara bayar sewa ${o.name || (i === 0 ? 'outlet utama' : `cabang ${i}`)}`}
+                        value={o.rentMode ?? 'bulanan'}
+                        onChange={(e) => {
+                          const outlets = [...data.outlets];
+                          outlets[i] = { ...o, rentMode: e.target.value as 'bulanan' | 'tahunan' };
+                          update({ outlets });
+                        }}
+                      >
+                        <option value="bulanan">Sewa bulanan / milik sendiri</option>
+                        <option value="tahunan">Sewa tahunan</option>
+                      </select>
+                      {o.rentMode === 'tahunan' && (
+                        <Input
+                          aria-label="Sewa per tahun"
+                          placeholder="Sewa per tahun, mis. 24.000.000"
+                          inputMode="numeric"
+                          value={o.rentYearly ? fmtRpInput(String(o.rentYearly)) : ''}
+                          onChange={(e) => {
+                            const outlets = [...data.outlets];
+                            outlets[i] = { ...o, rentYearly: parseRpInput(e.target.value) };
+                            update({ outlets });
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
               <p className={styles.stepHint}>
                 <Icon name="info-circle" aria-hidden /> Outlet utama otomatis memakai nama &
                 alamat usaha bila dikosongkan. Tambah cabang hanya jika usaha Anda multi-lokasi.
+                Sewa tahunan dibagi rata per bulan di Laporan; bisa diubah di Pengaturan.
               </p>
               <Button
                 variant="secondary"

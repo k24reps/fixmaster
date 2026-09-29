@@ -3693,8 +3693,15 @@ pengeluaran yang SUDAH ada (Gaji, Sewa, Operasional, Lainnya; Garansi & Refund =
 Sparepart = stok; Prive = bukan biaya). Bulan berjalan diperkirakan **per kategori** —
 `max(tercatat, rata-rata bulan penuh sebelumnya)` — supaya gaji yang baru dibayar akhir bulan
 tetap terhitung tanpa menunggu, dan biaya yang naik langsung masuk. Bulan mulai memakai FixMaster
-(`trialStartedAt`) tak ikut rata-rata karena hampir pasti setengah tercatat. Anggaran Pengaturan
-turun pangkat jadi **perkiraan awal** untuk toko tanpa riwayat. **Sewa tahunan per cabang**
+(`trialStartedAt`) tak ikut rata-rata karena hampir pasti setengah tercatat.
+
+**Isian anggaran/perkiraan overhead ditiadakan** dari wizard dan Pengaturan (keputusan pemilik):
+angka tebakan yang lalu ditinggal, sementara catatan Keuangan sudah memuat hal yang sama. Sempat
+dipertimbangkan rincian per pos memakai tabel `fixedCosts` — ditolak karena tetap tebakan. Harga
+yang diterima: bulan pertama overhead terlihat kecil sampai gaji dicatat — kartu menandainya
+"mungkin belum lengkap", dan catatan yang sudah ada dipakai utuh (sewa 5 jt tanggal 1 tetap 5 jt,
+tidak diporsi hari). Supaya fitur tetap ditemukan: kartu break-even selalu tampil (kosong =
+petunjuk), form Keuangan memberi keterangan per kategori overhead. **Sewa tahunan per cabang**
 diratakan ÷ 12 (kios servis banyak yang bayar setahun sekali); pembayarannya tetap dicatat
 supaya saldo kas benar, tetapi tidak dihitung lagi. Tidak ada migrasi: setelan di
 `organizations.settings`.
@@ -3703,7 +3710,8 @@ Target harian Dashboard: (target − omzet s/d kemarin) ÷ sisa hari termasuk ha
 ÷ 30 — angkanya naik sendiri setelah hari yang kurang dan turun setelah hari yang lebih.
 ponytail: hari kalender; toko yang libur mingguan mendapat angka sedikit rendah.
 
-- Diverifikasi di demo (desktop + 375): jalur perkiraan awal (5 jt × 29/30), jalur estimasi
+- Demo: seed kini punya Sewa ruko 3,5 jt awal bulan (dulu `overheadBudget` 5 jt) supaya kartunya berisi.
+- Diverifikasi di demo (desktop + 375): jalur estimasi
   (riwayat Jul–Agu disuntik: Gaji rata-rata 8,5 jt, Sewa tahunan 24 jt → 2 jt/bln, catatan sewa
   24 jt diabaikan), bulan lewat = realisasi 13,4 jt. Simpan Sewa ditolak `demoGuard` di demo — wajar.
 - Tabel `fixedCosts` dari onboarding masih tak dibaca siapa pun (wizard tak lagi menampilkannya).

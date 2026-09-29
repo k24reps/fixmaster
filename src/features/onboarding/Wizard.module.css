@@ -216,6 +216,16 @@
   gap: var(--space-2);
   align-items: start;
 }
+/* Sewa per outlet: baris penuh di bawah nama & alamat. */
+.rentLine {
+  grid-column: 1 / -1;
+  display: grid;
+  /* subgrid: select & nominal sejajar dengan kolom nama/alamat, menumpuk di ponsel. */
+  grid-template-columns: subgrid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px dotted var(--border);
+}
 .empRow {
   display: grid;
   grid-template-columns: 1.4fr 110px 90px 40px;

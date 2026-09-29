@@ -22,6 +22,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { getRent } from '@/config/orgConfig';
 import { interpolate } from '@/lib/business/notify';
+import { OVERHEAD_CATEGORIES } from '@/lib/business/overhead';
 import type {
   ActivityAction,
   Wallet,
@@ -132,6 +133,8 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
   // Juga membuat komponen render ulang saat cabang berganti (mustPickOutlet membaca store).
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  // Tautan ke Pengaturan hanya berguna bagi yang bisa membukanya.
+  const isOwner = useSessionStore((s) => s.currentEmployee?.role === 'owner');
   const { data: outlets } = useCollection('outlets');
   const [date, setDate] = useState(localDateStr());
   const [category, setCategory] = useState('');
@@ -273,6 +276,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const rentOutlet = entryOutlet ?? resolveCreateOutlet(outlets);
   const rent = kind === 'expense' && category === 'Sewa' && rentOutlet ? getRent()[rentOutlet] : undefined;
   const annualRent = rent?.mode === 'tahunan' && rent.yearly > 0 ? rent : null;
+  const overheadCategory = kind === 'expense' && (OVERHEAD_CATEGORIES as readonly string[]).includes(category);
 
   return (
     <Modal
@@ -356,9 +360,12 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             />
           </FormRow>
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
-          {annualRent && (
+          {overheadCategory && (
             <p className={styles.formHint}>
-              {interpolate(t('finance.rentYearlyHint'), { amount: fmtRp(annualRent.yearly / 12) })}
+              {t('finance.overheadHint')}{' '}
+              {annualRent
+                ? interpolate(t('finance.rentYearlyHint'), { amount: fmtRp(annualRent.yearly / 12) })
+                : category === 'Sewa' && isOwner && t('finance.rentAnnualAsk')}
             </p>
           )}
           {kind === 'income' && !editing && (

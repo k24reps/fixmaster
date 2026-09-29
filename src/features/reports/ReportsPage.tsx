@@ -19,7 +19,7 @@ import {
   outletComparison,
 } from '@/lib/business/reports';
 import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
-import { getTarget, getRent, getStartMonth } from '@/config/orgConfig';
+import { getRent, getStartMonth } from '@/config/orgConfig';
 import {
   overheadForRange,
   grossProfit,
@@ -108,7 +108,6 @@ export function ReportsPage() {
     ? (outlets.find((o) => o.id === activeOutletId)?.name ?? t('reports.branch'))
     : t('reports.allOutlets');
 
-  const target = getTarget();
 
   const fIncomes = useMemo(() => incomes.filter((i) => isInRange(i.date, from, to)), [incomes, from, to]);
   const fExpenses = useMemo(() => expenses.filter((e) => isInRange(e.date, from, to)), [expenses, from, to]);
@@ -184,7 +183,6 @@ export function ReportsPage() {
   // Break-even: laba kotor vs overhead dari catatan Keuangan, seporsi panjang
   // periode. Dulu arus kas bersih (sudah dipotong overhead) dibanding anggaran
   // sebulan penuh — overhead terhitung dua kali dan filter seminggu selalu "gagal".
-  const branchScoped = !!activeOutletId && outlets.length > 1;
   const breakEven = useMemo(() => {
     if (!rangeValid) return null;
     const overhead = overheadForRange({
@@ -192,8 +190,6 @@ export function ReportsPage() {
       from,
       to,
       today: localDateStr(),
-      // Perkiraan awal berlaku seluruh usaha; tak bisa dibagi ke satu cabang.
-      budget: branchScoped ? 0 : target.overheadBudget,
       rent: getRent(),
       outletIds: activeOutletId ? [activeOutletId] : outlets.map((o) => o.id),
       startMonth: getStartMonth(),
@@ -204,8 +200,8 @@ export function ReportsPage() {
       fSales,
       fExpenses,
     );
-    return { overhead, gross, pct: gross / overhead.total };
-  }, [rangeValid, overheadExpenses, from, to, branchScoped, target.overheadBudget, activeOutletId, outlets, catProfit, fSales, fExpenses]);
+    return { overhead, gross, pct: overhead.total > 0 ? gross / overhead.total : 0 };
+  }, [rangeValid, overheadExpenses, from, to, activeOutletId, outlets, catProfit, fSales, fExpenses]);
 
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -460,57 +456,59 @@ export function ReportsPage() {
       </Card>
 
       {breakEven && (
-        <Card glass accent={breakEven.pct >= 1 ? 'success' : 'warning'}>
+        <Card glass accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
           <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={t('reports.indikatorBreakEven')} />
           <CardBody>
-            <div className={styles.breakEven}>
-              <div>
-                <span className={styles.beLabel}>{t('reports.beGrossVsOverhead')}</span>
-                <strong className={styles.beValue}>
-                  {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
-                </strong>
-              </div>
-              <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
-                {fmtPercent(breakEven.pct)}
-              </span>
-            </div>
-            <div className={styles.beGauge}>
-              <div
-                className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
-                style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
-              />
-            </div>
-            <p className={styles.beResult}>
-              {interpolate(t(breakEven.pct >= 1 ? 'reports.beSurplus' : 'reports.beShort'), {
-                amount: fmtRp(Math.abs(breakEven.gross - breakEven.overhead.total)),
-              })}
-            </p>
-            <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
-              {OVERHEAD_CATEGORIES.filter((c) => breakEven.overhead.byCategory[c] > 0).map((c) => (
-                <li key={c}>
-                  {c} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
-                </li>
-              ))}
-              {breakEven.overhead.budgetPart > 0 && (
-                <li>
-                  {t('reports.beBudgetPart')} <b>{fmtRp(breakEven.overhead.budgetPart)}</b>
-                </li>
-              )}
-            </ul>
-            <small className={styles.beNote}>
-              <Icon name="info-circle" aria-hidden />{' '}
-              {t(
-                breakEven.overhead.basis === 'actual'
-                  ? 'reports.beBasisActual'
-                  : breakEven.overhead.basis === 'estimate'
-                    ? 'reports.beBasisEstimate'
-                    : 'reports.beBasisBudget',
-              )}
-            </small>
-            {breakEven.overhead.missingPayroll && (
-              <small className={[styles.beNote, styles.beWarn].join(' ')}>
-                <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
-              </small>
+            {breakEven.overhead.total === 0 ? (
+              // Tanpa isian perkiraan, kartu kosong inilah yang memberi tahu fitur ini ada.
+              <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
+            ) : (
+              <>
+                <div className={styles.breakEven}>
+                  <div>
+                    <span className={styles.beLabel}>{t('reports.beGrossVsOverhead')}</span>
+                    <strong className={styles.beValue}>
+                      {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
+                    </strong>
+                  </div>
+                  <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
+                    {fmtPercent(breakEven.pct)}
+                  </span>
+                </div>
+                <div className={styles.beGauge}>
+                  <div
+                    className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
+                    style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
+                  />
+                </div>
+                <p className={styles.beResult}>
+                  {interpolate(t(breakEven.pct >= 1 ? 'reports.beSurplus' : 'reports.beShort'), {
+                    amount: fmtRp(Math.abs(breakEven.gross - breakEven.overhead.total)),
+                  })}
+                </p>
+                <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
+                  {OVERHEAD_CATEGORIES.filter((c) => breakEven.overhead.byCategory[c] > 0).map((c) => (
+                    <li key={c}>
+                      {c} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
+                    </li>
+                  ))}
+                </ul>
+                <small className={styles.beNote}>
+                  <Icon name="info-circle" aria-hidden />{' '}
+                  {t(
+                    breakEven.overhead.basis === 'actual'
+                      ? 'reports.beBasisActual'
+                      : breakEven.overhead.basis === 'estimate'
+                        ? 'reports.beBasisEstimate'
+                        : 'reports.beBasisPartial',
+                  )}
+                </small>
+                {breakEven.overhead.missingPayroll && (
+                  <small className={[styles.beNote, styles.beWarn].join(' ')}>
+                    <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
+                  </small>
+                )}
+              </>
             )}
           </CardBody>
         </Card>

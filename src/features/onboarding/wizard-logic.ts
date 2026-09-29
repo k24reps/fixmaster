@@ -4,6 +4,7 @@ import type {
   Wallet,
   FixedCost,
   Outlet,
+  OutletRent,
   Role,
   ID,
 } from '@/data/types';
@@ -29,6 +30,9 @@ export interface WizardCostDraft {
 export interface WizardOutletDraft {
   name: string;
   address: string;
+  /** Sewa tahunan diratakan ÷ 12 di break-even; tak diisi = bulanan (dari catatan). */
+  rentMode?: OutletRent['mode'];
+  rentYearly?: number;
 }
 
 export interface WizardData {
@@ -44,7 +48,6 @@ export interface WizardData {
   outlets: WizardOutletDraft[];
   targetRevenue: number;
   targetServiceCount: number;
-  overheadBudget: number;
 }
 
 export function emptyWizardData(): WizardData {
@@ -60,7 +63,6 @@ export function emptyWizardData(): WizardData {
     outlets: [{ name: '', address: '' }],
     targetRevenue: 0,
     targetServiceCount: 0,
-    overheadBudget: 0,
   };
 }
 
@@ -132,6 +134,16 @@ function buildOutlets(
     updatedAt: now,
     deletedAt: null,
   }));
+}
+
+/** Setelan sewa per cabang dari draf wizard; hanya cabang tahunan yang dicatat. */
+export function buildRent(outlets: Outlet[], drafts: WizardOutletDraft[]): Record<ID, OutletRent> {
+  const rent: Record<ID, OutletRent> = {};
+  outlets.forEach((o, i) => {
+    const d = drafts[i];
+    if (d?.rentMode === 'tahunan' && (d.rentYearly ?? 0) > 0) rent[o.id] = { mode: 'tahunan', yearly: d.rentYearly! };
+  });
+  return rent;
 }
 
 /**
@@ -237,12 +249,12 @@ export async function commitWizard(
   const monthlyTarget = {
     revenue: data.targetRevenue,
     serviceCount: data.targetServiceCount,
-    overheadBudget: data.overheadBudget,
+    overheadBudget: 0,
   };
   localStorage.setItem(`fixmaster-target-${orgId}`, JSON.stringify(monthlyTarget));
   const orgWithTarget = await repository.setSingleton('organization', {
     ...org,
-    settings: { ...(org.settings ?? {}), monthlyTarget },
+    settings: { ...(org.settings ?? {}), monthlyTarget, rent: buildRent(outlets, data.outlets) },
   });
 
   const owner = employees.find((e) => e.role === 'owner') ?? employees[0];
@@ -322,7 +334,7 @@ async function commitWizardCloud(
   const monthlyTarget = {
     revenue: data.targetRevenue,
     serviceCount: data.targetServiceCount,
-    overheadBudget: data.overheadBudget,
+    overheadBudget: 0,
   };
   localStorage.setItem(`fixmaster-target-${newOrgId}`, JSON.stringify(monthlyTarget));
 
@@ -334,7 +346,12 @@ async function commitWizardCloud(
   if (!created) throw new Error('Gagal memuat organisasi yang baru dibuat');
   const org = await repository.setSingleton('organization', {
     ...created,
-    settings: { ...(created.settings ?? {}), deviceCategories: data.categories, monthlyTarget },
+    settings: {
+      ...(created.settings ?? {}),
+      deviceCategories: data.categories,
+      monthlyTarget,
+      rent: buildRent(outlets, data.outlets),
+    },
   });
   const employees = await repository.list('employees');
   const owner = employees.find((e) => e.role === 'owner') ?? employees[0];
