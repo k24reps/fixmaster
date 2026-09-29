@@ -106,21 +106,16 @@ ulang peluncurnya, terverifikasi hash).
 
 #conventions #architecture
 
-## Glosarium bahasa awam — uang (29 Sep 2026)
+## Istilah keuangan & Kamus Istilah (29 Sep 2026)
 
-Pemilik konter bukan akuntan. Istilah akuntansi tidak tampil di judul, label, atau vonis; istilah
-teknis boleh hanya di rincian. Satu konsep = satu kata di seluruh aplikasi (layar DAN PDF — teks
-break-even PDF memakai kamus yang sama lewat `translate`).
+Keputusan pemilik: **istilah akuntansi baku** (Arus Kas Bersih, Laba Kotor, Overhead, Beban Langsung,
+Break-Even, HPP, Persediaan, Aset Tetap, Piutang, Modal, Prive, Omzet) — sempat diganti bahasa awam
+lalu dikembalikan. Pemilik yang belum paham membuka penjelasannya: istilah di layar dibungkus
+komponen **`Term`** (`components/ui/Term.tsx`: garis bawah titik + ⓘ, tautan ke `/istilah#<id>`),
+isinya di `features/glossary/terms.ts` (definisi, rumus, contoh konter, "muncul di").
 
-| Konsep | Kata di layar | Jangan |
-|---|---|---|
-| Uang masuk − keluar | **Selisih kas** (tag BERTAMBAH / BERKURANG / TETAP) | arus kas bersih, surplus/defisit |
-| Laba kotor servis + jualan | **Untung servis & jualan** | laba kotor |
-| Overhead (Gaji, Sewa, Operasional, Lainnya) | **Biaya bulanan** | overhead, biaya tetap |
-| Break-even | **Biaya bulanan tertutup?** | break-even, impas |
-| Modal / Prive (kategori data) | **Setoran pemilik / Diambil pemilik** | modal, prive |
-| Harga modal (HPP) | **Modal** / Harga modal | HPP |
-| Omzet | **Pendapatan** | omzet |
-
-Nama kategori di data (Gaji, Sewa, Operasional, Sparepart, Prive…) tetap — itu data, bukan label.
-Form catat memetakannya ke pertanyaan "Uang ini untuk apa?".
+- Satu konsep = satu istilah di layar DAN PDF (teks break-even PDF lewat `translate`).
+- `Term` jangan di dalam tautan lain (anchor bersarang) — mis. baris break-even Dashboard yang
+  menaut ke Laporan tidak memakai `Term`.
+- Istilah baru di UI keuangan → tambah entri di `terms.ts` dan bungkus dengan `Term`.
+- Nama kategori data (Gaji, Listrik & Air, Sparepart, Prive…) tampil apa adanya.

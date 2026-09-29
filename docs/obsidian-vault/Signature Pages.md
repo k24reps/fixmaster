@@ -377,16 +377,26 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   Pengeluaran per Kategori dan di rincian break-even adalah tautan ke Keuangan tersaring — cara
   memeriksa isi "Lainnya" atau memastikan gaji sudah dicatat. Laporan multi-bulan membuka bulan
   terakhir periodenya. Opsinya dikelompokkan (`<optgroup>`) sama dengan form catat.
-- **Form catat bertanya "Uang ini untuk apa?" (29 Sep 2026)**, bukan dropdown kategori: tombol
-  berbahasa awam (Gaji / kasbon karyawan, Sewa tempat, Listrik/internet/bensin, Beli part /
-  barang dagangan, Garansi ke pelanggan, Refund penjualan, Diambil pemilik, Lainnya; pemasukan:
-  "Uang ini dari mana?" — Setoran pemilik / Lainnya) yang dipetakan ke kategori data yang sama.
-  Radio asli tersembunyi bergaya chip; terpilih = gradient brand. Keterangan di bawahnya
-  menjelaskan akibatnya tanpa istilah akuntansi ("dihitung sebagai biaya bulanan toko",
-  "mencatat di sini TIDAK menambah stok — pakai Inventori › Dibeli sekarang"). Pengelompokan
-  kategori tetap di filter buku kas & Laporan.
+- **Kategori catat = dropdown berkelompok (29 Sep 2026)**, `Select` dengan `groups` (`<optgroup>`):
+  Beban Operasional · overhead (Gaji, Sewa, Listrik & Air, Internet & Pulsa, Transportasi & Bensin,
+  Perlengkapan & ATK, Perawatan & Perbaikan, Pemasaran & Iklan, Pajak & Retribusi, Biaya Admin
+  Bank, Konsumsi, Operasional, Lainnya) / Beban Langsung (Garansi, Refund Penjualan, Ongkos Kirim) /
+  Persediaan (Sparepart) / Aset Tetap (Peralatan & Inventaris) / Piutang (Kasbon Karyawan) / Prive.
+  Pemasukan: Pendapatan (Lainnya) / Non-operasional (Modal, Pelunasan Kasbon). Keterangan di bawah
+  mengikuti kategori/kelompok (kasbon dipotong gaji = Gaji penuh + Pelunasan Kasbon; ongkir stok →
+  harga beli). Sempat berupa tombol "Uang ini untuk apa?" berbahasa awam — dikembalikan ke dropdown
+  atas permintaan pemilik. Tombol **Kamus istilah** di bar bulan; "Arus Kas Bersih" = `Term`.
+  Catatan arus non-operasional di bawah ringkasan kini merinci semua kategori non-operasional.
 
 ![[fin-dark.png]]
+
+## Kamus Istilah — Datasheet (29 Sep 2026)
+
+Rute `/istilah` (semua peran, **tanpa item sidebar**): dibuka dari istilah bergaris titik (`Term`)
+dan tombol "Kamus istilah" di Laporan & Keuangan. Tiap istilah = lembar data `TERM-nn` dengan LED,
+definisi, readout rumus mono, contoh angka konter, dan "muncul di". Anchor yang dibuka menyalakan
+spine + LED brand; `scroll-margin-top` 9rem supaya judul tak tertutup topbar menempel. Judul
+topbar diambil di `AppLayout` (bukan NAV_ITEMS). Isi di `features/glossary/terms.ts`.
 
 ## Laporan — Analyzer Printout
 

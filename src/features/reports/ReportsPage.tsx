@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending } from '@/components/ui';
+import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
 import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
@@ -26,11 +26,12 @@ import {
   breakEvenVerdict,
   overheadFetchFrom,
   overheadFetchTo,
-  OVERHEAD_CATEGORIES,
+  overheadBreakdown,
   EXPENSE_GROUPS,
   EXPENSE_GROUP_LABEL,
   expenseGroupOf,
   type BreakEvenVerdict,
+  type ExpenseGroup,
 } from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
 import { buildCsv, csvFilename } from '@/lib/business/export';
@@ -38,6 +39,7 @@ import { downloadCsvFile } from '@/lib/csv';
 import { toast } from '@/stores/toast';
 import { TrendChart } from './TrendChart';
 import { printReport } from './printReport';
+import type { TermId } from '@/features/glossary/terms';
 import styles from './ReportsPage.module.css';
 import { useT, type TranslationKey } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
@@ -58,6 +60,16 @@ const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'war
 };
 /** Ambang peringatan Lainnya: angka awal, ubah bila terasa terlalu cerewet/longgar. */
 const OTHER_WARN_SHARE = 0.2;
+/** Kelompok yang bukan beban usaha: bar netral, bukan merah pengeluaran. */
+const NON_COST_GROUPS = new Set<ExpenseGroup>(['stock', 'asset', 'receivable', 'owner']);
+const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
+  overhead: 'overhead',
+  direct: 'beban-langsung',
+  stock: 'persediaan',
+  asset: 'aset-tetap',
+  receivable: 'piutang',
+  owner: 'prive',
+};
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 
 /** Urut nominal, tetapi Modal/Prive (arus kas pemilik) selalu di dasar. */
@@ -231,7 +243,7 @@ export function ReportsPage() {
     breakEven && breakEven.overhead.total > 0 ? breakEvenVerdict(summary.net, breakEven.surplus) : null;
   // "Lainnya" gampang jadi tempat membuang catatan; porsi besar = biaya bulanan membengkak.
   const otherShare =
-    breakEven && breakEven.overhead.total > 0 ? breakEven.overhead.byCategory.Lainnya / breakEven.overhead.total : 0;
+    breakEven && breakEven.overhead.total > 0 ? (breakEven.overhead.byCategory.Lainnya ?? 0) / breakEven.overhead.total : 0;
 
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -395,6 +407,9 @@ export function ReportsPage() {
                 <Icon name="triangle-exclamation" aria-hidden /> Tanggal &ldquo;Dari&rdquo; melewati &ldquo;Sampai&rdquo;
               </span>
             )}
+            <Link className={styles.glossaryBtn} to="/istilah">
+              <Icon name="circle-question" aria-hidden /> {t('glossary.open')}
+            </Link>
             <span className={styles.scopeTag} title={t('reports.cakupanLaporan')}>
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
@@ -463,7 +478,7 @@ export function ReportsPage() {
           noBaseline={noBaseline}
         />
         <Metric
-          label={t('reports.arusKasBersih')}
+          label={<Term id="arus-kas-bersih">{t('reports.arusKasBersih')}</Term>}
           value={fmtRp(summary.net)}
           icon={<Icon name="chart-line" aria-hidden />}
           tone="brand"
@@ -497,7 +512,7 @@ export function ReportsPage() {
 
       {breakEven && (
         <Card glass accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
-          <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={t('reports.indikatorBreakEven')} />
+          <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={<Term id="break-even">{t('reports.indikatorBreakEven')}</Term>} />
           <CardBody>
             {breakEven.overhead.total === 0 ? (
               // Tanpa isian perkiraan, kartu kosong inilah yang memberi tahu fitur ini ada.
@@ -520,7 +535,9 @@ export function ReportsPage() {
                 )}
                 <div className={styles.breakEven}>
                   <div>
-                    <span className={styles.beLabel}>{t('reports.beGrossVsOverhead')}</span>
+                    <span className={styles.beLabel}>
+                      <Term id="laba-kotor">{t('reports.beGrossVsOverhead')}</Term>
+                    </span>
                     <strong className={styles.beValue}>
                       {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
                     </strong>
@@ -541,9 +558,9 @@ export function ReportsPage() {
                   })}
                 </p>
                 <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
-                  {OVERHEAD_CATEGORIES.filter((c) => breakEven.overhead.byCategory[c] > 0).map((c) => (
+                  {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
                     <li key={c}>
-                      {financeLink(c)} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
+                      {financeLink(c)} <b>{fmtRp(v)}</b>
                     </li>
                   ))}
                 </ul>
@@ -561,7 +578,7 @@ export function ReportsPage() {
                   <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
                     <Icon name="triangle-exclamation" aria-hidden />{' '}
                     {interpolate(t('reports.beOtherHigh'), {
-                      amount: fmtRp(breakEven.overhead.byCategory.Lainnya),
+                      amount: fmtRp(breakEven.overhead.byCategory.Lainnya ?? 0),
                       pct: fmtPercent(otherShare, 0),
                     })}
                   </Link>
@@ -621,7 +638,13 @@ export function ReportsPage() {
                 {expenseGroups.map((g) => (
                   <section key={g.id} className={styles.expGroup} aria-label={t(EXPENSE_GROUP_LABEL[g.id])}>
                     <div className={styles.groupHead}>
-                      <span>{t(EXPENSE_GROUP_LABEL[g.id])}</span>
+                      <span>
+                        {GROUP_TERM[g.id] ? (
+                          <Term id={GROUP_TERM[g.id]!}>{t(EXPENSE_GROUP_LABEL[g.id])}</Term>
+                        ) : (
+                          t(EXPENSE_GROUP_LABEL[g.id])
+                        )}
+                      </span>
                       <span>{fmtRp(g.total)}</span>
                     </div>
                     <ul className={styles.breakdown}>
@@ -629,13 +652,13 @@ export function ReportsPage() {
                         <li key={cat} className={styles.channel}>
                           <div className={styles.channelTop}>
                             <span className={styles.channelName}>{financeLink(cat)}</span>
-                            <span className={[styles.channelValue, g.id === 'owner' ? '' : styles.exp].join(' ')}>
+                            <span className={[styles.channelValue, NON_COST_GROUPS.has(g.id) ? '' : styles.exp].join(' ')}>
                               {fmtRp(amt)}
                             </span>
                           </div>
                           <div className={styles.bar}>
                             <div
-                              className={[styles.barFill, g.id === 'owner' ? styles.capital : styles.exp].join(' ')}
+                              className={[styles.barFill, NON_COST_GROUPS.has(g.id) ? styles.capital : styles.exp].join(' ')}
                               style={{ width: `${(amt / maxExpense) * 100}%` }}
                             />
                           </div>
@@ -657,7 +680,7 @@ export function ReportsPage() {
       <Card glass>
         <CardHeader
           icon={<Icon name="microchip" aria-hidden />}
-          title={t('reports.labaPerKategoriPerangkat')}
+          title={<Term id="laba-servis">{t('reports.labaPerKategoriPerangkat')}</Term>}
           /* Periode kartu ini dihitung dari tanggal SELESAI, sama seperti
              Performa Teknisi di bawah — dulu ia memakai tanggal tiket masuk. */
           action={<span className={styles.liveTag}>{t('reports.selesaiPeriodeIni')}</span>}
@@ -1013,7 +1036,7 @@ function Metric({
   noBaseline,
   note,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   icon: ReactNode;
   tone: 'success' | 'danger' | 'brand' | 'accent';

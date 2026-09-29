@@ -22,5 +22,6 @@ export {
 } from './catalogView';
 export { ToastContainer } from './ToastContainer';
 export { Icon, type IconName, type IconProps } from './Icon';
+export { Term } from './Term';
 export { Mascot } from './Mascot';
 export { ProBadge, ProNotice } from './PlanLock';

@@ -21,6 +21,7 @@ import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/s
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { getRent } from '@/config/orgConfig';
+import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
 import { interpolate } from '@/lib/business/notify';
 import type {
   ActivityAction,
@@ -48,52 +49,35 @@ interface EntryModalProps {
 // sudah mencatat pemasukannya sendiri, jadi mencatatnya di sini = dihitung dua
 // kali. Server menolaknya juga (0091). Baris lama berkategori itu tetap bisa
 // diedit — kategorinya ditambahkan kembali saat mengedit.
-const INCOME_CATEGORIES: IncomeCategory[] = ['Modal', 'Lainnya'];
-// Urut menurut seberapa sering dicatat di konter.
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'Gaji',
-  'Sewa',
-  'Operasional',
-  'Sparepart',
-  'Garansi',
-  'Refund Penjualan',
-  'Prive',
-  'Lainnya',
+const INCOME_CATEGORIES: IncomeCategory[] = ['Lainnya', 'Modal', 'Pelunasan Kasbon'];
+/** Pemasukan berkelompok: pendapatan vs non-operasional (bukan omzet). */
+const INCOME_GROUPS: { label: TranslationKey; categories: IncomeCategory[] }[] = [
+  { label: 'finance.groupIncomeOperating', categories: ['Lainnya'] },
+  { label: 'finance.groupIncomeNonOperating', categories: ['Modal', 'Pelunasan Kasbon'] },
 ];
+// Dropdown berkelompok menurut perlakuan di laporan (EXPENSE_GROUPS): kategori
+// dirinci 29 Sep 2026 supaya "listrik berapa?" terjawab tanpa membaca keterangan.
+const EXPENSE_CATEGORIES: string[] = EXPENSE_GROUPS.flatMap((g) => [...g.categories]);
 
-/**
- * Form bertanya "uang ini untuk apa?" dalam bahasa sehari-hari; kategorinya
- * (dan perlakuannya di break-even) urusan aplikasi. Pemilik tak perlu tahu
- * istilah overhead, stok, atau biaya langsung. Kategori lama di luar daftar
- * tampil apa adanya.
- */
-const PURPOSE: Record<string, TranslationKey> = {
-  Gaji: 'finance.purposeGaji',
-  Sewa: 'finance.purposeSewa',
-  Operasional: 'finance.purposeOperasional',
-  Sparepart: 'finance.purposeSparepart',
-  Garansi: 'finance.purposeGaransi',
-  'Refund Penjualan': 'finance.purposeRefund',
-  Prive: 'finance.purposePrive',
-  Modal: 'finance.purposeModal',
-  Lainnya: 'finance.purposeLainnya',
-};
-/** Akibat pilihan, dijelaskan dengan bahasa awam di bawah tombol. */
+/** Akibat pilihan di laporan, dijelaskan di bawah dropdown. */
 const EXPENSE_HINT: Record<string, TranslationKey> = {
   Gaji: 'finance.hintGaji',
-  Sewa: 'finance.overheadHint',
-  Operasional: 'finance.overheadHint',
   Sparepart: 'finance.hintStock',
-  Garansi: 'finance.hintDirect',
-  'Refund Penjualan': 'finance.hintDirect',
+  'Ongkos Kirim': 'finance.hintOngkir',
   Lainnya: 'finance.hintLainnya',
+  'Peralatan & Inventaris': 'finance.hintAsset',
+  'Kasbon Karyawan': 'finance.hintKasbon',
 };
-
+const GROUP_HINT: Partial<Record<ReturnType<typeof expenseGroupOf>, TranslationKey>> = {
+  overhead: 'finance.overheadHint',
+  direct: 'finance.hintDirect',
+};
 
 /** Penjelasan kategori arus kas pemilik — dua-duanya gampang disalahpahami. */
 const CATEGORY_HINT: Record<string, TranslationKey> = {
   Modal: 'finance.hintModal',
   Prive: 'finance.hintPrive',
+  'Pelunasan Kasbon': 'finance.hintPelunasan',
 };
 
 interface EditArgs {
@@ -305,7 +289,16 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const rentOutlet = entryOutlet ?? resolveCreateOutlet(outlets);
   const rent = kind === 'expense' && category === 'Sewa' && rentOutlet ? getRent()[rentOutlet] : undefined;
   const annualRent = rent?.mode === 'tahunan' && rent.yearly > 0 ? rent : null;
-  const expenseHint = kind === 'expense' ? EXPENSE_HINT[category] : undefined;
+  const expenseHint =
+    kind === 'expense' ? (EXPENSE_HINT[category] ?? GROUP_HINT[expenseGroupOf(category)]) : undefined;
+  const legacy = categories.filter((c) => !(base as string[]).includes(c));
+  const categoryGroups =
+    kind === 'expense'
+      ? EXPENSE_GROUPS.map((g) => ({
+          label: t(EXPENSE_GROUP_LABEL[g.id]),
+          options: g.categories.map((c) => ({ value: c, label: c })),
+        }))
+      : INCOME_GROUPS.map((g) => ({ label: t(g.label), options: g.categories.map((c) => ({ value: c, label: c })) }));
 
   return (
     <Modal
@@ -371,25 +364,13 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               autoFocus
             />
           )}
-          <fieldset className={styles.catField}>
-            <legend className={styles.catLegend}>
-              {t(kind === 'income' ? 'finance.purposeIncomeAsk' : 'finance.purposeAsk')}
-            </legend>
-            <div className={styles.catChips}>
-              {categories.map((c) => (
-                <label key={c} className={[styles.catChip, category === c ? styles.catChipOn : ''].join(' ')}>
-                  <input
-                    type="radio"
-                    name={`${formId}-category`}
-                    value={c}
-                    checked={category === c}
-                    onChange={() => change(setCategory)(c)}
-                  />
-                  {PURPOSE[c] ? t(PURPOSE[c]) : c}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <Select
+            label={t('finance.category')}
+            value={category}
+            onChange={(e) => change(setCategory)(e.target.value)}
+            options={legacy.map((c) => ({ value: c, label: c }))}
+            groups={categoryGroups}
+          />
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
           {expenseHint && (
             <p className={styles.formHint}>

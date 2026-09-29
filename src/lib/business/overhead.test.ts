@@ -118,3 +118,25 @@ describe('kelompok & vonis break-even', () => {
     expect(r.pct).toBeCloseTo(20e6 / 17.1e6);
   });
 });
+
+describe('kategori akuntansi rinci (29 Sep 2026)', () => {
+  it('listrik masuk overhead, ongkir beban langsung, aset & kasbon bukan beban', () => {
+    expect(expenseGroupOf('Listrik & Air')).toBe('overhead');
+    expect(expenseGroupOf('Ongkos Kirim')).toBe('direct');
+    expect(expenseGroupOf('Peralatan & Inventaris')).toBe('asset');
+    expect(expenseGroupOf('Kasbon Karyawan')).toBe('receivable');
+    const r = overheadForRange({
+      ...base,
+      expenses: [
+        ex('2026-08-05', 'Listrik & Air', 1.2e6),
+        ex('2026-08-06', 'Peralatan & Inventaris', 2.5e6),
+        ex('2026-08-07', 'Kasbon Karyawan', 500e3),
+        ex('2026-08-08', 'Ongkos Kirim', 50e3),
+      ],
+      from: '2026-08-01', to: '2026-08-31', today: '2026-09-20',
+    })!;
+    expect(r.total).toBe(1.2e6);
+    expect(r.byCategory['Listrik & Air']).toBe(1.2e6);
+    expect(grossProfit(1e6, [], [ex('2026-08-08', 'Ongkos Kirim', 50e3)])).toBe(950e3);
+  });
+});

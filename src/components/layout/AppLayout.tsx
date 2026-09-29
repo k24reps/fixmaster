@@ -88,8 +88,10 @@ export function AppLayout() {
   const current = NAV_ITEMS.find((n) =>
     n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to),
   );
-  const title = current ? t(current.labelKey) : 'FixMaster';
-  const subtitleKey = current ? PAGE_SUBTITLE_KEY[current.to] : undefined;
+  // Kamus Istilah tidak ada di NAV_ITEMS (sengaja di luar sidebar).
+  const glossary = location.pathname.startsWith('/istilah');
+  const title = current ? t(current.labelKey) : glossary ? t('glossary.title') : 'FixMaster';
+  const subtitleKey = current ? PAGE_SUBTITLE_KEY[current.to] : glossary ? 'glossary.subtitle' : undefined;
   const subtitle = subtitleKey ? t(subtitleKey) : '';
   const hasMobileNav = !/^\/services\/[^/]+/.test(location.pathname);
 

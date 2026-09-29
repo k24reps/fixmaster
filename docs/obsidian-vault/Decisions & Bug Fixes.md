@@ -3765,3 +3765,23 @@ diseragamkan ke glosarium di [[Conventions]]. PDF kini juga memuat vonis, kelomp
 dengan subtotal, dan peringatan Lainnya. Peringatan **Lainnya > 20% biaya bulanan** (layar + PDF)
 menaut ke Keuangan tersaring — Lainnya dihitung biaya bulanan supaya salah kategori membuat untung
 terlihat lebih kecil, bukan biaya hilang diam-diam; ambang 20% adalah angka awal.
+
+## Istilah akuntansi kembali + kategori rinci + Kamus Istilah (29 Sep 2026)
+
+Pemilik membatalkan bahasa awam tahap B: istilah akuntansi baku lebih disukai, dengan penjelasan
+yang bisa diklik. Pemicunya pertanyaan "listrik berapa?" yang tak terjawab karena listrik
+tercampur di Operasional.
+
+- **Kategori rinci** (listrik & air, internet, transport, perlengkapan, perawatan, pemasaran,
+  pajak, admin bank, konsumsi) + Ongkos Kirim (beban langsung) + **Aset Tetap** & **Kasbon
+  Karyawan / Pelunasan Kasbon** — yang tadinya dibatalkan demi kesederhanaan, kini jelas tempatnya
+  dengan gaya akuntansi. Catatan lama (Operasional, Lainnya, …) tetap sah.
+- **Non-operasional diperluas**: aset tetap, kasbon, dan pelunasannya ikut `isCapitalFlow` —
+  tanpa itu Pelunasan Kasbon menggelembungkan omzet/Target Pendapatan dan pembelian alat
+  mengembungkan overhead bulan itu.
+- `overheadForRange` kini menerima kategori overhead apa pun (kunci dinamis), bukan empat tetap.
+- Dropdown berkelompok kembali (tombol "untuk apa?" dilepas); `Select` mendapat `groups`.
+- **Kamus Istilah** (`/istilah`) + komponen `Term`. Tanpa item sidebar & terbuka untuk semua peran
+  (saran diterima: selalu muncul di konteks istilahnya; isinya tanpa angka toko).
+- Ongkos Kirim sengaja beban langsung, bukan overhead — surplus break-even tetap sama, hanya
+  letaknya yang berbeda; pemilik memindahkan catatan ongkir lamanya sendiri.

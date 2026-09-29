@@ -133,12 +133,24 @@ export function transferMoneyLocked(t: { date: string; status: string }, today: 
  */
 export const CAPITAL_INCOME_CATEGORY = 'Modal';
 export const CAPITAL_EXPENSE_CATEGORY = 'Prive';
+/**
+ * Kategori non-operasional selain Modal/Prive (29 Sep 2026): pembelian aset
+ * tetap (uang jadi alat, bukan beban bulan ini) dan kasbon karyawan beserta
+ * pelunasannya (piutang — uangnya kembali). Semuanya menggerakkan saldo, tapi
+ * bukan pendapatan/beban usaha; Pelunasan Kasbon yang ikut omzet akan
+ * menggelembungkan Target Pendapatan.
+ */
+export const NON_OPERATING_CATEGORIES: readonly string[] = [
+  CAPITAL_INCOME_CATEGORY,
+  CAPITAL_EXPENSE_CATEGORY,
+  'Peralatan & Inventaris',
+  'Kasbon Karyawan',
+  'Pelunasan Kasbon',
+];
 
-/** True bila baris ini arus kas pemilik, bukan pendapatan/biaya usaha. */
+/** True bila baris ini arus non-operasional (pemilik, aset, piutang), bukan pendapatan/biaya usaha. */
 export function isCapitalFlow(row: { category: string }): boolean {
-  return (
-    row.category === CAPITAL_INCOME_CATEGORY || row.category === CAPITAL_EXPENSE_CATEGORY
-  );
+  return NON_OPERATING_CATEGORIES.includes(row.category);
 }
 
 /** Buang setoran modal dari deret pemasukan sebelum dijumlahkan. */

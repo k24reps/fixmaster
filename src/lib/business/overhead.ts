@@ -9,11 +9,28 @@ import type { TranslationKey } from '@/i18n';
  * bonus berubah tiap bulan — dan Indikator Break-Even membandingkannya dengan
  * arus kas bersih yang SUDAH dipotong pengeluaran itu, jadi overhead terhitung
  * dua kali dan toko yang sudah surplus terlihat "baru impas".
+ *
+ * Kategori dirinci 29 Sep 2026 (listrik, internet, transport, …) supaya
+ * pertanyaan "listrik berapa?" terjawab tanpa membaca keterangan satu-satu.
+ * "Operasional" & "Lainnya" tetap sah untuk catatan lama maupun sisanya.
  */
-export const OVERHEAD_CATEGORIES = ['Gaji', 'Sewa', 'Operasional', 'Lainnya'] as const;
-export type OverheadCategory = (typeof OVERHEAD_CATEGORIES)[number];
+export const OVERHEAD_CATEGORIES = [
+  'Gaji',
+  'Sewa',
+  'Listrik & Air',
+  'Internet & Pulsa',
+  'Transportasi & Bensin',
+  'Perlengkapan & ATK',
+  'Perawatan & Perbaikan',
+  'Pemasaran & Iklan',
+  'Pajak & Retribusi',
+  'Biaya Admin Bank',
+  'Konsumsi',
+  'Operasional',
+  'Lainnya',
+] as const;
 /** Biaya yang lahir dari transaksi: mengurangi laba kotor, bukan overhead. */
-export const DIRECT_COST_CATEGORIES = ['Garansi', 'Refund Penjualan'];
+export const DIRECT_COST_CATEGORIES = ['Garansi', 'Refund Penjualan', 'Ongkos Kirim'];
 
 /**
  * actual = realisasi bulan lewat · estimate = bulan berjalan diperkirakan dari
@@ -22,10 +39,13 @@ export const DIRECT_COST_CATEGORIES = ['Garansi', 'Refund Penjualan'];
  */
 export type OverheadBasis = 'actual' | 'estimate' | 'partial';
 
+/** Nominal per kategori overhead; kategori tanpa catatan tidak punya kunci. */
+export type CategoryAmounts = Record<string, number>;
+
 export interface OverheadResult {
   /** 0 = belum ada catatan overhead sama sekali dalam periode. */
   total: number;
-  byCategory: Record<OverheadCategory, number>;
+  byCategory: CategoryAmounts;
   /** Basis terlemah yang dipakai: actual < estimate < partial. */
   basis: OverheadBasis;
   /** Bulan penuh terakhir tercatat tanpa satu pun pengeluaran Gaji. */
@@ -53,8 +73,10 @@ function shiftMonth(m: string, n: number): string {
   const d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-const emptyCats = (): Record<OverheadCategory, number> => ({ Gaji: 0, Sewa: 0, Operasional: 0, Lainnya: 0 });
-const isOverhead = (c: string): c is OverheadCategory => (OVERHEAD_CATEGORIES as readonly string[]).includes(c);
+const add = (r: CategoryAmounts, c: string, v: number) => {
+  r[c] = (r[c] ?? 0) + v;
+};
+const sumOf = (r: CategoryAmounts) => Object.values(r).reduce((s, v) => s + v, 0);
 
 /** Awal jendela pengeluaran yang dibutuhkan `overheadForRange`. */
 export function overheadFetchFrom(from: string): string {
@@ -78,24 +100,24 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
 
   // Sewa cabang tahunan tetap dicatat (saldo kas benar), tapi diratakan lewat Pengaturan.
   const kept = input.expenses.filter(
-    (e): e is typeof e & { category: OverheadCategory } =>
-      isOverhead(e.category) && !(e.category === 'Sewa' && e.outletId && annualOutlets.has(e.outletId)),
+    (e) =>
+      expenseGroupOf(e.category) === 'overhead' &&
+      !(e.category === 'Sewa' && e.outletId && annualOutlets.has(e.outletId)),
   );
-  const actual = new Map<string, Record<OverheadCategory, number>>();
+  const actual = new Map<string, CategoryAmounts>();
   for (const e of kept) {
     const m = monthOf(e.date);
-    const row = actual.get(m) ?? emptyCats();
-    row[e.category] += e.amount;
+    const row = actual.get(m) ?? {};
+    add(row, e.category, e.amount);
     actual.set(m, row);
   }
-  const actualOf = (m: string) => actual.get(m) ?? emptyCats();
-  const sumOf = (r: Record<OverheadCategory, number>) => OVERHEAD_CATEGORIES.reduce((s, c) => s + r[c], 0);
+  const actualOf = (m: string): CategoryAmounts => actual.get(m) ?? {};
   // Bulan dianggap tercatat bila sudah lewat, sesudah bulan mulai, dan ada isinya
   // (tanpa bulan mulai, bulan kosong kemungkinan besar belum memakai aplikasi).
   const tracked = (m: string) =>
     lastDay(m) < today && (startMonth ? m > startMonth : sumOf(actualOf(m)) > 0);
 
-  const byCategory = emptyCats();
+  const byCategory: CategoryAmounts = {};
   let rank = 0; // 0 actual, 1 estimate, 2 partial
   const bump = (r: number) => (rank = Math.max(rank, r));
 
@@ -104,7 +126,7 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     const b = to < lastDay(m) ? to : lastDay(m);
     const frac = (Number(b.slice(8)) - Number(a.slice(8)) + 1) / daysIn(m);
     const got = actualOf(m);
-    const monthly = emptyCats();
+    const monthly: CategoryAmounts = {};
 
     if (tracked(m)) {
       Object.assign(monthly, got);
@@ -114,22 +136,23 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
       if (current && history.length > 0) {
         // Per kategori: gaji yang belum dibayar tetap terhitung dari rata-rata,
         // biaya yang naik bulan ini langsung terhitung begitu dicatat.
-        for (const c of OVERHEAD_CATEGORIES) {
-          const avg = history.reduce((s, h) => s + actualOf(h)[c], 0) / history.length;
-          monthly[c] = Math.max(got[c], avg);
+        const cats = new Set([...Object.keys(got), ...history.flatMap((h) => Object.keys(actualOf(h)))]);
+        for (const c of cats) {
+          const avg = history.reduce((s, h) => s + (actualOf(h)[c] ?? 0), 0) / history.length;
+          monthly[c] = Math.max(got[c] ?? 0, avg);
         }
         bump(1);
       } else {
         // Tanpa riwayat tak ada yang bisa diratakan: yang tercatat dalam periode
         // dipakai apa adanya (sewa 5 jt tanggal 1 tetap 5 jt, bukan separuhnya).
-        for (const e of kept) if (e.date >= a && e.date <= b) byCategory[e.category] += e.amount;
-        byCategory.Sewa += annualRent * frac;
+        for (const e of kept) if (e.date >= a && e.date <= b) add(byCategory, e.category, e.amount);
+        if (annualRent > 0) add(byCategory, 'Sewa', annualRent * frac);
         bump(2);
         continue;
       }
     }
-    monthly.Sewa += annualRent;
-    for (const c of OVERHEAD_CATEGORIES) byCategory[c] += monthly[c] * frac;
+    if (annualRent > 0) add(monthly, 'Sewa', annualRent);
+    for (const [c, v] of Object.entries(monthly)) if (v > 0) add(byCategory, c, v * frac);
   }
 
   const lastFull = shiftMonth(monthOf(today), -1);
@@ -137,11 +160,18 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     total: sumOf(byCategory),
     byCategory,
     basis: (['actual', 'estimate', 'partial'] as const)[rank],
-    missingPayroll: tracked(lastFull) && actualOf(lastFull).Gaji === 0,
+    missingPayroll: tracked(lastFull) && !(actualOf(lastFull).Gaji > 0),
   };
 }
 
-/** Laba kotor = laba servis + laba penjualan − biaya langsung (garansi, refund). */
+/** Rincian overhead terurut: nominal terbesar dulu. */
+export function overheadBreakdown(byCategory: CategoryAmounts): [string, number][] {
+  return Object.entries(byCategory)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+}
+
+/** Laba kotor = laba servis + laba penjualan − beban langsung (garansi, refund, ongkir). */
 export function grossProfit(
   serviceProfit: number,
   sales: { total: number; lines: { qty: number; costPrice: number }[] }[],
@@ -162,17 +192,23 @@ export function grossProfit(
  * form catat, filter buku kas, dan kartu Pengeluaran per Kategori — supaya
  * salah kategori (mis. ongkir sebagai Sparepart) terlihat saat dicatat.
  */
-export type ExpenseGroup = 'overhead' | 'direct' | 'stock' | 'owner';
+export type ExpenseGroup = 'overhead' | 'direct' | 'stock' | 'asset' | 'receivable' | 'owner';
 export const EXPENSE_GROUPS: { id: ExpenseGroup; categories: readonly string[] }[] = [
   { id: 'overhead', categories: OVERHEAD_CATEGORIES },
   { id: 'direct', categories: DIRECT_COST_CATEGORIES },
   { id: 'stock', categories: ['Sparepart'] },
+  // Aset tetap & piutang: uangnya keluar, tapi bukan beban bulan ini — sama
+  // dengan Prive, tidak dihitung sebagai pengeluaran usaha (isCapitalFlow).
+  { id: 'asset', categories: ['Peralatan & Inventaris'] },
+  { id: 'receivable', categories: ['Kasbon Karyawan'] },
   { id: 'owner', categories: ['Prive'] },
 ];
 export const EXPENSE_GROUP_LABEL: Record<ExpenseGroup, TranslationKey> = {
   overhead: 'finance.groupOverhead',
   direct: 'finance.groupDirect',
   stock: 'finance.groupStock',
+  asset: 'finance.groupAsset',
+  receivable: 'finance.groupReceivable',
   owner: 'finance.groupOwner',
 };
 /** Kategori di luar daftar (baris lama) diperlakukan sebagai overhead, sama dengan Lainnya. */

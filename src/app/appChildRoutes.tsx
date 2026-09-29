@@ -44,6 +44,9 @@ const ActivityLogPage = lazy(() =>
 const SuppliersPage = lazy(() =>
   import('@/features/suppliers/SuppliersPage').then((m) => ({ default: m.SuppliersPage })),
 );
+const GlossaryPage = lazy(() =>
+  import('@/features/glossary/GlossaryPage').then((m) => ({ default: m.GlossaryPage })),
+);
 const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -63,5 +66,7 @@ export const appChildRoutes: RouteObject[] = [
   { path: 'reports', element: <OwnerRoute><ReportsPage /></OwnerRoute> },
   { path: 'activity', element: <OwnerRoute><ActivityLogPage /></OwnerRoute> },
   { path: 'settings', element: <OwnerRoute><SettingsPage /></OwnerRoute> },
+  // Kamus Istilah: semua peran, tanpa item sidebar (dibuka dari istilah di layar).
+  { path: 'istilah', element: <GlossaryPage /> },
   { path: '*', element: <NotFoundPage /> },
 ];

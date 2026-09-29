@@ -1,0 +1,157 @@
+/* Kamus Istilah — "datasheet komponen": tiap istilah satu lembar dengan kode
+   TERM-nn, LED, readout rumus mono, dan pemisah titik. Token saja. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 64rem;
+}
+.lead {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dotted var(--border-strong);
+}
+.chip {
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.chip:hover {
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+.chipOn {
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+
+.sheets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-3);
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  /* Topbar menempel (+ bar demo) menutupi judul kartu bila anchor mendarat tepat di atas. */
+  scroll-margin-top: 9rem;
+}
+/* Istilah yang dibuka dari layar: spine & LED brand menyala. */
+.sheetOn {
+  border-left-color: var(--brand);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-2);
+}
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.sheetOn .led {
+  background: var(--brand);
+  box-shadow: 0 0 8px var(--brand);
+}
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+.term {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.3;
+}
+.term:focus {
+  outline: none;
+}
+.short {
+  margin: 0;
+  font-weight: var(--fw-semibold);
+  line-height: 1.5;
+}
+.body {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.readout,
+.example,
+.seen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: var(--space-2);
+  border-top: 1px dotted var(--border);
+}
+.readoutKey {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.readout code {
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.example p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+.seen {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-3);
+}
+.seen .readoutKey {
+  flex-basis: 100%;
+}
+.seenLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-sm);
+  color: var(--brand-text);
+  text-decoration: none;
+}
+.seenLink:hover {
+  text-decoration: underline;
+}

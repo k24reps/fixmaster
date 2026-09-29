@@ -13,11 +13,13 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   hint?: string;
   error?: string;
   options: SelectOption[];
+  /** Opsi berkelompok (`<optgroup>`), dirender sesudah `options`. */
+  groups?: { label: string; options: SelectOption[] }[];
   placeholder?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, hint, error, options, placeholder, className, id, ...rest },
+  { label, hint, error, options, groups, placeholder, className, id, ...rest },
   ref,
 ) {
   const autoId = useId(); // lihat Input: label tanpa id tidak pernah terhubung
@@ -42,6 +44,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
+          ))}
+          {groups?.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <Icon name="chevron-down" className={`${styles.chevron}`} aria-hidden />

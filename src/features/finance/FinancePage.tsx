@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useT, type TranslationKey } from '@/i18n';
 import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
-import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
+import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending, Term } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
@@ -19,8 +19,6 @@ import {
   isCapitalFlow,
   walletMovement,
   walletsForOutlet,
-  CAPITAL_INCOME_CATEGORY,
-  CAPITAL_EXPENSE_CATEGORY,
 } from '@/lib/business/finance';
 import {
   dpIncomeDescription,
@@ -155,11 +153,11 @@ export function FinancePage() {
   // turunnya Pemasukan setelah re-kategorisasi ada penjelasannya — bukan angka
   // yang hilang diam-diam.
   const capital = useMemo(() => {
-    const sum = (rows: { amount: number }[]) => rows.reduce((s, r) => s + r.amount, 0);
-    return {
-      modal: sum(incomes.filter((i) => i.category === CAPITAL_INCOME_CATEGORY)),
-      prive: sum(expenses.filter((e) => e.category === CAPITAL_EXPENSE_CATEGORY)),
-    };
+    const totals = new Map<string, number>();
+    for (const r of [...incomes, ...expenses]) {
+      if (isCapitalFlow(r)) totals.set(r.category, (totals.get(r.category) ?? 0) + r.amount);
+    }
+    return [...totals.entries()].filter(([, v]) => v > 0);
   }, [incomes, expenses]);
 
   const transfers = useMemo<LedgerRow[]>(
@@ -631,6 +629,9 @@ export function FinancePage() {
         >
           <Icon name="chevron-right" aria-hidden />
         </button>
+        <Link className={styles.glossaryBtn} to="/istilah">
+          <Icon name="circle-question" aria-hidden /> {t('glossary.open')}
+        </Link>
       </div>
 
       {/* Wallet = strip readout dengan sel Total, dan pergerakan bulan yang
@@ -718,27 +719,23 @@ export function FinancePage() {
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
-          <span>{t('finance.netCash')}{scopeSuffix}</span>
+          <span>
+            <Term id="arus-kas-bersih">{t('finance.netCash')}</Term>
+            {scopeSuffix}
+          </span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
       </div>
 
-      {(capital.modal > 0 || capital.prive > 0) && (
+      {capital.length > 0 && (
         <p className={styles.capitalNote}>
-          <Icon name="wallet" aria-hidden /> {t('finance.capitalLead')}
-          {capital.modal > 0 && (
-            <>
-              {' '}
-              {t('finance.capitalModal')} <strong>{fmtRp(capital.modal)}</strong>
-            </>
-          )}
-          {capital.modal > 0 && capital.prive > 0 && ' ·'}
-          {capital.prive > 0 && (
-            <>
-              {' '}
-              {t('finance.capitalPrive')} <strong>{fmtRp(capital.prive)}</strong>
-            </>
-          )}
+          <Icon name="wallet" aria-hidden /> {t('finance.capitalLead')}{' '}
+          {capital.map(([cat, amount], k) => (
+            <span key={cat}>
+              {k > 0 && ' · '}
+              {cat} <strong>{fmtRp(amount)}</strong>
+            </span>
+          ))}
           {t('finance.capitalTail')}
         </p>
       )}

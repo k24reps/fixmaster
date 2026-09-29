@@ -234,7 +234,7 @@ export interface WalletTransfer extends BaseEntity {
  * Uangnya nyata dan menambah saldo, TAPI bukan pendapatan — dikecualikan
  * dari semua perhitungan omzet/laba lewat `operatingIncomes` (finance.ts).
  */
-export type IncomeCategory = 'Servis' | 'Penjualan' | 'Modal' | 'Lainnya';
+export type IncomeCategory = 'Servis' | 'Penjualan' | 'Modal' | 'Pelunasan Kasbon' | 'Lainnya';
 /**
  * `Prive` = penarikan modal/untung oleh pemilik. Uangnya benar-benar keluar
  * dan mengurangi saldo, TAPI bukan biaya usaha — dikecualikan dari laba
@@ -245,8 +245,20 @@ export type ExpenseCategory =
   | 'Operasional'
   | 'Gaji'
   | 'Sewa'
+  | 'Listrik & Air'
+  | 'Internet & Pulsa'
+  | 'Transportasi & Bensin'
+  | 'Perlengkapan & ATK'
+  | 'Perawatan & Perbaikan'
+  | 'Pemasaran & Iklan'
+  | 'Pajak & Retribusi'
+  | 'Biaya Admin Bank'
+  | 'Konsumsi'
   | 'Garansi'
   | 'Refund Penjualan'
+  | 'Ongkos Kirim'
+  | 'Peralatan & Inventaris'
+  | 'Kasbon Karyawan'
   | 'Prive'
   | 'Lainnya';
 

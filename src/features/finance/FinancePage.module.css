@@ -18,6 +18,9 @@
   align-items: center;
   gap: var(--space-2);
 }
+.monthBar .glossaryBtn {
+  margin-left: auto;
+}
 .monthStep {
   display: inline-flex;
   align-items: center;
@@ -754,4 +757,30 @@ button.walletCell[aria-pressed='true'] .walletLed {
   .wrap {
     gap: var(--space-3);
   }
+}
+
+/* Tombol ke Kamus Istilah: readout mono bergaris titik, bukan tombol generik. */
+.glossaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.glossaryBtn:hover {
+  border-style: solid;
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+.glossaryBtn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }

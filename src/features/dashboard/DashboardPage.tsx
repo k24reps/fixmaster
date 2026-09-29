@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot } from '@/components/ui';
+import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot, Term } from '@/components/ui';
 import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
@@ -412,7 +412,7 @@ export function DashboardPage() {
                   <div className={styles.heroHead}>
                     <span className={styles.heroLabel}>
                       <span className={styles.heroLed} aria-hidden />
-                      {t('dashboard.netProfit')}
+                      <Term id="arus-kas-bersih">{t('dashboard.netProfit')}</Term>
                     </span>
                     <div className={styles.period} role="group" aria-label={t('dashboard.periodAria')}>
                       {(['today', 'month'] as const).map((p) => (
@@ -448,7 +448,9 @@ export function DashboardPage() {
                   </Link>
                   {isOwner && (
                   <div className={styles.heroStat}>
-                    <span className={styles.heroStatKey}>{t('dashboard.serviceProfit')}</span>
+                    <span className={styles.heroStatKey}>
+                      <Term id="laba-servis">{t('dashboard.serviceProfit')}</Term>
+                    </span>
                     <span className={styles.heroStatVal}>{fmtRpInline(margin.profit)}</span>
                     <span className={styles.heroStatSub}>
                       {margin.pct === null

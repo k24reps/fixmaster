@@ -3,7 +3,7 @@ import { fmtRp, fmtRpCompact, fmtPercent } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { trendGeometry } from '@/lib/business/reports';
 import {
-  OVERHEAD_CATEGORIES,
+  overheadBreakdown,
   EXPENSE_GROUPS,
   EXPENSE_GROUP_LABEL,
   expenseGroupOf,
@@ -351,11 +351,11 @@ function buildBody(d: ReportDocData): string {
   const signed = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
   const be = d.breakEven;
   const beParts = be
-    ? OVERHEAD_CATEGORIES.filter((c) => be.overhead.byCategory[c] > 0)
-        .map((c) => `${c} ${fmtRp(be.overhead.byCategory[c])}`)
+    ? overheadBreakdown(be.overhead.byCategory)
+        .map(([c, v]) => `${c} ${fmtRp(v)}`)
         .join(' · ')
     : '';
-  const otherShare = be && be.overhead.total > 0 ? be.overhead.byCategory.Lainnya / be.overhead.total : 0;
+  const otherShare = be && be.overhead.total > 0 ? (be.overhead.byCategory.Lainnya ?? 0) / be.overhead.total : 0;
   // Tanpa catatan biaya bulanan tak ada yang dibandingkan; di layar kartu kosongnya memberi petunjuk.
   const breakEven = be && be.overhead.total > 0
     ? section(
@@ -374,7 +374,7 @@ function buildBody(d: ReportDocData): string {
           <p class="note">${esc(tr(BASIS_KEY[be.overhead.basis]))}</p>
           ${
             otherShare > 0.2
-              ? `<p class="note">⚠ ${esc(interpolate(tr('reports.beOtherHigh'), { amount: fmtRp(be.overhead.byCategory.Lainnya), pct: fmtPercent(otherShare, 0) }))}</p>`
+              ? `<p class="note">⚠ ${esc(interpolate(tr('reports.beOtherHigh'), { amount: fmtRp(be.overhead.byCategory.Lainnya ?? 0), pct: fmtPercent(otherShare, 0) }))}</p>`
               : ''
           }`,
       )
@@ -404,7 +404,7 @@ function buildBody(d: ReportDocData): string {
             ${barRows(
               rows.map(([label, value]) => ({ label, value, display: fmtRp(value) })),
               maxExpense,
-              g.id === 'owner' ? '' : 'exp',
+              ['stock', 'asset', 'receivable', 'owner'].includes(g.id) ? '' : 'exp',
             )}`;
         }).join(''),
   );

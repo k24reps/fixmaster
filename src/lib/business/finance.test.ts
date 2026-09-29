@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyBalance,
+  isCapitalFlow,
   netWalletDeltas,
   reverseIncomeDelta,
   reverseExpenseDelta,
@@ -266,5 +267,14 @@ describe('walletsForOutlet', () => {
   });
   it('semua cabang: semua wallet', () => {
     expect(walletsForOutlet(ws, null)).toHaveLength(3);
+  });
+});
+
+describe('arus non-operasional', () => {
+  it('modal, prive, aset tetap, kasbon & pelunasannya bukan pendapatan/beban usaha', () => {
+    for (const category of ['Modal', 'Prive', 'Peralatan & Inventaris', 'Kasbon Karyawan', 'Pelunasan Kasbon']) {
+      expect(isCapitalFlow({ category })).toBe(true);
+    }
+    expect(isCapitalFlow({ category: 'Listrik & Air' })).toBe(false);
   });
 });
