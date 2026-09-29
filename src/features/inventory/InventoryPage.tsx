@@ -26,6 +26,7 @@ import { InventoryModal } from './InventoryModal';
 import type { InventoryItem } from '@/data/types';
 import styles from './InventoryPage.module.css';
 import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import type { TranslationKey } from '@/i18n';
 
 type SortKey = 'low_first' | 'name_asc' | 'stock_desc';
@@ -254,7 +255,7 @@ export function InventoryPage() {
                 </div>
                 <div className={styles.itemPrice}>
                   <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
-                  {isMgr && <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>}
+                  {isMgr && <span className={styles.priceCost}>{interpolate(t('inventory.costTag'), { amount: fmtRp(i.costPrice) })}</span>}
                 </div>
                 <div className={styles.binActions}>{renderActions(i)}</div>
               </div>
@@ -318,7 +319,7 @@ export function InventoryPage() {
                 <div className={styles.binFooter}>
                   <div className={styles.prices}>
                     <span className={styles.priceSell}>{fmtRp(i.sellPrice)}</span>
-                    {isMgr && <span className={styles.priceCost}>HPP {fmtRp(i.costPrice)}</span>}
+                    {isMgr && <span className={styles.priceCost}>{interpolate(t('inventory.costTag'), { amount: fmtRp(i.costPrice) })}</span>}
                   </div>
                   <div className={styles.binActions}>{renderActions(i)}</div>
                 </div>

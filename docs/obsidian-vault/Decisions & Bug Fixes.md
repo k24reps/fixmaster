@@ -3755,3 +3755,13 @@ untuk sisanya, dengan pertanyaan "untuk apa" berbahasa awam.
   "Gaji / kasbon karyawan", alat kerja ke Lainnya.
 - Uji 0096 di DB lokal (rollback): 2 + beli 3 @1,35 jt dari modal 1,2 jt → stok 5, modal 1,29 jt,
   kas −4,05 jt, satu pengeluaran; tanpa wallet → tanpa pengeluaran; qty 0 ditolak.
+
+## Tahap B penyederhanaan: bahasa awam (29 Sep 2026)
+
+Lewat `impeccable clarify`: Dashboard (hero, baris biaya bulanan), Laporan (tile, vonis, kartu
+"Biaya Bulanan Tertutup?", kelompok pengeluaran, untung per jenis perangkat), Keuangan (ringkasan,
+catatan uang pemilik, keterangan setoran/diambil pemilik), Inventori (tag "Modal Rp …"), dan PDF
+diseragamkan ke glosarium di [[Conventions]]. PDF kini juga memuat vonis, kelompok pengeluaran
+dengan subtotal, dan peringatan Lainnya. Peringatan **Lainnya > 20% biaya bulanan** (layar + PDF)
+menaut ke Keuangan tersaring — Lainnya dihitung biaya bulanan supaya salah kategori membuat untung
+terlihat lebih kecil, bukan biaya hilang diam-diam; ambang 20% adalah angka awal.

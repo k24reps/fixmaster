@@ -56,6 +56,8 @@ const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'war
   tied: { key: 'reports.verdictTied', tone: 'warn' },
   loss: { key: 'reports.verdictLoss', tone: 'crit' },
 };
+/** Ambang peringatan Lainnya: angka awal, ubah bila terasa terlalu cerewet/longgar. */
+const OTHER_WARN_SHARE = 0.2;
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 
 /** Urut nominal, tetapi Modal/Prive (arus kas pemilik) selalu di dasar. */
@@ -227,6 +229,9 @@ export function ReportsPage() {
   }, [rangeValid, overheadExpenses, from, to, activeOutletId, outlets, catProfit, fSales, fExpenses]);
   const verdictKind =
     breakEven && breakEven.overhead.total > 0 ? breakEvenVerdict(summary.net, breakEven.surplus) : null;
+  // "Lainnya" gampang jadi tempat membuang catatan; porsi besar = biaya bulanan membengkak.
+  const otherShare =
+    breakEven && breakEven.overhead.total > 0 ? breakEven.overhead.byCategory.Lainnya / breakEven.overhead.total : 0;
 
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -552,7 +557,16 @@ export function ReportsPage() {
                         : 'reports.beBasisPartial',
                   )}
                 </small>
-                {breakEven.overhead.missingPayroll && (
+                {otherShare > OTHER_WARN_SHARE && (
+                  <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
+                    <Icon name="triangle-exclamation" aria-hidden />{' '}
+                    {interpolate(t('reports.beOtherHigh'), {
+                      amount: fmtRp(breakEven.overhead.byCategory.Lainnya),
+                      pct: fmtPercent(otherShare, 0),
+                    })}
+                  </Link>
+                )}
+            {breakEven.overhead.missingPayroll && (
                   <small className={[styles.beNote, styles.beWarn].join(' ')}>
                     <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
                   </small>

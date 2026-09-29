@@ -2,7 +2,17 @@ import { openPrintWindow, escapeHtml } from '@/lib/print';
 import { fmtRp, fmtRpCompact, fmtPercent } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { trendGeometry } from '@/lib/business/reports';
-import { OVERHEAD_CATEGORIES, type OverheadResult } from '@/lib/business/overhead';
+import {
+  OVERHEAD_CATEGORIES,
+  EXPENSE_GROUPS,
+  EXPENSE_GROUP_LABEL,
+  expenseGroupOf,
+  breakEvenVerdict,
+  type BreakEven,
+} from '@/lib/business/overhead';
+import { translate, type TranslationKey } from '@/i18n';
+import { useSettingsStore } from '@/stores/settings';
+import { interpolate } from '@/lib/business/notify';
 import type {
   TrendPoint,
   CategoryProfit,
@@ -140,6 +150,10 @@ const A4_STYLE = `
   /* ---------- Break-even ---------- */
   .be { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .be .pct { font-size: 13pt; font-weight: 700; }
+  .be-verdict { margin: 0 0 6px; padding: 4px 8px; border-left: 2px solid ${INK.muted}; font-weight: 600; }
+  .be-verdict small { display: block; font-weight: 400; color: ${INK.muted}; }
+  .grp { display: flex; justify-content: space-between; margin: 6px 0 2px; font-size: 7pt;
+    letter-spacing: 0.06em; text-transform: uppercase; color: ${INK.muted}; }
 
   /* ---------- Grafik ---------- */
   .chart svg { width: 100%; height: auto; }
@@ -165,7 +179,7 @@ export interface ReportDocData {
   comparison: PeriodComparison;
   noBaseline: boolean;
   salesTotal: number;
-  breakEven: { gross: number; pct: number; overhead: OverheadResult } | null;
+  breakEven: BreakEven | null;
   trend: TrendPoint[];
   incomeByCategory: [string, number][];
   expenseByCategory: [string, number][];
@@ -310,7 +324,7 @@ function buildBody(d: ReportDocData): string {
       <div class="delta">${delta(d.comparison.expenseDelta, d.noBaseline, true)}</div>
     </div>
     <div class="kpi">
-      <div class="label">Arus Kas Bersih</div>
+      <div class="label">Selisih Kas</div>
       <div class="value num">${esc(fmtRp(d.summary.net))}</div>
       <div class="delta">${delta(d.comparison.netDelta, d.noBaseline)}</div>
     </div>
@@ -321,30 +335,48 @@ function buildBody(d: ReportDocData): string {
     </div>
   </div>`;
 
+  // Teks break-even memakai kamus yang sama dengan layar, supaya PDF & kartu tak bisa beda kata.
+  const tr = (key: TranslationKey) => translate(useSettingsStore.getState().language, key);
+  const VERDICT_KEY = {
+    healthy: 'reports.verdictHealthy',
+    thin: 'reports.verdictThin',
+    tied: 'reports.verdictTied',
+    loss: 'reports.verdictLoss',
+  } as const;
+  const BASIS_KEY = {
+    actual: 'reports.beBasisActual',
+    estimate: 'reports.beBasisEstimate',
+    partial: 'reports.beBasisPartial',
+  } as const;
+  const signed = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
   const be = d.breakEven;
   const beParts = be
     ? OVERHEAD_CATEGORIES.filter((c) => be.overhead.byCategory[c] > 0)
         .map((c) => `${c} ${fmtRp(be.overhead.byCategory[c])}`)
         .join(' · ')
     : '';
-  const BASIS_NOTE = {
-    actual: 'Overhead dari catatan Keuangan: Gaji, Sewa, Operasional, Lainnya.',
-    estimate: 'Bulan berjalan: biaya yang belum dicatat diperkirakan dari rata-rata bulan sebelumnya.',
-    partial: 'Bulan pertama: overhead dari yang sudah dicatat saja, mungkin belum lengkap.',
-  };
-  // Tanpa catatan overhead tak ada yang dibandingkan; di layar kartu kosongnya memberi petunjuk.
+  const otherShare = be && be.overhead.total > 0 ? be.overhead.byCategory.Lainnya / be.overhead.total : 0;
+  // Tanpa catatan biaya bulanan tak ada yang dibandingkan; di layar kartu kosongnya memberi petunjuk.
   const breakEven = be && be.overhead.total > 0
     ? section(
-        'Indikator Break-Even',
-        `<div class="be">
-            <div>Laba kotor vs overhead periode ini<br/>
+        tr('reports.indikatorBreakEven'),
+        `<p class="be-verdict">${esc(tr(VERDICT_KEY[breakEvenVerdict(d.summary.net, be.surplus)]))}
+            <small class="num">${esc(interpolate(tr('reports.verdictSub'), { cash: signed(d.summary.net), be: signed(be.surplus) }))}</small>
+          </p>
+          <div class="be">
+            <div>${esc(tr('reports.beGrossVsOverhead'))}<br/>
               <strong class="num">${esc(fmtRp(be.gross))} / ${esc(fmtRp(be.overhead.total))}</strong>
             </div>
             <div class="pct num ${be.pct >= 1 ? 'up' : ''}">${esc(fmtPercent(be.pct))}</div>
           </div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct(be.pct, 1)}%"></div></div>
           <p class="note num">${esc(beParts)}</p>
-          <p class="note">${esc(BASIS_NOTE[be.overhead.basis])}</p>`,
+          <p class="note">${esc(tr(BASIS_KEY[be.overhead.basis]))}</p>
+          ${
+            otherShare > 0.2
+              ? `<p class="note">⚠ ${esc(interpolate(tr('reports.beOtherHigh'), { amount: fmtRp(be.overhead.byCategory.Lainnya), pct: fmtPercent(otherShare, 0) }))}</p>`
+              : ''
+          }`,
       )
     : '';
 
@@ -359,23 +391,30 @@ function buildBody(d: ReportDocData): string {
         ),
   );
 
+  // Dikelompokkan seperti di layar: biaya bulanan / mengurangi untung / stok / uang pemilik.
   const expenseCat = section(
     'Pengeluaran per Kategori',
     d.expenseByCategory.length === 0
       ? empty('Belum ada data periode ini')
-      : barRows(
-          d.expenseByCategory.map(([label, value]) => ({ label, value, display: fmtRp(value) })),
-          maxExpense,
-          'exp',
-        ),
+      : EXPENSE_GROUPS.map((g) => {
+          const rows = d.expenseByCategory.filter(([c]) => expenseGroupOf(c) === g.id);
+          if (rows.length === 0) return '';
+          const total = rows.reduce((sum, [, v]) => sum + v, 0);
+          return `<div class="grp"><span>${esc(tr(EXPENSE_GROUP_LABEL[g.id]))}</span><span class="num">${esc(fmtRp(total))}</span></div>
+            ${barRows(
+              rows.map(([label, value]) => ({ label, value, display: fmtRp(value) })),
+              maxExpense,
+              g.id === 'owner' ? '' : 'exp',
+            )}`;
+        }).join(''),
   );
 
   const catProfit = section(
-    'Laba per Kategori Perangkat',
+    tr('reports.labaPerKategoriPerangkat'),
     d.catProfit.length === 0
       ? empty('Belum ada servis selesai')
       : `<table>
-          <thead><tr><th>Kategori</th><th class="r">Unit</th><th class="r">Omzet</th><th class="r">Laba</th></tr></thead>
+          <thead><tr><th>Kategori</th><th class="r">Unit</th><th class="r">Pendapatan</th><th class="r">Untung</th></tr></thead>
           <tbody>${d.catProfit
             .map(
               (c) => `<tr>
@@ -389,7 +428,7 @@ function buildBody(d: ReportDocData): string {
             )
             .join('')}</tbody>
         </table>
-        <p class="note">Laba = biaya akhir − modal sparepart, menurut tanggal SELESAI.</p>`,
+        <p class="note">Untung = biaya servis − modal sparepart, menurut tanggal SELESAI.</p>`,
   );
 
   const parts = section(
@@ -544,7 +583,7 @@ function buildBody(d: ReportDocData): string {
             )
             .join('')}</tbody>
           <tfoot><tr>
-            <td colspan="4">Arus kas bersih</td>
+            <td colspan="4">Selisih kas</td>
             <td class="r num">${esc(fmtRp(d.summary.net))}</td>
           </tr></tfoot>
         </table>`,

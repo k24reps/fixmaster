@@ -105,3 +105,22 @@ ulang peluncurnya, terverifikasi hash).
 - [[Domain & Scope]] · [[Design System]] · [[Data Layer]] · [[Tech Stack]]
 
 #conventions #architecture
+
+## Glosarium bahasa awam — uang (29 Sep 2026)
+
+Pemilik konter bukan akuntan. Istilah akuntansi tidak tampil di judul, label, atau vonis; istilah
+teknis boleh hanya di rincian. Satu konsep = satu kata di seluruh aplikasi (layar DAN PDF — teks
+break-even PDF memakai kamus yang sama lewat `translate`).
+
+| Konsep | Kata di layar | Jangan |
+|---|---|---|
+| Uang masuk − keluar | **Selisih kas** (tag BERTAMBAH / BERKURANG / TETAP) | arus kas bersih, surplus/defisit |
+| Laba kotor servis + jualan | **Untung servis & jualan** | laba kotor |
+| Overhead (Gaji, Sewa, Operasional, Lainnya) | **Biaya bulanan** | overhead, biaya tetap |
+| Break-even | **Biaya bulanan tertutup?** | break-even, impas |
+| Modal / Prive (kategori data) | **Setoran pemilik / Diambil pemilik** | modal, prive |
+| Harga modal (HPP) | **Modal** / Harga modal | HPP |
+| Omzet | **Pendapatan** | omzet |
+
+Nama kategori di data (Gaji, Sewa, Operasional, Sparepart, Prive…) tetap — itu data, bukan label.
+Form catat memetakannya ke pertanyaan "Uang ini untuk apa?".
