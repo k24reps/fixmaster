@@ -245,6 +245,8 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
 
 Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, dengan **LED status** (cyan aman / amber menipis / merah habis), angka stok mono besar, dan **fuel-gauge** ber-tick relatif terhadap stok minimum.
 
+- **Stok masuk: dari mana? (29 Sep 2026).** Menaikkan stok (edit) atau mengisi stok awal (barang baru) memunculkan panel ber-garis-titik yang WAJIB dijawab: **Dibeli sekarang** (harga beli/unit termasuk ongkir + Bayar dari wallet cabang, atau "Sudah dicatat di Keuangan") atau **Koreksi stok** / **Stok yang sudah ada** (tanpa uang keluar, alasan opsional). Pilihan = kartu radio dengan LED brand + spine. Readout: "Stok jadi N · modal rata-rata Rp X · kas −Rp Y". Harga modal dikunci & dihitung otomatis saat membeli. Satu langkah menggantikan dua (koreksi stok + catat Sparepart di Keuangan) — lihat 0096 di [[Data Layer]].
+
 ![[inv-dark.png]]
 
 ## Dashboard — Diagnostic Panel
@@ -375,11 +377,14 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   Pengeluaran per Kategori dan di rincian break-even adalah tautan ke Keuangan tersaring — cara
   memeriksa isi "Lainnya" atau memastikan gaji sudah dicatat. Laporan multi-bulan membuka bulan
   terakhir periodenya. Opsinya dikelompokkan (`<optgroup>`) sama dengan form catat.
-- **Kategori di form catat = tombol berkelompok (29 Sep 2026)**, bukan dropdown datar: radio asli
-  tersembunyi (panah & pembaca layar tetap jalan) bergaya chip, dikelompokkan Biaya tetap /
-  Biaya langsung / Stok / Pemilik dengan label mono + divider titik; terpilih = gradient brand.
-  Keterangan di bawahnya mengikuti kelompok (overhead, stok + saran ongkir, biaya langsung,
-  prive). Kategori lama di luar daftar (edit) tampil sebagai kelompok tanpa label.
+- **Form catat bertanya "Uang ini untuk apa?" (29 Sep 2026)**, bukan dropdown kategori: tombol
+  berbahasa awam (Gaji / kasbon karyawan, Sewa tempat, Listrik/internet/bensin, Beli part /
+  barang dagangan, Garansi ke pelanggan, Refund penjualan, Diambil pemilik, Lainnya; pemasukan:
+  "Uang ini dari mana?" — Setoran pemilik / Lainnya) yang dipetakan ke kategori data yang sama.
+  Radio asli tersembunyi bergaya chip; terpilih = gradient brand. Keterangan di bawahnya
+  menjelaskan akibatnya tanpa istilah akuntansi ("dihitung sebagai biaya bulanan toko",
+  "mencatat di sini TIDAK menambah stok — pakai Inventori › Dibeli sekarang"). Pengelompokan
+  kategori tetap di filter buku kas & Laporan.
 
 ![[fin-dark.png]]
 

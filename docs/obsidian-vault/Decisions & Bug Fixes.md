@@ -3738,3 +3738,20 @@ sudah berarti masuk/keluar/peringatan. Tempat paling penting: form catat, karena
 lahir di sana (contoh nyata: ongkir pembelian dicatat "Sparepart" lenyap dari break-even, sebab
 Sparepart = stok). Baris buku kas sengaja tanpa label — sudah padat. Label kelompok satu sumber:
 `EXPENSE_GROUP_LABEL` di `lib/business/overhead.ts`.
+
+## Tahap A penyederhanaan: catat di tempat kejadian (29 Sep 2026)
+
+Pemilik menyerah pada rentetan kasus (ongkir, laptop bekas, kasbon, aset): alurnya menuntut paham
+akuntansi. Prinsip baru: **pengguna menceritakan kejadian, aplikasi yang membukukan.** Uang dicatat
+di tempat kejadiannya (servis, Kasir, modal dadakan, PO — dan kini Inventori), Keuangan hanya
+untuk sisanya, dengan pertanyaan "untuk apa" berbahasa awam.
+
+- **Celah terakhir yang ditutup:** belanja stok tanpa Supplier (fitur Pro). Dulu dua langkah — edit
+  stok (koreksi; harga modal DITIMPA, ikut menaikkan modal stok lama) lalu catat Sparepart di
+  Keuangan (sering lupa/dobel). Kini panel "Stok masuk — dari mana?" + RPC atomik 0096.
+- Asal stok wajib dijawab (tanpa bawaan): bawaan "dibeli" berisiko mencatat kas untuk koreksi
+  stok opname; bawaan "koreksi" mengulang masalah lama.
+- Dibatalkan: kategori Kasbon & Peralatan (menambah pilihan untuk kasus jarang) — kasbon masuk
+  "Gaji / kasbon karyawan", alat kerja ke Lainnya.
+- Uji 0096 di DB lokal (rollback): 2 + beli 3 @1,35 jt dari modal 1,2 jt → stok 5, modal 1,29 jt,
+  kas −4,05 jt, satu pengeluaran; tanpa wallet → tanpa pengeluaran; qty 0 ditolak.

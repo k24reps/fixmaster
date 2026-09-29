@@ -337,6 +337,32 @@ export async function adjustInventoryStock(args: {
   return Number(data);
 }
 
+/**
+ * Pembelian stok dari Inventori (0096): stok + harga modal rata-rata + (bila
+ * wallet dipilih) pengeluaran Sparepart & potong saldo, satu transaksi.
+ */
+export async function purchaseInventoryStock(args: {
+  orgId: string;
+  itemId: string;
+  qty: number;
+  unitCost: number;
+  outletId: string | null;
+  walletId: string | null;
+}): Promise<number> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('purchase_inventory_stock', {
+    p_org_id: args.orgId,
+    p_item_id: args.itemId,
+    p_qty: args.qty,
+    p_unit_cost: args.unitCost,
+    p_outlet_id: args.outletId,
+    p_wallet_id: args.walletId,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data);
+}
+
 /** Salin nama & HP pelanggan ke tiket-tiketnya (0069) — hanya dua kolom itu. */
 export async function syncCustomerToServices(args: { orgId: string; customerId: string }): Promise<void> {
   const c = getSupabase();

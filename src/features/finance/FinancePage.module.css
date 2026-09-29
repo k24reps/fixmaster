@@ -354,7 +354,7 @@ button.walletCell[aria-pressed='true'] .walletLed {
 }
 
 /* Petunjuk kecil di jendela Entry. */
-/* Kategori catat: tombol dikelompokkan menurut perlakuan di break-even.
+/* Kategori catat: tombol "untuk apa" berbahasa awam.
    Radio asli (tersembunyi) supaya panah & pembaca layar tetap bekerja. */
 .catField {
   display: flex;
@@ -372,22 +372,6 @@ button.walletCell[aria-pressed='true'] .walletLed {
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.catGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.catGroup + .catGroup {
-  padding-top: var(--space-2);
-  border-top: 1px dotted var(--border);
-}
-.catGroupLabel {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }

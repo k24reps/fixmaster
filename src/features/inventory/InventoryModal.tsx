@@ -2,17 +2,21 @@ import { useState } from 'react';
 import { Modal, Input, Button, Select, FormFields, FormRow, FormError } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
-import { adjustInventoryStock } from '@/data/supabase-client';
+import { adjustInventoryStock, purchaseInventoryStock } from '@/data/supabase-client';
 import { newId } from '@/lib/id';
-import { fmtRpInput, parseRpInput } from '@/lib/format';
+import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
+import { localDateStr } from '@/lib/time';
+import { averageCost } from '@/lib/business/purchase';
+import { applyBalance, walletsForOutlet } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
-import { useSessionStore } from '@/stores/session';
+import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
 import { isCloudMode } from '@/stores/demo';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { InventoryItem } from '@/data/types';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
+import styles from './InventoryPage.module.css';
 
 interface InventoryModalProps {
   open: boolean;
@@ -25,6 +29,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: outlets } = useCollection('outlets');
+  const { data: allWallets } = useCollection('wallets');
   const [name, setName] = useState('');
   const [outletId, setOutletId] = useState('');
   const [category, setCategory] = useState('');
@@ -34,6 +39,12 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const [sellPrice, setSellPrice] = useState('');
   const [warrantyDays, setWarrantyDays] = useState('');
   const [stockReason, setStockReason] = useState('');
+  // Stok yang bertambah harus dijawab asalnya: dibeli sekarang (stok + modal
+  // rata-rata + kas sekaligus) atau koreksi/stok yang sudah ada. Dulu hanya
+  // koreksi — pembelian lalu dicatat ulang di Keuangan, sering lupa atau dobel.
+  const [inSource, setInSource] = useState<'buy' | 'adjust' | null>(null);
+  const [unitCost, setUnitCost] = useState('');
+  const [payWalletId, setPayWalletId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +59,9 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     setSellPrice(editing?.sellPrice ? fmtRpInput(String(editing.sellPrice)) : '');
     setWarrantyDays(editing?.warrantyDays != null ? String(editing.warrantyDays) : '');
     setStockReason('');
+    setInSource(null);
+    setUnitCost(editing?.costPrice ? fmtRpInput(String(editing.costPrice)) : '');
+    setPayWalletId('');
     setError('');
   });
 
@@ -56,10 +70,24 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   // input otherwise lets "2.5" through and corrupts the count.
   const stockNum = Math.round(Number(stock) || 0);
   const stockDelta = editing ? stockNum - editing.stock : 0;
+  const added = editing ? stockDelta : stockNum;
+  const buying = added > 0 && inSource === 'buy';
+  const unit = parseRpInput(unitCost);
+  // Wallet cabang pemilik stok (atau cabang aktif) + wallet bersama (0095).
+  const payOutlet = outletId || resolveCreateOutlet(outlets);
+  const wallets = walletsForOutlet(allWallets, payOutlet);
+  const defaultWallet = (wallets.find((w) => w.isCash) ?? wallets[0])?.id ?? '';
+  const walletPick = payWalletId === '' ? defaultWallet : payWalletId === 'none' ? '' : payWalletId;
+  const previewCost = averageCost(editing?.stock ?? 0, editing?.costPrice ?? 0, added, unit);
 
   const save = async () => {
     if (!name.trim()) return setError(t('inventory.namaBarangWajibDiisi'));
     if (stockNum < 0) return setError(t('inventory.stokTidakBolehNegatif'));
+    if (added > 0 && !inSource) return setError(t('inventory.inSourceRequired'));
+    if (buying && unit <= 0) return setError(t('inventory.unitCostRequired'));
+    if (buying && walletPick && !outletId && mustPickOutlet(outlets.length)) {
+      return setError(t('inventory.pickOutletFirst'));
+    }
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -82,9 +110,10 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
         name: name.trim(),
         category: category.trim(),
         sku: editing?.sku ?? '',
-        stock: editing ? (cloud ? currentStock : currentStock + stockDelta) : stockNum,
+        // Pembelian: stok & modal diterapkan RPC (cloud) atau di bawah (lokal).
+        stock: buying ? currentStock : editing ? (cloud ? currentStock : currentStock + stockDelta) : stockNum,
         minStock: Math.max(0, Math.round(Number(minStock) || 0)),
-        costPrice: parseRpInput(costPrice),
+        costPrice: buying ? (editing ? (fresh?.costPrice ?? editing.costPrice) : unit) : parseRpInput(costPrice),
         sellPrice: parseRpInput(sellPrice),
         supplierId: editing?.supplierId ?? null,
         warrantyDays: warrantyDays.trim() === '' ? null : Math.max(0, Math.round(Number(warrantyDays) || 0)),
@@ -94,7 +123,43 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
       };
       await repository.put('inventory', record);
       let finalStock = record.stock;
-      if (editing && stockDelta !== 0 && cloud) {
+      if (buying) {
+        const txOutlet = record.outletId ?? payOutlet;
+        if (cloud) {
+          finalStock = await purchaseInventoryStock({
+            orgId,
+            itemId: record.id,
+            qty: added,
+            unitCost: unit,
+            outletId: txOutlet,
+            walletId: walletPick || null,
+          });
+        } else {
+          finalStock = currentStock + added;
+          await repository.put('inventory', {
+            ...record,
+            stock: finalStock,
+            costPrice: averageCost(currentStock, record.costPrice, added, unit),
+          });
+          const wallet = allWallets.find((w) => w.id === walletPick);
+          if (wallet) {
+            await repository.put('expenses', {
+              id: newId(),
+              orgId,
+              outletId: txOutlet,
+              date: localDateStr(),
+              category: 'Sparepart',
+              amount: added * unit,
+              walletId: wallet.id,
+              description: `Pembelian stok ${record.name} ×${added}`,
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+            });
+            await repository.put('wallets', applyBalance(wallet, -added * unit));
+          }
+        }
+      } else if (editing && stockDelta !== 0 && cloud) {
         finalStock = await adjustInventoryStock({ orgId, itemId: editing.id, delta: stockDelta });
       }
       logActivity({
@@ -106,6 +171,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
           stock: finalStock,
           sellPrice: record.sellPrice,
           ...(stockDelta !== 0 ? { stockDelta, reason: stockReason.trim() } : {}),
+          ...(buying ? { purchased: added, unitCost: unit, paid: walletPick ? added * unit : 0 } : {}),
         },
       });
       toast.success(editing ? t('inventory.updated') : t('inventory.added'));
@@ -176,16 +242,87 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
             hint={t('inventory.untukPeringatanStokMenipis')}
           />
         </FormRow>
-        {editing && stockDelta !== 0 && (
+        {added > 0 && (
+          <fieldset className={styles.stockIn}>
+            <legend>{interpolate(t('inventory.inTitle'), { qty: String(added) })}</legend>
+            <div className={styles.inChoices}>
+              {(['buy', 'adjust'] as const).map((k) => (
+                <label key={k} className={[styles.inChoice, inSource === k ? styles.inChoiceOn : ''].join(' ')}>
+                  <input
+                    type="radio"
+                    name="inventory-in-source"
+                    checked={inSource === k}
+                    onChange={() => {
+                      setInSource(k);
+                      setError('');
+                    }}
+                  />
+                  <span>
+                    <strong>{t(k === 'buy' ? 'inventory.inBuy' : editing ? 'inventory.inAdjust' : 'inventory.inExisting')}</strong>
+                    <small>{t(k === 'buy' ? 'inventory.inBuyHint' : editing ? 'inventory.inAdjustHint' : 'inventory.inExistingHint')}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {buying && (
+              <>
+                <FormRow>
+                  <Input
+                    label={t('inventory.unitCost')}
+                    inputMode="numeric"
+                    value={unitCost}
+                    onChange={(e) => setUnitCost(fmtRpInput(e.target.value))}
+                    placeholder="60.000"
+                    hint={t('inventory.unitCostHint')}
+                  />
+                  <Select
+                    label={t('inventory.payFrom')}
+                    value={walletPick || 'none'}
+                    onChange={(e) => setPayWalletId(e.target.value)}
+                    options={[
+                      ...wallets.map((w) => ({ value: w.id, label: `${w.name} · ${fmtRp(w.balance)}` })),
+                      { value: 'none', label: t('inventory.payNone') },
+                    ]}
+                  />
+                </FormRow>
+                <p className={styles.inReadout}>
+                  {interpolate(t('inventory.inReadout'), {
+                    stock: String((editing?.stock ?? 0) + added),
+                    cost: fmtRp(previewCost),
+                  })}
+                  {walletPick
+                    ? ` · ${interpolate(t('inventory.inCash'), { amount: fmtRp(added * unit) })}`
+                    : ` · ${t('inventory.inNoCash')}`}
+                </p>
+              </>
+            )}
+            {editing && inSource === 'adjust' && (
+              <Input
+                label={interpolate(t('inventory.deltaReason'), { delta: `+${stockDelta}` })}
+                value={stockReason}
+                onChange={(e) => setStockReason(e.target.value)}
+                placeholder={t('inventory.contohHasilStokOpname')}
+              />
+            )}
+          </fieldset>
+        )}
+        {editing && stockDelta < 0 && (
           <Input
-            label={interpolate(t('inventory.deltaReason'), { delta: `${stockDelta > 0 ? '+' : ''}${stockDelta}` })}
+            label={interpolate(t('inventory.deltaReason'), { delta: String(stockDelta) })}
             value={stockReason}
             onChange={(e) => setStockReason(e.target.value)}
             placeholder={t('inventory.contohHasilStokOpname')}
           />
         )}
         <FormRow>
-          <Input label={t('inventory.hargaModalHpp')} value={costPrice} onChange={(e) => setCostPrice(fmtRpInput(e.target.value))} placeholder="60.000" />
+          <Input
+            label={t('inventory.hargaModalHpp')}
+            value={buying ? fmtRpInput(String(Math.round(previewCost))) : costPrice}
+            onChange={(e) => setCostPrice(fmtRpInput(e.target.value))}
+            placeholder="60.000"
+            disabled={buying}
+            hint={buying ? t('inventory.costFromPurchase') : undefined}
+          />
           <Input label={t('inventory.hargaJual')} value={sellPrice} onChange={(e) => setSellPrice(fmtRpInput(e.target.value))} placeholder="100.000" />
         </FormRow>
         <Input
