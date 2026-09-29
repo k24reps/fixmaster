@@ -66,6 +66,8 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
     }
     if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
     setBusy(true);
+    // Kurang = beban (Selisih Kas Kurang); lebih = non-operasional, bukan omzet.
+    const category = entry.kind === 'expense' ? 'Selisih Kas Kurang' : 'Selisih Kas Lebih';
     const description = t(entry.kind === 'expense' ? 'finance.countShortNote' : 'finance.countOverNote')
       .replace('{wallet}', wallet.name)
       .replace('{counted}', fmtRp(parseRpInput(counted)));
@@ -74,7 +76,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
         orgId,
         kind: entry.kind,
         date: localDateStr(),
-        category: 'Lainnya',
+        category,
         amount: entry.amount,
         walletId: wallet.id,
         description,
@@ -85,7 +87,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
         entityType: entry.kind,
         entityId: id,
         entityLabel: description,
-        meta: { amount: entry.amount, category: 'Lainnya' },
+        meta: { amount: entry.amount, category },
       });
       toast.success(t('finance.countApplied').replace('{wallet}', wallet.name));
       onClose();

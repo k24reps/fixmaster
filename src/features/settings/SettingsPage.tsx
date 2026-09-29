@@ -81,6 +81,7 @@ import { demoGuard } from '@/stores/demo';
 import { isValidInviteEmail, canChangeRole, canDeactivate } from '@/lib/business/team';
 import { normalizePhone } from '@/lib/business/customers';
 import { createTransfer } from '@/features/finance/transferActions';
+import { CountModal } from '@/features/finance/CountModal';
 import { createFinanceEntry } from '@/data/financeEntry';
 import { localDateStr } from '@/lib/time';
 import { logActivity } from '@/lib/activity';
@@ -2421,6 +2422,9 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
 function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLabel: string; outlets: Outlet[] }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
+  // Kalibrasi saldo lewat jendela yang sama dengan Keuangan: selisihnya dicatat,
+  // bukan saldo ditimpa diam-diam.
+  const [counting, setCounting] = useState(false);
   const [name, setName] = useState(wallet.name);
   const [outletId, setOutletId] = useState(wallet.outletId ?? '');
   const [isCash, setIsCash] = useState(!!wallet.isCash);
@@ -2523,6 +2527,14 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setCounting(true)}
+              iconLeft={<Icon name="list-check" aria-hidden />}
+            >
+              {t('finance.countAction')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setEditing(true)}
               iconLeft={<Icon name="pen" aria-hidden />}
             >
@@ -2540,6 +2552,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
           </span>
         </>
       )}
+      <CountModal open={counting} onClose={() => setCounting(false)} wallets={[wallet]} initialWalletId={wallet.id} />
       <ConfirmDialog
         open={confirm}
         title={t('settingsPage.hapusWallet')}

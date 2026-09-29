@@ -146,6 +146,10 @@ export const NON_OPERATING_CATEGORIES: readonly string[] = [
   'Peralatan & Inventaris',
   'Kasbon Karyawan',
   'Pelunasan Kasbon',
+  // Kas lebih saat hitung saldo: biasanya penjualan lupa dicatat — dikoreksi,
+  // tapi sengaja tidak diakui sebagai omzet (prinsip kehati-hatian). Kas kurang
+  // tetap beban (overhead).
+  'Selisih Kas Lebih',
 ];
 
 /** True bila baris ini arus non-operasional (pemilik, aset, piutang), bukan pendapatan/biaya usaha. */

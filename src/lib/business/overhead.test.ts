@@ -125,6 +125,8 @@ describe('kategori akuntansi rinci (29 Sep 2026)', () => {
     expect(expenseGroupOf('Ongkos Kirim')).toBe('direct');
     expect(expenseGroupOf('Peralatan & Inventaris')).toBe('asset');
     expect(expenseGroupOf('Kasbon Karyawan')).toBe('receivable');
+    expect(expenseGroupOf('Selisih Kas Kurang')).toBe('overhead');
+    expect(expenseGroupOf('Pajak, Retribusi & Iuran')).toBe('overhead');
     const r = overheadForRange({
       ...base,
       expenses: [

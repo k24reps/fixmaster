@@ -23,9 +23,11 @@ export const OVERHEAD_CATEGORIES = [
   'Perlengkapan & ATK',
   'Perawatan & Perbaikan',
   'Pemasaran & Iklan',
-  'Pajak & Retribusi',
+  'Pajak, Retribusi & Iuran',
   'Biaya Admin Bank',
   'Konsumsi',
+  // Kas kurang saat hitung saldo: kerugian nyata (uang hilang / beban lupa dicatat).
+  'Selisih Kas Kurang',
   'Operasional',
   'Lainnya',
 ] as const;

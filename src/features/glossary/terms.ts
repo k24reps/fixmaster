@@ -17,7 +17,8 @@ export type TermId =
   | 'aset-tetap'
   | 'piutang'
   | 'modal'
-  | 'prive';
+  | 'prive'
+  | 'selisih-kas';
 
 export interface GlossaryTerm {
   id: TermId;
@@ -188,5 +189,18 @@ export const GLOSSARY: GlossaryTerm[] = [
     body: 'Saldo wallet berkurang, tapi bukan beban usaha — tidak mengurangi laba maupun masuk overhead.',
     example: 'Pemilik mengambil Rp 2 jt untuk kebutuhan rumah: saldo −Rp 2 jt, laba tetap.',
     seenIn: [{ label: 'Keuangan', to: '/finance' }],
+  },
+  {
+    id: 'selisih-kas',
+    term: 'Selisih Kas',
+    short: 'Beda antara saldo di aplikasi dan uang yang benar-benar ada.',
+    body:
+      'Dicatat lewat Hitung saldo (Keuangan, atau Pengaturan › Wallet), sehingga saldo dikalibrasi tanpa menimpa angka diam-diam. Prinsip kehati-hatian: kas KURANG diakui sebagai beban (overhead) karena kerugiannya nyata; kas LEBIH menambah saldo tapi bukan omzet, karena biasanya penjualan yang lupa dicatat. Selisih yang sering dan besar tanda ada pencatatan yang terlewat.',
+    formula: 'Uang dihitung − Saldo aplikasi',
+    example: 'Aplikasi Rp 2.500.000, laci Rp 2.430.000 → Selisih Kas Kurang Rp 70.000 (beban hari ini).',
+    seenIn: [
+      { label: 'Keuangan', to: '/finance' },
+      { label: 'Laporan', to: '/reports' },
+    ],
   },
 ];

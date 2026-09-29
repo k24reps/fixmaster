@@ -49,11 +49,11 @@ interface EntryModalProps {
 // sudah mencatat pemasukannya sendiri, jadi mencatatnya di sini = dihitung dua
 // kali. Server menolaknya juga (0091). Baris lama berkategori itu tetap bisa
 // diedit — kategorinya ditambahkan kembali saat mengedit.
-const INCOME_CATEGORIES: IncomeCategory[] = ['Lainnya', 'Modal', 'Pelunasan Kasbon'];
+const INCOME_CATEGORIES: IncomeCategory[] = ['Lainnya', 'Modal', 'Pelunasan Kasbon', 'Selisih Kas Lebih'];
 /** Pemasukan berkelompok: pendapatan vs non-operasional (bukan omzet). */
 const INCOME_GROUPS: { label: TranslationKey; categories: IncomeCategory[] }[] = [
   { label: 'finance.groupIncomeOperating', categories: ['Lainnya'] },
-  { label: 'finance.groupIncomeNonOperating', categories: ['Modal', 'Pelunasan Kasbon'] },
+  { label: 'finance.groupIncomeNonOperating', categories: ['Modal', 'Pelunasan Kasbon', 'Selisih Kas Lebih'] },
 ];
 // Dropdown berkelompok menurut perlakuan di laporan (EXPENSE_GROUPS): kategori
 // dirinci 29 Sep 2026 supaya "listrik berapa?" terjawab tanpa membaca keterangan.
@@ -67,6 +67,7 @@ const EXPENSE_HINT: Record<string, TranslationKey> = {
   Lainnya: 'finance.hintLainnya',
   'Peralatan & Inventaris': 'finance.hintAsset',
   'Kasbon Karyawan': 'finance.hintKasbon',
+  'Selisih Kas Kurang': 'finance.hintKasKurang',
 };
 const GROUP_HINT: Partial<Record<ReturnType<typeof expenseGroupOf>, TranslationKey>> = {
   overhead: 'finance.overheadHint',
@@ -78,6 +79,7 @@ const CATEGORY_HINT: Record<string, TranslationKey> = {
   Modal: 'finance.hintModal',
   Prive: 'finance.hintPrive',
   'Pelunasan Kasbon': 'finance.hintPelunasan',
+  'Selisih Kas Lebih': 'finance.hintKasLebih',
 };
 
 interface EditArgs {

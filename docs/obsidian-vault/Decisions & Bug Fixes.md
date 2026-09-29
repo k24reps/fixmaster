@@ -3785,3 +3785,17 @@ tercampur di Operasional.
   (saran diterima: selalu muncul di konteks istilahnya; isinya tanpa angka toko).
 - Ongkos Kirim sengaja beban langsung, bukan overhead — surplus break-even tetap sama, hanya
   letaknya yang berbeda; pemilik memindahkan catatan ongkir lamanya sendiri.
+
+## Kalibrasi saldo: kategori Selisih Kas (29 Sep 2026)
+
+Pemilik bertanya perlukah fitur khusus mengkalibrasi saldo wallet. Tidak: **Hitung saldo** sudah
+ada (Keuangan) dan kini juga di tiap baris Pengaturan › Wallet — selisih dicatat sebagai transaksi,
+saldo tidak pernah ditimpa diam-diam (buku kas tetap cocok, jejak koreksi terlihat).
+
+Yang diperbaiki: selisih dulu dicatat "Lainnya" — kas kurang ikut overhead DAN memicu peringatan
+Lainnya > 20%, kas lebih terhitung **omzet** (ikut Target Pendapatan). Kini dua kategori
+(`CountModal`): **Selisih Kas Kurang** = beban/overhead (kerugiannya nyata), **Selisih Kas Lebih** =
+non-operasional, bukan omzet (`NON_OPERATING_CATEGORIES`). Tak simetris dengan sengaja — prinsip
+kehati-hatian. Nama berbeda per arah karena `isCapitalFlow` membaca kategori, bukan jenis baris.
+Entri "Selisih Kas" di Kamus Istilah. "Pajak & Retribusi" → **"Pajak, Retribusi & Iuran"** (sampah,
+karang taruna); catatan bernama lama tetap terbaca sebagai overhead.

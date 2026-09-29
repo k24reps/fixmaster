@@ -276,5 +276,8 @@ describe('arus non-operasional', () => {
       expect(isCapitalFlow({ category })).toBe(true);
     }
     expect(isCapitalFlow({ category: 'Listrik & Air' })).toBe(false);
+    // Kas lebih bukan omzet; kas kurang tetap beban.
+    expect(isCapitalFlow({ category: 'Selisih Kas Lebih' })).toBe(true);
+    expect(isCapitalFlow({ category: 'Selisih Kas Kurang' })).toBe(false);
   });
 });

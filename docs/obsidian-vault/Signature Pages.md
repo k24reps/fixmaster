@@ -379,10 +379,10 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   terakhir periodenya. Opsinya dikelompokkan (`<optgroup>`) sama dengan form catat.
 - **Kategori catat = dropdown berkelompok (29 Sep 2026)**, `Select` dengan `groups` (`<optgroup>`):
   Beban Operasional · overhead (Gaji, Sewa, Listrik & Air, Internet & Pulsa, Transportasi & Bensin,
-  Perlengkapan & ATK, Perawatan & Perbaikan, Pemasaran & Iklan, Pajak & Retribusi, Biaya Admin
-  Bank, Konsumsi, Operasional, Lainnya) / Beban Langsung (Garansi, Refund Penjualan, Ongkos Kirim) /
+  Perlengkapan & ATK, Perawatan & Perbaikan, Pemasaran & Iklan, Pajak, Retribusi & Iuran (sampah,
+  karang taruna, keamanan), Biaya Admin Bank, Konsumsi, Selisih Kas Kurang, Operasional, Lainnya) / Beban Langsung (Garansi, Refund Penjualan, Ongkos Kirim) /
   Persediaan (Sparepart) / Aset Tetap (Peralatan & Inventaris) / Piutang (Kasbon Karyawan) / Prive.
-  Pemasukan: Pendapatan (Lainnya) / Non-operasional (Modal, Pelunasan Kasbon). Keterangan di bawah
+  Pemasukan: Pendapatan (Lainnya) / Non-operasional (Modal, Pelunasan Kasbon, Selisih Kas Lebih). Keterangan di bawah
   mengikuti kategori/kelompok (kasbon dipotong gaji = Gaji penuh + Pelunasan Kasbon; ongkir stok →
   harga beli). Sempat berupa tombol "Uang ini untuk apa?" berbahasa awam — dikembalikan ke dropdown
   atas permintaan pemilik. Tombol **Kamus istilah** di bar bulan; "Arus Kas Bersih" = `Term`.
