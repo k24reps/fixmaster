@@ -404,7 +404,7 @@ function buildBody(d: ReportDocData): string {
             ${barRows(
               rows.map(([label, value]) => ({ label, value, display: fmtRp(value) })),
               maxExpense,
-              ['stock', 'asset', 'receivable', 'owner'].includes(g.id) ? '' : 'exp',
+              ['contra', 'stock', 'asset', 'receivable', 'owner'].includes(g.id) ? '' : 'exp',
             )}`;
         }).join(''),
   );

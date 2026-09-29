@@ -57,7 +57,9 @@ const INCOME_GROUPS: { label: TranslationKey; categories: IncomeCategory[] }[] =
 ];
 // Dropdown berkelompok menurut perlakuan di laporan (EXPENSE_GROUPS): kategori
 // dirinci 29 Sep 2026 supaya "listrik berapa?" terjawab tanpa membaca keterangan.
-const EXPENSE_CATEGORIES: string[] = EXPENSE_GROUPS.flatMap((g) => [...g.categories]);
+// "Refund Servis" (contra) hanya dari tiket, bukan catatan manual.
+const MANUAL_GROUPS = EXPENSE_GROUPS.filter((g) => g.id !== 'contra');
+const EXPENSE_CATEGORIES: string[] = MANUAL_GROUPS.flatMap((g) => [...g.categories]);
 
 /** Akibat pilihan di laporan, dijelaskan di bawah dropdown. */
 const EXPENSE_HINT: Record<string, TranslationKey> = {
@@ -296,7 +298,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const legacy = categories.filter((c) => !(base as string[]).includes(c));
   const categoryGroups =
     kind === 'expense'
-      ? EXPENSE_GROUPS.map((g) => ({
+      ? MANUAL_GROUPS.map((g) => ({
           label: t(EXPENSE_GROUP_LABEL[g.id]),
           options: g.categories.map((c) => ({ value: c, label: c })),
         }))

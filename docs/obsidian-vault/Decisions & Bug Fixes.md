@@ -3799,3 +3799,18 @@ non-operasional, bukan omzet (`NON_OPERATING_CATEGORIES`). Tak simetris dengan s
 kehati-hatian. Nama berbeda per arah karena `isCapitalFlow` membaca kategori, bukan jenis baris.
 Entri "Selisih Kas" di Kamus Istilah. "Pajak & Retribusi" → **"Pajak, Retribusi & Iuran"** (sampah,
 karang taruna); catatan bernama lama tetap terbaca sebagai overhead.
+
+## Batal + biaya pengecekan; bug dobel hitung refund servis (29 Sep 2026)
+
+Kasus: unit batal, pelanggan membayar biaya cek. Dulu dua langkah janggal (catat "DP", lalu Batal
+refund 0). Kini satu isian di form Batal (0097). Biaya cek sengaja **dimasukkan ke DP**, bukan jalur
+baru: `retainedDownPayment` dan `category_profit` sudah memperlakukan DP ditahan sebagai pendapatan
+tiket batal, dan tiket tetap tak dihitung unit selesai (tidak menaikkan target servis).
+
+Bug yang ketemu saat menelusuri: sejak break-even membaca kategori, refund DP / kembalian kelebihan
+bayar / koreksi biaya turun — yang dicatat server sebagai "Lainnya" — ikut **overhead**, padahal laba
+servis sudah dikurangi olehnya (DP ditahan / biaya final terkoreksi) → dihitung dua kali. Kategori
+`Refund Servis` (grup `contra`) + trigger normalisasi (tanpa menulis ulang settle_service &
+correct_service_cost) + backfill. Uji lokal (rollback): batal tanpa DP + biaya 50 rb → DP 50 rb, kas
++50 rb, pemasukan Servis; refund → kategori Refund Servis; refund+biaya ditolak; trigger & backfill.
+Batasan diketahui: omzet (Target Pendapatan) belum dikurangi refund servis.

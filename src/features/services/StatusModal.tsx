@@ -116,6 +116,10 @@ export function StatusModal({
   // Cancel ("batal") sub-action: optional partial DP refund.
   const [refundAmount, setRefundAmount] = useState('');
   const [refundWalletId, setRefundWalletId] = useState('');
+  // Batal tapi pelanggan membayar biaya pengecekan (0097): masuk sebagai DP,
+  // jadi terbaca "DP ditahan" = pendapatan tiket batal.
+  const [feeAmount, setFeeAmount] = useState('');
+  const [feeWalletId, setFeeWalletId] = useState('');
   // Servis ditunggu: Selesai sekaligus Lunas & diambil, satu kali Terapkan.
   const [express, setExpress] = useState(false);
   // Diterapkan setelah helper di bawah terdefinisi (render berikutnya).
@@ -167,6 +171,8 @@ export function StatusModal({
       setDpWalletId(defaultWallet());
       setRefundAmount('');
       setRefundWalletId(defaultWallet());
+      setFeeAmount('');
+      setFeeWalletId(defaultWallet());
       setConsumedParts(new Set());
       setExpress(false);
       setPendingHandover(handover && service.status === 'selesai' && canSetStatus(role, 'lunas'));
@@ -439,7 +445,7 @@ export function StatusModal({
             orgId: service.orgId,
             outletId: service.outletId,
             date: localDateStr(),
-            category: 'Lainnya',
+            category: 'Refund Servis',
             amount: excessRefund,
             walletId: wallet.id,
             description: overpaidRefundDescription(service.serviceNo),
@@ -466,6 +472,8 @@ export function StatusModal({
             refundAmount: refund,
             refundWalletId: refund > 0 ? refundWalletId : null,
             keepParts: [...consumedParts],
+            feeAmount: cancelFee,
+            feeWalletId: cancelFee > 0 ? feeWalletId : null,
           });
         } else {
           const { restorations, updated: restoredParts } = computeStockRestore(service.spareparts, consumedParts);
@@ -490,7 +498,7 @@ export function StatusModal({
                 orgId: service.orgId,
                 outletId: service.outletId,
                 date: localDateStr(),
-                category: 'Lainnya',
+                category: 'Refund Servis',
                 amount: refund,
                 walletId: wallet.id,
                 description: `Refund DP servis ${service.serviceNo}`,
@@ -502,8 +510,30 @@ export function StatusModal({
             }
           }
 
+          if (cancelFee > 0) {
+            const wallet = wallets.find((w) => w.id === feeWalletId);
+            if (wallet) {
+              await repository.put('incomes', {
+                id: newId(),
+                orgId: service.orgId,
+                outletId: service.outletId,
+                date: localDateStr(),
+                category: 'Servis',
+                amount: cancelFee,
+                walletId: wallet.id,
+                description: `Biaya pengecekan servis ${service.serviceNo}`,
+                serviceId: service.id,
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: null,
+              });
+              await repository.put('wallets', applyBalance(wallet, cancelFee));
+            }
+          }
+
           await repository.put('services', {
             ...updatedService,
+            downPayment: service.downPayment + cancelFee,
             spareparts: restoredParts,
             updatedAt: now,
           });
@@ -647,7 +677,7 @@ export function StatusModal({
           deletedAt: null,
         };
         if (delta > 0) await repository.put('incomes', { ...row, category: 'Servis', serviceId: service.id });
-        else await repository.put('expenses', { ...row, category: 'Lainnya' });
+        else await repository.put('expenses', { ...row, category: 'Refund Servis' });
         await repository.put('wallets', applyBalance(wallet, delta));
         await repository.put('services', { ...service, finalCost: newFinal, updatedAt: now, history });
       }
@@ -687,6 +717,7 @@ export function StatusModal({
   // dan selalu lewat konfirmasi berisi ringkasan.
   const cancelling = mode === 'status' && target === 'batal';
   const cancelRefund = service.downPayment > 0 ? Math.min(parseRpInput(refundAmount), service.downPayment) : 0;
+  const cancelFee = parseRpInput(feeAmount);
   const partNames = (keepUsed: boolean) =>
     heldParts
       .filter(({ index }) => consumedParts.has(index) === keepUsed)
@@ -694,6 +725,11 @@ export function StatusModal({
       .join(', ');
   const cancelSummary = [
     t('serviceStatus.confirmCancelFinal'),
+    cancelFee > 0 &&
+      interpolate(t('serviceStatus.confirmCancelFee'), {
+        amount: fmtRp(cancelFee),
+        wallet: wallets.find((w) => w.id === feeWalletId)?.name ?? '—',
+      }),
     cancelRefund > 0
       ? t('serviceStatus.confirmCancelRefund')
           .replace('{amount}', fmtRp(cancelRefund))
@@ -708,6 +744,9 @@ export function StatusModal({
     .join(' ');
   const requestCancel = () => {
     if (!note.trim()) return toast.warning(interpolate(t('serviceStatus.noteRequired'), { status: t('statusLabel.batal') }));
+    // DP 100 rb, biaya cek 50 rb = refund 50 rb (bukan keduanya); DP kurang dari biaya cek = refund 0 + biaya cek sisanya.
+    if (cancelFee > 0 && cancelRefund > 0) return toast.warning(t('serviceStatus.feeAndRefund'));
+    if (cancelFee > 0 && !feeWalletId) return toast.warning(t('serviceStatus.feeWalletRequired'));
     setConfirmCancel(true);
   };
 
@@ -719,9 +758,11 @@ export function StatusModal({
       : mode === 'koreksi'
         ? t('serviceStatus.updateCost')
         : cancelling
-          ? cancelRefund > 0
-            ? t('serviceStatus.cancelRefund').replace('{amount}', fmtRp(cancelRefund))
-            : t('serviceStatus.cancelTicket')
+          ? cancelFee > 0
+            ? interpolate(t('serviceStatus.cancelFee'), { amount: fmtRp(cancelFee) })
+            : cancelRefund > 0
+              ? t('serviceStatus.cancelRefund').replace('{amount}', fmtRp(cancelRefund))
+              : t('serviceStatus.cancelTicket')
           : paying
             ? express
               ? `${t(target === 'lunas' ? 'serviceStatus.handoverApply' : 'serviceStatus.expressApply')}${settleDue > 0 ? ` · ${fmtRp(settleDue)}` : ''}`
@@ -1035,6 +1076,30 @@ export function StatusModal({
                 </div>
                 <p className={styles.dp}>
                   {t('serviceStatus.refundDpHint')}
+                </p>
+              </div>
+            )}
+            {target === 'batal' && (
+              <div className={styles.warranty}>
+                <span className={styles.warrantyLabel}>{t('serviceStatus.feeLabel')}</span>
+                <div className={styles.warrantyRow}>
+                  <Input
+                    label={t('serviceStatus.feeAmount')}
+                    inputMode="numeric"
+                    value={feeAmount}
+                    onChange={(e) => setFeeAmount(fmtRpInput(e.target.value))}
+                    placeholder="0"
+                  />
+                  <Select
+                    label={t('serviceStatus.feeWallet')}
+                    value={feeWalletId}
+                    onChange={(e) => setFeeWalletId(e.target.value)}
+                    options={walletOptions}
+                    placeholder={t('serviceStatus.pickWallet')}
+                  />
+                </div>
+                <p className={styles.dp}>
+                  {t(service.downPayment > 0 ? 'serviceStatus.feeHintWithDp' : 'serviceStatus.feeHint')}
                 </p>
               </div>
             )}

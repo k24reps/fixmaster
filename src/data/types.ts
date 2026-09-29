@@ -257,6 +257,7 @@ export type ExpenseCategory =
   | 'Konsumsi'
   | 'Garansi'
   | 'Refund Penjualan'
+  | 'Refund Servis'
   | 'Ongkos Kirim'
   | 'Peralatan & Inventaris'
   | 'Kasbon Karyawan'

@@ -194,10 +194,14 @@ export function grossProfit(
  * form catat, filter buku kas, dan kartu Pengeluaran per Kategori — supaya
  * salah kategori (mis. ongkir sebagai Sparepart) terlihat saat dicatat.
  */
-export type ExpenseGroup = 'overhead' | 'direct' | 'stock' | 'asset' | 'receivable' | 'owner';
+export type ExpenseGroup = 'overhead' | 'direct' | 'contra' | 'stock' | 'asset' | 'receivable' | 'owner';
 export const EXPENSE_GROUPS: { id: ExpenseGroup; categories: readonly string[] }[] = [
   { id: 'overhead', categories: OVERHEAD_CATEGORIES },
   { id: 'direct', categories: DIRECT_COST_CATEGORIES },
+  // Refund DP / kelebihan bayar / koreksi biaya turun (otomatis dari tiket, 0097).
+  // Laba servis SUDAH memperhitungkannya (DP ditahan, biaya final terkoreksi),
+  // jadi bukan overhead maupun beban langsung — menghitungnya lagi = dobel.
+  { id: 'contra', categories: ['Refund Servis'] },
   { id: 'stock', categories: ['Sparepart'] },
   // Aset tetap & piutang: uangnya keluar, tapi bukan beban bulan ini — sama
   // dengan Prive, tidak dihitung sebagai pengeluaran usaha (isCapitalFlow).
@@ -208,6 +212,7 @@ export const EXPENSE_GROUPS: { id: ExpenseGroup; categories: readonly string[] }
 export const EXPENSE_GROUP_LABEL: Record<ExpenseGroup, TranslationKey> = {
   overhead: 'finance.groupOverhead',
   direct: 'finance.groupDirect',
+  contra: 'finance.groupContra',
   stock: 'finance.groupStock',
   asset: 'finance.groupAsset',
   receivable: 'finance.groupReceivable',

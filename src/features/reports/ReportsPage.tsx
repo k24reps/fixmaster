@@ -61,7 +61,7 @@ const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'war
 /** Ambang peringatan Lainnya: angka awal, ubah bila terasa terlalu cerewet/longgar. */
 const OTHER_WARN_SHARE = 0.2;
 /** Kelompok yang bukan beban usaha: bar netral, bukan merah pengeluaran. */
-const NON_COST_GROUPS = new Set<ExpenseGroup>(['stock', 'asset', 'receivable', 'owner']);
+const NON_COST_GROUPS = new Set<ExpenseGroup>(['contra', 'stock', 'asset', 'receivable', 'owner']);
 const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
   overhead: 'overhead',
   direct: 'beban-langsung',

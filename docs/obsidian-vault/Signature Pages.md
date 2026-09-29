@@ -539,6 +539,8 @@ Catatan: ini paginasi **render**, bukan paginasi query — `useCollection` masih
 
 ## Detail Servis — Repair Ticket
 
+- **Batal + biaya pengecekan (29 Sep 2026).** Form Batal punya bagian "Biaya pengecekan dibayar sekarang" (nominal + wallet). Tombol berbunyi "Batalkan · terima Rp X", konfirmasi menyebut wallet-nya; hasilnya tampil sebagai "DP ditahan" + profit unit. Bila ada DP, keterangan mengarahkan: biaya cek yang dipotong dari DP = kurangi refund saja.
+
 **Critique UX tahap 1 (27 Sep 2026).** Bilah aksi = satu daftar `TicketAction`; di ≤760px aksi sekunder masuk tombol **Lainnya** (panel bawah) — dulu Edit, Cetak Nota, Tandai Diambil, Klaim, dan Koreksi Biaya lenyap di ponsel. *Traveler* hanya mencentang tahap yang tercatat di riwayat; yang dilompati bersimpul putus-putus + "dilewati". BOM di bawah 470px (container `bom`) jadi dua baris. Jendela Update Status: kanal status ber-LED, chip "Pakai estimasi", Penanganan tepat di bawah biaya, garansi part & Riwayat dilipat, tombol utama menyebut konsekuensi ("Terima Rp X", "Batalkan · refund Rp X" merah + konfirmasi berisi ringkasan).
 
 Halaman `/services/:id`: traveler strip mengikuti status + timestamp asli, BOM sparepart dari data nyata, panel biaya (sisa tagihan & profit), action bar ke modal Edit/Status/WhatsApp.

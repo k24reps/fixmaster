@@ -451,6 +451,9 @@ export async function cancelService(args: {
   refundWalletId?: string | null;
   /** Indeks baris sparepart yang terpakai — tidak dikembalikan ke stok (0088). */
   keepParts?: number[];
+  /** Biaya pengecekan dibayar saat batal (0097): pemasukan Servis + DP bertambah. */
+  feeAmount?: number;
+  feeWalletId?: string | null;
 }): Promise<void> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -462,6 +465,8 @@ export async function cancelService(args: {
     p_refund_amount: args.refundAmount ?? 0,
     p_refund_wallet_id: args.refundWalletId ?? null,
     p_keep_parts: args.keepParts ?? [],
+    p_fee_amount: args.feeAmount ?? 0,
+    p_fee_wallet_id: args.feeWalletId ?? null,
   });
   if (error) throw new Error(error.message);
 }

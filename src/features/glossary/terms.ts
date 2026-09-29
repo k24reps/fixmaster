@@ -69,7 +69,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Laba Servis',
     short: 'Biaya final tiket servis dikurangi harga modal part yang dipakai.',
     body:
-      'Dihitung dari tiket yang SELESAI dalam periode, bukan saat dibayar. DP yang ditahan dari tiket batal ikut dihitung sebagai pendapatan.',
+      'Dihitung dari tiket yang SELESAI dalam periode, bukan saat dibayar. DP yang ditahan dan biaya pengecekan dari tiket batal ikut dihitung sebagai pendapatan. Refund DP, kembalian kelebihan bayar, dan koreksi biaya turun dicatat "Refund Servis" — sudah diperhitungkan di sini, jadi tidak masuk overhead.',
     formula: 'Biaya final − HPP part tiket',
     example: 'Ganti LCD dibayar Rp 1,95 jt, modal LCD Rp 1,35 jt → laba servis Rp 600 rb.',
     seenIn: [

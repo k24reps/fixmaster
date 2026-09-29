@@ -127,6 +127,12 @@ describe('kategori akuntansi rinci (29 Sep 2026)', () => {
     expect(expenseGroupOf('Kasbon Karyawan')).toBe('receivable');
     expect(expenseGroupOf('Selisih Kas Kurang')).toBe('overhead');
     expect(expenseGroupOf('Pajak, Retribusi & Iuran')).toBe('overhead');
+    // Refund DP / koreksi biaya sudah dihitung di laba servis: bukan overhead, bukan beban langsung.
+    expect(expenseGroupOf('Refund Servis')).toBe('contra');
+    expect(
+      overheadForRange({ ...base, expenses: [ex('2026-08-05', 'Refund Servis', 50e3)], from: '2026-08-01', to: '2026-08-31', today: '2026-09-20' })!.total,
+    ).toBe(0);
+    expect(grossProfit(100e3, [], [ex('2026-08-05', 'Refund Servis', 50e3)])).toBe(100e3);
     const r = overheadForRange({
       ...base,
       expenses: [
