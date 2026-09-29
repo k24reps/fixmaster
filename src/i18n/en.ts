@@ -1474,7 +1474,7 @@ export const en: Dictionary = {
   'reports.beShort': '{amount} short of covering overhead',
   'reports.beBreakdown': 'Overhead breakdown',
   'reports.beBasisActual': 'Overhead from actual operating expenses in Finance.',
-  'reports.beBasisEstimate': 'Current month: expenses not yet recorded (e.g. salaries) are estimated from the average of previous months.',
+  'reports.beBasisEstimate': 'Current month: routine expenses not yet recorded this month (e.g. salaries) are estimated from previous months — marked est. Recorded amounts are used as-is.',
   'reports.beNoPayroll': 'No Gaji entry last month — overhead may look smaller than it really is.',
   'settingsPage.rentTitle': 'Premises Rent',
   'settingsPage.rentHint': 'Monthly: taken from Sewa entries in Finance. Yearly: the annual amount is spread over 12 months in Reports — still record the payment in Finance; it will not be counted twice.',
@@ -1511,6 +1511,8 @@ export const en: Dictionary = {
   'inventory.inNoCash': 'cash unchanged',
   'inventory.costFromPurchase': 'Calculated from the purchase',
   // ---------- kategori akuntansi & Kamus Istilah (29 Sep 2026) ----------
+  'reports.estTag': 'est.',
+  'reports.beProrated': 'Not a full month: overhead is prorated by the number of days in the period, so it can differ from the ledger total.',
   'finance.groupContra': 'Service Revenue Reductions',
   'serviceStatus.feeLabel': 'Check fee paid now',
   'serviceStatus.feeAmount': 'Amount',

@@ -4,6 +4,7 @@ import { fmtDate } from '@/lib/time';
 import { trendGeometry } from '@/lib/business/reports';
 import {
   overheadBreakdown,
+  categoryLabel,
   EXPENSE_GROUPS,
   EXPENSE_GROUP_LABEL,
   expenseGroupOf,
@@ -352,7 +353,7 @@ function buildBody(d: ReportDocData): string {
   const be = d.breakEven;
   const beParts = be
     ? overheadBreakdown(be.overhead.byCategory)
-        .map(([c, v]) => `${c} ${fmtRp(v)}`)
+        .map(([c, v]) => `${categoryLabel(c)}${be.overhead.estimated.includes(c) ? ' (est.)' : ''} ${fmtRp(v)}`)
         .join(' · ')
     : '';
   const otherShare = be && be.overhead.total > 0 ? (be.overhead.byCategory.Lainnya ?? 0) / be.overhead.total : 0;
@@ -372,6 +373,7 @@ function buildBody(d: ReportDocData): string {
           <div class="bar-track"><div class="bar-fill" style="width:${pct(be.pct, 1)}%"></div></div>
           <p class="note num">${esc(beParts)}</p>
           <p class="note">${esc(tr(BASIS_KEY[be.overhead.basis]))}</p>
+          ${be.overhead.prorated ? `<p class="note">${esc(tr('reports.beProrated'))}</p>` : ''}
           ${
             otherShare > 0.2
               ? `<p class="note">⚠ ${esc(interpolate(tr('reports.beOtherHigh'), { amount: fmtRp(be.overhead.byCategory.Lainnya ?? 0), pct: fmtPercent(otherShare, 0) }))}</p>`
@@ -402,7 +404,7 @@ function buildBody(d: ReportDocData): string {
           const total = rows.reduce((sum, [, v]) => sum + v, 0);
           return `<div class="grp"><span>${esc(tr(EXPENSE_GROUP_LABEL[g.id]))}</span><span class="num">${esc(fmtRp(total))}</span></div>
             ${barRows(
-              rows.map(([label, value]) => ({ label, value, display: fmtRp(value) })),
+              rows.map(([label, value]) => ({ label: categoryLabel(label), value, display: fmtRp(value) })),
               maxExpense,
               ['contra', 'stock', 'asset', 'receivable', 'owner'].includes(g.id) ? '' : 'exp',
             )}`;

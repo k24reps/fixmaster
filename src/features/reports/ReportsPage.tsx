@@ -27,6 +27,7 @@ import {
   overheadFetchFrom,
   overheadFetchTo,
   overheadBreakdown,
+  categoryLabel,
   EXPENSE_GROUPS,
   EXPENSE_GROUP_LABEL,
   expenseGroupOf,
@@ -215,7 +216,7 @@ export function ReportsPage() {
       to={financeHref(category)}
       aria-label={interpolate(t('reports.openInFinance'), { category })}
     >
-      {category}
+      {categoryLabel(category)}
     </Link>
   );
 
@@ -560,7 +561,9 @@ export function ReportsPage() {
                 <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
                   {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
                     <li key={c}>
-                      {financeLink(c)} <b>{fmtRp(v)}</b>
+                      {financeLink(c)}
+                      {breakEven.overhead.estimated.includes(c) && <i className={styles.estTag}>{t('reports.estTag')}</i>}{' '}
+                      <b>{fmtRp(v)}</b>
                     </li>
                   ))}
                 </ul>
@@ -574,7 +577,12 @@ export function ReportsPage() {
                         : 'reports.beBasisPartial',
                   )}
                 </small>
-                {otherShare > OTHER_WARN_SHARE && (
+                {breakEven.overhead.prorated && (
+                  <small className={styles.beNote}>
+                    <Icon name="info-circle" aria-hidden /> {t('reports.beProrated')}
+                  </small>
+                )}
+            {otherShare > OTHER_WARN_SHARE && (
                   <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
                     <Icon name="triangle-exclamation" aria-hidden />{' '}
                     {interpolate(t('reports.beOtherHigh'), {

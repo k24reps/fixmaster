@@ -31,6 +31,23 @@ export const OVERHEAD_CATEGORIES = [
   'Operasional',
   'Lainnya',
 ] as const;
+/**
+ * Kategori lama sebelum dirinci: tetap sah & dihitung, tapi tidak ditawarkan
+ * lagi untuk catatan baru, dan tampil berlabel "(lama)" — "Operasional" dulu
+ * bersanding dengan kelompok "Beban Operasional" dan tampak seperti duplikat.
+ */
+export const LEGACY_CATEGORY_LABEL: Record<string, string> = {
+  Operasional: 'Operasional (lama)',
+  'Pajak & Retribusi': 'Pajak & Retribusi (lama)',
+};
+export const categoryLabel = (c: string) => LEGACY_CATEGORY_LABEL[c] ?? c;
+/**
+ * Hanya beban rutin yang boleh diestimasi saat belum dibayar bulan ini.
+ * Penampung (Operasional lama, Lainnya) & selisih kas tidak: catatan bulan ini
+ * bisa pindah ke kategori rinci, dan estimasi dari riwayatnya akan dobel.
+ */
+const NOT_ESTIMATED = new Set(['Operasional', 'Lainnya', 'Selisih Kas Kurang', 'Pajak & Retribusi']);
+const estimable = (c: string) => expenseGroupOf(c) === 'overhead' && !NOT_ESTIMATED.has(c);
 /** Biaya yang lahir dari transaksi: mengurangi laba kotor, bukan overhead. */
 export const DIRECT_COST_CATEGORIES = ['Garansi', 'Refund Penjualan', 'Ongkos Kirim'];
 
@@ -52,6 +69,10 @@ export interface OverheadResult {
   basis: OverheadBasis;
   /** Bulan penuh terakhir tercatat tanpa satu pun pengeluaran Gaji. */
   missingPayroll: boolean;
+  /** Kategori yang nominalnya estimasi (belum ada catatan bulan berjalan). */
+  estimated: string[];
+  /** Ada bulan yang diporsi per hari (periode bukan sebulan / sejak tanggal 1). */
+  prorated: boolean;
 }
 
 export interface OverheadInput {
@@ -120,13 +141,20 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     lastDay(m) < today && (startMonth ? m > startMonth : sumOf(actualOf(m)) > 0);
 
   const byCategory: CategoryAmounts = {};
+  const estimated = new Set<string>();
+  let prorated = false;
   let rank = 0; // 0 actual, 1 estimate, 2 partial
   const bump = (r: number) => (rank = Math.max(rank, r));
 
   for (let m = monthOf(from); m <= monthOf(to); m = shiftMonth(m, 1)) {
     const a = from > `${m}-01` ? from : `${m}-01`;
     const b = to < lastDay(m) ? to : lastDay(m);
-    const frac = (Number(b.slice(8)) - Number(a.slice(8)) + 1) / daysIn(m);
+    // Sebulan penuh atau sejak tanggal 1 s/d hari ini = biaya bulan itu utuh, sama
+    // dengan buku kas. Dulu bulan berjalan dikali (hari lewat ÷ hari sebulan), jadi
+    // gaji Rp 12,9 jt yang sudah lunas tampil Rp 13,3 jt dan tak pernah cocok.
+    const wholeMonth = a === `${m}-01` && (b === lastDay(m) || b === today);
+    const frac = wholeMonth ? 1 : (Number(b.slice(8)) - Number(a.slice(8)) + 1) / daysIn(m);
+    if (!wholeMonth) prorated = true;
     const got = actualOf(m);
     const monthly: CategoryAmounts = {};
 
@@ -136,14 +164,23 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
       const history = [1, 2, 3].map((n) => shiftMonth(m, -n)).filter(tracked);
       const current = lastDay(m) >= today;
       if (current && history.length > 0) {
-        // Per kategori: gaji yang belum dibayar tetap terhitung dari rata-rata,
-        // biaya yang naik bulan ini langsung terhitung begitu dicatat.
+        // Sudah dicatat bulan ini = dipakai apa adanya (sama dengan buku kas). Beban
+        // rutin yang BELUM dicatat (mis. gaji dibayar akhir bulan) diestimasi dari
+        // rata-rata riwayat. Dulu max(tercatat, rata-rata): gaji yang sudah lunas
+        // tetap diganti rata-rata bila bulan lalu ada bonus.
         const cats = new Set([...Object.keys(got), ...history.flatMap((h) => Object.keys(actualOf(h)))]);
         for (const c of cats) {
-          const avg = history.reduce((s, h) => s + (actualOf(h)[c] ?? 0), 0) / history.length;
-          monthly[c] = Math.max(got[c] ?? 0, avg);
+          if ((got[c] ?? 0) > 0) {
+            monthly[c] = got[c];
+          } else if (estimable(c)) {
+            const avg = history.reduce((s, h) => s + (actualOf(h)[c] ?? 0), 0) / history.length;
+            if (avg > 0) {
+              monthly[c] = avg;
+              estimated.add(c);
+              bump(1);
+            }
+          }
         }
-        bump(1);
       } else {
         // Tanpa riwayat tak ada yang bisa diratakan: yang tercatat dalam periode
         // dipakai apa adanya (sewa 5 jt tanggal 1 tetap 5 jt, bukan separuhnya).
@@ -163,6 +200,8 @@ export function overheadForRange(input: OverheadInput): OverheadResult | null {
     byCategory,
     basis: (['actual', 'estimate', 'partial'] as const)[rank],
     missingPayroll: tracked(lastFull) && !(actualOf(lastFull).Gaji > 0),
+    estimated: [...estimated],
+    prorated,
   };
 }
 

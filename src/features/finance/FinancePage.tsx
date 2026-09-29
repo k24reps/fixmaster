@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useT, type TranslationKey } from '@/i18n';
-import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
+import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf, categoryLabel } from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending, Term } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -549,7 +549,7 @@ export function FinancePage() {
             {r.description || <span className={styles.muted}>{t('finance.noNote')}</span>}
           </span>
           <span className={styles.tapeMeta}>
-            <span className={[styles.tapeCat, tone].join(' ')}>{r.category}</span>
+            <span className={[styles.tapeCat, tone].join(' ')}>{categoryLabel(r.category)}</span>
             <span>{walletName(r.walletId)}</span>
             {lockText && <span className={styles.lockTag}>{lockText}</span>}
           </span>
@@ -733,7 +733,7 @@ export function FinancePage() {
           {capital.map(([cat, amount], k) => (
             <span key={cat}>
               {k > 0 && ' · '}
-              {cat} <strong>{fmtRp(amount)}</strong>
+              {categoryLabel(cat)} <strong>{fmtRp(amount)}</strong>
             </span>
           ))}
           {t('finance.capitalTail')}
@@ -841,7 +841,7 @@ export function FinancePage() {
               <optgroup key={g.key} label={t(g.label)}>
                 {g.cats.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {categoryLabel(c)}
                   </option>
                 ))}
               </optgroup>

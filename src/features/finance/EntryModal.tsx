@@ -21,7 +21,13 @@ import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/s
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { getRent } from '@/config/orgConfig';
-import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
+import {
+  EXPENSE_GROUPS,
+  EXPENSE_GROUP_LABEL,
+  expenseGroupOf,
+  LEGACY_CATEGORY_LABEL,
+  categoryLabel,
+} from '@/lib/business/overhead';
 import { interpolate } from '@/lib/business/notify';
 import type {
   ActivityAction,
@@ -58,7 +64,11 @@ const INCOME_GROUPS: { label: TranslationKey; categories: IncomeCategory[] }[] =
 // Dropdown berkelompok menurut perlakuan di laporan (EXPENSE_GROUPS): kategori
 // dirinci 29 Sep 2026 supaya "listrik berapa?" terjawab tanpa membaca keterangan.
 // "Refund Servis" (contra) hanya dari tiket, bukan catatan manual.
-const MANUAL_GROUPS = EXPENSE_GROUPS.filter((g) => g.id !== 'contra');
+// Kategori lama (Operasional) tidak ditawarkan lagi; tetap muncul saat mengedit catatan lamanya.
+const MANUAL_GROUPS = EXPENSE_GROUPS.filter((g) => g.id !== 'contra').map((g) => ({
+  ...g,
+  categories: g.categories.filter((c) => !(c in LEGACY_CATEGORY_LABEL)),
+}));
 const EXPENSE_CATEGORIES: string[] = MANUAL_GROUPS.flatMap((g) => [...g.categories]);
 
 /** Akibat pilihan di laporan, dijelaskan di bawah dropdown. */
@@ -372,7 +382,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             label={t('finance.category')}
             value={category}
             onChange={(e) => change(setCategory)(e.target.value)}
-            options={legacy.map((c) => ({ value: c, label: c }))}
+            options={legacy.map((c) => ({ value: c, label: categoryLabel(c) }))}
             groups={categoryGroups}
           />
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}

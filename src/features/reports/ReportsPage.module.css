@@ -343,6 +343,18 @@
   color: var(--brand-text);
   text-decoration-color: currentColor;
 }
+/* Nominal estimasi (beban rutin belum dicatat bulan ini): tanda kecil, bukan warna. */
+.estTag {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-xs);
+  font-style: normal;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 .beWarn {
   color: var(--warning-text);
 }

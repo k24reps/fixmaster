@@ -423,7 +423,7 @@ pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
   isian perkiraan overhead** di wizard maupun Pengaturan — kartu selalu tampil dan, tanpa
   catatan, berisi petunjuk mencatat Gaji/Sewa/Operasional (itulah cara user baru menemukannya).
   Kartu menampilkan rincian per kategori, basis angka, surplus/kekurangan, dan peringatan bila
-  bulan lalu tak ada catatan Gaji. Sewa cabang **tahunan** (wizard langkah Outlet, atau
+  bulan lalu tak ada catatan Gaji. Estimasi ditandai **est.**; periode bukan sebulan/sejak tgl 1 diberi catatan "diporsi"; kategori lama tampil "Operasional (lama)" (`categoryLabel`). Sewa cabang **tahunan** (wizard langkah Outlet, atau
   Pengaturan › Usaha › Sewa Tempat) = nominal ÷ 12, catatan Sewa cabang itu diabaikan agar tak
   dobel; form Keuangan memberi keterangan "dihitung sebagai overhead" dan, untuk Sewa, "bayar
   tahunan? atur di Pengaturan" (owner). PDF ikut. Di puncak kartu ada **vonis kas × break-even**

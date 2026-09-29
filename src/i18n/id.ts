@@ -1476,7 +1476,7 @@ export const id = {
   'reports.beShort': 'Kurang {amount} untuk menutup overhead',
   'reports.beBreakdown': 'Rincian overhead',
   'reports.beBasisActual': 'Overhead dari realisasi beban operasional di Keuangan.',
-  'reports.beBasisEstimate': 'Bulan berjalan: beban yang belum dicatat (mis. gaji) diestimasi dari rata-rata bulan sebelumnya.',
+  'reports.beBasisEstimate': 'Bulan berjalan: beban rutin yang belum dicatat bulan ini (mis. gaji) diestimasi dari rata-rata bulan sebelumnya — ditandai est. Yang sudah dicatat dipakai apa adanya.',
   'reports.beNoPayroll': 'Bulan lalu tidak ada catatan Gaji — overhead bisa terlihat lebih kecil dari kenyataan.',
   'settingsPage.rentTitle': 'Sewa Tempat',
   'settingsPage.rentHint': 'Bulanan: diambil dari catatan Sewa di Keuangan. Tahunan: nominal setahun dibagi 12 tiap bulan di Laporan — pembayarannya tetap dicatat di Keuangan, tapi tidak dihitung dobel.',
@@ -1513,6 +1513,8 @@ export const id = {
   'inventory.inNoCash': 'kas tidak berubah',
   'inventory.costFromPurchase': 'Dihitung otomatis dari pembelian',
   // ---------- kategori akuntansi & Kamus Istilah (29 Sep 2026) ----------
+  'reports.estTag': 'est.',
+  'reports.beProrated': 'Periode bukan sebulan penuh: overhead diporsi sesuai jumlah hari periode, jadi bisa berbeda dari total di buku kas.',
   'finance.groupContra': 'Pengurang Pendapatan Servis',
   'serviceStatus.feeLabel': 'Biaya pengecekan dibayar sekarang',
   'serviceStatus.feeAmount': 'Nominal',

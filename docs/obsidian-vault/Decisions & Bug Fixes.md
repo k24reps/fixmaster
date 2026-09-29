@@ -3814,3 +3814,23 @@ servis sudah dikurangi olehnya (DP ditahan / biaya final terkoreksi) → dihitun
 correct_service_cost) + backfill. Uji lokal (rollback): batal tanpa DP + biaya 50 rb → DP 50 rb, kas
 +50 rb, pemasukan Servis; refund → kategori Refund Servis; refund+biaya ditolak; trigger & backfill.
 Batasan diketahui: omzet (Target Pendapatan) belum dikurangi refund servis.
+
+## Overhead presisi: sama dengan buku kas (29 Sep 2026)
+
+Laporan pemilik: rincian Gaji di break-even Rp 13.295.098, padahal buku kas Gaji September Rp 12,9 jt
+(lunas 5 Sep). Dua aturan saya yang menumpuk: (1) bulan berjalan diporsi hari lewat ÷ hari sebulan
+(29/30); (2) per kategori `max(tercatat, rata-rata 3 bulan)` — rata-rata Gaji 13,75 jt (ada bulan
+bonus) menggantikan gaji yang sudah lunas. 13.295.098 = 13.753.550 × 29/30.
+
+Aturan baru (`overheadForRange`): periode sebulan penuh / sejak tanggal 1 s/d hari ini **tidak
+diporsi** (pertanyaannya "laba bulan ini sudah menutup biaya bulan ini?"); porsi hanya untuk
+periode sebagian, dengan catatan di kartu. Kategori yang sudah dicatat bulan ini dipakai **apa
+adanya**; estimasi rata-rata hanya untuk **beban rutin yang belum dicatat**, ditandai *est.*
+Penampung (Operasional lama, Lainnya), Selisih Kas Kurang, dan nama lama tak pernah diestimasi —
+kalau tidak, merapikan catatan lama (Operasional di riwayat → Listrik & Air bulan ini) membuat
+dobel. Harga: awal bulan setelah gaji & sewa dibayar, break-even tampak "kurang" besar — jujur,
+itu sisa laba yang harus masuk.
+
+"Operasional" (kategori lama, bersanding dengan kelompok "Beban Operasional") tak ditawarkan lagi
+untuk catatan baru dan tampil "Operasional (lama)" (`categoryLabel`). Saran urutan ke pemilik:
+perbaikan dulu, lalu rapikan catatan lama — prioritas bulan berjalan + 3 bulan sebelumnya.
