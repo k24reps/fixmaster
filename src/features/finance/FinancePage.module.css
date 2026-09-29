@@ -550,6 +550,25 @@ button.walletCell[aria-pressed='true'] .walletLed {
   border-bottom-color: var(--brand);
   font-weight: 600;
 }
+/* Filter kategori: readout mono di ujung pita tab, bukan dropdown generik. */
+.catSelect {
+  margin: 6px 0 6px auto;
+  max-width: 14rem;
+  min-height: 32px;
+  padding: 4px 28px 4px 10px;
+  background: var(--bg-input);
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.catSelect:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
 
 .loadMore {
   display: flex;
@@ -643,6 +662,11 @@ button.walletCell[aria-pressed='true'] .walletLed {
     padding: 8px 4px;
     font-size: var(--text-xs);
     letter-spacing: 0;
+  }
+  .catSelect {
+    grid-column: 1 / -1;
+    max-width: none;
+    margin: 0 0 var(--space-2);
   }
   /* Tiga aksi sebaris: buku kas naik satu baris tombol. */
   .actions {

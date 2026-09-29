@@ -1438,6 +1438,10 @@ export const id = {
   'reports.notRevenue': 'bukan omzet',
   'reports.notCost': 'bukan biaya',
   // ---------- overhead & target harian (29 Sep 2026) ----------
+  'finance.categoryFilter': 'Filter kategori',
+  'finance.allCategories': 'Semua kategori',
+  'finance.emptyCategory': 'Tidak ada transaksi {category} di {month}. Pilih bulan atau kategori lain.',
+  'reports.openInFinance': 'Lihat transaksi {category} di Keuangan',
   'reports.beEmpty': 'Belum ada biaya tetap tercatat di periode ini. Catat Gaji, Sewa, dan Operasional di Keuangan untuk melihat apakah laba kotor menutup biaya tetap toko.',
   'reports.beBasisPartial': 'Bulan pertama: overhead dari yang sudah dicatat saja, mungkin belum lengkap (gaji belum dibayar?).',
   'finance.overheadHint': 'Dihitung sebagai overhead di Indikator Break-Even Laporan.',

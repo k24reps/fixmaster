@@ -1436,6 +1436,10 @@ export const en: Dictionary = {
   'reports.notRevenue': 'not revenue',
   'reports.notCost': 'not a cost',
   // ---------- overhead & target harian (29 Sep 2026) ----------
+  'finance.categoryFilter': 'Category filter',
+  'finance.allCategories': 'All categories',
+  'finance.emptyCategory': 'No {category} transactions in {month}. Pick another month or category.',
+  'reports.openInFinance': 'View {category} transactions in Finance',
   'reports.beEmpty': 'No fixed costs recorded in this period yet. Record Gaji, Sewa, and Operasional in Finance to see whether gross profit covers the shop’s fixed costs.',
   'reports.beBasisPartial': 'First month: overhead from what has been recorded so far; it may be incomplete (salaries not paid yet?).',
   'finance.overheadHint': 'Counted as overhead in the Reports break-even indicator.',

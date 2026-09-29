@@ -363,6 +363,14 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   - **Nol migrasi**: kolom `category` bertipe `text` tanpa `CHECK` (0001). Data lama diperbaiki **sendiri oleh pemilik** — edit baris lama, ganti kategorinya; karena nominal & wallet tak berubah, rekonsiliasi menghitung delta **nol** sehingga **saldo tidak bergerak**. Semua bulan ikut terkoreksi otomatis karena pengecualian berbasis kategori, bukan tanggal.
   - Catatan `.capitalNote` di bawah panel ringkasan menampilkan total setoran modal & prive bulan berjalan — supaya turunnya Pemasukan setelah re-kategorisasi ada penjelasannya, bukan angka yang hilang diam-diam. Muncul hanya bila ada nilainya. `EntryModal` menampilkan hint penjelas saat kategori itu dipilih.
 
+- **Filter kategori (29 Sep 2026).** Pita tab buku kas punya pilihan kategori (mono, garis titik;
+  baris penuh di ponsel) yang bisa digabung dengan tab jenis dan filter wallet. Opsinya kategori
+  yang ada di bulan itu. Ringkasan dan judul buku kas ikut ("Pengeluaran · Tunai · Gaji").
+  Terbuka lewat `?cat=Gaji&month=2026-08` dari Laporan: nama kategori di kartu Pemasukan/
+  Pengeluaran per Kategori dan di rincian break-even adalah tautan ke Keuangan tersaring — cara
+  memeriksa isi "Lainnya" atau memastikan gaji sudah dicatat. Laporan multi-bulan membuka bulan
+  terakhir periodenya.
+
 ![[fin-dark.png]]
 
 ## Laporan — Analyzer Printout

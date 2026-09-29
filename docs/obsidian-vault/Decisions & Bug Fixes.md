@@ -3715,3 +3715,12 @@ ponytail: hari kalender; toko yang libur mingguan mendapat angka sedikit rendah.
   (riwayat Jul–Agu disuntik: Gaji rata-rata 8,5 jt, Sewa tahunan 24 jt → 2 jt/bln, catatan sewa
   24 jt diabaikan), bulan lewat = realisasi 13,4 jt. Simpan Sewa ditolak `demoGuard` di demo — wajar.
 - Tabel `fixedCosts` dari onboarding masih tak dibaca siapa pun (wizard tak lagi menampilkannya).
+
+## Filter kategori di Keuangan (29 Sep 2026)
+
+Break-even kini bergantung pada kategori pengeluaran, tetapi tak ada tempat untuk melihat isi satu
+kategori: Keuangan hanya menyaring jenis & wallet, Laporan hanya total per kategori (Rincian
+Transaksi dibatasi 100 baris tanpa filter). Memeriksa "Lainnya" atau memastikan gaji sudah dicatat
+berarti menggulir seluruh buku kas atau ekspor CSV. Ditambah pilihan kategori di pita tab buku kas
+(state lokal, dibaca sekali dari `?cat=&month=`) dan tautan dari nama kategori di Laporan.
+Pencarian teks bebas sengaja tidak ditambahkan — kategori + bulan sudah cukup menyempitkan.

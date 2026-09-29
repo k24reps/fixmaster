@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useT } from '@/i18n';
 import { useSessionStore } from '@/stores/session';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
@@ -64,6 +65,14 @@ async function findServiceByNo(serviceNo: string) {
 /** How many ledger rows to render at once; grows via "Tampilkan lebih banyak". */
 const PAGE_SIZE = 100;
 
+/** 'YYYY-MM' dari tautan → selisih bulan mundur dari bulan ini (0 bila kosong/ke depan). */
+function monthOffsetOf(month: string | null): number {
+  const m = /^(\d{4})-(\d{2})$/.exec(month ?? '');
+  if (!m) return 0;
+  const now = new Date();
+  return Math.max(0, now.getFullYear() * 12 + now.getMonth() - (Number(m[1]) * 12 + Number(m[2]) - 1));
+}
+
 export function FinancePage() {
   const t = useT();
   const activeOutletId = useSessionStore((s) => s.activeOutletId);
@@ -81,7 +90,10 @@ export function FinancePage() {
   // Bulan yang dilihat: 0 = bulan ini, 1 = bulan lalu, … Menggerakkan ringkasan
   // DAN buku kas sekaligus. Dulu "Muat bulan sebelumnya" hanya menumpuk baris
   // di buku kas, sementara ringkasan terkunci di bulan berjalan.
-  const [monthOffset, setMonthOffset] = useState(0);
+  // ?cat=Gaji&month=2026-08 — tautan dari kartu kategori & break-even di Laporan.
+  const [params] = useSearchParams();
+  const [monthOffset, setMonthOffset] = useState(() => monthOffsetOf(params.get('month')));
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(() => params.get('cat'));
   // Row budget for the DOM. Grows on demand so loading an older month is not
   // silently swallowed by a hard 100-row cap.
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -104,15 +116,18 @@ export function FinancePage() {
   // aktivitas sebulan (818 baris ≈240 KB di toko pemilik) demi ±19 transfer.
   const { data: walletTransfers } = useCollectionRange('walletTransfers', 'date', from, to);
 
-  // Ringkasan ikut filter wallet — dulu tetap angka semua wallet saat difilter.
-  const summary = useMemo(
-    () =>
-      summarize(
-        walletFilter ? incomes.filter((r) => r.walletId === walletFilter) : incomes,
-        walletFilter ? expenses.filter((r) => r.walletId === walletFilter) : expenses,
-      ),
-    [incomes, expenses, walletFilter],
-  );
+  // Ringkasan ikut filter wallet & kategori — dulu tetap angka semua wallet saat difilter.
+  const summary = useMemo(() => {
+    const keep = (r: { walletId: string; category: string }) =>
+      (!walletFilter || r.walletId === walletFilter) && (!categoryFilter || r.category === categoryFilter);
+    return summarize(incomes.filter(keep), expenses.filter(keep));
+  }, [incomes, expenses, walletFilter, categoryFilter]);
+  // Kategori yang ada di bulan ini (+ yang dibawa tautan, meski kosong di bulan ini).
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>([...incomes, ...expenses].map((r) => r.category));
+    if (categoryFilter) set.add(categoryFilter);
+    return [...set].sort((a, b) => a.localeCompare(b, 'id'));
+  }, [incomes, expenses, categoryFilter]);
   // Tampilan satu cabang: wallet bersama + wallet cabang itu (0095). Laci cabang
   // lain bukan urusan tampilan ini.
   const shownWallets = useMemo(() => walletsForOutlet(wallets, activeOutletId), [wallets, activeOutletId]);
@@ -191,9 +206,10 @@ export function FinancePage() {
       ledger.filter(
         (r) =>
           (ledgerTab === 'all' || r.kind === ledgerTab) &&
-          (!walletFilter || r.walletId === walletFilter || r.toWalletId === walletFilter),
+          (!walletFilter || r.walletId === walletFilter || r.toWalletId === walletFilter) &&
+          (!categoryFilter || r.category === categoryFilter),
       ),
-    [ledger, ledgerTab, walletFilter],
+    [ledger, ledgerTab, walletFilter, categoryFilter],
   );
   const visibleLedger = useMemo(
     () => filteredLedger.slice(0, limit),
@@ -214,6 +230,10 @@ export function FinancePage() {
   }, [visibleLedger]);
 
   const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
+  const scopeSuffix = [walletFilter && walletName(walletFilter), categoryFilter]
+    .filter(Boolean)
+    .map((x) => ` · ${x}`)
+    .join('');
   // Transfer menyimpan nama wallet saat itu: tetap terbaca walau wallet ada di
   // cabang lain (tak ikut daftar) atau sudah diganti nama.
   const transferWalletName = (id: string, snapshot: string) =>
@@ -676,15 +696,15 @@ export function FinancePage() {
 
       <div className={styles.summaryStrip} role="list" aria-label={t('finance.summaryAria')}>
         <div role="listitem" className={[styles.summaryCell, styles.income].join(' ')}>
-          <span>{t('finance.income')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.income')}{scopeSuffix}</span>
           <strong>{fmtRp(summary.income)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.expense].join(' ')}>
-          <span>{t('finance.expense')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.expense')}{scopeSuffix}</span>
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
         <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
-          <span>{t('finance.netCash')}{walletFilter ? ` · ${walletName(walletFilter)}` : ''}</span>
+          <span>{t('finance.netCash')}{scopeSuffix}</span>
           <strong>{fmtRp(summary.net)}</strong>
         </div>
       </div>
@@ -760,7 +780,7 @@ export function FinancePage() {
       <Card glass id="buku-kas" className={styles.ledgerCard}>
         <CardHeader
           icon={<Icon name="receipt" aria-hidden />}
-          title={walletFilter ? `${t('finance.ledger')} · ${walletName(walletFilter)}` : t('finance.ledger')}
+          title={`${t('finance.ledger')}${scopeSuffix}`}
           action={
             walletFilter ? (
               <Button
@@ -796,6 +816,22 @@ export function FinancePage() {
               {label}
             </button>
           ))}
+          <select
+            className={styles.catSelect}
+            aria-label={t('finance.categoryFilter')}
+            value={categoryFilter ?? ''}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value || null);
+              setLimit(PAGE_SIZE);
+            }}
+          >
+            <option value="">{t('finance.allCategories')}</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <CardBody className={styles.noPad}>
           {/* Footer ikut dirender saat kosong — kalau disembunyikan, filter
@@ -808,7 +844,9 @@ export function FinancePage() {
                 icon={<Icon name="receipt" aria-hidden />}
                 title={t('finance.emptyTitle')}
                 description={
-                  walletFilter
+                  categoryFilter
+                    ? interpolate(t('finance.emptyCategory'), { category: categoryFilter, month: monthLabel })
+                    : walletFilter
                     ? interpolate(t('finance.emptyWallet'), { wallet: walletName(walletFilter), month: monthLabel })
                     : monthOffset > 0
                       ? interpolate(t('finance.emptyMonth'), { month: monthLabel })

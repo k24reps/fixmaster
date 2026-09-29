@@ -267,6 +267,17 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
+/* Nama kategori = tautan ke Keuangan tersaring; garis titik khas bench. */
+.catLink {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+.catLink:hover {
+  color: var(--brand-text);
+  text-decoration-color: currentColor;
+}
 .beWarn {
   color: var(--warning-text);
 }

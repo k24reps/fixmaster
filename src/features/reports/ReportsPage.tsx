@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending } from '@/components/ui';
 import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
@@ -179,6 +180,18 @@ export function ReportsPage() {
   }, [rangeValid, summary, noBaseline, comparison, t]);
 
   const salesTotal = fSales.reduce((sum, s) => sum + s.total, 0);
+  // Keuangan menampilkan satu bulan: tautan membuka bulan terakhir periode.
+  const financeHref = (category: string) =>
+    `/finance?cat=${encodeURIComponent(category)}&month=${to.slice(0, 7)}`;
+  const financeLink = (category: string) => (
+    <Link
+      className={styles.catLink}
+      to={financeHref(category)}
+      aria-label={interpolate(t('reports.openInFinance'), { category })}
+    >
+      {category}
+    </Link>
+  );
 
   // Break-even: laba kotor vs overhead dari catatan Keuangan, seporsi panjang
   // periode. Dulu arus kas bersih (sudah dipotong overhead) dibanding anggaran
@@ -489,7 +502,7 @@ export function ReportsPage() {
                 <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
                   {OVERHEAD_CATEGORIES.filter((c) => breakEven.overhead.byCategory[c] > 0).map((c) => (
                     <li key={c}>
-                      {c} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
+                      {financeLink(c)} <b>{fmtRp(breakEven.overhead.byCategory[c])}</b>
                     </li>
                   ))}
                 </ul>
@@ -528,7 +541,7 @@ export function ReportsPage() {
                   <li key={cat} className={styles.channel}>
                     <div className={styles.channelTop}>
                       <span className={styles.channelName}>
-                        {cat}
+                        {financeLink(cat)}
                         {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notRevenue')}</span>}
                       </span>
                       <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.inc].join(' ')}>{fmtRp(amt)}</span>
@@ -559,7 +572,7 @@ export function ReportsPage() {
                   <li key={cat} className={styles.channel}>
                     <div className={styles.channelTop}>
                       <span className={styles.channelName}>
-                        {cat}
+                        {financeLink(cat)}
                         {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notCost')}</span>}
                       </span>
                       <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.exp].join(' ')}>{fmtRp(amt)}</span>
