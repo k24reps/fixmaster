@@ -26,7 +26,14 @@ import {
   isClosedOut,
 } from '@/lib/business/services';
 import { matchesTechnician } from '@/lib/business/serviceFilters';
-import { getTarget } from '@/config/orgConfig';
+import { getTarget, getRent, getStartMonth } from '@/config/orgConfig';
+import {
+  computeBreakEven,
+  breakEvenVerdict,
+  overheadFetchFrom,
+  overheadFetchTo,
+  type BreakEvenVerdict,
+} from '@/lib/business/overhead';
 import { interpolate } from '@/lib/business/notify';
 import { useSessionStore } from '@/stores/session';
 import { useSettingsStore } from '@/stores/settings';
@@ -175,10 +182,11 @@ export function DashboardPage() {
     () => computeKpis(incomes, expenses, wallets, range.from, range.to),
     [incomes, expenses, wallets, range.from, range.to],
   );
-  const monthRevenue = useMemo(
-    () => computeKpis(incomes, expenses, wallets, from, to).revenue,
+  const monthKpis = useMemo(
+    () => computeKpis(incomes, expenses, wallets, from, to),
     [incomes, expenses, wallets, from, to],
   );
+  const monthRevenue = monthKpis.revenue;
   const margin = serviceMargin(period === 'today' ? profitTodayQuery.data : profitMonthQuery.data);
   const doneToday = serviceMargin(profitTodayQuery.data).units;
   // Target servis = unit SELESAI bulan ini (yang menghasilkan uang), bukan unit masuk.
@@ -452,6 +460,7 @@ export function DashboardPage() {
                   </div>
                   )}
                 </div>
+                {isOwner && <BreakEvenReadout from={from} to={to} netCash={monthKpis.netCashFlow} />}
                 <p className={styles.heroNote}>{t('dashboard.cashNote')}</p>
               </div>
             </section>
@@ -616,6 +625,76 @@ export function DashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+const BE_VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'warn' | 'crit' }> = {
+  healthy: { key: 'dashboard.verdictHealthy', tone: 'ok' },
+  thin: { key: 'dashboard.verdictThin', tone: 'warn' },
+  tied: { key: 'dashboard.verdictTied', tone: 'warn' },
+  loss: { key: 'dashboard.verdictLoss', tone: 'crit' },
+};
+
+/**
+ * Break-even bulan ini, owner saja (memuat laba). Komponen terpisah supaya
+ * tarikan tambahannya (pengeluaran 3 bulan, penjualan) hanya jalan untuk owner;
+ * laba servisnya berbagi kunci query dengan hero.
+ */
+function BreakEvenReadout({ from, to, netCash }: { from: string; to: string; netCash: number }) {
+  const t = useT();
+  const activeOutletId = useSessionStore((s) => s.activeOutletId);
+  const { data: outlets } = useCollection('outlets');
+  const overheadQuery = useCollectionRange('expenses', 'date', overheadFetchFrom(from), overheadFetchTo(to));
+  const salesQuery = useCollectionRange('sales', 'date', from, to);
+  const profitQuery = useCategoryProfit(from, to);
+  const loading = overheadQuery.loading || salesQuery.loading || profitQuery.loading;
+  const be = useMemo(() => {
+    const today = localDateStr();
+    return computeBreakEven(
+      {
+        expenses: overheadQuery.data,
+        from,
+        to,
+        today,
+        rent: getRent(),
+        outletIds: activeOutletId ? [activeOutletId] : outlets.map((o) => o.id),
+        startMonth: getStartMonth(),
+      },
+      profitQuery.data.reduce((sum, c) => sum + c.profit, 0),
+      salesQuery.data.filter((s) => !s.voided),
+      overheadQuery.data.filter((e) => e.date >= from && e.date <= today),
+    );
+  }, [overheadQuery.data, salesQuery.data, profitQuery.data, from, to, activeOutletId, outlets]);
+
+  if (loading || !be) return null;
+  if (be.overhead.total === 0) {
+    return (
+      <Link className={styles.heroBe} to="/finance">
+        <span className={styles.heroStatKey}>{t('dashboard.beLabel')}</span>
+        <span className={styles.heroBeText}>{t('dashboard.beEmpty')}</span>
+      </Link>
+    );
+  }
+  const verdict = BE_VERDICT[breakEvenVerdict(netCash, be.surplus)];
+  const pct = Math.round(be.pct * 100);
+  return (
+    <Link className={styles.heroBe} to="/reports" data-tone={verdict.tone}>
+      <span className={styles.heroStatKey}>{t('dashboard.beLabel')}</span>
+      <span className={styles.heroBeGauge} aria-hidden>
+        <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, be.pct))})` }} />
+      </span>
+      <span className={styles.heroBePct}>{pct}%</span>
+      <span className={styles.heroBeText}>
+        <span className={styles.heroBeLed} aria-hidden />
+        {t(verdict.key)} ·{' '}
+        {interpolate(t(be.surplus >= 0 ? 'dashboard.beSurplus' : 'dashboard.beShort'), {
+          amount: fmtRpInline(Math.abs(be.surplus)),
+        })}
+      </span>
+      <span className={styles.heroBeMore}>
+        {t('dashboard.beOpen')} <Icon name="arrow-right" aria-hidden />
+      </span>
+    </Link>
   );
 }
 

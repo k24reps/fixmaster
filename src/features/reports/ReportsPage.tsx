@@ -22,11 +22,15 @@ import {
 import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
 import { getRent, getStartMonth } from '@/config/orgConfig';
 import {
-  overheadForRange,
-  grossProfit,
+  computeBreakEven,
+  breakEvenVerdict,
   overheadFetchFrom,
   overheadFetchTo,
   OVERHEAD_CATEGORIES,
+  EXPENSE_GROUPS,
+  EXPENSE_GROUP_LABEL,
+  expenseGroupOf,
+  type BreakEvenVerdict,
 } from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
 import { buildCsv, csvFilename } from '@/lib/business/export';
@@ -35,7 +39,7 @@ import { toast } from '@/stores/toast';
 import { TrendChart } from './TrendChart';
 import { printReport } from './printReport';
 import styles from './ReportsPage.module.css';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
 
 function monthRange() {
@@ -45,6 +49,14 @@ function monthRange() {
     to: localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
   };
 }
+
+const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'warn' | 'crit' }> = {
+  healthy: { key: 'reports.verdictHealthy', tone: 'ok' },
+  thin: { key: 'reports.verdictThin', tone: 'warn' },
+  tied: { key: 'reports.verdictTied', tone: 'warn' },
+  loss: { key: 'reports.verdictLoss', tone: 'crit' },
+};
+const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 
 /** Urut nominal, tetapi Modal/Prive (arus kas pemilik) selalu di dasar. */
 const byCapitalLast = (a: [string, number], b: [string, number]) =>
@@ -198,23 +210,23 @@ export function ReportsPage() {
   // sebulan penuh — overhead terhitung dua kali dan filter seminggu selalu "gagal".
   const breakEven = useMemo(() => {
     if (!rangeValid) return null;
-    const overhead = overheadForRange({
-      expenses: overheadExpenses,
-      from,
-      to,
-      today: localDateStr(),
-      rent: getRent(),
-      outletIds: activeOutletId ? [activeOutletId] : outlets.map((o) => o.id),
-      startMonth: getStartMonth(),
-    });
-    if (!overhead) return null;
-    const gross = grossProfit(
+    return computeBreakEven(
+      {
+        expenses: overheadExpenses,
+        from,
+        to,
+        today: localDateStr(),
+        rent: getRent(),
+        outletIds: activeOutletId ? [activeOutletId] : outlets.map((o) => o.id),
+        startMonth: getStartMonth(),
+      },
       catProfit.reduce((sum, c) => sum + c.profit, 0),
       fSales,
       fExpenses,
     );
-    return { overhead, gross, pct: overhead.total > 0 ? gross / overhead.total : 0 };
   }, [rangeValid, overheadExpenses, from, to, activeOutletId, outlets, catProfit, fSales, fExpenses]);
+  const verdictKind =
+    breakEven && breakEven.overhead.total > 0 ? breakEvenVerdict(summary.net, breakEven.surplus) : null;
 
   const incomeByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -229,6 +241,16 @@ export function ReportsPage() {
     return [...map.entries()].sort(byCapitalLast);
   }, [fExpenses]);
 
+  // Dikelompokkan menurut perlakuannya di break-even; kelompok kosong disembunyikan.
+  const expenseGroups = useMemo(
+    () =>
+      EXPENSE_GROUPS.map((g) => {
+        const rows = expenseByCategory.filter(([c]) => expenseGroupOf(c) === g.id);
+        return { id: g.id, rows, total: rows.reduce((sum, [, v]) => sum + v, 0) };
+      }).filter((g) => g.rows.length > 0),
+    [expenseByCategory],
+  );
+  const paidOverhead = expenseGroups.find((g) => g.id === 'overhead')?.total ?? 0;
   const maxIncome = Math.max(1, ...incomeByCategory.map(([, v]) => v));
   const maxExpense = Math.max(1, ...expenseByCategory.map(([, v]) => v));
   const maxLeaderRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
@@ -477,6 +499,20 @@ export function ReportsPage() {
               <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
             ) : (
               <>
+                {verdictKind && (
+                  <div className={styles.beVerdict} data-tone={VERDICT[verdictKind].tone}>
+                    <span className={styles.beLed} aria-hidden />
+                    <div>
+                      <strong>{t(VERDICT[verdictKind].key)}</strong>
+                      <span className={styles.beVerdictSub}>
+                        {interpolate(t('reports.verdictSub'), {
+                          cash: signedRp(summary.net),
+                          be: signedRp(breakEven.surplus),
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className={styles.breakEven}>
                   <div>
                     <span className={styles.beLabel}>{t('reports.beGrossVsOverhead')}</span>
@@ -567,25 +603,37 @@ export function ReportsPage() {
             ) : expenseByCategory.length === 0 ? (
               <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
             ) : (
-              <ul className={styles.breakdown}>
-                {expenseByCategory.map(([cat, amt]) => (
-                  <li key={cat} className={styles.channel}>
-                    <div className={styles.channelTop}>
-                      <span className={styles.channelName}>
-                        {financeLink(cat)}
-                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notCost')}</span>}
-                      </span>
-                      <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.exp].join(' ')}>{fmtRp(amt)}</span>
+              <div className={styles.breakdown}>
+                {expenseGroups.map((g) => (
+                  <section key={g.id} className={styles.expGroup} aria-label={t(EXPENSE_GROUP_LABEL[g.id])}>
+                    <div className={styles.groupHead}>
+                      <span>{t(EXPENSE_GROUP_LABEL[g.id])}</span>
+                      <span>{fmtRp(g.total)}</span>
                     </div>
-                    <div className={styles.bar}>
-                      <div
-                        className={[styles.barFill, isCapitalFlow({ category: cat }) ? styles.capital : styles.exp].join(' ')}
-                        style={{ width: `${(amt / maxExpense) * 100}%` }}
-                      />
-                    </div>
-                  </li>
+                    <ul className={styles.breakdown}>
+                      {g.rows.map(([cat, amt]) => (
+                        <li key={cat} className={styles.channel}>
+                          <div className={styles.channelTop}>
+                            <span className={styles.channelName}>{financeLink(cat)}</span>
+                            <span className={[styles.channelValue, g.id === 'owner' ? '' : styles.exp].join(' ')}>
+                              {fmtRp(amt)}
+                            </span>
+                          </div>
+                          <div className={styles.bar}>
+                            <div
+                              className={[styles.barFill, g.id === 'owner' ? styles.capital : styles.exp].join(' ')}
+                              style={{ width: `${(amt / maxExpense) * 100}%` }}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    {g.id === 'overhead' && breakEven && Math.abs(breakEven.overhead.total - paidOverhead) >= 1 && (
+                      <p className={styles.groupNote}>{t('reports.groupOverheadNote')}</p>
+                    )}
+                  </section>
                 ))}
-              </ul>
+              </div>
             )}
           </CardBody>
         </Card>

@@ -351,6 +351,85 @@ a.heroStat:hover {
 .statOut {
   color: var(--red-400);
 }
+/* Break-even bulan ini (owner): satu baris readout di layar hero, melipat
+   sendiri saat sempit (flex-wrap, tanpa breakpoint). */
+.heroBe {
+  --tone: var(--green-400);
+  position: relative;
+  z-index: 1;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-3);
+  padding: var(--space-2) 6px;
+  margin: 0 -6px;
+  border-top: 1px dotted color-mix(in srgb, var(--readout-text) 18%, transparent);
+  border-radius: var(--radius-xs);
+  color: var(--readout-soft);
+  text-decoration: none;
+}
+.heroBe[data-tone='warn'] {
+  --tone: var(--amber-400);
+}
+.heroBe[data-tone='crit'] {
+  --tone: var(--red-400);
+}
+.heroBe:hover {
+  background: color-mix(in srgb, var(--readout-text) 6%, transparent);
+}
+.heroBe:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.heroBeGauge {
+  flex: 1 1 6rem;
+  max-width: 14rem;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--readout-text) 14%, transparent);
+  overflow: hidden;
+}
+.heroBeGauge > span {
+  display: block;
+  height: 100%;
+  background: var(--tone);
+  transform-origin: left;
+}
+.heroBePct {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--tone);
+}
+.heroBeText {
+  flex: 1 1 16rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.heroBeLed {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+.heroBeMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--readout-muted);
+}
 .heroNote {
   position: relative;
   z-index: 1;

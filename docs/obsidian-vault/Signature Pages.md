@@ -290,6 +290,11 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
      `dailyRevenueTarget` = (target − omzet s/d kemarin) ÷ sisa hari termasuk hari ini — angka
      tetap sepanjang hari, progres hari ini yang bergerak; hilang begitu target bulan tercapai.
      Target Pendapatan = **omzet** operasional (tanpa modal/prive), bukan laba.
+  7. **Break-even bulan ini** (owner saja, 29 Sep 2026): satu baris readout di layar hero —
+     gauge + persen + LED nada + vonis singkat ("Kas naik, laba belum menutup biaya tetap ·
+     kurang Rp 115.000") → Laporan. Komponen `BreakEvenReadout` terpisah supaya tarikan
+     pengeluaran 3 bulan & penjualan hanya jalan untuk owner. Belum ada overhead → petunjuk
+     mencatat, menaut ke Keuangan.
   7. Papan teknisi: rupiah hanya untuk owner/admin; meter karyawan mengikuti unit selesai.
 
 ![[dash3-dark.png]]
@@ -369,7 +374,12 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   Terbuka lewat `?cat=Gaji&month=2026-08` dari Laporan: nama kategori di kartu Pemasukan/
   Pengeluaran per Kategori dan di rincian break-even adalah tautan ke Keuangan tersaring — cara
   memeriksa isi "Lainnya" atau memastikan gaji sudah dicatat. Laporan multi-bulan membuka bulan
-  terakhir periodenya.
+  terakhir periodenya. Opsinya dikelompokkan (`<optgroup>`) sama dengan form catat.
+- **Kategori di form catat = tombol berkelompok (29 Sep 2026)**, bukan dropdown datar: radio asli
+  tersembunyi (panah & pembaca layar tetap jalan) bergaya chip, dikelompokkan Biaya tetap /
+  Biaya langsung / Stok / Pemilik dengan label mono + divider titik; terpilih = gradient brand.
+  Keterangan di bawahnya mengikuti kelompok (overhead, stok + saran ongkir, biaya langsung,
+  prive). Kategori lama di luar daftar (edit) tampil sebagai kelompok tanpa label.
 
 ![[fin-dark.png]]
 
@@ -401,7 +411,13 @@ pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
   bulan lalu tak ada catatan Gaji. Sewa cabang **tahunan** (wizard langkah Outlet, atau
   Pengaturan › Usaha › Sewa Tempat) = nominal ÷ 12, catatan Sewa cabang itu diabaikan agar tak
   dobel; form Keuangan memberi keterangan "dihitung sebagai overhead" dan, untuk Sewa, "bayar
-  tahunan? atur di Pengaturan" (owner). PDF ikut.
+  tahunan? atur di Pengaturan" (owner). PDF ikut. Di puncak kartu ada **vonis kas × break-even**
+  (`breakEvenVerdict`: sehat / kas naik tapi belum menutup / untung tapi uang tertahan / rugi),
+  kotak ber-spine & LED nada dengan baris "Arus kas ±X · Break-even ±Y".
+- **Pengeluaran per Kategori dikelompokkan (29 Sep 2026)** menurut perlakuan di break-even
+  (`EXPENSE_GROUPS`): Biaya tetap · overhead / Biaya langsung / Stok · jadi biaya saat dipakai /
+  Pemilik · bukan biaya — subjudul mono + subtotal, kelompok kosong disembunyikan. Bila subtotal
+  overhead (yang dibayar) ≠ overhead break-even (perkiraan/sewa tahunan), ada catatan kecil.
 - **Ekspor CSV (19 Jun 2026).** Tombol **Ekspor CSV** di date bar mengekspor rincian transaksi (pemasukan+pengeluaran) periode terpilih, ter-scope outlet aktif, terurut terbaru. Nama file memuat scope + rentang tanggal.
   > [!note] Koreksi (21 Sep 2026)
   > `lib/csv.ts` **tidak lagi** punya `toCsv()`/`downloadCsv()` sendiri. Itu dulu implementasi CSV KEDUA di repo — satu-satunya yang dipakai Laporan, dan satu-satunya yang **tanpa** guard formula-injection serta tanpa tes. Sekarang Laporan memakai `buildCsv`/`csvFilename` dari [`lib/business/export.ts`](src/lib/business/export.ts) yang sama dengan kartu Export Data di Pengaturan; `lib/csv.ts` hanya menyisakan `downloadCsvFile` (Blob + anchor).

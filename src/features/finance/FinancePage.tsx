@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
+import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
 import { useSessionStore } from '@/stores/session';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -122,11 +123,24 @@ export function FinancePage() {
       (!walletFilter || r.walletId === walletFilter) && (!categoryFilter || r.category === categoryFilter);
     return summarize(incomes.filter(keep), expenses.filter(keep));
   }, [incomes, expenses, walletFilter, categoryFilter]);
-  // Kategori yang ada di bulan ini (+ yang dibawa tautan, meski kosong di bulan ini).
-  const categoryOptions = useMemo(() => {
-    const set = new Set<string>([...incomes, ...expenses].map((r) => r.category));
-    if (categoryFilter) set.add(categoryFilter);
-    return [...set].sort((a, b) => a.localeCompare(b, 'id'));
+  // Kategori yang ada di bulan ini (+ yang dibawa tautan), dikelompokkan seperti
+  // tombol di form catat. Nama yang ada di pemasukan & pengeluaran (Lainnya)
+  // cukup muncul sekali — filternya memang mencakup keduanya.
+  const categoryGroups = useMemo(() => {
+    const seen = new Set<string>();
+    const take = (cats: string[]) =>
+      [...new Set(cats)].filter((c) => !seen.has(c) && seen.add(c)).sort((a, b) => a.localeCompare(b, 'id'));
+    const expenseCats = expenses.map((e) => e.category as string);
+    const groups: { key: string; label: TranslationKey; cats: string[] }[] = [
+      { key: 'income', label: 'finance.groupIncome', cats: take(incomes.map((i) => i.category)) },
+      ...EXPENSE_GROUPS.map((g) => ({
+        key: g.id,
+        label: EXPENSE_GROUP_LABEL[g.id],
+        cats: take(expenseCats.filter((c) => expenseGroupOf(c) === g.id)),
+      })),
+    ];
+    if (categoryFilter && !seen.has(categoryFilter)) groups[0].cats.push(categoryFilter);
+    return groups.filter((g) => g.cats.length > 0);
   }, [incomes, expenses, categoryFilter]);
   // Tampilan satu cabang: wallet bersama + wallet cabang itu (0095). Laci cabang
   // lain bukan urusan tampilan ini.
@@ -826,10 +840,14 @@ export function FinancePage() {
             }}
           >
             <option value="">{t('finance.allCategories')}</option>
-            {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+            {categoryGroups.map((g) => (
+              <optgroup key={g.key} label={t(g.label)}>
+                {g.cats.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>

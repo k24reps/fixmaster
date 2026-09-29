@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { overheadForRange, grossProfit, overheadFetchFrom, overheadFetchTo } from './overhead';
+import {
+  overheadForRange,
+  grossProfit,
+  overheadFetchFrom,
+  overheadFetchTo,
+  expenseGroupOf,
+  breakEvenVerdict,
+  computeBreakEven,
+} from './overhead';
 
 const ex = (date: string, category: string, amount: number, outletId: string | null = null) => ({
   date,
@@ -85,5 +93,28 @@ describe('grossProfit', () => {
     const sales = [{ total: 1e6, lines: [{ qty: 2, costPrice: 300e3 }] }];
     const exps = [ex('2026-09-01', 'Garansi', 100e3), ex('2026-09-01', 'Gaji', 5e6), ex('2026-09-02', 'Refund Penjualan', 50e3)];
     expect(grossProfit(2e6, sales, exps)).toBe(2e6 + 400e3 - 150e3);
+  });
+});
+
+describe('kelompok & vonis break-even', () => {
+  it('kategori dikelompokkan menurut perlakuannya', () => {
+    expect(expenseGroupOf('Gaji')).toBe('overhead');
+    expect(expenseGroupOf('Garansi')).toBe('direct');
+    expect(expenseGroupOf('Sparepart')).toBe('stock');
+    expect(expenseGroupOf('Prive')).toBe('owner');
+  });
+  it('empat kondisi kas × break-even', () => {
+    expect(breakEvenVerdict(1, 1)).toBe('healthy');
+    expect(breakEvenVerdict(1, -1)).toBe('thin');
+    expect(breakEvenVerdict(-1, 1)).toBe('tied');
+    expect(breakEvenVerdict(-1, -1)).toBe('loss');
+  });
+  it('computeBreakEven: surplus = laba kotor − overhead', () => {
+    const r = computeBreakEven(
+      { ...base, expenses: history, from: '2026-08-01', to: '2026-08-31', today: '2026-09-20' },
+      20e6, [], [],
+    )!;
+    expect(r.surplus).toBeCloseTo(20e6 - 17.1e6);
+    expect(r.pct).toBeCloseTo(20e6 / 17.1e6);
   });
 });

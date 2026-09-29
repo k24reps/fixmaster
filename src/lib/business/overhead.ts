@@ -1,4 +1,5 @@
 import type { Expense, ID, OutletRent } from '@/data/types';
+import type { TranslationKey } from '@/i18n';
 
 /**
  * Overhead bulanan dari catatan Keuangan — satu-satunya sumber; isian perkiraan
@@ -154,4 +155,64 @@ export function grossProfit(
     .filter((e) => DIRECT_COST_CATEGORIES.includes(e.category))
     .reduce((sum, e) => sum + e.amount, 0);
   return serviceProfit + salesProfit - direct;
+}
+
+/**
+ * Kelompok kategori pengeluaran menurut perlakuannya di break-even. Dipakai
+ * form catat, filter buku kas, dan kartu Pengeluaran per Kategori — supaya
+ * salah kategori (mis. ongkir sebagai Sparepart) terlihat saat dicatat.
+ */
+export type ExpenseGroup = 'overhead' | 'direct' | 'stock' | 'owner';
+export const EXPENSE_GROUPS: { id: ExpenseGroup; categories: readonly string[] }[] = [
+  { id: 'overhead', categories: OVERHEAD_CATEGORIES },
+  { id: 'direct', categories: DIRECT_COST_CATEGORIES },
+  { id: 'stock', categories: ['Sparepart'] },
+  { id: 'owner', categories: ['Prive'] },
+];
+export const EXPENSE_GROUP_LABEL: Record<ExpenseGroup, TranslationKey> = {
+  overhead: 'finance.groupOverhead',
+  direct: 'finance.groupDirect',
+  stock: 'finance.groupStock',
+  owner: 'finance.groupOwner',
+};
+/** Kategori di luar daftar (baris lama) diperlakukan sebagai overhead, sama dengan Lainnya. */
+export function expenseGroupOf(category: string): ExpenseGroup {
+  return EXPENSE_GROUPS.find((g) => g.categories.includes(category))?.id ?? 'overhead';
+}
+
+export interface BreakEven {
+  overhead: OverheadResult;
+  gross: number;
+  /** gross ÷ overhead; 0 bila overhead belum tercatat. */
+  pct: number;
+  /** gross − overhead: + surplus, − kurang. */
+  surplus: number;
+}
+
+export function computeBreakEven(
+  input: OverheadInput,
+  serviceProfit: number,
+  sales: Parameters<typeof grossProfit>[1],
+  rangeExpenses: Parameters<typeof grossProfit>[2],
+): BreakEven | null {
+  const overhead = overheadForRange(input);
+  if (!overhead) return null;
+  const gross = grossProfit(serviceProfit, sales, rangeExpenses);
+  return {
+    overhead,
+    gross,
+    pct: overhead.total > 0 ? gross / overhead.total : 0,
+    surplus: gross - overhead.total,
+  };
+}
+
+/**
+ * Kas × break-even dibaca bersama. Kas naik belum tentu untung (gaji belum
+ * dibayar, part dari stok bulan lalu); kas turun belum tentu rugi (uang jadi
+ * stok, piutang, sewa dibayar di muka).
+ */
+export type BreakEvenVerdict = 'healthy' | 'thin' | 'tied' | 'loss';
+export function breakEvenVerdict(netCash: number, surplus: number): BreakEvenVerdict {
+  if (surplus >= 0) return netCash >= 0 ? 'healthy' : 'tied';
+  return netCash >= 0 ? 'thin' : 'loss';
 }

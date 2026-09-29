@@ -3724,3 +3724,17 @@ Transaksi dibatasi 100 baris tanpa filter). Memeriksa "Lainnya" atau memastikan 
 berarti menggulir seluruh buku kas atau ekspor CSV. Ditambah pilihan kategori di pita tab buku kas
 (state lokal, dibaca sekali dari `?cat=&month=`) dan tautan dari nama kategori di Laporan.
 Pencarian teks bebas sengaja tidak ditambahkan — kategori + bulan sudah cukup menyempitkan.
+
+## Vonis kas × break-even + kategori berkelompok (29 Sep 2026)
+
+Pemilik bingung: kas bersih surplus tapi break-even kurang — mana yang benar? Keduanya benar;
+waktu uang bergerak ≠ waktu untung terjadi (gaji belum dibayar, part dari stok bulan lalu, sewa
+dibayar di muka, uang jadi stok/piutang). Daripada menjelaskannya di dokumentasi, layar kini
+menyimpulkannya: `breakEvenVerdict(netCash, surplus)` → empat kondisi, di kartu break-even
+(kalimat lengkap) dan satu baris owner-only di hero Dashboard (kalimat singkat).
+
+Beda kategori overhead / bukan dibuat lewat **kelompok + label**, bukan warna — hijau/merah/amber
+sudah berarti masuk/keluar/peringatan. Tempat paling penting: form catat, karena salah kategori
+lahir di sana (contoh nyata: ongkir pembelian dicatat "Sparepart" lenyap dari break-even, sebab
+Sparepart = stok). Baris buku kas sengaja tanpa label — sudah padat. Label kelompok satu sumber:
+`EXPENSE_GROUP_LABEL` di `lib/business/overhead.ts`.

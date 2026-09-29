@@ -22,7 +22,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { getRent } from '@/config/orgConfig';
 import { interpolate } from '@/lib/business/notify';
-import { OVERHEAD_CATEGORIES } from '@/lib/business/overhead';
+import { EXPENSE_GROUPS, EXPENSE_GROUP_LABEL, expenseGroupOf } from '@/lib/business/overhead';
 import type {
   ActivityAction,
   Wallet,
@@ -60,6 +60,7 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Prive',
   'Lainnya',
 ];
+
 
 /** Penjelasan kategori arus kas pemilik — dua-duanya gampang disalahpahami. */
 const CATEGORY_HINT: Record<string, TranslationKey> = {
@@ -276,7 +277,22 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const rentOutlet = entryOutlet ?? resolveCreateOutlet(outlets);
   const rent = kind === 'expense' && category === 'Sewa' && rentOutlet ? getRent()[rentOutlet] : undefined;
   const annualRent = rent?.mode === 'tahunan' && rent.yearly > 0 ? rent : null;
-  const overheadCategory = kind === 'expense' && (OVERHEAD_CATEGORIES as readonly string[]).includes(category);
+  const group = kind === 'expense' ? expenseGroupOf(category) : null;
+  const overheadCategory = group === 'overhead';
+  // Tombol dikelompokkan menurut perlakuan di break-even, supaya salah kategori
+  // (mis. ongkir sebagai Sparepart) terlihat saat mencatat. Kategori lama yang
+  // tak ada di daftar (edit) tampil sebagai kelompok tanpa label.
+  const chipGroups: { key: string; label: TranslationKey | null; cats: string[] }[] =
+    kind === 'expense'
+      ? [
+          ...EXPENSE_GROUPS.map((g) => ({
+            key: g.id,
+            label: EXPENSE_GROUP_LABEL[g.id],
+            cats: base.filter((c) => g.categories.includes(c)),
+          })),
+          { key: 'legacy', label: null, cats: categories.filter((c) => !(base as string[]).includes(c)) },
+        ].filter((g) => g.cats.length > 0)
+      : [{ key: 'income', label: null, cats: categories }];
 
   return (
     <Modal
@@ -342,24 +358,32 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
               autoFocus
             />
           )}
-          <FormRow>
-            <Input
-              label={t('finance.date')}
-              type="date"
-              value={date}
-              min={editing ? undefined : monthStart}
-              max={today}
-              onChange={(e) => change(setDate)(e.target.value)}
-              hint={editing ? undefined : t('finance.dateHint')}
-            />
-            <Select
-              label={t('finance.category')}
-              value={category}
-              onChange={(e) => change(setCategory)(e.target.value)}
-              options={categories.map((c) => ({ value: c, label: c }))}
-            />
-          </FormRow>
+          <fieldset className={styles.catField}>
+            <legend className={styles.catLegend}>{t('finance.category')}</legend>
+            {chipGroups.map((g) => (
+              <div key={g.key} className={styles.catGroup}>
+                {g.label && <span className={styles.catGroupLabel}>{t(g.label)}</span>}
+                <div className={styles.catChips}>
+                  {g.cats.map((c) => (
+                    <label key={c} className={[styles.catChip, category === c ? styles.catChipOn : ''].join(' ')}>
+                      <input
+                        type="radio"
+                        name={`${formId}-category`}
+                        value={c}
+                        checked={category === c}
+                        onChange={() => change(setCategory)(c)}
+                      />
+                      {c}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </fieldset>
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
+          {(group === 'stock' || group === 'direct') && (
+            <p className={styles.formHint}>{t(group === 'stock' ? 'finance.hintStock' : 'finance.hintDirect')}</p>
+          )}
           {overheadCategory && (
             <p className={styles.formHint}>
               {t('finance.overheadHint')}{' '}
@@ -371,6 +395,15 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           {kind === 'income' && !editing && (
             <p className={styles.formHint}>{t('finance.autoIncomeHint')}</p>
           )}
+          <Input
+            label={t('finance.date')}
+            type="date"
+            value={date}
+            min={editing ? undefined : monthStart}
+            max={today}
+            onChange={(e) => change(setDate)(e.target.value)}
+            hint={editing ? undefined : t('finance.dateHint')}
+          />
           <FormRow>
             <Input
               ref={amountRef}
