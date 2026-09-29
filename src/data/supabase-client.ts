@@ -750,6 +750,7 @@ export async function recordFinanceEntry(args: {
   walletId: string;
   description: string;
   outletId: string | null;
+  employeeId?: string | null;
 }): Promise<string> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -762,9 +763,53 @@ export async function recordFinanceEntry(args: {
     p_wallet_id: args.walletId,
     p_description: args.description,
     p_outlet_id: args.outletId,
+    p_employee_id: args.employeeId ?? null,
   });
   if (error) throw new Error(error.message);
   return data as string;
+}
+
+/** Sisa kasbon & gaji terakhir per karyawan (0098). */
+export async function fetchPayrollOverview(
+  orgId: string,
+): Promise<{ employeeId: string; advanceOutstanding: number; lastSalary: number | null }[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('payroll_overview', { p_org_id: orgId });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { employee_id: string; advance_outstanding: number; last_salary: number | null }[]).map(
+    (r) => ({
+      employeeId: r.employee_id,
+      advanceOutstanding: Number(r.advance_outstanding) || 0,
+      lastSalary: r.last_salary == null ? null : Number(r.last_salary),
+    }),
+  );
+}
+
+/** Bayar gaji: Gaji penuh + potongan kasbon + saldo, satu transaksi (0098). */
+export async function paySalaryRpc(args: {
+  orgId: string;
+  employeeId: string;
+  gross: number;
+  deduction: number;
+  walletId: string;
+  outletId: string | null;
+  date: string;
+  description: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('pay_salary', {
+    p_org_id: args.orgId,
+    p_employee_id: args.employeeId,
+    p_gross: args.gross,
+    p_advance_deduction: args.deduction,
+    p_wallet_id: args.walletId,
+    p_outlet_id: args.outletId,
+    p_date: args.date,
+    p_description: args.description,
+  });
+  if (error) throw new Error(error.message);
 }
 
 /** Ubah transaksi keuangan manual + rekonsiliasi saldo, satu transaksi (0071). */

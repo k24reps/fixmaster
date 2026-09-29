@@ -165,9 +165,9 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Piutang',
     short: 'Uang milik toko yang masih di tangan orang lain.',
     body:
-      'Dua jenis di FixMaster: servis selesai yang belum dilunasi pelanggan (kartu Piutang di Laporan), dan kasbon karyawan. Kasbon bukan beban — saat dikembalikan atau dipotong dari gaji, catat Pemasukan "Pelunasan Kasbon".',
+      'Dua jenis di FixMaster: servis selesai yang belum dilunasi pelanggan (kartu Piutang di Laporan), dan kasbon karyawan. Kasbon bukan beban; sisa kasbon tiap karyawan dihitung otomatis dan dipotong lewat tombol Bayar Gaji di Keuangan (gaji penuh tetap jadi beban, potongannya melunasi piutang).',
     example:
-      'Kasbon Budi Rp 500 rb dipotong gaji: catat Gaji Rp 4 jt (penuh) dan Pelunasan Kasbon Rp 500 rb; kas keluar bersih Rp 3,5 jt.',
+      'Kasbon Budi Rp 500 rb, gaji Rp 2,5 jt: Bayar Gaji mencatat Gaji Rp 2,5 jt + potong kasbon Rp 500 rb; yang ditransfer Rp 2 jt, sisa kasbon Rp 0.',
     seenIn: [
       { label: 'Laporan', to: '/reports' },
       { label: 'Keuangan', to: '/finance' },

@@ -14,6 +14,8 @@ export interface NewFinanceEntry {
   walletId: string;
   description: string;
   outletId: string | null;
+  /** Karyawan untuk Gaji / Kasbon Karyawan / Pelunasan Kasbon (0098). */
+  employeeId?: string | null;
 }
 
 /**
@@ -37,6 +39,7 @@ export async function createFinanceEntry(a: NewFinanceEntry): Promise<string> {
       walletId: a.walletId,
       description: a.description,
       outletId: a.outletId,
+      employeeId: a.employeeId ?? null,
     });
   }
 
@@ -50,6 +53,7 @@ export async function createFinanceEntry(a: NewFinanceEntry): Promise<string> {
     amount: a.amount,
     walletId: a.walletId,
     description: a.description,
+    employeeId: a.employeeId ?? null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

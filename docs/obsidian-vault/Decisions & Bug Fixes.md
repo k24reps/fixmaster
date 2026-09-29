@@ -3834,3 +3834,16 @@ itu sisa laba yang harus masuk.
 "Operasional" (kategori lama, bersanding dengan kelompok "Beban Operasional") tak ditawarkan lagi
 untuk catatan baru dan tampil "Operasional (lama)" (`categoryLabel`). Saran urutan ke pemilik:
 perbaikan dulu, lalu rapikan catatan lama — prioritas bulan berjalan + 3 bulan sebelumnya.
+
+## Bayar Gaji (29 Sep 2026)
+
+Gaji yang dipotong kasbon butuh dua catatan manual (Gaji penuh + Pelunasan Kasbon) dan sisa kasbon
+dihitung sendiri dari keterangan — pemilik menyebutnya ribet. Opsi "kasbon = gaji dibayar di muka"
+ditawarkan (tanpa fitur) tapi pemilik memilih formulir. Keputusan: catatan kasbon/gaji terhubung
+ke karyawan (0098), sisa kasbon dihitung server, dan **Bayar Gaji** (Keuangan) menulis gaji penuh +
+potongan + saldo dalam satu simpan; pilihan karyawan menampilkan sisa kasbon, gaji & potongan
+terisi dari gaji terakhir & sisa kasbon, readout "Gaji (beban) − Potong kasbon = Ditransfer".
+"Simpan & lanjut" untuk banyak karyawan. Form Pengeluaran: Kasbon Karyawan & Pelunasan Kasbon
+wajib memilih karyawan; kategori tak lagi punya bawaan (dulu "Operasional", kini kategori lama —
+bawaan diam-diam = salah kategori). Tombol footer dibuat pendek: nominal rupiah (NBSP) tak bisa
+dipatah dan meluberkan footer 3 kolom di ponsel.

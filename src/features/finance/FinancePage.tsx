@@ -33,6 +33,7 @@ import { toast } from '@/stores/toast';
 import { EntryModal } from './EntryModal';
 import { TransferModal } from './TransferModal';
 import { CountModal } from './CountModal';
+import { PayrollModal } from './PayrollModal';
 import { voidTransfer } from './transferActions';
 import type { Income, Expense, WalletTransfer } from '@/data/types';
 import styles from './FinancePage.module.css';
@@ -81,6 +82,7 @@ export function FinancePage() {
   const [ledgerTab, setLedgerTab] = useState<'all' | LedgerKind>('all');
   const [transferOpen, setTransferOpen] = useState(false);
   const [countOpen, setCountOpen] = useState(false);
+  const [payrollOpen, setPayrollOpen] = useState(false);
   const [editingTransfer, setEditingTransfer] = useState<WalletTransfer | null>(null);
   const [toVoid, setToVoid] = useState<WalletTransfer | null>(null);
   const [voiding, setVoiding] = useState(false);
@@ -764,6 +766,18 @@ export function FinancePage() {
         >
           {t('finance.income')}
         </Button>
+        {wallets.length > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setMonthOffset(0);
+              setPayrollOpen(true);
+            }}
+            iconLeft={<Icon name="users" aria-hidden />}
+          >
+            {t('payroll.open')}
+          </Button>
+        )}
         {wallets.length >= 2 && (
           <Button
             variant="secondary"
@@ -913,6 +927,7 @@ export function FinancePage() {
         editing={editingExpense ?? editingIncome}
         existing={modalKind === 'expense' ? expenses : incomes}
       />
+      <PayrollModal open={payrollOpen} onClose={() => setPayrollOpen(false)} wallets={wallets} />
       <CountModal
         open={countOpen}
         onClose={() => setCountOpen(false)}

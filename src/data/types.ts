@@ -274,6 +274,8 @@ export interface Income extends BaseEntity {
   serviceId: ID | null;
   /** Link back to the originating POS sale, if any (for void reversal). */
   saleId?: ID | null;
+  /** Karyawan terkait (Pelunasan Kasbon), 0098. Cloud: memberships.id. */
+  employeeId?: ID | null;
 }
 
 export interface Expense extends BaseEntity {
@@ -284,6 +286,8 @@ export interface Expense extends BaseEntity {
   description: string;
   /** For expenses auto-created when receiving a PO; lets void_po reverse them. */
   poId?: ID | null;
+  /** Karyawan terkait (Gaji, Kasbon Karyawan), 0098 — dasar sisa kasbon per orang. */
+  employeeId?: ID | null;
 }
 
 export interface FixedCost extends BaseEntity {

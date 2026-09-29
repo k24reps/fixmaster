@@ -388,6 +388,8 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   atas permintaan pemilik. Tombol **Kamus istilah** di bar bulan; "Arus Kas Bersih" = `Term`.
   Catatan arus non-operasional di bawah ringkasan kini merinci semua kategori non-operasional.
 
+- **Bayar Gaji (29 Sep 2026).** Tombol di baris aksi Keuangan membuka `PayrollModal`: karyawan (label memuat sisa kasbon / "sudah dibayar"), gaji penuh (terisi gaji terakhir), potong kasbon (terisi sisa kasbon), dibayar dari, tanggal, keterangan; readout mono bergaris titik "Gaji (beban) · Potong kasbon · Ditransfer · Sisa kasbon setelah ini". Satu simpan = Gaji penuh + Pelunasan Kasbon (RPC `pay_salary`, 0098).
+
 ![[fin-dark.png]]
 
 ## Kamus Istilah — Datasheet (29 Sep 2026)

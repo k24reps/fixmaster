@@ -13,6 +13,8 @@ import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { walletsForOutlet, applyBalance, entryDateError, findRecentDuplicate } from '@/lib/business/finance';
 import { createFinanceEntry } from '@/data/financeEntry';
+import { loadPayrollOverview } from '@/data/payroll';
+import type { PayrollRow } from '@/lib/business/payroll';
 import { updateFinanceEntry } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { logActivity } from '@/lib/activity';
@@ -70,6 +72,10 @@ const MANUAL_GROUPS = EXPENSE_GROUPS.filter((g) => g.id !== 'contra').map((g) =>
   categories: g.categories.filter((c) => !(c in LEGACY_CATEGORY_LABEL)),
 }));
 const EXPENSE_CATEGORIES: string[] = MANUAL_GROUPS.flatMap((g) => [...g.categories]);
+
+/** Kategori yang terhubung ke karyawan (0098); kasbon & pelunasannya wajib. */
+const EMPLOYEE_CATEGORIES = new Set(['Gaji', 'Kasbon Karyawan', 'Pelunasan Kasbon']);
+const EMPLOYEE_REQUIRED = new Set(['Kasbon Karyawan', 'Pelunasan Kasbon']);
 
 /** Akibat pilihan di laporan, dijelaskan di bawah dropdown. */
 const EXPENSE_HINT: Record<string, TranslationKey> = {
@@ -169,6 +175,10 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const [walletId, setWalletId] = useState('');
   const [outletId, setOutletId] = useState('');
   const [description, setDescription] = useState('');
+  // Karyawan untuk Gaji / Kasbon / Pelunasan (0098) — dasar sisa kasbon per orang.
+  const [employeeId, setEmployeeId] = useState('');
+  const { data: employees } = useCollection('employees');
+  const [advances, setAdvances] = useState<Map<string, PayrollRow>>(new Map());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // Peringatan catat ganda sudah ditampilkan untuk isian ini; Simpan berikutnya lanjut.
@@ -201,13 +211,19 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
       setAmount(fmtRpInput(String(editing.amount)));
       setWalletId(editing.walletId);
       setDescription(editing.description);
+      setEmployeeId(editing.employeeId ?? '');
     } else {
       setDate(localDateStr());
-      setCategory(kind === 'income' ? 'Lainnya' : 'Operasional');
+      // Tanpa bawaan untuk pengeluaran: bawaan diam-diam = catatan salah kategori.
+      setCategory(kind === 'income' ? 'Lainnya' : '');
       setAmount('');
       setWalletId(walletsForOutlet(wallets, activeOutletId)[0]?.id ?? '');
       setDescription('');
+      setEmployeeId('');
     }
+    void loadPayrollOverview(orgId)
+      .then(setAdvances)
+      .catch(() => setAdvances(new Map()));
     setOutletId('');
     setDupAck(false);
     setOverAck(false);
@@ -228,7 +244,9 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const save = async (again = false) => {
     if (busy) return;
     const value = parseRpInput(amount);
+    if (!category) return setError(t('finance.categoryRequired'));
     if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
+    if (!editing && EMPLOYEE_REQUIRED.has(category) && !employeeId) return setError(t('finance.employeeRequired'));
     if (value <= 0) return setError(t('finance.amountRequired'));
     if (!walletId) return setError(t('finance.walletRequired'));
     // Baris bulan lalu yang diedit tak pernah sampai di sini (tombolnya tak ada).
@@ -263,6 +281,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             walletId,
             description: note,
             outletId: needOutlet ? outletId : resolveCreateOutlet(outlets),
+            employeeId: EMPLOYEE_CATEGORIES.has(category) ? employeeId || null : null,
           });
 
       logActivity({
@@ -384,7 +403,26 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             onChange={(e) => change(setCategory)(e.target.value)}
             options={legacy.map((c) => ({ value: c, label: categoryLabel(c) }))}
             groups={categoryGroups}
+            placeholder={t('finance.pickCategory')}
           />
+          {!editing && EMPLOYEE_CATEGORIES.has(category) && (
+            <Select
+              label={EMPLOYEE_REQUIRED.has(category) ? t('finance.employee') : t('finance.employeeOptional')}
+              value={employeeId}
+              onChange={(e) => change(setEmployeeId)(e.target.value)}
+              placeholder={t('finance.pickEmployee')}
+              options={employees
+                .filter((e) => e.active)
+                .map((e) => {
+                  const left = advances.get(e.id)?.advanceOutstanding ?? 0;
+                  return {
+                    value: e.id,
+                    label: left > 0 ? `${e.name} · ${interpolate(t('payroll.tagAdvance'), { amount: fmtRp(left) })}` : e.name,
+                  };
+                })}
+              hint={category === 'Gaji' ? t('finance.gajiUsePayroll') : undefined}
+            />
+          )}
           {CATEGORY_HINT[category] && <p className={styles.formHint}>{t(CATEGORY_HINT[category])}</p>}
           {expenseHint && (
             <p className={styles.formHint}>
