@@ -487,7 +487,7 @@ Jebakan yang sudah ditangani:
 memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fpwwswngqpftaixdlozo`) restricted sampai 7 Okt; sampai itu replika lokal
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
-Server (VPS sejak 27 Sep) = `0001`–`0098` (**`0099` menunggu dijalankan**, 6 Okt) (catatan `supabase_migrations` belum mencatat 0080–0098; 0084–0098 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru dan 0087–0089 dipasang 25 Sep). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
+Server (VPS sejak 27 Sep) = `0001`–`0099` (catatan `supabase_migrations` belum mencatat 0080–0099; 0084–0099 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru dan 0087–0089 dipasang 25 Sep). Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
 
 ## Pemantauan server (27 Sep 2026)
 
