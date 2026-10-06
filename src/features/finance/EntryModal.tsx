@@ -13,8 +13,12 @@ import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { walletsForOutlet, applyBalance, entryDateError, findRecentDuplicate } from '@/lib/business/finance';
 import { createFinanceEntry } from '@/data/financeEntry';
-import { loadPayrollOverview } from '@/data/payroll';
-import type { PayrollRow } from '@/lib/business/payroll';
+import { loadPayrollOverview, linkEntryEmployee } from '@/data/payroll';
+import {
+  EMPLOYEE_LINK_CATEGORIES,
+  EMPLOYEE_REQUIRED_CATEGORIES,
+  type PayrollRow,
+} from '@/lib/business/payroll';
 import { updateFinanceEntry } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { logActivity } from '@/lib/activity';
@@ -73,9 +77,8 @@ const MANUAL_GROUPS = EXPENSE_GROUPS.filter((g) => g.id !== 'contra').map((g) =>
 }));
 const EXPENSE_CATEGORIES: string[] = MANUAL_GROUPS.flatMap((g) => [...g.categories]);
 
-/** Kategori yang terhubung ke karyawan (0098); kasbon & pelunasannya wajib. */
-const EMPLOYEE_CATEGORIES = new Set(['Gaji', 'Kasbon Karyawan', 'Pelunasan Kasbon']);
-const EMPLOYEE_REQUIRED = new Set(['Kasbon Karyawan', 'Pelunasan Kasbon']);
+const EMPLOYEE_CATEGORIES = EMPLOYEE_LINK_CATEGORIES;
+const EMPLOYEE_REQUIRED = EMPLOYEE_REQUIRED_CATEGORIES;
 
 /** Akibat pilihan di laporan, dijelaskan di bawah dropdown. */
 const EXPENSE_HINT: Record<string, TranslationKey> = {
@@ -271,7 +274,14 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
     setBusy(true);
     try {
       const entryId = editing
-        ? await saveEdit(editing, { orgId, kind, date, category, value, walletId, note, wallets })
+        ? await saveEdit(editing, { orgId, kind, date, category, value, walletId, note, wallets }).then(async (id) => {
+            // Karyawan diubah lewat jalur sendiri (0099): edit uang tak menyentuhnya.
+            const nextEmployee = EMPLOYEE_CATEGORIES.has(category) ? employeeId || null : null;
+            if (nextEmployee !== (editing.employeeId ?? null) && EMPLOYEE_CATEGORIES.has(editing.category)) {
+              await linkEntryEmployee({ orgId, kind, id, employeeId: nextEmployee });
+            }
+            return id;
+          })
         : await createFinanceEntry({
             orgId,
             kind,
@@ -405,7 +415,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             groups={categoryGroups}
             placeholder={t('finance.pickCategory')}
           />
-          {!editing && EMPLOYEE_CATEGORIES.has(category) && (
+          {EMPLOYEE_CATEGORIES.has(category) && (
             <Select
               label={EMPLOYEE_REQUIRED.has(category) ? t('finance.employee') : t('finance.employeeOptional')}
               value={employeeId}

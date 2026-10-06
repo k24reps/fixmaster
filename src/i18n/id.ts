@@ -1545,6 +1545,12 @@ export const id = {
   'glossary.explain': 'buka penjelasan di Kamus Istilah',
   'glossary.open': 'Kamus istilah',
   // ---------- Bayar Gaji & kasbon per karyawan (29 Sep 2026) ----------
+  'finance.linkEmployee': '+ Karyawan',
+  'finance.linkTitle': 'Hubungkan ke karyawan',
+  'finance.linkHint': 'Hanya karyawannya yang berubah — nominal, tanggal, dan wallet tetap. Boleh untuk catatan bulan lalu; sisa kasbon di Bayar Gaji langsung ikut terhitung.',
+  'finance.linkNone': 'Tanpa karyawan',
+  'finance.linkSaved': 'Karyawan dihubungkan',
+  'finance.linkFailed': 'Gagal menghubungkan karyawan',
   'payroll.open': 'Bayar Gaji',
   'payroll.title': 'Bayar Gaji',
   'payroll.employee': 'Karyawan',

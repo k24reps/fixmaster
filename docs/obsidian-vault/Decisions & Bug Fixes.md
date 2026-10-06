@@ -3847,3 +3847,13 @@ terisi dari gaji terakhir & sisa kasbon, readout "Gaji (beban) − Potong kasbon
 wajib memilih karyawan; kategori tak lagi punya bawaan (dulu "Operasional", kini kategori lama —
 bawaan diam-diam = salah kategori). Tombol footer dibuat pendek: nominal rupiah (NBSP) tak bisa
 dipatah dan meluberkan footer 3 kolom di ponsel.
+
+## Hubungkan catatan lama ke karyawan (6 Okt 2026)
+
+Setelah Bayar Gaji, kasbon yang dicatat sebelum 0098 tak punya karyawan sehingga tak ikut sisa
+kasbon — dan satu-satunya jalan adalah mencatat ulang lalu menghapus (catatan bulan lalu bahkan
+terkunci). Menautkan karyawan tidak mengubah uang, jadi dibuat jalur sendiri (0099) yang **lolos
+kunci bulan**: chip karyawan di baris buku kas + pilihan karyawan di form edit. RPC hanya menyentuh
+`employee_id` dan menolak kategori selain Gaji/Kasbon/Pelunasan, jadi tidak bisa dipakai untuk
+mengakali kunci bulan. Uji lokal (rollback): kasbon bulan lalu tertaut → sisa kasbon 500 rb,
+nominal tetap; Sewa ditolak; lepas tautan → null.

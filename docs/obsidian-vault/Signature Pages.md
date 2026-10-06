@@ -389,6 +389,7 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   Catatan arus non-operasional di bawah ringkasan kini merinci semua kategori non-operasional.
 
 - **Bayar Gaji (29 Sep 2026).** Tombol di baris aksi Keuangan membuka `PayrollModal`: karyawan (label memuat sisa kasbon / "sudah dibayar"), gaji penuh (terisi gaji terakhir), potong kasbon (terisi sisa kasbon), dibayar dari, tanggal, keterangan; readout mono bergaris titik "Gaji (beban) · Potong kasbon · Ditransfer · Sisa kasbon setelah ini". Satu simpan = Gaji penuh + Pelunasan Kasbon (RPC `pay_salary`, 0098).
+- **Chip karyawan di buku kas (6 Okt 2026).** Baris Gaji / Kasbon Karyawan / Pelunasan Kasbon memuat chip bergaris titik berisi nama karyawan atau "+ Karyawan"; klik membuka `LinkEmployeeModal` (readout catatan + pilihan karyawan, "Tanpa karyawan" untuk melepas). Tampil juga di bulan terkunci — hanya menautkan, uangnya tetap (0099). Form edit catatan bulan ini juga menampilkan pilihan karyawan.
 
 ![[fin-dark.png]]
 

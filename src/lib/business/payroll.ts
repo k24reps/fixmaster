@@ -39,6 +39,10 @@ export function payrollOverview(incomes: Row[], expenses: Row[]): Map<string, Pa
   return out;
 }
 
+/** Kategori yang terhubung ke karyawan (0098/0099); kasbon & pelunasannya wajib saat dicatat. */
+export const EMPLOYEE_LINK_CATEGORIES: ReadonlySet<string> = new Set(['Gaji', 'Kasbon Karyawan', 'Pelunasan Kasbon']);
+export const EMPLOYEE_REQUIRED_CATEGORIES: ReadonlySet<string> = new Set(['Kasbon Karyawan', 'Pelunasan Kasbon']);
+
 /** Yang benar-benar ditransfer = gaji penuh − potongan kasbon. */
 export function netPay(gross: number, deduction: number): number {
   return Math.max(0, gross - deduction);

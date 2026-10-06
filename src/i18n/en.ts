@@ -1543,6 +1543,12 @@ export const en: Dictionary = {
   'glossary.explain': 'open the explanation in the Glossary',
   'glossary.open': 'Glossary',
   // ---------- Bayar Gaji & kasbon per karyawan (29 Sep 2026) ----------
+  'finance.linkEmployee': '+ Employee',
+  'finance.linkTitle': 'Link to employee',
+  'finance.linkHint': 'Only the employee changes — amount, date, and wallet stay. Allowed for last month’s entries too; the advance balance in Pay Salary updates right away.',
+  'finance.linkNone': 'No employee',
+  'finance.linkSaved': 'Employee linked',
+  'finance.linkFailed': 'Could not link the employee',
   'payroll.open': 'Pay Salary',
   'payroll.title': 'Pay Salary',
   'payroll.employee': 'Employee',

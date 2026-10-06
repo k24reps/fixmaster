@@ -521,6 +521,30 @@ button.walletCell[aria-pressed='true'] .walletLed {
 .tapeCat.exp {
   color: var(--text-secondary);
 }
+/* Karyawan pada catatan Gaji/Kasbon: chip bergaris titik yang bisa diklik
+   (juga di bulan terkunci — hanya menautkan karyawan, uangnya tetap). */
+.empChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  background: none;
+  border: 1px dotted var(--border-strong);
+  border-radius: var(--radius-full);
+  font: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.empChip:hover {
+  border-style: solid;
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+.empChip:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
 .lockTag {
   padding: 0 6px;
   border: 1px dashed var(--border-strong);

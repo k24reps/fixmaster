@@ -34,6 +34,8 @@ import { EntryModal } from './EntryModal';
 import { TransferModal } from './TransferModal';
 import { CountModal } from './CountModal';
 import { PayrollModal } from './PayrollModal';
+import { LinkEmployeeModal } from './LinkEmployeeModal';
+import { EMPLOYEE_LINK_CATEGORIES } from '@/lib/business/payroll';
 import { voidTransfer } from './transferActions';
 import type { Income, Expense, WalletTransfer } from '@/data/types';
 import styles from './FinancePage.module.css';
@@ -83,6 +85,8 @@ export function FinancePage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [countOpen, setCountOpen] = useState(false);
   const [payrollOpen, setPayrollOpen] = useState(false);
+  const [linking, setLinking] = useState<LedgerRow | null>(null);
+  const { data: employees } = useCollection('employees');
   const [editingTransfer, setEditingTransfer] = useState<WalletTransfer | null>(null);
   const [toVoid, setToVoid] = useState<WalletTransfer | null>(null);
   const [voiding, setVoiding] = useState(false);
@@ -553,6 +557,14 @@ export function FinancePage() {
           <span className={styles.tapeMeta}>
             <span className={[styles.tapeCat, tone].join(' ')}>{categoryLabel(r.category)}</span>
             <span>{walletName(r.walletId)}</span>
+            {EMPLOYEE_LINK_CATEGORIES.has(r.category) && (
+              // Boleh juga di bulan terkunci: hanya menautkan karyawan, uangnya tetap (0099).
+              <button type="button" className={styles.empChip} onClick={() => setLinking(r)}>
+                <Icon name="users" aria-hidden />
+                {employees.find((e) => e.id === (r.record as Expense | Income).employeeId)?.name ??
+                  t('finance.linkEmployee')}
+              </button>
+            )}
             {lockText && <span className={styles.lockTag}>{lockText}</span>}
           </span>
         </div>
@@ -926,6 +938,11 @@ export function FinancePage() {
         wallets={wallets}
         editing={editingExpense ?? editingIncome}
         existing={modalKind === 'expense' ? expenses : incomes}
+      />
+      <LinkEmployeeModal
+        entry={linking}
+        employees={employees}
+        onClose={() => setLinking(null)}
       />
       <PayrollModal open={payrollOpen} onClose={() => setPayrollOpen(false)} wallets={wallets} />
       <CountModal

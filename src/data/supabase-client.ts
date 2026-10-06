@@ -786,6 +786,24 @@ export async function fetchPayrollOverview(
   );
 }
 
+/** Tautkan catatan Gaji/Kasbon/Pelunasan ke karyawan — uangnya tak berubah, boleh untuk bulan terkunci (0099). */
+export async function setFinanceEntryEmployeeRpc(args: {
+  orgId: string;
+  kind: 'income' | 'expense';
+  id: string;
+  employeeId: string | null;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('set_finance_entry_employee', {
+    p_org_id: args.orgId,
+    p_kind: args.kind,
+    p_id: args.id,
+    p_employee_id: args.employeeId,
+  });
+  if (error) throw new Error(error.message);
+}
+
 /** Bayar gaji: Gaji penuh + potongan kasbon + saldo, satu transaksi (0098). */
 export async function paySalaryRpc(args: {
   orgId: string;

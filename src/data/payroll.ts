@@ -1,5 +1,5 @@
 import { repository } from '@/data';
-import { fetchPayrollOverview, paySalaryRpc } from '@/data/supabase-client';
+import { fetchPayrollOverview, paySalaryRpc, setFinanceEntryEmployeeRpc } from '@/data/supabase-client';
 import { applyBalance } from '@/lib/business/finance';
 import { payrollOverview, netPay, type PayrollRow } from '@/lib/business/payroll';
 import { newId } from '@/lib/id';
@@ -16,6 +16,24 @@ export async function loadPayrollOverview(orgId: string): Promise<Map<string, Pa
   }
   const [incomes, expenses] = await Promise.all([repository.list('incomes'), repository.list('expenses')]);
   return payrollOverview(incomes, expenses);
+}
+
+/**
+ * Hubungkan catatan lama ke karyawan. Hanya kolom karyawan yang berubah, jadi
+ * catatan bulan terkunci pun boleh — laporan bulan itu tidak bergeser.
+ */
+export async function linkEntryEmployee(a: {
+  orgId: string;
+  kind: 'income' | 'expense';
+  id: string;
+  employeeId: string | null;
+}): Promise<void> {
+  if (isCloudMode()) {
+    await setFinanceEntryEmployeeRpc(a);
+    return;
+  }
+  if (a.kind === 'income') await repository.patch('incomes', a.id, { employeeId: a.employeeId });
+  else await repository.patch('expenses', a.id, { employeeId: a.employeeId });
 }
 
 export interface PaySalaryArgs {
