@@ -19,11 +19,21 @@ describe('tampilan Daftar servis', () => {
   });
 
   it('segmen opsional dan lajurnya mengikuti pengaturan kolom', () => {
-    for (const id of ['customer', 'device', 'complaint', 'completionNote', 'technician']) {
+    for (const id of ['customer', 'device', 'technician']) {
       expect(tsx).toContain(`cols.has('${id}') && 'minmax(`);
     }
-    for (const id of ['customer', 'device', 'complaint', 'completionNote', 'technician', 'cost']) {
+    for (const id of ['customer', 'device', 'technician', 'cost']) {
       expect(tsx).toContain(`cols.has('${id}') && (`);
     }
+  });
+
+  it('keluhan dan penanganan satu segmen, tiap barisnya tetap ikut pengaturan', () => {
+    expect(tsx).toContain('const showNotes = showComplaint || showFix;');
+    expect(tsx).toContain('showNotes && `minmax(');
+    expect(tsx).toContain('data-seg="notes"');
+    expect(tsx).not.toContain('data-seg="complaint"');
+    expect(tsx).not.toContain('data-seg="completionNote"');
+    // Label di dalam segmen hanya disembunyikan bila ia satu-satunya baris.
+    expect(css).toContain('.rows .clamp:only-child b');
   });
 });

@@ -458,9 +458,11 @@
 .rowHead .rowActions {
   padding-right: 12px;
 }
-/* Saat judul kolom tampil, label & ikon di dalam segmen hanya mengulang. */
+/* Saat judul kolom tampil, label & ikon di dalam segmen hanya mengulang.
+   Kecuali segmen keluhan-penanganan berisi dua baris: tanpa label, baris
+   mana keluhan dan mana penanganan tak bisa dibedakan. */
 @container svcRows (min-width: 1181px) {
-  .rows .clamp b,
+  .rows .clamp:only-child b,
   .rows .rowTech svg {
     display: none;
   }
@@ -491,6 +493,9 @@
 }
 .rowTitle {
   color: var(--text-primary);
+}
+.rowCell[data-seg='notes'] {
+  gap: 2px;
 }
 /* Nama teknisi boleh dua baris supaya terbaca utuh di lajur yang sempit. */
 .rowTech {
@@ -547,6 +552,11 @@
   .rowMain > .rowCell {
     flex: 1 1 9rem;
   }
+  /* Teks bebas dua baris butuh lebar dua kali segmen lain, supaya tidak
+     terjepit sebesar kolom teknisi saat keduanya turun ke baris berikutnya. */
+  .rowMain > .rowCell[data-seg='notes'] {
+    flex: 2 1 14rem;
+  }
 }
 /* ≤860px: biaya dan aksi turun ke baris kedua, seperti Inventori. */
 @container svcRows (max-width: 860px) {
@@ -589,8 +599,7 @@
     flex-direction: row;
     gap: var(--space-2);
   }
-  .rowCell[data-seg='complaint'],
-  .rowCell[data-seg='completionNote'],
+  .rowCell[data-seg='notes'],
   .rowCell[data-seg='technician'],
   .rowCell > .sub {
     display: none;

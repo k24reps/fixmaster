@@ -306,16 +306,21 @@ export function ServicesPage() {
     [rows, limit, archive.length],
   );
 
+  // Keluhan & Penanganan berbagi satu segmen: dua baris bertumpuk, bukan dua
+  // potongan yang terpisah jauh saat segmen membungkus di layar laptop.
+  const showComplaint = cols.has('complaint');
+  const showFix = cols.has('completionNote');
+  const showNotes = showComplaint || showFix;
+
   // Lajur segmen Daftar dari kolom yang diaktifkan toko, supaya segmen antar
   // baris sejajar tanpa kepala tabel. Urutan = urutan segmen di JSX (nomor dulu).
   const rowTracks = [
     '6.5rem',
-    // Penanganan paling lebar (tiga baris ringkasan kerja); nama pelanggan &
-    // teknisi pendek dan boleh dua baris, jadi lajurnya lebih sempit.
+    // Segmen keluhan-penanganan paling lebar (tiga baris ringkasan kerja); nama
+    // pelanggan & teknisi pendek dan boleh dua baris, jadi lajurnya lebih sempit.
     cols.has('customer') && 'minmax(0, 0.9fr)',
     cols.has('device') && 'minmax(0, 1fr)',
-    cols.has('complaint') && 'minmax(0, 0.9fr)',
-    cols.has('completionNote') && 'minmax(0, 1.6fr)',
+    showNotes && `minmax(0, ${showComplaint && showFix ? 2.5 : showFix ? 1.6 : 0.9}fr)`,
     cols.has('technician') && 'minmax(0, 0.7fr)',
   ]
     .filter(Boolean)
@@ -772,8 +777,13 @@ export function ServicesPage() {
                   <span>{t('services.colNo')}</span>
                   {cols.has('customer') && <span>{t('services.colCustomer')}</span>}
                   {cols.has('device') && <span>{t('services.colDevice')}</span>}
-                  {cols.has('complaint') && <span>{t('services.colComplaint')}</span>}
-                  {cols.has('completionNote') && <span>{t('services.colFix')}</span>}
+                  {showNotes && (
+                    <span>
+                      {showComplaint && showFix
+                        ? t('services.colNotes')
+                        : t(showFix ? 'services.colFix' : 'services.colComplaint')}
+                    </span>
+                  )}
                   {cols.has('technician') && <span>{t('services.colTech')}</span>}
                 </div>
                 <span className={styles.rowStatus}>{t('common.status')}</span>
@@ -809,21 +819,21 @@ export function ServicesPage() {
                           {renderPickup(s)}
                         </div>
                       )}
-                      {cols.has('complaint') && (
-                        <div className={styles.rowCell} data-seg="complaint">
-                          <span className={styles.clamp} title={s.complaint || undefined}>
-                            <b>{t('services.colComplaint')}</b> {s.complaint || <EmptyValue />}
-                          </span>
-                        </div>
-                      )}
-                      {cols.has('completionNote') && (
-                        <div className={styles.rowCell} data-seg="completionNote">
-                          <span
-                            className={[styles.clamp, styles.clamp3].join(' ')}
-                            title={s.completionNote || undefined}
-                          >
-                            <b>{t('services.colFix')}</b> {s.completionNote || <EmptyValue />}
-                          </span>
+                      {showNotes && (
+                        <div className={styles.rowCell} data-seg="notes">
+                          {showComplaint && (
+                            <span className={styles.clamp} title={s.complaint || undefined}>
+                              <b>{t('services.colComplaint')}</b> {s.complaint || <EmptyValue />}
+                            </span>
+                          )}
+                          {showFix && (
+                            <span
+                              className={[styles.clamp, styles.clamp3].join(' ')}
+                              title={s.completionNote || undefined}
+                            >
+                              <b>{t('services.colFix')}</b> {s.completionNote || <EmptyValue />}
+                            </span>
+                          )}
                         </div>
                       )}
                       {cols.has('technician') && (
@@ -863,12 +873,12 @@ export function ServicesPage() {
                     <strong title={s.device || undefined}>{s.device}</strong>
                     <small>{s.category}</small>
                     {renderPickup(s)}
-                    {cols.has('complaint') && s.complaint && (
+                    {showComplaint && s.complaint && (
                       <small className={styles.jobNote}>
                         <b>{t('services.colComplaint')}</b> {s.complaint}
                       </small>
                     )}
-                    {cols.has('completionNote') && s.completionNote && (
+                    {showFix && s.completionNote && (
                       <small className={styles.jobNote}>
                         <b>{t('services.colFix')}</b> {s.completionNote}
                       </small>

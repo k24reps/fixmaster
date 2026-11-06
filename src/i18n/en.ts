@@ -728,6 +728,7 @@ export const en: Dictionary = {
   'services.colDevice': 'Device',
   'services.colComplaint': 'Complaint',
   'services.colFix': 'Fix',
+  'services.colNotes': 'Complaint & Fix',
   'services.colTech': 'Technician',
   'services.colCost': 'Cost',
   'services.showMore': 'Show more',

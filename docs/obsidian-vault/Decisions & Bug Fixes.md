@@ -4025,3 +4025,38 @@ pernah terbuka oleh sapuan menu. Foto demo publik diregenerasi; `shoot-demo.mjs`
 125% + Padat dan menuntut demo tetap 100% + Lapang.
 
 #decision #ui #zoom #density #a11y #design-system
+
+## Keluhan & Penanganan satu kolom di Daftar Servis (7 Nov 2026)
+
+**Permintaan pemilik:** di menu Servis, keluhan dan penanganan jadi satu kolom.
+
+**Masalah sebelumnya.** Di tampilan Daftar keduanya segmen terpisah. Judul kolom hanya tampil
+bila kontainer `svcRows` ≥1181px, kira-kira viewport ≥1540px dengan sidebar. Di bawah itu
+segmen membungkus, dan di laptop 1100–1440px Keluhan jatuh di bawah nomor tiket sementara
+Penanganan di bawah nama pelanggan. Dua teks yang dibaca berurutan jadi terpisah jauh.
+
+**Yang dibangun.**
+- Satu segmen `data-seg="notes"`: Keluhan di atas (jepit 2 baris), Penanganan di bawah
+  (jepit 3 baris), jarak 2px.
+- Lajur 2,5fr bila keduanya aktif, sama dengan jumlah lajur lama (0,9 + 1,6). Bila hanya satu
+  yang aktif, lajurnya tetap 0,9fr atau 1,6fr. Judul: "Keluhan & Penanganan" / "Complaint & Fix"
+  (`services.colNotes`).
+- Sakelar kolom di Pengaturan tetap dua (`complaint`, `completionNote`). Keduanya kini mengatur
+  baris di dalam segmen, bukan segmen sendiri, jadi pengaturan yang tersimpan tetap berlaku.
+- Saat segmen membungkus: `flex: 2 1 14rem`, supaya segmen ini tidak sesempit kolom teknisi.
+- Ponsel (≤520px) tetap menyembunyikan segmen ini. Tampilan Kartu dan Ringkas tidak berubah.
+
+**Pelajaran.** Label "Keluhan" / "Penanganan" di dalam segmen dulu disembunyikan di tata letak
+berjudul karena judul kolom sudah menyebutnya. Dengan dua baris dalam satu segmen, aturan itu
+membuat baris keluhan dan penanganan tak bisa dibedakan, apalagi bila salah satunya kosong (–).
+Kini label hanya disembunyikan bila ia satu-satunya baris: `.rows .clamp:only-child b`.
+
+**Verifikasi:** build, lint, **707 test / 66 berkas** hijau (tes `servicesTableWidth` mengunci
+segmen gabungan dan aturan `:only-child`). `audit-zoom` 100% dan Padat: 0 pelanggaran lantai
+12px, tanpa temuan baru di `/services`. `audit-mobile` ponsel dan pita tablet identik dengan
+baseline: hanya penggeser chip kategori yang disengaja. Diukur di demo: 1700px tinggi baris
+56–78px; 1440px segmen 349px di baris kedua. Nama perangkat panjang tetap dipotong elipsis di
+tata letak berjudul (1600px: lajur 111px, "MacBook Pro 13" 2019" butuh 149px); itu disengaja,
+teks lengkap ada di `title`.
+
+#decision #ui #services

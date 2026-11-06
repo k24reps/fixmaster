@@ -500,6 +500,11 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 ## Daftar Servis — Repair Job Cards
 
+**Keluhan & Penanganan satu kolom (7 Nov 2026, permintaan pemilik).** Di tampilan Daftar, kedua teks itu kini satu segmen `data-seg="notes"`: Keluhan di atas (jepit 2 baris), Penanganan di bawah (jepit 3 baris). Dulu keduanya segmen terpisah; saat segmen membungkus di layar laptop (kontainer ≤1180px, mis. viewport 1100–1440), Keluhan jatuh di bawah nomor tiket dan Penanganan di bawah pelanggan. Lajurnya 2,5fr bila keduanya aktif (jumlah dua lajur lama), judulnya "Keluhan & Penanganan". Dua sakelar kolom di Pengaturan tetap terpisah dan menentukan baris mana yang tampil. Label di dalam segmen hanya disembunyikan di tata letak berjudul bila ia satu-satunya baris (`.clamp:only-child b`); kalau keduanya tampil, label tetap ada supaya baris keluhan dan penanganan bisa dibedakan. Saat membungkus, segmen ini `flex: 2 1 14rem` agar tidak sesempit kolom teknisi. Tampilan Kartu dan Ringkas tidak berubah. Terukur di demo 1700px (tata letak berjudul): tinggi baris 56–78px, segmen 313px. Detail: [[Decisions & Bug Fixes#Keluhan & Penanganan satu kolom di Daftar Servis (7 Nov 2026)]].
+
+![[services-notes-1700-dark.png]]
+![[services-notes-1280-light.png]]
+
 **Critique UX tahap 1 (27 Sep 2026).** Lima StatCard diganti **strip readout** satu panel (3+2 di ponsel, sel rupiah dua jalur): tiket pertama kini terlihat di atas navigasi bawah (y 778 → 647 di 375px). Di ponsel pilihan Teknisi & Urutan dilipat ke "Filter lainnya" (hitungannya ikut); tautan nomor tiket berarea sentuh 45px. Detail: [[Decisions & Bug Fixes#UX Servis — critique tahap 1 (27 Sep 2026)]].
 
 Halaman `/services`: **tabel padat di desktop**, **kartu kompak di mobile** (responsif). Tiap baris/kartu = job card dengan badge status bertone, nomor servis mono, biaya tabular, dan kolom aksi.

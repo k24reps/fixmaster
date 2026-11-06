@@ -730,6 +730,7 @@ export const id = {
   'services.colDevice': 'Perangkat',
   'services.colComplaint': 'Keluhan',
   'services.colFix': 'Penanganan',
+  'services.colNotes': 'Keluhan & Penanganan',
   'services.colTech': 'Teknisi',
   'services.colCost': 'Biaya',
   'services.showMore': 'Tampilkan lebih banyak',

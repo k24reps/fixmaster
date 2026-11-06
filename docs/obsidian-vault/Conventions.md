@@ -56,7 +56,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (706 test / 66 berkas) |
+| `npm run test` | Vitest (707 test / 66 berkas) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 | `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |
