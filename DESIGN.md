@@ -7,23 +7,23 @@ colors:
   amber-deep: "#e8920c"
   diagnostic-cyan: "#3dd9c4"
   cyan-lit: "#68e3e0"
-  graphite-base: "#0b0f17"
-  graphite-app: "#131822"
-  graphite-surface: "#1c222e"
-  graphite-surface-2: "#242b38"
-  graphite-raised: "#2c3443"
-  graphite-input: "#161d2a"
-  rail-chassis: "#171d2b"
-  rail-well: "#0e131e"
-  rail-panel: "#202634"
-  rail-control: "#121823"
+  graphite-base: "#0c0f13"
+  graphite-app: "#15181e"
+  graphite-surface: "#1e2229"
+  graphite-surface-2: "#262b33"
+  graphite-raised: "#2e343d"
+  graphite-input: "#191d23"
+  rail-chassis: "#191e24"
+  rail-well: "#101319"
+  rail-panel: "#22272e"
+  rail-control: "#14171d"
   readout-base: "#090b0e"
   readout-surface: "#12161d"
   readout-text: "#f1f4f8"
   readout-muted: "#8b97a6"
   ink-primary: "#e4e6ea"
-  ink-secondary: "#afb8c6"
-  ink-muted: "#8f9dae"
+  ink-secondary: "#b1b8c2"
+  ink-muted: "#949ca8"
   on-brand: "#1a1205"
   signal-good: "#31b882"
   signal-good-text: "#77d787"
@@ -33,13 +33,14 @@ colors:
   signal-crit-text: "#f8869a"
   signal-info: "#527fe9"
   signal-info-text: "#89abf9"
-  light-steel-app: "#f0eeea"
-  light-steel-surface: "#fdfcf9"
+  light-steel-base: "#d9dde2"
+  light-steel-app: "#ebeef2"
+  light-steel-surface: "#fbfcfe"
   light-steel-elevated: "#ffffff"
-  light-ink-primary: "#212327"
-  light-brand: "#cf7c08"
-  light-brand-deep: "#d9820a"
-  light-accent-bezel: "#1fb3a0"
+  light-ink-primary: "#1f2329"
+  light-brand: "#bf7c00"
+  light-brand-edge: "#c0750a"
+  light-accent-text: "#006e63"
 typography:
   display:
     fontFamily: "Space Grotesk, Inter, sans-serif"
@@ -170,16 +171,18 @@ A cool graphite field with exactly two chromatic voices and a four-color signal 
 
 Frontmatter values are the dark theme unless prefixed `light-`. The light theme re-binds the same token names; its counterparts are named below where they differ meaningfully.
 
-**Comfort calibration (24 Sep 2026), measured in OKLCH.** Graphite ladder lifted off near-black (L 0.168 / 0.209 / 0.252 / 0.288 / 0.324 instead of starting at 0.145 with ~0.04 steps) so every surface reads as an object; dark primary ink eased from 15–17:1 to ~12.8:1 against cards, light primary from 17.6:1 to ~15.3:1; signal fills and texts kept their lightness and hue but lost 10–15% chroma (red/orange/blue were the loudest pixels on screen); light cards moved to ivory `#fdfcf9` so floating layers (`#ffffff`) separate from them; the amber glow and the amber→cyan bezel were softened. Both gates (`scripts/audit-tokens.mjs`, `scripts/audit-contrast.mjs`) pass. When tuning further, move chroma before lightness — lightness is what contrast rides on.
+**Comfort calibration (24 Sep 2026), measured in OKLCH.** Graphite ladder lifted off near-black (L 0.168 / 0.209 / 0.252 / 0.288 / 0.324 instead of starting at 0.145 with ~0.04 steps) so every surface reads as an object; dark primary ink eased from 15–17:1 to ~12.8:1 against cards, light primary from 17.6:1 to ~15.3:1; signal fills and texts kept their lightness and hue but lost 10–15% chroma (red/orange/blue were the loudest pixels on screen); light cards moved off pure white so floating layers (`#ffffff`) separate from them (ivory `#fdfcf9` then, steel white `#fbfcfe` since 6 Nov); the amber glow and the amber→cyan bezel were softened. Both gates (`scripts/audit-tokens.mjs`, `scripts/audit-contrast.mjs`) pass. When tuning further, move chroma before lightness — lightness is what contrast rides on.
+
+**VOLT palette (6 Nov 2026).** The neutrals of both themes now come from the mascot's own materials. Dark keeps the 24 Sep lightness ladder but sits on VOLT's shell hue (257°) at its low chroma (C 0.010–0.018), so `--bg-app` is the shell itself rather than navy. Light is brushed aluminium from VOLT's metal (hue 255–265°, C ≤ 0.009), replacing the warm ivory that fought the cool mascot. The logo's amber gradient (`--brand-500 → --brand-600`) is the primary button in both themes, and the light accent text returns to the LCD cyan hue (183°). Rationale and measurements: `docs/obsidian-vault/Design System.md`, "Palet dari VOLT Probe".
 
 "Default" here means the token layer only: bare `:root` is dark. At runtime the app follows `prefers-color-scheme` (`src/stores/theme.ts`), so a first-time visitor on a light-set OS lands in light. Neither theme is the one users see — test both.
 
 ### Primary
-- **Safety Amber** (`--brand`): The brand voice and the "this is live / this is the action" color. Primary buttons, active navigation channel, the brand mark, the focus ring, the featured plan. Light theme deepens it to `#d9820a` for contrast against pale steel, and text-on-amber uses the deep bitumen `--on-brand` (`#1a1205`) in both themes — amber never carries white text.
+- **Safety Amber** (`--brand`): The brand voice and the "this is live / this is the action" color. Primary buttons, active navigation channel, the brand mark, the focus ring, the featured plan. In light theme the logo amber is only 2:1 on steel, so the role splits: `--brand` (`#bf7c00`, the logo amber darkened at the same hue) is for shapes without text — LEDs, bars, rules — that need 3:1; amber surfaces that carry ink use `--brand-fill` (the full logo amber) with a `--brand-fill-edge` rim (`#c0750a`, the probe collar), and primary buttons keep the logo gradient with the same rim through `--shadow-brand`. Text-on-amber uses the deep bitumen `--on-brand` (`#1a1205`) in both themes — amber never carries white text.
 - **Amber Lit** (`--brand-text` in dark): The readable amber for text and iconography on dark surfaces. In light theme `--brand-text` drops all the way to `--brand-900` (`#7c4d12`) because bright amber on pale steel fails contrast.
 
 ### Secondary
-- **Diagnostic Cyan** (`--accent`): The instrument voice — liveness, measurement, "the machine is reporting". Online LEDs, section labels, trace lines, the "PALING LENGKAP" marker. Light theme uses `--accent-600` with a much darker text pair (`#08645d`).
+- **Diagnostic Cyan** (`--accent`): The instrument voice — liveness, measurement, "the machine is reporting". Online LEDs, section labels, trace lines, the "PALING LENGKAP" marker. Light theme uses `--accent-600` with a much darker text pair (`--accent-700`, `#006e63`, on the LCD's 183° hue).
 
 ### Tertiary
 The **signal set** — a fixed four-color status vocabulary shared by every module, so a green means the same thing on the dashboard as it does in inventory.
@@ -189,7 +192,7 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 - **Signal Info** (`--info`): neutral in-progress state and non-urgent classification.
 
 ### Neutral
-- **Graphite Base / App / Surface / Raised** (`--bg-base` → `--bg-elevated`): A four-step tonal ladder that does the work shadows do elsewhere. Light theme inverts the ladder to cool steel (`#d7dee4` → `#ffffff`), and notably `--bg-base` is *darker* than `--bg-app` in light mode — recessed wells stay recessed in both themes.
+- **Graphite Base / App / Surface / Raised** (`--bg-base` → `--bg-elevated`): A four-step tonal ladder that does the work shadows do elsewhere. Light theme inverts the ladder to brushed aluminium (`#d9dde2` → `#ffffff`), and notably `--bg-base` is *darker* than `--bg-app` in light mode — recessed wells stay recessed in both themes.
 - **Rail family** (`--rail-bg`, `--rail-well`, `--rail-panel`, `--rail-control`): A separate chassis palette for the app shell so the sidebar reads as mounted hardware rather than as another card.
 - **Readout family** (`--readout-base`, `--readout-surface`, `--readout-text`, `--readout-muted`): **Theme-independent.** These six values are defined once and never re-bound per theme — this is what makes an instrument well look identical in dark and light.
 - **Ink** (`--text-primary`, `--text-secondary`, `--text-muted`): Never pure white or pure black in either theme.

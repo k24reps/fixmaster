@@ -22,7 +22,7 @@
   display: inline-flex;
   align-items: center;
   color: var(--on-brand);
-  background: var(--brand);
+  background: var(--brand-fill);
   border: 1px solid var(--brand-text);
   border-radius: var(--radius-sm);
   font-weight: var(--fw-bold);
@@ -1231,7 +1231,7 @@
   gap: var(--space-2);
   padding: 10px 14px;
   color: var(--on-brand);
-  background: var(--brand);
+  background: var(--brand-fill);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-brand-tight);
   font-size: var(--text-sm);

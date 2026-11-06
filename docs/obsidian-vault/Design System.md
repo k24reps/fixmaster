@@ -18,6 +18,9 @@ FixMaster memakai bahasa visual **"Precision Electronics Bench"** — meja kerja
 - **Diagnostic cyan** (`#3dd9c4`) — aksen diagnostik/informasi
 
 Dua tema: **dark (default)** "Graphite Workshop" dan **light** "Bright Workshop Steel".
+Sejak 6 Nov 2026 netral kedua tema diturunkan dari material maskot VOLT Probe: grafit
+cangkangnya untuk dark, baja logamnya untuk light. Lihat
+[Palet dari VOLT Probe](#palet-dari-volt-probe-6-nov-2026).
 
 ## Token (sumber kebenaran tunggal)
 
@@ -161,7 +164,8 @@ dengan brand `#f5a623` — berjarak hanya **dE 0.018** di OKLab. Lewat `STATUS_T
 membuat **Diterima**, **Konfirmasi Biaya**, dan **Tunggu Sparepart** tampil
 identik. Warning digeser ke oranye; jaraknya kini dE 0.10+ di kedua tema.
 
-**Netral diberi suhu.** Dark bergeser dari abu netral ke graphite baja (~218deg)
+**Netral diberi suhu.** _(Diganti 6 Nov 2026: netral kini mengikuti material VOLT,
+lihat bagian Palet dari VOLT Probe.)_ Dark bergeser dari abu netral ke graphite baja (~218deg)
 supaya amber duduk sebagai komplemen dan menyala, bukan menempel di atas abu mati.
 Light bergeser dari abu-biru dingin ke netral hangat bersaturasi rendah (~35deg) —
 bukan krem — karena rona dingin membuat layar terang terbaca klinis.
@@ -291,6 +295,69 @@ dinamai antislop:
 
 Terukur setelah perbaikan (12 menu demo, desktop): 0 sel navigasi bercahaya, 0 badge
 bercahaya; elemen bercahaya yang tersisa adalah LED dan tombol utama.
+
+## Palet dari VOLT Probe (6 Nov 2026)
+
+Permintaan pemilik: warna tema harus lebih sesuai dengan logo dan maskot, dan bagus di
+light maupun dark. Pemilik memilih arah **baja aluminium** untuk light.
+
+**Kenapa tema lama tidak cocok.** Diukur di OKLCH terhadap material maskot
+(`--volt-shell` `#15191f` = L 0.212, C 0.013, rona 258°):
+
+| Bagian | Sebelum | Masalah |
+|---|---|---|
+| Netral dark | navy, rona 264°, C 0.018–0.029 | Dua kali lebih jenuh dari cangkang VOLT, terbaca biru dongker |
+| Netral light | gading hangat, rona ~85° | Berlawanan dengan logam VOLT yang abu-biru dingin |
+| Gradien tombol light | `#e8920c → #d9820a` | Oranye lama, bukan amber logo `#f5a623` |
+| Teks aksen light | `#055f72`, rona 218° | Biru petrol, bukan cyan LCD (182°) |
+
+**Yang berubah** (`src/styles/tokens.css`):
+
+- **Dark = cangkang VOLT.** Tangga terang L dari kalibrasi 24 Sep dipertahankan, rona dan
+  kejenuhannya diturunkan ke 257° / C 0.010–0.018, sehingga `--bg-app` `#15181e` hampir sama
+  dengan `--volt-shell`. Base `#0c0f13`, kartu `#1e2229`, elevated `#2e343d`.
+- **Light = baja aluminium.** Netral rona 255–265° dengan C ≤ 0.009: base `#d9dde2`,
+  app `#ebeef2`, kartu `#fbfcfe`. Tinta `#1f2329` (15.4:1 di kartu), muted `#5c6169`
+  (6.1:1 di kartu, 5.4:1 di app). Bayangan memakai rona baja `rgba(20,28,40,…)`, bukan
+  cokelat.
+- **Amber logo di kedua tema.** `--gradient-brand` = `--brand-500 → --brand-600` di light
+  juga. Di light tombol utama diberi tepi 1px `--brand-700` lewat `--shadow-brand`, seperti
+  kerah probe, karena amber logo di atas baja cuma 2:1.
+- **Dua peran amber di light**:
+  - `--brand` `#bf7c00` = amber logo yang digelapkan dengan rona sama (72°, L 0.64). Ini
+    untuk bentuk tanpa teks (LED, garis, bar), yang wajib 3:1 di atas kartu (3.35:1).
+    Amber tua logo sendiri (`--brand-700`, 66°) tidak bisa: cuma dE 0.089 dari
+    `--warning`, sehingga Diterima menyatu dengan Konfirmasi Biaya.
+  - `--brand-fill` + `--brand-fill-edge` (token baru) untuk bidang amber yang membawa teks
+    atau ikon (`--on-brand`): sel ikon menu aktif, "Daftar Gratis" demo, tombol tab POS,
+    titik wizard, node tahap servis, chip hari tugas, skip link, "Buka demo" di bingkai.
+    Isinya amber logo penuh (`--brand-500`, tinta 9.2:1); batasnya datang dari tepi
+    (`--brand-700`, 3.5:1). Dengan `--brand` padat, bidang ini terbaca mustard di samping
+    tombol utama. Di dark isian dan tepinya `--brand-500` / `--brand-600`.
+- **Cyan kembali ke rona LCD.** `--accent-700` `#006e63` (183°) jadi `--accent-text` light
+  (6.0:1). Agar tetap terpisah dari hijau, `--success-text` light digelapkan ke `#08511f`;
+  pemisahan teks success vs aksen dE 0.118, info vs aksen 0.174.
+- `--grid-line`, `--rail-*`, dan `--gradient-brand-accent` ikut rona baja; isian
+  gradiennya kini lewat `var()`.
+
+Ikut dibetulkan karena terungkap saat memverifikasi:
+
+- Tombol dev "Isi data demo & masuk" di Wizard: putih di atas cyan `--accent-600` hanya
+  3.1:1 di light → tinta `--volt-display` (6.4:1).
+- `audit-contrast.mjs` kini memindai `/landing-preview`. Di dev server tanpa Supabase `/`
+  merender Wizard, jadi landing yang sebenarnya belum pernah ikut gerbang ini.
+- `shoot-demo.mjs` menunggu nominal kas apa pun yang bukan nol. Angka pasti
+  "Rp 5.100.000" basi saat data demo berubah dan membuat probe timeout.
+
+Verifikasi: `audit-tokens` LULUS 0 pelanggaran; `audit-contrast` BERSIH (landing,
+`/landing-preview`, 12 menu demo, dan langkah modal Servis/Kasir, kedua tema); build,
+lint, 692 test lulus. Foto produk di `public/screenshots/demo-*` diregenerasi.
+
+![[volt-theme-landing-light.png]]
+![[volt-theme-landing-dark.png]]
+![[volt-theme-demo-light.png]]
+![[volt-theme-demo-dark.png]]
+![[volt-theme-servis-light.png]]
 
 ## Terkait
 - [[Iconography]] — set ikon Phosphor

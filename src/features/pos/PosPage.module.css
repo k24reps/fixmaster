@@ -902,7 +902,7 @@
   background: var(--bg-input);
 }
 .activeToggle {
-  background: var(--brand) !important;
+  background: var(--brand-fill) !important;
   color: var(--on-brand) !important;
 }
 

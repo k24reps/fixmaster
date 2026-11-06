@@ -104,9 +104,13 @@ const scan = () => {
   return out;
 };
 
+// `/` di dev server tanpa Supabase merender Wizard onboarding, bukan landing.
+// Landing yang dilihat pengunjung baru ada di alias /landing-preview, dan sampai
+// 6 Nov 2026 halaman itu tidak pernah ikut dipindai gerbang ini.
 const routes = [
   ['/demo', 'demo-dashboard'],
   ['/', 'landing'],
+  ['/landing-preview', 'landing-preview'],
 ];
 
 let total = 0;

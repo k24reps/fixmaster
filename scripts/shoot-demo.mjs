@@ -43,7 +43,9 @@ async function waitForDemo(page) {
   await page.getByText('MODE DEMO').waitFor({ timeout: 20000 });
   // Dashboard aggregates settle just after the shell. Waiting for the hero
   // readout prevents public proof images from catching an empty instrument.
-  await page.getByText(/Rp\s*5\.100\.000/).waitFor({ timeout: 10000 });
+  // Nominal apa pun yang bukan nol: angka pasti (dulu "Rp 5.100.000") basi
+  // setiap kali data seed demo berubah dan membuat probe ini timeout.
+  await page.getByText(/^Rp\s*[1-9][\d.]*$/).first().waitFor({ timeout: 10000 });
   await page.waitForTimeout(800);
 
   const surface = await page.evaluate(() => {

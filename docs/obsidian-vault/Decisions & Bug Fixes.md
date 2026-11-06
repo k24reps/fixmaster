@@ -3905,3 +3905,37 @@ pemilik meminta semuanya diperbaiki. Hasil per nomor ada di
   (Playwright belum terpasang): 12 menu demo x 2 tema + landing, 0 kontras gagal, 0 em dash
   tampil, 0 lompatan heading; 375px: 0 luberan dokumen di 12 menu. Screenshot vault belum
   diregenerasi karena Playwright belum terpasang.
+
+## Palet tema dari VOLT Probe (6 Nov 2026)
+
+Pemilik meminta warna tema yang lebih sesuai dengan logo dan maskot, bagus di kedua mode,
+dan memilih arah **baja aluminium** untuk light. Netral dark kini grafit cangkang VOLT
+(rona 257°, kejenuhan rendah, bukan navy), netral light baja logam VOLT (bukan gading
+hangat), tombol utama light memakai gradien amber logo. Nilai dan alasannya ada di
+[[Design System]] (Palet dari VOLT Probe). Yang layak diingat:
+
+- **Amber logo tidak bisa jadi warna bentuk di atas baja terang.** `#f5a623` di kartu
+  `#fbfcfe` cuma 2:1, sedangkan LED dan bar butuh 3:1. Amber tua logo (`--brand-700`) lolos
+  3:1 tetapi hanya dE 0.089 dari `--warning`, dan gerbang token langsung menangkapnya:
+  Diterima menyatu dengan Konfirmasi Biaya. Solusinya amber logo yang digelapkan **pada
+  rona yang sama** (`#bf7c00`, 72°): 3.35:1 dan dE 0.107.
+- **Warna bentuk bukan warna bidang berteks.** `#bf7c00` padat di bidang yang membawa teks
+  (sel ikon menu aktif, "Daftar Gratis" demo) terbaca mustard di samping tombol gradien.
+  Bidang berteks tidak butuh 3:1 terhadap kartu karena teksnya yang membawa makna, jadi ia
+  memakai token baru `--brand-fill` (amber logo penuh) dengan tepi `--brand-fill-edge`
+  (3.5:1). Aturannya: `--brand` untuk LED/garis/bar, `--brand-fill` untuk isian bertinta
+  `--on-brand`, `--gradient-brand` untuk tombol utama.
+- **Rona cyan logo bertabrakan dengan hijau.** Mengembalikan teks aksen light ke rona LCD
+  (183°) membuatnya dekat dengan teks success. Sama seperti pelajaran 23 Sep, pemisahnya
+  terang-gelap: `--success-text` digelapkan ke `#08511f`, jaraknya kini dE 0.118.
+- **Gerbang kontras tidak pernah memindai landing yang asli.** `audit-contrast.mjs` membuka
+  `/`, yang di dev server tanpa Supabase adalah Wizard onboarding. Rute `/landing-preview`
+  ditambahkan. Pemindaian ulang menemukan cacat lama di Wizard: tombol dev putih di atas cyan
+  3.1:1, kini bertinta `--volt-display`.
+- **Probe foto demo basi oleh data seed.** `shoot-demo.mjs` menunggu teks "Rp 5.100.000";
+  data demo sekarang menampilkan Rp 800.000 sehingga probe timeout. Kini menunggu nominal
+  apa pun yang bukan nol.
+- Verifikasi: `audit-tokens` LULUS, `audit-contrast` BERSIH (46 pemindaian: landing,
+  `/landing-preview`, 12 menu demo, langkah modal, kedua tema), build, lint, **692 test / 64
+  berkas** hijau. Foto `public/screenshots/demo-*` dan screenshot vault diregenerasi lewat
+  Playwright.

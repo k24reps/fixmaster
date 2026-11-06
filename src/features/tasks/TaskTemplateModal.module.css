@@ -83,8 +83,8 @@
   border-color: var(--border-brand);
 }
 .dayActive {
-  background: var(--brand);
-  border-color: var(--brand);
+  background: var(--brand-fill);
+  border-color: var(--brand-fill-edge);
   /* --on-brand, bukan --on-solid: putih di atas amber cuma 2.03:1. */
   color: var(--on-brand);
 }
