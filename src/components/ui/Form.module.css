@@ -33,7 +33,7 @@
   background: var(--red-400);
   box-shadow: 0 0 7px var(--red-400);
   flex-shrink: 0;
-  animation: fm-pulse 1s var(--ease-in-out) infinite;
+  animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 
 /* Forms stack to a single column on small screens. */

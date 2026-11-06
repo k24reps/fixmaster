@@ -223,6 +223,8 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 
 **The Mono Numbers Rule.** Every number a user might compare, verify, or read aloud is monospace with tabular figures: currency, quantities, service IDs (`FM-0241`), phone numbers, times, percentages. Proportional digits in an operational readout is a defect, not a preference.
 
+**The Silkscreen-Is-Inside-The-Device Rule.** The uppercase tracked mono label belongs to instruments: app fields, table heads, stat captions. On the landing page it stays only on captions that mirror an app screen inside a product mockup (console header, readout captions, ticket fields, margin terms). Everything around the mockups drops the uppercase and the tracking: the brand tagline and owner readouts become sentence-case sans; plan descriptors, the "recommended" tag, and progress-stage names keep mono (they sit in the instrument well or a readout row) but in sentence case. When every section opens with the same silkscreen caption, the page stops sounding like a bench and starts sounding like a template.
+
 **The 12px Floor Rule.** No leaf text that carries information or an action goes below 12px at the default 16px root. Non-interactive ornament may be smaller. This is an ergonomic contract, not a suggestion — the operator is reading at arm's length under shop lighting.
 
 The floor governs the **touch/counter scene**, which is what it was written for. It binds every `px`/`rem` value a component chooses, and it binds the shipped default on touch devices. It does **not** bind the app-wide zoom control: on a pointer-precise device the shell starts at 80% (`applyDeviceDensityDefault` in `src/stores/zoom.ts`), which scales the whole document and takes mono labels to 9.6px. The landing page and the public demo pin that same device density as a transient zoom (`deviceDensityZoom`), so every desk visitor sees the same compact composition regardless of any zoom saved by the app on that origin. That is a deliberate product decision for the desk scene — closer reading distance, mouse instead of glove — and the zoom control is the escape hatch in both directions. Never design a component *to* the zoomed size; design to the floor, then let zoom scale it.
@@ -252,7 +254,7 @@ Shadow is therefore reserved and meaningful. It says one of exactly two things: 
 - **Bench tight** (`--shadow-bench-tight`: `0 6px 8px rgba(0,0,0,0.34)`): Objects resting *on* the bench — the repair ticket, the product frame. Short throw, close contact.
 - **Lift** (`--shadow-md`: `0 10px 30px rgba(0,0,0,0.34)`): The hover response of an interactive card, paired with `translateY(-2px)`.
 - **Overlay** (`--shadow-lg`: `0 24px 70px rgba(0,0,0,0.52)`): Modals, sheets, and the featured plan plate. Genuinely floating above everything.
-- **Powered** (`--shadow-brand` / `--shadow-brand-tight`): Amber-tinted glow under primary buttons and brand-active elements. This is the only colored shadow in the system and it means "energized", not "important".
+- **Powered** (`--shadow-brand` / `--shadow-brand-tight`): Amber-tinted glow under primary buttons, primary action controls (the POS cart dock, the pay link), and the standalone brand mark on single-panel screens. This is the only colored shadow in the system and it means "energized", not "important". Navigation state never glows: the active nav icon cell and the bottom-nav active bar are lit by their solid fill alone. With LEDs also glowing, a third family of lit elements pushed screens to 11–13 glows at once.
 
 ### Named Rules
 
@@ -287,11 +289,13 @@ Three recurring silhouettes define the form language:
 - **Secondary:** Solid `--bg-surface` with a `--border-strong` edge that shifts to `--border-brand` on hover.
 - **Ghost:** Transparent with `--text-secondary`; hover fills with `--bg-hover` and promotes text to primary.
 - **Danger:** Solid `--danger` with `--on-solid` white — the one place white text on a saturated fill is correct.
-- **Disabled:** `opacity: 0.55` plus `pointer-events: none`. No separate disabled palette.
+- **Disabled:** `opacity: 0.55` plus `cursor: not-allowed`. Pointer events stay on so the cursor can say "not now"; the native `disabled` attribute already blocks the click. No separate disabled palette.
+- **Arrows:** A trailing right arrow means "this takes you somewhere": a row or card that opens a detail, a text link to another page, the wizard's **Lanjut**, the POS cart dock that moves to the cart, and the ticket's **Perbarui status**, which moves the repair to its next stage. An action button that does its work in place (save, start a trial, new sale) carries no arrow; its verb already says what happens. Chevrons on month or page steppers are controls, not ornament, and sit outside this rule.
 
 ### Badges
 - **Style:** Full pill (`--radius-full`), mono uppercase at 12px with 0.045em tracking, soft tinted background (`--*-soft`), matching text token, and a border mixed at 30% of the signal color.
 - **State:** An optional 7px `currentColor` dot leads the label — the badge's own LED.
+- **No glow:** The badge and its dot never carry a `box-shadow`. A pill with border, dot, uppercase, *and* glow is the generic AI capsule; the glow is the element FixMaster leaves out.
 - **Variants:** neutral, brand, success, warning, danger, info. There is no "outline" or "solid" axis; the tint-plus-border treatment is the only badge.
 
 ### Cards / Containers
@@ -311,7 +315,7 @@ Three recurring silhouettes define the form language:
 
 ### Navigation
 - **Style:** Sidebar items are instrument channels — a 32px icon cell, a sans label, and a right-aligned live readout (LED plus mono count). Minimum height 48px, `--radius-sm`.
-- **Active:** `--rail-active` fill, `--border-brand` edge, an inset top highlight, and the icon cell inverting to a solid `--brand` tile with white-on-amber iconography.
+- **Active:** `--rail-active` fill, `--border-brand` edge, an inset top highlight, and the icon cell inverting to a solid `--brand` tile with white-on-amber iconography. No glow under the tile (see Powered).
 - **Hover:** Lifts to `--rail-panel` with the icon cell tinting to `--accent-soft`.
 - **Gated (plan-locked):** A dimmed channel plus a mono "PRO" badge with a brand LED. **Never a padlock glyph.**
 - **Collapsed:** Labels and counts drop away, leaving a 78px LED tower where each channel's status light is still readable at a glance.
@@ -347,6 +351,8 @@ Themed rather than left to the browser: a 9px scrollbar with a `--border-strong`
 - **Don't** place more than one instrument well on a screen, or use the readout palette for a panel that merely wants attention.
 - **Don't** reach for diagnostic cyan as a second brand color when amber starts to feel repetitive — cyan means instrument reading.
 - **Don't** put white text on safety amber; amber always carries `--on-brand` (`#1a1205`).
-- **Don't** apply glass or `backdrop-filter` to a card sitting in a list or grid on a page that already has its own surface. Glass belongs to things that float over something: chassis (topbar, drawers, sheets, action bars, the demo faceplate), overlays, and standalone panels resting directly on the ambient grid (auth, onboarding wizard, tracking result, the summary rail).
+- **Don't** apply glass or `backdrop-filter` to a card sitting in a list or grid on a page that already has its own surface. `Card` no longer has a `glass` prop; do not bring one back. Glass belongs to things that float over something: chassis (topbar, drawers, sheets, action bars, the demo faceplate), overlays, and standalone panels resting directly on the ambient grid (auth, onboarding wizard, tracking result, the summary rail).
 - **Don't** set an operational number in a proportional face.
+- **Don't** loop a status pulse forever. Alarms and alerts pulse `--pulse-cycles` (2) times, then rest lit; the mascot's SMIL motion plays once or twice when it scrolls into view. Only a running process (spinner, the connecting sync LED, the dashboard loading sweep) loops, and it stops when the process does. No idle float or bob on logos.
+- **Don't** fill an empty cell with an em dash. Use `EmptyValue` in JSX (en dash for the eye, "kosong" for a screen reader) or `EMPTY_VALUE` in strings.
 - **Don't** use emoji or a Unicode glyph where an icon belongs — icons come only through the `Icon` component.

@@ -258,7 +258,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
                 onClick={() => startTrial('hero', 'hero')}
               >
                 {t('landingV2.startTrial')}
-                <Icon name="arrow-right" aria-hidden />
               </button>
             </div>
           </div>
@@ -272,9 +271,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               <span className={styles.ticketHeading}>
                 <span>{t('landingV2.consoleTitle')}</span>
                 <small>{t('landingV2.ticketExample')}</small>
-              </span>
-              <span className={styles.consoleOnline}>
-                <span className={styles.liveLed} aria-hidden /> {t('landingV2.online')}
               </span>
             </div>
 
@@ -326,14 +322,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               <span className={styles.consoleMessageCopy}>
                 <small>VOLT // {t('landingV2.consoleCompanion')}</small>
                 <strong>{t('landingV2.consoleMessage')}</strong>
-              </span>
-              <span className={styles.consoleSignal} aria-hidden>
-                <i />
-                <i />
-                <i />
-                <i />
-                <small>{t('landingV2.consoleSignal')}</small>
-                <strong>{t('landingV2.consoleSignalValue')}</strong>
               </span>
             </div>
           </div>
@@ -726,7 +714,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             type="button"
             onClick={() => startTrial('final_cta', 'final_cta')}
           >
-            {t('landingV2.startTrial')} <Icon name="arrow-right" aria-hidden />
+            {t('landingV2.startTrial')}
           </button>
         </section>
       </main>

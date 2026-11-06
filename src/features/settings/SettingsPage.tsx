@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFeature } from '@/hooks/useFeature';
 import { useSearchParams } from 'react-router-dom';
@@ -384,7 +385,7 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
   };
 
   return (
-    <Card glass accent="brand">
+    <Card accent="brand">
       <CardHeader
         icon={<Icon name="bars" aria-hidden />}
         title={t('settings.mobileNav.title')}
@@ -562,7 +563,7 @@ function BusinessTab() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="store" aria-hidden />} title={t('settingsPage.profilUsaha')} />
       <CardBody>
         <div className={styles.form}>
@@ -672,7 +673,7 @@ function ServiceTemplatesCard() {
     void persist(accessories.filter((a) => a !== value), setAccessoryTemplates, setAccessories);
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader
         icon={<Icon name="clipboard-list" aria-hidden />}
         title={t('settingsPage.templateServis')}
@@ -730,7 +731,7 @@ function ServiceColumnsCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="clipboard-list" aria-hidden />} title={t('settingsPage.kolomTabelServis')} />
       <CardBody>
         <p className={styles.tplHint}>
@@ -790,7 +791,7 @@ function DeviceCategoriesCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="laptop" aria-hidden />} title={t('settingsPage.kategoriPerangkat')} />
       <CardBody>
         <p className={styles.tplHint}>
@@ -926,7 +927,7 @@ function WarrantyCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="shield-halved" aria-hidden />} title={t('settingsPage.garansi')} />
       <CardBody>
         <p className={styles.tplHint}>
@@ -1023,7 +1024,7 @@ function MonthlyTargetCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="bullseye" aria-hidden />} title={t('settingsPage.targetBulanan')} />
       <CardBody>
         <p className={styles.tplHint}>
@@ -1100,7 +1101,7 @@ function RentCard() {
 
   if (outlets.length === 0) return null;
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="store" aria-hidden />} title={t('settingsPage.rentTitle')} />
       <CardBody>
         <p className={styles.tplHint}>{t('settingsPage.rentHint')}</p>
@@ -1130,7 +1131,7 @@ function RentCard() {
                       placeholder="24.000.000"
                     />
                     <span className={styles.rentReadout}>
-                      {yearly > 0 ? interpolate(t('settingsPage.rentPerMonth'), { amount: fmtRp(yearly / 12) }) : '—'}
+                      {yearly > 0 ? interpolate(t('settingsPage.rentPerMonth'), { amount: fmtRp(yearly / 12) }) : <EmptyValue />}
                     </span>
                   </>
                 ) : (
@@ -1180,7 +1181,7 @@ function PublicNoteCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="note" aria-hidden />} title={t('settingsPage.catatanToko')} />
       <CardBody>
         <p className={styles.tplHint}>
@@ -1253,7 +1254,7 @@ function WhatsAppTemplatesCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader
         icon={<Icon name="whatsapp" aria-hidden />}
         title={t('settingsPage.templateWhatsapp')}
@@ -1271,7 +1272,7 @@ function WhatsAppTemplatesCard() {
           <code className={styles.varChip}>{`{alamat}`}</code>,{' '}
           <code className={styles.varChip}>{`{garansi}`}</code> dan{' '}
           <code className={styles.varChip}>{`{rincian_bayar}`}</code> membawa barisnya
-          sendiri — barisnya hilang otomatis kalau datanya kosong, jadi tidak perlu
+          sendiri. Barisnya hilang otomatis kalau datanya kosong, jadi tidak perlu
           ditulis label lagi di depannya.
         </p>
         {keys.map((k) => (
@@ -1617,7 +1618,7 @@ function TeamTab({
   return (
     <>
       {isSupabaseConfigured && (
-        <Card glass>
+        <Card>
           <CardHeader
             icon={<Icon name="user-plus" aria-hidden />}
             title={t('settingsPage.undangAnggota')}
@@ -1724,7 +1725,7 @@ function TeamTab({
         </Card>
       )}
 
-      <Card glass>
+      <Card>
         <CardHeader icon={<Icon name="users" aria-hidden />} title={t('settingsPage.anggotaTim')} />
         <CardBody className={styles.noPad}>
           <ul className={styles.list}>
@@ -1989,7 +1990,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
 
   return (
     <>
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="crown" aria-hidden />}
           title={t('settings.billing.status')}
@@ -2062,7 +2063,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
         </CardBody>
       </Card>
 
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="whatsapp" aria-hidden />}
           title={t('settings.billing.manualTitle')}
@@ -2168,7 +2169,7 @@ function BillingTab({ outlets }: { outlets: Outlet[] }) {
       </Card>
 
       {paymentHistory.length > 0 && (
-        <Card glass>
+        <Card>
           <CardHeader
             icon={<Icon name="receipt" aria-hidden />}
             title={t('settings.billing.history')}
@@ -2310,7 +2311,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
 
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="wallet" aria-hidden />} title={t('settingsPage.walletKas')} />
       <CardBody>
         <p className={styles.hint}>
@@ -2610,7 +2611,7 @@ function OutletTab({ outlets }: { outlets: Outlet[] }) {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader icon={<Icon name="shop" aria-hidden />} title={t('settingsPage.outletCabang')} />
       <CardBody>
         {outlets.length === 0 ? (
@@ -2769,7 +2770,7 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
         </span>
         <div className={styles.itemInfo}>
           <strong>{outlet.name}</strong>
-          <small>{outlet.address || '—'}</small>
+          <small>{outlet.address || <EmptyValue />}</small>
         </div>
         {geofenceOn && (
           <Badge tone="success">
@@ -2866,7 +2867,7 @@ function OutletRow({ outlet }: { outlet: Outlet }) {
       <ConfirmDialog
         open={confirm}
         title={t('settingsPage.hapusCabang2')}
-        message={`"${outlet.name}" akan dihapus. Hanya bisa dihapus bila belum pernah dipakai transaksi, absensi, kas, atau penugasan anggota — cabang utama tidak bisa dihapus.`}
+        message={`"${outlet.name}" akan dihapus. Hanya bisa dihapus bila belum pernah dipakai transaksi, absensi, kas, atau penugasan anggota. Cabang utama tidak bisa dihapus.`}
         confirmLabel={t('settingsPage.hapus')}
         danger
         onConfirm={async () => {
@@ -2912,7 +2913,7 @@ function ExportDataCard() {
   };
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader
         icon={<Icon name="download" aria-hidden />}
         title={t('settingsPage.exportData')}
@@ -3036,7 +3037,7 @@ function BackupCard() {
   // lokal: ambil teksnya, lalu masuk ke dialog konfirmasi yang sudah ada.
   // Satu format, satu jalur restore, satu tempat yang bisa salah.
   const restoreFromCloud = async (backup: CloudBackup) => {
-    if (demoGuard('Restore tersedia di FixMaster versi penuh — daftar gratis.')) return;
+    if (demoGuard('Restore tersedia di FixMaster versi penuh. Daftar gratis.')) return;
     try {
       stageRestore(await readCloudBackup(backup.path));
     } catch (e) {
@@ -3058,7 +3059,7 @@ function BackupCard() {
 
   const handleBackup = async () => {
     if (!canBackup) return;
-    if (demoGuard('Backup tersedia di FixMaster versi penuh — daftar gratis.')) return;
+    if (demoGuard('Backup tersedia di FixMaster versi penuh. Daftar gratis.')) return;
     setBusy(true);
     try {
       const backup = await createBackup(org?.id ?? null);
@@ -3090,7 +3091,7 @@ function BackupCard() {
   };
 
   const handleRestore = async () => {
-    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh — daftar gratis.'))
+    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh. Daftar gratis.'))
       return;
     if (pendingText === null) return;
     setRestoring(true);
@@ -3118,7 +3119,7 @@ function BackupCard() {
       : t('settingsPage.neverBackedUp');
 
   return (
-    <Card glass>
+    <Card>
       <CardHeader
         icon={<Icon name="clock-rotate-left" aria-hidden />}
         title={t('settingsPage.backupRestore')}
@@ -3190,7 +3191,7 @@ function BackupCard() {
               <p className={styles.autoBackupError}>
                 <Icon name="triangle-exclamation" aria-hidden /> Backup terakhir gagal
                 pada {new Date(lastRun.startedAt).toLocaleString('id-ID')}
-                {lastRun.error ? ` — ${lastRun.error}` : ''}
+                {lastRun.error ? `: ${lastRun.error}` : ''}
               </p>
             )}
             {loadingCloud && <p className={styles.planNote}>{t('settingsPage.memuatDaftar')}</p>}
@@ -3339,7 +3340,7 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
       {isOwner && <ExportDataCard />}
 
       {isOwner && (
-        <Card glass accent="danger">
+        <Card accent="danger">
           <CardHeader
             icon={<Icon name="triangle-exclamation" aria-hidden />}
             title={t('settingsPage.zonaBerbahaya')}

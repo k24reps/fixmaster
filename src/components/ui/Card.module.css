@@ -12,13 +12,6 @@
     border-color var(--dur-normal) var(--ease-out);
 }
 
-.glass {
-  background: var(--surface-glass);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-color: var(--border-strong);
-}
-
 .interactive {
   cursor: pointer;
 }

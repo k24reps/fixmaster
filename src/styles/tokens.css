@@ -123,6 +123,11 @@
   --dur-fast: 0.13s;
   --dur-normal: 0.22s;
   --dur-slow: 0.36s;
+  /* Denyut LED status menarik perhatian SEKALI lalu menyala tetap. Dua siklus
+     (paling lama 4 detik) menjaga gerak otomatis di bawah 5 detik (WCAG 2.2.2),
+     jadi tidak butuh tombol jeda. Indikator proses (spinner, "menyambung")
+     tetap berulang karena berhenti sendiri saat prosesnya selesai. */
+  --pulse-cycles: 2;
 
   /* ---------- Layout ---------- */
   --sidebar-width: 278px;

@@ -456,6 +456,7 @@
 .roleSelect:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 
 /* ---------- Billing / subscription ---------- */
@@ -556,7 +557,7 @@
   box-shadow:
     0 0 0 3px var(--danger-soft),
     0 0 10px var(--danger);
-  animation: fm-pulse 1.4s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.4s var(--ease-in-out) var(--pulse-cycles);
 }
 
 /* Pilihan kolom tabel Servis */
@@ -999,6 +1000,7 @@
 .waTextarea:focus {
   outline: none;
   border-color: var(--border-brand);
+  box-shadow: var(--ring);
 }
 
 /* ---------- System ---------- */

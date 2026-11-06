@@ -45,6 +45,7 @@
 .sortSelect:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 
 /* ---------- Registry summary strip ---------- */

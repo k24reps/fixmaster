@@ -8,7 +8,8 @@ const config = JSON.parse(vercelSource) as {
 const spaRoutes = [
   '/landing-preview',
   '/operator',
-  '/prototype/ticket',
+  // '/prototype/ticket' sengaja tidak ada: rutenya hanya didaftarkan di dev
+  // server (router.tsx, devOnlyRoutes), jadi produksi tak perlu rewrite-nya.
   '/track',
   '/privacy',
   '/terms',

@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
@@ -373,7 +374,7 @@ export function ReportsPage() {
 
   return (
     <div className={styles.wrap}>
-      <Card glass>
+      <Card>
         <CardBody>
           <div className={styles.dateBar}>
             <Icon name="calendar-alt" aria-hidden />
@@ -498,7 +499,7 @@ export function ReportsPage() {
       </div>
 
       {/* 1. Income vs expense trend chart */}
-      <Card glass>
+      <Card>
         <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
         <CardBody>
           {reportPending ? (
@@ -512,7 +513,7 @@ export function ReportsPage() {
       </Card>
 
       {breakEven && (
-        <Card glass accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
+        <Card accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
           <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={<Term id="break-even">{t('reports.indikatorBreakEven')}</Term>} />
           <CardBody>
             {breakEven.overhead.total === 0 ? (
@@ -603,7 +604,7 @@ export function ReportsPage() {
       )}
 
       <div className={styles.grid}>
-        <Card glass>
+        <Card>
           <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title={t('reports.pemasukanPerKategori')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
@@ -634,7 +635,7 @@ export function ReportsPage() {
           </CardBody>
         </Card>
 
-        <Card glass>
+        <Card>
           <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title={t('reports.pengeluaranPerKategori')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
@@ -685,7 +686,7 @@ export function ReportsPage() {
       </div>
 
       {/* 3. Profit by device category */}
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="microchip" aria-hidden />}
           title={<Term id="laba-servis">{t('reports.labaPerKategoriPerangkat')}</Term>}
@@ -718,7 +719,7 @@ export function ReportsPage() {
 
       <div className={styles.grid}>
         {/* 4a. Sparepart usage */}
-        <Card glass>
+        <Card>
           <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title={t('reports.sparepartTerlaris')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
@@ -744,7 +745,7 @@ export function ReportsPage() {
         </Card>
 
         {/* 4b. Restock suggestions */}
-        <Card glass>
+        <Card>
           {/* Satu-satunya kartu di halaman ini yang TIDAK mengikuti periode di
               header — stok adalah nilai sekarang, bukan rentang. Dulu tidak
               disebutkan sama sekali. */}
@@ -793,7 +794,7 @@ export function ReportsPage() {
       </div>
 
       {/* 5. Service funnel + turnaround */}
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="filter" aria-hidden />}
           title={t('reports.funnelServisTiketMasuk')}
@@ -836,7 +837,7 @@ export function ReportsPage() {
 
       {/* 7. Per-outlet comparison (only when multiple outlets) */}
       {outlets.length > 1 && (
-        <Card glass>
+        <Card>
           <CardHeader icon={<Icon name="store" aria-hidden />} title={t('reports.perbandinganAntarOutlet')} />
           <CardBody className={styles.noPad}>
             {reportPending ? (
@@ -884,7 +885,7 @@ export function ReportsPage() {
       )}
 
       {/* Technician leaderboard (existing) */}
-      <Card glass>
+      <Card>
         <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('reports.performaTeknisiPeriode')} />
         <CardBody className={styles.noPad}>
           {reportPending ? (
@@ -910,7 +911,7 @@ export function ReportsPage() {
       </Card>
 
       {/* 8. Receivables aging */}
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="coins" aria-hidden />}
           title={t('reports.piutangServisSelesaiBelum')}
@@ -974,7 +975,7 @@ export function ReportsPage() {
       </Card>
 
       {/* 2. Transaction detail table */}
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="clipboard-list" aria-hidden />}
           title={t('reports.rincianTransaksi')}
@@ -1010,7 +1011,7 @@ export function ReportsPage() {
                         </span>
                       </td>
                       <td>{r.category}</td>
-                      <td className={styles.descCell}>{r.description || '—'}</td>
+                      <td className={styles.descCell}>{r.description || <EmptyValue />}</td>
                       <td className={[styles.num, styles.mono, r.amount >= 0 ? styles.inc : styles.exp].join(' ')}>
                         {fmtRp(r.amount)}
                       </td>

@@ -73,6 +73,7 @@
 .select:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 
 /* ---------- Bin grid ---------- */
@@ -160,12 +161,12 @@
 .low .ledDot {
   background: var(--amber-400);
   box-shadow: 0 0 8px var(--amber-400);
-  animation: fm-pulse 1.8s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.8s var(--ease-in-out) var(--pulse-cycles);
 }
 .out .ledDot {
   background: var(--red-500);
   box-shadow: 0 0 9px var(--red-500);
-  animation: fm-pulse 1s var(--ease-in-out) infinite;
+  animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 
 .binName {

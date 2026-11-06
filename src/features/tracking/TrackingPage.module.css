@@ -155,7 +155,7 @@
 }
 .searchBtn:disabled {
   opacity: 0.55;
-  pointer-events: none;
+  cursor: not-allowed;
 }
 .searchHint {
   margin-top: var(--space-3);
@@ -209,6 +209,29 @@
   max-width: 46ch;
   font-size: var(--text-xs);
   line-height: 1.6;
+}
+
+.retryBtn {
+  margin-top: var(--space-4);
+  min-height: var(--control-h);
+  padding: 0 var(--space-5);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.retryBtn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.retryBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 /* ---------- Hasil ---------- */

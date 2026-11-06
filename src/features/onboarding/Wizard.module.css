@@ -245,6 +245,7 @@
 .roleSelect:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 .removeBtn {
   min-height: var(--control-h);

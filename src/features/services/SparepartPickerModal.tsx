@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState } from 'react';
 import { Modal, Input, Button, Icon } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
@@ -112,7 +113,7 @@ export function SparepartPickerModal({
                   <div className={styles.info}>
                     <span className={styles.name}>{item.name}</span>
                     <span className={styles.meta}>
-                      <span className={styles.sku}>{item.sku || '—'}</span>
+                      <span className={styles.sku}>{item.sku || <EmptyValue />}</span>
                       <span className={styles.dot} />
                       {interpolate(t('partPicker.stock'), { n: String(item.stock) })}
                       {isMgr && (

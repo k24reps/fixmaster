@@ -45,7 +45,7 @@ export function isCloudMode(): boolean {
  */
 export function demoGuard(message?: string): boolean {
   if (!useDemoStore.getState().isDemo) return false;
-  toast.info(message ?? 'Fitur ini aktif di FixMaster versi penuh — daftar gratis untuk mencoba.');
+  toast.info(message ?? 'Fitur ini aktif di FixMaster versi penuh. Daftar gratis untuk mencoba.');
   return true;
 }
 

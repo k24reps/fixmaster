@@ -1,3 +1,4 @@
+import { EMPTY_VALUE } from '@/lib/format';
 import type { PlanType, Role } from '@/data/types';
 
 /** Feature flags gated by plan. */
@@ -116,7 +117,7 @@ export const PLANS: Record<PlanType, PlanDef> = {
     id: 'suspended',
     name: 'Suspended',
     priceMonthly: 0,
-    priceLabel: '—',
+    priceLabel: EMPTY_VALUE,
     features: [],
     maxWallets: 0,
     maxOutlets: 0,

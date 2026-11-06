@@ -7,6 +7,7 @@
  * Pure IDR helpers in lib/format.ts remain for tests/non-React code; this hook
  * is the app-facing, reactive formatter.
  */
+import { EMPTY_VALUE } from '@/lib/format';
 import { useSettingsStore, type CurrencyCode } from '@/stores/settings';
 
 /** Locale used for MONEY + number grouping, derived from currency (not UI lang). */
@@ -49,7 +50,7 @@ export function useFormat() {
     opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' },
   ): string => {
     const d = typeof date === 'string' ? new Date(date) : date;
-    if (Number.isNaN(d.getTime())) return '—';
+    if (Number.isNaN(d.getTime())) return EMPTY_VALUE;
     return new Intl.DateTimeFormat(dateLocale, opts).format(d);
   };
 

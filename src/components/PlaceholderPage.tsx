@@ -12,7 +12,7 @@ interface PlaceholderPageProps {
  */
 export function PlaceholderPage({ title, icon, milestone }: PlaceholderPageProps) {
   return (
-    <Card glass>
+    <Card>
       <EmptyState
         icon={<Icon name={icon} aria-hidden />}
         title={title}

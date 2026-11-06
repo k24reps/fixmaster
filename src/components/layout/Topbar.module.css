@@ -160,7 +160,7 @@
   border-radius: 50%;
   background: var(--danger);
   border: 2px solid var(--bg-surface);
-  animation: fm-pulse 2s infinite;
+  animation: fm-pulse 2s var(--pulse-cycles);
 }
 
 /* ---------- Akun: avatar + menu (dulu kartu pengguna di dasar sidebar) ---------- */

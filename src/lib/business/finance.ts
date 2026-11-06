@@ -206,7 +206,7 @@ export function entryDateError(date: string, today: string): string | null {
   if (!date) return 'Tanggal wajib diisi';
   if (date > today) return 'Tanggal tidak boleh di masa depan';
   if (date < today.slice(0, 8) + '01') {
-    return 'Bulan lalu sudah terkunci — catat koreksinya sebagai transaksi bulan ini';
+    return 'Bulan lalu sudah terkunci. Catat koreksinya sebagai transaksi bulan ini';
   }
   return null;
 }

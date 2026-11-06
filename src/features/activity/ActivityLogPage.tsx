@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState } from 'react';
 import { Card, CardBody, Button, EmptyState, Icon, Input, Select, Badge } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -194,7 +195,7 @@ export function ActivityLogPage() {
         )}
       </div>
 
-      <Card glass className={styles.traceCard}>
+      <Card className={styles.traceCard}>
         <CardBody className={styles.noPad}>
           {loading ? (
             <p className={styles.loading}>
@@ -243,7 +244,7 @@ export function ActivityLogPage() {
                             <div className={styles.evMeta}>
                               <span className={styles.actor}>
                                 <Icon name="user" className={styles.actorIcon} aria-hidden />
-                                {log.actorName || '—'}
+                                {log.actorName || <EmptyValue />}
                               </span>
                               <Badge tone="neutral">{roleLabel(log.actorRole)}</Badge>
                             </div>

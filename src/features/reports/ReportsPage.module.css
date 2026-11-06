@@ -54,6 +54,7 @@
 .dateInput:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 .range {
   margin-left: auto;
@@ -342,6 +343,31 @@
 .catLink:hover {
   color: var(--brand-text);
   text-decoration-color: currentColor;
+}
+/* Tautan sebaris setinggi 16-17px. Area sentuhnya diperluas lewat ::after
+   supaya tata letak tabel tidak ikut membesar. */
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+  .catLink {
+    position: relative;
+  }
+  .catLink::after {
+    content: '';
+    position: absolute;
+    inset: -14px -4px;
+  }
+  /* Di baris rincian, nama kategori memotong teks (`overflow: hidden`) dan
+     ikut memotong ::after di atas. Area sentuhnya dipindah ke seluruh baris:
+     baris tak memuat kontrol lain, dan isinya memang kategori yang sama. */
+  .channel {
+    position: relative;
+  }
+  .channel .catLink {
+    position: static;
+  }
+  .channel .catLink::after {
+    inset: 0;
+    z-index: 1; /* di atas .bar, yang ikut `position: relative` */
+  }
 }
 /* Nominal estimasi (beban rutin belum dicatat bulan ini): tanda kecil, bukan warna. */
 .estTag {
@@ -940,4 +966,12 @@
 .glossaryBtn:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* Aturan sentuh global (global.css) hanya mengenai <button>; tombol ini sebuah
+   tautan, jadi tingginya diikat sendiri. Terukur 29px di 375px sebelum ini. */
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+  .glossaryBtn {
+    min-height: var(--control-h);
+  }
 }

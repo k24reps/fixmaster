@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { repository } from '@/data';
-import { fmtNumber, fmtRp } from '@/lib/format';
+import { fmtNumber, fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate, localDateStr, monthRange } from '@/lib/time';
 import {
   summarize,
@@ -247,7 +247,7 @@ export function FinancePage() {
     return out;
   }, [visibleLedger]);
 
-  const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? '—';
+  const walletName = (id: string) => wallets.find((w) => w.id === id)?.name ?? EMPTY_VALUE;
   const scopeSuffix = [walletFilter && walletName(walletFilter), categoryFilter]
     .filter(Boolean)
     .map((x) => ` · ${x}`)
@@ -255,7 +255,7 @@ export function FinancePage() {
   // Transfer menyimpan nama wallet saat itu: tetap terbaca walau wallet ada di
   // cabang lain (tak ikut daftar) atau sudah diganti nama.
   const transferWalletName = (id: string, snapshot: string) =>
-    wallets.find((w) => w.id === id)?.name ?? (snapshot || '—');
+    wallets.find((w) => w.id === id)?.name ?? (snapshot || EMPTY_VALUE);
   const today = localDateStr();
 
   const handleVoid = async () => {
@@ -651,11 +651,11 @@ export function FinancePage() {
       {/* Wallet = strip readout dengan sel Total, dan pergerakan bulan yang
           dilihat di tiap sel — cukup untuk mencocokkan saldo dengan laci/rekening. */}
       {loadPending(walletsLoad) ? (
-        <Card glass>
+        <Card>
           <LoadState queries={[walletsLoad]} />
         </Card>
       ) : wallets.length === 0 ? (
-        <Card glass padding>
+        <Card padding>
           <p className={styles.noWallet}>{t('finance.noWallet')}</p>
         </Card>
       ) : (
@@ -814,7 +814,7 @@ export function FinancePage() {
         )}
       </div>
 
-      <Card glass id="buku-kas" className={styles.ledgerCard}>
+      <Card id="buku-kas" className={styles.ledgerCard}>
         <CardHeader
           icon={<Icon name="receipt" aria-hidden />}
           title={`${t('finance.ledger')}${scopeSuffix}`}

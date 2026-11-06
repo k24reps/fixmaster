@@ -55,7 +55,7 @@
   border-radius: 50%;
   background: var(--warning);
   box-shadow: 0 0 8px var(--warning);
-  animation: demoPulse 1.8s ease-in-out infinite;
+  animation: demoPulse 1.8s ease-in-out var(--pulse-cycles);
 }
 @keyframes demoPulse {
   0%, 100% { opacity: 1; }

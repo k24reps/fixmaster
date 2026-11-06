@@ -277,7 +277,7 @@
   color: var(--danger);
 }
 .pulse .readoutLed {
-  animation: fm-pulse 1s var(--ease-in-out) infinite;
+  animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 
 /* active = selected/lit channel */
@@ -287,11 +287,13 @@
   border-color: var(--border-brand);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-100) 38%, transparent);
 }
+/* Tanpa glow: sel aktif sudah terang oleh isian amber padatnya. Cahaya di
+   sini hanya menambah jumlah elemen bercahaya tanpa membawa status; glow
+   disimpan untuk LED dan tombol utama (antislop R-13, keputusan #21). */
 .navItem.active .navIconCell {
   color: var(--on-brand);
   background: var(--brand);
   border-color: var(--brand-hover);
-  box-shadow: var(--shadow-brand-tight);
 }
 .navItem.active .tone_idle .readoutLed {
   background: var(--brand);

@@ -142,7 +142,7 @@ Kami kabari lagi begitu ada perkembangan. Salam, {toko}`,
 
 Estimasi biaya perbaikan: *{estimasi}*
 
-Mohon konfirmasinya apakah pengerjaan kami lanjutkan. Bila ada yang ingin ditanyakan lebih dulu, silakan balas pesan ini — dengan senang hati kami jelaskan.
+Mohon konfirmasinya apakah pengerjaan kami lanjutkan. Bila ada yang ingin ditanyakan lebih dulu, silakan balas pesan ini, dengan senang hati kami jelaskan.
 
 Terima kasih, {toko}`,
 
@@ -155,7 +155,7 @@ Status terbaru bisa dicek kapan saja di:
 
 Terima kasih atas kesabarannya. Salam, {toko}`,
 
-  selesai: `Halo {nama}, kabar baik — servis Anda sudah *SELESAI*.
+  selesai: `Halo {nama}, kabar baik: servis Anda sudah *SELESAI*.
 
 Perangkat: *{perangkat}*
 No. Servis: *{no_servis}*
@@ -166,7 +166,7 @@ Mohon tunjukkan pesan ini saat pengambilan.
 
 Terima kasih atas kepercayaan Anda.`,
 
-  pengingat_ambil: `Halo {nama}, izin mengingatkan — unit *{perangkat}* (No. Servis *{no_servis}*) sudah selesai dikerjakan dan masih kami simpan di toko.
+  pengingat_ambil: `Halo {nama}, izin mengingatkan, unit *{perangkat}* (No. Servis *{no_servis}*) sudah selesai dikerjakan dan masih kami simpan di toko.
 
 {rincian_bayar}
 
@@ -175,7 +175,7 @@ Mohon dijadwalkan pengambilannya ya, agar unit tidak terlalu lama tersimpan.
 
 Terima kasih, {toko}`,
 
-  diambil: `Halo {nama}, terima kasih — unit *{perangkat}* (No. Servis *{no_servis}*) sudah diambil dan lunas.
+  diambil: `Halo {nama}, terima kasih. Unit *{perangkat}* (No. Servis *{no_servis}*) sudah diambil dan lunas.
 Total biaya: *{biaya}*{garansi}
 
 Riwayat servis dan masa garansi bisa dicek kapan saja di:
@@ -183,7 +183,7 @@ Riwayat servis dan masa garansi bisa dicek kapan saja di:
 
 Simpan pesan ini sebagai bukti garansi. Salam, {toko}`,
 
-  batal: `Halo {nama}, mohon maaf — pengerjaan unit *{perangkat}* (No. Servis *{no_servis}*) kami hentikan.
+  batal: `Halo {nama}, mohon maaf, pengerjaan unit *{perangkat}* (No. Servis *{no_servis}*) kami hentikan.
 
 Setelah diperiksa, perbaikan tidak dapat kami lanjutkan. Alasannya kami jelaskan selengkapnya saat pengambilan unit.
 

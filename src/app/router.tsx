@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { AuthGate } from './AuthGate';
 import { AuthSplash } from './AuthSplash';
 import { appChildRoutes } from './appChildRoutes';
@@ -18,11 +18,6 @@ const LandingPageV2 = lazyChunk(() =>
 const TrackingPage = lazyChunk(() =>
   import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
-const RepairTicketPrototype = lazyChunk(() =>
-  import('@/features/prototype/RepairTicketPrototype').then((m) => ({
-    default: m.RepairTicketPrototype,
-  })),
-);
 const PrivacyPage = lazyChunk(() =>
   import('@/features/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
 );
@@ -35,6 +30,30 @@ const ResetPasswordPage = lazyChunk(() =>
 const OperatorPage = lazyChunk(() =>
   import('@/features/operator/OperatorPage').then((m) => ({ default: m.OperatorPage })),
 );
+// Probe desain tiket servis: data tiruan, hanya untuk evaluasi visual. Ada di
+// dev server saja. Di build produksi fungsi ini langsung `return []`, sisanya
+// jadi kode mati, jadi impor dinamisnya ikut terbuang dan chunk prototipe
+// tidak dikirim. Rewrite-nya di vercel.json juga sudah dicabut.
+function devOnlyRoutes(): RouteObject[] {
+  if (!import.meta.env.DEV) return [];
+  const RepairTicketPrototype = lazyChunk(() =>
+    import('@/features/prototype/RepairTicketPrototype').then((m) => ({
+      default: m.RepairTicketPrototype,
+    })),
+  );
+  return [
+    {
+      path: '/prototype/ticket',
+      errorElement: <RouteError />,
+      element: (
+        <Suspense fallback={null}>
+          <RepairTicketPrototype />
+        </Suspense>
+      ),
+    },
+  ];
+}
+
 export const router = createBrowserRouter([
   {
     // Stable preview alias for the live signed-out landing page. Keeping this
@@ -61,16 +80,7 @@ export const router = createBrowserRouter([
       </Suspense>
     ),
   },
-  {
-    // Public design prototype (no auth) — for visual evaluation only.
-    path: '/prototype/ticket',
-    errorElement: <RouteError />,
-    element: (
-      <Suspense fallback={null}>
-        <RepairTicketPrototype />
-      </Suspense>
-    ),
-  },
+  ...devOnlyRoutes(),
   {
     // Public, no-login service tracking.
     path: '/track',

@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState } from 'react';
 import { Modal, Select, Input, Button, Badge, ConfirmDialog, Icon } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -13,7 +14,7 @@ import {
   recordDownPayment,
   correctServiceCost,
 } from '@/data/supabase-client';
-import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
+import { fmtRp, fmtRpInput, parseRpInput, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate, addDays, localDateStr, localDateOf } from '@/lib/time';
 import { newId } from '@/lib/id';
 import {
@@ -728,12 +729,12 @@ export function StatusModal({
     cancelFee > 0 &&
       interpolate(t('serviceStatus.confirmCancelFee'), {
         amount: fmtRp(cancelFee),
-        wallet: wallets.find((w) => w.id === feeWalletId)?.name ?? '—',
+        wallet: wallets.find((w) => w.id === feeWalletId)?.name ?? EMPTY_VALUE,
       }),
     cancelRefund > 0
       ? t('serviceStatus.confirmCancelRefund')
           .replace('{amount}', fmtRp(cancelRefund))
-          .replace('{wallet}', wallets.find((w) => w.id === refundWalletId)?.name ?? '—')
+          .replace('{wallet}', wallets.find((w) => w.id === refundWalletId)?.name ?? EMPTY_VALUE)
       : service.downPayment > 0
         ? t('serviceStatus.confirmCancelKeep').replace('{amount}', fmtRp(service.downPayment))
         : '',
@@ -1242,7 +1243,7 @@ export function StatusModal({
                           : t(`statusLabel.${k}`);
                   })()}</strong>
                   <small>
-                    {fmtDate(localDateOf(h.at))} · {h.byName || '—'}
+                    {fmtDate(localDateOf(h.at))} · {h.byName || <EmptyValue />}
                     {h.note ? ` · ${h.note}` : ''}
                   </small>
                 </div>

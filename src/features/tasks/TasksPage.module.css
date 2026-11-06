@@ -176,7 +176,7 @@
   border-radius: 50%;
   background: var(--red-500);
   box-shadow: 0 0 7px var(--red-500);
-  animation: fm-pulse 1s var(--ease-in-out) infinite;
+  animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 
 /* ---------- Templates (SOP cards) ---------- */
@@ -250,7 +250,7 @@
 /* Disabled at the list edges — must not look clickable. */
 .iconBtn:disabled {
   opacity: 0.3;
-  cursor: default;
+  cursor: not-allowed;
 }
 .iconBtn:disabled:hover {
   background: none;

@@ -17,12 +17,6 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  animation: fm-float 2.2s var(--ease-in-out) infinite;
-}
-
-@keyframes fm-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
 }
 
 .spinner {

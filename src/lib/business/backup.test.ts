@@ -226,7 +226,7 @@ describe('backupEmailStatus', () => {
     ).toMatch(/ke a@x\.id, b@x\.id\.$/);
     expect(
       backupEmailStatus({ sentAt: at, status: 'failed', recipients: [], error: 'resend 403' }),
-    ).toMatch(/gagal .* — resend 403\.$/);
+    ).toMatch(/gagal \(.*\): resend 403\.$/);
     expect(
       backupEmailStatus({ sentAt: at, status: 'skipped', recipients: [], error: 'belum ada backup otomatis' }),
     ).toMatch(/dilewati .*: belum ada backup otomatis\.$/);

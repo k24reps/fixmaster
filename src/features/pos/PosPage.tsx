@@ -22,7 +22,7 @@ import { isCloudMode } from '@/stores/demo';
 import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
-import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
+import { fmtRp, fmtRpInput, parseRpInput, EMPTY_VALUE } from '@/lib/format';
 import { localDateStr, fmtDate, monthRange } from '@/lib/time';
 import {
   cartSubtotal,
@@ -651,10 +651,10 @@ export function PosPage() {
       <div className={styles.layout}>
         <div className={styles.products}>
         {needOutlet ? (
-          <Card glass className={styles.outletPick}>
-            <h3 className={styles.outletPickTitle}>
+          <Card className={styles.outletPick}>
+            <h2 className={styles.outletPickTitle}>
               <span className={styles.outletLed} aria-hidden /> {t('pos.outletPickTitle')}
-            </h3>
+            </h2>
             <p className={styles.outletPickBody}>{t('pos.outletPickBody')}</p>
             {outletButtons}
           </Card>
@@ -689,11 +689,11 @@ export function PosPage() {
           label={t('pos.categoryLabel')}
         />
         {loadPending(inventoryLoad) ? (
-          <Card glass>
+          <Card>
             <LoadState queries={[inventoryLoad]} />
           </Card>
         ) : available.length === 0 ? (
-          <Card glass>
+          <Card>
             {inStockCount > 0 || query.trim() ? (
               <EmptyState
                 icon={<Icon name="magnifying-glass" aria-hidden />}
@@ -775,7 +775,7 @@ export function PosPage() {
         )}
       </div>
 
-      <Card id="pos-cart" glass className={styles.cartPanel}>
+      <Card id="pos-cart" className={styles.cartPanel}>
         <div className={styles.register} aria-live="polite">
           <div className={styles.registerTop}>
             {done ? (
@@ -856,7 +856,6 @@ export function PosPage() {
                 pindaian berikutnya) memulai transaksi baru. */}
             <Button
               fullWidth
-              iconRight={<Icon name="arrow-right" aria-hidden />}
               onClick={newSale}
             >
               {t('pos.newSale')}
@@ -865,9 +864,9 @@ export function PosPage() {
         ) : (
         <>
         <div className={styles.cartHeader}>
-          <h3>
+          <h2>
             <Icon name="cart-shopping" aria-hidden /> {t('pos.cart')}
-          </h3>
+          </h2>
           {cart.length > 0 && (
             <button type="button" className={styles.clearBtn} onClick={clearCart}>
               {t('pos.clearCart')}
@@ -1155,11 +1154,11 @@ export function PosPage() {
       )}
 
       {tab === 'history' && (
-        <Card glass className={styles.history}>
+        <Card className={styles.history}>
           <div className={styles.historyHead}>
-            <h3>
+            <h2>
               <Icon name="clock-rotate-left" aria-hidden /> {t('pos.tabHistory')}
-            </h3>
+            </h2>
             {/* Riwayat mengikuti cabang aktif — dulu tanpa tanda, sehingga cabang
                 tanpa penjualan tampak seperti data hilang. */}
             {activeOutlet && reachableOutlets.length > 1 && (
@@ -1195,7 +1194,7 @@ export function PosPage() {
                         </strong>
                         <small>
                           {interpolate(t('pos.itemCount'), { n: String(s.lines.length) })}
-                          {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || '—').join(' + ')}`}
+                          {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || EMPTY_VALUE).join(' + ')}`}
                           {s.cashierName ? ` · ${s.cashierName}` : ''}
                           {s.customerName ? ` · ${s.customerName}` : ''}
                         </small>

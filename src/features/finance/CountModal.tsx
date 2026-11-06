@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState } from 'react';
 import { Modal, Input, Select, Button, FormFields, FormError } from '@/components/ui';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
@@ -161,11 +162,11 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
           <dl className={styles.countReadout} data-tone={tone}>
             <div>
               <dt>{t('finance.countApp')}</dt>
-              <dd>{wallet ? fmtRp(wallet.balance) : '—'}</dd>
+              <dd>{wallet ? fmtRp(wallet.balance) : <EmptyValue />}</dd>
             </div>
             <div>
               <dt>{t('finance.countCounted')}</dt>
-              <dd>{hasCount ? fmtRp(parseRpInput(counted)) : '—'}</dd>
+              <dd>{hasCount ? fmtRp(parseRpInput(counted)) : <EmptyValue />}</dd>
             </div>
             <div className={styles.countDiff}>
               <dt>
@@ -174,7 +175,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
               </dt>
               <dd>
                 {!hasCount
-                  ? '—'
+                  ? <EmptyValue />
                   : diff === 0
                     ? t('finance.countDiffNone')
                     : `${diff > 0 ? '+' : '−'}${fmtRp(Math.abs(diff))}`}

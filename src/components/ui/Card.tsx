@@ -3,8 +3,9 @@ import styles from './Card.module.css';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  /** Adds glassmorphism blur + translucent surface. */
-  glass?: boolean;
+  /* Prop `glass` dihapus (Nov 2026): kartu di daftar dan grid selalu padat.
+     Blur kaca hanya untuk chassis (topbar, bottom nav) dan overlay, lihat
+     Design System.md. Jangan dihidupkan lagi per kartu. */
   /** Adds hover lift interaction. */
   interactive?: boolean;
   /** Accent color bar on top. */
@@ -14,7 +15,6 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export function Card({
   children,
-  glass,
   interactive,
   accent = 'none',
   padding = false,
@@ -23,7 +23,6 @@ export function Card({
 }: CardProps) {
   const classes = [
     styles.card,
-    glass ? styles.glass : '',
     interactive ? styles.interactive : '',
     accent !== 'none' ? styles[`accent_${accent}`] : '',
     padding ? styles.padded : '',
@@ -43,15 +42,21 @@ interface CardHeaderProps {
   icon?: ReactNode;
   title: ReactNode;
   action?: ReactNode;
+  /**
+   * Tingkat heading. Bawaan h2 karena kartu biasanya duduk langsung di bawah
+   * h1 halaman; dulu selalu h3 sehingga 7 halaman melompat h1 ke h3. Pakai h3
+   * hanya bila kartunya berada di bawah h2 lain.
+   */
+  as?: 'h2' | 'h3';
 }
 
-export function CardHeader({ icon, title, action }: CardHeaderProps) {
+export function CardHeader({ icon, title, action, as: Heading = 'h2' }: CardHeaderProps) {
   return (
     <div className={styles.header}>
-      <h3 className={styles.title}>
+      <Heading className={styles.title}>
         {icon && <span className={styles.headerIcon}>{icon}</span>}
         {title}
-      </h3>
+      </Heading>
       {action && <div className={styles.action}>{action}</div>}
     </div>
   );

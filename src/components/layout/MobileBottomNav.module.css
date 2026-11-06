@@ -64,9 +64,9 @@
     background: var(--brand-soft);
   }
 
+  /* Bilah aktif tanpa glow, sama dengan sel ikon aktif di sidebar. */
   .navItem.active::before {
     background: var(--brand);
-    box-shadow: 0 0 9px var(--brand);
   }
 
   .navItem.locked {
@@ -118,7 +118,7 @@
   .tone_success { background: var(--success); }
   .tone_danger { background: var(--danger); }
   .tone_info { background: var(--info); }
-  .pulse { animation: fm-pulse 1.8s infinite; }
+  .pulse { animation: fm-pulse 1.8s var(--pulse-cycles); }
 
   .lockLed {
     position: absolute;

@@ -18,6 +18,7 @@
  * Disetujui sebagai penyimpangan dari AGENTS.md §3 (preseden: BillingTab,
  * FinancePage). Lihat [[Decisions & Bug Fixes]].
  */
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -46,7 +47,7 @@ import {
   organizationNumber,
 } from '@/lib/business/operator';
 import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
@@ -80,7 +81,7 @@ function summarizeDetail(d: Record<string, unknown>): string {
   if (d.plan_sesudah)
     return `${String(d.plan_sebelum ?? '?')} → ${String(d.plan_sesudah)}`;
   if (d.plan_sebelum) return `dari ${String(d.plan_sebelum)}`;
-  return '—';
+  return EMPTY_VALUE;
 }
 
 /** Ringkas "kapan terakhir ada aktivitas" jadi sinyal dormant yang cepat dibaca. */
@@ -212,7 +213,7 @@ export function OperatorPage() {
   if (admin === false) {
     return (
       <div className={styles.center}>
-        <Card glass>
+        <Card>
           <CardHeader icon={<Icon name="lock" aria-hidden />} title="Akses ditolak" />
           <CardBody>
             <p className={styles.hint}>
@@ -458,7 +459,7 @@ export function OperatorPage() {
             </span>
           </div>
 
-          <Card glass>
+          <Card>
             <CardBody className={visibleOrgs.length ? styles.noPad : undefined}>
               {visibleOrgs.length === 0 ? (
                 <EmptyState
@@ -545,7 +546,7 @@ export function OperatorPage() {
                                 {accessRemainingLabel(days)}
                               </td>
                               <td className={styles.dateCell}>
-                                {o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : '—'}
+                                {o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : <EmptyValue />}
                               </td>
                               <td className={styles.num}>{o.outletCount}</td>
                               <td className={styles.num}>{o.userCount}</td>
@@ -605,7 +606,7 @@ export function OperatorPage() {
               {visibleActions.length} dari {actions.length} aktivitas terbaru
             </span>
           </div>
-          <Card glass>
+          <Card>
             <CardBody className={visibleActions.length ? styles.noPad : undefined}>
               {visibleActions.length === 0 ? (
                 <EmptyState
@@ -632,7 +633,7 @@ export function OperatorPage() {
                             <td className={styles.idle}>{fmtDate(localDateOf(a.actedAt))}</td>
                             <td><span className={styles.trailAction}>{a.action}</span></td>
                             <td className={styles.orgName}>{a.orgName}</td>
-                            <td className={styles.reasonCell}>{a.reason || '—'}</td>
+                            <td className={styles.reasonCell}>{a.reason || <EmptyValue />}</td>
                             <td className={styles.detailCell}>{summarizeDetail(a.detail)}</td>
                             <td className={styles.idle}>{a.actorEmail}</td>
                           </tr>
@@ -773,7 +774,7 @@ function OrganizationCard({
         </div>
         <div>
           <dt>Berakhir</dt>
-          <dd>{o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : '—'}</dd>
+          <dd>{o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : <EmptyValue />}</dd>
         </div>
         <div>
           <dt>Aktivitas</dt>

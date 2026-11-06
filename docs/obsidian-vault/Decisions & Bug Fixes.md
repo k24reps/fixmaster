@@ -3857,3 +3857,51 @@ kunci bulan**: chip karyawan di baris buku kas + pilihan karyawan di form edit. 
 `employee_id` dan menolak kategori selain Gaji/Kasbon/Pelunasan, jadi tidak bisa dipakai untuk
 mengakali kunci bulan. Uji lokal (rollback): kasbon bulan lalu tertaut → sisa kasbon 500 rb,
 nominal tetap; Sewa ditolak; lepas tautan → null.
+
+## Audit antislop 001: perbaikan (6 Nov 2026)
+
+Audit `anti-slop/audit-001-2026-11-06.md` menemukan 16 pelanggaran + 5 keputusan pemilik;
+pemilik meminta semuanya diperbaiki. Hasil per nomor ada di
+`anti-slop/audit-001-2026-11-06-followup.md`; aturan visualnya di [[Design System]]
+(Pembersihan antislop). Yang layak diingat:
+
+- **Gagal memuat bukan "tidak ditemukan".** Lacak servis dulu menghitung
+  `notFound = isFetched && !isFetching && !service` tanpa melihat `isError`, sehingga
+  sinyal buruk tampil sebagai "Nomor tidak ditemukan" ke pelanggan. Kini `isError` punya
+  keadaan sendiri dengan tombol coba lagi. Detail servis sama: dulu `null` saat memuat dan
+  404 saat error; kini `LoadState`, error + ulang, dan 404 hanya bila kueri berhasil tanpa
+  tiket. Aturannya: hasil kosong dan kegagalan selalu dua cabang.
+- **`CardHeader` bawaan `h2`.** Dulu selalu `h3`, jadi 7 halaman melompat dari `h1` Topbar
+  ke `h3`. Kasir punya `<h3>` lepas sendiri (pilih cabang, Keranjang, Riwayat) yang juga
+  dinaikkan ke `h2`; ukuran visualnya diatur kelas, jadi tidak berubah.
+- **Area sentuh `::after` bisa terpotong induknya.** Tautan kategori Laporan memakai
+  `::after` inset -14px, tetapi di baris rincian ia duduk di `.channelName` yang
+  `overflow: hidden` (elipsis), sehingga area sentuhnya tetap 16px. Area sentuh dipindah
+  ke seluruh baris (56px). Saat memeriksanya, `getComputedStyle(el, '::after')` sempat
+  melaporkan inset lama sementara `z-index` baru sudah berlaku: sisa HMR CSS. **Muat ulang
+  halaman sebelum menyimpulkan aturan CSS tidak berlaku.**
+- **Bar bulan Keuangan dibiarkan membungkus** (`flex-wrap`), bukan diberi breakpoint: muat
+  atau tidaknya ditentukan isinya sendiri, jadi tidak ada ambang yang perlu diukur.
+  Tombol Kamus istilah adalah tautan, sehingga aturan sentuh global untuk `<button>` tidak
+  mengenainya; tingginya diikat sendiri ke `--control-h` di layar sentuh.
+- **Kursor nonaktif.** `Button:disabled` dulu memasang `cursor: not-allowed` bersama
+  `pointer-events: none`, jadi kursor itu tak pernah tampil. Atribut `disabled` sudah
+  memblokir klik; `pointer-events` dilepas. `Term` memakai `pointer` (ia tautan), dan
+  `label[for]` ikut `pointer`.
+- **Em dash.** 64 kunci i18n dan 43 berkas sumber dibersihkan (judul tab, template
+  WhatsApp, dokumen cetak, pesan error, data demo "Pusat Bandung"). Isi sel kosong kini
+  `EmptyValue`/`EMPTY_VALUE`. **Sengaja dibiarkan**, karena kembar dengan teks server:
+  pesan saldo kurang di `lib/business/finance.ts` (cermin migrasi 0086), keterangan
+  "Modal servis {no} — {nama}" di `ServiceDetailPage` (cermin 0087; dicocokkan lewat
+  `startsWith('Modal servis ')` dan SQL `like 'Modal servis %'`, jadi awalannya aman
+  diubah tetapi baris lama di database tetap memakai em dash), dan pesan `raise exception`
+  di migrasi lain. Mengubahnya butuh migrasi baru + pembaruan data; keputusan pemilik.
+- **Prototipe hanya di dev.** `/prototype/ticket` dulu tayang di produksi. Kini lewat
+  `devOnlyRoutes()`; build terbukti tanpa chunk prototipe, rewrite `vercel.json` dan entri
+  `deploymentRoutes.test.ts` dibuang.
+- **Skrip penambal dihapus.** `scripts/codemod-icons.mjs` (penggantian string ikon pada
+  `.tsx`) sudah lama tidak dipanggil siapa pun.
+- Verifikasi: build, **692 test / 64 berkas**, lint hijau. DOM lewat panel browser
+  (Playwright belum terpasang): 12 menu demo x 2 tema + landing, 0 kontras gagal, 0 em dash
+  tampil, 0 lompatan heading; 375px: 0 luberan dokumen di 12 menu. Screenshot vault belum
+  diregenerasi karena Playwright belum terpasang.

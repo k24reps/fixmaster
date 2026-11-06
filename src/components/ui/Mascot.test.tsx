@@ -38,4 +38,13 @@ describe('Mascot motion preference', () => {
     expect(container.querySelector('animate')).toBeInTheDocument();
     expect(container.querySelector('animateTransform')).toBeInTheDocument();
   });
+
+  it('stops on its own instead of looping forever (WCAG 2.2.2)', () => {
+    mockMotionPreference(false);
+    const { container } = render(<Mascot variant="full" animated />);
+
+    const motions = Array.from(container.querySelectorAll('animate, animateTransform'));
+    expect(motions.length).toBeGreaterThan(0);
+    expect(motions.filter((m) => m.getAttribute('repeatCount') === 'indefinite')).toHaveLength(0);
+  });
 });

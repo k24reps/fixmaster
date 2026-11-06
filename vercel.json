@@ -4,7 +4,6 @@
   "rewrites": [
     { "source": "/landing-preview", "destination": "/index.html" },
     { "source": "/operator", "destination": "/index.html" },
-    { "source": "/prototype/ticket", "destination": "/index.html" },
     { "source": "/track", "destination": "/index.html" },
     { "source": "/privacy", "destination": "/index.html" },
     { "source": "/terms", "destination": "/index.html" },

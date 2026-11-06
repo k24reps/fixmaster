@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot, Term } from '@/components/ui';
@@ -7,7 +8,7 @@ import { useCollectionRange } from '@/hooks/useCollectionRange';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import { useCategoryProfit } from '@/hooks/useReportData';
 import { useNavSignals } from '@/hooks/useNavSignals';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, monthRange } from '@/lib/time';
 import {
   computeKpis,
@@ -243,7 +244,7 @@ export function DashboardPage() {
           : t('dashboard.ready');
   const profitState = kpis.netCashFlow > 0 ? 'ok' : kpis.netCashFlow < 0 ? 'crit' : 'warn';
   const hasTarget = !branchScoped && ((isMgr && target.revenue > 0) || target.serviceCount > 0);
-  const dash = initialLoading ? '—' : null;
+  const dash = initialLoading ? EMPTY_VALUE : null;
 
   return (
     <div className={styles.wrap} aria-busy={initialLoading || refreshing}>
@@ -257,7 +258,7 @@ export function DashboardPage() {
           <div className={styles.consoleItem}>
             <span className={styles.consoleKey}>{t('dashboard.branch')}</span>
             <span className={styles.consoleVal}>
-              {activeOutlet?.name ?? (outlets.length > 1 ? t('dashboard.allBranches') : outlets[0]?.name ?? '—')}
+              {activeOutlet?.name ?? (outlets.length > 1 ? t('dashboard.allBranches') : outlets[0]?.name ?? <EmptyValue />)}
             </span>
           </div>
         </div>
@@ -357,7 +358,7 @@ export function DashboardPage() {
             </section>
           )}
 
-          <Card glass>
+          <Card>
             <CardHeader icon={<Icon name="list-check" aria-hidden />} title={t('dashboard.actionsTitle')} />
             <CardBody className={styles.noPad}>
               {alerts.length === 0 ? (
@@ -491,7 +492,7 @@ export function DashboardPage() {
           </div>
 
           <div className={[styles.grid, !hasTarget ? styles.gridSingle : ''].join(' ')}>
-            <Card glass>
+            <Card>
               <CardHeader
                 icon={<Icon name="clock" aria-hidden />}
                 title={t('dashboard.recentServices')}
@@ -540,7 +541,7 @@ export function DashboardPage() {
             </Card>
 
             {hasTarget && (
-              <Card glass>
+              <Card>
                 <CardHeader
                   icon={<Icon name="bullseye" aria-hidden />}
                   title={t('dashboard.monthlyTarget')}
@@ -587,7 +588,7 @@ export function DashboardPage() {
             )}
           </div>
 
-          <Card glass>
+          <Card>
             <CardHeader
               icon={<Icon name="trophy" aria-hidden />}
               title={`${t('dashboard.technicianPerformance')} · ${t('dashboard.month').toLowerCase()}`}

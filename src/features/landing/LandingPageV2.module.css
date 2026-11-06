@@ -106,14 +106,14 @@
   letter-spacing: -0.03em;
 }
 
+/* Tagline merek: kalimat biasa, bukan label mono huruf besar. Landing
+   menyimpan huruf besar bertracking untuk readout di dalam mockup produk
+   saja, supaya tiap bagian tidak terdengar sama (antislop R-06, #19). */
 .brand small,
 .footerBrand small {
   margin-top: 5px;
   color: var(--text-muted);
-  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .nav {
@@ -317,13 +317,9 @@
 .heroConsole::before { left: 17px; }
 .heroConsole::after { right: 17px; }
 
-.consoleTop,
-.consoleOnline {
+.consoleTop {
   display: flex;
   align-items: center;
-}
-
-.consoleTop {
   justify-content: space-between;
   padding: 14px 30px 18px;
   color: var(--text-muted);
@@ -332,11 +328,6 @@
   font-size: var(--text-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-.consoleOnline {
-  gap: 7px;
-  color: var(--accent-text);
 }
 
 /* Label "contoh data" terbaca tanpa menambah amber di layar pertama. */
@@ -460,9 +451,7 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.04em;
   text-align: center;
-  text-transform: uppercase;
 }
 
 .progressLabels span:first-child { text-align: left; }
@@ -562,49 +551,6 @@
   margin-top: 3px;
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
-}
-
-.consoleSignal {
-  min-width: 116px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: 18px auto auto;
-  align-items: end;
-  gap: 2px 4px;
-  padding-left: var(--space-4);
-  border-left: 1px dotted var(--border-strong);
-  text-align: right;
-}
-
-.consoleSignal i {
-  width: 4px;
-  justify-self: end;
-  border-radius: 1px 1px 0 0;
-  background: var(--accent);
-}
-
-.consoleSignal i:nth-child(1) { height: 6px; opacity: 0.48; }
-.consoleSignal i:nth-child(2) { height: 10px; opacity: 0.68; }
-.consoleSignal i:nth-child(3) { height: 14px; opacity: 0.82; }
-.consoleSignal i:nth-child(4) { height: 18px; }
-
-.consoleSignal small,
-.consoleSignal strong {
-  grid-column: 1 / -1;
-  margin: 0;
-  white-space: nowrap;
-}
-
-.consoleSignal small {
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-}
-
-.consoleSignal strong {
-  color: var(--accent-text);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
 }
 
 /* Kolom seukuran isi, bukan empat bagian sama rata. Keempat labelnya beda
@@ -874,10 +820,7 @@
 .ownerReadout span {
   min-width: 0;
   color: var(--text-muted);
-  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
@@ -1342,8 +1285,6 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 /* Identitas paket dan harganya satu blok, ditutup satu jahitan. Sebelumnya
@@ -1358,8 +1299,6 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .priceHead h3 {
@@ -1786,11 +1725,12 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  /* Padat, tanpa blur: di ponsel header dan bilah CTA bawah sudah memakai
+     kaca, tombol ketiga yang ikut buram menumpuk efeknya (antislop R-10). */
+  background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(12px);
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   text-decoration: none;
@@ -2096,10 +2036,6 @@
 
   .consoleMessage {
     gap: var(--space-3);
-  }
-
-  .consoleSignal {
-    display: none;
   }
 
   .ownerReadout {

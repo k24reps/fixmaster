@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Card, CardHeader, CardBody, Button, Input, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -171,7 +172,7 @@ export function TasksPage() {
     // mencentangnya sendiri.
     if (!canManage && inst.completedById && inst.completedById !== me?.id) {
       toast.warning(
-        `Tugas ini diselesaikan ${inst.completedByName || 'orang lain'} — minta manager untuk membatalkannya.`,
+        `Tugas ini diselesaikan ${inst.completedByName || 'orang lain'}. Minta manager untuk membatalkannya.`,
       );
       return;
     }
@@ -342,7 +343,7 @@ export function TasksPage() {
               Tambah
             </Button>
           </div>
-          <Card glass>
+          <Card>
             <CardHeader icon={<Icon name="list-check" aria-hidden />} title="Perlu Dikerjakan" />
             <CardBody className={styles.noPad}>
               {loadPending(templatesLoad, instancesLoad) ? (
@@ -489,7 +490,7 @@ export function TasksPage() {
           </Card>
 
           {doneToday.length > 0 && (
-            <Card glass>
+            <Card>
               <CardHeader icon={<Icon name="check-double" aria-hidden />} title={`Selesai Hari Ini (${doneToday.length})`} />
               <CardBody className={styles.noPad}>
                 <ul className={styles.taskList}>
@@ -500,7 +501,7 @@ export function TasksPage() {
                       </button>
                       <div className={styles.taskInfo}>
                         <strong>{t.title}</strong>
-                        <small>oleh {t.completedByName || '—'}</small>
+                        <small>oleh {t.completedByName || <EmptyValue />}</small>
                       </div>
                     </li>
                   ))}
@@ -510,7 +511,7 @@ export function TasksPage() {
           )}
         </>
       ) : (
-        <Card glass>
+        <Card>
           <CardBody className={styles.noPad}>
             {loadPending(templatesLoad) ? (
               <LoadState queries={[templatesLoad]} />

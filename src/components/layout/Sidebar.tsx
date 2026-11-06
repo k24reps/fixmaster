@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui';
@@ -89,7 +90,7 @@ export function Sidebar({
                   to="/settings"
                   onClick={onCloseMobile}
                   className={[styles.navItem, styles.locked].join(' ')}
-                  title={`${t(item.labelKey)} — tersedia di paket Pro`}
+                  title={`${t(item.labelKey)} (tersedia di paket Pro)`}
                 >
                   <span className={styles.navIconCell} aria-hidden>
                     <Icon name={item.icon} className={styles.navIcon} />
@@ -154,7 +155,7 @@ export function Sidebar({
             </span>
             <div className={styles.bizInfo}>
               <small className={styles.bizLabel}>UNIT USAHA</small>
-              <strong className={styles.bizName}>{org?.name ?? '—'}</strong>
+              <strong className={styles.bizName}>{org?.name ?? <EmptyValue />}</strong>
             </div>
           </div>
           {outlets.length > 0 && (

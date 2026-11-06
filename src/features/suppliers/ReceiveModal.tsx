@@ -151,7 +151,7 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
     <Modal
       open={open}
       onClose={onClose}
-      title={`Terima Barang — ${po.poNumber}`}
+      title={`Terima Barang · ${po.poNumber}`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

@@ -116,7 +116,7 @@ export function openReceiptWindow(
 
   openPrintWindow({
     demoMessage: o.demoMessage,
-    title: `${o.title} ${o.no} — ${org.name}`,
+    title: `${o.title} ${o.no} | ${org.name}`,
     style: PRINT_STYLE,
     body: `
   <div class="brand">
@@ -138,7 +138,7 @@ export function openReceiptWindow(
   <hr class="seam"/>
   <div class="foot">
     Terima kasih atas kepercayaan Anda.<br/>
-    Senang bisa membantu — sampai jumpa kembali!
+    Senang bisa membantu, sampai jumpa kembali!
   </div>
   <div class="by">DICETAK DENGAN FIXMASTER</div>`,
   });
@@ -157,7 +157,7 @@ export function printServiceReceipt(service: Service, org: Organization): void {
   const garansi = rowsFor(lines, 'garansi');
 
   openReceiptWindow(org, {
-    demoMessage: 'Cetak nota aktif di FixMaster versi penuh — daftar gratis.',
+    demoMessage: 'Cetak nota aktif di FixMaster versi penuh. Daftar gratis.',
     title: 'Nota',
     kind: 'NOTA SERVIS',
     no: service.serviceNo,

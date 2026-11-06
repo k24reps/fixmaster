@@ -91,7 +91,7 @@ export function parseBackup(text: string): ParseResult {
   const collections = obj.collections as Record<string, unknown>;
   for (const [name, rows] of Object.entries(collections)) {
     if (!Array.isArray(rows)) {
-      return { ok: false, error: `Koleksi "${name}" rusak — isinya bukan daftar data.` };
+      return { ok: false, error: `Koleksi "${name}" rusak: isinya bukan daftar data.` };
     }
   }
 
@@ -239,10 +239,10 @@ export function backupEmailStatus(run: BackupEmailRun | null): string {
     case 'sent':
       return `Terakhir dikirim ${when} ke ${run.recipients.join(', ')}.`;
     case 'failed':
-      return `Pengiriman terakhir gagal (${when})${run.error ? ` — ${run.error}` : ''}.`;
+      return `Pengiriman terakhir gagal (${when})${run.error ? `: ${run.error}` : ''}.`;
     case 'skipped':
       return `Minggu terakhir dilewati (${when})${run.error ? `: ${run.error}` : ''}.`;
     default:
-      return `Uji coba server ${when} — belum benar-benar dikirim.`;
+      return `Uji coba server ${when}, belum benar-benar dikirim.`;
   }
 }

@@ -6,7 +6,6 @@
   text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  cursor: help;
 }
 .term:hover {
   text-decoration-color: currentColor;
@@ -24,4 +23,18 @@
 }
 .term:hover .mark {
   opacity: 1;
+}
+
+/* Istilah duduk di dalam label dan judul, jadi tingginya mengikuti baris teks
+   (terukur 28px). Area sentuh diperluas lewat ::after agar label tidak ikut
+   meninggi. */
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+  .term {
+    position: relative;
+  }
+  .term::after {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
 }

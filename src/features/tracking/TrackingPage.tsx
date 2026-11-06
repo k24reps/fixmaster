@@ -104,7 +104,7 @@ export function TrackingPage() {
     setSearchOpen(false);
   };
 
-  const { data, isFetching, isFetched } = useQuery<TrackResult>({
+  const { data, isFetching, isFetched, isError, refetch } = useQuery<TrackResult>({
     queryKey: ['track', orgId, searchNo],
     enabled: !!orgId && !!searchNo.trim(),
     queryFn: async () => {
@@ -181,7 +181,11 @@ export function TrackingPage() {
   // Setelah Selesai, garansi kosong berarti "tanpa garansi" yang disengaja.
   const warrantyDecided = service?.status === 'selesai' || service?.status === 'lunas';
   const publicHistory = data?.publicHistory ?? [];
-  const notFound = isFetched && !isFetching && !service;
+  // Gagal memuat (sinyal putus, server sibuk) BUKAN berarti nomornya salah.
+  // Dulu keduanya jatuh ke pesan "tidak ditemukan", sehingga pelanggan mengira
+  // salah ketik lalu menelepon toko, padahal cukup mencoba lagi.
+  const loadFailed = isError && !isFetching;
+  const notFound = isFetched && !isFetching && !isError && !service;
 
   // History datang urut lama → baru, jadi entri terakhir adalah yang terbaru.
   const lastUpdate = publicHistory.length
@@ -244,7 +248,7 @@ export function TrackingPage() {
             </div>
             <p className={styles.searchHint}>
               Nomornya tercetak pada nota penerimaan dan ada di pesan WhatsApp dari toko.
-              Halaman ini menampilkan status pengerjaan dan masa garansi — tanpa perlu masuk akun.
+              Halaman ini menampilkan status pengerjaan dan masa garansi, tanpa perlu masuk akun.
             </p>
           </section>
         )}
@@ -253,6 +257,20 @@ export function TrackingPage() {
           <div className={styles.notFound}>
             <Icon name="triangle-exclamation" aria-hidden />
             <p>{throttleMsg}</p>
+          </div>
+        )}
+
+        {loadFailed && (
+          <div className={styles.notFound} role="alert">
+            <Icon name="triangle-exclamation" aria-hidden />
+            <p>Status servis belum bisa dimuat.</p>
+            <p className={styles.notFoundHint}>
+              Biasanya karena koneksi internet sedang lemah. Nomor yang Anda masukkan tidak
+              berubah, cukup coba lagi.
+            </p>
+            <button type="button" className={styles.retryBtn} onClick={() => refetch()}>
+              <Icon name="arrows-rotate" aria-hidden /> Coba lagi
+            </button>
           </div>
         )}
 

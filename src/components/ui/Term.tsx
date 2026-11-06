@@ -16,7 +16,7 @@ export function Term({ id, children }: { id: TermId; children: ReactNode }) {
     <Link to={`/istilah#${id}`} className={styles.term}>
       {children}
       <Icon name="info-circle" className={styles.mark} aria-hidden />
-      <span className="fm-visually-hidden">{` — ${t('glossary.explain')}`}</span>
+      <span className="fm-visually-hidden">{`, ${t('glossary.explain')}`}</span>
     </Link>
   );
 }

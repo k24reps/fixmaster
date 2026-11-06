@@ -1,5 +1,5 @@
 import { openPrintWindow, escapeHtml } from '@/lib/print';
-import { fmtRp, fmtRpCompact, fmtPercent } from '@/lib/format';
+import { fmtRp, fmtRpCompact, fmtPercent, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { trendGeometry } from '@/lib/business/reports';
 import {
@@ -234,7 +234,7 @@ function pct(value: number, max: number): string {
 /** Chip perbandingan: "+12,5% vs periode lalu", atau pengakuan kalau tak ada dasarnya. */
 function delta(value: number | null, noBaseline: boolean, inverse = false): string {
   if (noBaseline) return '<span class="delta">belum ada periode pembanding</span>';
-  if (value === null || !Number.isFinite(value)) return '<span class="delta">—</span>';
+  if (value === null || !Number.isFinite(value)) return `<span class="delta">${EMPTY_VALUE}</span>`;
   const good = inverse ? value <= 0 : value >= 0;
   const sign = value >= 0 ? '+' : '−';
   return `<span class="delta ${good ? 'up' : 'down'}">${sign}${esc(
@@ -544,7 +544,7 @@ function buildBody(d: ReportDocData): string {
   }));
 
   const receivables = section(
-    'Piutang — Servis Selesai Belum Lunas',
+    'Piutang: Servis Selesai Belum Lunas',
     d.receivables.length === 0
       ? empty('Tidak ada piutang')
       : `<table>
@@ -562,7 +562,7 @@ function buildBody(d: ReportDocData): string {
           <tfoot><tr><td colspan="3">Total piutang</td><td class="r num">${esc(fmtRp(receivablesTotal))}</td></tr></tfoot>
         </table>
         <p class="note">Umur: ${aging
-          .map((a) => `${a.bucket} hari — ${a.count} tiket, ${fmtRp(a.total)}`)
+          .map((a) => `${a.bucket} hari: ${a.count} tiket, ${fmtRp(a.total)}`)
           .join(' · ')}. Seluruh periode, bukan hanya rentang laporan ini.</p>`,
     { count: `${d.receivables.length} tiket`, flow: true },
   );
@@ -625,7 +625,7 @@ export function reportDocHtml(data: ReportDocData): string {
  */
 export function printReport(data: ReportDocData): boolean {
   return openPrintWindow({
-    demoMessage: 'Ekspor PDF aktif di FixMaster versi penuh — daftar gratis.',
+    demoMessage: 'Ekspor PDF aktif di FixMaster versi penuh. Daftar gratis.',
     title: `Laporan ${data.org.name} ${data.from} sd ${data.to}`,
     style: A4_STYLE,
     body: buildBody(data),

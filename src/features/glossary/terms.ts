@@ -41,7 +41,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Arus Kas Bersih',
     short: 'Uang yang benar-benar masuk dikurangi uang yang benar-benar keluar dari kegiatan usaha.',
     body:
-      'Mengukur isi dompet toko, bukan untung-rugi. DP servis, pelunasan, penjualan, belanja stok, gaji, dan sewa ikut dihitung saat uangnya bergerak. Modal, prive, pembelian aset tetap, dan kasbon karyawan tidak ikut — itu bukan kegiatan usaha sehari-hari.',
+      'Mengukur isi dompet toko, bukan untung-rugi. DP servis, pelunasan, penjualan, belanja stok, gaji, dan sewa ikut dihitung saat uangnya bergerak. Modal, prive, pembelian aset tetap, dan kasbon karyawan tidak ikut karena bukan kegiatan usaha sehari-hari.',
     formula: 'Pemasukan usaha − Pengeluaran usaha',
     example:
       'Bulan ini masuk Rp 6,45 jt, keluar Rp 4,85 jt → arus kas bersih +Rp 1,6 jt. Kalau Rp 800 rb di antaranya belanja stok yang masih di rak, laba sebenarnya bisa lebih besar dari angka kas.',
@@ -69,7 +69,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Laba Servis',
     short: 'Biaya final tiket servis dikurangi harga modal part yang dipakai.',
     body:
-      'Dihitung dari tiket yang SELESAI dalam periode, bukan saat dibayar. DP yang ditahan dan biaya pengecekan dari tiket batal ikut dihitung sebagai pendapatan. Refund DP, kembalian kelebihan bayar, dan koreksi biaya turun dicatat "Refund Servis" — sudah diperhitungkan di sini, jadi tidak masuk overhead.',
+      'Dihitung dari tiket yang SELESAI dalam periode, bukan saat dibayar. DP yang ditahan dan biaya pengecekan dari tiket batal ikut dihitung sebagai pendapatan. Refund DP, kembalian kelebihan bayar, dan koreksi biaya turun dicatat "Refund Servis" dan sudah diperhitungkan di sini, jadi tidak masuk overhead.',
     formula: 'Biaya final − HPP part tiket',
     example: 'Ganti LCD dibayar Rp 1,95 jt, modal LCD Rp 1,35 jt → laba servis Rp 600 rb.',
     seenIn: [
@@ -105,7 +105,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Beban Langsung',
     short: 'Biaya yang muncul karena transaksi tertentu, bukan untuk membuka toko.',
     body:
-      'Garansi yang ditanggung toko, refund penjualan, dan ongkos kirim yang tidak bisa ditempelkan ke barang. Mengurangi laba kotor, bukan menambah overhead — hasil akhir break-even tetap sama.',
+      'Garansi yang ditanggung toko, refund penjualan, dan ongkos kirim yang tidak bisa ditempelkan ke barang. Mengurangi laba kotor, bukan menambah overhead. Hasil akhir break-even tetap sama.',
     formula: 'Garansi + Refund Penjualan + Ongkos Kirim',
     example: 'Klaim garansi LCD Rp 450 rb → laba kotor bulan itu turun Rp 450 rb.',
     seenIn: [
@@ -144,7 +144,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Persediaan',
     short: 'Barang dan part di rak yang belum terjual atau terpakai.',
     body:
-      'Membeli persediaan mengurangi kas, tapi belum menjadi beban — biayanya baru dihitung (sebagai HPP) saat part dipakai di tiket atau barang terjual. Karena itu belanja stok besar bisa membuat kas turun padahal toko untung.',
+      'Membeli persediaan mengurangi kas, tapi belum menjadi beban. Biayanya baru dihitung (sebagai HPP) saat part dipakai di tiket atau barang terjual. Karena itu belanja stok besar bisa membuat kas turun padahal toko untung.',
     example: 'Beli 10 baterai Rp 7 jt: kas −Rp 7 jt, laba tidak berubah sampai baterai terpakai.',
     seenIn: [
       { label: 'Inventori', to: '/inventory' },
@@ -156,7 +156,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Aset Tetap',
     short: 'Alat kerja yang dipakai bertahun-tahun: laptop kerja, solder station, mikroskop, etalase.',
     body:
-      'Pembeliannya mengurangi saldo, tapi bukan beban bulan itu — tidak masuk overhead dan tidak dihitung sebagai pengeluaran usaha. FixMaster tidak menghitung penyusutan.',
+      'Pembeliannya mengurangi saldo, tapi bukan beban bulan itu, jadi tidak masuk overhead dan tidak dihitung sebagai pengeluaran usaha. FixMaster tidak menghitung penyusutan.',
     example: 'Beli solder station Rp 2,5 jt: saldo −Rp 2,5 jt, overhead bulan ini tidak berubah.',
     seenIn: [{ label: 'Keuangan', to: '/finance' }],
   },
@@ -186,7 +186,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     id: 'prive',
     term: 'Prive',
     short: 'Uang usaha yang diambil pemilik untuk keperluan pribadi.',
-    body: 'Saldo wallet berkurang, tapi bukan beban usaha — tidak mengurangi laba maupun masuk overhead.',
+    body: 'Saldo wallet berkurang, tapi bukan beban usaha, jadi tidak mengurangi laba maupun masuk overhead.',
     example: 'Pemilik mengambil Rp 2 jt untuk kebutuhan rumah: saldo −Rp 2 jt, laba tetap.',
     seenIn: [{ label: 'Keuangan', to: '/finance' }],
   },

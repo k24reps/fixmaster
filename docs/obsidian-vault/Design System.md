@@ -245,6 +245,53 @@ Audit landing mengunci detail yang sebelumnya lolos karena dark theme terlihat b
 - Breakpoint landing yang menjaga muat/tidak muat memakai container query bernama
   `landing`; media query tersisa hanya untuk preferensi reduced motion.
 
+## Pembersihan antislop (6 Nov 2026)
+
+Audit antislop 001 (`anti-slop/audit-001-2026-11-06.md`) memeriksa motif bench seperti
+teknik lain: tiap teknik harus punya tujuan tertulis. Aturan barunya juga ditulis di
+`DESIGN.md`. Ringkasannya:
+
+- **Kaca hanya untuk yang mengambang.** Prop `glass` di `Card` dihapus beserta 67
+  pemakaiannya; kartu di daftar atau grid selalu padat. Blur tinggal di chassis (topbar,
+  bottom nav, drawer, bar demo), overlay (modal, toast), dan panel tunggal yang duduk
+  langsung di grid ambient (PIN, wizard, hasil lacak). Kartu WhatsApp landing kini padat.
+  Laporan dulu terukur 15 elemen ber-blur sekaligus.
+- **Cahaya punya dua keluarga saja.** LED status tetap menyala (Lit-Signal). Bayangan
+  amber "powered" hanya untuk tombol utama, kontrol aksi utama (dok keranjang Kasir,
+  "Buka demo", posisi menyala pemilih periode harga), dan tanda brand lepas. **Navigasi
+  tidak pernah bercahaya**: sel ikon menu aktif di sidebar dan garis aktif bottom nav
+  menyala lewat isian padatnya saja. Badge kapsul tidak boleh bercahaya; border + titik
+  + huruf besar + glow adalah lencana AI generik, dan glow-lah unsur yang ditinggalkan.
+- **Denyut berhenti sendiri.** Token `--pulse-cycles: 2`: LED alarm berdenyut dua kali
+  (paling lama 4 detik, di bawah batas 5 detik WCAG 2.2.2) lalu menyala tetap, jadi tidak
+  perlu tombol jeda. Yang boleh berulang hanya proses yang sedang berjalan (spinner, LED
+  "menyambung"). Logo layar memuat tidak lagi melayang. `Mascot animated` mulai bergerak
+  saat terlihat (IntersectionObserver), main beberapa siklus, lalu diam; dijaga unit test.
+- **Panah berarti pindah tempat.** Panah kanan hanya pada baris/kartu yang membuka detail,
+  tautan ke halaman lain, **Lanjut** di wizard, dan dok keranjang Kasir. Tombol yang
+  bekerja di tempat (simpan, mulai uji coba, transaksi baru) tanpa panah. CTA landing dan
+  "Transaksi baru" kehilangan panahnya.
+- **Silkscreen ada di dalam alat.** Label mono huruf besar bertracking milik instrumen
+  (kolom aplikasi, kepala tabel, keterangan readout) dan mockup produk di landing. Di
+  sekeliling mockup (tagline brand, readout pemilik, label progres, harga) huruf besar dan
+  tracking dilepas. Terukur di landing: 33 label huruf besar bertracking menjadi 15.
+- **Indikator tanpa arti dibuang.** Konsol hero kehilangan "Sinyal alur: Terhubung" (4
+  batang) dan LED "Online" karena tidak terhubung ke data apa pun.
+
+**Keputusan pemilik (R-37)**, motif yang diminta `DESIGN.md` tetapi mirip pola yang
+dinamai antislop:
+
+| Motif | Keputusan | Alasan |
+|---|---|---|
+| Spine tepi kartu/baris | Pertahankan | Membawa warna status servis |
+| Grid blueprint `body::before` | Pertahankan | Satu-satunya kedalaman ambient (meja kerja) |
+| Label mono huruf besar | Pertahankan, kurangi di landing | Readout alat di aplikasi; di landing membuat tiap bagian terdengar sama |
+| Badge kapsul status | Pertahankan, tanpa glow | Labelnya fungsional |
+| Glow | Hanya LED + tombol utama | Sel ikon navigasi menambah cahaya tanpa membawa status |
+
+Terukur setelah perbaikan (12 menu demo, desktop): 0 sel navigasi bercahaya, 0 badge
+bercahaya; elemen bercahaya yang tersisa adalah LED dan tombol utama.
+
 ## Terkait
 - [[Iconography]] — set ikon Phosphor
 - [[Sidebar - Live Diagnostic Rail]] — penerapan token pada navigasi

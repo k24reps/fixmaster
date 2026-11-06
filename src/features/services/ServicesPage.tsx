@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -441,7 +442,7 @@ export function ServicesPage() {
           {interpolate(t('services.estimateShort'), { amount: fmtRp(s.estimateCost) })}
         </span>
       ) : (
-        <span className={styles.muted}>—</span>
+        <span className={styles.muted}><EmptyValue /></span>
       );
     }
     const modal = serviceModalTotal(s.spareparts);
@@ -725,7 +726,7 @@ export function ServicesPage() {
         labelOf={(id) => t(`statusLabel.${id as ServiceStatus}`) ?? id}
       />
 
-      <Card glass>
+      <Card>
         {loading ? (
           <p className={styles.loading}>
             <Icon name="circle-notch" className="spin" aria-hidden /> {t('services.loading')}
@@ -811,7 +812,7 @@ export function ServicesPage() {
                       {cols.has('complaint') && (
                         <div className={styles.rowCell} data-seg="complaint">
                           <span className={styles.clamp} title={s.complaint || undefined}>
-                            <b>{t('services.colComplaint')}</b> {s.complaint || '—'}
+                            <b>{t('services.colComplaint')}</b> {s.complaint || <EmptyValue />}
                           </span>
                         </div>
                       )}
@@ -821,7 +822,7 @@ export function ServicesPage() {
                             className={[styles.clamp, styles.clamp3].join(' ')}
                             title={s.completionNote || undefined}
                           >
-                            <b>{t('services.colFix')}</b> {s.completionNote || '—'}
+                            <b>{t('services.colFix')}</b> {s.completionNote || <EmptyValue />}
                           </span>
                         </div>
                       )}
@@ -829,7 +830,7 @@ export function ServicesPage() {
                         <div className={styles.rowCell} data-seg="technician">
                           <span className={styles.rowTech} title={t('services.colTech')}>
                             <Icon name="screwdriver-wrench" aria-hidden />
-                            <span>{s.technicianName || '—'}</span>
+                            <span>{s.technicianName || <EmptyValue />}</span>
                           </span>
                         </div>
                       )}

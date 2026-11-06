@@ -80,7 +80,7 @@
 .statusLed.working {
   background: var(--blue-400);
   box-shadow: 0 0 9px var(--blue-400);
-  animation: fm-pulse 1.6s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.6s var(--ease-in-out) var(--pulse-cycles);
 }
 .statusLed.done {
   background: var(--green-400);
@@ -176,7 +176,7 @@
   border-radius: 50%;
   background: var(--blue-400);
   box-shadow: 0 0 6px var(--blue-400);
-  animation: fm-pulse 1.6s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.6s var(--ease-in-out) var(--pulse-cycles);
 }
 .statePill.done {
   background: var(--success-soft);

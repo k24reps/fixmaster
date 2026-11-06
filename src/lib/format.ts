@@ -3,6 +3,14 @@
  * No DOM/state dependencies → fully unit-testable.
  */
 
+/**
+ * Penanda nilai kosong di sel tabel, readout, dan ringkasan. Tanda pisah pendek,
+ * bukan em dash: em dash di teks tampil termasuk pola tulisan AI (antislop R-02).
+ * Di JSX pakai komponen `EmptyValue` agar pembaca layar mendengar "kosong",
+ * bukan nama tanda baca. Konstanta ini untuk konteks string (title, join, cetak).
+ */
+export const EMPTY_VALUE = '–';
+
 /** Format a number as Indonesian Rupiah, e.g. 1500000 → "Rp 1.500.000". */
 export function fmtRp(value: number): string {
   if (!Number.isFinite(value)) return 'Rp 0';

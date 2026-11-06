@@ -1,4 +1,5 @@
 /** Guarded write actions for the vendor-only operator console. */
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState } from 'react';
 import {
   Button,
@@ -137,7 +138,7 @@ export function OperatorActionModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`${TITLES[mode]} — ${org.name}`}
+      title={`${TITLES[mode]} · ${org.name}`}
       size={mode === 'payment' ? 'md' : 'sm'}
       footer={
         <div className={styles.modalFoot}>
@@ -184,7 +185,7 @@ export function OperatorActionModal({
                 <div><dt>Berakhir</dt><dd>{org.expiresAt ? fmtDate(localDateOf(org.expiresAt)) : 'Tanpa batas'}</dd></div>
                 <div><dt>Outlet aktif</dt><dd>{org.outletCount}</dd></div>
                 <div><dt>Pembayaran terakhir</dt><dd>{org.lastPaidAt ? fmtDate(localDateOf(org.lastPaidAt)) : 'Belum ada'}</dd></div>
-                <div><dt>Referensi terakhir</dt><dd>{org.lastPaidReference || '—'}</dd></div>
+                <div><dt>Referensi terakhir</dt><dd>{org.lastPaidReference || <EmptyValue />}</dd></div>
               </dl>
             </div>
 

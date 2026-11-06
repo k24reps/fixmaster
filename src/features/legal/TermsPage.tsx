@@ -9,7 +9,7 @@ import { LegalLayout } from './LegalLayout';
 export function TermsPage() {
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Syarat & Ketentuan — FixMaster';
+    document.title = 'Syarat & Ketentuan | FixMaster';
     return () => {
       document.title = prev;
     };

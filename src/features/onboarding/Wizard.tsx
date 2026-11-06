@@ -150,7 +150,7 @@ export function Wizard({ onComplete }: WizardProps) {
               onClick={() => void runDevSeed()}
               disabled={seeding}
             >
-              <Icon name="lightning" aria-hidden />
+              <Icon name="boxes-stacked" aria-hidden />
               {seeding ? 'Memuat data demo…' : 'Isi data demo & masuk'}
             </button>
             <span className={styles.devHint}>Mode dev · login sebagai Owner (PIN 1234)</span>
@@ -163,14 +163,14 @@ export function Wizard({ onComplete }: WizardProps) {
             <span>
               {setupNotice ? (
                 <>
-                  <strong>{setupNotice}</strong> Jangan lanjutkan setup ini — buat toko
+                  <strong>{setupNotice}</strong> Jangan lanjutkan setup ini. Membuat toko
                   baru justru mengunci akunmu dari toko yang mengundang. Hubungi pemilik
                   tokonya dulu.
                 </>
               ) : (
                 <>
                   Diundang bergabung ke toko yang sudah ada? <strong>Jangan isi form ini.</strong>{' '}
-                  Keluar, lalu masuk memakai email yang persis diundang — kalau meleset satu
+                  Keluar, lalu masuk memakai email yang persis diundang. Kalau meleset satu
                   huruf pun kamu akan berakhir membuat toko sendiri.
                 </>
               )}

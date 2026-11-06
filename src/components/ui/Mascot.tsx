@@ -1,11 +1,14 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 interface MascotProps {
   /** Rendered height in px (width follows the probe silhouette). */
   size?: number;
   /** face = compact instrument; full = instrument + lead, connector, and magnetic feet. */
   variant?: 'face' | 'full';
-  /** SMIL micro-motion for the live probe and diagnostic waveform. */
+  /**
+   * SMIL micro-motion for the live probe and diagnostic waveform. Runs a few
+   * cycles (under 5 s, WCAG 2.2.2) once the mascot scrolls into view, then rests.
+   */
   animated?: boolean;
   className?: string;
 }
@@ -48,6 +51,7 @@ export function Mascot({ size = 96, variant = 'face', animated = true, className
   const viewHeight = isFull ? 176 : 148;
   const viewBox = isFull ? '0 0 148 176' : '18 2 112 148';
   const width = Math.round((size * viewWidth) / viewHeight);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
@@ -57,8 +61,35 @@ export function Mascot({ size = 96, variant = 'face', animated = true, className
     return () => media.removeEventListener('change', handleChange);
   }, []);
 
+  // Gerak dimulai saat maskot terlihat, bukan saat halaman dimuat: maskot penuh
+  // di landing ada jauh di bawah, dan dulu animasinya berulang tanpa akhir.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!shouldAnimate || !svg) return;
+    const start = () =>
+      svg.querySelectorAll<SVGAnimationElement>('animate, animateTransform').forEach((a) => {
+        if (typeof a.beginElement === 'function') a.beginElement();
+      });
+    if (typeof IntersectionObserver !== 'function') {
+      start();
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          start();
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(svg);
+    return () => io.disconnect();
+  }, [shouldAnimate]);
+
   return (
     <svg
+      ref={svgRef}
       viewBox={viewBox}
       width={width}
       height={size}
@@ -114,7 +145,8 @@ export function Mascot({ size = 96, variant = 'face', animated = true, className
             type="rotate"
             values="-18 43 30;-14 43 30;-18 43 30"
             dur="3.2s"
-            repeatCount="indefinite"
+            begin="indefinite"
+            repeatCount="1"
           />
         )}
         <rect x="39" y="12" width="8" height="29" rx="3" fill={SHELL_HIGH} stroke={EDGE} strokeWidth="1.3" />
@@ -123,7 +155,7 @@ export function Mascot({ size = 96, variant = 'face', animated = true, className
         <rect x="36.5" y="34" width="13" height="10" rx="4" fill={SHELL} stroke={AMBER_DEEP} strokeWidth="1.5" />
         <circle cx="43" cy="4" r="2.3" fill={CYAN} filter={`url(#${glowId})`}>
           {shouldAnimate && (
-            <animate attributeName="opacity" values="1;0.38;1" dur="1.7s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0.38;1" dur="1.7s" begin="indefinite" repeatCount="2" />
           )}
         </circle>
       </g>
@@ -155,7 +187,7 @@ export function Mascot({ size = 96, variant = 'face', animated = true, className
         filter={`url(#${glowId})`}
       >
         {shouldAnimate && (
-          <animate attributeName="opacity" values="0.58;1;0.58" dur="2.1s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.58;1;0.58" dur="2.1s" begin="indefinite" repeatCount="2" />
         )}
       </path>
       <g fill={CYAN} opacity="0.72">

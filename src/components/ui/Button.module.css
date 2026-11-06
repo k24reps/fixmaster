@@ -19,13 +19,14 @@
   user-select: none;
 }
 
+/* Tanpa pointer-events: none. Atribut disabled sudah memblokir klik, dan
+   pointer-events: none justru menyembunyikan kursor not-allowed. */
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  pointer-events: none;
 }
 
-.btn:active {
+.btn:active:not(:disabled) {
   transform: translateY(1px) scale(0.99);
 }
 

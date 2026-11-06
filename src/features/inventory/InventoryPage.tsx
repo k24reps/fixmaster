@@ -144,7 +144,7 @@ export function InventoryPage() {
       usedIn = 0;
     }
     if (usedIn > 0) {
-      toast.warning(`"${item.name}" dipakai di ${usedIn} servis aktif — periksa dulu.`);
+      toast.warning(`"${item.name}" dipakai di ${usedIn} servis aktif. Periksa dulu.`);
     }
     setToDelete(item);
   };
@@ -213,11 +213,11 @@ export function InventoryPage() {
       />
 
       {loadPending(inventoryLoad) ? (
-        <Card glass>
+        <Card>
           <LoadState queries={[inventoryLoad]} />
         </Card>
       ) : rows.length === 0 ? (
-        <Card glass>
+        <Card>
           <EmptyState
             icon={<Icon name="boxes-stacked" aria-hidden />}
             title={inventory.length === 0 ? t('inventory.emptyTitle') : t('inventory.noResults')}

@@ -309,7 +309,7 @@ export function TaskTemplateModal({
             />
             <div className={styles.titlesFoot}>
               <span className={styles.hint}>
-                Satu tugas per baris — semuanya masuk ke template ini dengan jadwal &amp;
+                Satu tugas per baris. Semuanya masuk ke template ini dengan jadwal &amp;
                 penerima yang sama. Urutannya bisa diatur setelah disimpan.
               </span>
               {parsedBulk.length > 0 && (
@@ -391,8 +391,8 @@ export function TaskTemplateModal({
           value={active ? 'aktif' : 'nonaktif'}
           onChange={(e) => setActive(e.target.value === 'aktif')}
           options={[
-            { value: 'aktif', label: 'Aktif — tugas dibuat sesuai jadwal' },
-            { value: 'nonaktif', label: 'Nonaktif — berhenti membuat tugas baru' },
+            { value: 'aktif', label: 'Aktif: tugas dibuat sesuai jadwal' },
+            { value: 'nonaktif', label: 'Nonaktif: berhenti membuat tugas baru' },
           ]}
           hint="Menonaktifkan tidak menghapus tugas yang sudah ada"
         />

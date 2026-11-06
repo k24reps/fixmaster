@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState } from 'react';
 import {
   Card,
@@ -17,7 +18,7 @@ import { EMPTY_CUSTOMER_STAT, matchesCustomer } from '@/lib/business/customers';
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { logActivity } from '@/lib/activity';
 import { waLink } from '@/lib/business/notify';
@@ -102,7 +103,7 @@ export function CustomersPage() {
   // Open WhatsApp with a pre-filled, shop-branded greeting the user can edit
   // before sending. Mirrors NotifyModal: wa.me deep link, demo-guarded.
   const sendWa = (c: Customer) => {
-    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh — daftar gratis.')) return;
+    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh. Daftar gratis.')) return;
     const toko = org?.name?.trim();
     const greeting = toko ? `Halo ${c.name}, ${toko} di sini. ` : `Halo ${c.name}, `;
     window.open(waLink(c.phone, greeting), '_blank');
@@ -116,12 +117,12 @@ export function CustomersPage() {
     // Statistik belum termuat = setiap pelanggan terbaca "0 tiket", dan dialog
     // konfirmasi menyatakan hal yang belum tentu benar sebagai fakta.
     if (statsQuery.loading) {
-      toast.warning('Statistik servis belum selesai dimuat — tunggu sebentar.');
+      toast.warning('Statistik servis belum selesai dimuat. Tunggu sebentar.');
       return;
     }
     const used = stats.get(c.id)?.count ?? 0;
     if (used > 0) {
-      toast.warning(`"${c.name}" punya ${used} tiket servis — perbarui datanya saja, jangan dihapus.`);
+      toast.warning(`"${c.name}" punya ${used} tiket servis. Perbarui datanya saja, jangan dihapus.`);
       return;
     }
     setToDelete(c);
@@ -233,16 +234,16 @@ export function CustomersPage() {
 
       <div className={styles.summary}>
         <span><strong>{customers.length}</strong> pelanggan</span>
-        <span><strong>{servicesPending ? '—' : repeatCount}</strong> pelanggan berulang</span>
+        <span><strong>{servicesPending ? EMPTY_VALUE : repeatCount}</strong> pelanggan berulang</span>
         <span><strong>{rows.length}</strong> ditampilkan</span>
       </div>
 
       {loadPending(customersLoad) ? (
-        <Card glass>
+        <Card>
           <LoadState queries={[customersLoad]} />
         </Card>
       ) : rows.length === 0 ? (
-        <Card glass>
+        <Card>
           <EmptyState
             icon={<Icon name="users" aria-hidden />}
             title={filtered ? 'Tidak ada hasil' : 'Belum ada pelanggan'}
@@ -283,7 +284,7 @@ export function CustomersPage() {
                 </div>
                 <div className={styles.tileFoot}>
                   <span className={styles.tileStat}>
-                    {servicesPending ? '—' : `${st.count}x · ${fmtRp(st.paidTotal)}`}
+                    {servicesPending ? EMPTY_VALUE : `${st.count}x · ${fmtRp(st.paidTotal)}`}
                   </span>
                   <div className={styles.cardActions}>{renderActions(c)}</div>
                 </div>
@@ -329,18 +330,18 @@ export function CustomersPage() {
                   <div className={styles.activityBlock}>
                     <span className={styles.activityLabel}>Servis</span>
                     <span className={[styles.activityValue, !servicesPending && st.count > 0 ? styles.brand : styles.idle].join(' ')}>
-                      {servicesPending ? '—' : `${st.count}x`}
+                      {servicesPending ? EMPTY_VALUE : `${st.count}x`}
                     </span>
                   </div>
                   <div className={styles.activityBlock}>
                     <span className={styles.activityLabel}>Servis Lunas</span>
-                    <span className={styles.activityValue}>{servicesPending ? '—' : fmtRp(st.paidTotal)}</span>
+                    <span className={styles.activityValue}>{servicesPending ? EMPTY_VALUE : fmtRp(st.paidTotal)}</span>
                   </div>
                 </div>
 
                 <div className={styles.foot}>
                   {servicesPending ? (
-                    <span className={styles.newcomer}>—</span>
+                    <span className={styles.newcomer}><EmptyValue /></span>
                   ) : st.count > 1 ? (
                     <span className={styles.repeat}>Pelanggan Setia</span>
                   ) : (

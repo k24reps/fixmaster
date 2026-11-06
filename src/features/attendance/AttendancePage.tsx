@@ -1,3 +1,5 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
+import { EMPTY_VALUE } from '@/lib/format';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardBody, Button, EmptyState, Icon, Modal, Input, Select, ConfirmDialog, LoadState, loadPending } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
@@ -541,7 +543,7 @@ export function AttendancePage() {
         </div>
       </div>
 
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="users" aria-hidden />}
           title="Kehadiran Hari Ini"
@@ -573,7 +575,7 @@ export function AttendancePage() {
                     <strong>{a.employeeName}</strong>
                     <small>
                       {a.status === 'hadir'
-                        ? `${a.checkIn ?? '—'}${a.checkOut ? ` – ${a.checkOut}` : ''}`
+                        ? `${a.checkIn ?? EMPTY_VALUE}${a.checkOut ? ` – ${a.checkOut}` : ''}`
                         : STATUS_LABEL[a.status]}
                       {a.note ? ` · ${a.note}` : ''}
                     </small>
@@ -600,7 +602,7 @@ export function AttendancePage() {
       {/* Kontrol periode berdiri sendiri di atas kedua kartu yang dikendalikannya.
           Menaruhnya di dalam salah satu header akan menyiratkan ia hanya
           mengatur kartu itu. */}
-      <Card glass>
+      <Card>
         <CardBody className={styles.periodBody}>
           <span className={styles.periodLabel}>
             <Icon name="calendar" aria-hidden /> Periode
@@ -610,7 +612,7 @@ export function AttendancePage() {
       </Card>
 
       {owner && (
-        <Card glass>
+        <Card>
           <CardHeader
             icon={<Icon name="clock" aria-hidden />}
             title="Total Jam Kerja per Karyawan"
@@ -642,7 +644,7 @@ export function AttendancePage() {
                       {r.openShifts > 0 && (
                         <small
                           className={styles.openShift}
-                          title="Hari hadir yang jam keluarnya belum tercatat — hari itu terhitung 0 jam"
+                          title="Hari hadir yang jam keluarnya belum tercatat, jadi hari itu terhitung 0 jam"
                         >
                           {r.openShifts} blm tutup
                         </small>
@@ -662,7 +664,7 @@ export function AttendancePage() {
         </Card>
       )}
 
-      <Card glass>
+      <Card>
         <CardHeader
           icon={<Icon name="clock-rotate-left" aria-hidden />}
           title="Riwayat Absensi"
@@ -732,8 +734,8 @@ export function AttendancePage() {
                       </a>
                     )}
                   </span>
-                  <span className={styles.punch}>{a.checkIn ?? '—'}</span>
-                  <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}>—</span>}</span>
+                  <span className={styles.punch}>{a.checkIn ?? <EmptyValue />}</span>
+                  <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}><EmptyValue /></span>}</span>
                   <span>
                     <span className={[styles.statusTag, styles[a.status]].join(' ')}>
                       {STATUS_LABEL[a.status]}
@@ -748,7 +750,7 @@ export function AttendancePage() {
                     {isWorkedDay(a) && a.checkOut ? (
                       `${a.totalHours} jam`
                     ) : (
-                      <span className={styles.muted}>—</span>
+                      <span className={styles.muted}><EmptyValue /></span>
                     )}
                   </span>
                   {owner && (
@@ -823,7 +825,7 @@ export function AttendancePage() {
               hint={editHours !== null ? `${editHours} jam` : undefined}
               error={
                 editHours !== null && editHours > IMPLAUSIBLE_HOURS
-                  ? `${editHours} jam — jam masuk & keluar tertukar?`
+                  ? `${editHours} jam. Jam masuk & keluar tertukar?`
                   : undefined
               }
             />

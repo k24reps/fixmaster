@@ -10,7 +10,7 @@ import { LegalLayout } from './LegalLayout';
 export function PrivacyPage() {
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Kebijakan Privasi — FixMaster';
+    document.title = 'Kebijakan Privasi | FixMaster';
     return () => {
       document.title = prev;
     };
@@ -112,7 +112,7 @@ export function PrivacyPage() {
 
       <h2>7. Keamanan</h2>
       <p>
-        Kami menerapkan langkah teknis dan organisasi yang wajar — enkripsi saat transit,
+        Kami menerapkan langkah teknis dan organisasi yang wajar: enkripsi saat transit,
         kontrol akses berbasis peran, dan isolasi data antar-tenant. Tidak ada sistem yang 100%
         aman; Anda turut bertanggung jawab menjaga kerahasiaan kata sandi akun Anda.
       </p>

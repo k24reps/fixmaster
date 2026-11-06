@@ -590,7 +590,7 @@ export class SupabaseAdapter implements Repository {
       }
       if (error.code === '42501') {
         throw new Error(
-          'Langganan kedaluwarsa atau melebihi kuota — perpanjang di Pengaturan → Langganan untuk melanjutkan.',
+          'Langganan kedaluwarsa atau melebihi kuota. Perpanjang di Pengaturan → Langganan untuk melanjutkan.',
         );
       }
       throw error;

@@ -4,6 +4,7 @@
  * /prototype/ticket and screenshotted. This is a DESIGN PROBE for the
  * "precision electronics bench" identity — not yet wired into the app.
  */
+import { EMPTY_VALUE } from '@/lib/format';
 import { Icon } from '@/components/ui';
 import { useThemeStore } from '@/stores/theme';
 import styles from './RepairTicketPrototype.module.css';
@@ -96,7 +97,7 @@ export function RepairTicketPrototype() {
                   </div>
                   <div className={styles.stageInfo}>
                     <span className={styles.stageLabel}>{s.label}</span>
-                    <span className={styles.stageAt}>{s.at ?? '—'}</span>
+                    <span className={styles.stageAt}>{s.at ?? EMPTY_VALUE}</span>
                   </div>
                   {i < STAGES.length - 1 && <span className={styles.connector} />}
                 </div>

@@ -8,7 +8,7 @@ const RULES: { match: RegExp; msg: string }[] = [
   { match: /invalid login credentials/i, msg: 'Email atau password salah.' },
   { match: /email not confirmed/i, msg: 'Email belum dikonfirmasi. Cek kotak masukmu.' },
   { match: /already registered|already been registered/i, msg: 'Email ini sudah terdaftar. Silakan masuk.' },
-  { match: /password should be at least|weak.?password/i, msg: 'Password terlalu lemah — minimal 8 karakter, kombinasi huruf & angka.' },
+  { match: /password should be at least|weak.?password/i, msg: 'Password terlalu lemah: minimal 8 karakter, kombinasi huruf & angka.' },
   { match: /rate limit|only request this after|too many requests/i, msg: 'Terlalu banyak percobaan. Coba lagi beberapa saat.' },
   { match: /unable to validate email|invalid email|email address.*invalid/i, msg: 'Format email tidak valid.' },
   { match: /failed to fetch|networkerror|fetch failed|network request failed/i, msg: 'Gagal terhubung. Periksa koneksi internetmu.' },

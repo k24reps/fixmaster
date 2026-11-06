@@ -94,7 +94,7 @@ export async function seedDemoWorkspace(): Promise<void> {
   const oDago = newId();
   const oCimahi = newId();
   const outlets: Outlet[] = [
-    { ...orgBase, id: oPusat, name: 'Pusat — Bandung', address: 'Jl. Merdeka No. 12, Bandung', isPrimary: true },
+    { ...orgBase, id: oPusat, name: 'Pusat Bandung', address: 'Jl. Merdeka No. 12, Bandung', isPrimary: true },
     { ...orgBase, id: oDago, name: 'Cabang Dago', address: 'Jl. Ir. H. Juanda 88, Bandung', isPrimary: false },
     { ...orgBase, id: oCimahi, name: 'Cabang Cimahi', address: 'Jl. Raya Cimahi 45, Cimahi', isPrimary: false },
   ];

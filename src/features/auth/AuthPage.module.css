@@ -388,7 +388,7 @@
 .ledLive {
   background: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft), 0 0 9px var(--accent);
-  animation: fm-pulse 1.8s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.8s var(--ease-in-out) var(--pulse-cycles);
 }
 
 .heading {

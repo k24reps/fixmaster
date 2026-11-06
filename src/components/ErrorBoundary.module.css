@@ -76,7 +76,7 @@
   border-radius: 50%;
   background: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft), 0 0 9px var(--danger);
-  animation: fm-pulse 1.4s var(--ease-in-out) infinite;
+  animation: fm-pulse 1.4s var(--ease-in-out) var(--pulse-cycles);
 }
 .faultCode {
   color: var(--text-muted);

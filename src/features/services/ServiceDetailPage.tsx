@@ -1,3 +1,4 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -35,7 +36,7 @@ import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { trackingUrl } from '@/lib/business/notify';
-import { Button, ConfirmDialog, Icon, Input, Modal, Select, type IconName } from '@/components/ui';
+import { Button, ConfirmDialog, Icon, Input, LoadState, Modal, Select, type IconName } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
@@ -132,7 +133,22 @@ export function ServiceDetailPage() {
   const history = useServiceHistory(service);
 
   if (!service) {
-    if (oneQuery.isPending || oneQuery.isFetching) return null;
+    // Dulu: layar kosong selama memuat, dan galat jaringan tampil sebagai 404.
+    // 404 hanya benar bila pengambilan BERHASIL tetapi tiketnya memang tidak ada.
+    if (id && (oneQuery.isPending || oneQuery.isFetching || oneQuery.isError)) {
+      return (
+        <LoadState
+          queries={[
+            {
+              loading: oneQuery.isFetching,
+              // Saat mencoba ulang, tampilkan penanda memuat, bukan galat lama.
+              error: oneQuery.isFetching ? null : oneQuery.error,
+              refetch: oneQuery.refetch,
+            },
+          ]}
+        />
+      );
+    }
     return (
       <div className={styles.notFound}>
         <span className={styles.nfCode}>404</span>
@@ -738,7 +754,7 @@ export function ServiceDetailPage() {
                   </div>
                   <div className={styles.stageInfo}>
                     <span className={styles.stageLabel}>{t(`status.${stage}`)}</span>
-                    <span className={styles.stageAt}>{at ?? (skipped ? t('serviceDetail.skipped') : '—')}</span>
+                    <span className={styles.stageAt}>{at ?? (skipped ? t('serviceDetail.skipped') : <EmptyValue />)}</span>
                   </div>
                   {i < TRAVELER.length - 1 && <span className={styles.connector} />}
                 </div>
@@ -752,7 +768,7 @@ export function ServiceDetailPage() {
           <div className={[styles.panel, styles.stub].join(' ')}>
             <div className={styles.panelLabel}>CUSTOMER STUB</div>
             <div className={styles.stubName}>{service.customerName}</div>
-            <div className={styles.stubPhone}>{service.customerPhone || '—'}</div>
+            <div className={styles.stubPhone}>{service.customerPhone || <EmptyValue />}</div>
             <div className={styles.stubActions}>
               <button className={styles.waBtn} onClick={() => setNotifyOpen(true)}>
                 <Icon name="whatsapp" aria-hidden /> WhatsApp
@@ -779,11 +795,11 @@ export function ServiceDetailPage() {
 
           <div className={styles.panel}>
             <div className={styles.panelLabel}>{t('serviceDetail.intakeLabel')}</div>
-            <p className={styles.complaint}>{service.complaint || '—'}</p>
+            <p className={styles.complaint}>{service.complaint || <EmptyValue />}</p>
             <dl className={styles.specList}>
               <div>
                 <dt>{t('serviceDetail.accessories')}</dt>
-                <dd>{service.accessories || '—'}</dd>
+                <dd>{service.accessories || <EmptyValue />}</dd>
               </div>
               <div>
                 <dt>{t('serviceDetail.category')}</dt>
@@ -998,7 +1014,7 @@ export function ServiceDetailPage() {
                   </div>
                   <div className={styles.costProfit} data-loss={profitKnown && profit < 0}>
                     <dt>{t('serviceDetail.unitProfit')}</dt>
-                    <dd>{profitKnown ? fmtMoney(profit) : '—'}</dd>
+                    <dd>{profitKnown ? fmtMoney(profit) : <EmptyValue />}</dd>
                   </div>
                 </>
               )}

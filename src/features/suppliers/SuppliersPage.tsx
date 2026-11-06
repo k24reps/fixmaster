@@ -5,7 +5,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { isCloudMode } from '@/stores/demo';
 import { voidPurchaseOrder } from '@/data/supabase-client';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { poTotal, poReceivedQty, PO_STATUS_LABELS, PO_STATUS_TONE } from '@/lib/business/purchase';
 import { applyBalance } from '@/lib/business/finance';
@@ -37,7 +37,7 @@ export function SuppliersPage() {
   const [voidTarget, setVoidTarget] = useState<PurchaseOrder | null>(null);
   const [voiding, setVoiding] = useState(false);
 
-  const supplierName = (id: string) => suppliers.find((s) => s.id === id)?.name ?? '—';
+  const supplierName = (id: string) => suppliers.find((s) => s.id === id)?.name ?? EMPTY_VALUE;
 
   const sortedPOs = useMemo(
     () => [...purchaseOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -63,7 +63,7 @@ export function SuppliersPage() {
     const linkedPo = purchaseOrders.filter((p) => p.supplierId === deleteSupplier.id).length;
     if (linkedPo > 0) {
       toast.error(
-        `Supplier punya ${linkedPo} PO — riwayatnya akan kehilangan nama supplier. Perbarui datanya saja.`,
+        `Supplier punya ${linkedPo} PO, jadi riwayatnya akan kehilangan nama supplier. Perbarui datanya saja.`,
       );
       setDeleteSupplier(null);
       return;
@@ -185,11 +185,11 @@ export function SuppliersPage() {
 
       {tab === 'po' ? (
         loadPending(poLoad) ? (
-          <Card glass>
+          <Card>
             <LoadState queries={[poLoad]} />
           </Card>
         ) : sortedPOs.length === 0 ? (
-          <Card glass>
+          <Card>
             <EmptyState
               icon={<Icon name="file-invoice" aria-hidden />}
               title="Belum ada Purchase Order"
@@ -201,7 +201,7 @@ export function SuppliersPage() {
             />
           </Card>
         ) : (
-          <Card glass padding={false}>
+          <Card padding={false}>
             <div className={styles.docketList}>
               {sortedPOs.map((po) => (
                 <div key={po.id} className={[styles.docket, styles[po.status]].join(' ')}>
@@ -253,11 +253,11 @@ export function SuppliersPage() {
         )
       ) : (
         loadPending(suppliersLoad) ? (
-          <Card glass>
+          <Card>
             <LoadState queries={[suppliersLoad]} />
           </Card>
         ) : suppliers.length === 0 ? (
-          <Card glass>
+          <Card>
             <EmptyState
               icon={<Icon name="truck-field" aria-hidden />}
               title="Belum ada supplier"
@@ -354,7 +354,7 @@ export function SuppliersPage() {
       <ConfirmDialog
         open={!!voidTarget}
         title="Batalkan PO?"
-        message={`PO ${voidTarget?.poNumber ?? ''} akan dibatalkan. Stok yang sudah diterima dikembalikan, pengeluaran terkait dihapus, dan saldo wallet dikembalikan. HPP rata-rata TIDAK ikut kembali ke nilai sebelumnya — periksa harga modal barangnya setelah ini. Hanya bisa dibatalkan bila stoknya masih utuh dan pengeluarannya masih bulan ini.`}
+        message={`PO ${voidTarget?.poNumber ?? ''} akan dibatalkan. Stok yang sudah diterima dikembalikan, pengeluaran terkait dihapus, dan saldo wallet dikembalikan. HPP rata-rata TIDAK ikut kembali ke nilai sebelumnya, jadi periksa harga modal barangnya setelah ini. Hanya bisa dibatalkan bila stoknya masih utuh dan pengeluarannya masih bulan ini.`}
         confirmLabel={voiding ? 'Membatalkan…' : 'Batalkan PO'}
         danger
         onConfirm={confirmVoid}

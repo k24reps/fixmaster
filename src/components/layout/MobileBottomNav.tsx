@@ -1,3 +1,5 @@
+import { EmptyValue } from '@/components/ui/EmptyValue';
+import { EMPTY_VALUE } from '@/lib/format';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Icon } from '@/components/ui';
@@ -149,7 +151,7 @@ export function MobileBottomNav() {
                 </span>
                 <span>
                   <small>{t('nav.mobile.businessUnit')}</small>
-                  <strong>{org?.name ?? '—'}</strong>
+                  <strong>{org?.name ?? <EmptyValue />}</strong>
                 </span>
               </div>
 
@@ -170,11 +172,11 @@ export function MobileBottomNav() {
 
               <div className={styles.operatorRow}>
                 <span className={styles.avatar}>
-                  {employee?.name.charAt(0).toUpperCase() ?? '—'}
+                  {employee?.name.charAt(0).toUpperCase() ?? EMPTY_VALUE}
                   <span aria-hidden />
                 </span>
                 <span className={styles.operatorInfo}>
-                  <strong>{employee?.name ?? '—'}</strong>
+                  <strong>{employee?.name ?? <EmptyValue />}</strong>
                   <small>{employee ? ROLE_LABEL[language][employee.role] : ''}</small>
                 </span>
                 <button type="button" className={styles.logoutButton} onClick={handleLogout}>
@@ -197,7 +199,7 @@ export function MobileBottomNav() {
               to={destinationFor(entry)}
               className={[styles.navItem, active ? styles.active : '', locked ? styles.locked : ''].join(' ')}
               aria-current={active ? 'page' : undefined}
-              title={locked ? `${t(item.labelKey)} — PRO` : t(item.labelKey)}
+              title={locked ? `${t(item.labelKey)} · PRO` : t(item.labelKey)}
             >
               <span className={styles.navIcon}>
                 <Icon name={item.icon} weight={active ? 'fill' : 'regular'} aria-hidden />

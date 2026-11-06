@@ -31,7 +31,7 @@ export function nextStepFor(status: string, pickedUp: boolean): NextStep {
     case 'lunas':
       return {
         tone: 'action',
-        text: 'Perbaikan sudah selesai. Unit siap diambil di toko pada jam operasional — tunjukkan nomor servis ini saat pengambilan.',
+        text: 'Perbaikan sudah selesai. Unit siap diambil di toko pada jam operasional. Tunjukkan nomor servis ini saat pengambilan.',
       };
     case 'konfirmasi':
       return {
@@ -41,17 +41,17 @@ export function nextStepFor(status: string, pickedUp: boolean): NextStep {
     case 'batal':
       return {
         tone: 'action',
-        text: 'Pengerjaan dihentikan. Unit bisa diambil kembali di toko — hubungi toko bila ingin penjelasan lebih dulu.',
+        text: 'Pengerjaan dihentikan. Unit bisa diambil kembali di toko. Hubungi toko bila ingin penjelasan lebih dulu.',
       };
     case 'tunggu':
       return {
         tone: 'wait',
-        text: 'Pengerjaan menunggu sparepart tiba. Tidak ada yang perlu Anda lakukan — toko akan mengabari begitu berlanjut.',
+        text: 'Pengerjaan menunggu sparepart tiba. Tidak ada yang perlu Anda lakukan. Toko akan mengabari begitu berlanjut.',
       };
     default:
       return {
         tone: 'wait',
-        text: 'Unit sedang ditangani teknisi. Tidak ada yang perlu Anda lakukan — buka halaman ini lagi nanti untuk perkembangan terbaru.',
+        text: 'Unit sedang ditangani teknisi. Tidak ada yang perlu Anda lakukan. Buka halaman ini lagi nanti untuk perkembangan terbaru.',
       };
   }
 }

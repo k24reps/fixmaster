@@ -46,7 +46,7 @@ function SyncBadge() {
           ? 'Sinkron realtime aktif'
           : status === 'connecting'
             ? 'Menyambungkan ke server…'
-            : 'Koneksi terputus — mencoba sambung ulang'
+            : 'Koneksi terputus, mencoba sambung ulang'
       }
     >
       <span className={styles.syncLed} aria-hidden />

@@ -190,6 +190,7 @@
 .select:focus {
   outline: none;
   border-color: var(--brand);
+  box-shadow: var(--ring);
 }
 
 /* ---------- Tampilan Kartu: kisi mengikuti lebar ---------- */
