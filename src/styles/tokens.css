@@ -124,6 +124,11 @@
   --control-h: 44px;
   --row-h-compact: 44px;
   --row-h: 54px;
+  /* Bantalan vertikal yang dulu px mati di komponen. Jadi token supaya mode
+     Padat bisa merapatkannya; nilai Lapang = nilai lama, tampilan tak berubah. */
+  --card-head-py: 18px;
+  --row-py: 12px;
+  --nav-item-h: 48px;
 
   /* ---------- Motion (mechanical, crisp) ---------- */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -162,6 +167,32 @@
   --z-modal: 5000;
   --z-toast: 9000;
   --z-tooltip: 9500;
+}
+
+/* ============================================================
+   KERAPATAN PADAT — Pengaturan › Sistem › Tampilan (stores/zoom.ts)
+   ============================================================
+   Hanya jarak dan tinggi; ukuran teks TIDAK disentuh, sehingga Padat tidak
+   pernah menembus Lantai 12px (beda dengan zoom 80% lama yang menggantikannya).
+   Hanya pointer presisi: di layar sentuh target 44px adalah kontrak, jadi
+   atribut yang tersimpan diabaikan di sana. */
+@media (pointer: fine) {
+  :root[data-density='padat'] {
+    --space-3: 10px;
+    --space-4: 12px;
+    --space-5: 16px;
+    --space-6: 18px;
+    --space-8: 24px;
+    --space-10: 32px;
+    --control-h: 36px;
+    --row-h-compact: 36px;
+    --row-h: 44px;
+    --card-head-py: 12px;
+    --row-py: 8px;
+    --nav-item-h: 40px;
+    --sidebar-width: 248px;
+    --topbar-height: 60px;
+  }
 }
 
 /* ============================================================

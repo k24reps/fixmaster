@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useThemeStore } from '@/stores/theme';
-import { useZoomStore, ZOOM_LEVELS } from '@/stores/zoom';
+import { useZoomStore } from '@/stores/zoom';
+import { ZoomAnnouncer } from './DisplayControls';
+import { zoomPercent, zoomTone } from './zoomDisplay';
 import { Icon } from '@/components/ui';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useSessionStore } from '@/stores/session';
@@ -56,41 +58,31 @@ function SyncBadge() {
 }
 
 /**
- * Zoom aplikasi: kurang / readout / tambah. Readout mono-persen sengaja
- * ditampilkan permanen — di bahasa visual "Precision Electronics Bench"
- * sebuah kontrol tanpa angka terbaca setengah jadi, dan pengguna perlu tahu
- * ia sedang tidak di 100% saat membandingkan tampilan dengan orang lain.
+ * Penanda pembesaran: hanya muncul saat tampilan TIDAK di 100%, supaya
+ * pengguna yang membandingkan layar dengan rekan tahu sebabnya dan bisa
+ * kembali dengan satu klik. Mengatur level ada di Pengaturan › Sistem ›
+ * Tampilan, menu Lainnya, dan pintasan Ctrl+Alt + = / − / 0. Di 100% topbar
+ * tidak membawa kontrol yang jarang dipakai.
  */
-function ZoomControl() {
+function ZoomChip() {
+  const t = useT();
   const zoom = useZoomStore((s) => s.zoom);
-  const stepZoom = useZoomStore((s) => s.stepZoom);
-  const min = zoom === ZOOM_LEVELS[0];
-  const max = zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
-
+  const resetZoom = useZoomStore((s) => s.resetZoom);
+  if (zoom === 1) return null;
+  const pct = zoomPercent(zoom);
   return (
-    <div className={styles.zoom} role="group" aria-label="Zoom tampilan">
-      <button
-        className={styles.zoomBtn}
-        onClick={() => stepZoom(-1)}
-        disabled={min}
-        aria-label="Perkecil tampilan"
-        title="Perkecil tampilan"
-      >
-        <Icon name="minus" aria-hidden />
-      </button>
-      <span className={styles.zoomValue} aria-live="polite">
-        {Math.round(zoom * 100)}%
-      </span>
-      <button
-        className={styles.zoomBtn}
-        onClick={() => stepZoom(1)}
-        disabled={max}
-        aria-label="Perbesar tampilan"
-        title="Perbesar tampilan"
-      >
-        <Icon name="plus" aria-hidden />
-      </button>
-    </div>
+    <button
+      type="button"
+      className={styles.zoomChip}
+      data-tone={zoomTone(zoom)}
+      onClick={resetZoom}
+      aria-label={`${t('display.zoom.title')} ${pct}. ${t('display.zoom.reset')}`}
+      title={t('display.zoom.reset')}
+    >
+      <span className={styles.zoomLed} aria-hidden />
+      <span className={styles.zoomPct}>{pct}</span>
+      <Icon name="arrows-rotate" className={styles.zoomReset} aria-hidden />
+    </button>
   );
 }
 
@@ -191,7 +183,8 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
             switching to English produced a jarring mixed-language UI. Re-add
             when the app is actually translated (see [[i18n coverage]]). */}
 
-        <ZoomControl />
+        <ZoomChip />
+        <ZoomAnnouncer />
 
         <button
           className={styles.iconBtn}

@@ -75,6 +75,8 @@ kalibrasi, padahal keluhannya nyata:
   kedua tema), detektor impeccable 0 temuan, foto demo publik diregenerasi.
 - `scripts/shoot-demo.mjs` ikut dibetulkan: ia menuntut zoom `1`, padahal demo
   mem-pin kepadatan desktop 80% (`deviceDensityZoom`) sejak keputusan belakangan.
+  (Sejak 6 Nov 2026 default 80% itu dihapus; demo kembali mem-pin 100% + Lapang. Lihat
+  [[#Tampilan dua kenop (6 Nov 2026)]].)
 
 #### Tahap 3 — sapuan semua menu (24 Sep 2026)
 
@@ -358,6 +360,41 @@ lint, 692 test lulus. Foto produk di `public/screenshots/demo-*` diregenerasi.
 ![[volt-theme-demo-light.png]]
 ![[volt-theme-demo-dark.png]]
 ![[volt-theme-servis-light.png]]
+
+## Tampilan dua kenop (6 Nov 2026)
+
+Pengaturan › Sistem › Tampilan (semua peran; disimpan per perangkat, tidak tersinkron).
+Aturannya di `DESIGN.md` (The Two Dials Rule), alasannya di [[Decisions & Bug Fixes]]
+(Zoom jadi dua kenop).
+
+- **Pembesaran** = gauge bertakik `90 · 100 · 110 · 125 · 150`: rel penggaris, takik
+  detent STANDAR di 100, zona jingga di bawahnya (lantai teks 12px), jarum = takik bertutup
+  LED 9px, readout mono besar + label rona. Radiogroup dengan roving focus (panah/Home/End).
+- **Kerapatan** = dua sel Lapang / Padat dengan LED brand dan glyph tiga garis (jarak lapang
+  vs rapat). Padat `aria-disabled` di layar sentuh: tokennya hanya hidup di
+  `@media (pointer: fine)`.
+- **Rona LED** pembesaran: `--success` di 100%, `--accent` saat diperbesar, `--warning` di
+  bawah lantai. Amber brand tidak dipakai (One Amber Rule).
+- **Chip Topbar** (`ZoomChip`) hanya muncul bila pembesaran ≠ 100%: LED + persen mono + ikon
+  putar; satu klik kembali ke 100%. Chip di-counter-scale (`zoom: max(1, 1/var(--zoom))`)
+  supaya di 90% teksnya tetap 12px.
+- **Ponsel**: stepper − / readout / + di menu Lainnya (`ZoomStepper`), target 44px.
+- **Pintasan**: Ctrl+Alt (Cmd+Option) dengan `=` / `−` / `0`. Ctrl+= polos milik browser.
+- **Token Padat** (`tokens.css`, `:root[data-density='padat']`): `--space-3…10`,
+  `--control-h` 36, `--row-h` 44, `--row-h-compact` 36, `--card-head-py` 12,
+  `--row-py` 8, `--nav-item-h` 40, `--sidebar-width` 248, `--topbar-height` 60.
+  Padding baris yang dulu `12px` mentah di Card, Dasbor, Absensi, Inventori, Pengaturan
+  kini `var(--row-py)`; komponen baru wajib begitu juga, kalau tidak ia lolos dari Padat.
+- Sidebar otomatis jadi rail di ≥125% (`useZoomRail`), dan hanya dibuka lagi bila
+  penciutannya otomatis.
+
+Kartu Tampilan di 110% + Padat, gelap dan terang; chip Topbar di 110%; stepper menu Lainnya
+di ponsel 390px:
+
+![[display-card-1440-dark.png]]
+![[display-card-1440-light.png]]
+![[display-chip-110-dark.png]]
+![[display-sheet-390-dark.png]]
 
 ## Terkait
 - [[Iconography]] — set ikon Phosphor

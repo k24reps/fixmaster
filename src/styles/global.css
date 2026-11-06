@@ -188,6 +188,15 @@ img, svg { display: block; max-width: 100%; }
 /* ---------- Selection ---------- */
 ::selection { background: var(--brand-soft); color: var(--text-primary); }
 
+/* ---------- Cetak ---------- */
+/* Pembesaran layar tidak boleh ikut ke kertas: nota dan laporan punya ukuran
+   cetaknya sendiri. Kerapatan tidak perlu direset — ia hanya jarak layar. */
+@media print {
+  html {
+    zoom: 1 !important;
+  }
+}
+
 /* ---------- Focus visibility (accessibility) ---------- */
 :focus-visible {
   outline: 3px solid var(--focus-ring);

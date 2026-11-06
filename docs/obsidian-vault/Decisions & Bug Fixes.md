@@ -490,6 +490,8 @@ Saat pelanggan datang untuk klaim garansi, tiket asli **tidak** di-rollback ke a
 Semula garansi aktif **otomatis** saat `lunas` dengan satu field `warrantyUntil`. Diubah: garansi diisi saat status → **`selesai`** (lebih awal di alur, saat teknisi memang menentukan masa garansi), dan dipecah jadi **dua field** — `warrantyServiceUntil` (jasa) & `warrantyPartsUntil` (sparepart) — karena masa garansi keduanya sering berbeda (mis. jasa 30h, part 7h). StatusModal mewajibkan **minimal salah satu** terisi, prefill dari default `orgConfig` + chip preset. `isUnderWarranty` kini true bila **salah satu** masih berlaku. Lihat [[Data Layer]].
 
 ### Ukuran tampilan: satu baseline tetap, bukan pemilih skala
+> [!note] 6 Nov 2026: kartu Tampilan kembali, tetapi bukan pemilih skala font. Ia memakai `zoom` dan token kerapatan, tidak menyentuh `font-size` root. Lihat [[#Zoom jadi dua kenop: Pembesaran & Kerapatan (6 Nov 2026)]].
+
 Kartu **Tampilan** (pemilih skala Kecil/Normal/Besar 90/100/110%) di tab Sistem **dihapus** beserta store `displayScale`, init pre-render di `main.tsx`, ikon `text-height`/TextAa, dan CSS terkait. Alasannya: pemilih itu meng-override `html { font-size }` lewat JS inline (100% = default browser 16px) sehingga **bertabrakan** dengan baseline desain `15px` — menyebabkan ukuran terasa "berubah-ubah" (kadang kecil, kadang besar) tergantung nilai tersimpan. Keputusan: pakai **satu baseline tetap** `html { font-size: 15px }` yang proper & konsisten di semua device; perbedaan desktop vs mobile ditangani murni lewat **media query** (lihat audit responsif mobile di bawah), bukan skala font global. Pengguna yang butuh memperbesar tetap bisa pakai zoom bawaan browser/OS.
 
 ---
@@ -1528,6 +1530,8 @@ bersih, 457 test lulus (murni CSS — tak ada test baru).
 
 **Tanggal:** 20 Agu 2026 · **Status:** selesai · **Cabang:** staging
 
+> [!note] 6 Nov 2026: tingkatnya kini 90 · 100 · 110 · 125 · 150, kontrol pindah ke Pengaturan › Tampilan, dan Topbar hanya menampilkan chip saat ≠ 100%. Jebakan media query di bawah tetap berlaku. Lihat [[#Zoom jadi dua kenop: Pembesaran & Kerapatan (6 Nov 2026)]].
+
 Permintaan: zoom yang diatur di dalam aplikasi, bukan di browser. Kontrolnya di Topbar
 (kurang / readout mono / tambah), 5 tingkat: 80 · 90 · 100 · 110 · 125%, disimpan di
 `localStorage` dan dipasang oleh `initZoom()` sebelum React render.
@@ -2021,6 +2025,8 @@ nol overflow/clipping. Render dark/light/mobile diregenerasi; build + lint bersi
 ---
 
 ## Demo memakai ambient bench production tanpa mewarisi zoom pengguna (29 Agu 2026)
+
+> [!note] 6 Nov 2026: `beginTransientZoom` diganti `beginTransientView()`, yang mem-pin 100% + Lapang. Default 80% di perangkat bermouse sudah dihapus.
 
 **Masalah:** production memperlihatkan grid blueprint/PCB tipis dari `body::before`, tetapi
 `DemoApp.module.css` memberi `.demoRoot` bidang `--bg-base` opak sehingga grid tertutup.
@@ -3939,3 +3945,83 @@ hangat), tombol utama light memakai gradien amber logo. Nilai dan alasannya ada 
   `/landing-preview`, 12 menu demo, langkah modal, kedua tema), build, lint, **692 test / 64
   berkas** hijau. Foto `public/screenshots/demo-*` dan screenshot vault diregenerasi lewat
   Playwright.
+
+## Zoom jadi dua kenop: Pembesaran & Kerapatan (6 Nov 2026)
+
+Pemilik bertanya zoom yang baik seperti apa. Kritik impeccable memberi skor 20/40
+(`.impeccable/critique/2026-11-06T15-40-31Z__src-components-layout-topbar-tsx.md`).
+Temuan utamanya:
+
+- **Desktop dimulai 80% tanpa ditanya.** Perangkat bermouse otomatis dipasang 80%
+  (`applyDeviceDensityDefault`), sehingga label mono jatuh ke 9.6px. Itu menembus Lantai 12px
+  untuk semua pengguna desktop, padahal tidak satu pun memilihnya. Demo dan landing ikut
+  mem-pin 80%.
+- **Satu kenop menampung dua kebutuhan.** "Muat lebih banyak di layar" adalah soal ruang;
+  "perbesar karena sulit membaca" adalah soal aksesibilitas. Satu skala `zoom` melayani
+  keduanya dengan buruk: yang ingin padat terpaksa mengecilkan huruf.
+- **Kontrol permanen di Topbar.** − / readout / + selalu tampil dan memakan ruang Topbar,
+  padahal pengaturan ini jarang diubah.
+
+**Keputusan pemilik:** semua perangkat mulai di 100%; kepadatan menjadi pilihan bernama
+**Padat**; dua kenop terpisah di Pengaturan › Sistem › Tampilan; disimpan per perangkat.
+
+**Yang dibangun:**
+
+- `stores/zoom.ts`: tingkat `0.9 · 1 · 1.1 · 1.25 · 1.5` dan `density: 'lapang' | 'padat'`.
+  Kunci `fixmaster-zoom` dan `fixmaster-density` dihapus bila nilainya default, supaya
+  perubahan default kelak sampai ke perangkat lama. **Migrasi:** `0.8` tersimpan menjadi
+  100% + Padat (kecuali kerapatan sudah dipilih), idempoten. `beginTransientView()`
+  mem-pin 100% + Lapang untuk demo dan landing tanpa menimpa preferensi.
+- **Padat hanya mengubah ruang, tidak pernah huruf.** Token di `tokens.css` di bawah
+  `:root[data-density='padat']` dalam `@media (pointer: fine)`. Layar sentuh tetap Lapang
+  karena target 44px adalah lantainya di sana.
+- **UI:** `DisplayCard` (gauge bertakik + sel kerapatan), `ZoomStepper` di menu Lainnya
+  ponsel, `ZoomChip` di Topbar yang hanya muncul bila ≠ 100%, dan `ZoomAnnouncer` sebagai
+  satu-satunya live region. Pintasan Ctrl+Alt+= / − / 0; Ctrl+= polos tetap milik browser.
+- **Sidebar jadi rail di ≥125%** (`useZoomRail`). State disesuaikan saat render, bukan di
+  effect, dan hanya saat melintasi ambang. Rail dibuka lagi hanya bila penciutannya otomatis,
+  supaya pilihan manual pengguna tidak ditimpa.
+- **Cetak selalu 100%:** `@media print { html { zoom: 1 !important } }`.
+- Beda dengan kartu Tampilan lama yang dihapus (lihat "Ukuran tampilan: satu baseline
+  tetap"): yang lama menimpa `font-size` root dan bertabrakan dengan baseline 15px; yang ini
+  memakai properti `zoom` dan token kerapatan, `font-size` root tidak disentuh.
+
+**Pelajaran:**
+
+- **Padding px mentah lolos dari mode kerapatan.** Versi pertama Padat hanya memangkas
+  dasbor 1440×900 dari 1.90 ke 1.79 tinggi layar. Penyebabnya `padding: 12px …` mentah di
+  kepala kartu dan baris (Card, Dasbor, Absensi, Inventori, Pengaturan) serta tinggi item nav.
+  Setelah ditokenkan (`--card-head-py`, `--row-py`, `--nav-item-h`) hasilnya 1.65.
+  Komponen baru wajib memakai token itu.
+- **Gerbang yang tak memeriksa prasyaratnya bisa lulus palsu.** `audit-zoom.mjs ZOOM=…`
+  memasang zoom lewat localStorage, padahal demo mem-pin zoom sementara sejak 29 Agu. Jadi
+  sapuan "zoom 125%" sebenarnya diukur di 100%. Kini zoom dipasang lewat pintasan setelah
+  demo terbuka, dan skrip melempar error bila computed zoom tidak cocok.
+- **`zoom` bersarang berlipat.** Chip Topbar di 90% ikut mengecil ke 10.8px. Ia di-counter-scale
+  dengan `zoom: max(1, calc(1 / var(--zoom, 1)))` sehingga tetap 12px.
+- **`aria-disabled`, bukan `disabled`,** untuk tombol yang bisa menjadi nonaktif tepat
+  setelah diklik (Kembali ke 100%, ujung stepper). `disabled` melempar fokus keyboard ke body.
+- **Sel tak terpilih di tema terang tampak nonaktif** dengan latar `--bg-base`; kini
+  transparan.
+- **react-refresh menolak ekspor non-komponen** dari berkas komponen. Pembantu
+  (`zoomPercent`, `zoomTone`, `usePointerFine`) dipindah ke `layout/zoomDisplay.ts`.
+
+**Ukuran (dasbor demo, tinggi dokumen dalam tinggi layar):**
+
+| Layar | Lapang | Padat |
+|---|---|---|
+| 1366×768 | 2.27 | 1.99 |
+| 1440×900 | 1.90 | 1.65 |
+| 1536×864 | 1.96 | 1.72 |
+
+Teks terkecil 12px di keduanya, 0 teks di bawah 12px, 0 luberan.
+
+**Verifikasi:** build, lint, **706 test / 66 berkas** hijau. `audit-zoom` di 100%, 125%, 150% dan
+Padat: 0 pelanggaran lantai 12px, 0 luberan dokumen (sisanya elipsis yang disengaja dan baris
+chip kategori yang memang digeser). `audit-mobile` (ponsel + pita tablet) 0 luberan,
+`audit-tokens` LULUS, `audit-contrast` BERSIH. Gerbang kontras kini juga memindai kartu
+Tampilan dan chip Topbar di ketiga rona (100%, 110% + Padat, 90%), karena tab Sistem tidak
+pernah terbuka oleh sapuan menu. Foto demo publik diregenerasi; `shoot-demo.mjs` kini menanam
+125% + Padat dan menuntut demo tetap 100% + Lapang.
+
+#decision #ui #zoom #density #a11y #design-system

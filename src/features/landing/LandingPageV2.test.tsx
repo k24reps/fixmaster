@@ -6,7 +6,7 @@ import { useZoomStore } from '@/stores/zoom';
 import { LandingPageV2 } from './LandingPageV2';
 
 describe('LandingPageV2 density', () => {
-  it('memakai kerapatan kelas perangkat, bukan zoom app yang tersimpan, lalu memulihkannya', () => {
+  it('selalu 100% + Lapang, bukan tampilan app yang tersimpan, lalu memulihkannya', () => {
     const originalMatchMedia = window.matchMedia;
     // Desktop bermouse. Landing juga berlangganan media query lain (tema), jadi
     // mock-nya harus berbentuk MediaQueryList lengkap.
@@ -22,20 +22,24 @@ describe('LandingPageV2 density', () => {
     })) as unknown as typeof window.matchMedia;
     try {
       useZoomStore.getState().setZoom(1.25);
+      useZoomStore.getState().setDensity('padat');
 
       const { unmount } = render(
         <MemoryRouter>
           <LandingPageV2 onStart={vi.fn()} />
         </MemoryRouter>,
       );
-      expect(document.documentElement.style.zoom).toBe('0.8');
+      expect(document.documentElement.style.zoom).toBe('');
+      expect(document.documentElement.dataset.density).toBeUndefined();
       expect(localStorage.getItem('fixmaster-zoom')).toBe('1.25');
+      expect(localStorage.getItem('fixmaster-density')).toBe('padat');
 
       unmount();
       expect(document.documentElement.style.zoom).toBe('1.25');
+      expect(document.documentElement.dataset.density).toBe('padat');
     } finally {
       useZoomStore.getState().setZoom(1);
-      localStorage.removeItem('fixmaster-zoom');
+      useZoomStore.getState().setDensity('lapang');
       window.matchMedia = originalMatchMedia;
     }
   });

@@ -61,7 +61,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 18px var(--space-5);
+  padding: var(--card-head-py) var(--space-5);
   border-bottom: 1px dotted var(--border-strong);
 }
 .title {

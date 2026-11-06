@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from '@/data/supabase-client';
 import { getVisibleNavigation, resolveMobileNavigation, type ResolvedNavItem } from '@/lib/business/navigation';
 import { useSettingsStore } from '@/stores/settings';
 import { useT } from '@/i18n';
+import { ZoomStepper } from './DisplayControls';
 import styles from './MobileBottomNav.module.css';
 
 const ROLE_LABEL: Record<string, Record<string, string>> = {
@@ -169,6 +170,8 @@ export function MobileBottomNav() {
                   </select>
                 </label>
               )}
+
+              <ZoomStepper />
 
               <div className={styles.operatorRow}>
                 <span className={styles.avatar}>

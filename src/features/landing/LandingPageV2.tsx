@@ -16,7 +16,7 @@ import { useT, type TranslationKey } from '@/i18n';
 import { waLink } from '@/lib/business/notify';
 import { fmtRp, fmtRpInput } from '@/lib/format';
 import { useThemeStore } from '@/stores/theme';
-import { deviceDensityZoom, useZoomStore } from '@/stores/zoom';
+import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
 import {
   authIntentHref,
@@ -152,11 +152,10 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
-  // Kerapatan landing = kelas perangkat (mouse 80%, sentuh 100%), sama untuk
-  // semua pengunjung. Tanpa ini zoom yang tersimpan dari app di origin yang
-  // sama bocor ke sini: pengunjung lama melihat 80%, pengunjung baru 100%.
+  // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
+  // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
   // Sementara (preferensi app tak ditimpa); layout effect = sebelum paint.
-  useLayoutEffect(() => useZoomStore.getState().beginTransientZoom(deviceDensityZoom()), []);
+  useLayoutEffect(() => useZoomStore.getState().beginTransientView(), []);
   const solo = PLANS.standard;
   const pro = PLANS.enterprise;
   // Termin yang sedang dilihat. Default bulanan: angka termurah di muka

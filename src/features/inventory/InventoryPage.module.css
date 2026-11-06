@@ -16,7 +16,7 @@
   align-items: center;
   gap: var(--space-6);
   flex-wrap: wrap;
-  padding: 12px var(--space-5);
+  padding: var(--row-py) var(--space-5);
   background: var(--surface-glass);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

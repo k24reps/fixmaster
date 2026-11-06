@@ -68,64 +68,63 @@
   color: var(--text-primary);
   background: var(--bg-hover);
 }
-/* ---------- kontrol zoom ---------- */
-/* Satu kotak segmented setinggi .iconBtn supaya sebaris rapi dengan tombol
-   tema di sebelahnya. Readout memakai tabular-nums agar lebarnya tidak
-   bergoyang saat berganti 80% <-> 100% <-> 125%. */
-.zoom {
-  display: flex;
+/* ---------- penanda pembesaran ---------- */
+/* Bentuk sama dengan readout SYNC (LED + mono). Cyan saat diperbesar, jingga
+   saat di bawah 100% — teks di bawah lantai 12px. Chip ini jalan keluar dari
+   tampilan yang terlalu kecil, jadi ia dibalik-skala supaya selalu tampil di
+   ukuran 100%: zoom bersarang di Chrome saling mengali. */
+.zoomChip {
+  --tone: var(--accent);
+  --tone-text: var(--accent-text);
+  zoom: max(1, calc(1 / var(--zoom, 1)));
+  display: inline-flex;
   align-items: center;
-  height: var(--control-h);
-  border: 1px solid var(--border-strong);
+  gap: 7px;
+  min-height: var(--control-h);
+  padding: 0 10px 0 12px;
   border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--border-strong));
   background: var(--bg-base);
-  overflow: hidden;
-}
-
-.zoomBtn {
-  width: calc(var(--control-h) - 6px);
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  background: transparent;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out);
-}
-
-.zoomBtn:hover:not(:disabled) {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-/* Ujung rentang tetap terlihat, bukan hilang — pengguna perlu tahu ia sudah
-   mentok, bukan mengira tombolnya rusak. */
-.zoomBtn:disabled {
-  color: var(--text-muted);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.zoomValue {
-  min-width: 44px;
-  text-align: center;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  border-inline: 1px solid var(--border);
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  letter-spacing: 0.04em;
+  color: var(--tone-text);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.zoomChip[data-tone='below'] {
+  --tone: var(--warning);
+  --tone-text: var(--warning-text);
+}
+.zoomChip:hover {
+  background: var(--bg-hover);
+  border-color: var(--tone);
+}
+.zoomLed {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 6px 1px var(--tone);
+}
+/* Panah putar = "kembalikan"; redup sampai chip disentuh. */
+.zoomReset {
+  font-size: 0.95em;
+  color: var(--text-muted);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.zoomChip:hover .zoomReset,
+.zoomChip:focus-visible .zoomReset {
+  color: var(--tone-text);
 }
 
-/* Topbar mobile sudah padat, dan di ponsel pinch-zoom sudah menutupi
-   kebutuhan ini. */
+/* Di ponsel kontrolnya ada di menu Lainnya; topbar 60px tidak muat chip. */
 @media (max-width: 720px) {
-  .zoom {
+  .zoomChip {
     display: none;
   }
 }

@@ -8,29 +8,43 @@ import { NAV_ITEMS } from '@/config/navigation';
 import { useT, type TranslationKey } from '@/i18n';
 import { useBackupStore } from '@/stores/backup';
 import { useSessionStore } from '@/stores/session';
-import { applyDeviceDensityDefault } from '@/stores/zoom';
+import { useZoomStore, zoomShortcut } from '@/stores/zoom';
+import { useZoomRail } from './useZoomRail';
 import { isBackupDue } from '@/lib/business/backup';
 import { toast } from '@/stores/toast';
 import styles from './AppLayout.module.css';
+
+/**
+ * Pintasan pembesaran (lihat `zoomShortcut`). Tidak aktif di kolom isian: di
+ * Windows Ctrl+Alt sama dengan AltGr, yang di sebagian tata letak keyboard
+ * mengetik karakter seperti } atau =.
+ */
+function useZoomShortcuts() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const step = zoomShortcut(e);
+      if (step === null) return;
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest('input, textarea, select, [contenteditable="true"]')
+      )
+        return;
+      e.preventDefault();
+      const zoom = useZoomStore.getState();
+      if (step === 0) zoom.resetZoom();
+      else zoom.stepZoom(step);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+}
 
 /**
  * Show a one-time "backup is due" nudge when the app opens. A web app can't run
  * scheduled jobs while closed, so this honest reminder-on-open is the local-mode
  * substitute for true scheduling (cloud users have Supabase backups).
  */
-let densityDefaultApplied = false;
-/**
- * Kerapatan awal shell mengikuti kelas perangkat (mouse -> padat). Sekali per
- * sesi, dan hanya di app shell — landing dan demo tetap 100%. Lihat zoom.ts.
- */
-function useDeviceDensityDefault() {
-  useEffect(() => {
-    if (densityDefaultApplied) return;
-    densityDefaultApplied = true;
-    applyDeviceDensityDefault();
-  }, []);
-}
-
 let backupReminderShown = false;
 function useBackupReminder() {
   const planType = useSessionStore((s) => s.org?.planType);
@@ -63,12 +77,12 @@ const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {
 };
 
 export function AppLayout() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, toggleCollapsed] = useZoomRail();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const contentRef = useRef<HTMLElement>(null);
   const t = useT();
-  useDeviceDensityDefault();
+  useZoomShortcuts();
   useBackupReminder();
 
   useEffect(() => {
@@ -104,7 +118,7 @@ export function AppLayout() {
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
-        onToggleCollapse={() => setCollapsed((c) => !c)}
+        onToggleCollapse={toggleCollapsed}
         onCloseMobile={() => setMobileOpen(false)}
       />
       <div className={styles.main}>

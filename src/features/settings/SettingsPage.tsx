@@ -109,6 +109,7 @@ import { DATASETS, downloadCsv } from './exportDatasets';
 import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
 import { createBackup, downloadBackup, restoreBackup } from './backupRestore';
+import { DisplayCard } from './DisplayCard';
 import { useBackupStore } from '@/stores/backup';
 import {
   listCloudBackups,
@@ -3335,6 +3336,8 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
 
   return (
     <div className={styles.systemGrid}>
+      <DisplayCard />
+
       {isOwner && <BackupCard />}
 
       {isOwner && <ExportDataCard />}

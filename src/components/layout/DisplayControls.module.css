@@ -1,0 +1,285 @@
+/* Rona LED bersama untuk gauge dan stepper: hijau di 100% (nominal), cyan
+   VOLT saat diperbesar, jingga saat teks jatuh di bawah lantai 12px. Amber
+   brand sengaja tidak dipakai: ia milik aksi utama (One Amber Rule). */
+.gauge,
+.stepper {
+  --tone: var(--success);
+  --tone-text: var(--success-text);
+}
+.gauge[data-tone='up'],
+.stepper[data-tone='up'] {
+  --tone: var(--accent);
+  --tone-text: var(--accent-text);
+}
+.gauge[data-tone='below'],
+.stepper[data-tone='below'] {
+  --tone: var(--warning);
+  --tone-text: var(--warning-text);
+}
+
+.led {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 7px var(--tone);
+}
+
+/* ---------- gauge pembesaran ---------- */
+.readoutRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.toneLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tone-text);
+}
+
+/* Penggaris: lima takik berdiri di atas satu rel. Rel dari pusat takik
+   pertama (10%) ke pusat takik terakhir (90%); seperempat pertamanya — 90
+   ke 100 — jingga, zona di bawah lantai teks. */
+.scale {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  margin-top: var(--space-4);
+}
+.scale::before {
+  content: '';
+  position: absolute;
+  top: 35px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--warning) 0 25%, var(--border-strong) 25% 100%);
+  pointer-events: none;
+}
+
+.tick {
+  display: grid;
+  grid-template-rows: 28px auto;
+  justify-items: center;
+  padding: 8px 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.tick:hover {
+  background: var(--bg-hover);
+}
+
+.tickMark {
+  position: relative;
+  align-self: end;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--border-strong);
+}
+.tick[data-detent] .tickMark {
+  height: 20px;
+  background: var(--text-muted);
+}
+.tick[aria-checked='true'] .tickMark {
+  width: 3px;
+  height: 26px;
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+/* Tutup jarum: LED 9px di ujung takik yang terpilih. */
+.tick[aria-checked='true'] .tickMark::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  translate: -50% 0;
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+
+.tickLabel {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.tick[data-below] .tickLabel {
+  color: var(--warning-text);
+}
+.tick[aria-checked='true'] .tickLabel {
+  color: var(--text-primary);
+  font-weight: var(--fw-bold);
+}
+
+/* ---------- kerapatan ---------- */
+/* auto-fit: menumpuk sendiri saat kartu sempit, tanpa breakpoint. */
+.density {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-2);
+}
+
+.densityCell {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  padding-right: 52px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.densityCell:hover:not([aria-disabled]) {
+  border-color: var(--border-brand);
+}
+.densityCell[aria-checked='true'] {
+  border-color: var(--border-brand);
+  background: var(--brand-soft);
+}
+.densityCell[aria-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.densityName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.densityLed {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  opacity: 0.35;
+}
+.densityCell[aria-checked='true'] .densityLed {
+  opacity: 1;
+  box-shadow: 0 0 7px var(--brand);
+}
+
+.densityHint {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* Miniatur baris tabel: tiga garis dengan jarak lapang vs padat. */
+.densityGlyph {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  display: grid;
+  gap: 5px;
+  width: 22px;
+}
+.densityGlyph[data-density='padat'] {
+  gap: 2px;
+}
+.densityGlyph > span {
+  height: 3px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+.densityCell[aria-checked='true'] .densityGlyph > span {
+  background: var(--brand-text);
+  opacity: 1;
+}
+
+/* ---------- stepper menu Lainnya (sentuh) ---------- */
+.stepper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+}
+
+.stepperLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stepperControls {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepperBtn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+}
+.stepperBtn[aria-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.stepperValue {
+  min-width: 64px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--tone-text);
+}
+button.stepperValue {
+  border: 1px solid var(--border);
+}

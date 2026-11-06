@@ -64,7 +64,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest unit (692 test / 64 berkas, offline)
+npm run test    # vitest unit (706 test / 66 berkas, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
@@ -84,7 +84,8 @@ Dua probe regresi siap pakai (butuh dev server jalan):
 BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 12 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
 BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman
-BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # zoom aplikasi
+BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # pembesaran aplikasi
+BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kerapatan Padat
 ```
 
 Untuk perubahan **warna/token**, dua gerbang tambahan — `audit-tokens` juga menjaga

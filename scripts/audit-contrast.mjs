@@ -226,6 +226,20 @@ for (const theme of ['dark', 'light']) {
     }],
     ['Kasir-Kembalian', () => page.locator('[class*="quickCash"] button').last().click()],
     ['Kasir-Lunas', () => page.getByRole('button', { name: /^Proses/ }).click()],
+    // Kartu Tampilan (Pengaturan › Sistem) dan chip pembesaran Topbar di ketiga
+    // rona LED: nominal 100%, aksen 110% + Padat, jingga 90%. Tab Sistem tidak
+    // terbuka oleh menu Pengaturan di atas, jadi kartu ini perlu langkah sendiri.
+    ['Tampilan-100', async () => {
+      await page.keyboard.press('Escape');
+      await page.getByRole('link', { name: /^Pengaturan/ }).first().click();
+      await page.waitForTimeout(900);
+      await page.getByRole('button', { name: /^Sistem/ }).first().click();
+    }],
+    ['Tampilan-110-Padat', async () => {
+      await page.getByRole('radio', { name: '110%' }).click();
+      await page.getByRole('radio', { name: /Padat/ }).click();
+    }],
+    ['Tampilan-90', () => page.getByRole('radio', { name: '90%' }).click()],
   ];
   for (const [label, act] of steps) {
     try {

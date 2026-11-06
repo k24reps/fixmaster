@@ -1,0 +1,112 @@
+/* Selebar grid Sistem: dua kenop duduk berdampingan seperti dua instrumen di
+   satu panel, dan menumpuk saat kartunya sendiri sempit. */
+.card {
+  grid-column: 1 / -1;
+  container: display-card / inline-size;
+}
+
+.dials {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* Ambang = dua kolom yang masing-masing masih memuat dua sel Kerapatan
+   (2 x 190px + celah) plus padding kartu. Di bawahnya sel Kerapatan menumpuk
+   di dalam kolom sempit, jadi kenopnya ditumpuk saja. */
+@container display-card (min-width: 900px) {
+  .dials {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+  }
+  .dials > .dial:first-child {
+    padding-right: var(--space-6);
+  }
+  .dials > .dial + .dial {
+    padding-left: var(--space-6);
+    border-left: 1px dotted var(--border-strong);
+  }
+}
+@container display-card (max-width: 899.98px) {
+  .dials > .dial + .dial {
+    padding-top: var(--space-5);
+    border-top: 1px dotted var(--border-strong);
+  }
+}
+
+.dial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dialHead {
+  display: grid;
+  gap: 4px;
+}
+
+.dialTitle {
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.dialHint {
+  max-width: 60ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dialFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Tuts mekanis kecil, pola yang sama dengan petunjuk "/" di Kasir. */
+.shortcut {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.keys {
+  display: inline-flex;
+  gap: 4px;
+  padding-left: 6px;
+  border-left: 1px dotted var(--border-strong);
+}
+.shortcut kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-base);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.reset[aria-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.note {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.dials + .note {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border);
+}

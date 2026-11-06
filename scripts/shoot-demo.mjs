@@ -31,9 +31,10 @@ const browser = await chromium.launch();
 async function setTheme(page, theme) {
   await page.evaluate((t) => {
     localStorage.setItem('fixmaster-theme', t);
-    // The demo must still present itself at 100%, even when this origin has a
-    // denser app preference saved from a previous session.
-    localStorage.setItem('fixmaster-zoom', '0.8');
+    // Demo harus tampil di default produk (100% + Lapang) walau origin ini
+    // menyimpan preferensi lain dari sesi sebelumnya.
+    localStorage.setItem('fixmaster-zoom', '1.25');
+    localStorage.setItem('fixmaster-density', 'padat');
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
 }
@@ -57,6 +58,7 @@ async function waitForDemo(page) {
       ambientOpacity: ambient.opacity,
       ambientImage: ambient.backgroundImage,
       zoom: getComputedStyle(document.documentElement).zoom,
+      density: document.documentElement.dataset.density ?? null,
     };
   });
 
@@ -65,10 +67,10 @@ async function waitForDemo(page) {
     !surface.hasDemoClass ||
     surface.shellBackground !== 'rgba(0, 0, 0, 0)' ||
     surface.ambientOpacity !== '0.72' ||
-    // Demo mem-pin kepadatan desktop (`deviceDensityZoom`, 80% di perangkat
-    // pointer presisi — lihat DESIGN.md "12px Floor Rule"). Yang dijaga di sini
-    // adalah zoom tersimpan pengguna TIDAK bocor ke foto publik, bukan angka 1.
-    !['1', '0.8'].includes(surface.zoom) ||
+    // Demo menyematkan 100% + Lapang (beginTransientView). Preferensi yang
+    // ditanam setTheme di atas TIDAK boleh bocor ke foto publik.
+    surface.zoom !== '1' ||
+    surface.density !== null ||
     !gridVisible
   ) {
     throw new Error(`Demo surface regression: ${JSON.stringify(surface)}`);
