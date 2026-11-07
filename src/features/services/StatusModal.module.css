@@ -135,7 +135,7 @@
 .staffNote {
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  background: var(--brand-soft);
+  background: var(--bg-surface-2);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
 }

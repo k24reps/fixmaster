@@ -247,7 +247,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 .priceCost {
   font-family: var(--font-mono);

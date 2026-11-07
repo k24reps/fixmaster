@@ -174,9 +174,9 @@
   width: 30px;
   height: 30px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-brand);
-  background: var(--brand-soft);
-  color: var(--brand-text);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;

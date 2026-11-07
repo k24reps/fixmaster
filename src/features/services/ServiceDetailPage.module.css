@@ -63,7 +63,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xl);
   font-weight: var(--fw-bold);
-  color: var(--brand-text);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 .codeMeta {
@@ -120,7 +120,12 @@
 .pickedUp {
   color: var(--success-text);
 }
+/* Unit masih di meja kerja: redup. Cyan hanya bila sudah siap diambil
+   (Selesai/Lunas/Batal belum diambil), sama dengan nada status Selesai. */
 .notPicked {
+  color: var(--text-muted);
+}
+.notPicked[data-ready] {
   color: var(--accent-text);
 }
 
@@ -194,12 +199,22 @@
   box-shadow: 0 0 7px var(--warning);
 }
 
+/* Stempel memakai nada status yang sama dengan badge (STATUS_TONE). Dulu
+   selalu amber, sehingga stempel DITERIMA berwarna sama dengan tombol utama. */
 .stamp {
+  --st: var(--text-muted);
+  --st-soft: var(--bg-surface-2);
+  --st-text: var(--text-primary);
   position: relative;
   z-index: 1;
   flex-shrink: 0;
   transform: rotate(-4deg);
 }
+.stamp[data-tone='info'] { --st: var(--info); --st-soft: var(--info-soft); --st-text: var(--info-text); }
+.stamp[data-tone='warning'] { --st: var(--warning); --st-soft: var(--warning-soft); --st-text: var(--warning-text); }
+.stamp[data-tone='accent'] { --st: var(--accent); --st-soft: var(--accent-soft); --st-text: var(--accent-text); }
+.stamp[data-tone='success'] { --st: var(--success); --st-soft: var(--success-soft); --st-text: var(--success-text); }
+.stamp[data-tone='danger'] { --st: var(--danger); --st-soft: var(--danger-soft); --st-text: var(--danger-text); }
 .stampInner {
   display: inline-block;
   font-family: var(--font-display);
@@ -209,16 +224,10 @@
   text-transform: uppercase;
   padding: 10px 18px;
   border-radius: var(--radius-sm);
-  color: var(--brand-text);
-  border: 2.5px solid var(--brand);
-  background: var(--brand-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 30%, transparent);
-}
-.stampCancel .stampInner {
-  color: var(--danger-text);
-  border-color: var(--danger);
-  background: var(--danger-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--st-text);
+  border: 2.5px solid var(--st);
+  background: var(--st-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st) 30%, transparent);
 }
 
 /* ---------- Traveler Strip ---------- */
@@ -689,7 +698,7 @@
 .costTotal dd {
   font-size: var(--text-lg) !important;
   font-weight: var(--fw-bold) !important;
-  color: var(--brand-text) !important;
+  color: var(--text-primary) !important;
 }
 .costProfit dd {
   color: var(--success-text) !important;
@@ -856,7 +865,7 @@
   font-family: var(--font-mono);
   font-size: 3rem;
   font-weight: var(--fw-bold);
-  color: var(--brand-text);
+  color: var(--text-primary);
 }
 
 /* ---------- Responsive ---------- */

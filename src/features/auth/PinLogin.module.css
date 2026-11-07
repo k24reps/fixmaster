@@ -127,9 +127,9 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: var(--brand-soft);
-  border: 1px solid var(--border-brand);
-  color: var(--brand-hover);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;

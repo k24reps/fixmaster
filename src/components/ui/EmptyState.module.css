@@ -15,9 +15,9 @@
   margin-bottom: var(--space-4);
   display: grid;
   place-items: center;
-  color: var(--brand);
-  background: var(--brand-soft);
-  border: 1px dotted var(--border-brand);
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: 1px dotted var(--border-strong);
   border-radius: var(--radius-full);
   font-size: 1.7rem;
 }

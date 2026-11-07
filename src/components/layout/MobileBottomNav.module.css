@@ -312,10 +312,10 @@
     place-items: center;
     flex: none;
     overflow: hidden;
-    border: 1px solid var(--border-brand);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
-    color: var(--brand-hover);
-    background: var(--brand-soft);
+    color: var(--text-primary);
+    background: var(--bg-surface-2);
     font-family: var(--font-mono);
     font-weight: var(--fw-bold);
   }

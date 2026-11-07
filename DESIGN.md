@@ -204,7 +204,7 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 
 **The Token-Only Rule.** No hex, `rgb()`, or `hsl()` literal ever appears in feature CSS. Every color resolves through `var(--token)` from `src/styles/tokens.css`. This is not a style preference — it is the mechanism that guarantees both themes are correct without anyone checking. The one sanctioned exception is the readout family, which is *already* theme-independent by design.
 
-**The One Amber Rule.** Safety amber marks the single most important action or the single active state in a view. Two ambers competing on one screen means neither is the answer. Cyan is not a second brand color to reach for when amber feels repetitive — it means "instrument reading", and using it decoratively drains it.
+**The One Amber Rule.** Safety amber marks the single most important action or the single active state in a view. Two ambers competing on one screen means neither is the answer. Amber is for the primary action, the selected item (active nav, active tab, chosen chip), and the logo. It is not for identifiers, names, money, avatars, header-icon tiles or heading icons: those are `--text-primary` (mono for IDs and amounts), neutral plates, and `--text-muted` icons. Before 7 Nov 2026 the brand colour sat on 6–25 non-interactive elements per page and the "Servis Baru" button lost its voice. Cyan is not a second brand color to reach for when amber feels repetitive — it means "instrument reading", and using it decoratively drains it.
 
 **The Lit-Signal Rule.** A status is an LED plus a value, never a word alone and never a color alone. The LED is 7–9px, filled with the signal color, and carries a matching `box-shadow` glow at 6–9px blur. A colorblind operator reads the value; a glancing operator reads the light.
 
@@ -310,7 +310,7 @@ Three recurring silhouettes define the form language:
 - **Background:** `--bg-surface` under a 145° sheen — `linear-gradient` of `--text-primary` at 2.5% fading out by 38% — which gives the panel a faint machined top-light in both themes.
 - **Shadow Strategy:** Flat at rest per the Mounted-or-Flat Rule; `--shadow-md` plus a 2px lift on `.interactive` hover only.
 - **Border:** Always `1px solid --border-strong`.
-- **Header:** 18px/20px padding closed by a `1px dotted` seam; the optional header icon is a 30px `--radius-sm` tile in `--brand-soft` with a `--border-brand` edge.
+- **Header:** 18px/20px padding closed by a `1px dotted` seam; the optional header icon is a 30px `--radius-sm` tile in `--bg-surface-2` with a `--border` edge and a `--text-muted` glyph (neutral since 7 Nov 2026; it labels, it does not call to action).
 - **Internal Padding:** `--space-6` (24px) body, dropping to `--space-4` (16px) at ≤640px.
 - **Accent:** Optional diagnostic spine in brand / success / warning / danger / info.
 

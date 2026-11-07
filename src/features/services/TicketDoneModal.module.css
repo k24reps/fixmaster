@@ -26,9 +26,9 @@
   background: var(--success-soft);
 }
 .stamp[data-variant='intake'] {
-  color: var(--brand-text);
-  border-color: var(--brand);
-  background: var(--brand-soft);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+  background: var(--bg-surface-2);
 }
 .no {
   font-family: var(--font-mono);

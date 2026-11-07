@@ -29,7 +29,7 @@
   font-size: var(--text-sm);
 }
 .dateBar > svg {
-  color: var(--brand-hover);
+  color: var(--text-muted);
 }
 .dateBar label {
   display: flex;
@@ -81,9 +81,9 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-brand);
-  background: var(--brand-soft);
-  color: var(--brand-hover);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.06em;

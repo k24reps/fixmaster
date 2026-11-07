@@ -53,7 +53,7 @@ import type { ServiceHistoryEntry, ServiceStatus, ServiceSparepart } from '@/dat
 import styles from './ServiceDetailPage.module.css';
 import { interpolate } from '@/lib/business/notify';
 import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
-import { historyKind } from '@/lib/business/services';
+import { historyKind, STATUS_TONE } from '@/lib/business/services';
 import { qrSvg } from '@/lib/qr';
 
 /** Linear "job traveler" stages (cancel handled separately). */
@@ -656,13 +656,13 @@ export function ServiceDetailPage() {
                   {service.pickedUpAt ? ` · ${fmtDate(service.pickedUpAt)}` : ''}
                 </span>
               ) : (
-                <span className={styles.notPicked}>
+                <span className={styles.notPicked} data-ready={isAwaitingPickup(service) || undefined}>
                   <Icon name="box" aria-hidden /> {t('serviceDetail.notPickedUp')}
                 </span>
               )}
             </p>
           </div>
-          <div className={[styles.stamp, cancelled ? styles.stampCancel : ''].join(' ')}>
+          <div className={styles.stamp} data-tone={STATUS_TONE[service.status]}>
             <span className={styles.stampInner}>{t(`statusLabel.${service.status}`)}</span>
           </div>
         </header>

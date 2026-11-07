@@ -270,7 +270,7 @@
   font-size: var(--text-xs);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.07em;
-  color: var(--brand-text);
+  color: var(--text-primary);
 }
 .resultHead h2 {
   font-size: var(--text-xl);

@@ -855,6 +855,6 @@ button.walletCell[aria-pressed='true'] .walletLed {
   color: var(--text-secondary);
 }
 .payNet b {
-  color: var(--brand-text);
+  color: var(--text-primary);
   font-size: var(--text-sm);
 }

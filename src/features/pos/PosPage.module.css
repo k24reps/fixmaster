@@ -145,7 +145,7 @@
 .productMeta strong {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--brand-hover);
+  color: var(--text-primary);
   white-space: nowrap;
 }
 /* Barang habis tetap tampil saat dicari — redup dan tak bisa diketuk. */
@@ -314,7 +314,7 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 
 /* ---------- Tampilan Ringkas: ubin kecil, lebih banyak per layar ---------- */
@@ -366,7 +366,7 @@
 /* Harga tidak boleh patah jadi "Rp" / "1.250.000"; yang turun baris stoknya. */
 .tileMeta strong {
   white-space: nowrap;
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 .tileLow {
   color: var(--warning);
@@ -622,7 +622,7 @@
   letter-spacing: 0.08em;
 }
 .cartHeader h2 svg {
-  color: var(--brand-hover);
+  color: var(--text-muted);
 }
 /* Target setinggi kontrol, dimakan margin negatif supaya kepala struk tidak
    ikut meninggi. Dulu 86×32. */
@@ -1167,7 +1167,7 @@
   margin-bottom: var(--space-3);
 }
 .historyHead h2 svg {
-  color: var(--brand-hover);
+  color: var(--text-muted);
 }
 .historyList {
   display: flex;

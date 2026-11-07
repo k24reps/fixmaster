@@ -543,7 +543,7 @@
 }
 
 .amount {
-  color: var(--brand);
+  color: var(--text-primary);
   font-size: var(--text-base);
 }
 

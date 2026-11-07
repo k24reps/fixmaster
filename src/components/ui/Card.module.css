@@ -76,9 +76,9 @@
   height: 30px;
   display: grid;
   place-items: center;
-  color: var(--brand);
-  background: var(--brand-soft);
-  border: 1px solid var(--border-brand);
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 0.9em;
 }

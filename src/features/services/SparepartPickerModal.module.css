@@ -101,7 +101,7 @@
 .contextNo {
   font-family: var(--font-mono, monospace);
   font-weight: var(--fw-bold);
-  color: var(--brand-text);
+  color: var(--text-primary);
 }
 .contextDevice {
   font-weight: var(--fw-semibold);

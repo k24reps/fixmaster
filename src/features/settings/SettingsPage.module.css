@@ -29,7 +29,10 @@
   color: var(--text-primary);
 }
 .tab i {
-  color: var(--brand-hover);
+  color: var(--text-muted);
+}
+.tabActive i {
+  color: inherit;
 }
 .tabActive {
   background: var(--brand-soft);
@@ -79,7 +82,7 @@
   font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: var(--fw-extra);
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 .logoMeta {
   display: flex;
@@ -344,8 +347,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--brand-soft);
-  color: var(--brand-hover);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,7 +378,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.02em;
-  color: var(--brand-hover);
+  color: var(--text-secondary);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -403,7 +406,7 @@
 }
 .walletItem strong {
   font-family: var(--font-display);
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 .addRow {
   display: flex;
@@ -799,7 +802,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-lg);
   font-weight: var(--fw-bold);
-  color: var(--brand-hover);
+  color: var(--text-primary);
 }
 .planQuota {
   font-size: var(--text-xs);

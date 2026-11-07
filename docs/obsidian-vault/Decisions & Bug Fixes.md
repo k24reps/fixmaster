@@ -4739,4 +4739,34 @@ Pemilik memilih nada "siap ambil" sendiri untuk Selesai. `STATUS_TONE`
 Diterima abu, Pengerjaan biru, Konfirmasi oranye, Selesai cyan (`#68e3e0` gelap / `#006e63`
 terang), Lunas hijau; LED alert Dashboard menunggu diambil = accent; build, 724 tes, lint hijau.
 
+### Tahap 3: amber hanya untuk aksi, pilihan, dan logo
+
+Diukur dulu di DOM (skrip probe: elemen non-interaktif yang warnanya meresolusi ke token
+`--brand*`), terang, 12 menu. Sebelum → sesudah: Dashboard 10 → 2, Servis 11 → 0, Kasir 3 → 2,
+Keuangan 3 → 1, Tugas 4 → 0, Absensi 10 → 0, Laporan 25 → 0, Log 5 → 3, Pengaturan 6 → 0.
+Sisa yang disengaja: penanda periode aktif ("Hari ini", "bulan ini") dan LED-nya, LCD Kasir, angka
+recorder Log.
+
+- **ID, nama, nominal → `--text-primary`.** FM-ID (tabel + kartu ponsel + detail + picker
+  sparepart + Lacak), nama pelanggan, biaya final, harga jual Inventori, harga produk Kasir, total
+  PO, saldo dompet dan harga paket di Pengaturan, nominal Operator, gaji bersih, nomor PO, hitungan
+  aktif Pelanggan. Tautan FM-ID tetap memerah-amber saat hover.
+- **Avatar dan inisial usaha → pelat netral** (`--bg-surface-2`, `--border-strong`,
+  `--text-primary`): Topbar, bottom nav, Absensi, Pelanggan, PIN login, anggota Pengaturan, logo
+  cadangan usaha di Sidebar/Pengaturan (logo FixMaster sendiri tetap).
+- **Ubin ikon kepala kartu dan keadaan kosong → netral** (`Card .headerIcon`, `EmptyState .icon`):
+  `--bg-surface-2` + `--border` + ikon `--text-muted`. Ikon judul Kasir, Log, Absensi, Laporan,
+  Tugas, tab Pengaturan → `--text-muted` (tab aktif mewarisi warna tabnya). Tag cakupan Laporan dan
+  catatan staf StatusModal → netral.
+- **Angka peringatan rail → `--warning-text`.** Di sel nav aktif (isian amber), pil readout kini
+  jendela padat `--rail-panel`; tanpa itu angka warning hanya 4.29:1 (`audit-contrast` menangkapnya).
+- **Stempel Detail servis mengikuti `STATUS_TONE`** (dulu selalu amber kecuali Batal), dan stempel
+  penerimaan di modal selesai jadi netral. "Belum diambil" di Detail cyan hanya bila unit siap
+  diambil (`isAwaitingPickup`); tiket yang masih dikerjakan menampilkannya redup.
+- Kartu metrik Laporan (Arus kas bersih amber, Penjualan kasir cyan) ditunda ke Tahap 4 bersama
+  warna uang.
+
+**Verifikasi:** `audit-tokens` 0 pelanggaran; `audit-contrast` BERSIH setelah perbaikan pil rail;
+build, 724 tes, lint hijau; foto Servis/Laporan/Absensi/Detail dua tema.
+
 #decision #ui #color #a11y #critique
