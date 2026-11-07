@@ -4278,3 +4278,62 @@ adalah komentar kode.
 "Konfirmasi Biaya" dibiarkan karena lebih deskriptif dari nama status "Konfirmasi".
 
 #decision #ui #copy
+
+## Kasir: area bayar muat satu layar (7 Nov 2026)
+
+Temuan critique layout: di 1280×800 dan 1366×768 tombol Proses ada di bawah lipatan. Kasir
+harus menggulir halaman tiap transaksi hanya untuk menekan Proses.
+
+**Akar masalah:** register desktop sticky dengan `max-height` yang dihitung dari posisi
+menempelnya, tetapi saat halaman belum digulir panel duduk lebih rendah (di bawah kotak cari).
+Selisih itu mendorong dasar panel keluar layar. Isi panel juga menumpuk: kotak pelanggan,
+baris diskon, ringkasan, dan status bayar selalu tampil walau kosong.
+
+**Keputusan:**
+- Panel merentang dari baris tab lewat grid di `.pagePos` dan `display: contents` pada
+  `.layout`. Posisi diam dan posisi menempel jadi sama (`--pos-register-top` = 14px +
+  `--topbar-height` + `--space-6`), sehingga tinggi `calc(var(--app-vh) - top - space-4)` tepat
+  di kedua keadaan. Ambang 1025px tetap media query: terikat kehadiran sidebar, pengecualian
+  §3 yang sama dengan blok 1 kolom.
+- Proses dipindah dari dalam `.checkout` ke saudara sendiri, `.payBar`, sticky di bawah panel.
+  Hanya `.cartItems` yang menggulir. `scroll-padding-block: 128px 80px` pada panel menjaga
+  input nominal yang difokus tidak tertutup LCD atau bar Proses bila panel tetap harus
+  menggulir.
+- Pelanggan & Diskon dilipat jadi tuts; ringkasan hanya saat ada diskon; status bayar desktop
+  hanya bila memberi info di luar baris kedua LCD (`.statusExtra`).
+- Ponsel/tablet: `.payBar` sticky di dasar layar, di atas menu bawah di ≤720px. Dock keranjang
+  memakai `rootMargin` bawah = `--mobile-nav-height` + 72px, sehingga dock hilang tepat saat
+  bar Proses muncul (dulu `threshold: 0.2`, sempat ada dua bar sekaligus).
+
+**Pelajaran: `overflow: clip`, bukan `hidden`.** Di ≤1024px panel perlu memotong sudut
+membulat. `overflow: hidden` menjadikan panel wadah gulir, dan `position: sticky` pada `.payBar`
+lalu menempel ke panel, bukan ke layar: bar ikut tergulir pergi. `overflow: clip` memotong
+tanpa membuat wadah gulir, jadi sticky tetap mengacu ke halaman.
+
+**Pelajaran: latar bar sticky harus pekat.** `--surface-glass-strong` hanya 93% pekat; baris
+keranjang terlihat samar di balik bar ponsel. Latar kini gradien kaca di atas
+`var(--bg-surface)`.
+
+**Tanda masih ada isi (scroll-driven, di dalam `@supports (animation-timeline: scroll())`):**
+`.cartItems` memakai mask pudar di tepi bawah yang ukurannya dianimasikan oleh
+`scroll(self)`, dan `.payBar::before` adalah bibir pudar yang opasitasnya mengikuti
+`scroll(nearest)` (panel). Timeline yang tak aktif (isi tak meluap) tidak memberi efek, jadi
+nilai dasar sengaja "tanpa pudar". Diukur: bibir opasitas 1 hanya saat panel meluap, 0 di
+ujung gulir dan saat tak meluap.
+
+**Verifikasi (demo, tema gelap kecuali disebut):** panel top 188 sejajar tab. Tombol Proses
+terlihat di 1280×800 (y 705–749), 1366×768 (673–717), 1440×900 (805–849), 1920×1080
+(985–1029). Input nominal tetap terlihat di keempat ukuran saat difokus. Ponsel 390×844: bar
+menempel 696–768 tepat di atas menu bawah (768); 360×740: 592–664 di atas menu (664);
+768×1024: di dasar layar. "Kosongkan" 94×44. Tema terang: pilih cabang, kosong, diskon, dan
+LUNAS benar. `impeccable detect --scope layout` pada berkas Kasir: bersih. Build, lint,
+**719 test / 67 berkas** hijau.
+
+**Anggaran yang tersisa:** di produksi 1366×768 panel setinggi 638px; dengan satu pembayaran
+daftar barang dapat ±132px tanpa panel menggulir. Demo (topbar demo lebih tinggi) atau diskon +
+beberapa pembayaran tetap jatuh ke panel yang menggulir, dengan bibir pudar dan input yang
+tetap terlihat.
+
+Lihat [[Signature Pages#Kasir POS — Register Readout]].
+
+#decision #ui #layout #pos

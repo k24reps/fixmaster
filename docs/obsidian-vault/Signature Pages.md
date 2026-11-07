@@ -227,7 +227,7 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
   Struk (struk memuat Dibayar/Kembalian), Kirim WA (bila pelanggan punya nomor), dan
   **Transaksi Baru**. Toast sukses dihapus. Sejak 28 Sep fokus pindah ke kolom cari (bukan
   ke tombol): Enter kosong di cari atau pindaian berikutnya memulai transaksi baru. Register
-  desktop menggulir di dalam panel dengan LCD menempel di atas dan Proses di bawah.
+  desktop kini setinggi layar (lihat "Area bayar muat satu layar" di bawah).
 - **Cepat.** Cari mencakup SKU; Enter menambah SKU persis atau satu-satunya hasil
   (`pickOnEnter`, pemindai barcode); "/" memfokuskan cari; fokus otomatis hanya untuk
   mouse. Barang habis tampil redup "Habis" saat dicari.
@@ -238,6 +238,25 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
   menawarkan **Tambah pelanggan baru** (`CustomerModal`, terisi dari kueri).
 - **Baris keranjang dua baris** (nama selebar struk; harga · qty · jumlah), input uang
   `inputMode="numeric"`, toggle Rp/% ber-`aria-pressed`.
+
+**Area bayar muat satu layar (7 Nov 2026, critique layout).**
+- **Desktop (≥1025px):** register setinggi layar dan sejajar tab, bukan di bawah kotak cari.
+  `.pagePos` jadi grid dua kolom dan `.layout` memakai `display: contents`, sehingga panel
+  bisa merentang dari baris tab. Yang menggulir hanya daftar barang (`.cartItems`, minimal
+  104px). LCD tetap di atas dan bar **Proses** (`.payBar`) menempel di bawah. Di 1280×800 dan
+  1366×768 tombol Proses terlihat tanpa menggulir.
+- **Pelanggan & Diskon dilipat** jadi dua tuts bergaris putus (`.extraKey`, mono, 44px).
+  Masing-masing terbuka sendiri bila sudah berisi. Ringkasan Subtotal/Diskon/Total hanya
+  muncul bila ada diskon, karena total sudah tertulis di LCD dan di tombol "Proses · Rp …".
+- **Status bayar** di desktop hanya tampil bila memberi info baru: lebih dari satu
+  pembayaran, lebih bayar, atau belum ada uang masuk. Sisa/kembalian biasa sudah ada di baris
+  kedua LCD.
+- **Tanda masih ada isi:** daftar barang memudar di bawah selama masih bisa digulir, dan bar
+  Proses mendapat bibir pudar bila seluruh panel menggulir (diskon + beberapa pembayaran).
+  Keduanya scroll-driven animation; peramban tanpa dukungan tetap berfungsi tanpa pudar.
+- **Ponsel & tablet (≤1024px):** bar Proses menempel di dasar layar, di atas menu bawah.
+  Dock keranjang menyerahkan tempatnya ke bar itu tepat saat register masuk layar.
+- Kartu pilih cabang diberi padding; "Kosongkan" setinggi 44px.
 
 ![[pos-dark.png]]
 

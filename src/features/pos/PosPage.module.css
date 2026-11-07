@@ -6,6 +6,10 @@
    ============================================================ */
 
 .page {
+  /* Posisi diam register = margin topbar (14px, Topbar.module.css) + topbar +
+     padding atas konten. Register menempel di titik yang SAMA, jadi ia tak
+     pernah bergeser dan tingginya bisa dihitung tanpa mengukur DOM. */
+  --pos-register-top: calc(14px + var(--topbar-height) + var(--space-6));
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -371,15 +375,14 @@
 /* ---------- Register (right) ---------- */
 .cartPanel {
   position: sticky;
-  top: calc(var(--topbar-height) + var(--space-4));
+  top: var(--pos-register-top);
   display: flex;
   flex-direction: column;
-  max-height: calc(var(--app-vh) - var(--topbar-height) - var(--space-8));
   padding: 0 !important;
-  /* Seluruh register menggulir di dalam panel, LCD menempel di atas dan tombol
-     Proses di bawah. Dulu overflow:hidden + hanya daftar item yang menggulir:
-     di laptop 1366×768 dengan 3 baris bayar, Proses jatuh di luar panel dan
-     tak terjangkau sama sekali (terukur 879 vs 850px). */
+  /* Jaring pengaman: normalnya hanya daftar item yang menggulir (lihat blok
+     >=1025px). Bila bagian bayar sendiri lebih tinggi dari layar (tiga tender
+     + diskon di layar pendek), seluruh register menggulir dengan LCD dan bar
+     Proses tetap menempel. */
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Dock ponsel menggulir ke sini; tanpa ini LCD mendarat di bawah header. */
@@ -621,9 +624,14 @@
 .cartHeader h2 svg {
   color: var(--brand-hover);
 }
+/* Target setinggi kontrol, dimakan margin negatif supaya kepala struk tidak
+   ikut meninggi. Dulu 86×32. */
 .clearBtn {
-  padding: 8px;
-  margin: -8px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
@@ -777,11 +785,57 @@
 
 /* ---------- Checkout ---------- */
 .checkout {
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  padding: var(--space-4) var(--space-5) 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   background: var(--surface-glass-strong);
+}
+/* Bar Proses: kelanjutan .checkout (latar & jarak sama), tapi anak langsung
+   register supaya bisa menempel di tepi bawahnya. */
+.payBar {
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  /* Kaca yang sama dengan .checkout, tapi diletakkan di atas permukaan kartu
+     sehingga padat: saat menempel, baris struk di bawahnya tak tembus. */
+  background:
+    linear-gradient(var(--surface-glass-strong), var(--surface-glass-strong)),
+    var(--bg-surface);
+}
+/* Pelanggan & diskon terlipat: tuts tambahan bergaris putus, bahasa yang sama
+   dengan nominal cepat di bawahnya. */
+.extras {
+  display: flex;
+  gap: var(--space-2);
+}
+.extraKey {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.extraKey svg {
+  color: var(--text-muted);
+}
+.extraKey:hover {
+  border-style: solid;
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+.extraKey:hover svg {
+  color: inherit;
 }
 /* ----- Pelanggan transaksi (opsional) ----- */
 .customerBox {
@@ -1223,17 +1277,107 @@
   display: none;
 }
 
+/* Register setinggi layar, sejajar tab (bukan di bawahnya): LCD di atas, bar
+   Proses di bawah, hanya struk yang menggulir. Dulu register mulai di bawah
+   tab tapi tingginya dihitung seolah sudah menempel di atas, jadi saat halaman
+   baru dibuka Proses jatuh di bawah layar (1366×768: 39px, 1280×800: 39px).
+   Kolom & ambangnya tetap milik .layout (lihat komentar di sana); .layout
+   hanya "dibuka" agar tab bisa duduk di kolom kiri saja. */
 @media (min-width: 1025px) {
+  .pagePos {
+    display: grid;
+    grid-template-columns: 1fr minmax(320px, 400px);
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
+  .pagePos .layout {
+    display: contents;
+  }
+  .pagePos .products {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .pagePos .cartPanel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    height: calc(var(--app-vh) - var(--pos-register-top) - var(--space-4));
+  }
   .register {
     position: sticky;
     top: 0;
     z-index: 2;
   }
-  .processBtn {
+  .cartItems {
+    flex: 1 1 0;
+    /* Dua baris struk: batas sebelum jaring pengaman panel mengambil alih. */
+    min-height: 104px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .payBar {
     position: sticky;
-    bottom: var(--space-3);
+    bottom: 0;
     z-index: 1;
-    box-shadow: 0 0 0 var(--space-3) var(--bg-surface);
+  }
+  .paymentStatus:not(.statusExtra) {
+    display: none;
+  }
+  /* Saat jaring pengaman aktif, kolom nominal yang baru difokus harus
+     mendarat di antara LCD dan bar Proses, bukan di bawah bar yang menempel
+     (terukur: tertutup penuh di demo 1366×768). Angka ≈ tinggi keduanya. */
+  .cartPanel {
+    scroll-padding-block: 128px 80px;
+  }
+}
+
+/* Struk yang terpotong di tepi bawah memudar, tanda masih ada baris lagi.
+   Pudar hilang di ujung guliran; tanpa luapan, timeline tak aktif dan mask
+   tetap di posisi dasar (tanpa pudar). */
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 1025px) {
+    .cartItems {
+      mask-image: linear-gradient(to bottom, black calc(100% - var(--space-6)), transparent);
+      mask-size: 100% calc(100% + var(--space-6));
+      mask-repeat: no-repeat;
+      animation: receipt-more linear both;
+      animation-timeline: scroll(self);
+    }
+  }
+}
+@keyframes receipt-more {
+  from {
+    mask-size: 100% 100%;
+  }
+  to {
+    mask-size: 100% calc(100% + var(--space-6));
+  }
+}
+/* Tanda yang sama untuk jaring pengaman: bila seluruh register menggulir,
+   isi yang tersembunyi di balik bar Proses memudar ke arahnya. Timeline-nya
+   guliran panel; tanpa luapan ia tak aktif dan pudar tak pernah tampil. */
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 1025px) {
+    .payBar::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      height: var(--space-6);
+      background: linear-gradient(to bottom, transparent, var(--bg-surface));
+      pointer-events: none;
+      opacity: 0;
+      animation: register-more linear both;
+      animation-timeline: scroll(nearest);
+    }
+  }
+}
+@keyframes register-more {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -1241,15 +1385,26 @@
   .layout {
     grid-template-columns: 1fr;
   }
+  /* clip, bukan hidden/auto: keduanya menjadikan panel wadah gulir sehingga
+     bar Proses menempel ke panel, bukan ke layar. clip tetap memotong sudut. */
   .cartPanel {
     position: static;
-    max-height: none;
+    overflow: clip;
+  }
+  .payBar {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom);
+    z-index: 2;
   }
 }
 
 @media (max-width: 720px) {
   .page {
     padding-bottom: calc(var(--mobile-nav-height) + 76px + env(safe-area-inset-bottom));
+  }
+  /* Duduk tepat di atas menu bawah (yang mengambang --space-2 dari tepi). */
+  .payBar {
+    bottom: calc(var(--mobile-nav-height) + var(--space-2) + env(safe-area-inset-bottom));
   }
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

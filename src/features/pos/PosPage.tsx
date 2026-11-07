@@ -121,6 +121,25 @@ export function PosPage() {
   // orangnya, bukan penjualan anonim yang tak bisa ditelusuri lagi.
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [custQuery, setCustQuery] = useState('');
+  // Pelanggan & diskon dilipat jadi dua tombol: keduanya opsional dan dulu
+  // memakan 104px yang mendorong Proses keluar layar di laptop 768px.
+  const [custOpen, setCustOpen] = useState(false);
+  const [discOpen, setDiscOpen] = useState(false);
+  const custInputRef = useRef<HTMLInputElement>(null);
+  const discInputRef = useRef<HTMLInputElement>(null);
+  const showCust = custOpen || !!customer || custQuery !== '';
+  const showDisc = discOpen || discount !== '';
+  // Tombolnya hilang saat diklik, jadi fokus harus pindah ke kolom yang baru
+  // muncul. Dipakai juga saat pelanggan dilepas: kolom cari langsung siap.
+  const openCust = () => {
+    setCustomer(null);
+    setCustOpen(true);
+    requestAnimationFrame(() => custInputRef.current?.focus());
+  };
+  const openDisc = () => {
+    setDiscOpen(true);
+    requestAnimationFrame(() => discInputRef.current?.focus());
+  };
 
   // Transaksi terbaru (terbaru dulu): untuk cetak ulang struk & pembatalan.
   // Delapan baris tidak cukup bahkan untuk satu hari kasir yang ramai.
@@ -261,11 +280,17 @@ export function PosPage() {
     }
   }
 
-  // Dock ponsel hanya berguna selama register belum terlihat.
+  // Dock ponsel hanya berguna selama register belum terlihat. Ia menyerahkan
+  // tempatnya ke bar Proses yang menempel di atas menu bawah: garis serah
+  // terimanya digeser setinggi menu + bar, supaya keduanya tak pernah tampil
+  // bertumpuk atau sama-sama hilang di tengah guliran.
   useEffect(() => {
     const el = document.getElementById('pos-cart');
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(([e]) => setCartInView(e.isIntersecting), { threshold: 0.2 });
+    const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mobile-nav-height')) || 0;
+    const io = new IntersectionObserver(([e]) => setCartInView(e.isIntersecting), {
+      rootMargin: `0px 0px -${Math.round(nav + 72)}px 0px`,
+    });
     io.observe(el);
     return () => io.disconnect();
   }, [tab, needOutlet]);
@@ -354,6 +379,8 @@ export function PosPage() {
     setTender([]);
     setCustomer(null);
     setCustQuery('');
+    setCustOpen(false);
+    setDiscOpen(false);
   };
 
   const clearCart = () => {
@@ -622,7 +649,7 @@ export function PosPage() {
     });
 
   return (
-    <div className={styles.page}>
+    <div className={[styles.page, tab === 'pos' ? styles.pagePos : ''].join(' ')}>
       <div className={styles.tabs} role="tablist">
         <button
           type="button"
@@ -651,7 +678,7 @@ export function PosPage() {
       <div className={styles.layout}>
         <div className={styles.products}>
         {needOutlet ? (
-          <Card className={styles.outletPick}>
+          <Card padding className={styles.outletPick}>
             <h2 className={styles.outletPickTitle}>
               <span className={styles.outletLed} aria-hidden /> {t('pos.outletPickTitle')}
             </h2>
@@ -922,18 +949,20 @@ export function PosPage() {
           <>
             <div className={styles.tearLine} aria-hidden />
             <div className={styles.checkout}>
+            {showCust && (
             <div className={styles.customerBox}>
               {customer ? (
                 <div className={styles.customerChip}>
                   <Icon name="users" aria-hidden />
                   <span>{customer.name}</span>
-                  <button type="button" onClick={() => setCustomer(null)} aria-label={t('pos.custRemove')}>
+                  <button type="button" onClick={() => openCust()} aria-label={t('pos.custRemove')}>
                     <Icon name="xmark" aria-hidden />
                   </button>
                 </div>
               ) : (
                 <>
                   <Input
+                    ref={custInputRef}
                     placeholder={t('pos.custOptional')}
                     aria-label={t('pos.custOptional')}
                     value={custQuery}
@@ -994,9 +1023,12 @@ export function PosPage() {
                 </>
               )}
             </div>
+            )}
 
+            {showDisc && (
             <div className={styles.discountRow}>
               <Input
+                ref={discInputRef}
                 placeholder={t('pos.discount')}
                 aria-label={t('pos.discount')}
                 inputMode="numeric"
@@ -1024,6 +1056,22 @@ export function PosPage() {
                 </button>
               </div>
             </div>
+            )}
+
+            {(!showCust || !showDisc) && (
+              <div className={styles.extras}>
+                {!showCust && (
+                  <button type="button" className={styles.extraKey} onClick={openCust} aria-label={t('pos.custAddAria')}>
+                    <Icon name="user-plus" aria-hidden /> {t('pos.custShort')}
+                  </button>
+                )}
+                {!showDisc && (
+                  <button type="button" className={styles.extraKey} onClick={openDisc} aria-label={t('pos.discountAddAria')}>
+                    <Icon name="tag" aria-hidden /> {t('pos.discount')}
+                  </button>
+                )}
+              </div>
+            )}
 
             {discountOver && (
               <p className={styles.discountWarn}>
@@ -1031,15 +1079,17 @@ export function PosPage() {
               </p>
             )}
 
-            <div className={styles.summary}>
-              <div><span>{t('pos.subtotal')}</span><span>{fmtRp(subtotal)}</span></div>
-              {discountValue > 0 && (
+            {/* Tanpa diskon, subtotal = total = angka LCD; rincian ini hanya
+                mengulang angka yang sama dua kali lagi. */}
+            {discountValue > 0 && (
+              <div className={styles.summary}>
+                <div><span>{t('pos.subtotal')}</span><span>{fmtRp(subtotal)}</span></div>
                 <div className={styles.discountLine}>
                   <span>{t('pos.discount')}</span><span>−{fmtRp(discountValue)}</span>
                 </div>
-              )}
-              <div className={styles.totalLine}><span>{t('common.total')}</span><span>{fmtRp(total)}</span></div>
-            </div>
+                <div className={styles.totalLine}><span>{t('common.total')}</span><span>{fmtRp(total)}</span></div>
+              </div>
+            )}
 
             <div className={styles.payments}>
               <div className={styles.paymentsHeader}>
@@ -1108,27 +1158,38 @@ export function PosPage() {
                   ))}
                 </div>
               )}
-              <div
-                className={[
-                  styles.paymentStatus,
-                  settle.ok ? styles.ok : settle.paid === 0 ? styles.idle : styles.bad,
-                ].join(' ')}
-              >
-                <span className={styles.statusLed} aria-hidden />
-                {statusText}
-              </div>
+              {/* Sebelum ada tuts yang ditekan, petunjuk di kepala bagian sudah
+                  bilang apa yang harus dilakukan. Di desktop LCD selalu
+                  terlihat dan baris keduanya sudah menyebut sisa/kembalian/pas,
+                  jadi status hanya tampil bila membawa info lebih (statusExtra):
+                  dompet kembalian saat bayar campur, lebih bayar, nominal 0. */}
+              {tender.length > 0 && (
+                <div
+                  className={[
+                    styles.paymentStatus,
+                    settle.ok ? styles.ok : settle.paid === 0 ? styles.idle : styles.bad,
+                    tender.length > 1 || settle.excess || settle.paid === 0 ? styles.statusExtra : '',
+                  ].join(' ')}
+                >
+                  <span className={styles.statusLed} aria-hidden />
+                  {statusText}
+                </div>
+              )}
+            </div>
             </div>
 
-            <Button
-              fullWidth
-              className={styles.processBtn}
-              onClick={checkout}
-              loading={busy}
-              disabled={!settle.ok || discountOver}
-              iconLeft={busy ? undefined : <Icon name="circle-check" aria-hidden />}
-            >
-              {t('pos.process').replace('{amount}', fmtRp(total))}
-            </Button>
+            {/* Di luar .checkout supaya bisa menempel ke tepi bawah seluruh
+                register, bukan hanya ke bagian bayar. */}
+            <div className={styles.payBar}>
+              <Button
+                fullWidth
+                onClick={checkout}
+                loading={busy}
+                disabled={!settle.ok || discountOver}
+                iconLeft={busy ? undefined : <Icon name="circle-check" aria-hidden />}
+              >
+                {t('pos.process').replace('{amount}', fmtRp(total))}
+              </Button>
             </div>
           </>
         )}
