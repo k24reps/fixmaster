@@ -206,7 +206,7 @@
 }
 
 .error {
-  color: var(--red-400);
+  color: var(--danger-text);
   font-size: var(--text-sm);
   margin-bottom: var(--space-4);
   min-height: 20px;

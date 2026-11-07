@@ -30,8 +30,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--red-400);
-  box-shadow: 0 0 7px var(--red-400);
+  background: var(--danger);
+  box-shadow: 0 0 7px var(--danger);
   flex-shrink: 0;
   animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }

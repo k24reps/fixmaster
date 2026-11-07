@@ -52,25 +52,25 @@
   border-left-color: var(--success);
 }
 .success .icon {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .error {
   border-left-color: var(--danger);
 }
 .error .icon {
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .warning {
   border-left-color: var(--warning);
 }
 .warning .icon {
-  color: var(--amber-400);
+  color: var(--warning-text);
 }
 .info {
   border-left-color: var(--info);
 }
 .info .icon {
-  color: var(--blue-400);
+  color: var(--info-text);
 }
 
 @media (max-width: 520px) {

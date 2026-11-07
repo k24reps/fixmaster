@@ -41,6 +41,9 @@ colors:
   light-brand: "#bf7c00"
   light-brand-edge: "#c0750a"
   light-accent-text: "#006e63"
+  light-brand-text: "#755411"
+  light-warn-text: "#a42e07"
+  light-crit-text: "#8c0e46"
 typography:
   display:
     fontFamily: "Space Grotesk, Inter, sans-serif"
@@ -179,7 +182,7 @@ Frontmatter values are the dark theme unless prefixed `light-`. The light theme 
 
 ### Primary
 - **Safety Amber** (`--brand`): The brand voice and the "this is live / this is the action" color. Primary buttons, active navigation channel, the brand mark, the focus ring, the featured plan. In light theme the logo amber is only 2:1 on steel, so the role splits: `--brand` (`#bf7c00`, the logo amber darkened at the same hue) is for shapes without text — LEDs, bars, rules — that need 3:1; amber surfaces that carry ink use `--brand-fill` (the full logo amber) with a `--brand-fill-edge` rim (`#c0750a`, the probe collar), and primary buttons keep the logo gradient with the same rim through `--shadow-brand`. Text-on-amber uses the deep bitumen `--on-brand` (`#1a1205`) in both themes — amber never carries white text.
-- **Amber Lit** (`--brand-text` in dark): The readable amber for text and iconography on dark surfaces. In light theme `--brand-text` drops all the way to `--brand-900` (`#7c4d12`) because bright amber on pale steel fails contrast.
+- **Amber Lit** (`--brand-text` in dark): The readable amber for text and iconography on dark surfaces. In light theme `--brand-text` drops to a deep gold (`#755411`) because bright amber on pale steel fails contrast.
 
 ### Secondary
 - **Diagnostic Cyan** (`--accent`): The instrument voice — liveness, measurement, "the machine is reporting". Online LEDs, section labels, trace lines, the "PALING LENGKAP" marker, and exactly one status: **Selesai / siap ambil** (the device is ready on the shelf, waiting for the customer). Light theme uses `--accent-600` with a much darker text pair (`--accent-700`, `#006e63`, on the LCD's 183° hue).
@@ -191,12 +194,17 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 - **Signal Crit** (`--danger`): failed, overdue, out of stock, destructive action.
 - **Signal Info** (`--info`): neutral in-progress state and non-urgent classification.
 
+**Light signal ink is separated by hue (7 Nov 2026).** In light theme the brand, warning and danger text tokens used to be three near-identical browns (`#7c4d12`, `#661f0e`, `#99202f`), so a Diterima-era amber pill, a Konfirmasi pill and a Dibatalkan pill read as one colour. They now sit on three hues at similar depth: `--brand-text` deep gold `#755411` (80°), `--warning-text` brick orange `#a42e07` (36°), `--danger-text` raspberry `#8c0e46` (2°). Each pair is at least 0.109 apart in OKLab and each clears 4.6:1 on cards, the app plane and its own soft pill. `audit-tokens` guards both the contrast and the distance.
+
+**Primitives live only in instrument wells.** The `-400` palette primitives (`--green-400`, `--amber-400`, …) are the dark theme's lit colours. Use them only inside always-dark readout panels (Dashboard hero, Kasir LCD, the Absensi clock well, the 404 readout, the Laporan verdict, the Pro plan card). Anywhere the surface follows the theme, ink and icons take the `*-text` role token and LEDs, spines and gauge fills take the base role token (`--success`, `--warning`, `--danger`, `--info`). In dark the values are the same, so nothing shifts; in light a `-400` on white was about 2:1. Button fills (`--red-600`, `--green-600`) are the deliberate exception: fixed solids chosen for their white label.
+
 **Money is not a signal (7 Nov 2026).** Routine outflows (rent, wages, stock purchases) are a normal cost of running the bench, so they never take `--danger`. An expense amount uses `--text-primary` with a `−` sign, its spine and chart series use `--text-secondary` (dashed in the trend chart), and the PENGELUARAN tag is a neutral pill. Income keeps Signal Good. A negative net cash figure is Signal Warn (spine, LED and value), not Crit: stock purchases can push one day or week below zero. A zero net stays unlit. Red is left for the things that actually failed: overdue receivables (31+ days), stock below minimum, a cash count that comes up short, a cancelled transfer, a break-even verdict of loss, destructive log events. Before this, Keuangan and Laporan glowed red every month and a −Rp 2.100.000 net sat white on a cyan spine.
 
 **One status map (`STATUS_TONE`, 7 Nov 2026).** The eight service statuses resolve to six tones, and every page reads the same map: Diterima → neutral grey LED (nothing touched yet), Diagnosa and Pengerjaan → info (work in progress), Konfirmasi Biaya and Tunggu Sparepart → warning (waiting on someone else), Selesai → accent (ready for pickup), Lunas → success (closed and paid), Dibatalkan → danger. Anything derived from "ready for pickup" uses accent too: the dashboard alert, the Servis summary cell, the "Belum diambil" readout. Selesai and Lunas used to share green, which hid the shelf of devices waiting for their owners among closed tickets. Brand amber is not a status tone.
 
 ### Neutral
 - **Graphite Base / App / Surface / Raised** (`--bg-base` → `--bg-elevated`): A four-step tonal ladder that does the work shadows do elsewhere. Light theme inverts the ladder to brushed aluminium (`#d9dde2` → `#ffffff`), and notably `--bg-base` is *darker* than `--bg-app` in light mode — recessed wells stay recessed in both themes.
+- **Raised and key** (`--bg-raised`, `--bg-key`): An object sitting on a card (the phone ticket card, the Total saldo cell) and a key you press (topbar icon buttons, the status-modal channel keys). In dark they equal `--bg-surface-2` and `--rail-control`, so the dark look is unchanged. In light both become white with a `--border-strong` edge, because `--bg-surface-2` sinks below the card there and made these read as disabled. Where white on white loses emphasis (Total saldo in a near-white strip), the emphasis comes from a spine and a solid divider, not from a grey fill.
 - **Rail family** (`--rail-bg`, `--rail-well`, `--rail-panel`, `--rail-control`): A separate chassis palette for the app shell so the sidebar reads as mounted hardware rather than as another card.
 - **Readout family** (`--readout-base`, `--readout-surface`, `--readout-text`, `--readout-muted`): **Theme-independent.** These six values are defined once and never re-bound per theme — this is what makes an instrument well look identical in dark and light.
 - **Ink** (`--text-primary`, `--text-secondary`, `--text-muted`): Never pure white or pure black in either theme.

@@ -4809,3 +4809,50 @@ build, 724 tes, lint hijau; foto Dashboard/Keuangan/Laporan/Tugas/Log dua tema, 
 rentang 5 Nov (hanya pengeluaran) untuk keadaan kas negatif.
 
 #decision #ui #color #a11y #critique
+
+### Tahap 5: permukaan terang, tinta sinyal, primitif, catatan kecil
+
+**Permukaan yang terbaca nonaktif di terang.** `--bg-surface-2` di gelap terangkat, di terang
+(`#e2e5eb`) justru terbenam di bawah kartu, jadi tombol ikon topbar, sel TOTAL SALDO, kartu tiket
+ponsel, dan tuts "Status tujuan" di modal status tampak abu kusam. Dua token baru:
+`--bg-raised` (benda di atas kartu) dan `--bg-key` (tuts yang ditekan). Gelap: sama dengan
+`--bg-surface-2` / `--rail-control`, tampilan tak bergeser. Terang: putih plus `--border-strong`.
+Topbar `.iconBtn` dulu `--bg-base` (sumur paling gelap), kini `--bg-key`. TOTAL SALDO: putih di
+strip yang sudah nyaris putih kehilangan penekanan, jadi penekanannya pindah ke spine
+`--text-secondary` dan pemisah garis tegas ke sel wallet ("jumlah" vs "bagian").
+
+**Tinta sinyal terang.** `--brand-text` `#7c4d12` → `#755411`, `--warning-text` `#661f0e` →
+`#a42e07`, `--danger-text` `#99202f` → `#8c0e46`. Dulu tiga cokelat; kini emas, jingga bata,
+raspberry, saling ≥ 0.109 OKLab, semua ≥ 4.6:1. Pelajaran lama di `Design System.md`
+("menggeser rona tidak pernah cukup") dikoreksi di sana: itu hanya berlaku selama bahaya
+dipaku dekat jingga.
+
+**Primitif → token peran.** Ikon peristiwa Log, ikon Toast, tag Absensi (izin/sakit/alpha), tag
+"Telat" + spine Tugas, docket + plat + tombol batal Supplier, LED + gauge Inventori, spine
+`Card`, gauge target Dashboard, LED galat `Form`, titik online topbar, teks galat di modal PO,
+template tugas, Wizard, dan PIN. Tinta/ikon → `*-text`, bentuk → token dasar. Di gelap nilainya
+identik; di terang `-400` di atas putih hanya ~2:1 (ikon tidak diperiksa `audit-contrast` yang
+hanya mengukur teks, jadi celah ini tak pernah tertangkap gerbang). Yang tetap primitif: panel
+selalu gelap dan isian tombol.
+
+**Catatan kecil critique.**
+- Callout "Catatan" Privasi/Syarat: isian `--warning-soft` penuh → transparan, tinggal spine.
+- Modal sparepart "−850.000" di daftar Servis: `--info-text` → `--text-muted` (uang keluar bukan
+  sinyal). Rugi per tiket `--danger-text` → `--warning-text`, sama dengan outlet minus di Laporan.
+- `config/navigation.ts`: 12 warna per menu yang tak dibaca di mana pun dihapus beserta field
+  `color` di `NavItem`.
+- Cetak laporan A4 (`printReport.ts`): kelas `down` merah dulu dipakai untuk pengeluaran, delta
+  buruk, outlet minus, stok habis, dan piutang 31+. Kini dipisah seperti layar: pengeluaran
+  bertinta biasa (bar dan garis tren `INK.muted`, garis putus), `neg` jingga bata untuk angka
+  buruk, `crit` merah hanya stok habis dan piutang 31+. Judul bagian dan jenis dokumen pindah ke
+  `brandText` brand-800 (`#985c0f`, 5.4:1); brand-700 (3.6:1) tetap untuk garis dan spine.
+  Literal hex di cetak memang disengaja (dokumen terpisah, tak membaca token).
+- Sudah beres di tahap sebelumnya, diperiksa ulang: `.tone_crit .readoutNum` sudah
+  `--danger-text`; reset password kedaluwarsa sudah LED galat; galat /track sudah spine
+  peringatan; `audit-contrast` sudah mencari menu "Tugas".
+
+**Verifikasi:** `audit-tokens` 0 pelanggaran (pasangan baru: teks redup di `--bg-raised`, ikon
+di `--bg-key`); `audit-contrast` BERSIH dua tema; build, 724 tes, lint hijau; foto terang dan
+gelap: Servis ponsel, modal status, Keuangan, Log, Tugas, Absensi, Inventori, Supplier, Privasi.
+
+#decision #ui #color #a11y #critique

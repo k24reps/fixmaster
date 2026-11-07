@@ -132,13 +132,13 @@
   box-shadow: 0 0 8px var(--accent);
 }
 .low .ledDot {
-  background: var(--amber-400);
-  box-shadow: 0 0 8px var(--amber-400);
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
   animation: fm-pulse 1.8s var(--ease-in-out) var(--pulse-cycles);
 }
 .out .ledDot {
-  background: var(--red-500);
-  box-shadow: 0 0 9px var(--red-500);
+  background: var(--danger);
+  box-shadow: 0 0 9px var(--danger);
   animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 
@@ -202,10 +202,10 @@
   background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
 }
 .low .gaugeFill {
-  background: linear-gradient(90deg, var(--amber-600), var(--amber-400));
+  background: linear-gradient(90deg, var(--warning), var(--warning-text));
 }
 .out .gaugeFill {
-  background: var(--red-500);
+  background: var(--danger);
 }
 /* tick marks overlay */
 .gauge::after {

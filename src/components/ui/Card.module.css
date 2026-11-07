@@ -43,16 +43,16 @@
   background: var(--gradient-brand);
 }
 .accent_success::before {
-  background: linear-gradient(180deg, var(--green-500), var(--green-400));
+  background: linear-gradient(180deg, var(--success), var(--success-text));
 }
 .accent_warning::before {
-  background: linear-gradient(180deg, var(--amber-500), var(--amber-400));
+  background: linear-gradient(180deg, var(--warning), var(--warning-text));
 }
 .accent_danger::before {
-  background: linear-gradient(180deg, var(--red-500), var(--red-400));
+  background: linear-gradient(180deg, var(--danger), var(--danger-text));
 }
 .accent_info::before {
-  background: linear-gradient(180deg, var(--blue-500), var(--blue-400));
+  background: linear-gradient(180deg, var(--info), var(--info-text));
 }
 
 /* ---------- Header ---------- */

@@ -241,12 +241,13 @@
   text-decoration: underline;
 }
 
-/* Callout box for the legal-review disclaimer. */
+/* Callout catatan tinjauan hukum: spine peringatan, bukan isian penuh
+   (aturan spine-bukan-isian; isian jingga satu blok terbaca seperti galat). */
 .prose :global(.callout) {
   display: flex;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: var(--warning-soft);
+  background: transparent;
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--warning);
   border-radius: var(--radius-sm);

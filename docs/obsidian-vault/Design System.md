@@ -102,7 +102,16 @@ gelap) — karena itu penggantiannya per temuan terukur, bukan massal.
 - 22 `color:` diganti di 8 berkas (Servis, Keuangan, Laporan, Pelanggan, Log
   Aktivitas, Inventori, Absensi, Supplier). Garis bawah & titik LED tetap isian.
 - `--danger-text` terang L 0.478 → 0.45 (`#99202f`): badge merah di atas
-  `--danger-soft` masih 4.39:1.
+  `--danger-soft` masih 4.39:1. _(Diganti 7 Nov 2026 → raspberry `#8c0e46`, lihat
+  "Tinta sinyal terang dipisah rona" di bawah.)_
+- **Sapuan lanjutan (7 Nov 2026, tahap 5 critique warna):** sisa primitif di permukaan
+  bertema dipetakan ulang — ikon peristiwa Log, ikon Toast, tag status Absensi, tag
+  "Telat" dan spine Tugas, docket/plat Supplier, LED + gauge Inventori, spine `Card`,
+  gauge target Dashboard, LED galat Form, titik online topbar, teks galat modal
+  (PO, template tugas, Wizard, PIN). Aturannya: tinta/ikon → `*-text`, LED/spine/isian
+  gauge → token dasar peran. Yang sengaja tetap primitif: panel selalu gelap (hero
+  Dashboard, LCD Kasir, well jam Absensi, readout 404, vonis Laporan, paket Pro landing)
+  dan isian tombol `--red-600`/`--green-600`.
 - Gerbang `audit-contrast.mjs` kini ikut mengklik 11 menu demo → **26 halaman×tema,
   0 gagal**. `audit-tokens` tetap LULUS.
 
@@ -178,12 +187,27 @@ supaya amber duduk sebagai komplemen dan menyala, bukan menempel di atas abu mat
 Light bergeser dari abu-biru dingin ke netral hangat bersaturasi rendah (~35deg) —
 bukan krem — karena rona dingin membuat layar terang terbaca klinis.
 
-**Pelajaran: pisahkan lewat terang-gelap, bukan hanya rona.** Di tema terang,
-`--brand-text` dan `--warning-text` sama-sama harus cokelat gelap agar lolos 4.5:1
-di atas pil bertint. Menggeser rona saja tidak pernah cukup — tidak ada solusi yang
-memenuhi kontras dan pemisahan sekaligus. Solusinya datang saat warning dibuat
-**lebih pekat** dari brand (`#661f0e` vs `#7c4d12`): jarak naik ke dE 0.128 dan
-kontras keduanya justru membaik.
+**Pelajaran lama (dikoreksi 7 Nov 2026): pisahkan lewat terang-gelap, bukan hanya
+rona.** Dulu `--brand-text` dan `--warning-text` terang dipisah dengan membuat warning
+**lebih pekat** dari brand (`#661f0e` vs `#7c4d12`, dE 0.128). Kontrasnya lolos, tapi
+critique warna 7 Nov menemukan akibatnya di layar: pil cokelat, marun, dan crimson
+terbaca satu warna, dan "peringatan" yang nyaris hitam tidak lagi terasa sebagai
+peringatan.
+
+**Tinta sinyal terang dipisah rona (7 Nov 2026).** Kesimpulan "menggeser rona tidak
+pernah cukup" ternyata hanya benar selama `--danger-text` dipaku di `#99202f` (rona
+~20deg, tetangga dekat jingga). Begitu bahaya digeser ke raspberry, ruangnya terbuka
+dan ketiganya bisa duduk di kedalaman serupa dengan rona berbeda:
+
+| Token (terang) | Nilai | OKLCH | Kartu / pil soft |
+|---|---|---|---|
+| `--brand-text` | `#755411` | L .47, C .09, h 80 (emas tua) | 6.75 / ≥4.6 |
+| `--warning-text` | `#a42e07` | L .48, C .16, h 36 (jingga bata) | 6.88 / ≥4.6 |
+| `--danger-text` | `#8c0e46` | L .42, C .16, h 2 (raspberry) | 9.03 / 6.2 |
+
+Jarak OKLab: brand–warning 0.114, warning–danger 0.111 (gerbang `audit-tokens` ≥ 0.1).
+Dicari dengan grid OKLCH yang mensyaratkan ≥ 4.6:1 di kartu, latar app, pil soft di atas
+kartu, dan pil soft di atas kartu sekunder, lalu memaksimalkan jarak terkecil.
 
 **Tinta di atas isian sinyal.** `--on-signal` dibuat sebagai sepupu `--on-brand`,
 dan nilainya **berbalik antar tema** karena isiannya ikut berbalik: di dark, success

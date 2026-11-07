@@ -85,10 +85,10 @@
   width: 3px;
   background: var(--border-strong);
 }
-.docket.ordered::before { background: var(--blue-500); }
-.docket.partial::before { background: var(--amber-500); }
-.docket.received::before { background: var(--green-500); }
-.docket.cancelled::before { background: var(--red-500); }
+.docket.ordered::before { background: var(--info); }
+.docket.partial::before { background: var(--warning); }
+.docket.received::before { background: var(--success); }
+.docket.cancelled::before { background: var(--danger); }
 .docket.draft::before { background: var(--text-muted); }
 
 .poChip {
@@ -199,7 +199,7 @@
 }
 .voidBtn:hover {
   background: var(--danger-soft);
-  color: var(--red-400);
+  color: var(--danger-text);
   border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
@@ -238,7 +238,7 @@
   border-radius: var(--radius-sm);
   background: var(--info-soft);
   border: 1px solid var(--border);
-  color: var(--blue-400);
+  color: var(--info-text);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -584,11 +584,13 @@ a.heroStat:hover {
   transform-origin: left center;
   transition: transform var(--dur-slow) var(--ease-out);
 }
+/* Gauge di kartu yang ikut tema (berbeda dengan hero yang selalu gelap):
+   token peran. Di gelap nilainya sama dengan skala 500->400 sebelumnya. */
 .gauge.ok .gaugeFill {
-  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  background: linear-gradient(90deg, var(--success), var(--success-text));
 }
 .gauge.behind .gaugeFill {
-  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+  background: linear-gradient(90deg, var(--warning), var(--warning-text));
 }
 /* Penanda laju: di mana angka seharusnya berada pada tanggal ini. */
 .paceTick {

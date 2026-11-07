@@ -96,15 +96,15 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--amber-500);
+  background: var(--warning);
 }
 .taskItem.overdue::before {
-  background: var(--red-500);
+  background: var(--danger);
 }
 /* Selesai dibaca dari coretan, warna redup, dan spine hijau, bukan opacity
    seluruh baris: 0.65 menurunkan teks redupnya ke 3,3:1. */
 .taskDone::before {
-  background: var(--green-500);
+  background: var(--success);
 }
 
 /* mechanical checkbox */
@@ -174,15 +174,15 @@
 .dueTag.late {
   background: var(--danger-soft);
   border-color: transparent;
-  color: var(--red-400);
+  color: var(--danger-text);
 }
 .dueTag.late::before {
   content: '';
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--red-500);
-  box-shadow: 0 0 7px var(--red-500);
+  background: var(--danger);
+  box-shadow: 0 0 7px var(--danger);
   animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);
 }
 

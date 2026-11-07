@@ -102,8 +102,14 @@ button.walletCell[aria-pressed='true'] {
 button.walletCell[aria-pressed='true'] .walletName {
   color: var(--text-secondary);
 }
+/* Total = jumlah, bukan salah satu wallet: spine tinta dan pemisah tegas ke
+   sel wallet. Di terang --bg-raised putih nyaris sama dengan strip, jadi
+   penekanannya datang dari spine dan garis, bukan dari isian abu (yang
+   dulu terbaca nonaktif). */
 .walletTotal {
-  background: var(--bg-surface-2);
+  background: var(--bg-raised);
+  box-shadow: inset 3px 0 0 var(--text-secondary);
+  border-right-style: solid;
 }
 /* Baris kaki sel Total: jumlah wallet + (ponsel) tombol Hitung, patah bila sempit. */
 .totalFoot {

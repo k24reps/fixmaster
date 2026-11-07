@@ -53,7 +53,7 @@
   height: var(--control-h);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
-  background: var(--bg-base);
+  background: var(--bg-key);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -191,8 +191,8 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--green-400);
-  box-shadow: 0 0 6px var(--green-400);
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
   border: 2px solid var(--bg-surface);
 }
 /* z-index 1 cukup: topbar sticky sudah membentuk konteks tumpukan di atas halaman. */

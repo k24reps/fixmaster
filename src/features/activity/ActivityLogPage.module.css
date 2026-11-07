@@ -278,23 +278,25 @@
 .tone_neutral {
   color: var(--text-secondary);
 }
+/* Ikon di lingkaran --bg-elevated yang ikut tema: token peran, bukan skala
+   -400 (di terang putih, -400 hanya ~2:1). */
 .tone_success {
-  color: var(--green-400);
+  color: var(--success-text);
   border-color: var(--success);
   box-shadow: 0 0 0 3px var(--success-soft);
 }
 .tone_warning {
-  color: var(--amber-400);
+  color: var(--warning-text);
   border-color: var(--warning);
   box-shadow: 0 0 0 3px var(--warning-soft);
 }
 .tone_danger {
-  color: var(--red-400);
+  color: var(--danger-text);
   border-color: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
 }
 .tone_info {
-  color: var(--blue-400);
+  color: var(--info-text);
   border-color: var(--info);
   box-shadow: 0 0 0 3px var(--info-soft);
 }

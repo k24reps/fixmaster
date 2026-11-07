@@ -212,6 +212,12 @@
   --bg-app: #15181e;
   --bg-surface: #1e2229;
   --bg-surface-2: #262b33;
+  /* Benda di atas kartu (kartu tiket ponsel, sel Total saldo) dan tuts yang
+     bisa ditekan (tombol ikon topbar, kanal status). Di gelap keduanya sama
+     dengan yang dipakai selama ini; yang berubah tema terang, di mana
+     --bg-surface-2 terbenam dan membuat benda itu terbaca nonaktif. */
+  --bg-raised: var(--bg-surface-2);
+  --bg-key: var(--rail-control);
   --bg-elevated: #2e343d;
   --bg-input: #191d23;
   --bg-hover: rgba(255, 255, 255, 0.055);
@@ -323,6 +329,11 @@
      mengambang (--bg-elevated, putih) tetap terpisah dari kartu di bawahnya. */
   --bg-surface: #fbfcfe;
   --bg-surface-2: #e2e5eb;
+  /* Terang: benda dan tuts naik ke putih (plus --border-strong di
+     komponennya), bukan abu yang lebih gelap dari kartunya. */
+  --bg-raised: #ffffff;
+  /* Diulang dari blok gelap supaya audit-tokens bisa membacanya per tema. */
+  --bg-key: var(--rail-control);
   --bg-elevated: #ffffff;
   --bg-input: #f0f3f6;
   --bg-hover: rgba(24, 32, 44, 0.065);
@@ -354,7 +365,12 @@
      logo penuh lewat --gradient-brand, ditepi --brand-700 lewat --shadow-brand. */
   --brand: #bf7c00;
   --brand-hover: #8a5200;
-  --brand-text: var(--brand-900);
+  /* Teks merek, peringatan, dan bahaya terang dulu tiga cokelat yang nyaris
+     sama (#7c4d12 / #661f0e / #99202f). Kini dipisah rona, bukan gelap-terang:
+     emas tua 80deg, jingga bata 36deg, raspberry 2deg; dE OKLab >= 0.109
+     antarpasangan, dan >= 4.6:1 di kartu, latar app, serta badge soft di atas
+     kartu maupun kartu sekunder (7 Nov 2026). */
+  --brand-text: #755411;
   --brand-soft: rgba(245, 166, 35, 0.2);
   /* --brand padat di bidang berteks terbaca mustard di samping tombol utama.
      Bidang berteks tidak butuh 3:1 terhadap kartu (teksnya sudah 9:1 di atas
@@ -370,11 +386,12 @@
   --success-text: #08511f;
   --success-soft: rgba(49, 184, 130, 0.18);
   --warning: var(--amber-600);
-  --warning-text: #661f0e;
+  --warning-text: #a42e07;
   --warning-soft: rgba(239, 118, 52, 0.18);
   --danger: var(--red-600);
-  /* L 0.45: di L 0.478 badge merah di atas --danger-soft masih 4.39:1. */
-  --danger-text: #99202f;
+  /* L 0.42 raspberry: menjauh dari jingga bata --warning-text. Badge di atas
+     --danger-soft 6.2:1 (dulu L 0.478 hanya 4.39:1). */
+  --danger-text: #8c0e46;
   --danger-soft: rgba(219, 64, 89, 0.15);
   --info: var(--blue-600);
   --info-text: #2b54b8;

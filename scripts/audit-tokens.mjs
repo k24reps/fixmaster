@@ -85,6 +85,8 @@ const PAIRS = [
   ['--text-muted', '--bg-surface', 4.5, 'teks redup di kartu'],
   ['--text-muted', '--bg-app', 4.5, 'teks redup di latar app'],
   ['--text-muted', '--bg-surface-2', 4.5, 'teks redup di kartu sekunder'],
+  ['--text-muted', '--bg-raised', 4.5, 'teks redup di benda terangkat'],
+  ['--text-secondary', '--bg-key', 4.5, 'ikon/teks di tuts'],
   ['--text-primary', '--bg-input', 4.5, 'teks isian'],
   ['--text-muted', '--bg-input', 4.5, 'placeholder isian'],
   ['--on-brand', '--brand', 4.5, 'label di tombol brand'],

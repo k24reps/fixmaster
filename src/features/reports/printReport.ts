@@ -49,11 +49,18 @@ const INK = {
   faint: '#9a9189',
   rule: '#ddd6cc',
   ruleSoft: '#efeae2',
-  /* brand-700: amber merek dinaikkan kepekatannya supaya terbaca di atas kertas putih. */
+  /* brand-700 untuk bentuk (garis kop, spine vonis, bar). Sebagai teks kecil
+     ia hanya 3,6:1 di kertas putih, jadi judul memakai brand-800 (5,4:1). */
   brand: '#c0750a',
+  brandText: '#985c0f',
   brandSoft: '#fdf3e0',
   income: '#0f7a52',
-  expense: '#b3261e',
+  /* Uang keluar bukan sinyal, sama dengan layar (7 Nov 2026): pengeluaran
+     bertinta biasa. Jingga bata (= --warning-text terang) untuk angka buruk:
+     kas atau outlet minus, delta memburuk. Merah hanya stok habis dan
+     piutang 31+ hari. */
+  warn: '#a42e07',
+  crit: '#b3261e',
 };
 
 const A4_STYLE = `
@@ -85,7 +92,7 @@ const A4_STYLE = `
   .shop p { margin: 2px 0 0; font-size: 8.5pt; color: ${INK.muted}; }
   .doctype { text-align: right; flex: 0 0 auto; }
   .doctype .kind {
-    font-size: 7.5pt; letter-spacing: 0.16em; color: ${INK.brand}; font-weight: 700;
+    font-size: 7.5pt; letter-spacing: 0.16em; color: ${INK.brandText}; font-weight: 700;
   }
   .doctype .period { font-size: 10.5pt; font-weight: 700; margin-top: 2px; }
   .doctype .scope { font-size: 8pt; color: ${INK.muted}; }
@@ -110,14 +117,15 @@ const A4_STYLE = `
   .kpi .value { font-size: 13pt; font-weight: 700; margin-top: 3px; }
   .kpi .delta { font-size: 7.5pt; color: ${INK.muted}; margin-top: 1px; }
   .up { color: ${INK.income}; }
-  .down { color: ${INK.expense}; }
+  .neg { color: ${INK.warn}; }
+  .crit { color: ${INK.crit}; }
 
   /* ---------- Bagian ---------- */
   section { margin-bottom: 13px; break-inside: avoid; }
   section.flow { break-inside: auto; }
   h2 {
     font-size: 8pt; letter-spacing: 0.15em; text-transform: uppercase;
-    color: ${INK.brand}; font-weight: 700;
+    color: ${INK.brandText}; font-weight: 700;
     margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid ${INK.rule};
   }
   h2 .count { color: ${INK.faint}; letter-spacing: 0; font-weight: 600; }
@@ -146,7 +154,7 @@ const A4_STYLE = `
   .bar-track { height: 4px; background: ${INK.ruleSoft}; margin-top: 2px; }
   .bar-fill { height: 4px; background: ${INK.brand}; }
   .bar-fill.inc { background: ${INK.income}; }
-  .bar-fill.exp { background: ${INK.expense}; }
+  .bar-fill.exp { background: ${INK.muted}; }
 
   /* ---------- Break-even ---------- */
   .be { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -237,7 +245,7 @@ function delta(value: number | null, noBaseline: boolean, inverse = false): stri
   if (value === null || !Number.isFinite(value)) return `<span class="delta">${EMPTY_VALUE}</span>`;
   const good = inverse ? value <= 0 : value >= 0;
   const sign = value >= 0 ? '+' : '−';
-  return `<span class="delta ${good ? 'up' : 'down'}">${sign}${esc(
+  return `<span class="delta ${good ? 'up' : 'neg'}">${sign}${esc(
     fmtPercent(Math.abs(value)),
   )} vs periode lalu</span>`;
 }
@@ -266,12 +274,12 @@ function chartSvg(points: TrendPoint[]): string {
     <svg viewBox="0 0 ${g.width} ${g.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Grafik tren pemasukan dan pengeluaran">
       ${grid}${xLabels}
       <path d="${g.incArea}" fill="${INK.income}" fill-opacity="0.08"/>
-      <path d="${g.expPath}" fill="none" stroke="${INK.expense}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="${g.expPath}" fill="none" stroke="${INK.muted}" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round"/>
       <path d="${g.incPath}" fill="none" stroke="${INK.income}" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>
     <div class="legend">
       <span><i class="swatch" style="background:${INK.income}"></i>Pemasukan</span>
-      <span><i class="swatch" style="background:${INK.expense}"></i>Pengeluaran</span>
+      <span><i class="swatch" style="background:${INK.muted}"></i>Pengeluaran</span>
     </div>
   </div>`;
 }
@@ -321,7 +329,7 @@ function buildBody(d: ReportDocData): string {
     </div>
     <div class="kpi">
       <div class="label">Pengeluaran</div>
-      <div class="value num down">${esc(fmtRp(d.summary.expense))}</div>
+      <div class="value num">${esc(fmtRp(d.summary.expense))}</div>
       <div class="delta">${delta(d.comparison.expenseDelta, d.noBaseline, true)}</div>
     </div>
     <div class="kpi">
@@ -499,7 +507,7 @@ function buildBody(d: ReportDocData): string {
               .map(
                 (i) => `<tr>
                   <td>${esc(i.name)}</td>
-                  <td class="r num ${i.stock <= 0 ? 'down' : ''}">${i.stock}</td>
+                  <td class="r num ${i.stock <= 0 ? 'crit' : ''}">${i.stock}</td>
                   <td class="r num">${i.minStock}</td>
                 </tr>`,
               )
@@ -524,7 +532,7 @@ function buildBody(d: ReportDocData): string {
                   </td>
                   <td class="r num">${esc(fmtRp(o.income))}</td>
                   <td class="r num">${esc(fmtRp(o.expense))}</td>
-                  <td class="r num ${o.net >= 0 ? 'up' : 'down'}">${esc(fmtRp(o.net))}</td>
+                  <td class="r num ${o.net >= 0 ? 'up' : 'neg'}">${esc(fmtRp(o.net))}</td>
                 </tr>`,
               )
               .join('')}</tbody>
@@ -554,7 +562,7 @@ function buildBody(d: ReportDocData): string {
               (r) => `<tr>
                 <td class="num">${esc(r.serviceNo)}</td>
                 <td>${esc(r.customerName)}</td>
-                <td class="r num ${r.bucket === '31+' ? 'down' : ''}">${r.ageDays} hari</td>
+                <td class="r num ${r.bucket === '31+' ? 'crit' : ''}">${r.ageDays} hari</td>
                 <td class="r num">${esc(fmtRp(r.outstanding))}</td>
               </tr>`,
             )
@@ -580,7 +588,7 @@ function buildBody(d: ReportDocData): string {
                 <td>${esc(r.type)}</td>
                 <td>${esc(r.category)}</td>
                 <td>${esc(r.description)}</td>
-                <td class="r num ${r.amount >= 0 ? 'up' : 'down'}">${esc(fmtRp(r.amount))}</td>
+                <td class="r num ${r.amount >= 0 ? 'up' : ''}">${esc(fmtRp(r.amount))}</td>
               </tr>`,
             )
             .join('')}</tbody>
