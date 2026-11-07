@@ -32,6 +32,9 @@ import {
   canQuickAddParts,
   withPartAdded,
   finalCostLocked,
+  modalDadakanIssue,
+  modalDadakanLine,
+  modalExpenseDescription,
 } from './services';
 import type { ServiceSparepart } from '@/data/types';
 
@@ -426,5 +429,38 @@ describe('aksi cepat sparepart di Daftar Servis', () => {
     expect(finalCostLocked({ status: 'lunas', finalCost: 350000 })).toBe(true);
     expect(finalCostLocked({ status: 'selesai', finalCost: 0 })).toBe(false);
     expect(finalCostLocked({ status: 'pengerjaan', finalCost: 350000 })).toBe(false);
+  });
+});
+
+describe('modal dadakan: part yang dibeli di luar stok', () => {
+  const ok = { name: 'LCD Oppo A5 beli di toko sebelah', amount: 250000, walletId: 'kas' };
+
+  it('memeriksa keterangan, nominal, lalu wallet', () => {
+    expect(modalDadakanIssue(ok)).toBeNull();
+    expect(modalDadakanIssue({ ...ok, name: '   ' })).toBe('serviceDetail.modalNameRequired');
+    expect(modalDadakanIssue({ ...ok, amount: 0 })).toBe('serviceDetail.modalAmountRequired');
+    expect(modalDadakanIssue({ ...ok, amount: Number.NaN })).toBe('serviceDetail.modalAmountRequired');
+    expect(modalDadakanIssue({ ...ok, walletId: '' })).toBe('serviceDetail.modalWalletRequired');
+  });
+
+  it('baris manual: tanpa item, tak memotong stok, terhubung ke pengeluarannya', () => {
+    const line = modalDadakanLine({ ...ok, name: '  LCD Oppo A5  ' }, 'exp-1');
+    expect(line).toEqual({
+      itemId: null,
+      name: 'LCD Oppo A5',
+      qty: 1,
+      costPrice: 250000,
+      sellPrice: 0,
+      deducted: false,
+      kind: 'manual',
+      expenseId: 'exp-1',
+      walletId: 'kas',
+    });
+    expect(withPartAdded([], line)[0].deducted).toBe(false);
+    expect(serviceModalTotal([line])).toBe(250000);
+  });
+
+  it('keterangan pengeluaran sama untuk catat baru dan ubah', () => {
+    expect(modalExpenseDescription('FM-0006', '  LCD Oppo A5 ')).toBe('Modal servis FM-0006 — LCD Oppo A5');
   });
 });

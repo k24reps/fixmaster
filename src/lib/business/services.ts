@@ -11,6 +11,7 @@ import type { ServiceHistoryEntry,
   Role,
 } from '@/data/types';
 import { addDays } from '@/lib/time';
+import type { TranslationKey } from '@/i18n';
 
 /**
  * Allowed status transitions (state machine). Cermin trigger
@@ -331,6 +332,44 @@ export function withPartAdded(
  */
 export function finalCostLocked(service: Pick<Service, 'finalCost' | 'status'>): boolean {
   return service.finalCost > 0 && (service.status === 'selesai' || service.status === 'lunas');
+}
+
+export interface ModalDadakanInput {
+  name: string;
+  amount: number;
+  walletId: string;
+}
+
+/** Alasan modal dadakan belum bisa disimpan, atau null bila lengkap. */
+export function modalDadakanIssue(input: ModalDadakanInput): TranslationKey | null {
+  if (!input.name.trim()) return 'serviceDetail.modalNameRequired';
+  if (!(input.amount > 0)) return 'serviceDetail.modalAmountRequired';
+  if (!input.walletId) return 'serviceDetail.modalWalletRequired';
+  return null;
+}
+
+/** Keterangan pengeluaran yang terhubung, sama untuk catat baru dan ubah. */
+export function modalExpenseDescription(serviceNo: string, name: string): string {
+  return `Modal servis ${serviceNo} — ${name.trim()}`;
+}
+
+/**
+ * Baris biaya modal dadakan: part yang dibeli di luar stok. Tanpa item
+ * inventori, jadi tak memotong stok; harganya keluar dari wallet lewat
+ * pengeluaran `expenseId`, yang dibalik bila baris ini dihapus.
+ */
+export function modalDadakanLine(input: ModalDadakanInput, expenseId: string): ServiceSparepart {
+  return {
+    itemId: null,
+    name: input.name.trim(),
+    qty: 1,
+    costPrice: input.amount,
+    sellPrice: 0,
+    deducted: false,
+    kind: 'manual',
+    expenseId,
+    walletId: input.walletId,
+  };
 }
 
 /** Whether a ticket counts as "in progress" for dashboards. */

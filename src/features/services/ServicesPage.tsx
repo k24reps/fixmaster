@@ -32,8 +32,10 @@ import {
   outstandingBalance,
   canQuickAddParts,
   finalCostLocked,
+  type ModalDadakanInput,
 } from '@/lib/business/services';
-import { addServicePart } from '@/data/serviceParts';
+import { walletsForOutlet } from '@/lib/business/finance';
+import { addServiceModalLine, addServicePart } from '@/data/serviceParts';
 import { resolveServiceColumns } from '@/lib/business/serviceColumns';
 import {
   compareServices,
@@ -46,7 +48,7 @@ import {
   type PaymentFilter,
   type ServiceSort,
 } from '@/lib/business/serviceFilters';
-import { getCategories } from '@/config/orgConfig';
+import { getCategories, getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
@@ -116,6 +118,8 @@ export function ServicesPage() {
   const role = me?.role;
   const isOwner = role === 'owner';
   const isManager = role === 'owner' || role === 'admin';
+  // Hanya untuk Modal Dadakan di aksi cepat sparepart, yang khusus owner/admin.
+  const { data: allWallets } = useCollection('wallets', { enabled: isManager });
 
   const [query, setQuery] = useState('');
   const requestedStatus = searchParams.get('status');
@@ -407,6 +411,30 @@ export function ServicesPage() {
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceDetail.partAddFailed'));
+    }
+  };
+
+  // Part yang dibeli di luar stok. Pengeluaran kas, jadi hanya owner/admin
+  // (RLS & RPC 0087), sama dengan tombol Modal Dadakan di detail tiket.
+  const partsWallets =
+    partsService && isManager ? walletsForOutlet(allWallets, partsService.outletId) : [];
+  const lastWallet = getLastExpenseWallet();
+  const addModal = async (input: ModalDadakanInput): Promise<boolean> => {
+    if (!partsService) return false;
+    try {
+      await addServiceModalLine(partsService, input);
+      setLastExpenseWallet(input.walletId);
+      if (finalCostLocked(partsService)) {
+        toast.warning(
+          interpolate(t('services.modalAddedCostStale'), { amount: fmtRp(partsService.finalCost) }),
+        );
+      } else {
+        toast.success(t('serviceDetail.modalAdded'));
+      }
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.modalAddFailed'));
+      return false;
     }
   };
 
@@ -1009,6 +1037,17 @@ export function ServicesPage() {
           .filter((x): x is string => !!x)}
         onPick={addPart}
         ticket={partsService ?? undefined}
+        modalDadakan={
+          isManager
+            ? {
+                wallets: partsWallets,
+                defaultWalletId: partsWallets.some((w) => w.id === lastWallet)
+                  ? lastWallet
+                  : (partsWallets[0]?.id ?? ''),
+                onSave: addModal,
+              }
+            : undefined
+        }
       />
     </div>
   );

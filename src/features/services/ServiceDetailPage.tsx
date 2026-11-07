@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
-import { addServicePart, saveServiceParts } from '@/data/serviceParts';
-import { addServiceModal, updateServiceModal, removeServiceModal } from '@/data/supabase-client';
+import { addServicePart, addServiceModalLine, saveServiceParts } from '@/data/serviceParts';
+import { updateServiceModal, removeServiceModal } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
 import { useSessionStore } from '@/stores/session';
@@ -29,6 +29,8 @@ import {
   warrantyDecided,
   openClaimFor,
   finalCostLocked,
+  modalDadakanIssue,
+  modalExpenseDescription,
 } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
@@ -268,73 +270,15 @@ export function ServiceDetailPage() {
    * on the line so it can be reversed if the line is later removed.
    */
   const addManualModal = async () => {
-    const amount = parseRpInput(modalAmount);
-    if (!modalName.trim()) return toast.warning(t('serviceDetail.modalNameRequired'));
-    if (amount <= 0) return toast.warning(t('serviceDetail.modalAmountRequired'));
-    if (!modalWalletId) return toast.warning(t('serviceDetail.modalWalletRequired'));
+    const input = { name: modalName, amount: parseRpInput(modalAmount), walletId: modalWalletId };
+    const issue = modalDadakanIssue(input);
+    if (issue) return toast.warning(t(issue));
     setSavingCost(true);
-    const now = new Date().toISOString();
     try {
-      // Cloud: satu transaksi server (0087) — pengeluaran, saldo, dan baris tiket.
-      if (isCloudMode()) {
-        const expenseId = await addServiceModal({
-          orgId: service.orgId,
-          serviceId: service.id,
-          name: modalName.trim(),
-          amount,
-          walletId: modalWalletId,
-        });
-        setLastExpenseWallet(modalWalletId);
-        logActivity({
-          action: 'expense.create',
-          entityType: 'expense',
-          entityId: expenseId,
-          entityLabel: `Modal ${service.serviceNo}`,
-          meta: { amount, serviceId: service.id },
-        });
-        toast.success(t('serviceDetail.modalAdded'));
-        if (costLocked) setCostStale(true);
-        closeModalForm();
-        return;
-      }
-      const expenseId = newId();
-      await repository.put('expenses', {
-        id: expenseId,
-        orgId: service.orgId,
-        outletId: service.outletId,
-        date: localDateStr(),
-        category: 'Sparepart',
-        amount,
-        walletId: modalWalletId,
-        description: `Modal servis ${service.serviceNo} — ${modalName.trim()}`,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      });
-      const wallet = wallets.find((w) => w.id === modalWalletId);
-      if (wallet) await repository.put('wallets', applyBalance(wallet, -amount));
-      const line: ServiceSparepart = {
-        itemId: null,
-        name: modalName.trim(),
-        qty: 1,
-        costPrice: amount,
-        sellPrice: 0,
-        deducted: false,
-        kind: 'manual',
-        expenseId,
-        walletId: modalWalletId,
-      };
-      await putServiceSpareparts((sp) => [...sp, line]);
+      await addServiceModalLine(service, input);
       setLastExpenseWallet(modalWalletId);
-      logActivity({
-        action: 'expense.create',
-        entityType: 'expense',
-        entityId: expenseId,
-        entityLabel: `Modal ${service.serviceNo}`,
-        meta: { amount, serviceId: service.id },
-      });
       toast.success(t('serviceDetail.modalAdded'));
-        if (costLocked) setCostStale(true);
+      if (costLocked) setCostStale(true);
       closeModalForm();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('serviceDetail.modalAddFailed'));
@@ -355,9 +299,8 @@ export function ServiceDetailPage() {
     const line = service.spareparts[editIndex];
     if (!line || line.kind !== 'manual') return;
     const amount = parseRpInput(modalAmount);
-    if (!modalName.trim()) return toast.warning(t('serviceDetail.modalNameRequired'));
-    if (amount <= 0) return toast.warning(t('serviceDetail.modalAmountRequired'));
-    if (!modalWalletId) return toast.warning(t('serviceDetail.modalWalletRequired'));
+    const issue = modalDadakanIssue({ name: modalName, amount, walletId: modalWalletId });
+    if (issue) return toast.warning(t(issue));
 
     setSavingCost(true);
     const now = new Date().toISOString();
@@ -404,7 +347,7 @@ export function ServiceDetailPage() {
         category: 'Sparepart',
         amount,
         walletId: modalWalletId,
-        description: `Modal servis ${service.serviceNo} — ${modalName.trim()}`,
+        description: modalExpenseDescription(service.serviceNo, modalName),
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         deletedAt: null,

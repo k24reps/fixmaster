@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import tsx from './ServicesPage.tsx?raw';
 import css from './ServicesPage.module.css?raw';
+import detailTsx from './ServiceDetailPage.tsx?raw';
+import pickerTsx from './SparepartPickerModal.tsx?raw';
 
 /**
  * Tampilan Daftar Servis berupa baris seperti Inventori & Kasir, bukan tabel.
@@ -42,6 +44,15 @@ describe('tampilan Daftar servis', () => {
     // Lajur aksi memuat empat tombol 40px.
     expect(css).toContain('grid-template-columns: minmax(0, 1fr) 11rem 9rem 10rem;');
     expect(css).toContain('grid-template-columns: minmax(0, 1fr) 11rem 10rem;');
+  });
+
+  it('modal dadakan dari aksi cepat: owner/admin saja, jalur kas sama dengan detail', () => {
+    expect(tsx).toContain('await addServiceModalLine(partsService, input)');
+    expect(tsx).toMatch(/modalDadakan=\{\s*isManager\s*\?/);
+    expect(detailTsx).toContain('await addServiceModalLine(service, input)');
+    // Detail tak lagi menulis pengeluaran baru sendiri; satu jalur di data layer.
+    expect(detailTsx).not.toContain('addServiceModal(');
+    expect(pickerTsx).toContain('modalDadakanIssue(input)');
   });
 
   it('keluhan dan penanganan satu segmen, tiap barisnya tetap ikut pengaturan', () => {

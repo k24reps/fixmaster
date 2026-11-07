@@ -4162,3 +4162,55 @@ segmen tidak diubah karena baru disetel di entri keluhan-penanganan. Bila lajur 
 perlu dilebarkan, ubah bobot itu sebagai keputusan tersendiri.
 
 #decision #ui #services
+
+## Modal dadakan dari aksi cepat sparepart (7 Nov 2026)
+
+**Permintaan pemilik:** aksi cepat Tambah sparepart di Daftar Servis juga bisa mencatat part
+yang dibeli di luar inventori (modal dadakan), supaya tidak perlu membuka detail tiket.
+
+**Yang dibangun.** Untuk owner/admin, pemilih sparepart yang dibuka dari daftar punya dua tuts
+sumber: **Inventori** dan **Modal Dadakan**. Tab Modal Dadakan berisi keterangan, nominal, dan
+wallet (default wallet terakhir dipakai, hanya wallet milik outlet tiket). Simpan membuat
+pengeluaran kategori Sparepart, mengurangi saldo wallet, dan menambah baris manual ke BOM tiket,
+sama persis dengan form Modal Dadakan di detail. Judul jendela menjadi "Tambah Sparepart".
+
+**Keputusan:**
+- **Owner/admin saja.** Ini pengeluaran kas, dan RPC `add_service_modal` (0087) menolak
+  karyawan. Karyawan tetap melihat pemilih lama tanpa tuts sumber.
+- **Tab di jendela yang sama, bukan tombol kelima.** Lajur aksi baru saja dilebarkan ke 10rem
+  untuk tombol keempat (entri di atas). Tombol kelima akan memotong segmen perangkat lagi.
+  Memilih sumber juga keputusan yang datang setelah memilih tiket, jadi tempatnya di dalam
+  jendela.
+- **Satu jalur simpan.** `addServiceModalLine` di `src/data/serviceParts.ts` dipakai detail dan
+  daftar. Validasi, bentuk baris, dan keterangan pengeluaran pindah ke helper murni
+  (`modalDadakanIssue`, `modalDadakanLine`, `modalExpenseDescription`). Detail tetap memakai
+  form inline-nya karena di sana baris manual juga bisa diubah dan dihapus.
+- **Pintasan saat pencarian kosong.** Mencari part yang tidak ada di stok adalah tanda paling
+  jelas bahwa part dibeli di luar. Keadaan kosong menawarkan "Catat "{nama}" sebagai modal
+  dadakan" dan membawa teks pencarian ke keterangan.
+- **Lunas dan Batal tetap tanpa aksi cepat**, sama seperti part inventori.
+- **Satu aksi utama per tab.** Di tab Modal Dadakan, Simpan Modal jadi tombol utama dan Selesai
+  turun ke sekunder. Setelah simpan, form dikosongkan dan fokus kembali ke keterangan untuk
+  part berikutnya.
+- **Kontras keterangan tuts aktif.** Abu `--text-muted` di atas `--brand-soft` hanya 3,42:1
+  (gelap). Diganti `color-mix(--brand-text 70%, --text-primary)`: 5,92:1 gelap, 8,06:1 terang.
+- **Mode lokal membaca wallet segar** (`repository.get`) sebelum mengurangi saldo, bukan dari
+  daftar di layar, supaya dua simpan beruntun tidak menimpa saldo dengan angka lama. Activity
+  Log `expense.create` kini membawa `outletId` tiket.
+
+**Verifikasi:** build, lint, **719 test / 67 berkas** hijau. `services.test.ts` menguji urutan
+validasi, bentuk baris manual, dan keterangan pengeluaran. `servicesTableWidth` mengunci gerbang
+`isManager` dan pemakaian jalur simpan yang sama di detail dan daftar. Di demo 1440px gelap:
+mencari "Kamera Vivo Y20" memunculkan pintasan, keterangan terisi, wallet default Tunai.
+Nominal kosong ditolak dengan toast. Simpan Rp 250.000 ke FM-0006: BOM menampilkan baris MODAL
+(KAS), Keuangan mencatat "Modal servis FM-0006 — Kamera Vivo Y20", saldo Tunai 2.500.000 →
+2.250.000. Simpan ke FM-0007 (Selesai) memunculkan toast peringatan biaya final. Di 390, 320,
+dan 768px tidak ada luberan dokumen maupun jendela. Form bertumpuk satu kolom di 320px dan dua
+kolom di 768px. Pemilih di detail tiket tetap tanpa tuts sumber, dan Modal Dadakan di detail
+masih tersimpan lewat jalur bersama.
+
+**Belum diperbaiki (sudah ada sebelumnya):** di 320px baris inventori pemilih sesak dan nama
+part meluber sekitar 16px ("Keyboard MacBook A1989" +16px, "Thermal Paste MX-4" +7px). Ini
+terjadi juga di pemilih detail, jadi bukan akibat perubahan ini.
+
+#decision #ui #services

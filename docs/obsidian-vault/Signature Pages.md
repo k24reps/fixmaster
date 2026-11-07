@@ -505,6 +505,11 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 ![[services-quick-part-list-1440-dark.png]]
 ![[services-quick-part-390-dark.png]]
 
+**Modal dadakan dari aksi cepat (7 Nov 2026, permintaan pemilik).** Untuk owner/admin, jendela yang sama punya dua tuts sumber di bawah strip tiket: **Inventori** (stok dipotong) dan **Modal Dadakan** (beli di luar, dibayar dari wallet). Tutsnya bergaya bench: LED menyala di sumber aktif, tepi bawah 3px, seperti tombol wallet di Hitung saldo. Tab Modal Dadakan memuat form yang sama dengan panel BOM detail: keterangan, nominal, wallet (default wallet terakhir), dan catatan bahwa saldo berkurang dan tercatat di Keuangan. Bila pencarian inventori kosong, ada pintasan "Catat "{nama}" sebagai modal dadakan" yang membawa teks pencarian ke keterangan. Setelah tersimpan, form dikosongkan untuk part berikutnya. Di tab ini Selesai menjadi tombol sekunder, sehingga Simpan Modal satu-satunya aksi utama. Karyawan tidak melihat tuts ini (pengeluaran kas, RLS 0087), dan pemilih di detail tiket tetap hanya inventori. Detail: [[Decisions & Bug Fixes#Modal dadakan dari aksi cepat sparepart (7 Nov 2026)]].
+
+![[services-quick-modal-1440-dark.png]]
+![[services-quick-modal-320-light.png]]
+
 **Tampilan ditentukan perangkat (7 Nov 2026, permintaan pemilik).** Pemilih tampilan (Kartu · Daftar · Ringkas) dihapus dari bilah alat. Ponsel (viewport ≤720px) selalu menampilkan **Kartu**; layar yang lebih lebar selalu **Daftar**. Tampilan Ringkas dihapus seluruhnya (markup dan CSS `.tileGrid`/`.tile*`). Ambang 720px sama dengan tata letak ponsel halaman ini di CSS, dibaca lewat hook baru `useMediaQuery` (`src/hooks/useMediaQuery.ts`), dan berganti langsung saat jendela diubah ukurannya. Daftar di layar sempit (tablet 768px, atau laptop dengan Pembesaran 150%) tetap dijaga `@container svcRows`. Kasir, Inventori, dan Pelanggan tetap punya pemilih tampilan. Detail: [[Decisions & Bug Fixes#Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)]].
 
 ![[services-view-phone-390-dark.png]]

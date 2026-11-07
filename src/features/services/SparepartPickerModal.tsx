@@ -1,12 +1,13 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { useMemo, useState } from 'react';
-import { Modal, Input, Button, Icon } from '@/components/ui';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { Modal, Input, Button, Icon, Select } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
-import { fmtRp } from '@/lib/format';
+import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
+import { modalDadakanIssue, type ModalDadakanInput } from '@/lib/business/services';
 import { toast } from '@/stores/toast';
-import type { Service, ServiceSparepart } from '@/data/types';
+import type { Service, ServiceSparepart, Wallet } from '@/data/types';
 import styles from './SparepartPickerModal.module.css';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
@@ -21,7 +22,18 @@ interface SparepartPickerModalProps {
   /** Tiket tujuan, ditampilkan di atas pencarian. Dibuka dari Daftar Servis,
    * jendela ini tidak punya halaman tiket di belakangnya yang memberi tahu. */
   ticket?: Pick<Service, 'serviceNo' | 'device' | 'customerName'>;
+  /** Tab Modal Dadakan untuk part yang dibeli di luar stok (owner/admin).
+   * Tanpa prop ini jendela hanya berisi inventori, seperti di detail tiket
+   * yang punya form Modal Dadakan sendiri di panel BOM. */
+  modalDadakan?: {
+    wallets: Wallet[];
+    defaultWalletId: string;
+    /** true bila tersimpan; form lalu dikosongkan untuk part berikutnya. */
+    onSave: (input: ModalDadakanInput) => Promise<boolean>;
+  };
 }
+
+type Source = 'inventory' | 'modal';
 
 /**
  * Picks an inventory item to add to a service as a sparepart cost line.
@@ -36,6 +48,7 @@ export function SparepartPickerModal({
   existingItemIds,
   onPick,
   ticket,
+  modalDadakan,
 }: SparepartPickerModalProps) {
   const t = useT();
   const { data: inventory } = useCollection('inventory');
@@ -45,6 +58,17 @@ export function SparepartPickerModal({
   const isMgr = me ? isManager(me.role) : false;
   const [query, setQuery] = useState('');
   const [qtyById, setQtyById] = useState<Record<string, string>>({});
+  const [source, setSource] = useState<Source>('inventory');
+  const [modalName, setModalName] = useState('');
+  const [modalAmount, setModalAmount] = useState('');
+  const [walletId, setWalletId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+  // Wallet bisa baru termuat setelah jendela terbuka; tanpa ini pilihan yang
+  // tampil (opsi pertama) berbeda dari nilai yang disimpan (kosong).
+  const wallet = modalDadakan?.wallets.some((w) => w.id === walletId)
+    ? walletId
+    : (modalDadakan?.defaultWalletId ?? '');
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,13 +108,47 @@ export function SparepartPickerModal({
     setQtyById((m) => ({ ...m, [itemId]: '1' }));
   };
 
+  // Part yang dicari tidak ada di stok: namanya dibawa ke form Modal Dadakan.
+  const toModal = (name: string) => {
+    setSource('modal');
+    if (name) setModalName(name);
+  };
+
+  const saveModal = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!modalDadakan || saving) return;
+    const input = { name: modalName, amount: parseRpInput(modalAmount), walletId: wallet };
+    const issue = modalDadakanIssue(input);
+    if (issue) {
+      toast.warning(t(issue));
+      return;
+    }
+    setSaving(true);
+    try {
+      if (await modalDadakan.onSave(input)) {
+        // Tetap terbuka seperti tab inventori: satu unit bisa butuh dua part
+        // dari toko sebelah. Wallet dibiarkan, biasanya sama.
+        setModalName('');
+        setModalAmount('');
+        nameRef.current?.focus();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={t('partPicker.title')}
+      title={t(modalDadakan ? 'partPicker.titleAny' : 'partPicker.title')}
       size="lg"
-      footer={<Button onClick={onClose}>{t('partPicker.done')}</Button>}
+      footer={
+        // Di tab Modal Dadakan aksi utamanya Simpan Modal; Selesai hanya menutup.
+        <Button variant={source === 'modal' ? 'secondary' : 'primary'} onClick={onClose}>
+          {t('partPicker.done')}
+        </Button>
+      }
     >
       <div className={styles.body}>
         {ticket && (
@@ -106,6 +164,65 @@ export function SparepartPickerModal({
             )}
           </p>
         )}
+        {modalDadakan && (
+          <div className={styles.source} role="group" aria-label={t('partPicker.sourceAria')}>
+            {(['inventory', 'modal'] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={styles.sourceBtn}
+                aria-pressed={source === id}
+                onClick={() => setSource(id)}
+              >
+                <span className={styles.sourceLed} aria-hidden />
+                <span className={styles.sourceText}>
+                  <span className={styles.sourceName}>
+                    {t(id === 'inventory' ? 'nav.inventory' : 'serviceDetail.extraCost')}
+                  </span>
+                  <span className={styles.sourceSub}>
+                    {t(id === 'inventory' ? 'partPicker.sourceInventorySub' : 'partPicker.sourceModalSub')}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {modalDadakan && source === 'modal' ? (
+          <form className={styles.modalForm} onSubmit={saveModal}>
+            <Input
+              ref={nameRef}
+              label={t('serviceDetail.modalName')}
+              value={modalName}
+              onChange={(e) => setModalName(e.target.value)}
+              placeholder={t('serviceDetail.modalNamePh')}
+              autoFocus
+            />
+            <div className={styles.modalRow}>
+              <Input
+                label={t('serviceDetail.modalAmount')}
+                value={modalAmount}
+                onChange={(e) => setModalAmount(fmtRpInput(e.target.value))}
+                placeholder="250.000"
+                inputMode="numeric"
+              />
+              <Select
+                label={t('serviceDetail.fromWallet')}
+                value={wallet}
+                onChange={(e) => setWalletId(e.target.value)}
+                options={modalDadakan.wallets.map((w) => ({ value: w.id, label: w.name }))}
+              />
+            </div>
+            <p className={styles.modalHint}>
+              <Icon name="circle-info" aria-hidden /> {t('serviceDetail.modalAddHint')}
+            </p>
+            <div className={styles.modalBtns}>
+              <Button type="submit" loading={saving} iconLeft={<Icon name="plus" aria-hidden />}>
+                {t('serviceDetail.saveModal')}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <>
         <Input
           placeholder={t('partPicker.searchPh')}
           value={query}
@@ -114,11 +231,25 @@ export function SparepartPickerModal({
           autoFocus
         />
         {rows.length === 0 ? (
-          <p className={styles.empty}>
-            {inventory.length === 0
-              ? t('partPicker.noInventory')
-              : t('partPicker.noMatch')}
-          </p>
+          <div className={styles.empty}>
+            <p>
+              {inventory.length === 0
+                ? t('partPicker.noInventory')
+                : t('partPicker.noMatch')}
+            </p>
+            {modalDadakan && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => toModal(query.trim())}
+                iconLeft={<Icon name="money-bill-wave" aria-hidden />}
+              >
+                {query.trim()
+                  ? interpolate(t('partPicker.toModalNamed'), { name: query.trim() })
+                  : t('partPicker.toModal')}
+              </Button>
+            )}
+          </div>
         ) : (
           <ul className={styles.list}>
             {rows.map((item) => {
@@ -166,6 +297,8 @@ export function SparepartPickerModal({
               );
             })}
           </ul>
+        )}
+          </>
         )}
       </div>
     </Modal>

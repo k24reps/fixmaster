@@ -108,3 +108,101 @@
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
+/* Pilihan sumber part (hanya dari Daftar Servis, owner/admin): dua tuts bench
+   dengan LED yang menyala di sumber aktif, seperti tombol wallet di Hitung
+   saldo. Dua lajur sama lebar; di jendela sempit teks keterangannya membungkus. */
+.source {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.sourceBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.sourceBtn:hover {
+  border-color: var(--brand);
+}
+.sourceBtn[aria-pressed='true'] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+.sourceLed {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  /* Sejajar dengan baris pertama teks (line-height 1.4 × text-sm). */
+  margin-top: 0.42em;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.sourceBtn[aria-pressed='true'] .sourceLed {
+  background: var(--brand);
+  box-shadow: 0 0 7px var(--brand);
+}
+.sourceText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.4;
+}
+.sourceName {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.sourceSub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+/* Di atas brand-soft, abu muted hanya 3.4:1 (gelap). Rona brand dicampur teks
+   utama naik ke >=4.5:1 di kedua tema tanpa jadi abu. */
+.sourceBtn[aria-pressed='true'] .sourceSub {
+  color: color-mix(in oklab, var(--brand-text) 70%, var(--text-primary));
+}
+.empty p {
+  margin: 0;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+/* auto-fit: nominal dan wallet berdampingan bila muat, bertumpuk bila tidak,
+   tanpa ambang lebar sendiri. */
+.modalRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+.modalHint {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.modalBtns {
+  display: flex;
+  justify-content: flex-end;
+}

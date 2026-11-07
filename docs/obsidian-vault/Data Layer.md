@@ -351,6 +351,12 @@ Helper murni di `lib/business/services.ts`: `warrantyEndDate(service)` (tanggal 
 
 Wallet sumber memakai pola **A1 + ingat terakhir**: dropdown di form modal dadakan default ke `getLastExpenseWallet()` (localStorage per-org), fallback wallet pertama; pilihan disimpan via `setLastExpenseWallet()` setiap simpan. Tidak ada setting global (hindari caveat per-perangkat).
 
+**Satu jalur simpan untuk dua pintu (7 Nov 2026).** Detail tiket dan aksi cepat di Daftar Servis memakai fungsi yang sama di `src/data/serviceParts.ts`:
+- `addServicePart(service, line)` untuk baris inventori.
+- `addServiceModalLine(service, { name, amount, walletId })` untuk modal dadakan. Cloud: RPC `add_service_modal` (0087). Lokal/demo: Expense `Sparepart` → saldo wallet dari baris segar (`repository.get`, bukan daftar di layar) → baris manual lewat `addServicePart`. Activity Log `expense.create` kini membawa `outletId` tiket.
+
+Helper murninya di `lib/business/services.ts`: `modalDadakanIssue` (validasi, mengembalikan kunci terjemahan), `modalDadakanLine` (bentuk baris manual), `modalExpenseDescription` (keterangan Expense, juga dipakai saat edit). Edit dan hapus baris manual masih di detail saja.
+
 Helper murni: `sparepartCost(parts)` = Σ `costPrice×qty` (semua baris), `serviceModalTotal(parts)` = alias eksplisit untuk kolom "Modal", `serviceProfit({finalCost, spareparts})` = `finalCost − sparepartCost`. Karena `sparepartCost` menjumlah **semua** baris, profit otomatis sudah memotong inventory + modal dadakan. Untuk edit baris manual, `walletDeltasForModalEdit(...)` menghitung delta saldo per wallet (di-net per wallet; edit di wallet sama → satu delta; no-op → kosong). Stok: `computeStockDeduction` (fallback legacy, pemicu `pengerjaan`) & `computeStockRestore` (kembalikan stok saat batal). Teruji di `services.test.ts` (**309 tes total**; mencakup profit baris manual, deduct skip manual, modalTotal, finalCost=0, netting edit, DP/koreksi, split payment, + 3 tes stock restore).
 
 UI: tambah/hapus baris di **halaman detail servis** ([[Signature Pages]]); kolom **Modal** & **Profit** di tabel servis + panel BIAYA detail **owner-only** (`role === 'owner'`). Profit di tabel hanya tampil saat `finalCost > 0` agar tak menyesatkan sebelum biaya final pasti.
@@ -499,7 +505,7 @@ ulang saat bentuk barisnya berubah, dan jalur lokalnya hanya bisa diuji lewat UI
 
 | Modul | Menyembunyikan |
 |---|---|
-| [`serviceParts.ts`](src/data/serviceParts.ts) | Simpan sparepart tiket + selisih stok (RPC `update_service_parts` vs tulis lokal) |
+| [`serviceParts.ts`](src/data/serviceParts.ts) | Simpan sparepart tiket + selisih stok (RPC `update_service_parts` vs tulis lokal); `addServicePart` dan `addServiceModalLine` dipakai detail tiket dan aksi cepat Daftar Servis |
 | [`financeEntry.ts`](src/data/financeEntry.ts) | Catat pemasukan/pengeluaran + saldo wallet (RPC `record_finance_entry` vs tulis lokal). Dipakai Keuangan DAN saldo awal wallet di Pengaturan |
 
 ## Terkait
