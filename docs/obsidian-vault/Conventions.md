@@ -82,8 +82,8 @@ BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scrip
 bila ada teks informasi di bawah 12px efektif (`TEXT<12` di laporan). Pembesaran dipasang
 lewat pintasan Ctrl+Alt+= setelah halaman demo terbuka, karena demo mem-pin 100% sementara.
 
-Saring dua positif palsu sebelum membaca hasil: `caption._srOnly` (caption khusus pembaca layar,
-memang di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan
+Saring tiga positif palsu sebelum membaca hasil: `caption._srOnly` dan `span.fm-visually-hidden`
+(teks khusus pembaca layar, memang di-clip) serta elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan
 terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
 margin), bukan lebar viewport — dua cacat tata letak PDF hanya muncul di sana.
 

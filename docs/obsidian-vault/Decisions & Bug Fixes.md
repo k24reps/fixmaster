@@ -4854,5 +4854,18 @@ selalu gelap dan isian tombol.
 **Verifikasi:** `audit-tokens` 0 pelanggaran (pasangan baru: teks redup di `--bg-raised`, ikon
 di `--bg-key`); `audit-contrast` BERSIH dua tema; build, 724 tes, lint hijau; foto terang dan
 gelap: Servis ponsel, modal status, Keuangan, Log, Tugas, Absensi, Inventori, Supplier, Privasi.
+Probe tata letak penutup seri warna: `audit-mobile` 0 luberan dokumen, 0 elemen terpotong (tiga
+scroller = baris chip `CatalogControls` yang memang digeser); `audit-zoom` 0 temuan setelah
+menyaring positif palsu. **Positif palsu ketiga:** `span.fm-visually-hidden` (teks khusus pembaca
+layar, mis. "buka penjelasan di Kamus Istilah") muncul sebagai `clipped` di tiap halaman zoom,
+sejenis `caption._srOnly`; saring juga.
+
+Tema terang setelah tahap 5 — kartu tiket ponsel dan tuts status tujuan putih bertepi tegas;
+TOTAL SALDO ber-spine; ikon peristiwa Log bertinta peran:
+
+![[warna-t5-servis-ponsel-light.png]]
+![[warna-t5-modal-status-light.png]]
+![[warna-t5-keuangan-strip-light.png]]
+![[warna-t5-log-light.png]]
 
 #decision #ui #color #a11y #critique

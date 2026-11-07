@@ -101,10 +101,10 @@ semi-transparan yang tak terlihat dari `tokens.css`. Ukur DOM juga.
 
 Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. Skemanya
 berbeda: zoom memakai `tables`/`overlaps`/`clipped` (`tables` juga memuat wadah yang tidak
-meluap, saring `over > 0`), mobile memakai `scrollers`/`offenders`/`tiny`. **Saring dua
-positif palsu** sebelum menyimpulkan: `caption._srOnly` (caption khusus pembaca layar, memang
-di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat
-merah total padahal bersih.
+meluap, saring `over > 0`), mobile memakai `scrollers`/`offenders`/`tiny`. **Saring tiga
+positif palsu** sebelum menyimpulkan: `caption._srOnly` dan `span.fm-visually-hidden` (teks
+khusus pembaca layar, memang di-clip) serta elemen `text.` di dalam SVG (label sumbu grafik).
+Tanpa itu tiap laporan terlihat merah total padahal bersih.
 
 Keduanya melaporkan luberan dokumen, tiap wadah yang bisa digeser ke samping, overlap kolom
 sticky, dan teks ter-clip. **Ukur DOM rect, jangan baca screenshot terkompresi** — tiga temuan
