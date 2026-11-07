@@ -4214,3 +4214,59 @@ part meluber sekitar 16px ("Keyboard MacBook A1989" +16px, "Thermal Paste MX-4" 
 terjadi juga di pemilih detail, jadi bukan akibat perubahan ini.
 
 #decision #ui #services
+
+## Audit kata UI: nada & panjang (7 Nov 2026)
+
+Permintaan pemilik: audit kata yang kurang profesional atau kepanjangan (contohnya "modal
+dadakan", "sembunyikan tuntas", "unit menunggu konfirmasi biaya"), lalu revisi.
+
+**Keputusan istilah:**
+- **Pembelian Luar** menggantikan "Modal Dadakan" di semua teks layar: tombol, tuts sumber
+  pemilih, form ("Keterangan pembelian", "Harga beli", "Simpan Pembelian"), toast, badge baris
+  BOM "Dibeli di luar", dan "Total modal". "Biaya Tambahan" ditolak karena terbaca sebagai
+  tagihan ke pelanggan. "Modal Tambahan" bentrok dengan Modal (setoran pemilik) di Keuangan.
+  Nama kode (`modalDadakan*`, `addServiceModalLine`, RPC `add_service_modal`) dan keterangan
+  pengeluaran "Modal servis FM-xxxx — nama" sengaja tetap, karena itu data, bukan teks layar.
+- **Arsip** = tiket Lunas/Batal yang unitnya sudah diambil (dulu "tuntas"): "Sembunyikan
+  arsip", "Tampilkan arsip", "· n tiket arsip disembunyikan". "Tiket ditutup" sempat dipilih
+  tetapi terlalu panjang untuk tombol filter ponsel. "Selesai" tidak dipakai karena sudah nama
+  status.
+- **Anda**, bukan kamu/-mu: tautan reset, persetujuan daftar, reset password, hapus akun,
+  pesan demo, `authError`.
+- **Istilah aplikasi, bukan campuran Inggris:** tautan lacak (link tracking), Ekspor (Export),
+  Riwayat (History), Penjualan Kasir (POS), bawaan (default), Paket (Tier), Pilihan Cepat
+  (quick-pick), Tahapan Servis (Funnel), "{n} transaksi" (trx), "Upgrade ke Pro" seragam.
+  Istilah akuntansi baku di [[Conventions]] tidak disentuh.
+- **Tanpa kata lisan** di teks resmi: "dulu" → "terlebih dahulu" atau dihapus, "cek" →
+  "periksa", "ketemu" → "ditemukan", "ya" dibuang.
+- **Kalimat panjang dipendekkan:** hint Keuangan (transfer, selisih kas, duplikat, saldo
+  minus, persediaan, setoran modal), galat Dashboard, kerapatan di layar sentuh, menu bawah
+  ponsel, Pengaturan backup dan target.
+- **Label panel detail tiket** yang hardcoded Inggris ("CUSTOMER STUB", "SPAREPART · BILL OF
+  MATERIALS", "INTAKE / KELUHAN") kini lewat i18n: PELANGGAN, SPAREPART, PENERIMAAN UNIT
+  (kunci baru `serviceDetail.customerLabel` dan `serviceDetail.partsLabel`).
+- **Template WA bawaan:** "dicek" → "dilihat", "ya" dibuang, penutup pesan batal "Terima kasih
+  atas kepercayaan Anda". Template yang sudah disimpan toko tidak berubah.
+- Pesan demo "aktif di FixMaster versi penuh" → "tersedia di …".
+
+**Cakupan:** 118 kunci `id.ts` direvisi, 28 kunci `en.ts` (hanya konsep yang berganti), 2 kunci
+baru, 25 literal hardcoded (absensi, PO, terima barang, reset password, 404, halaman lacak
+publik, wizard, cetak), 5 kalimat template WA. JSON-LD FAQ di `index.html` ikut disamakan:
+`landingMetadata.test.ts` mewajibkan tanya-jawab schema identik dengan teks landing. Skrip foto
+`shoot-modal-*`, `shoot-pilot-*`, dan `shoot-split` memakai label baru.
+
+**Perbaikan tata letak:** tombol filter "Sembunyikan arsip 2" butuh 139px, sedangkan kolom
+2-grid ponsel hanya 114px (320) dan 134px (360). Label lama "Sembunyikan tuntas" juga sudah
+meluber di sana. Di blok `max-width: 720px`, `.filterBar .toggle` kini `white-space: normal`
+dan `line-height: 1.2`: dua baris (34px di tombol 44px) di 320/360, satu baris di 390 ke atas.
+
+**Verifikasi:** build, lint, **719 test / 67 berkas** hijau. Diukur di demo 320, 390, 768,
+1440px: tanpa luberan dokumen dan tanpa teks ter-clip di Daftar Servis, detail tiket, pemilih
+sparepart, BOM, dan riwayat Kasir. Tombol "Salin tautan lacak" 168px. Simpan pembelian luar
+dari detail menghasilkan toast "Pembelian luar dicatat di Keuangan" dan baris "DIBELI DI LUAR".
+
+**Belum dikerjakan:** "Edit" dan "Ubah" masih campur. Banyak teks halaman lama masih hardcoded,
+belum lewat i18n. Chip status "Konfirmasi Biaya" dibiarkan karena lebih deskriptif dari nama
+status "Konfirmasi".
+
+#decision #ui #copy

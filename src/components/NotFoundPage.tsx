@@ -15,7 +15,7 @@ export function NotFoundPage() {
         </div>
         <span className={styles.code}>404</span>
         <h1 className={styles.title}>Jalur halaman terputus</h1>
-        <p className={styles.desc}>Alamat ini tidak terhubung ke modul FixMaster atau sudah dipindahkan.</p>
+        <p className={styles.desc}>Halaman ini tidak ditemukan atau sudah dipindahkan.</p>
         <Link to="/" className={styles.btn}>
           <Icon name="arrow-left" aria-hidden /> Kembali ke Dashboard
         </Link>

@@ -451,7 +451,7 @@ function buildBody(d: ReportDocData): string {
             )
             .join('')}</tbody>
         </table>
-        <p class="note">Hanya sparepart yang stoknya benar-benar sudah dipotong.</p>`,
+        <p class="note">Hanya sparepart yang stoknya sudah dipotong.</p>`,
   );
 
   const funnel = section(
@@ -625,7 +625,7 @@ export function reportDocHtml(data: ReportDocData): string {
  */
 export function printReport(data: ReportDocData): boolean {
   return openPrintWindow({
-    demoMessage: 'Ekspor PDF aktif di FixMaster versi penuh. Daftar gratis.',
+    demoMessage: 'Ekspor PDF tersedia di FixMaster versi penuh. Daftar gratis.',
     title: `Laporan ${data.org.name} ${data.from} sd ${data.to}`,
     style: A4_STYLE,
     body: buildBody(data),

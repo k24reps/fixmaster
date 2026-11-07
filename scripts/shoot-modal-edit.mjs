@@ -35,17 +35,17 @@ await page.waitForSelector('text=REPAIR TICKET', { timeout: 10000 });
 await page.waitForTimeout(400);
 
 // Add a modal dadakan.
-await page.getByRole('button', { name: 'Modal Dadakan', exact: true }).click();
-await page.waitForSelector('text=Keterangan modal', { timeout: 8000 });
+await page.getByRole('button', { name: 'Pembelian Luar', exact: true }).click();
+await page.waitForSelector('text=Keterangan pembelian', { timeout: 8000 });
 await page.fill('input[placeholder="mis. Beli LCD di toko sebelah"]', 'Beli baterai luar');
 await page.fill('input[placeholder="250.000"]', '90.000');
-await page.click('button:has-text("Simpan Modal")');
+await page.click('button:has-text("Simpan Pembelian")');
 await page.waitForTimeout(700);
 await page.screenshot({ path: join(OUT, 'modal-edit-1-added.png'), fullPage: true });
 console.log('shot: added');
 
 // Edit it — click the pencil on the manual row.
-await page.locator('button[aria-label="Edit modal"]').first().click();
+await page.locator('button[aria-label="Ubah pembelian"]').first().click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: join(OUT, 'modal-edit-2-form.png'), fullPage: true });
 console.log('shot: edit form (pre-filled)');
@@ -55,7 +55,7 @@ const nameInput = page.locator('input[placeholder="mis. Beli LCD di toko sebelah
 await nameInput.fill('Beli baterai luar (revisi)');
 const amtInput = page.locator('input[placeholder="250.000"]');
 await amtInput.fill('125.000');
-await page.click('button:has-text("Perbarui Modal")');
+await page.click('button:has-text("Perbarui Pembelian")');
 await page.waitForTimeout(700);
 await page.screenshot({ path: join(OUT, 'modal-edit-3-updated.png'), fullPage: true });
 console.log('shot: updated');

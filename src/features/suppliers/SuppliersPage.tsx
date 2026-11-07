@@ -86,7 +86,7 @@ export function SuppliersPage() {
     // OQ-C (same guard as PosPage): the refund expense reversal is stamped to
     // an outlet — a multi-outlet user must pick a branch first, not guess.
     if (mustPickOutlet(outlets.length)) {
-      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum membatalkan PO');
+      toast.error('Pilih cabang di sidebar sebelum membatalkan PO');
       return;
     }
     setVoiding(true);

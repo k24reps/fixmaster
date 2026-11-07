@@ -123,7 +123,7 @@ function AccountMenu() {
   // Local: switch user (re-enter PIN) — there is no cloud account.
   const handleLogout = () => {
     setOpen(false);
-    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akunmu sendiri.')) return;
+    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akun Anda sendiri.')) return;
     if (isSupabaseConfigured) void authSignOut();
     else signOut();
   };

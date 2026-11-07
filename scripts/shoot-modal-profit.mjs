@@ -38,17 +38,17 @@ async function run(theme) {
 
   // Add an inventory sparepart.
   await page.getByRole('button', { name: 'Sparepart', exact: true }).click();
-  await page.waitForSelector('text=Ambil Sparepart dari Inventory', { timeout: 8000 });
+  await page.waitForSelector('text=Ambil Sparepart dari Inventori', { timeout: 8000 });
   await page.waitForTimeout(300);
   await page.locator('button:has-text("Tambah")').first().click();
   await page.waitForTimeout(500);
 
   // Add an ad-hoc "modal dadakan".
-  await page.getByRole('button', { name: 'Modal Dadakan', exact: true }).click();
-  await page.waitForSelector('text=Keterangan modal', { timeout: 8000 });
+  await page.getByRole('button', { name: 'Pembelian Luar', exact: true }).click();
+  await page.waitForSelector('text=Keterangan pembelian', { timeout: 8000 });
   await page.fill('input[placeholder="mis. Beli LCD di toko sebelah"]', 'Beli konektor flex di toko sebelah');
   await page.fill('input[placeholder="250.000"]', '85.000');
-  await page.click('button:has-text("Simpan Modal")');
+  await page.click('button:has-text("Simpan Pembelian")');
   await page.waitForTimeout(700);
 
   await page.screenshot({ path: join(OUT, `modal-profit-detail-${theme}.png`), fullPage: true });

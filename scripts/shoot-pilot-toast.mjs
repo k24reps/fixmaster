@@ -33,10 +33,10 @@ await page.locator('a[href^="/services/"]').first().click();
 await page.waitForSelector('text=REPAIR TICKET', { timeout: 10000 });
 await page.waitForTimeout(500);
 
-await page.getByRole('button', { name: /Salin tracking/i }).click();
+await page.getByRole('button', { name: /Salin tautan lacak/i }).click();
 await page.waitForTimeout(500);
 // Confirm the toast text is present.
-const toast = await page.getByText('Link tracking disalin').count();
+const toast = await page.getByText('Tautan lacak disalin').count();
 console.log('toast visible:', toast > 0);
 await page.screenshot({ path: join(OUT, 'pilot-copy-toast.png') });
 console.log('shot: copy-toast');

@@ -139,7 +139,7 @@ export function Wizard({ onComplete }: WizardProps) {
             </span>
             FixMaster
           </div>
-          <p className={styles.subtitle}>Setup awal untuk memulai dashboard Anda</p>
+          <p className={styles.subtitle}>Pengaturan awal toko Anda</p>
         </header>
 
         {import.meta.env.DEV && !isCloud && (

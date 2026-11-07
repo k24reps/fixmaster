@@ -71,7 +71,7 @@ export function MobileBottomNav() {
   }, [moreOpen]);
 
   const handleLogout = () => {
-    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akunmu sendiri.')) return;
+    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akun Anda sendiri.')) return;
     setMoreOpen(false);
     if (isSupabaseConfigured) void authSignOut();
     else signOutEmployee();

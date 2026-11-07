@@ -69,7 +69,7 @@ export const saleSchema = z
       .array(
         z.object({
           itemId: id,
-          qty: z.number().int().positive('Qty harus lebih dari 0'),
+          qty: z.number().int().positive('Jumlah harus lebih dari 0'),
           sellPrice: money,
         }),
       )

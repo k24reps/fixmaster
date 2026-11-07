@@ -103,7 +103,7 @@ export function CustomersPage() {
   // Open WhatsApp with a pre-filled, shop-branded greeting the user can edit
   // before sending. Mirrors NotifyModal: wa.me deep link, demo-guarded.
   const sendWa = (c: Customer) => {
-    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh. Daftar gratis.')) return;
+    if (demoGuard('Kirim WhatsApp tersedia di FixMaster versi penuh. Daftar gratis.')) return;
     const toko = org?.name?.trim();
     const greeting = toko ? `Halo ${c.name}, ${toko} di sini. ` : `Halo ${c.name}, `;
     window.open(waLink(c.phone, greeting), '_blank');

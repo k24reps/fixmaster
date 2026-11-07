@@ -813,8 +813,13 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* Di 320-360px kolom ini (isi 114px) lebih sempit dari "Sembunyikan arsip 2"
+     (139px): label boleh turun baris alih-alih meluber keluar tombol. */
   .filterBar .toggle {
     justify-content: center;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
   }
   .filterBar .select,
   .morePanel .select {

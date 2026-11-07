@@ -97,7 +97,7 @@ export function TrackingPage() {
       // No org from the link and no logged-in session → we can't know which
       // shop's service to look up. Tell the visitor instead of silently doing
       // nothing (the lookup query stays disabled without an org).
-      setThrottleMsg('Link tidak lengkap (tanpa kode toko). Gunakan link lacak yang diberikan toko Anda.');
+      setThrottleMsg('Tautan tidak lengkap. Gunakan tautan lacak yang dikirim toko.');
       return;
     }
     setSearchNo(query);

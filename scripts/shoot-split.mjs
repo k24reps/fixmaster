@@ -49,7 +49,7 @@ for (let i = 0; i < n && !done; i++) {
   if (opts.some((o) => /Lunas/i.test(o))) {
     await page.selectOption('select', { label: 'Lunas' });
     await page.waitForTimeout(400);
-    const hasSplit = await page.getByText('Pembayaran (bisa dipecah').count();
+    const hasSplit = await page.getByText('Pembayaran (dapat dibagi').count();
     console.log('lunas at index', i, '| split editor shown:', hasSplit > 0);
     await page.screenshot({ path: join(OUT, 'split-1-single.png'), fullPage: true });
     // add a 2nd wallet leg

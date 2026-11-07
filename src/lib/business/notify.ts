@@ -142,7 +142,7 @@ Kami kabari lagi begitu ada perkembangan. Salam, {toko}`,
 
 Estimasi biaya perbaikan: *{estimasi}*
 
-Mohon konfirmasinya apakah pengerjaan kami lanjutkan. Bila ada yang ingin ditanyakan lebih dulu, silakan balas pesan ini, dengan senang hati kami jelaskan.
+Mohon konfirmasinya apakah pengerjaan kami lanjutkan. Bila ada pertanyaan, silakan balas pesan ini. Dengan senang hati kami jelaskan.
 
 Terima kasih, {toko}`,
 
@@ -150,7 +150,7 @@ Terima kasih, {toko}`,
 
 Pengerjaan saat ini menunggu ketersediaan sparepart. Begitu barangnya tiba unit langsung kami kerjakan, dan Anda kami kabari lagi.
 
-Status terbaru bisa dicek kapan saja di:
+Status terbaru dapat dilihat kapan saja di:
 {tautan}
 
 Terima kasih atas kesabarannya. Salam, {toko}`,
@@ -171,14 +171,14 @@ Terima kasih atas kepercayaan Anda.`,
 {rincian_bayar}
 
 Unit siap diambil di *{toko}*.{alamat}
-Mohon dijadwalkan pengambilannya ya, agar unit tidak terlalu lama tersimpan.
+Mohon jadwalkan pengambilannya agar unit tidak terlalu lama tersimpan.
 
 Terima kasih, {toko}`,
 
   diambil: `Halo {nama}, terima kasih. Unit *{perangkat}* (No. Servis *{no_servis}*) sudah diambil dan lunas.
 Total biaya: *{biaya}*{garansi}
 
-Riwayat servis dan masa garansi bisa dicek kapan saja di:
+Riwayat servis dan masa garansi dapat dilihat kapan saja di:
 {tautan}
 
 Simpan pesan ini sebagai bukti garansi. Salam, {toko}`,
@@ -189,7 +189,7 @@ Setelah diperiksa, perbaikan tidak dapat kami lanjutkan. Alasannya kami jelaskan
 
 Unit bisa diambil kembali di *{toko}*.{alamat}
 
-Bila ada yang ingin ditanyakan lebih dulu, silakan balas pesan ini. Terima kasih sudah mempercayakan kepada kami.`,
+Bila ada pertanyaan, silakan balas pesan ini. Terima kasih atas kepercayaan Anda.`,
 };
 
 export type WaTemplateKey = keyof typeof DEFAULT_WA_TEMPLATES;

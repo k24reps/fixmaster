@@ -344,6 +344,8 @@ Helper murni di `lib/business/services.ts`: `warrantyEndDate(service)` (tanggal 
 
 ### Sparepart BOM & modal dadakan (profit per unit)
 
+> [!note] Label layar sejak 7 Nov 2026: **Pembelian Luar** (badge baris "Dibeli di luar"). Nama kode, RPC, dan keterangan pengeluaran "Modal servis FM-xxxx — nama" tetap. Lihat [[Decisions & Bug Fixes#Audit kata UI: nada & panjang (7 Nov 2026)]].
+
 `Service.spareparts` (array JSONB, tipe `ServiceSparepart`) kini menampung **dua jenis baris cost** dalam satu array — **tanpa migrasi DB** (field JSONB sudah ada):
 
 - **`kind: 'inventory'`** (default; baris lama tanpa `kind` terbaca sebagai ini) — sparepart dari stok. Punya `itemId` valid. **Stok dipotong SEKETIKA saat baris ditambahkan** (`addSparepartLine`), bukan ditunda ke Pengerjaan. Pengaman: pemanggil **re-read item** sebagai guard otoritatif & **menolak** bila `stock < qty` (toast), lalu menyimpan baris `deducted:true`. **TIDAK** membuat Expense — modalnya sudah keluar saat beli stok (anti dobel-hitung kas). Saat tiket **batal**, `computeStockRestore()` mengembalikan stok semua baris inventory ber-`deducted` & membalik flag-nya (anti dobel-restore). `computeStockDeduction()` (pemicu `pengerjaan`) kini jadi **fallback legacy** — hanya menyentuh baris `deducted:false` lama; baris baru sudah `deducted:true` sehingga tak ada dobel-potong. Lihat [[Decisions & Bug Fixes]].

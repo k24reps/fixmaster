@@ -41,7 +41,7 @@ export function nextStepFor(status: string, pickedUp: boolean): NextStep {
     case 'batal':
       return {
         tone: 'action',
-        text: 'Pengerjaan dihentikan. Unit bisa diambil kembali di toko. Hubungi toko bila ingin penjelasan lebih dulu.',
+        text: 'Pengerjaan dihentikan. Unit bisa diambil kembali di toko. Hubungi toko bila memerlukan penjelasan.',
       };
     case 'tunggu':
       return {

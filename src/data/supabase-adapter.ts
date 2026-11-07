@@ -95,7 +95,7 @@ const LIST_PAGE = 1000;
 function rethrowWrite(error: { code?: string; message?: string }): never {
   if (error.code === '42501') {
     throw new Error(
-      'Ditolak: tindakan ini butuh peran owner/admin, atau langganan sudah kedaluwarsa (cek Pengaturan → Langganan).',
+      'Ditolak: tindakan ini memerlukan peran owner/admin, atau langganan sudah kedaluwarsa (periksa Pengaturan → Langganan).',
     );
   }
   // Error sungguhan (bukan objek polos), supaya pesan dari server — mis. trigger

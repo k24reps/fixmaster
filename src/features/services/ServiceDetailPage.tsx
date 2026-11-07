@@ -707,7 +707,7 @@ export function ServiceDetailPage() {
         {/* ---------- Customer stub + Intake ---------- */}
         <section className={styles.cols}>
           <div className={[styles.panel, styles.stub].join(' ')}>
-            <div className={styles.panelLabel}>CUSTOMER STUB</div>
+            <div className={styles.panelLabel}>{t('serviceDetail.customerLabel')}</div>
             <div className={styles.stubName}>{service.customerName}</div>
             <div className={styles.stubPhone}>{service.customerPhone || <EmptyValue />}</div>
             <div className={styles.stubActions}>
@@ -776,7 +776,7 @@ export function ServiceDetailPage() {
         {/* ---------- Sparepart BOM ---------- */}
         <section className={styles.panel}>
           <div className={styles.bomHead}>
-            <div className={styles.panelLabel}>SPAREPART · BILL OF MATERIALS</div>
+            <div className={styles.panelLabel}>{t('serviceDetail.partsLabel')}</div>
             {canAddParts && (
               <div className={styles.bomActions}>
                 {/* Garansi per part ditetapkan saat Selesai; tombol ini untuk part

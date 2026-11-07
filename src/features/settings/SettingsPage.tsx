@@ -2459,7 +2459,7 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
     // Cermin penjagaan server, supaya alasannya muncul sebelum permintaan dikirim.
     if (wallet.balance !== 0) {
       return toast.error(
-        `"${wallet.name}" masih memegang ${fmtRp(wallet.balance)}. Pindahkan saldonya dulu lewat transfer.`,
+        `"${wallet.name}" masih memegang ${fmtRp(wallet.balance)}. Pindahkan saldonya lewat transfer terlebih dahulu.`,
       );
     }
     setBusy(true);

@@ -77,10 +77,10 @@ export function PurchaseOrderModal({
     // Qty bilangan bulat: kolom stok integer, jadi "2,5 pcs" dulu dibulatkan
     // diam-diam saat barang diterima (server menolaknya sejak 0071).
     if (lines.some((l) => l.qty <= 0 || !Number.isInteger(l.qty)))
-      return setError('Qty setiap barang harus bilangan bulat lebih dari 0');
+      return setError('Jumlah setiap barang harus bilangan bulat lebih dari 0');
     // PO dicap ke cabang, sama seperti pengeluaran saat barang diterima.
     if (!editing && mustPickOutlet(outlets.length))
-      return setError('Pilih cabang dulu di selektor cabang (sidebar) sebelum membuat PO');
+      return setError('Pilih cabang di sidebar sebelum membuat PO');
 
     setBusy(true);
     const now = new Date().toISOString();

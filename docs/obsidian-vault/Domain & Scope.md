@@ -41,6 +41,13 @@ Aplikasi web untuk mengelola **toko/usaha reparasi gadget & elektronik** — mis
 | Teknisi | Orang yang mengerjakan reparasi |
 | POS / Kasir | Penjualan langsung (sparepart/aksesori) |
 | Outlet | Cabang/lokasi toko |
+| Pembelian Luar | Part/jasa yang dibeli di luar stok untuk satu tiket, dibayar dari wallet (dulu "Modal Dadakan"; nama kode tetap `modalDadakan*`) |
+| Arsip (tiket) | Tiket Lunas/Batal yang unitnya sudah diambil; bisa disembunyikan di Daftar Servis (dulu "tuntas") |
+| Anda | Sapaan baku di semua teks layar dan pesan; jangan "kamu/-mu" |
+
+Teks layar memakai istilah aplikasi, bukan campuran Inggris (tautan lacak, Ekspor, Riwayat,
+bawaan, Kasir). Istilah akuntansi baku tetap; lihat [[Conventions]] dan
+[[Decisions & Bug Fixes#Audit kata UI: nada & panjang (7 Nov 2026)]].
 
 ## Pengguna & peran
 - **Owner** (pemilik) — akses penuh

@@ -79,7 +79,7 @@ export function parseBackup(text: string): ParseResult {
   if (obj.version > BACKUP_VERSION) {
     return {
       ok: false,
-      error: `Backup dibuat oleh versi lebih baru (v${obj.version}). Perbarui aplikasi dulu.`,
+      error: `Backup dibuat oleh versi lebih baru (v${obj.version}). Perbarui aplikasi terlebih dahulu.`,
     };
   }
   if (typeof obj.collections !== 'object' || obj.collections === null) {

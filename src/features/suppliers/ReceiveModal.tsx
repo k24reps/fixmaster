@@ -58,7 +58,7 @@ export function ReceiveModal({ open, onClose, po, supplier }: ReceiveModalProps)
     // OQ-C (same guard as PosPage): the stock-purchase expense is stamped to an
     // outlet — a multi-outlet user must pick a branch first, not guess.
     if (mustPickOutlet(outlets.length)) {
-      toast.error('Pilih cabang dulu di selektor cabang (sidebar) sebelum menerima barang');
+      toast.error('Pilih cabang di sidebar sebelum menerima barang');
       return;
     }
     setBusy(true);

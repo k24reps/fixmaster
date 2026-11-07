@@ -144,7 +144,7 @@ export function InventoryPage() {
       usedIn = 0;
     }
     if (usedIn > 0) {
-      toast.warning(`"${item.name}" dipakai di ${usedIn} servis aktif. Periksa dulu.`);
+      toast.warning(`"${item.name}" masih dipakai di ${usedIn} servis aktif. Periksa tiketnya sebelum menghapus.`);
     }
     setToDelete(item);
   };

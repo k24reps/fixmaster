@@ -172,7 +172,7 @@ export function ResetPasswordPage() {
 
           {phase === 'ready' && (
             <>
-              <p className={styles.hint}>Masukkan password baru untuk akunmu.</p>
+              <p className={styles.hint}>Masukkan password baru untuk akun Anda.</p>
               <div className={styles.fields} onKeyDown={onKeyDown}>
                 <Input
                   noAutoCap

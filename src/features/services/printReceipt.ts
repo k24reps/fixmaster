@@ -157,7 +157,7 @@ export function printServiceReceipt(service: Service, org: Organization): void {
   const garansi = rowsFor(lines, 'garansi');
 
   openReceiptWindow(org, {
-    demoMessage: 'Cetak nota aktif di FixMaster versi penuh. Daftar gratis.',
+    demoMessage: 'Cetak nota tersedia di FixMaster versi penuh. Daftar gratis.',
     title: 'Nota',
     kind: 'NOTA SERVIS',
     no: service.serviceNo,

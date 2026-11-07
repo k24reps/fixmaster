@@ -163,7 +163,7 @@ export function AttendancePage() {
       return;
     }
     if (checkOut && !checkIn) {
-      toast.error('Isi jam masuk dulu sebelum jam keluar');
+      toast.error('Isi jam masuk sebelum jam keluar');
       return;
     }
     const totalHours = checkIn && checkOut ? calcHours(checkIn, checkOut) : 0;
@@ -172,7 +172,7 @@ export function AttendancePage() {
       if (creating) {
         const emp = employees.find((e) => e.id === editEmp);
         if (!emp) {
-          toast.error('Pilih karyawan dulu');
+          toast.error('Pilih karyawan');
           return;
         }
         // One row per employee per day — a second one would double-count hours.
