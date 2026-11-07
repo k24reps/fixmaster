@@ -4490,3 +4490,50 @@ mengubah apa pun di rail.
 - **Detector:** `impeccable detect --scope layout` bersih.
 
 #decision #ui #layout #sidebar
+
+## Shell: ringkasan halaman, kaki simpan, kolom nominal (7 Nov 2026)
+
+**Masalah (critique P2).** Tiga pola dasar halaman tidak seragam. Mata pengguna harus belajar ulang di
+tiap menu:
+- **Ringkasan halaman ada empat versi.** Servis memakai grid readout. Pelanggan dan Inventori memakai
+  baris teks "N label" (rupiah Inventori tidak mono). Supplier memakai tiga kotak, dengan angka
+  ±330px di kanan labelnya.
+- **Tombol simpan Pengaturan ada di tiga posisi:** kiri dalam grid Profil, lepas di Garansi dan
+  Template WhatsApp, kanan di Target, Sewa, dan Catatan.
+- **Tepi kanan nominal Buku Kas melompat** antara 1293, 1335, dan 1387px dalam satu pita. Kolom
+  aksinya `auto`, jadi baris dengan nol, satu, atau dua tombol mendorong nominalnya berbeda-beda.
+
+**Perbaikan.**
+- **`PageSummary`** (`components/ui/`) diangkat dari strip readout Servis: label mono di atas angka
+  mono, LED di depan angka, label pendek di ponsel, dan sel rupiah dua jalur. Komponen ini dipakai
+  di Servis, Pelanggan (dipindah dari bawah chip ke atas toolbar), Inventori, dan Supplier. Strip
+  wallet dan ringkasan Keuangan tidak ikut, karena selnya adalah filter wallet dan punya persamaan
+  saldo sendiri.
+- **`.saveFoot`** di Pengaturan: tombol simpan selalu kanan bawah di balik sambungan titik, dengan
+  petunjuk di kiri. Kelas `.noteFoot`, `.mobileNavActions`, dan `.form > button` dihapus.
+- **`--tape-btns`** di Keuangan: kolom aksi selebar dua tombol (82px, atau `max(40px, --control-h)` × 2
+  pada sentuh). Arus bersih kepala hari memakai padding kanan yang sama.
+
+**Pelajaran: grid `auto-fit` tidak runtuh bila ada sel `1 / -1`.** Di ponsel, sel rupiah Inventori
+harus turun ke baris sendiri. Dengan grid auto-fit, sel selebar penuh menahan trek kosong agar tetap
+ada, sehingga tiga hitungan di atasnya meregang tak rata. Di ≤720px strip berpindah ke flex-wrap
+(`flex: 1 1 64px`, sel lebar `flex-basis: 100%`).
+
+**Pelajaran: label satu kata tidak bisa membungkus.** Di 320px sel seperempat tinggal 73px. "SIAP
+AMBIL" membungkus, tetapi "SELESAI" (mono, 51px) terpotong 2px oleh padding 12px. Padding samping
+di ponsel diturunkan ke 8px. Temuan ini datang dari `scrollWidth`, bukan dari screenshot, karena
+2px tidak terlihat di gambar.
+
+**Verifikasi (demo, DOM rect, 320/390/768/1440):**
+- **Ringkasan:** jarak label ke angka 4px di semua halaman (dulu sampai 330px). Tidak ada sel
+  terpotong dan tidak ada luapan dokumen. Tinggi strip 65px untuk tiga sel di ponsel, 129px
+  untuk Inventori dengan Nilai Stok.
+- **Buku Kas:** satu tepi kanan nominal (1293 di 1440, 621 di 768), sama dengan arus bersih hari.
+  Baris punya satu atau dua tombol.
+- **Pengaturan:** tujuh kaki simpan dengan jarak kanan yang sama (25px desktop, 17px ponsel).
+- **Gerbang:** build, 721 tes, dan lint hijau. `impeccable detect --scope layout` bersih.
+
+![[summary-strip-desktop-dark.png]]
+![[summary-strip-phone-dark.png]]
+
+#decision #ui #layout #consistency

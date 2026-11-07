@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, Button, Badge, EmptyState, Icon, LoadState, loadPending } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Icon, LoadState, loadPending, PageSummary } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
@@ -12,6 +12,7 @@ import { applyBalance } from '@/lib/business/finance';
 import { logActivity } from '@/lib/activity';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
+import { useT } from '@/i18n';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseOrderModal } from './PurchaseOrderModal';
 import { ReceiveModal } from './ReceiveModal';
@@ -19,6 +20,7 @@ import type { Supplier, PurchaseOrder } from '@/data/types';
 import styles from './SuppliersPage.module.css';
 
 export function SuppliersPage() {
+  const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: suppliers, ...suppliersLoad } = useCollection('suppliers');
   const { data: purchaseOrders, ...poLoad } = useCollection('purchaseOrders');
@@ -43,6 +45,7 @@ export function SuppliersPage() {
     () => [...purchaseOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [purchaseOrders],
   );
+  const activePoCount = purchaseOrders.filter((po) => po.status === 'ordered' || po.status === 'partial').length;
 
   // Per-supplier purchasing readout: PO count + total spend.
   const vendorStats = useMemo(() => {
@@ -176,11 +179,19 @@ export function SuppliersPage() {
       </div>
 
       {tab === 'po' && (
-        <div className={styles.poSummary} aria-label="Ringkasan purchase order">
-          <span><small>TOTAL PO</small><strong>{purchaseOrders.length}</strong></span>
-          <span><small>PO AKTIF</small><strong>{purchaseOrders.filter((po) => po.status === 'ordered' || po.status === 'partial').length}</strong></span>
-          <span><small>SUPPLIER</small><strong>{suppliers.length}</strong></span>
-        </div>
+        <PageSummary
+          label={t('suppliers.summaryAria')}
+          items={[
+            { label: t('suppliers.statPo'), short: t('suppliers.statPoShort'), value: purchaseOrders.length },
+            {
+              label: t('suppliers.statPoActive'),
+              short: t('suppliers.statPoActiveShort'),
+              value: activePoCount,
+              tone: activePoCount > 0 ? 'info' : undefined,
+            },
+            { label: t('suppliers.statSuppliers'), value: suppliers.length },
+          ]}
+        />
       )}
 
       {tab === 'po' ? (

@@ -264,6 +264,8 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
 
 Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, dengan **LED status** (cyan aman / amber menipis / merah habis), angka stok mono besar, dan **fuel-gauge** ber-tick relatif terhadap stok minimum.
 
+- **Ringkasan stok (7 Nov 2026).** Baris teks "5 item · 2 menipis · Rp …" diganti `PageSummary`: Item, Menipis (LED amber), Habis (LED merah), dan Nilai Stok untuk manajer. Nilai rupiahnya kini mono. Di ponsel tiga hitungan berbagi satu baris dan Nilai Stok turun ke baris sendiri. Sel ini tetap tampil di ponsel karena nilai stok hanya ada di Inventori.
+
 - **Stok masuk: dari mana? (29 Sep 2026).** Menaikkan stok (edit) atau mengisi stok awal (barang baru) memunculkan panel ber-garis-titik yang WAJIB dijawab: **Dibeli sekarang** (harga beli/unit termasuk ongkir + Bayar dari wallet cabang, atau "Sudah dicatat di Keuangan") atau **Koreksi stok** / **Stok yang sudah ada** (tanpa uang keluar, alasan opsional). Pilihan = kartu radio dengan LED brand + spine. Readout: "Stok jadi N · modal rata-rata Rp X · kas −Rp Y". Harga modal dikunci & dihitung otomatis saat membeli. Satu langkah menggantikan dua (koreksi stok + catat Sparepart di Keuangan) — lihat 0096 di [[Data Layer]].
 
 ![[inv-dark.png]]
@@ -328,6 +330,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 
 **Grid kartu arsip**: plate inisial, **ID mono** (ID-XXXXXX), baris kontak HP/email/alamat mono, readout aktivitas (jumlah servis + total transaksi), penanda **Pelanggan Setia** (LED cyan).
 
+- **Ringkasan di kepala halaman (7 Nov 2026).** Baris teks di bawah chip kategori dipindah ke atas toolbar sebagai `PageSummary`: Pelanggan, Pelanggan Berulang, dan Ditampilkan. Label pendek di ponsel adalah Total, Berulang, dan Tampil.
+
 - **Drawer Riwayat Servis (19 Jun 2026).** Klik kartu pelanggan → **panel geser kanan** (`CustomerHistoryDrawer`) berisi daftar tiket pelanggan itu (newest-first): **LED status per tone** (pakai `STATUS_TONE`), no tiket mono, perangkat (`category · device`), tanggal, biaya, + link ke detail tiket. Data servis sudah di-load di halaman (untuk statistik) → tanpa fetch baru. Kartu kini `role=button` + keyboard (Enter/Space); tombol edit/hapus pakai `stopPropagation` agar tak ikut membuka drawer. Menjawab kebutuhan "lihat unit apa saja yang pernah masuk", bukan sekadar angka jumlah.
 
 - **Filter kategori perangkat + Kirim WA (22 Jun 2026).** Toolbar dapat **dropdown "Semua Perangkat"** — daftar kategori diturunkan dari **riwayat servis** tiap pelanggan (`custCategories`: map customerId → set `service.category`), bukan field di Customer (Customer tak punya kategori sendiri). Filter hanya muncul bila ada ≥1 kategori. Tiap kartu pelanggan ber-nomor kini punya tombol **WhatsApp** (LED hijau hover `--success-soft`) di footer: buka `wa.me` (helper `waLink`/`toWaNumber` dari [[Data Layer]]) dengan sapaan ber-merek toko (`Halo {nama}, {toko} di sini.`) yang bisa diedit user sebelum kirim. **Demo-guarded** (`demoGuard`) seperti `NotifyModal`. Batasan jujur: `wa.me` hanya buka **satu chat per klik** — tak ada auto-blast massal (butuh WA Business API). Tombol hanya tampil bila pelanggan punya nomor.
@@ -340,6 +344,8 @@ Tab PO jadi **baris docket** dengan spine status (biru dipesan / amber sebagian 
 
 Deret ringkasan menampilkan **total PO, PO aktif, dan jumlah supplier** sehingga halaman
 tetap memberi orientasi saat data sedikit; tombol aksi memenuhi target sentuh mobile.
+Sejak 7 Nov 2026 deret itu memakai `PageSummary` bersama. Dulu ada tiga kotak dengan angka
+±330px dari labelnya. PO aktif kini membawa LED cyan bila ada.
 
 - **Sinkron PO → Keuangan + void otomatis (19 Jun 2026).** ReceiveModal kini menampilkan **readout nilai diterima** (mono) + **checkbox "Potong dari wallet"** (default ON + wallet utama) dengan pemilih wallet. Terima barang → otomatis catat **Expense `'Pembelian stok PO <no>'`** (partial-aware: senilai yang masuk saat itu) & (bila tunai) potong saldo wallet — atomik via RPC `receive_goods_v2` di cloud, tulis berurutan di lokal. Tiap docket PO (non-draft/non-cancelled) punya **tombol batalkan** (ikon danger): **void otomatis** balikkan stok, refund wallet, hapus expense ter-link, set `cancelled`. Lihat [[Data Layer]] migrasi `0034`.
 
@@ -363,6 +369,13 @@ Wallet jadi **meter readout**. Buku kas jadi **pita thermal monospace** dengan s
   tingkat: keterangan selebar pita, lalu nominal + aksi). Alasan kunci ditulis sebagai tag
   ("terkunci · bulan lalu", "ubah dari tiket/Kasir"), bukan tooltip. Filter wallet di ponsel
   menggulir ke buku kas.
+- **Kolom nominal seragam (7 Nov 2026).** Kolom aksi pita selebar dua tombol (`--tape-btns`,
+  82px; `max(40px, --control-h)` × 2 pada sentuh) walau baris hanya punya satu tombol atau
+  tidak ada. Dulu `auto`, sehingga tepi kanan nominal melompat 1293/1335/1387px dalam satu
+  pita. Arus bersih di kepala hari diberi padding kanan yang sama, jadi sejajar dengan kolom
+  nominal (1293px di 1440, 621px di 768). Di wadah ≤560px tata letak dua tingkat tetap.
+
+![[finance-tape-columns-dark.png]]
 - **EntryModal:** cabang di baris pertama bila `mustPickOutlet`; tanggal `min` awal bulan /
   `max` hari ini (`entryDateError`, cermin 0091); kategori pemasukan hanya Modal/Lainnya;
   saldo di pilihan wallet; `inputMode="numeric"`; `<form>` (Enter menyimpan); **Simpan & tambah
@@ -540,7 +553,7 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 ## Daftar Servis — Repair Job Cards
 
 **Ponsel: antrean di layar pertama (7 Nov 2026, critique layout P1).** Di 390×844 tiket pertama dulu mulai di y=651, hanya 117px terlihat di atas menu bawah. Kini y=373. Penyebabnya diselesaikan begini:
-- **Strip readout:** satu baris empat sel dengan label pendek: Total, Proses, Siap ambil, Selesai (`services.stat*Short`). Sel rupiah tidak tampil di ponsel, dan LED pindah ke depan angka.
+- **Strip readout** (sejak 7 Nov 2026 komponen bersama `PageSummary`, lihat [[Conventions]]): satu baris empat sel dengan label pendek: Total, Proses, Siap ambil, Selesai (`services.stat*Short`). Sel rupiah tidak tampil di ponsel, dan LED pindah ke depan angka.
 - **Filter:** Teknisi, Urutan, Tertahan, dan Sembunyikan arsip dilipat ke satu tombol slider di samping kolom cari. Angka pada tombol itu = filter lanjutan aktif + filter terlipat yang menyala. Baris filter hilang bila kosong, dan tetap tampil bila ada tombol reset atau chip Siap ambil.
 - **Servis Baru:** pindah ke dok zona jempol (`ThumbDock`), mengambang 8px di atas menu bawah.
 - **Chip status:** memudar di tepi yang masih menyimpan chip, supaya terbaca bisa digeser. Pola ini dipakai bersama lewat `CategoryChips`.
@@ -677,7 +690,13 @@ Fitur tambahan (profit per unit — revisi 11 Jun 2026):
 Halaman `/settings` punya delapan tab untuk owner cloud (tab yang tak relevan tetap
 difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alur kerja:
 - **Layout profil** — dua kolom sampai 960 px agar ruang desktop terpakai, lalu satu
-  kolom di mobile. Tab mobile tetap satu baris dan dapat digeser horizontal.
+  kolom di mobile. Tab mobile membungkus ke beberapa baris (strip geser lama menyembunyikan tab terakhir di 320px).
+- **Kaki simpan (7 Nov 2026)** — tiap kartu (Profil, Target, Sewa, Garansi, Template
+  WhatsApp, Catatan Toko, Navigasi Mobile) menyimpan lewat `.saveFoot`: kanan bawah di balik
+  sambungan titik, dengan petunjuk atau sisa karakter di kiri. Dulu ada tiga posisi. Di ≤640px
+  tombolnya selebar kartu, dua tombol masing-masing setengah.
+
+![[settings-savefoot-dark.png]]
 - **Template Servis** — quick-pick keluhan & kelengkapan (dipindah dari tab Usaha).
 - **Garansi** — default lama garansi Jasa & Sparepart (hari) + preset durasi quick-pick yang dipakai StatusModal.
 - **Template WhatsApp** — editor per-kunci (Diterima/Selesai/Konfirmasi) dengan daftar variabel `{...}` & reset-ke-default. Override disimpan di `orgConfig`, kosong = fallback ke `DEFAULT_WA_TEMPLATES` via `resolveWaTemplates`. **Sejak 31 Jul 2026** default-nya **multi-baris** (sapaan → blok data → satu ajakan aksi → penutup), `*bold*` WhatsApp untuk no servis/nominal/status; `konfirmasi` memakai `{estimasi}` (bukan `{biaya}` yang berisi `finalCost`). Textarea editor `rows=10` & preview NotifyModal `rows=12` agar tak terpotong. Unit test menjaga tiap placeholder ada di `WA_TEMPLATE_VARS` (typo = `{no_service}` mentah terkirim ke pelanggan).

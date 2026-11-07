@@ -11,6 +11,7 @@ import {
   ViewToggle,
   CategoryChips,
   usePersistedView,
+  PageSummary,
 } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { useCustomerServices, useCustomerStats } from '@/hooks/useCustomerStats';
@@ -28,10 +29,12 @@ import { CustomerHistoryDrawer } from './CustomerHistoryDrawer';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Customer } from '@/data/types';
 import styles from './CustomersPage.module.css';
+import { useT } from '@/i18n';
 
 type SortKey = 'svc_desc' | 'name_asc' | 'trx_desc';
 
 export function CustomersPage() {
+  const t = useT();
   const { data: customers, ...customersLoad } = useCollection('customers');
   // Hitungan per pelanggan dari SEMUA tiket (server; daftar servis dipotong 1000).
   // Selama belum termuat / gagal, "0x · Rp 0 · Belum servis" adalah angka palsu, jadi tampil "—".
@@ -197,6 +200,20 @@ export function CustomersPage() {
 
   return (
     <div className={styles.wrap}>
+      {/* Ringkasan membuka halaman, seperti Servis dan Inventori. Dulu ia di
+          bawah chip kategori, jadi di ponsel tertutup isi lain. */}
+      <PageSummary
+        label={t('customers.summaryAria')}
+        items={[
+          { label: t('customers.statTotal'), short: t('customers.statTotalShort'), value: customers.length },
+          {
+            label: t('customers.statRepeat'),
+            short: t('customers.statRepeatShort'),
+            value: servicesPending ? EMPTY_VALUE : repeatCount,
+          },
+          { label: t('customers.statShown'), short: t('customers.statShownShort'), value: rows.length },
+        ]}
+      />
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <Input
@@ -231,12 +248,6 @@ export function CustomersPage() {
         onChange={setCategory}
         label="Kategori perangkat"
       />
-
-      <div className={styles.summary}>
-        <span><strong>{customers.length}</strong> pelanggan</span>
-        <span><strong>{servicesPending ? EMPTY_VALUE : repeatCount}</strong> pelanggan berulang</span>
-        <span><strong>{rows.length}</strong> ditampilkan</span>
-      </div>
 
       {loadPending(customersLoad) ? (
         <Card>

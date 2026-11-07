@@ -43,38 +43,6 @@
   flex: 1;
 }
 
-.poSummary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-.poSummary > span {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  /* Tiga kotak ringkasan berjajar, dulu ketiganya memakai spine brand yang
-     sama persis. Spine yang tidak pernah berubah warna tidak mengklasifikasi
-     apa pun — dan tiga amber sekaligus membuat tidak satu pun terbaca sebagai
-     jawaban (One Amber Rule). Kotaknya sudah punya tepi 1px + permukaan kaca;
-     spine-nya murni hiasan, jadi dilepas. */
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-glass);
-}
-.poSummary small {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-.poSummary strong {
-  font-family: var(--font-mono);
-  font-size: var(--text-lg);
-}
-
 /* ---------- PO docket list ---------- */
 .docketList {
   display: flex;
@@ -350,24 +318,6 @@
   }
   .tabs > button:last-child {
     width: 100%;
-  }
-  /* minmax(100px, ...) memaksa 3 x 100px + gap = di atas 288px yang tersedia
-     pada layar 320px, jadi kotaknya menggulung ke samping (+43px terukur).
-     minmax(0, 1fr) membiarkan kolomnya menyusut; tak ada lagi scroll. */
-  .poSummary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  /* Label dan angka sebaris butuh ~93px sementara selnya tinggal 61px
-     setelah padding, sehingga angkanya menonjol keluar halaman (terukur
-     +3px). Ditumpuk dan padding dipadatkan. */
-  .poSummary > span {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    padding: var(--space-2) var(--space-3);
-  }
-  .poSummary strong {
-    font-size: var(--text-base);
   }
   .docket {
     /* 92px kurang 9px untuk "Rp 4.250.000" (terukur) — ellipsis pada

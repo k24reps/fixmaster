@@ -48,32 +48,8 @@
   box-shadow: var(--ring);
 }
 
-/* ---------- Registry summary strip ---------- */
-.summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  padding: 10px var(--space-5);
-  background: var(--surface-glass);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-.summary span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.summary strong {
-  color: var(--text-primary);
-  font-family: var(--font-display);
-  font-size: var(--text-md);
-}
-
-/* Tombol tampilan & chip kategori: komponen bersama components/ui/CatalogControls. */
+/* Strip ringkasan: komponen bersama components/ui/PageSummary.
+   Tombol tampilan & chip kategori: komponen bersama components/ui/CatalogControls. */
 
 /* ---------- Registry grid ---------- */
 .grid {

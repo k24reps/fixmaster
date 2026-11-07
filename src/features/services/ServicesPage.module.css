@@ -4,73 +4,6 @@
   gap: var(--space-5);
 }
 
-/* Strip readout: satu panel, lima sel dipisah seam titik. auto-fit membuatnya
-   menyusut sendiri (5 → 3+2 → 2+2+1) tanpa breakpoint. */
-.readouts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  margin: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-.readout {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--space-3) var(--space-4);
-  border-right: 1px dotted var(--border-strong);
-  border-bottom: 1px dotted var(--border-strong);
-  margin: 0 -1px -1px 0;
-  min-width: 0;
-}
-/* Sel rupiah dua jalur: "Rp 3.550.000" tak muat di satu sel sempit, dan di ponsel
-   strip jadi 3+2 alih-alih lima baris. */
-.readout:last-child {
-  grid-column: span 2;
-}
-.readoutLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.labelShort {
-  display: none;
-}
-.readoutValue {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-lg);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-.readoutLed {
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-full);
-}
-.readoutLed[data-tone='info'] {
-  background: var(--info);
-  box-shadow: 0 0 7px var(--info);
-}
-.readoutLed[data-tone='warning'] {
-  background: var(--warning);
-  box-shadow: 0 0 7px var(--warning);
-}
-
 .toolbar {
   display: flex;
   align-items: center;
@@ -823,25 +756,6 @@
 @media (max-width: 720px) {
   .wrap {
     gap: var(--space-3);
-  }
-  .readouts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .readoutMoney,
-  .labelFull {
-    display: none;
-  }
-  .labelShort {
-    display: inline;
-  }
-  .readout {
-    padding: var(--space-2) var(--space-3);
-  }
-  .readoutLabel {
-    letter-spacing: 0.02em;
-  }
-  .readoutValue {
-    font-size: var(--text-md);
   }
   .filterBar:not([data-more='true']) .select,
   .filterBar:not([data-more='true']) .foldable,

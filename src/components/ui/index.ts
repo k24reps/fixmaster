@@ -2,6 +2,7 @@ export { Button } from './Button';
 export { Card, CardHeader, CardBody } from './Card';
 export { Badge } from './Badge';
 export { StatCard } from './StatCard';
+export { PageSummary, type PageSummaryItem, type PageSummaryTone } from './PageSummary';
 export { Input } from './Input';
 export { PasswordStrength } from './PasswordStrength';
 export { Textarea } from './Textarea';

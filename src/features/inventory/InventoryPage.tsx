@@ -13,6 +13,7 @@ import {
   usePersistedView,
   countCategories,
   categoryOf,
+  PageSummary,
 } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -164,13 +165,16 @@ export function InventoryPage() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.statsBar}>
-        <span><strong>{stats.total}</strong> {t('inventory.statItems')}</span>
-        <span className={styles.low}><strong>{stats.low}</strong> {t('inventory.statLow')}</span>
-        <span className={styles.out}><strong>{stats.out}</strong> {t('inventory.statOut')}</span>
-        {/* Nilai stok & HPP = modal dan margin toko; hanya owner/admin (audit #14). */}
-        {isMgr && <span><strong>{fmtRp(stats.value)}</strong> {t('inventory.statValue')}</span>}
-      </div>
+      <PageSummary
+        label={t('inventory.summaryAria')}
+        items={[
+          { label: t('inventory.statItems'), value: stats.total },
+          { label: t('inventory.statLow'), value: stats.low, tone: stats.low > 0 ? 'warning' : undefined },
+          { label: t('inventory.statOut'), value: stats.out, tone: stats.out > 0 ? 'danger' : undefined },
+          // Nilai stok & HPP = modal dan margin toko; hanya owner/admin (audit #14).
+          ...(isMgr ? [{ label: t('inventory.statValue'), value: fmtRp(stats.value), wide: true }] : []),
+        ]}
+      />
 
       <div className={styles.toolbar}>
         <div className={styles.search}>

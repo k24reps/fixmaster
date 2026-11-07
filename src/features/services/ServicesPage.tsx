@@ -10,6 +10,7 @@ import {
   Icon,
   CategoryChips,
   ConfirmDialog,
+  PageSummary,
 } from '@/components/ui';
 import { ThumbDock } from '@/components/layout/ThumbDock';
 import { repository } from '@/data';
@@ -614,45 +615,27 @@ export function ServicesPage() {
       />
       {/* Satu strip readout, bukan lima kartu. Di ponsel ia satu baris empat
           hitungan berlabel pendek; nilai rupiah ada di Dashboard & Laporan. */}
-      <dl className={styles.readouts}>
-        {[
-          { label: t('services.statTotal'), short: t('services.statTotalShort'), value: String(stats.total) },
+      <PageSummary
+        label={t('services.summaryAria')}
+        items={[
+          { label: t('services.statTotal'), short: t('services.statTotalShort'), value: stats.total },
           {
             label: t('services.statInProcess'),
             short: t('services.statInProcessShort'),
-            value: String(stats.inProcess),
+            value: stats.inProcess,
             tone: stats.inProcess > 0 ? 'info' : undefined,
           },
           {
             label: t('services.statAwaiting'),
             short: t('services.statAwaitingShort'),
-            value: String(stats.awaitingPickup),
+            value: stats.awaitingPickup,
             tone: stats.awaitingPickup > 0 ? 'warning' : undefined,
           },
-          { label: t('services.statDone'), short: t('services.statDoneShort'), value: String(stats.done) },
+          { label: t('services.statDone'), short: t('services.statDoneShort'), value: stats.done },
           // Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan).
-          { label: t('services.statPaidValue'), value: fmtRp(stats.lunasValue), money: true },
-        ].map((r) => (
-          <div key={r.label} className={[styles.readout, r.money ? styles.readoutMoney : ''].join(' ')}>
-            <dt className={styles.readoutLabel}>
-              {r.short ? (
-                <>
-                  <span className={styles.labelFull}>{r.label}</span>
-                  <span className={styles.labelShort}>{r.short}</span>
-                </>
-              ) : (
-                r.label
-              )}
-            </dt>
-            {/* LED menempel ke angka (Lit-Signal), bukan ke label: di ponsel
-                label sempit dan LED-nya dulu membuat "PROSES" meluber. */}
-            <dd className={styles.readoutValue}>
-              {r.tone && <span className={styles.readoutLed} data-tone={r.tone} aria-hidden />}
-              {r.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
+          { label: t('services.statPaidValue'), value: fmtRp(stats.lunasValue), wide: true, hideOnPhone: true },
+        ]}
+      />
 
       <div className={styles.toolbar}>
         <div className={styles.search}>

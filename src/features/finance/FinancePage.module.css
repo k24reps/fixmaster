@@ -436,7 +436,12 @@ button.walletCell[aria-pressed='true'] .walletLed {
 .noPad {
   padding: 0;
 }
+/* Kolom aksi selebar dua tombol, terisi atau tidak. Dulu "auto": baris tanpa
+   tombol (transfer batal, tutup buku) mendorong nominalnya ke kanan, sehingga
+   tepi kanan nominal melompat antara 1293, 1335, dan 1387px dalam satu pita
+   dan angka tak bisa dibaca turun seperti kolom buku kas. */
 .tape {
+  --tape-btns: calc(40px * 2 + 2px);
   display: flex;
   flex-direction: column;
   font-family: var(--font-mono);
@@ -446,7 +451,8 @@ button.walletCell[aria-pressed='true'] .walletLed {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 6px var(--space-5);
+  /* Arus bersih hari itu sejajar kolom nominal di bawahnya, bukan di tepi kartu. */
+  padding: 6px calc(var(--space-5) + var(--tape-btns) + var(--space-3)) 6px var(--space-5);
   background: var(--bg-surface-2);
   border-bottom: 1px dotted var(--border-strong);
   font-size: var(--text-xs);
@@ -459,7 +465,7 @@ button.walletCell[aria-pressed='true'] .walletLed {
 .tapeRow {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(36px, auto);
+  grid-template-columns: minmax(0, 1fr) auto var(--tape-btns);
   grid-template-areas: 'body amount btns';
   align-items: center;
   gap: 4px var(--space-3);
@@ -811,10 +817,15 @@ button.walletCell[aria-pressed='true'] .walletLed {
 }
 
 /* Aturan sentuh global (global.css) hanya mengenai <button>; tombol ini sebuah
-   tautan, jadi tingginya diikat sendiri. Terukur 29px di 375px sebelum ini. */
+   tautan, jadi tingginya diikat sendiri. Terukur 29px di 375px sebelum ini.
+   Aturan yang sama melebarkan ikon aksi pita ke --control-h, jadi kolom
+   aksinya ikut. */
 @media (max-width: 720px), (hover: none), (pointer: coarse) {
   .glossaryBtn {
     min-height: var(--control-h);
+  }
+  .tape {
+    --tape-btns: calc(max(40px, var(--control-h)) * 2 + 2px);
   }
 }
 

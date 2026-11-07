@@ -453,7 +453,7 @@ function MobileNavigationEditor({ initial }: { initial: string[] }) {
           </div>
         </div>
 
-        <div className={styles.mobileNavActions}>
+        <div className={styles.saveFoot}>
           <Button
             variant="secondary"
             onClick={() => setDraft([...DEFAULT_MOBILE_NAV_PATHS])}
@@ -630,6 +630,8 @@ function BusinessTab() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
+        </div>
+        <div className={styles.saveFoot}>
           <Button onClick={save} loading={busy}>
             {t('settingsPage.simpanPerubahan')}
           </Button>
@@ -951,9 +953,11 @@ function WarrantyCard() {
             onChange={(e) => setPartsDays(e.target.value)}
           />
         </div>
-        <Button onClick={saveDefaults} loading={saving}>
-          {t('settingsPage.simpanDefault')}
-        </Button>
+        <div className={styles.saveFoot}>
+          <Button onClick={saveDefaults} loading={saving}>
+            {t('settingsPage.simpanDefault')}
+          </Button>
+        </div>
 
         <div className={styles.tplGroup}>
           <span className={styles.tplLabel}>{t('settingsPage.presetDurasiQuickPick')}</span>
@@ -1047,8 +1051,7 @@ function MonthlyTargetCard() {
             placeholder="60"
           />
         </div>
-        <div className={styles.noteFoot}>
-          <span />
+        <div className={styles.saveFoot}>
           <Button onClick={save} disabled={busy || !dirty}>
             {t('settingsPage.simpanTarget')}
           </Button>
@@ -1144,7 +1147,7 @@ function RentCard() {
             );
           })}
         </div>
-        <div className={styles.noteFoot}>
+        <div className={styles.saveFoot}>
           <span className={styles.tplHint}>{missing ? t('settingsPage.rentYearlyMissing') : ''}</span>
           <Button onClick={save} disabled={busy || !dirty || missing}>
             {t('settingsPage.rentSave')}
@@ -1196,7 +1199,7 @@ function PublicNoteCard() {
           placeholder={'Senin–Sabtu 09.00–17.00 WIB.\nGaransi batal bila segel rusak.'}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <div className={styles.noteFoot}>
+        <div className={styles.saveFoot}>
           <span className={styles.noteCount} data-low={left <= 40 ? 'true' : undefined}>
             {left} karakter tersisa
           </span>
@@ -1304,9 +1307,11 @@ function WhatsAppTemplatesCard() {
           </div>
         ))}
         {canEdit ? (
-          <Button onClick={save} loading={saving}>
-            {t('settingsPage.simpanTemplate')}
-          </Button>
+          <div className={styles.saveFoot}>
+            <Button onClick={save} loading={saving}>
+              {t('settingsPage.simpanTemplate')}
+            </Button>
+          </div>
         ) : (
           <ProNotice>
             {t('settingsPage.pTemplateBawaanTetapTerkirim')}

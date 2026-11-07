@@ -47,10 +47,6 @@
 .form .logoRow {
   grid-column: 1 / -1;
 }
-.form > button {
-  justify-self: start;
-  min-width: 220px;
-}
 
 /* ---------- Logo uploader ---------- */
 .logoRow {
@@ -256,14 +252,6 @@
   color: var(--text-muted);
   line-height: 1.45;
 }
-.mobileNavActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px dotted var(--border-strong);
-}
 
 @media (max-width: 900px) {
   .mobileNavEditor {
@@ -314,8 +302,7 @@
   .form {
     grid-template-columns: 1fr;
   }
-  .form .logoRow,
-  .form > button {
+  .form .logoRow {
     grid-column: auto;
     width: 100%;
   }
@@ -334,12 +321,14 @@
   .mobileNavSlots {
     grid-template-columns: 1fr;
   }
-  .mobileNavActions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  /* Tombol kaki simpan berbagi lebar penuh: satu tombol selebar kartu, dua
+     tombol (Atur ulang + Simpan) masing-masing setengah. Petunjuk naik ke
+     baris sendiri di atasnya. */
+  .saveFoot > button {
+    flex: 1 1 0;
   }
-  .mobileNavActions button {
-    width: 100%;
+  .saveFoot > span {
+    flex-basis: 100%;
   }
   /* Invite form: stack the select + button full-width under the text fields. */
   .inviteRow .roleSelect {
@@ -1169,14 +1158,30 @@
     margin-left: 0;
   }
 }
-/* Kaki kartu Catatan Toko: hitungan sisa karakter di kiri, aksi di kanan. */
-.noteFoot {
+/* Kaki simpan: satu pola untuk tiap kartu Pengaturan. Dulu tombol simpan ada
+   di tiga posisi (kiri di grid Profil, lepas di Garansi dan Template, kanan
+   di Target/Sewa/Catatan), jadi mata harus mencarinya di tiap kartu. Kini
+   selalu kanan bawah di balik sambungan titik; petunjuk atau hitungan
+   (span) mengisi kiri. */
+.saveFoot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-3);
   flex-wrap: wrap;
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border-strong);
+}
+.saveFoot > span {
+  margin: 0 auto 0 0;
+}
+.saveFoot > span:empty {
+  display: none;
+}
+/* Garansi: preset durasi tersimpan langsung, bukan lewat kaki simpan di atasnya. */
+.saveFoot + .tplGroup {
+  margin-top: var(--space-5);
 }
 .noteCount {
   font-family: var(--font-mono);
