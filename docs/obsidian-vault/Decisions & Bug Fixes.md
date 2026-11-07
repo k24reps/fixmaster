@@ -4060,3 +4060,39 @@ tata letak berjudul (1600px: lajur 111px, "MacBook Pro 13" 2019" butuh 149px); i
 teks lengkap ada di `title`.
 
 #decision #ui #services
+
+## Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)
+
+**Permintaan pemilik:** di menu Servis, ponsel hanya tampilan kartu, desktop hanya tampilan
+daftar, opsi tampilan lainnya dibuang.
+
+**Yang dibangun.**
+- `ViewToggle` dan `usePersistedView('fixmaster-services-view', 'list')` dihapus dari ServicesPage. Tampilan
+  kini `useMediaQuery('(max-width: 720px)') ? 'cards' : 'list'`.
+- Tampilan Ringkas dihapus: blok JSX `view === 'tiles'` dan CSS `.tileGrid`, `.tile`,
+  `.tileDevice`, `.tileSub`, `.tileCost`. `.jobCost` (biaya di kartu) tetap.
+- Kunci i18n `services.viewLabel` dihapus. Pilihan tersimpan lama di `localStorage` tidak
+  dibaca lagi dan tidak berbahaya.
+- Hook baru `src/hooks/useMediaQuery.ts` (`useSyncExternalStore` + `matchMedia`). Tanpa
+  `matchMedia` (jsdom) hasilnya `fallback`, jadi tes lama tetap melihat Daftar.
+- `CATALOG_VIEWS` dan pemilih tampilan tetap dipakai Kasir, Inventori, dan Pelanggan.
+
+**Kenapa media query, bukan `@container`.** AGENTS.md §3 mewajibkan `@container` untuk
+breakpoint yang menentukan muat atau tidak muat. Ini bukan breakpoint seperti itu: ia memilih
+bentuk tampilan menurut jenis perangkat. Ambangnya sama dengan `@media (max-width: 720px)` yang
+sudah dipakai halaman ini untuk tata letak ponsel (bilah alat, strip readout, filter lainnya),
+jadi kartu dan tata letak ponsel selalu muncul bersamaan. Pembesaran aplikasi tidak menggeser
+media query ([[#Pengaturan zoom aplikasi — dan kenapa satu breakpoint harus jadi @container]]),
+sehingga laptop dengan Pembesaran 150% tetap mendapat Daftar. Daftar yang sempit itu tetap
+dijaga `@container svcRows` (≤520px menyembunyikan Keluhan & Penanganan serta teknisi).
+
+**Verifikasi:** build, lint, **710 test / 67 berkas** hijau. `servicesTableWidth` mengunci
+ekspresi pemilih tampilan dan ketiadaan `ViewToggle`, `usePersistedView`, `'tiles'`,
+`.tileGrid`. `useMediaQuery.test.ts` menguji perubahan ukuran jendela, pelepasan listener, dan
+fallback. Di demo: 320/390/720px → kartu (7 kartu), 721/768/1024/1440px → daftar, tanpa pemilih
+di semua lebar dan tanpa luberan dokumen. Mengubah jendela 1440→700 berganti ke kartu, 700→1440
+kembali ke daftar, tanpa muat ulang. `audit-mobile` (ponsel dan pita tablet) serta
+`audit-zoom` (100% dan Padat) identik dengan baseline sebelum perubahan: 0 pelanggaran lantai
+12px, temuan yang tersisa hanya positif palsu yang sudah dikenal (penggeser chip kategori).
+
+#decision #ui #services

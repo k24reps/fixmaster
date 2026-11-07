@@ -500,6 +500,11 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 ## Daftar Servis — Repair Job Cards
 
+**Tampilan ditentukan perangkat (7 Nov 2026, permintaan pemilik).** Pemilih tampilan (Kartu · Daftar · Ringkas) dihapus dari bilah alat. Ponsel (viewport ≤720px) selalu menampilkan **Kartu**; layar yang lebih lebar selalu **Daftar**. Tampilan Ringkas dihapus seluruhnya (markup dan CSS `.tileGrid`/`.tile*`). Ambang 720px sama dengan tata letak ponsel halaman ini di CSS, dibaca lewat hook baru `useMediaQuery` (`src/hooks/useMediaQuery.ts`), dan berganti langsung saat jendela diubah ukurannya. Daftar di layar sempit (tablet 768px, atau laptop dengan Pembesaran 150%) tetap dijaga `@container svcRows`. Kasir, Inventori, dan Pelanggan tetap punya pemilih tampilan. Detail: [[Decisions & Bug Fixes#Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)]].
+
+![[services-view-phone-390-dark.png]]
+![[services-view-list-1440-light.png]]
+
 **Keluhan & Penanganan satu kolom (7 Nov 2026, permintaan pemilik).** Di tampilan Daftar, kedua teks itu kini satu segmen `data-seg="notes"`: Keluhan di atas (jepit 2 baris), Penanganan di bawah (jepit 3 baris). Dulu keduanya segmen terpisah; saat segmen membungkus di layar laptop (kontainer ≤1180px, mis. viewport 1100–1440), Keluhan jatuh di bawah nomor tiket dan Penanganan di bawah pelanggan. Lajurnya 2,5fr bila keduanya aktif (jumlah dua lajur lama), judulnya "Keluhan & Penanganan". Dua sakelar kolom di Pengaturan tetap terpisah dan menentukan baris mana yang tampil. Label di dalam segmen hanya disembunyikan di tata letak berjudul bila ia satu-satunya baris (`.clamp:only-child b`); kalau keduanya tampil, label tetap ada supaya baris keluhan dan penanganan bisa dibedakan. Saat membungkus, segmen ini `flex: 2 1 14rem` agar tidak sesempit kolom teknisi. Tampilan Kartu dan Ringkas tidak berubah. Terukur di demo 1700px (tata letak berjudul): tinggi baris 56–78px, segmen 313px. Detail: [[Decisions & Bug Fixes#Keluhan & Penanganan satu kolom di Daftar Servis (7 Nov 2026)]].
 
 ![[services-notes-1700-dark.png]]

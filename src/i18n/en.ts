@@ -683,7 +683,6 @@ export const en: Dictionary = {
   'services.statPaidValue': 'Paid Ticket Value',
   'services.searchPh': 'Search ticket no., customer, phone, device, complaint…',
   'services.searchAria': 'Search services',
-  'services.viewLabel': 'Service view',
   'services.new': 'New Service',
   'services.filterAria': 'Service filters',
   'services.filterTech': 'Technician filter',

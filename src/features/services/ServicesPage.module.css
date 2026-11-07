@@ -299,10 +299,9 @@
   padding-top: var(--space-2);
   border-top: 1px dotted var(--border);
 }
-/* Biaya di kartu & ubin memakai blok yang sama dengan Daftar (renderCost):
-   angka utama, lalu rincian modal/profit pemilik di bawahnya, rata kiri. */
-.jobCost,
-.tileCost {
+/* Biaya di kartu memakai blok yang sama dengan Daftar (renderCost): angka
+   utama, lalu rincian modal/profit pemilik di bawahnya, rata kiri. */
+.jobCost {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -313,8 +312,7 @@
   font-weight: var(--fw-bold);
   color: var(--text-primary);
 }
-.jobCost .breakdown,
-.tileCost .breakdown {
+.jobCost .breakdown {
   justify-content: flex-start;
 }
 .profit {
@@ -582,8 +580,9 @@
     justify-content: flex-start;
   }
 }
-/* Ponsel: daftar tetap ringkas, hanya nomor, perangkat, dan pelanggan.
-   Keluhan, penanganan, dan teknisi tetap ada di tampilan Kartu. */
+/* Daftar yang sempit tapi bukan di ponsel (ponsel memakai Kartu), mis. tablet
+   768px di pembesaran 150%: hanya nomor, perangkat, dan pelanggan. Keluhan,
+   penanganan, dan teknisi ada di detail tiket. */
 @container svcRows (max-width: 520px) {
   /* flex-start: align-items center dari tata letak lebar akan memusatkan
      segmen secara horizontal di susunan kolom ini. */
@@ -795,7 +794,7 @@
   .toolbar {
     align-items: stretch;
   }
-  /* Pilihan tampilan di kiri, "Servis Baru" mengisi sisa baris. */
+  /* "Servis Baru" selebar baris, tepat di bawah kolom cari. */
   .toolbarActions {
     width: 100%;
   }
@@ -852,46 +851,4 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
-}
-
-/* ---------- Tampilan Ringkas (konsep sama dengan Kasir, Inventori, Pelanggan) ---------- */
-.tileGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
-  gap: var(--space-2);
-  padding: var(--space-3);
-}
-/* Ubin memakai .jobCard (spine status, latar) dengan isi dan jarak yang dipadatkan. */
-.tile {
-  gap: 4px;
-  padding: 10px 12px;
-  padding-left: calc(12px + 3px);
-  border-radius: var(--radius-sm);
-}
-/* "KONFIRMASI BIAYA" + nomor tidak selalu muat sebaris di ubin 240px. */
-.tile .jobTop {
-  flex-wrap: wrap;
-  row-gap: 4px;
-}
-.tileDevice,
-.tileSub {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tileDevice {
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-.tileSub {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.tileCost {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  white-space: nowrap;
 }

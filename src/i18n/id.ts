@@ -685,7 +685,6 @@ export const id = {
   'services.statPaidValue': 'Nilai Tiket Lunas',
   'services.searchPh': 'Cari no. servis, pelanggan, no. HP, perangkat, keluhan…',
   'services.searchAria': 'Cari servis',
-  'services.viewLabel': 'Tampilan servis',
   'services.new': 'Servis Baru',
   'services.filterAria': 'Filter servis',
   'services.filterTech': 'Filter teknisi',

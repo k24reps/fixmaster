@@ -9,12 +9,11 @@ import {
   EmptyState,
   Icon,
   CategoryChips,
-  ViewToggle,
-  usePersistedView,
   ConfirmDialog,
 } from '@/components/ui';
 import { repository } from '@/data';
 import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import { SERVICE_LIST_CAP, useServiceArchive } from '@/hooks/useServiceArchive';
 import { useSessionStore } from '@/stores/session';
@@ -128,8 +127,12 @@ export function ServicesPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting'>(initialPickup);
   const [moreOpen, setMoreOpen] = useState(false);
-  // Daftar = tabel (tetap jatuh ke kartu bila tak muat), Kartu, atau Ringkas.
-  const [view, chooseView] = usePersistedView('fixmaster-services-view', 'list');
+  // Tampilan ditentukan perangkat, bukan dipilih (keputusan pemilik, 7 Nov
+  // 2026): kartu di ponsel, daftar di layar yang lebih lebar. Ambangnya sama
+  // dengan tata letak ponsel halaman ini (@media max-width 720px di CSS).
+  // Media query, bukan @container: ini selera per perangkat, sedangkan daftar
+  // sendiri sudah muat di lebar berapa pun lewat container query.
+  const view = useMediaQuery('(max-width: 720px)') ? 'cards' : 'list';
   // `?tech=me` = "Tiket saya" dari panel Meja Saya di Dashboard.
   const [techFilter, setTechFilter] = useState(() => (searchParams.get('tech') === 'me' ? 'me' : 'all'));
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
@@ -476,7 +479,7 @@ export function ServicesPage() {
     );
   };
 
-  // Shared action cluster so the list, cards, and tiles stay in sync. Tiga aksi
+  // Shared action cluster so the list and cards stay in sync. Tiga aksi
   // tetap untuk semua tiket; tanda ambil ada di label status ambil (renderPickup).
   const renderActions = (s: Service) => (
     <>
@@ -570,7 +573,6 @@ export function ServicesPage() {
           />
         </div>
         <div className={styles.toolbarActions}>
-          <ViewToggle value={view} onChange={chooseView} label={t('services.viewLabel')} />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
             {t('services.new')}
           </Button>
@@ -907,40 +909,7 @@ export function ServicesPage() {
             </ul>
             )}
 
-            {/* Ringkas: nomor, status, perangkat, pelanggan, biaya. Keluhan dan
-                penanganan sengaja tidak ikut; rinciannya ada di tiket. */}
-            {view === 'tiles' && (
-              <ul className={styles.tileGrid}>
-                {shownRows.map((s) => (
-                  <li
-                    key={s.id}
-                    className={[styles.jobCard, styles.tile].join(' ')}
-                    data-tone={STATUS_TONE[s.status]}
-                  >
-                    <div className={styles.jobTop}>
-                      <Link to={`/services/${s.id}`} className={styles.jobNo}>
-                        {s.serviceNo}
-                      </Link>
-                      {renderStatus(s)}
-                    </div>
-                    <strong className={styles.tileDevice} title={s.device}>
-                      {s.device}
-                    </strong>
-                    <small className={styles.tileSub}>
-                      {s.customerName} · {fmtDate(localDateOf(s.createdAt))}
-                    </small>
-                    {renderPickup(s)}
-                    {renderStall(s)}
-                    <div className={styles.jobFoot}>
-                      <div className={styles.tileCost}>{renderCost(s)}</div>
-                      <div className={styles.jobActions}>{renderActions(s)}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {/* Satu footer untuk semua tampilan, karena semuanya memakai
+            {/* Satu footer untuk kedua tampilan, karena keduanya memakai
                 `shownRows` yang sama. */}
             <div className={styles.loadMore}>
               {rows.length > shownRows.length && (

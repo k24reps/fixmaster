@@ -14,8 +14,16 @@ describe('tampilan Daftar servis', () => {
     expect(tsx).not.toContain('data-fit');
     expect(tsx).not.toContain('ResizeObserver');
     expect(css).toMatch(/@container svcRows/);
-    // Kartu hanya saat dipilih, bukan cadangan Daftar.
-    expect(tsx).toContain("view === 'cards' && (");
+  });
+
+  it('tampilan ditentukan perangkat: kartu di ponsel, daftar di layar lebar, tanpa pemilih', () => {
+    // Ambang sama dengan tata letak ponsel halaman ini di CSS.
+    expect(tsx).toContain("useMediaQuery('(max-width: 720px)') ? 'cards' : 'list'");
+    expect(css).toContain('@media (max-width: 720px)');
+    expect(tsx).not.toContain('ViewToggle');
+    expect(tsx).not.toContain('usePersistedView');
+    expect(tsx).not.toContain("'tiles'");
+    expect(css).not.toContain('.tileGrid');
   });
 
   it('segmen opsional dan lajurnya mengikuti pengaturan kolom', () => {

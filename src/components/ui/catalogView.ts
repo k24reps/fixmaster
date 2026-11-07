@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
-/** Pilihan tampilan — dipakai Kasir, Inventori, Pelanggan, dan Servis. */
+/** Pilihan tampilan — dipakai Kasir, Inventori, dan Pelanggan. Servis tidak:
+ * tampilannya ditentukan perangkat (ServicesPage). */
 export const CATALOG_VIEWS = [
   { id: 'cards', icon: 'view-cards', label: 'Tampilan kartu' },
   { id: 'list', icon: 'view-list', label: 'Tampilan daftar' },
@@ -12,7 +13,7 @@ export type CatalogView = (typeof CATALOG_VIEWS)[number]['id'];
 /**
  * Tampilan diingat per perangkat, per halaman (`storageKey`), supaya kasir atau
  * pengelola stok tak perlu memilih ulang. Tanpa pilihan tersimpan jatuh ke
- * `fallback` (Servis memakai daftar/tabel supaya tampilan lamanya tetap).
+ * `fallback`.
  */
 export function usePersistedView(storageKey: string, fallback: CatalogView = 'cards') {
   const [view, setView] = useState<CatalogView>(() => {
