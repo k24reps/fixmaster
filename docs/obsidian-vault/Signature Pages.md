@@ -270,6 +270,10 @@ Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, denga
 
 ## Dashboard — Diagnostic Panel
 
+- **Servis Baru di ponsel (7 Nov 2026, critique layout).** Aksi cepat konsol hanya tampil di desktop. Navigasi bawah menautkan ke daftar Servis, bukan ke tiket baru, jadi di ponsel Dashboard tidak punya jalan langsung ke Servis Baru. Kini ≤720px tombolnya ada di dok zona jempol `ThumbDock` (`/services?new=1`), dan tombol di konsol disembunyikan supaya tidak dobel. Di tablet sentuh, aksi cepat dan "Lihat semua" naik dari 36px ke 44px.
+
+![[dashboard-dock-390-light.png]]
+
 - **Peran & target (28 Sep 2026).** Sel hero **Laba servis** hanya untuk **owner** (Laporan, sumber angkanya, owner-only); admin tetap melihat arus kas, Pemasukan, Pengeluaran. **Target Servis** kini menghitung unit **selesai** bulan ini (`serviceMargin(profitMonth).units`, sumber yang sama dengan Laba servis), label "N / target unit selesai" — dulu unit masuk. Label target di Pengaturan & wizard ikut. Karyawan tetap mendarat di Dashboard "Meja saya" (keputusan pemilik, 13a).
 
 Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis()` di [[Data Layer]].
@@ -534,6 +538,17 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 ![[att-dark.png]]
 
 ## Daftar Servis — Repair Job Cards
+
+**Ponsel: antrean di layar pertama (7 Nov 2026, critique layout P1).** Di 390×844 tiket pertama dulu mulai di y=651, hanya 117px terlihat di atas menu bawah. Kini y=373. Penyebabnya diselesaikan begini:
+- **Strip readout:** satu baris empat sel dengan label pendek: Total, Proses, Siap ambil, Selesai (`services.stat*Short`). Sel rupiah tidak tampil di ponsel, dan LED pindah ke depan angka.
+- **Filter:** Teknisi, Urutan, Tertahan, dan Sembunyikan arsip dilipat ke satu tombol slider di samping kolom cari. Angka pada tombol itu = filter lanjutan aktif + filter terlipat yang menyala. Baris filter hilang bila kosong, dan tetap tampil bila ada tombol reset atau chip Siap ambil.
+- **Servis Baru:** pindah ke dok zona jempol (`ThumbDock`), mengambang 8px di atas menu bawah.
+- **Chip status:** memudar di tepi yang masih menyimpan chip, supaya terbaca bisa digeser. Pola ini dipakai bersama lewat `CategoryChips`.
+
+Di desktop, nama perangkat boleh dua baris (dulu "MacBook Pro 13" 2019" terpotong di lajur 117px). Di tablet sentuh, ikon aksi 44px dan lajurnya 4 × `--control-h`. Detail: [[Decisions & Bug Fixes#Daftar Servis ponsel: antrean di layar pertama (7 Nov 2026)]].
+
+![[services-phone-queue-390-dark.png]]
+![[services-device-2line-1700-dark.png]]
 
 **Aksi cepat Tambah sparepart (7 Nov 2026, permintaan pemilik).** Tiap baris dan kartu tiket yang masih dikerjakan (belum Lunas atau Batal) punya tombol ikon chip (`microchip`, ikon yang sama dengan baris sparepart di BOM detail). Tombol ini membuka `SparepartPickerModal` yang sama dengan detail tiket, tanpa pindah halaman. Di atas pencarian ada strip tiket tujuan: spine brand, nomor mono, perangkat, pelanggan. Simpannya lewat `addServicePart` (`src/data/serviceParts.ts`), jalur yang kini juga dipakai detail: tiket dibaca ulang, baris inventori `deducted: true`, stok dipotong di transaksi yang sama. Jendela tetap terbuka untuk part berikutnya, dan baris yang sudah masuk terbaca "Tambah lagi". Tiket Selesai yang biaya finalnya sudah ditetapkan mendapat toast peringatan: biaya final belum ikut naik, sesuaikan di detail. Tombol ditaruh paling kiri, sehingga tiga aksi lain tetap sejajar antarbaris. Lajur aksi di Daftar melebar dari 7.5rem ke 10rem. Detail: [[Decisions & Bug Fixes#Aksi cepat Tambah sparepart di Daftar Servis (7 Nov 2026)]].
 

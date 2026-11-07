@@ -1,0 +1,28 @@
+.dock,
+.spacer {
+  display: none;
+}
+
+/* Ambang yang sama dengan menu bawah (MobileBottomNav), bukan @container:
+   dok ini terikat kehadiran menu bawah, bukan lebar wadahnya. Geometrinya
+   sama dengan dok keranjang Kasir: --space-4 di atas menu bawah. */
+@media (max-width: 720px) {
+  .dock {
+    position: fixed;
+    right: var(--space-4);
+    bottom: calc(var(--mobile-nav-height) + var(--space-4) + env(safe-area-inset-bottom));
+    z-index: var(--z-sticky);
+    display: flex;
+  }
+  .dock > * {
+    box-shadow: var(--shadow-lg);
+  }
+  /* Konten sudah diberi padding setinggi menu bawah + --space-6; dok
+     menambah setinggi kontrol, jadi kartu terakhir tetap bisa digulir
+     keluar dari baliknya. */
+  .spacer {
+    display: block;
+    flex: none;
+    height: var(--control-h);
+  }
+}

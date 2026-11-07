@@ -651,13 +651,26 @@ a.heroStat:hover {
 .viewAll:hover {
   background: var(--bg-hover);
 }
-/* Tautan, bukan tombol, jadi aturan 44px global untuk <button> tak berlaku. */
+/* Tautan, bukan tombol, jadi aturan 44px global untuk <button> tak berlaku.
+   Aksi cepat konsol juga tautan: di tablet sentuh dulu 36px. */
 @media (max-width: 720px), (pointer: coarse) {
-  .viewAll {
+  .viewAll,
+  .quickPrimary,
+  .quickSecondary {
     display: inline-flex;
     align-items: center;
     min-height: var(--control-h);
   }
+}
+/* Di ponsel Servis Baru tinggal di dok zona jempol (ThumbDock); salinan di
+   konsol disembunyikan supaya tak ada dua tombol sama di 561-720px. */
+@media (max-width: 720px) {
+  .quick .quickPrimary {
+    display: none;
+  }
+}
+.dockAction {
+  padding: 0 var(--space-4);
 }
 .recentList {
   display: flex;

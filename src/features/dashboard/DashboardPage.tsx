@@ -2,6 +2,7 @@ import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Button, EmptyState, Icon, Mascot, Term } from '@/components/ui';
+import { ThumbDock } from '@/components/layout/ThumbDock';
 import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
 import { repository } from '@/data';
 import { useCollectionRange } from '@/hooks/useCollectionRange';
@@ -627,6 +628,13 @@ export function DashboardPage() {
           </Card>
         </>
       )}
+      {/* Aksi cepat konsol dilipat di ponsel; tab Servis di menu bawah membuka
+          daftar, bukan tiket baru. Servis Baru pindah ke zona jempol. */}
+      <ThumbDock>
+        <Link className={[styles.quickPrimary, styles.dockAction].join(' ')} to="/services?new=1">
+          <Icon name="plus" aria-hidden /> {t('dashboard.newService')}
+        </Link>
+      </ThumbDock>
     </div>
   );
 }

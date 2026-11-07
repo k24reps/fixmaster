@@ -4379,3 +4379,67 @@ di 744/1097, luberan 0. Indeks: tak ada readout terpotong; 6 kolom ≥1280, 3 ko
 pindah ke bagian. `impeccable detect --scope layout`: bersih.
 
 #decision #ui #layout #reports
+
+## Daftar Servis ponsel: antrean di layar pertama (7 Nov 2026)
+
+Temuan critique layout (P1):
+- **Antrean terdorong ke bawah.** Di 390×844 tiket pertama mulai di y=651, hanya 117px terlihat
+  di atas menu bawah. Strip readout 3+2 dan lima kontrol filter mendahuluinya.
+- **Chip status tanpa tanda geser.** Baris chip Servis menyembunyikan 314px (Pengerjaan,
+  Selesai, Lunas) tanpa tanda bisa digeser; di Pelanggan 235px.
+- **Dashboard ponsel tanpa Servis Baru.**
+- **Target sentuh kecil di tablet sentuh.** Aksi cepat Dashboard 36px; ikon "Lihat tiket" 40×40.
+
+**Keputusan:**
+- **Readout ponsel satu baris empat sel**, label pendek `services.statTotalShort`,
+  `statInProcessShort`, `statAwaitingShort`, `statDoneShort` (id/en). Sel rupiah
+  (`.readoutMoney`) tidak tampil ≤720px, karena uang dibaca di Dashboard dan Laporan.
+  LED pindah ke depan angka.
+- **Filter dilipat ke satu tombol** (`.phoneMore`, ikon slider) di samping kolom cari: Teknisi,
+  Urutan, Tertahan, Sembunyikan arsip, dan tombol Filter lainnya.
+  - Angka di tombol = `moreActive + foldedOnMobile`.
+  - Bilah filter hilang lewat `:not(:has(.resetBtn, .awaitingChip))`, kecuali ada yang perlu
+    dilihat.
+- **Servis Baru pindah ke `ThumbDock`** (`src/components/layout/ThumbDock.tsx`, baru):
+  - Tombol mengambang kanan bawah, `bottom: nav + space-4 + safe-area`. Karena menu bawah sendiri
+    mengambang `space-2`, jaraknya 8px di atas menu.
+  - Spacer setinggi `--control-h` menjaga baris terakhir tak tertutup.
+  - Ambangnya `@media (max-width: 720px)`, karena terikat kehadiran menu bawah (pengecualian
+    §3 AGENTS.md).
+  - Dashboard memakai dok yang sama; tombol di konsol disembunyikan ≤720px.
+- **Tepi pudar chip** di `CategoryChips` (Servis, Pelanggan, Inventori, Kasir):
+  - Mekanisme: `mask-image` dengan dua panjang terdaftar `@property --chips-fade-l/-r`, yang
+    dianimasikan `animation-timeline: scroll(self inline)`.
+  - Tanpa luapan, timeline tak aktif, jadi nilai dasarnya 0 dan tidak ada pudar.
+  - Label "Semua" kini `common.all`.
+- **Tablet sentuh**:
+  - Blok `(max-width: 720px), (pointer: coarse)` membesarkan `.noLink`, `.iconBtn`, aksi cepat
+    Dashboard, dan "Lihat semua" ke 44px.
+  - Lajur aksi Daftar di pointer kasar = `calc(var(--control-h) * 4)`, dalam
+    `@container svcRows (min-width: 861px)` yang bersarang di `@media (pointer: coarse)`. Di
+    ≤860px aksi sudah turun ke baris kedua dengan lebar `auto`.
+- **Nama perangkat dua baris** di Daftar desktop (`-webkit-line-clamp: 2`):
+  - Wadah daftar mentok 1314px. Dengan semua kolom aktif, lajur perangkat 117px di lebar apa
+    pun, jadi "MacBook Pro 13" 2019" kehilangan tahun modelnya.
+  - Hanya baris yang namanya dua baris DAN berlencana ambil yang meninggi (78 → 98px). Selebihnya
+    segmen catatan tiga baris yang menentukan tinggi.
+
+**Pelajaran: area sentuh yang membesar mengubah lajur tetap.** Lajur aksi 10rem dihitung dari
+empat tombol 40px. Menaikkan `.iconBtn` ke 44px untuk tablet sentuh membuat tombol keempat
+meluap 16px di 1024 dan 1366 sentuh. Tak ada luberan dokumen, jadi `audit-zoom` tidak akan
+menangkapnya. Ukur tepi kiri anak terhadap tepi kiri lajur. Aturan 44px global hanya mengenai
+`<button>`, jadi tautan ikon (`<a class="iconBtn">`) harus diperbesar sendiri.
+
+**Verifikasi (demo):**
+- **Ponsel:**
+  - Tiket pertama y=651 → 373 di 390×844 (395px terlihat). Di 320×740 tetap y=373 (291px
+    terlihat).
+  - Readout satu baris 84px (65px di 430). Luberan dokumen 0 di 320–744.
+- **Dok:** 138×44 di (236, 716) pada 390. Dashboard: tampil di 390/600, hilang di 834.
+- **Chip:** Servis dan Pelanggan memudar di kanan, kiri ikut setelah digeser. Inventori (tanpa
+  luapan) dan desktop tanpa pudar.
+- **Target sentuh 834/1112:** sisa hanya tautan `Term` sebaris (dikecualikan).
+- **Lajur aksi:** luapan 0 di 834/1024/1112/1366 sentuh dan 1280–1920 mouse. Judul terpotong 0.
+- **Detector:** `impeccable detect --scope layout` bersih.
+
+#decision #ui #layout #mobile #services

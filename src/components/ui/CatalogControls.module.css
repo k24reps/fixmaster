@@ -41,6 +41,51 @@
   padding-bottom: 2px;
   scrollbar-width: thin;
 }
+/* Chip yang tersembunyi di luar tepi memudar, tanda baris bisa digeser
+   (terukur di 390px: Servis menyembunyikan 314px — Pengerjaan, Selesai,
+   Lunas — dan Pelanggan 235px tanpa tanda apa pun). Dua panjang terdaftar
+   dianimasikan oleh guliran baris itu sendiri: kiri muncul setelah digeser,
+   kanan hilang di ujung. Tanpa luapan timeline tak aktif, jadi nilai
+   dasarnya (0) berarti tanpa pudar. */
+@property --chips-fade-l {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --chips-fade-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@supports (animation-timeline: scroll()) {
+  .categoryBar {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--chips-fade-l),
+      black calc(100% - var(--chips-fade-r)),
+      transparent
+    );
+    animation: chips-edge linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@keyframes chips-edge {
+  0% {
+    --chips-fade-l: 0px;
+    --chips-fade-r: var(--space-8);
+  }
+  6% {
+    --chips-fade-l: var(--space-8);
+  }
+  94% {
+    --chips-fade-r: var(--space-8);
+  }
+  100% {
+    --chips-fade-l: var(--space-8);
+    --chips-fade-r: 0px;
+  }
+}
 .chip {
   display: inline-flex;
   align-items: center;

@@ -1,3 +1,4 @@
+import { useT } from '@/i18n';
 import { Icon } from './Icon';
 import { CATALOG_VIEWS, type CatalogView } from './catalogView';
 import styles from './CatalogControls.module.css';
@@ -50,6 +51,7 @@ export function CategoryChips({
   label: string;
   labelOf?: (id: string) => string;
 }) {
+  const t = useT();
   if (categories.length < 2) return null;
   const chip = (id: string, text: string, count: number) => (
     <button
@@ -64,7 +66,7 @@ export function CategoryChips({
   );
   return (
     <div className={styles.categoryBar} role="group" aria-label={label}>
-      {chip('all', 'Semua', total)}
+      {chip('all', t('common.all'), total)}
       {categories.map(([name, count]) => chip(name, labelOf ? labelOf(name) : name, count))}
     </div>
   );

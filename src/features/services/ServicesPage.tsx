@@ -11,6 +11,7 @@ import {
   CategoryChips,
   ConfirmDialog,
 } from '@/components/ui';
+import { ThumbDock } from '@/components/layout/ThumbDock';
 import { repository } from '@/data';
 import { useCollection, useDerivedQuery } from '@/hooks/useCollection';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -286,8 +287,14 @@ export function ServicesPage() {
   // Toko satu orang (mis. paket Solo) tidak butuh filter teknisi.
   const activeTechs = techs.filter((e) => e.active !== false);
   const showTechFilter = activeTechs.length > 1;
-  // Di ponsel teknisi & urutan dilipat ke "Filter lainnya" (CSS); yang aktif ikut dihitung.
-  const foldedOnMobile = [showTechFilter && techFilter !== 'all', sort !== 'newest'].filter(Boolean).length;
+  // Di ponsel teknisi, urutan, Tertahan & arsip dilipat ke tombol filter di
+  // samping kolom cari (CSS); yang aktif ikut dihitung di tombol itu.
+  const foldedOnMobile = [
+    showTechFilter && techFilter !== 'all',
+    sort !== 'newest',
+    stalledOnly,
+    hideClosed,
+  ].filter(Boolean).length;
 
   // Setiap perubahan filter kembali ke potongan pertama daftar.
   const change = (apply: () => void) => {
@@ -605,27 +612,44 @@ export function ServicesPage() {
           if (s) void togglePickup(s, true);
         }}
       />
-      {/* Satu strip readout, bukan lima kartu: di ponsel lima kartu bertumpuk
-          mendorong tiket pertama ke bawah navigasi bawah (nol tiket terlihat). */}
+      {/* Satu strip readout, bukan lima kartu. Di ponsel ia satu baris empat
+          hitungan berlabel pendek; nilai rupiah ada di Dashboard & Laporan. */}
       <dl className={styles.readouts}>
         {[
-          { label: t('services.statTotal'), value: String(stats.total) },
-          { label: t('services.statInProcess'), value: String(stats.inProcess), tone: stats.inProcess > 0 ? 'info' : undefined },
+          { label: t('services.statTotal'), short: t('services.statTotalShort'), value: String(stats.total) },
+          {
+            label: t('services.statInProcess'),
+            short: t('services.statInProcessShort'),
+            value: String(stats.inProcess),
+            tone: stats.inProcess > 0 ? 'info' : undefined,
+          },
           {
             label: t('services.statAwaiting'),
+            short: t('services.statAwaitingShort'),
             value: String(stats.awaitingPickup),
             tone: stats.awaitingPickup > 0 ? 'warning' : undefined,
           },
-          { label: t('services.statDone'), value: String(stats.done) },
+          { label: t('services.statDone'), short: t('services.statDoneShort'), value: String(stats.done) },
           // Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan).
-          { label: t('services.statPaidValue'), value: fmtRp(stats.lunasValue) },
+          { label: t('services.statPaidValue'), value: fmtRp(stats.lunasValue), money: true },
         ].map((r) => (
-          <div key={r.label} className={styles.readout}>
+          <div key={r.label} className={[styles.readout, r.money ? styles.readoutMoney : ''].join(' ')}>
             <dt className={styles.readoutLabel}>
-              {r.tone && <span className={styles.readoutLed} data-tone={r.tone} aria-hidden />}
-              {r.label}
+              {r.short ? (
+                <>
+                  <span className={styles.labelFull}>{r.label}</span>
+                  <span className={styles.labelShort}>{r.short}</span>
+                </>
+              ) : (
+                r.label
+              )}
             </dt>
-            <dd className={styles.readoutValue}>{r.value}</dd>
+            {/* LED menempel ke angka (Lit-Signal), bukan ke label: di ponsel
+                label sempit dan LED-nya dulu membuat "PROSES" meluber. */}
+            <dd className={styles.readoutValue}>
+              {r.tone && <span className={styles.readoutLed} data-tone={r.tone} aria-hidden />}
+              {r.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -640,6 +664,22 @@ export function ServicesPage() {
             aria-label={t('services.searchAria')}
           />
         </div>
+        {/* Ponsel: seluruh filter (termasuk Tertahan & arsip) dilipat ke sini,
+            di samping kolom cari, supaya tiket pertama naik ke layar pertama. */}
+        <button
+          type="button"
+          className={[styles.toggle, styles.phoneMore, moreOpen ? styles.toggleOn : ''].join(' ')}
+          aria-expanded={moreOpen}
+          aria-controls="servis-filter-lainnya"
+          aria-label={t('services.moreFilters')}
+          title={t('services.moreFilters')}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <Icon name="sliders" aria-hidden />
+          {moreActive + foldedOnMobile > 0 && (
+            <span className={styles.toggleCount}>{moreActive + foldedOnMobile}</span>
+          )}
+        </button>
         <div className={styles.toolbarActions}>
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
             {t('services.new')}
@@ -676,7 +716,7 @@ export function ServicesPage() {
         </select>
         <button
           type="button"
-          className={[styles.toggle, stalledOnly ? styles.toggleOn : ''].join(' ')}
+          className={[styles.toggle, styles.foldable, stalledOnly ? styles.toggleOn : ''].join(' ')}
           aria-pressed={stalledOnly}
           onClick={() => change(() => setStalledOnly((v) => !v))}
           title={t('services.stalledHint')}
@@ -686,7 +726,7 @@ export function ServicesPage() {
         </button>
         <button
           type="button"
-          className={[styles.toggle, hideClosed ? styles.toggleOn : ''].join(' ')}
+          className={[styles.toggle, styles.foldable, hideClosed ? styles.toggleOn : ''].join(' ')}
           aria-pressed={hideClosed}
           onClick={() => change(() => setHideClosed((v) => !v))}
           title={t('services.hideClosedHint')}
@@ -695,25 +735,20 @@ export function ServicesPage() {
         </button>
         <button
           type="button"
-          className={[styles.toggle, moreOpen ? styles.toggleOn : ''].join(' ')}
+          className={[styles.toggle, styles.moreBtn, moreOpen ? styles.toggleOn : ''].join(' ')}
           aria-expanded={moreOpen}
           aria-controls="servis-filter-lainnya"
           onClick={() => setMoreOpen((v) => !v)}
         >
           <Icon name="sliders" aria-hidden />
           {t('services.moreFilters')}
-          {moreActive > 0 && (
-            <span className={[styles.toggleCount, styles.desktopCount].join(' ')}>{moreActive}</span>
-          )}
-          {moreActive + foldedOnMobile > 0 && (
-            <span className={[styles.toggleCount, styles.mobileCount].join(' ')}>{moreActive + foldedOnMobile}</span>
-          )}
+          {moreActive > 0 && <span className={styles.toggleCount}>{moreActive}</span>}
         </button>
         {/* Hanya muncul dari tautan Dashboard "unit menunggu diambil". */}
         {pickupFilter === 'awaiting' && (
           <button
             type="button"
-            className={[styles.toggle, styles.toggleOn].join(' ')}
+            className={[styles.toggle, styles.toggleOn, styles.awaitingChip].join(' ')}
             onClick={() => change(() => setPickupFilter('all'))}
             aria-label={t('services.awaitingOffAria')}
             title={t('services.awaitingOffHint')}
@@ -1000,6 +1035,12 @@ export function ServicesPage() {
           </div>
         )}
       </Card>
+
+      <ThumbDock>
+        <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
+          {t('services.new')}
+        </Button>
+      </ThumbDock>
 
       <ServiceModal
         open={editOpen}

@@ -41,7 +41,13 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+.labelShort {
+  display: none;
+}
 .readoutValue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   font-family: var(--font-mono);
   font-size: var(--text-lg);
@@ -151,9 +157,10 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
-/* Hitungan "Filter lainnya" di ponsel ikut menghitung teknisi/urutan yang
-   dilipat ke dalamnya, supaya filter aktif tak pernah tersembunyi diam-diam. */
-.mobileCount {
+/* Tombol filter khusus ponsel di samping kolom cari. Hitungannya ikut
+   menghitung semua yang dilipat ke dalamnya, supaya filter aktif tak pernah
+   tersembunyi diam-diam. */
+.phoneMore {
   display: none;
 }
 .resetBtn {
@@ -483,14 +490,24 @@
   line-height: 1.4;
 }
 .rowCell > strong,
-.rowCell > .sub,
-.rowTitle {
+.rowCell > .sub {
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Nama perangkat boleh dua baris: wadah daftar mentok di 1314px, jadi dengan
+   semua kolom aktif lajurnya hanya 117px di layar selebar apa pun, dan
+   "MacBook Pro 13" 2019" kehilangan tahun modelnya — pembeda antartiket.
+   Baris hanya meninggi bila nama dua baris bertemu lencana ambil (terukur
+   78→98px di demo); selebihnya segmen catatan yang menentukan tinggi. */
 .rowTitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: break-word;
   color: var(--text-primary);
 }
 .rowCell[data-seg='notes'] {
@@ -766,41 +783,89 @@
   color: var(--brand-hover);
 }
 
-@media (max-width: 720px) {
-  .readout {
-    padding: var(--space-2) var(--space-3);
-  }
-  .readoutValue {
-    font-size: var(--text-md);
-  }
-  /* Teknisi & urutan masuk ke "Filter lainnya": tiga baris kontrol dulu ikut
-     mendorong tiket pertama ke bawah navigasi bawah. Toggle cepat tetap di luar. */
-  .filterBar:not([data-more='true']) .select {
-    display: none;
-  }
-  .mobileCount {
-    display: inline;
-  }
-  /* Nomor tiket = pintu ke detail, tapi hanya 17px tinggi (audit-mobile).
-     Padding + margin negatif memperbesar area sentuh ke 45px tanpa menggeser
-     tata letak baris. */
+/* Nomor tiket = pintu ke detail, tapi hanya 17px tinggi (audit-mobile).
+   Padding + margin negatif memperbesar area sentuh ke 45px tanpa menggeser
+   tata letak baris. Tablet sentuh juga butuh: di sana tautannya 50×17, dan
+   ikon "Lihat tiket" (tautan, jadi aturan 44px global <button> tak berlaku)
+   40×40. */
+@media (max-width: 720px), (pointer: coarse) {
   .noLink {
     display: inline-block;
     padding: 14px 8px;
     margin: -14px -8px;
   }
-  .desktopCount {
+  .iconBtn {
+    min-width: var(--control-h);
+    min-height: var(--control-h);
+  }
+}
+/* Empat ikon 44px butuh 176px, lajur tetap 10rem hanya 160px: di tablet sentuh
+   1024 & 1366 tombol keempat meluap 16px keluar baris. Hanya selama lajurnya
+   tetap; ≤860px aksi turun ke baris kedua dengan lebar auto. */
+@media (pointer: coarse) {
+  @container svcRows (min-width: 861px) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) 11rem 9rem calc(var(--control-h) * 4);
+    }
+    .rowNoCost {
+      grid-template-columns: minmax(0, 1fr) 11rem calc(var(--control-h) * 4);
+    }
+    .rowHead .rowActions {
+      padding-right: 14px;
+    }
+  }
+}
+
+/* Ponsel: tiket pertama dulu mulai di y=651 pada 390×844 (117px terlihat di
+   atas menu bawah). Strip readout satu baris, semua filter dilipat ke tombol
+   di samping kolom cari, Servis Baru pindah ke dok zona jempol (ThumbDock),
+   dan jarak antarblok mengecil. Ambang ini ikut menu bawah, bukan lebar wadah. */
+@media (max-width: 720px) {
+  .wrap {
+    gap: var(--space-3);
+  }
+  .readouts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .readoutMoney,
+  .labelFull {
+    display: none;
+  }
+  .labelShort {
+    display: inline;
+  }
+  .readout {
+    padding: var(--space-2) var(--space-3);
+  }
+  .readoutLabel {
+    letter-spacing: 0.02em;
+  }
+  .readoutValue {
+    font-size: var(--text-md);
+  }
+  .filterBar:not([data-more='true']) .select,
+  .filterBar:not([data-more='true']) .foldable,
+  .filterBar .moreBtn,
+  .toolbarActions {
+    display: none;
+  }
+  /* Tanpa isi yang tampil (tak ada chip "Menunggu diambil" atau Reset), baris
+     filter tidak boleh tetap memakan satu jarak antarblok. */
+  .filterBar:not([data-more='true']):not(:has(.resetBtn, .awaitingChip)) {
     display: none;
   }
   .toolbar {
+    flex-wrap: nowrap;
     align-items: stretch;
   }
-  /* "Servis Baru" selebar baris, tepat di bawah kolom cari. */
-  .toolbarActions {
-    width: 100%;
+  .search {
+    min-width: 0;
   }
-  .toolbarActions > :last-child {
-    flex: 1;
+  .phoneMore {
+    display: inline-flex;
+    flex: none;
+    justify-content: center;
+    min-width: var(--control-h);
   }
   .search,
   .select {
@@ -835,10 +900,6 @@
   .dateInput {
     flex: 1;
     min-width: 0;
-  }
-  .iconBtn {
-    min-width: var(--control-h);
-    min-height: var(--control-h);
   }
 }
 
