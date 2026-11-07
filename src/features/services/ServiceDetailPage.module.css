@@ -121,7 +121,7 @@
   color: var(--success-text);
 }
 .notPicked {
-  color: var(--warning-text);
+  color: var(--accent-text);
 }
 
 /* Status stamp */

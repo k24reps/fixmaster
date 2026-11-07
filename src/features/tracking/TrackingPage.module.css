@@ -322,9 +322,9 @@
   width: 9px;
   height: 9px;
   border-radius: var(--radius-full);
-  background: var(--brand);
-  box-shadow: 0 0 9px var(--brand);
+  background: var(--readout-muted);
 }
+.led[data-tone='accent'] { background: var(--accent); box-shadow: 0 0 9px var(--accent); }
 .led[data-tone='success'] { background: var(--success); box-shadow: 0 0 9px var(--success); }
 .led[data-tone='warning'] { background: var(--warning); box-shadow: 0 0 9px var(--warning); }
 .led[data-tone='danger'] { background: var(--danger); box-shadow: 0 0 9px var(--danger); }
@@ -415,8 +415,8 @@
   border: 3px solid var(--bg-surface);
   background: var(--text-muted);
 }
-.dot[data-tone='brand'] { background: var(--brand); }
 .dot[data-tone='info'] { background: var(--info); }
+.dot[data-tone='accent'] { background: var(--accent); }
 .dot[data-tone='warning'] { background: var(--warning); }
 .dot[data-tone='success'] { background: var(--success); }
 .dot[data-tone='danger'] { background: var(--danger); }

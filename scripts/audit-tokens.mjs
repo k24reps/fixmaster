@@ -4,7 +4,7 @@
  *
  *  1. KONTRAS pasangan warna yang benar-benar dirender UI (WCAG AA).
  *  2. PEMISAHAN antar warna sinyal. `STATUS_TONE` (lib/business/services.ts)
- *     memetakan 8 status servis ke hanya 5 rona, jadi dua warna yang terlalu
+ *     memetakan 8 status servis ke 6 nada (abu + 5 rona), jadi dua warna yang terlalu
  *     mirip langsung menjadi dua status yang tak terbedakan. Ini pernah nyata:
  *     --warning #f59e0b vs --brand #f5a623 hanya berjarak dE 0.018, membuat
  *     "Diterima", "Konfirmasi Biaya", dan "Tunggu Sparepart" tampil sama.
@@ -127,8 +127,10 @@ const PAIRS = [
 ];
 
 /* Warna sinyal harus saling terpisah: STATUS_TONE memetakan 8 status servis ke
-   hanya 5 rona, jadi dua warna yang berdekatan langsung jadi dua status yang
-   tak terbedakan.
+   6 nada (abu + 5 rona), jadi dua warna yang berdekatan langsung jadi dua
+   status yang tak terbedakan. Accent (cyan) = Selesai/siap ambil, harus jauh
+   dari Lunas (success) dan Pengerjaan (info). Brand bukan nada status, tapi
+   pil amber aksi/pilihan sering bersebelahan dengan pil status.
    Jaraknya diukur sebagai delta-E OKLab, bukan selisih derajat rona HSV: di
    wilayah emas/oranye, HSV memampatkan warna-warna yang mata jelas bedakan ke
    dalam sedikit derajat, sehingga emas vs oranye terbaca "hanya 10 derajat"
@@ -136,18 +138,18 @@ const PAIRS = [
    #f5a623 vs #f59e0b, yang praktis warna sama dan dicetak sebagai pembanding. */
 const DE_MIN = 0.1;
 const DE_PAIRS = [
-  ['--brand', '--warning', 'Diterima vs Konfirmasi/Tunggu Sparepart'],
-  ['--warning', '--danger', 'peringatan vs batal'],
-  ['--info', '--accent', 'info vs aksen'],
-  ['--success', '--accent', 'success vs aksen'],
-  ['--brand', '--danger', 'Diterima vs Dibatalkan'],
-  ['--success', '--info', 'selesai vs dikerjakan'],
+  ['--brand', '--warning', 'aksi/pilihan brand vs Konfirmasi/Tunggu Sparepart'],
+  ['--warning', '--danger', 'Konfirmasi/Tunggu vs Dibatalkan'],
+  ['--info', '--accent', 'Pengerjaan vs Selesai (siap ambil)'],
+  ['--success', '--accent', 'Lunas vs Selesai (siap ambil)'],
+  ['--brand', '--danger', 'aksi/pilihan brand vs Dibatalkan'],
+  ['--success', '--info', 'Lunas vs Pengerjaan'],
   /* Versi teks dari rona yang sama — inilah yang benar-benar bersebelahan di
      pil status, jadi ia harus lolos pemisahan yang sama, bukan hanya isiannya. */
-  ['--brand-text', '--warning-text', 'teks: Diterima vs Konfirmasi/Tunggu'],
-  ['--warning-text', '--danger-text', 'teks: peringatan vs batal'],
-  ['--success-text', '--accent-text', 'teks: success vs aksen'],
-  ['--info-text', '--accent-text', 'teks: info vs aksen'],
+  ['--brand-text', '--warning-text', 'teks: brand vs Konfirmasi/Tunggu'],
+  ['--warning-text', '--danger-text', 'teks: Konfirmasi/Tunggu vs Dibatalkan'],
+  ['--success-text', '--accent-text', 'teks: Lunas vs Selesai'],
+  ['--info-text', '--accent-text', 'teks: Pengerjaan vs Selesai'],
 ];
 
 /* sRGB -> OKLab (Björn Ottosson). */

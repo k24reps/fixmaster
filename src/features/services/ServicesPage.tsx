@@ -498,7 +498,7 @@ export function ServicesPage() {
       }}
       title={t('services.statusHint')}
     >
-      <Badge tone={STATUS_TONE[s.status] as 'brand'} dot>
+      <Badge tone={STATUS_TONE[s.status]} dot>
         {t(`statusLabel.${s.status}`)}
       </Badge>
       <Icon name="pen" aria-hidden />
@@ -629,7 +629,7 @@ export function ServicesPage() {
             label: t('services.statAwaiting'),
             short: t('services.statAwaitingShort'),
             value: stats.awaitingPickup,
-            tone: stats.awaitingPickup > 0 ? 'warning' : undefined,
+            tone: stats.awaitingPickup > 0 ? 'accent' : undefined,
           },
           { label: t('services.statDone'), short: t('services.statDoneShort'), value: stats.done },
           // Jumlah biaya final tiket Lunas — bukan "pendapatan" (itu kas masuk per bulan di Dashboard/Keuangan).

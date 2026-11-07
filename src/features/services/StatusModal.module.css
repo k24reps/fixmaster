@@ -258,9 +258,9 @@
   border: 2px solid var(--bg-elevated);
   background: var(--text-muted);
 }
-.dot[data-tone='brand'] { background: var(--brand); }
 .dot[data-tone='info'] { background: var(--info); }
 .dot[data-tone='warning'] { background: var(--warning); }
+.dot[data-tone='accent'] { background: var(--accent); }
 .dot[data-tone='success'] { background: var(--success); }
 .dot[data-tone='danger'] { background: var(--danger); }
 .dot[data-tone='neutral'] { background: var(--text-muted); }
@@ -442,10 +442,11 @@
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
 }
-.channel[data-tone='brand'] {
-  --tone: var(--brand);
-  --tone-soft: var(--brand-soft);
-  --tone-text: var(--brand-text);
+/* Diterima: LED tetap abu (belum disentuh), tapi saat terpilih ia butuh
+   isian supaya pilihannya terbaca. */
+.channel[data-tone='neutral'] {
+  --tone-soft: var(--bg-surface-2);
+  --tone-text: var(--text-primary);
 }
 .channel[data-tone='info'] {
   --tone: var(--info);
@@ -456,6 +457,11 @@
   --tone: var(--warning);
   --tone-soft: var(--warning-soft);
   --tone-text: var(--warning-text);
+}
+.channel[data-tone='accent'] {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+  --tone-text: var(--accent-text);
 }
 .channel[data-tone='success'] {
   --tone: var(--success);

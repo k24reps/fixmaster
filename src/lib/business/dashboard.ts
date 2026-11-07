@@ -128,7 +128,7 @@ export function serviceSummary(services: Service[], fromISO: string, toISO: stri
 
 export interface Alert {
   kind: 'confirmation' | 'out-of-stock' | 'low-stock' | 'awaiting-pickup';
-  tone: 'warning' | 'danger' | 'info';
+  tone: 'warning' | 'danger' | 'info' | 'accent';
   icon: string;
   count: number;
   href: string;
@@ -174,7 +174,7 @@ export function computeAlerts(
   if (summary.awaitingPickup > 0) {
     alerts.push({
       kind: 'awaiting-pickup',
-      tone: 'info',
+      tone: 'accent',
       icon: 'box',
       count: summary.awaitingPickup,
       href: '/services?pickup=awaiting',

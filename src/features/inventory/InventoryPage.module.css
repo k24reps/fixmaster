@@ -80,13 +80,13 @@
   width: 3px;
 }
 .bin.ok::before {
-  background: var(--accent);
+  background: var(--success);
 }
 .bin.low::before {
-  background: var(--amber-500);
+  background: var(--warning);
 }
 .bin.out::before {
-  background: var(--red-500);
+  background: var(--danger);
 }
 
 /* ----- Label header: category tab + LED ----- */

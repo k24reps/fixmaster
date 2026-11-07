@@ -550,13 +550,22 @@ export const STATUS_LABELS: Record<ServiceStatus, string> = {
   batal: 'Dibatalkan',
 };
 
-export const STATUS_TONE: Record<ServiceStatus, string> = {
-  diterima: 'brand',
+/**
+ * Satu peta nada status untuk semua halaman. Nada = apa yang diminta dari
+ * pembacanya: abu = belum disentuh, info = sedang dikerjakan, warning =
+ * menunggu orang lain, accent (cyan) = siap diambil pelanggan, success =
+ * tuntas dan dibayar, danger = batal. Selesai dan Lunas dulu sama-sama hijau,
+ * jadi rak "siap ambil" tak terbedakan dari tiket yang sudah tutup buku.
+ */
+export type StatusTone = 'neutral' | 'info' | 'warning' | 'accent' | 'success' | 'danger';
+
+export const STATUS_TONE: Record<ServiceStatus, StatusTone> = {
+  diterima: 'neutral',
   diagnosa: 'info',
   konfirmasi: 'warning',
   tunggu: 'warning',
   pengerjaan: 'info',
-  selesai: 'success',
+  selesai: 'accent',
   lunas: 'success',
   batal: 'danger',
 };

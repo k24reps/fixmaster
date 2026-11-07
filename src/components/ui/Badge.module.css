@@ -52,3 +52,9 @@
   color: var(--info-text);
   border-color: color-mix(in srgb, var(--info) 30%, transparent);
 }
+/* Siap ambil: cyan readout, satu-satunya status yang memakainya. */
+.accent {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}

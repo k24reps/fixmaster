@@ -165,6 +165,8 @@ dengan brand `#f5a623` — berjarak hanya **dE 0.018** di OKLab. Lewat `STATUS_T
 (`lib/business/services.ts`), yang memetakan 8 status servis ke hanya 5 rona, ini
 membuat **Diterima**, **Konfirmasi Biaya**, dan **Tunggu Sparepart** tampil
 identik. Warning digeser ke oranye; jaraknya kini dE 0.10+ di kedua tema.
+_(7 Nov 2026: peta kini 6 nada. Diterima = abu, Selesai = cyan "siap ambil", Lunas =
+hijau; brand amber bukan lagi nada status. Lihat Decisions & Bug Fixes, Tahap 2.)_
 
 **Netral diberi suhu.** _(Diganti 6 Nov 2026: netral kini mengikuti material VOLT,
 lihat bagian Palet dari VOLT Probe.)_ Dark bergeser dari abu netral ke graphite baja (~218deg)

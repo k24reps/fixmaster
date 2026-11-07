@@ -444,7 +444,7 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
               </div>
               <footer>
                 <span>
-                  <span className={styles.liveLed} aria-hidden />{' '}
+                  <span className={[styles.liveLed, styles.workLed].join(' ')} aria-hidden />{' '}
                   {t('landingV2.jobStatus')}
                 </span>
                 <span>{t('landingV2.ticketUpdated')}</span>

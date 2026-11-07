@@ -182,7 +182,7 @@ Frontmatter values are the dark theme unless prefixed `light-`. The light theme 
 - **Amber Lit** (`--brand-text` in dark): The readable amber for text and iconography on dark surfaces. In light theme `--brand-text` drops all the way to `--brand-900` (`#7c4d12`) because bright amber on pale steel fails contrast.
 
 ### Secondary
-- **Diagnostic Cyan** (`--accent`): The instrument voice — liveness, measurement, "the machine is reporting". Online LEDs, section labels, trace lines, the "PALING LENGKAP" marker. Light theme uses `--accent-600` with a much darker text pair (`--accent-700`, `#006e63`, on the LCD's 183° hue).
+- **Diagnostic Cyan** (`--accent`): The instrument voice — liveness, measurement, "the machine is reporting". Online LEDs, section labels, trace lines, the "PALING LENGKAP" marker, and exactly one status: **Selesai / siap ambil** (the device is ready on the shelf, waiting for the customer). Light theme uses `--accent-600` with a much darker text pair (`--accent-700`, `#006e63`, on the LCD's 183° hue).
 
 ### Tertiary
 The **signal set** — a fixed four-color status vocabulary shared by every module, so a green means the same thing on the dashboard as it does in inventory.
@@ -190,6 +190,8 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 - **Signal Warn** (`--warning`): needs attention, running low, awaiting confirmation.
 - **Signal Crit** (`--danger`): failed, overdue, out of stock, destructive action.
 - **Signal Info** (`--info`): neutral in-progress state and non-urgent classification.
+
+**One status map (`STATUS_TONE`, 7 Nov 2026).** The eight service statuses resolve to six tones, and every page reads the same map: Diterima → neutral grey LED (nothing touched yet), Diagnosa and Pengerjaan → info (work in progress), Konfirmasi Biaya and Tunggu Sparepart → warning (waiting on someone else), Selesai → accent (ready for pickup), Lunas → success (closed and paid), Dibatalkan → danger. Anything derived from "ready for pickup" uses accent too: the dashboard alert, the Servis summary cell, the "Belum diambil" readout. Selesai and Lunas used to share green, which hid the shelf of devices waiting for their owners among closed tickets. Brand amber is not a status tone.
 
 ### Neutral
 - **Graphite Base / App / Surface / Raised** (`--bg-base` → `--bg-elevated`): A four-step tonal ladder that does the work shadows do elsewhere. Light theme inverts the ladder to brushed aluminium (`#d9dde2` → `#ffffff`), and notably `--bg-base` is *darker* than `--bg-app` in light mode — recessed wells stay recessed in both themes.
@@ -301,7 +303,7 @@ Three recurring silhouettes define the form language:
 - **Style:** Full pill (`--radius-full`), mono uppercase at 12px with 0.045em tracking, soft tinted background (`--*-soft`), matching text token, and a border mixed at 30% of the signal color.
 - **State:** An optional 7px `currentColor` dot leads the label — the badge's own LED.
 - **No glow:** The badge and its dot never carry a `box-shadow`. A pill with border, dot, uppercase, *and* glow is the generic AI capsule; the glow is the element FixMaster leaves out.
-- **Variants:** neutral, brand, success, warning, danger, info. There is no "outline" or "solid" axis; the tint-plus-border treatment is the only badge.
+- **Variants:** neutral, brand, success, warning, danger, info, accent (status Selesai only). There is no "outline" or "solid" axis; the tint-plus-border treatment is the only badge.
 
 ### Cards / Containers
 - **Corner Style:** `--radius-lg` (16px).

@@ -196,6 +196,10 @@
   background: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft), 0 0 12px var(--accent);
 }
+.liveLed.workLed {
+  background: var(--info);
+  box-shadow: 0 0 0 3px var(--info-soft), 0 0 12px var(--info);
+}
 
 .hero {
   position: relative;
@@ -386,10 +390,11 @@
   font-size: var(--text-xs);
 }
 
+/* Contoh tiket berstatus Pengerjaan: nada info, sama dengan aplikasinya. */
 .jobStatus {
   padding: 6px 9px;
-  color: var(--accent-text);
-  background: var(--accent-soft);
+  color: var(--info-text);
+  background: var(--info-soft);
   border-radius: var(--radius-full);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -440,9 +445,9 @@
 }
 
 .progressRail .progressLive {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 10px var(--accent);
+  border-color: var(--info);
+  background: var(--info);
+  box-shadow: 0 0 0 4px var(--info-soft), 0 0 10px var(--info);
 }
 
 .progressLabels {

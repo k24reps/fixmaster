@@ -790,6 +790,7 @@ a.heroStat:hover {
 .alertLed[data-tone='warning'] { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
 .alertLed[data-tone='danger'] { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
 .alertLed[data-tone='info'] { background: var(--info); box-shadow: 0 0 7px var(--info); }
+.alertLed[data-tone='accent'] { background: var(--accent); box-shadow: 0 0 7px var(--accent); }
 .alertLed[data-tone='success'] { background: var(--success); box-shadow: 0 0 7px var(--success); }
 .alertCount {
   min-width: 2ch;
@@ -803,6 +804,7 @@ a.heroStat:hover {
 .alertCount[data-tone='warning'] { color: var(--warning-text); }
 .alertCount[data-tone='danger'] { color: var(--danger-text); }
 .alertCount[data-tone='info'] { color: var(--info-text); }
+.alertCount[data-tone='accent'] { color: var(--accent-text); }
 .alertCopy {
   display: flex;
   flex: 1;

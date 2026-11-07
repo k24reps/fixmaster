@@ -193,8 +193,8 @@ export function TrackingPage() {
     : null;
   const nextStep = service ? nextStepFor(service.status, service.pickedUp) : null;
   const statusTone = service
-    ? (STATUS_TONE[service.status as keyof typeof STATUS_TONE] ?? 'brand')
-    : 'brand';
+    ? (STATUS_TONE[service.status as keyof typeof STATUS_TONE] ?? 'neutral')
+    : 'neutral';
   const statusLabel = service?.pickedUp
     ? 'Sudah Diambil'
     : service

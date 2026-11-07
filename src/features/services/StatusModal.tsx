@@ -801,7 +801,7 @@ export function StatusModal({
       <div className={styles.body}>
         <div className={styles.current}>
           <span className={styles.label}>{t('serviceStatus.current')}</span>
-          <Badge tone={STATUS_TONE[service.status] as 'brand'}>{t(`statusLabel.${service.status}`)}</Badge>
+          <Badge tone={STATUS_TONE[service.status]}>{t(`statusLabel.${service.status}`)}</Badge>
         </div>
 
         {modes.length > 1 && (

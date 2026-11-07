@@ -4702,4 +4702,41 @@ Pemilik memilih mengerjakan semuanya bertahap, satu commit per tahap.
 **Verifikasi:** `audit-tokens` 0 pelanggaran; `audit-contrast` BERSIH (0 di bawah ambang, termasuk
 menu Tugas); `/privacy`, `/terms`, `/reset-password` 0 gagal di dua tema; build, 724 tes, lint hijau.
 
+### Tahap 2: satu peta nada status
+
+Pemilik memilih nada "siap ambil" sendiri untuk Selesai. `STATUS_TONE`
+(`lib/business/services.ts`) kini bertipe `StatusTone` dan memetakan 8 status ke 6 nada:
+
+| Status | Nada | Artinya bagi pembaca |
+|---|---|---|
+| Diterima | neutral (abu, LED tanpa glow) | belum disentuh |
+| Diagnosa, Pengerjaan | info | sedang dikerjakan |
+| Konfirmasi Biaya, Tunggu Sparepart | warning | menunggu orang lain |
+| Selesai | accent (cyan) | siap diambil pelanggan |
+| Lunas | success | tuntas dan dibayar |
+| Dibatalkan | danger | batal |
+
+- **Kenapa.** Selesai dan Lunas dulu sama-sama hijau, jadi rak "siap ambil" tenggelam di antara
+  tiket yang sudah tutup buku. Diterima dulu amber brand, yang bersaing dengan tombol utama dan
+  melanggar One Amber Rule. Cyan memang suara "instrumen melapor"; perangkat siap di rak adalah
+  laporan semacam itu, dan ia satu-satunya status yang memakainya.
+- **Turunan "siap ambil" ikut accent:** alert Dashboard "menunggu diambil" (dulu info), sel
+  ringkasan Servis "Menunggu diambil" (dulu warning), readout "Belum diambil" di daftar dan detail
+  servis (dulu warning).
+- **Komponen.** `Badge` dapat varian `accent`; `PageSummaryTone` dan tipe `Alert` dapat
+  `accent`. Aturan `data-tone` di LED riwayat pelanggan, spine kartu servis ponsel, titik riwayat
+  dan kanal StatusModal, serta LED dan titik Lacak dapat `accent`; aturan `brand` dibuang. Kanal
+  `neutral` diberi isian `--bg-surface-2` saat terpilih. Cast `as 'brand'` di empat pemakai
+  hilang karena tipenya kini pas.
+- **Cyan dicabut dari yang bukan status.** Spine rak Inventori "stok aman" → `--success`
+  (rak menipis/habis sekalian dari primitif ke `--warning`/`--danger`). Contoh tiket di landing
+  berstatus Pengerjaan → pil, rel progres, dan LED kaki memakai info. LED Lacak tanpa status
+  → `--readout-muted` (dulu brand). Spine kartu servis ponsel tak lagi memakai primitif.
+- **Gerbang.** Label pasangan dE di `audit-tokens` ditulis ulang per status. Jarak terdekat:
+  Lunas vs Selesai 0.140 (teks 0.118), Pengerjaan vs Selesai 0.230 (teks 0.174).
+
+**Verifikasi:** `audit-tokens` 0 pelanggaran; `audit-contrast` BERSIH; DOM dua tema: badge
+Diterima abu, Pengerjaan biru, Konfirmasi oranye, Selesai cyan (`#68e3e0` gelap / `#006e63`
+terang), Lunas hijau; LED alert Dashboard menunggu diambil = accent; build, 724 tes, lint hijau.
+
 #decision #ui #color #a11y #critique

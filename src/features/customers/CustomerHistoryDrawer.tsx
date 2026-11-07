@@ -114,7 +114,7 @@ export function CustomerHistoryDrawer({ open, onClose, customer, services, servi
                     <div className={styles.ticketMain}>
                       <div className={styles.ticketTop}>
                         <span className={styles.ticketNo}>{s.serviceNo}</span>
-                        <Badge tone={STATUS_TONE[s.status] as 'brand'}>
+                        <Badge tone={STATUS_TONE[s.status]}>
                           {STATUS_LABELS[s.status]}
                         </Badge>
                       </div>

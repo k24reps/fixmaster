@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import styles from './Badge.module.css';
 
-type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'neutral';
 
 interface BadgeProps {
   children: ReactNode;

@@ -145,9 +145,9 @@
   flex-shrink: 0;
   background: var(--text-muted);
 }
-.led[data-tone='brand'] { background: var(--brand); box-shadow: 0 0 7px var(--brand); }
 .led[data-tone='info'] { background: var(--info); box-shadow: 0 0 7px var(--info); }
 .led[data-tone='warning'] { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
+.led[data-tone='accent'] { background: var(--accent); box-shadow: 0 0 7px var(--accent); }
 .led[data-tone='success'] { background: var(--success); box-shadow: 0 0 7px var(--success); }
 .led[data-tone='danger'] { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
 

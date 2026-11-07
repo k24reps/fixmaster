@@ -529,7 +529,7 @@ export function DashboardPage() {
                             <strong>{service.device}</strong>
                             <small>{service.customerName} · {fmtDate(localDateOf(service.createdAt))}</small>
                           </span>
-                          <Badge tone={STATUS_TONE[service.status] as 'brand'} dot>
+                          <Badge tone={STATUS_TONE[service.status]} dot>
                             {STATUS_LABELS[service.status as ServiceStatus]}
                           </Badge>
                           <Icon name="arrow-right" className={styles.recentArrow} aria-hidden />

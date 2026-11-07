@@ -63,6 +63,10 @@
   background: var(--warning);
   box-shadow: 0 0 7px var(--warning);
 }
+.led[data-tone='accent'] {
+  background: var(--accent);
+  box-shadow: 0 0 7px var(--accent);
+}
 .led[data-tone='danger'] {
   background: var(--danger);
   box-shadow: 0 0 7px var(--danger);

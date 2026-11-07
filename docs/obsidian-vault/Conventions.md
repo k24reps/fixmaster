@@ -96,7 +96,7 @@ BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguha
 
 `audit-tokens` memeriksa kontras pasangan token **dan** pemisahan antar warna sinyal
 (dE OKLab) — rona yang terlalu mirip langsung membuat status servis tak terbedakan,
-karena `STATUS_TONE` memetakan 8 status ke hanya 5 rona. `audit-contrast` mengukur DOM
+karena `STATUS_TONE` memetakan 8 status ke 6 nada (abu + 5 rona). `audit-contrast` mengukur DOM
 sungguhan, menangkap racikan `color-mix`/lapisan transparan yang tak terlihat dari daftar
 token; ia pernah menemukan 18 elemen yang diloloskan gerbang token. Bandingkan dengan
 palet lama lewat `BASELINE=<tokens.css lama>` untuk memisahkan regresi baru dari warisan.

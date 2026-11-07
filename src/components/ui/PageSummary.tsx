@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import styles from './PageSummary.module.css';
 
-export type PageSummaryTone = 'info' | 'warning' | 'danger' | 'success';
+export type PageSummaryTone = 'info' | 'warning' | 'accent' | 'danger' | 'success';
 
 export interface PageSummaryItem {
   label: string;

@@ -89,7 +89,7 @@ BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kera
 ```
 
 Untuk perubahan **warna/token**, dua gerbang tambahan — `audit-tokens` juga menjaga
-agar warna sinyal tidak saling mirip (`STATUS_TONE` memetakan 8 status ke 5 rona):
+agar warna sinyal tidak saling mirip (`STATUS_TONE` memetakan 8 status ke 6 nada):
 
 ```bash
 node scripts/audit-tokens.mjs                                     # tanpa dev server
