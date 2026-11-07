@@ -308,7 +308,15 @@ export function TasksPage() {
       <div className={styles.tabs}>
         <button className={[styles.tab, tab === 'today' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('today')}>
           Tugas Hari Ini
-          {todayTasks.length > 0 && <Badge tone="danger">{todayTasks.length}</Badge>}
+          {/* Nada sama dengan rail (useNavSignals): merah hanya bila ada yang
+              telat; tugas yang jatuh tempo hari ini cukup peringatan. */}
+          {todayTasks.length > 0 && (
+            <span className={styles.tabCount}>
+              <Badge tone={todayTasks.some((i) => isOverdue(i, today)) ? 'danger' : 'warning'}>
+                {todayTasks.length}
+              </Badge>
+            </span>
+          )}
         </button>
         {canManage && (
           <button className={[styles.tab, tab === 'templates' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('templates')}>

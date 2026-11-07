@@ -4770,3 +4770,42 @@ recorder Log.
 build, 724 tes, lint hijau; foto Servis/Laporan/Absensi/Detail dua tema.
 
 #decision #ui #color #a11y #critique
+
+### Tahap 4: pengeluaran netral, merah hanya untuk yang salah
+
+Pilihan pemilik: **netral dengan tanda −**. Pengeluaran rutin (sewa, gaji, belanja stok) adalah
+biaya wajar, bukan kegagalan; dulu Keuangan dan Laporan menyala merah tiap bulan, sementara kas
+bersih −Rp 2.100.000 tampil putih dengan spine cyan.
+
+- **Keuangan:** nominal pengeluaran (`.exp`) → `--text-primary` dengan tanda −; spine sel
+  ringkasan dan baris pita → `--text-secondary` (beda dari spine transfer `--text-muted`); spine
+  pemasukan → `--success` (dulu primitif `--green-500`). Kas bersih: spine `--text-muted` selama
+  positif; saat negatif `data-tone='warn'` → spine `--warning`, angka `--warning-text`, dan LED
+  `.netLed` menyala di depan angka.
+- **Laporan:** satu kelas `.exp` dulu dipakai untuk tiga arti; kini dipisah: `.exp` = arus keluar
+  (netral), `.neg` = angka bersih negatif (peringatan: cabang rugi, delta memburuk, LED vonis),
+  `.crit` = stok di bawah minimum (bahaya). Kartu metrik: hanya Pemasukan hijau; Pengeluaran dan
+  Penjualan kasir netral (LED padam, spine `--border-strong`); Arus kas bersih netral, peringatan
+  bila negatif. Tipe Metric kini `'success' | 'neutral' | 'warning'`. Pil PENGELUARAN di rincian
+  transaksi netral; batang kategori pengeluaran `--text-secondary`. Primitif palet di kartu metrik,
+  batang, dan gauge break-even → token peran (LED vonis tetap primitif: panel selalu gelap).
+- **Grafik tren** (`TrendChart`): seri pengeluaran garis putus `--text-secondary`, bukan merah;
+  pola putus-putus sudah membedakan seri tanpa warna.
+- **Dashboard:** "Pengeluaran" di panel hero → `--readout-text`. Defisit kas bersih kini nada
+  `warn` (dulu `crit`, merah berdenyut); impas tidak menyala.
+- **Tugas:** badge hitungan tab dulu selalu merah; kini sama dengan rail (`useNavSignals`): merah
+  bila ada yang telat, peringatan bila hanya jatuh tempo hari ini. Badge diberi alas buram
+  `.tabCount` (`--bg-surface`): latar lembut badge semi-transparan dan bercampur dengan tab aktif
+  amber jadi 4,35:1 di tema gelap (`audit-contrast` menangkapnya).
+- **Log:** LED recorder → cyan (`--accent`, suara instrumen), label EVENT RECORDER → `--text-muted`.
+  Merah di halaman itu kini hanya peristiwa berbahaya (hapus, batal).
+
+**Merah yang sengaja tetap:** piutang 31+ hari, stok di bawah minimum, hitung laci kurang, transfer
+dibatalkan, vonis break-even "rugi" (rugi operasional, beda dari kas negatif sesaat), peristiwa
+hapus/batal di Log, tag "Telat" Tugas.
+
+**Verifikasi:** `audit-tokens` 0 pelanggaran; `audit-contrast` BERSIH setelah alas badge Tugas;
+build, 724 tes, lint hijau; foto Dashboard/Keuangan/Laporan/Tugas/Log dua tema, plus Laporan
+rentang 5 Nov (hanya pengeluaran) untuk keadaan kas negatif.
+
+#decision #ui #color #a11y #critique

@@ -348,8 +348,10 @@ a.heroStat:hover {
 .statIn {
   color: var(--green-400);
 }
+/* Panel hero selalu gelap: pengeluaran bertinta readout biasa, bukan merah.
+   Labelnya sudah bilang "Pengeluaran"; merah membuatnya terbaca sebagai alarm. */
 .statOut {
-  color: var(--red-400);
+  color: var(--readout-text);
 }
 /* Break-even bulan ini (owner): satu baris readout di layar hero, melipat
    sendiri saat sempit (flex-wrap, tanpa breakpoint). */
@@ -463,9 +465,6 @@ a.heroStat:hover {
 .hero.warn .heroLed { background: var(--amber-400); box-shadow: 0 0 9px var(--amber-400); }
 .hero.warn .heroValue { color: var(--amber-400); }
 .hero.warn .heroTag { color: var(--amber-400); }
-.hero.crit .heroLed { background: var(--red-400); box-shadow: 0 0 9px var(--red-400); animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles); }
-.hero.crit .heroValue { color: var(--red-400); }
-.hero.crit .heroTag { color: var(--red-400); }
 
 /* ---------- Strip readout (Design System) + Meja saya ----------
    Satu panel, sel dipisah seam titik, tiap sel menaut ke daftarnya. Dulu lima

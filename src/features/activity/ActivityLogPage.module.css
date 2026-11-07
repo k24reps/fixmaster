@@ -69,8 +69,12 @@
   height: 12px;
   border-radius: 50%;
   flex: none;
-  background: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-soft), 0 0 10px var(--danger);
+  /* Instrumen yang sedang merekam: suara cyan alat ukur, bukan merah.
+     Merah di halaman ini dicadangkan untuk peristiwa berbahaya (hapus,
+     batal) di daftar di bawahnya; LED merah dekoratif di kepala halaman
+     membuat setiap kunjungan terbaca seperti alarm. */
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 10px var(--accent);
   animation: recBlink 1.4s var(--ease-in-out) var(--pulse-cycles);
 }
 @keyframes recBlink {
@@ -86,7 +90,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.22em;
-  color: var(--danger-text);
+  color: var(--text-muted);
 }
 .recTitle strong {
   font-family: var(--font-display);

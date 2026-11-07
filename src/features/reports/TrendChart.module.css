@@ -19,13 +19,15 @@
   font-size: var(--text-xs);
 }
 .incLine {
-  stroke: var(--green-400);
+  stroke: var(--success);
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+/* Pengeluaran = garis putus tinta kedua, bukan merah: arus keluar rutin
+   bukan kegagalan. Garis putus-putus sudah membedakan seri tanpa warna. */
 .expLine {
-  stroke: var(--red-400);
+  stroke: var(--text-secondary);
   stroke-width: 2;
   stroke-dasharray: 4 3;
   stroke-linejoin: round;
@@ -41,12 +43,12 @@
   stroke-dasharray: 3 3;
 }
 .incDot {
-  fill: var(--green-400);
+  fill: var(--success);
   stroke: var(--bg-surface);
   stroke-width: 2;
 }
 .expDot {
-  fill: var(--red-400);
+  fill: var(--text-secondary);
   stroke: var(--bg-surface);
   stroke-width: 2;
 }
@@ -69,10 +71,10 @@
   border-radius: var(--radius-full);
 }
 .incSwatch {
-  background: var(--green-400);
+  background: var(--success);
 }
 .expSwatch {
-  background: var(--red-400);
+  background: var(--text-secondary);
 }
 .readout {
   margin-left: auto;
@@ -81,8 +83,8 @@
   color: var(--text-muted);
 }
 .inc {
-  color: var(--green-400);
+  color: var(--success-text);
 }
 .exp {
-  color: var(--red-400);
+  color: var(--text-primary);
 }

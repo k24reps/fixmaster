@@ -41,6 +41,14 @@
   color: var(--brand-hover);
   border-color: var(--border-brand);
 }
+/* Alas buram untuk badge hitungan: latar lembut badge itu semi-transparan,
+   dan di atas tab aktif yang amber ia bercampur jadi cokelat (teks 4,35:1,
+   tema gelap). Di atas permukaan kartu ia kembali ke warna yang sudah lolos. */
+.tabCount {
+  display: inline-flex;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+}
 .addBtn {
   margin-left: auto;
 }

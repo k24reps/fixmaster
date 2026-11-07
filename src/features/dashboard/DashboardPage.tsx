@@ -243,7 +243,9 @@ export function DashboardPage() {
         : updatedTime
           ? `${t('dashboard.updated')} ${updatedTime}`
           : t('dashboard.ready');
-  const profitState = kpis.netCashFlow > 0 ? 'ok' : kpis.netCashFlow < 0 ? 'crit' : 'warn';
+  // Defisit = peringatan, bukan bahaya: kas bisa negatif sehari karena belanja
+  // stok besar. Impas tidak menyala sama sekali (LED padam, tag tetap bilang IMPAS).
+  const profitState = kpis.netCashFlow > 0 ? 'ok' : kpis.netCashFlow < 0 ? 'warn' : null;
   const hasTarget = !branchScoped && ((isMgr && target.revenue > 0) || target.serviceCount > 0);
   const dash = initialLoading ? EMPTY_VALUE : null;
 
@@ -407,7 +409,7 @@ export function DashboardPage() {
           </Card>
 
           {isMgr && (
-            <section className={[styles.hero, styles[profitState]].join(' ')} aria-label={t('dashboard.netProfitAria')}>
+            <section className={[styles.hero, profitState && styles[profitState]].filter(Boolean).join(' ')} aria-label={t('dashboard.netProfitAria')}>
               <div className={styles.heroScreen}>
                 <span className={styles.heroScan} aria-hidden />
                 <div className={styles.heroMain}>

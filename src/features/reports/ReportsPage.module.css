@@ -169,18 +169,19 @@
      Prinsip 4 - angka ditampilkan apa adanya. */
   min-width: 0;
 }
-.metric.success::before { background: linear-gradient(180deg, var(--green-500), var(--green-400)); }
-.metric.success .metricIcon { background: var(--success-soft); color: var(--green-400); }
-.metric.success .metricLed { background: var(--green-400); box-shadow: 0 0 7px var(--green-400); }
-.metric.danger::before { background: linear-gradient(180deg, var(--red-500), var(--red-400)); }
-.metric.danger .metricIcon { background: var(--danger-soft); color: var(--red-400); }
-.metric.danger .metricLed { background: var(--red-400); box-shadow: 0 0 7px var(--red-400); }
-.metric.brand::before { background: var(--gradient-brand); }
-.metric.brand .metricIcon { background: var(--brand-soft); color: var(--brand-hover); }
-.metric.brand .metricLed { background: var(--brand-400); box-shadow: 0 0 7px var(--brand-400); }
-.metric.accent::before { background: linear-gradient(180deg, var(--accent-500), var(--accent-400)); }
-.metric.accent .metricIcon { background: var(--accent-soft); color: var(--accent-400); }
-.metric.accent .metricLed { background: var(--accent-400); box-shadow: 0 0 7px var(--accent-400); }
+/* Nada kartu metrik: hanya Pemasukan yang menyala hijau, dan Arus kas bersih
+   menyala peringatan saat negatif. Pengeluaran dan Penjualan kasir netral:
+   LED padam, spine abu. Dulu empat kartu empat warna (hijau, merah, amber,
+   cyan), jadi warna tidak lagi menandai apa pun. */
+.metric.success::before { background: var(--success); }
+.metric.success .metricIcon { background: var(--success-soft); color: var(--success-text); }
+.metric.success .metricLed { background: var(--success); box-shadow: 0 0 7px var(--success); }
+.metric.neutral::before { background: var(--border-strong); }
+.metric.neutral .metricIcon { background: var(--bg-surface-2); color: var(--text-muted); }
+.metric.neutral .metricLed { background: var(--text-muted); }
+.metric.warning::before { background: var(--warning); }
+.metric.warning .metricIcon { background: var(--warning-soft); color: var(--warning-text); }
+.metric.warning .metricLed { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
 
 /* ---------- Break-even tick gauge ---------- */
 .breakEven {
@@ -217,11 +218,11 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+  background: var(--warning);
   transition: width var(--dur-slow) var(--ease-out);
 }
 .beOk {
-  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  background: var(--success);
 }
 .beGauge::after {
   content: '';
@@ -550,14 +551,32 @@
 .inc {
   color: var(--success-text);
 }
+/* Pengeluaran rutin (sewa, gaji, belanja stok) adalah arus keluar yang wajar,
+   bukan kegagalan: tinta utama, batang netral. Dulu merah, sehingga halaman
+   ini menyala merah tiap bulan dan merah kehilangan artinya untuk hal yang
+   memang salah. Tiga makna yang dulu berbagi satu kelas kini dipisah:
+   .exp = arus keluar (netral), .neg = angka bersih negatif (peringatan),
+   .crit = stok di bawah minimum (bahaya). */
 .exp {
+  color: var(--text-primary);
+}
+.neg {
+  color: var(--warning-text);
+}
+.crit {
   color: var(--danger-text);
 }
 .barFill.inc {
-  background: linear-gradient(90deg, var(--green-500), var(--green-400));
+  background: var(--success);
 }
 .barFill.exp {
-  background: linear-gradient(90deg, var(--red-500), var(--red-400));
+  background: var(--text-secondary);
+}
+.barFill.neg {
+  background: var(--warning);
+}
+.barFill.crit {
+  background: var(--danger);
 }
 .barFill.brand {
   background: var(--gradient-brand);
@@ -607,10 +626,10 @@
   color: var(--warning-text);
 }
 .warnFill {
-  background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+  background: var(--warning);
 }
 .accentFill {
-  background: linear-gradient(90deg, var(--accent-500), var(--accent-400));
+  background: var(--accent);
 }
 
 /* ---------- Data tables (receivables + transactions) ---------- */
@@ -690,8 +709,8 @@
   color: var(--success-text);
 }
 .typeExp {
-  background: var(--danger-soft);
-  color: var(--danger-text);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
 }
 
 /* Aging tag (receivables) */
@@ -953,9 +972,9 @@
   background: var(--success-text);
   box-shadow: 0 0 7px var(--success-text);
 }
-.outletLed.exp {
-  background: var(--danger-text);
-  box-shadow: 0 0 7px var(--danger-text);
+.outletLed.neg {
+  background: var(--warning);
+  box-shadow: 0 0 7px var(--warning);
 }
 
 /* ---------- Mono Numbers ----------
@@ -1040,9 +1059,12 @@
   background: var(--green-400);
   box-shadow: 0 0 8px var(--green-400);
 }
-.verdictLed.exp {
-  background: var(--red-400);
-  box-shadow: 0 0 8px var(--red-400);
+/* Panel vonis selalu gelap, jadi primitif palet (yang tidak di-rebind per
+   tema) memang tepat di sini. Kas bersih negatif = peringatan, bukan bahaya:
+   bisa lahir dari belanja stok besar, bukan rugi. */
+.verdictLed.neg {
+  background: var(--amber-400);
+  box-shadow: 0 0 8px var(--amber-400);
 }
 .verdictIdle {
   background: var(--readout-muted);

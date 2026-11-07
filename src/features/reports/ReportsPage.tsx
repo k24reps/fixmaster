@@ -523,7 +523,7 @@ export function ReportsPage() {
           <span
             className={[
               styles.verdictLed,
-              !rangeValid || noBaseline ? styles.verdictIdle : summary.net >= 0 ? styles.inc : styles.exp,
+              !rangeValid || noBaseline ? styles.verdictIdle : summary.net >= 0 ? styles.inc : styles.neg,
             ].join(' ')}
             aria-hidden
           />
@@ -545,7 +545,7 @@ export function ReportsPage() {
           label={t('reports.pengeluaran')}
           value={fmtRp(summary.expense)}
           icon={<Icon name="arrow-up" aria-hidden />}
-          tone="danger"
+          tone="neutral"
           delta={noBaseline ? null : comparison.expenseDelta}
           deltaInverse
         />
@@ -553,14 +553,14 @@ export function ReportsPage() {
           label={<Term id="arus-kas-bersih">{t('reports.arusKasBersih')}</Term>}
           value={fmtRp(summary.net)}
           icon={<Icon name="chart-line" aria-hidden />}
-          tone="brand"
+          tone={summary.net < 0 ? 'warning' : 'neutral'}
           delta={noBaseline ? null : comparison.netDelta}
         />
         <Metric
           label={t('reports.penjualanPos')}
           value={fmtRp(salesTotal)}
           icon={<Icon name="cash-register" aria-hidden />}
-          tone="accent"
+          tone="neutral"
           /* Pembayaran penjualan sudah membukukan pemasukan, jadi angka ini
              BAGIAN dari Pemasukan di kiri — bukan tambahannya. */
           note={t('reports.posIncluded')}
@@ -863,13 +863,13 @@ export function ReportsPage() {
                   <li key={i.id} className={styles.channel}>
                     <div className={styles.channelTop}>
                       <span className={styles.channelName}>{i.name}</span>
-                      <span className={[styles.channelValue, critical ? styles.exp : styles.warn].join(' ')}>
+                      <span className={[styles.channelValue, critical ? styles.crit : styles.warn].join(' ')}>
                         {i.stock} / min {i.minStock}
                       </span>
                     </div>
                     <div className={styles.bar}>
                       <div
-                        className={[styles.barFill, critical ? styles.exp : styles.warnFill].join(' ')}
+                        className={[styles.barFill, critical ? styles.crit : styles.warnFill].join(' ')}
                         style={{ width: `${Math.max(6, deficit)}%` }}
                       />
                     </div>
@@ -950,7 +950,7 @@ export function ReportsPage() {
                             merah, pada teks dan batang sekaligus. Lit-Signal
                             menuntut lampu + nilai, bukan warna sendirian. */}
                         <span
-                          className={[styles.outletLed, o.net >= 0 ? styles.inc : styles.exp].join(' ')}
+                          className={[styles.outletLed, o.net >= 0 ? styles.inc : styles.neg].join(' ')}
                           aria-hidden
                         />
                         {o.name}{' '}
@@ -958,12 +958,12 @@ export function ReportsPage() {
                           · masuk {fmtRp(o.income)} · keluar {fmtRp(o.expense)}
                         </span>
                       </span>
-                      <span className={[styles.channelValue, o.net >= 0 ? styles.inc : styles.exp].join(' ')}>
+                      <span className={[styles.channelValue, o.net >= 0 ? styles.inc : styles.neg].join(' ')}>
                         {o.net >= 0 ? '+' : '−'}{fmtRp(Math.abs(o.net))}
                       </span>
                     </div>
                     <div className={styles.bar}>
-                      <div className={[styles.barFill, o.net >= 0 ? styles.inc : styles.exp].join(' ')} style={{ width: `${(Math.abs(o.net) / maxOutletNet) * 100}%` }} />
+                      <div className={[styles.barFill, o.net >= 0 ? styles.inc : styles.neg].join(' ')} style={{ width: `${(Math.abs(o.net) / maxOutletNet) * 100}%` }} />
                     </div>
                   </li>
                 ))}
@@ -1136,7 +1136,7 @@ function Metric({
   label: ReactNode;
   value: ReactNode;
   icon: ReactNode;
-  tone: 'success' | 'danger' | 'brand' | 'accent';
+  tone: 'success' | 'neutral' | 'warning';
   /** Tanpa periode pembanding, delta `null` dan kartu diam: kalimat vonis di
    *  atasnya sudah mengatakan "tidak ada data periode lalu" sekali. Dulu tiap
    *  kartu mengulanginya, tiga kali, dan membungkus empat baris di 1097px. */
@@ -1160,7 +1160,7 @@ function Metric({
         </span>
         <span className={styles.metricValue}>{value}</span>
         {showDelta && (
-          <span className={[styles.metricDelta, good ? styles.inc : styles.exp].join(' ')}>
+          <span className={[styles.metricDelta, good ? styles.inc : styles.neg].join(' ')}>
             <Icon name={isUp ? 'arrow-trend-up' : 'arrow-trend-down'} aria-hidden />
             {interpolate(t('reports.deltaVsPrev'), { pct: fmtPercent(Math.abs(delta as number)) })}
           </span>

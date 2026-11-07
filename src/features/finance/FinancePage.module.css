@@ -198,28 +198,51 @@ button.walletCell[aria-pressed='true'] .walletLed {
   inset: 0 auto 0 0;
   width: 3px;
 }
+/* Pengeluaran rutin bukan alarm: spine tinta kedua, nominal tinta utama,
+   tanda − yang membawa arah. Merah dicadangkan untuk yang memang salah
+   (kas kurang saat hitung laci, transfer dibatalkan). Kas bersih netral
+   selama positif; saat negatif ia menyala peringatan, spine + LED + angka,
+   karena di situlah pemilik perlu berhenti membaca. Dulu kebalikannya:
+   pengeluaran merah tiap hari, kas negatif putih dengan spine cyan. */
 .summaryCell.income::before {
-  background: var(--green-500);
+  background: var(--success);
 }
 .summaryCell.income strong {
   color: var(--success-text);
 }
 .summaryCell.expense::before {
-  background: var(--red-500);
+  background: var(--text-secondary);
 }
 .summaryCell.expense strong {
-  color: var(--danger-text);
+  color: var(--text-primary);
 }
 .summaryCell.net::before {
-  background: var(--accent);
+  background: var(--text-muted);
+}
+.summaryCell.net[data-tone='warn']::before {
+  background: var(--warning);
+}
+.summaryCell.net[data-tone='warn'] strong {
+  color: var(--warning-text);
+}
+.netLed {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+  background: var(--warning);
+  box-shadow: 0 0 7px var(--warning);
 }
 
-/* Warna arah uang untuk teks lepas (pergerakan wallet, kepala hari). */
+/* Warna arah uang untuk teks lepas (pergerakan wallet, kepala hari).
+   Arus keluar bertinta utama; tanda − di depan angka yang membedakannya. */
 .inc {
   color: var(--success-text);
 }
 .exp {
-  color: var(--danger-text);
+  color: var(--text-primary);
 }
 .trf {
   color: var(--text-muted);
@@ -489,10 +512,10 @@ button.walletCell[aria-pressed='true'] .walletLed {
   width: 3px;
 }
 .tapeRow.income::before {
-  background: var(--green-500);
+  background: var(--success);
 }
 .tapeRow.expense::before {
-  background: var(--red-500);
+  background: var(--text-secondary);
 }
 /* Transfer bukan untung/rugi — spine netral, bukan hijau/merah. */
 .tapeRow.transfer::before {

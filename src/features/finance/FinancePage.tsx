@@ -732,12 +732,19 @@ export function FinancePage() {
           <span>{t('finance.expense')}{scopeSuffix}</span>
           <strong>{fmtRp(summary.expense)}</strong>
         </div>
-        <div role="listitem" className={[styles.summaryCell, styles.net].join(' ')}>
+        <div
+          role="listitem"
+          className={[styles.summaryCell, styles.net].join(' ')}
+          data-tone={summary.net < 0 ? 'warn' : undefined}
+        >
           <span>
             <Term id="arus-kas-bersih">{t('finance.netCash')}</Term>
             {scopeSuffix}
           </span>
-          <strong>{fmtRp(summary.net)}</strong>
+          <strong>
+            {summary.net < 0 && <span className={styles.netLed} aria-hidden />}
+            {fmtRp(summary.net)}
+          </strong>
         </div>
       </div>
 

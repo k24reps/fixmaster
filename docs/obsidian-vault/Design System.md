@@ -35,6 +35,10 @@ Semua warna/spasi/tipografi tinggal di `src/styles/tokens.css`. Komponen **tidak
 Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
 - Font **mono** untuk semua angka/ID
 - **LED status**: ok / live / warn / crit (hijau / cyan / amber / merah)
+- **Uang bukan sinyal** (7 Nov 2026): pengeluaran rutin bertinta utama dengan tanda −, spine
+  `--text-secondary`; kas bersih negatif = warn (spine + LED + angka), bukan crit. Merah hanya
+  untuk yang memang salah (telat, stok di bawah minimum, kas kurang, batal, rugi break-even).
+  Detail: [[Decisions & Bug Fixes]] → Tahap 4.
 - **Spine** tepi berwarna pada kartu/baris
 - **Divider titik-titik** (dotted/perforasi)
 - **Tick-gauge** untuk meter & proporsi

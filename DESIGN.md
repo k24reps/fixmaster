@@ -191,6 +191,8 @@ The **signal set** — a fixed four-color status vocabulary shared by every modu
 - **Signal Crit** (`--danger`): failed, overdue, out of stock, destructive action.
 - **Signal Info** (`--info`): neutral in-progress state and non-urgent classification.
 
+**Money is not a signal (7 Nov 2026).** Routine outflows (rent, wages, stock purchases) are a normal cost of running the bench, so they never take `--danger`. An expense amount uses `--text-primary` with a `−` sign, its spine and chart series use `--text-secondary` (dashed in the trend chart), and the PENGELUARAN tag is a neutral pill. Income keeps Signal Good. A negative net cash figure is Signal Warn (spine, LED and value), not Crit: stock purchases can push one day or week below zero. A zero net stays unlit. Red is left for the things that actually failed: overdue receivables (31+ days), stock below minimum, a cash count that comes up short, a cancelled transfer, a break-even verdict of loss, destructive log events. Before this, Keuangan and Laporan glowed red every month and a −Rp 2.100.000 net sat white on a cyan spine.
+
 **One status map (`STATUS_TONE`, 7 Nov 2026).** The eight service statuses resolve to six tones, and every page reads the same map: Diterima → neutral grey LED (nothing touched yet), Diagnosa and Pengerjaan → info (work in progress), Konfirmasi Biaya and Tunggu Sparepart → warning (waiting on someone else), Selesai → accent (ready for pickup), Lunas → success (closed and paid), Dibatalkan → danger. Anything derived from "ready for pickup" uses accent too: the dashboard alert, the Servis summary cell, the "Belum diambil" readout. Selesai and Lunas used to share green, which hid the shelf of devices waiting for their owners among closed tickets. Brand amber is not a status tone.
 
 ### Neutral
@@ -303,7 +305,7 @@ Three recurring silhouettes define the form language:
 - **Style:** Full pill (`--radius-full`), mono uppercase at 12px with 0.045em tracking, soft tinted background (`--*-soft`), matching text token, and a border mixed at 30% of the signal color.
 - **State:** An optional 7px `currentColor` dot leads the label — the badge's own LED.
 - **No glow:** The badge and its dot never carry a `box-shadow`. A pill with border, dot, uppercase, *and* glow is the generic AI capsule; the glow is the element FixMaster leaves out.
-- **Variants:** neutral, brand, success, warning, danger, info, accent (status Selesai only). There is no "outline" or "solid" axis; the tint-plus-border treatment is the only badge.
+- **Variants:** neutral, brand, success, warning, danger, info, accent (status Selesai only). There is no "outline" or "solid" axis; the tint-plus-border treatment is the only badge. The soft tints are translucent: a badge placed on an amber active tab or nav cell needs an opaque `--bg-surface` base under it, or the mix drops its text below 4.5:1.
 
 ### Cards / Containers
 - **Corner Style:** `--radius-lg` (16px).
