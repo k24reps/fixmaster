@@ -35,6 +35,15 @@ describe('tampilan Daftar servis', () => {
     }
   });
 
+  it('aksi cepat sparepart: pemilih dan jalur simpan sama dengan detail tiket', () => {
+    expect(tsx).toContain('canQuickAddParts(s.status) && (');
+    expect(tsx).toContain('<SparepartPickerModal');
+    expect(tsx).toContain('await addServicePart(partsService, line)');
+    // Lajur aksi memuat empat tombol 40px.
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 11rem 9rem 10rem;');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 11rem 10rem;');
+  });
+
   it('keluhan dan penanganan satu segmen, tiap barisnya tetap ikut pengaturan', () => {
     expect(tsx).toContain('const showNotes = showComplaint || showFix;');
     expect(tsx).toContain('showNotes && `minmax(');

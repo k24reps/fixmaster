@@ -6,7 +6,7 @@ import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
 import { fmtRp } from '@/lib/format';
 import { toast } from '@/stores/toast';
-import type { ServiceSparepart } from '@/data/types';
+import type { Service, ServiceSparepart } from '@/data/types';
 import styles from './SparepartPickerModal.module.css';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
@@ -18,6 +18,9 @@ interface SparepartPickerModalProps {
   existingItemIds: string[];
   /** Called with a fully-formed inventory cost line to append. */
   onPick: (line: ServiceSparepart) => void;
+  /** Tiket tujuan, ditampilkan di atas pencarian. Dibuka dari Daftar Servis,
+   * jendela ini tidak punya halaman tiket di belakangnya yang memberi tahu. */
+  ticket?: Pick<Service, 'serviceNo' | 'device' | 'customerName'>;
 }
 
 /**
@@ -32,6 +35,7 @@ export function SparepartPickerModal({
   onClose,
   existingItemIds,
   onPick,
+  ticket,
 }: SparepartPickerModalProps) {
   const t = useT();
   const { data: inventory } = useCollection('inventory');
@@ -89,6 +93,19 @@ export function SparepartPickerModal({
       footer={<Button onClick={onClose}>{t('partPicker.done')}</Button>}
     >
       <div className={styles.body}>
+        {ticket && (
+          <p className={styles.context}>
+            <span className={styles.contextNo}>{ticket.serviceNo}</span>
+            <span className={styles.dot} aria-hidden />
+            <span className={styles.contextDevice}>{ticket.device}</span>
+            {ticket.customerName && (
+              <>
+                <span className={styles.dot} aria-hidden />
+                <span>{ticket.customerName}</span>
+              </>
+            )}
+          </p>
+        )}
         <Input
           placeholder={t('partPicker.searchPh')}
           value={query}

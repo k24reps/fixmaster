@@ -675,6 +675,8 @@ export const id = {
   'services.profitAria': 'Profit {amount}',
   'services.viewTicket': 'Lihat tiket',
   'services.notifyReceipt': 'Notifikasi & nota',
+  'services.addPart': 'Tambah sparepart',
+  'services.partAddedCostStale': 'Sparepart ditambahkan. Biaya final {amount} belum ikut naik, sesuaikan di detail tiket.',
   'services.unpaidTitle': 'Unit belum lunas',
   'services.unpaidMsg': '{no} masih ada tagihan {amount}. Tandai sudah diambil pelanggan?',
   'services.unpaidConfirm': 'Ya, sudah diambil',

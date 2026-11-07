@@ -304,6 +304,35 @@ export function isTerminal(status: ServiceStatus): boolean {
   return TRANSITIONS[status]?.length === 0;
 }
 
+/**
+ * Aksi cepat "tambah sparepart" di Daftar Servis: hanya tiket yang masih
+ * dikerjakan. Tiket Lunas dan Batal tetap bisa dikoreksi dari detail (Lunas:
+ * owner/admin), tempat panel biaya menunjukkan akibatnya pada tagihan dan profit.
+ */
+export function canQuickAddParts(status: ServiceStatus): boolean {
+  return !isTerminal(status);
+}
+
+/**
+ * Baris sparepart baru di ujung daftar. Baris inventori dicatat `deducted`
+ * karena stoknya dipotong saat itu juga, jadi transisi ke Pengerjaan tidak
+ * memotongnya lagi dan Batal mengembalikannya.
+ */
+export function withPartAdded(
+  parts: ServiceSparepart[],
+  line: ServiceSparepart,
+): ServiceSparepart[] {
+  return [...parts, { ...line, deducted: line.itemId ? true : line.deducted }];
+}
+
+/**
+ * Biaya final sudah ditetapkan: part atau modal yang ditambah setelahnya tidak
+ * menaikkan tagihan, jadi profit turun kecuali biayanya disesuaikan.
+ */
+export function finalCostLocked(service: Pick<Service, 'finalCost' | 'status'>): boolean {
+  return service.finalCost > 0 && (service.status === 'selesai' || service.status === 'lunas');
+}
+
 /** Whether a ticket counts as "in progress" for dashboards. */
 export function isActive(status: ServiceStatus): boolean {
   return !['lunas', 'batal'].includes(status);

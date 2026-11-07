@@ -1,6 +1,6 @@
 import { repository } from '@/data';
 import { updateServiceParts } from '@/data/supabase-client';
-import { partsStockDelta } from '@/lib/business/services';
+import { partsStockDelta, withPartAdded } from '@/lib/business/services';
 import { isCloudMode } from '@/stores/demo';
 import type { InventoryItem, Service, ServiceSparepart } from '@/data/types';
 
@@ -30,4 +30,15 @@ export async function saveServiceParts(service: Service, next: ServiceSparepart[
   }
   if (items.length) await repository.putMany('inventory', items);
   await repository.put('services', { ...fresh, spareparts: next, updatedAt: new Date().toISOString() });
+}
+
+/**
+ * Tambah satu sparepart ke tiket, dipakai detail tiket dan aksi cepat Daftar
+ * Servis. Tiket dibaca ulang dulu: salinan di layar bisa basi di antara dua
+ * klik cepat, dan menulis dari salinan itu menimpa baris yang efek stoknya
+ * sudah tercatat.
+ */
+export async function addServicePart(service: Service, line: ServiceSparepart): Promise<void> {
+  const fresh = (await repository.get('services', service.id)) ?? service;
+  await saveServiceParts(fresh, withPartAdded(fresh.spareparts, line));
 }

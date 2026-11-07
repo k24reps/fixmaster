@@ -29,6 +29,9 @@ import {
   canClaimWarranty,
   retainedDownPayment,
   cancelledProfit,
+  canQuickAddParts,
+  withPartAdded,
+  finalCostLocked,
 } from './services';
 import type { ServiceSparepart } from '@/data/types';
 
@@ -381,5 +384,47 @@ describe('retainedDownPayment / cancelledProfit', () => {
     ];
     expect(cancelledProfit({ status: 'batal', downPayment: 100000, history: [entry(0)], spareparts })).toBe(50000);
     expect(cancelledProfit({ status: 'batal', downPayment: 100000, history: [entry()], spareparts })).toBeNull();
+  });
+});
+
+describe('aksi cepat sparepart di Daftar Servis', () => {
+  const line = (over: Partial<ServiceSparepart> = {}): ServiceSparepart => ({
+    itemId: 'lcd',
+    name: 'LCD',
+    qty: 1,
+    costPrice: 300000,
+    sellPrice: 450000,
+    deducted: false,
+    kind: 'inventory',
+    ...over,
+  });
+
+  it('hanya tiket yang masih dikerjakan', () => {
+    for (const s of ['diterima', 'diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan', 'selesai'] as const) {
+      expect(canQuickAddParts(s)).toBe(true);
+    }
+    expect(canQuickAddParts('lunas')).toBe(false);
+    expect(canQuickAddParts('batal')).toBe(false);
+  });
+
+  it('baris inventori dicatat sudah dipotong stoknya, baris lama tidak berubah', () => {
+    const existing = [line({ itemId: 'bat', name: 'Baterai', deducted: true })];
+    const next = withPartAdded(existing, line());
+    expect(next).toHaveLength(2);
+    expect(next[0]).toBe(existing[0]);
+    expect(next[1]).toMatchObject({ itemId: 'lcd', deducted: true });
+    expect(existing).toHaveLength(1);
+  });
+
+  it('baris tanpa item inventori tidak dipaksa dipotong', () => {
+    const manual = line({ itemId: null, kind: 'manual', deducted: false });
+    expect(withPartAdded([], manual)[0].deducted).toBe(false);
+  });
+
+  it('biaya final terkunci hanya saat Selesai/Lunas dengan biaya final', () => {
+    expect(finalCostLocked({ status: 'selesai', finalCost: 350000 })).toBe(true);
+    expect(finalCostLocked({ status: 'lunas', finalCost: 350000 })).toBe(true);
+    expect(finalCostLocked({ status: 'selesai', finalCost: 0 })).toBe(false);
+    expect(finalCostLocked({ status: 'pengerjaan', finalCost: 350000 })).toBe(false);
   });
 });

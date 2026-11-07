@@ -82,3 +82,29 @@
   border-radius: var(--radius-sm);
   color: var(--text-primary);
 }
+/* Tiket tujuan saat dibuka dari Daftar Servis: strip ber-spine seperti kartu
+   tiket, nomor mono, dipisah titik. */
+.context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.contextNo {
+  font-family: var(--font-mono, monospace);
+  font-weight: var(--fw-bold);
+  color: var(--brand-text);
+}
+.contextDevice {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}

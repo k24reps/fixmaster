@@ -30,7 +30,10 @@ import {
   serviceModalTotal,
   isClosedOut,
   outstandingBalance,
+  canQuickAddParts,
+  finalCostLocked,
 } from '@/lib/business/services';
+import { addServicePart } from '@/data/serviceParts';
 import { resolveServiceColumns } from '@/lib/business/serviceColumns';
 import {
   compareServices,
@@ -48,7 +51,8 @@ import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import { TicketDoneModal } from './TicketDoneModal';
-import type { Service, ServiceStatus } from '@/data/types';
+import { SparepartPickerModal } from './SparepartPickerModal';
+import type { Service, ServiceSparepart, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
@@ -160,6 +164,10 @@ export function ServicesPage() {
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [pickupConfirm, setPickupConfirm] = useState<Service | null>(null);
+  // Tiket yang sedang ditambah sparepart dari daftar. Disimpan id-nya, lalu
+  // barisnya dicari saat render, supaya part yang baru masuk langsung terbaca
+  // "Tambah lagi" di pemilih.
+  const [partsFor, setPartsFor] = useState<string | null>(null);
 
   // Subscribe to the org slice so the category filter reflects cloud-synced
   // edits (and updates from other devices) without a manual reload.
@@ -382,6 +390,26 @@ export function ServicesPage() {
     }
   };
 
+  const partsService = partsFor ? (allServices.find((s) => s.id === partsFor) ?? null) : null;
+  // Jalur yang sama dengan tombol Sparepart di detail tiket (addServicePart).
+  // Biaya final yang sudah ditetapkan tidak ikut naik; detail mengingatkannya di
+  // panel biaya, di daftar toast inilah satu-satunya pengingat.
+  const addPart = async (line: ServiceSparepart) => {
+    if (!partsService) return;
+    try {
+      await addServicePart(partsService, line);
+      if (finalCostLocked(partsService)) {
+        toast.warning(
+          interpolate(t('services.partAddedCostStale'), { amount: fmtRp(partsService.finalCost) }),
+        );
+      } else {
+        toast.success(t('serviceDetail.partAdded'));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('serviceDetail.partAddFailed'));
+    }
+  };
+
   // Pickup indicator: prominent "Belum diambil" for closed-but-uncollected
   // units, dim "Diambil" for collected ones, nothing for in-progress tickets.
   // Manajer mengklik labelnya untuk menandai/membatalkan pengambilan (dulu tombol
@@ -479,10 +507,22 @@ export function ServicesPage() {
     );
   };
 
-  // Shared action cluster so the list and cards stay in sync. Tiga aksi
-  // tetap untuk semua tiket; tanda ambil ada di label status ambil (renderPickup).
+  // Shared action cluster so the list and cards stay in sync. Tiga aksi tetap
+  // untuk semua tiket; tanda ambil ada di label status ambil (renderPickup).
+  // Sparepart hanya untuk tiket yang masih dikerjakan, dan ditaruh paling kiri:
+  // kelompoknya rata kanan, jadi tiga aksi tetap sejajar antarbaris.
   const renderActions = (s: Service) => (
     <>
+      {canQuickAddParts(s.status) && (
+        <button
+          className={styles.iconBtn}
+          onClick={() => setPartsFor(s.id)}
+          title={t('services.addPart')}
+          aria-label={t('services.addPart')}
+        >
+          <Icon name="microchip" aria-hidden />
+        </button>
+      )}
       <Link
         className={styles.iconBtn}
         to={`/services/${s.id}`}
@@ -958,6 +998,17 @@ export function ServicesPage() {
         open={notifyOpen}
         onClose={() => setNotifyOpen(false)}
         service={notifyTarget}
+      />
+      {/* key per tiket: pencarian dan jumlah di pemilih tidak terbawa ke tiket lain. */}
+      <SparepartPickerModal
+        key={partsFor ?? 'none'}
+        open={!!partsService}
+        onClose={() => setPartsFor(null)}
+        existingItemIds={(partsService?.spareparts ?? [])
+          .map((p) => p.itemId)
+          .filter((x): x is string => !!x)}
+        onPick={addPart}
+        ticket={partsService ?? undefined}
       />
     </div>
   );

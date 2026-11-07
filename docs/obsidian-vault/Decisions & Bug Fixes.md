@@ -4096,3 +4096,69 @@ kembali ke daftar, tanpa muat ulang. `audit-mobile` (ponsel dan pita tablet) ser
 12px, temuan yang tersisa hanya positif palsu yang sudah dikenal (penggeser chip kategori).
 
 #decision #ui #services
+
+## Aksi cepat Tambah sparepart di Daftar Servis (7 Nov 2026)
+
+**Permintaan pemilik:** di menu Servis, sparepart bisa ditambahkan langsung dari daftar tanpa
+masuk ke detail tiket dulu.
+
+**Yang dibangun.**
+- Tombol ikon chip (`microchip`) di kelompok aksi baris dan kartu. Tombol ini membuka
+  `SparepartPickerModal`, jendela yang sama dengan tombol Sparepart di BOM detail.
+- Prop baru `ticket` di pemilih: strip tiket tujuan (spine brand, nomor mono, perangkat,
+  pelanggan). Dari daftar tidak ada halaman tiket di belakang jendela yang memberi tahu tiket
+  mana yang sedang diisi.
+- Logika dipindah ke tempat bersama dan dipakai detail juga:
+  - `addServicePart(service, line)` di `src/data/serviceParts.ts`: baca ulang tiket, lalu
+    `saveServiceParts`.
+  - `withPartAdded(parts, line)` di `lib/business/services.ts`: baris inventori dicatat
+    `deducted: true`.
+  - `finalCostLocked(service)` di tempat yang sama: biaya final sudah ditetapkan di Selesai/Lunas.
+- `canQuickAddParts(status)` = bukan status terminal. Tombol hanya muncul di tiket Diterima
+  sampai Selesai.
+- Pemilih di daftar diberi `key` per tiket, supaya pencarian dan jumlah tidak terbawa ke tiket
+  lain. Barisnya dicari ulang tiap render, supaya part yang baru masuk langsung terbaca
+  "Tambah lagi".
+- Lajur aksi Daftar 7.5rem → 10rem (empat tombol 40px).
+
+**Keputusan.**
+- **Lunas dan Batal tidak mendapat aksi cepat.** Detail masih mengizinkan owner/admin
+  menambah part di tiket Lunas, tetapi itu koreksi atas uang yang sudah diterima. Di detail,
+  panel biaya langsung menunjukkan akibatnya pada profit. Di daftar tidak ada panel itu, dan
+  tombol di setiap tiket lunas lama hanya menambah kebisingan.
+- **Peringatan biaya lewat toast.** Tiket Selesai yang biaya finalnya sudah ditetapkan tidak
+  ikut naik saat part ditambah. Detail menandainya di panel biaya (`costStale`); di daftar,
+  toast peringatan menggantikan toast sukses: "Biaya final Rp X belum ikut naik, sesuaikan di
+  detail tiket."
+- **Tombol paling kiri.** Kelompok aksi rata kanan, jadi tiket tanpa tombol sparepart hanya
+  menyisakan ruang kosong di kiri. Lihat tiket, Notifikasi, dan Ubah tetap di x yang sama di
+  semua baris (terukur di 768, 1025, 1280, 1440px).
+
+**Verifikasi:** build, lint, **715 test / 67 berkas** hijau. `services.test.ts` menguji
+`canQuickAddParts` untuk 8 status, `withPartAdded`, dan `finalCostLocked`.
+`servicesTableWidth` mengunci pemakaian pemilih dan jalur simpan yang sama, serta lajur 10rem.
+Di demo (1440, 1280, 1025, 768, 390, 320px): tombol muncul di 4 tiket aktif, tidak di 3 tiket
+Lunas, tanpa luberan dokumen dan tanpa tombol keluar dari baris. Menambah "Baterai A1964"
+ke FM-0006: stok 1 → 0, tombol berubah "Tambah lagi", toast sukses. Menambah ke FM-0007
+(Selesai, Rp 350.000): toast peringatan biaya. `audit-mobile` (ponsel dan pita tablet) identik
+dengan baseline. `audit-zoom` lapang dan Padat: 0 pelanggaran lantai 12px.
+
+**Temuan audit yang bukan potongan baru.** `audit-zoom` kini melaporkan
+"MacBook Pro 13" 2019" terpotong di 1600px (lapang, 46px) dan 1536px (Padat, 43px). Nama ini
+sudah terpotong sebelumnya. Entri di atas mencatat lajurnya 111px di 1600px, padahal nama itu
+butuh 149px. Audit hanya mencatat 4 potongan terbesar per halaman. Di baseline, empat tempat
+itu terisi teks `fm-visually-hidden` (140, 41, 41, 41px), sehingga nama dengan potongan 38px
+tidak tercatat. Pengukuran langsung, lajur aksi 7.5rem → 10rem:
+
+| Lebar | Lapang | Padat |
+|---|---|---|
+| 1536px | utuh → utuh | 35 → 43px |
+| 1600px | 38 → 46px | 22 → 30px |
+| ≥1745px | 24 → 32px | 14 → 22px |
+
+Tombol keempat mengurangi segmen perangkat 8px: 40px dibagi rata ke 5.1fr segmen. Potongan ini
+tetap diterima sebagai ellipsis yang disengaja, dengan nama lengkap di `title`. Bobot fr
+segmen tidak diubah karena baru disetel di entri keluhan-penanganan. Bila lajur perangkat
+perlu dilebarkan, ubah bobot itu sebagai keputusan tersendiri.
+
+#decision #ui #services

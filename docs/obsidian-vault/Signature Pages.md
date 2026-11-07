@@ -500,6 +500,11 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 ## Daftar Servis — Repair Job Cards
 
+**Aksi cepat Tambah sparepart (7 Nov 2026, permintaan pemilik).** Tiap baris dan kartu tiket yang masih dikerjakan (belum Lunas atau Batal) punya tombol ikon chip (`microchip`, ikon yang sama dengan baris sparepart di BOM detail). Tombol ini membuka `SparepartPickerModal` yang sama dengan detail tiket, tanpa pindah halaman. Di atas pencarian ada strip tiket tujuan: spine brand, nomor mono, perangkat, pelanggan. Simpannya lewat `addServicePart` (`src/data/serviceParts.ts`), jalur yang kini juga dipakai detail: tiket dibaca ulang, baris inventori `deducted: true`, stok dipotong di transaksi yang sama. Jendela tetap terbuka untuk part berikutnya, dan baris yang sudah masuk terbaca "Tambah lagi". Tiket Selesai yang biaya finalnya sudah ditetapkan mendapat toast peringatan: biaya final belum ikut naik, sesuaikan di detail. Tombol ditaruh paling kiri, sehingga tiga aksi lain tetap sejajar antarbaris. Lajur aksi di Daftar melebar dari 7.5rem ke 10rem. Detail: [[Decisions & Bug Fixes#Aksi cepat Tambah sparepart di Daftar Servis (7 Nov 2026)]].
+
+![[services-quick-part-list-1440-dark.png]]
+![[services-quick-part-390-dark.png]]
+
 **Tampilan ditentukan perangkat (7 Nov 2026, permintaan pemilik).** Pemilih tampilan (Kartu · Daftar · Ringkas) dihapus dari bilah alat. Ponsel (viewport ≤720px) selalu menampilkan **Kartu**; layar yang lebih lebar selalu **Daftar**. Tampilan Ringkas dihapus seluruhnya (markup dan CSS `.tileGrid`/`.tile*`). Ambang 720px sama dengan tata letak ponsel halaman ini di CSS, dibaca lewat hook baru `useMediaQuery` (`src/hooks/useMediaQuery.ts`), dan berganti langsung saat jendela diubah ukurannya. Daftar di layar sempit (tablet 768px, atau laptop dengan Pembesaran 150%) tetap dijaga `@container svcRows`. Kasir, Inventori, dan Pelanggan tetap punya pemilih tampilan. Detail: [[Decisions & Bug Fixes#Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)]].
 
 ![[services-view-phone-390-dark.png]]

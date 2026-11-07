@@ -673,6 +673,8 @@ export const en: Dictionary = {
   'services.profitAria': 'Profit {amount}',
   'services.viewTicket': 'View ticket',
   'services.notifyReceipt': 'Notify & receipt',
+  'services.addPart': 'Add part',
+  'services.partAddedCostStale': 'Part added. The final cost {amount} did not change; adjust it on the ticket.',
   'services.unpaidTitle': 'Unit not fully paid',
   'services.unpaidMsg': '{no} still owes {amount}. Mark as picked up by the customer?',
   'services.unpaidConfirm': 'Yes, picked up',

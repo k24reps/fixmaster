@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
-import { saveServiceParts } from '@/data/serviceParts';
+import { addServicePart, saveServiceParts } from '@/data/serviceParts';
 import { addServiceModal, updateServiceModal, removeServiceModal } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
@@ -28,6 +28,7 @@ import {
   isAwaitingPickup,
   warrantyDecided,
   openClaimFor,
+  finalCostLocked,
 } from '@/lib/business/services';
 import { applyBalance } from '@/lib/business/finance';
 import { localDateStr } from '@/lib/time';
@@ -198,7 +199,7 @@ export function ServiceDetailPage() {
   const profit = cancelled ? (cancelProfit ?? 0) : serviceProfit(service);
   const profitKnown = cancelled ? cancelProfit !== null : service.finalCost > 0;
   const modalTotal = cancelled ? heldCost(service.spareparts) : serviceModalTotal(service.spareparts);
-  const costLocked = service.finalCost > 0 && (service.status === 'selesai' || service.status === 'lunas');
+  const costLocked = finalCostLocked(service);
   // Tiket Lunas sudah dibayar: menambah part hanya untuk owner/admin (0093).
   const canAddParts = !cancelled && (service.status !== 'lunas' || isManager);
   // Satu klaim berjalan per tiket asli (juga dijaga server, 0064).
@@ -223,10 +224,7 @@ export function ServiceDetailPage() {
    */
   const addSparepartLine = async (line: ServiceSparepart) => {
     try {
-      await putServiceSpareparts((sp) => [
-        ...sp,
-        { ...line, deducted: line.itemId ? true : line.deducted },
-      ]);
+      await addServicePart(service, line);
       toast.success(t('serviceDetail.partAdded'));
       if (costLocked) setCostStale(true);
     } catch (e) {

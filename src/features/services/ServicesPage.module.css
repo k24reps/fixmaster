@@ -412,8 +412,9 @@
 }
 .row {
   display: grid;
-  /* Aksi 7.5rem = tiga tombol 40px; lajur tetap supaya judul & baris sejajar. */
-  grid-template-columns: minmax(0, 1fr) 11rem 9rem 7.5rem;
+  /* Aksi 10rem = empat tombol 40px (sparepart hanya di tiket yang masih
+     dikerjakan); lajur tetap supaya judul & baris sejajar. */
+  grid-template-columns: minmax(0, 1fr) 11rem 9rem 10rem;
   grid-template-areas: 'main status cost actions';
   align-items: center;
   column-gap: var(--space-4);
@@ -423,7 +424,7 @@
   transition: background var(--dur-fast) var(--ease-out);
 }
 .rowNoCost {
-  grid-template-columns: minmax(0, 1fr) 11rem 7.5rem;
+  grid-template-columns: minmax(0, 1fr) 11rem 10rem;
   grid-template-areas: 'main status actions';
 }
 .row + .row {
