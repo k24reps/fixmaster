@@ -316,8 +316,10 @@
   .subtitle {
     display: none;
   }
+  /* 18px, bukan 16: judul halaman setara judul kartu di bawahnya membuat
+     hierarki rata (critique). */
   .title {
-    font-size: var(--text-md);
+    font-size: var(--text-lg);
   }
 }
 @media (max-width: 720px) {

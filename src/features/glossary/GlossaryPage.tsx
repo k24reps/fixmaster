@@ -29,13 +29,16 @@ export function GlossaryPage() {
     <div className={styles.wrap}>
       <p className={styles.lead}>{t('glossary.lead')}</p>
       <nav className={styles.index} aria-label={t('glossary.indexAria')}>
-        {GLOSSARY.map((g) => (
+        {GLOSSARY.map((g, i) => (
           <Link
             key={g.id}
             to={`#${g.id}`}
             className={[styles.chip, active === g.id ? styles.chipOn : ''].join(' ')}
             aria-current={active === g.id ? 'location' : undefined}
           >
+            <span className={styles.chipNo} aria-hidden>
+              {String(i + 1).padStart(2, '0')}
+            </span>
             {g.term}
           </Link>
         ))}

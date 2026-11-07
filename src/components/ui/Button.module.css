@@ -25,6 +25,18 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* Primer nonaktif kehilangan ambernya. Amber pudar tetap terbaca sebagai aksi
+   utama (critique: tiga tombol amber di Pengaturan, Tugas), padahal
+   tombolnya belum bisa ditekan. Garis putus-putus = "belum siap". Saat
+   memuat (aria-busy) ambernya tetap: aksi itu sedang berjalan. */
+.primary:disabled:not([aria-busy]) {
+  opacity: 1;
+  background: var(--bg-surface-2);
+  color: var(--text-muted);
+  box-shadow: none;
+  border-color: var(--border-strong);
+  border-style: dashed;
+}
 
 .btn:active:not(:disabled) {
   transform: translateY(1px) scale(0.99);

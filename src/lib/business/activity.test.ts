@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { actionMeta, roleLabel, filterActivity, summarize } from './activity';
+import {
+  actionMeta,
+  roleLabel,
+  filterActivity,
+  summarize,
+  groupedActionOptions,
+  ACTION_META,
+} from './activity';
 import type { ActivityLog } from '@/data/types';
 
 function mk(over: Partial<ActivityLog>): ActivityLog {
@@ -73,5 +80,27 @@ describe('summarize', () => {
   });
   it('omits separator when no entity label', () => {
     expect(summarize(mk({ action: 'auth.login', entityLabel: '' }))).toBe('Masuk');
+  });
+});
+
+describe('groupedActionOptions', () => {
+  it('memuat tiap aksi tepat sekali', () => {
+    const values = groupedActionOptions().flatMap((g) => g.options.map((o) => o.value));
+    expect(values.sort()).toEqual(Object.keys(ACTION_META).sort());
+  });
+
+  it('tanpa grup kosong dan tanpa "Lainnya" selama semua awalan terpetakan', () => {
+    const groups = groupedActionOptions();
+    expect(groups.every((g) => g.options.length > 0)).toBe(true);
+    expect(groups.map((g) => g.label)).not.toContain('Lainnya');
+  });
+
+  it('mengelompokkan per menu', () => {
+    const byLabel = Object.fromEntries(
+      groupedActionOptions().map((g) => [g.label, g.options.map((o) => o.value)]),
+    );
+    expect(byLabel['Keuangan']).toContain('wallet.transfer');
+    expect(byLabel['Absensi']).toContain('attendance.checkin');
+    expect(byLabel['Akun & sistem']).toContain('auth.login');
   });
 });

@@ -729,10 +729,10 @@
   position: absolute;
   top: 2px;
   right: var(--space-5);
+  /* Tanpa opacity: 0.75 di atas readout-muted menurunkannya ke 4,1:1. */
   color: var(--readout-muted);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  opacity: 0.75;
 }
 
 .flowIcon {
@@ -1738,6 +1738,32 @@
 
 .whatsapp svg { color: var(--success-text); }
 
+/* Chip melayang baru muncul setelah layar pertama digulir. Di 1440×900 dan
+   tablet 820 pain rail duduk tepat di pojok kanan bawah saat halaman dibuka,
+   dan chip menimpanya (terukur). Layar pertama sudah punya CTA hero; begitu
+   pengunjung menggulir, chip hadir untuk sisa halaman. Peramban tanpa
+   scroll timeline tetap menampilkannya sejak awal. */
+@supports (animation-timeline: scroll()) {
+  .whatsapp {
+    animation: wa-reveal linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 60vh;
+  }
+}
+/* Tersembunyi (tak bisa diklik/difokus) sampai 40%: chip transparan yang
+   masih bisa diketuk lebih buruk daripada tumpang tindih. */
+@keyframes wa-reveal {
+  0%,
+  40% {
+    opacity: 0;
+    visibility: hidden;
+  }
+  100% {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 @container landing (max-width: 980px) {
   .hero {
     grid-template-columns: 1fr;
@@ -2100,10 +2126,10 @@
   /* WhatsApp TIDAK dihapus di sini. Sebelumnya `display: none` mencabut
      kanal yang paling dipakai pemilik konter, di perangkat yang paling
      dipakainya — dan menyisakan tautan footer 8.300px ke bawah. Ia menyusut
-     jadi tombol ikon dan naik ke atas bar aksi. */
+     jadi tombol ikon; di <=760px ia pindah ke dalam bar aksi. */
   .whatsapp {
     right: var(--space-4);
-    bottom: calc(var(--space-4) + 56px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
     padding: 0;
     width: 48px;
     height: 48px;
@@ -2186,6 +2212,25 @@
     font-size: var(--text-sm);
     font-weight: var(--fw-semibold);
     text-decoration: none;
+  }
+  /* WhatsApp masuk ke bar sebagai tombol persegi di samping harga. Dulu
+     lingkaran 48px melayang di atas bar: dasar layar ponsel termakan 120px,
+     kini 61px. Chip melayangnya disembunyikan karena salinannya ada di sini. */
+  .whatsapp {
+    display: none;
+  }
+  .mobileBarWa {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    color: var(--success-text);
+    font-size: var(--text-md);
   }
   /* Ruang agar bar tidak menutupi kaki halaman. */
   .footer {

@@ -764,6 +764,22 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
         >
           <Icon name="tag" aria-hidden /> {t('landingV2.mobileBarPricing')}
         </a>
+        <a
+          className={styles.mobileBarWa}
+          href={supportHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t('landingV2.whatsapp')}
+          onClick={() =>
+            trackEvent('landing_cta_clicked', {
+              location: 'mobile_bar_whatsapp',
+              intent: 'support',
+              plan: 'none',
+            })
+          }
+        >
+          <Icon name="whatsapp" aria-hidden />
+        </a>
       </div>
       <a
         className={styles.whatsapp}

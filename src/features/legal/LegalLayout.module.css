@@ -139,6 +139,7 @@
   line-height: 1.15;
 }
 .intro {
+  max-width: 65ch;
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.6;
@@ -216,6 +217,10 @@
 }
 .prose :global(p),
 .prose :global(li) {
+  /* Wadah 800px memberi baris 90–104 karakter; dokumen hukum dibaca
+     berurutan, jadi baris dipotong di ukuran baca (±75 karakter). Pelat
+     dokumen dan judul bagian tetap selebar wadah. */
+  max-width: 65ch;
   color: var(--text-secondary);
   line-height: 1.7;
   font-size: var(--text-base);

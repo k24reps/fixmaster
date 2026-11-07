@@ -296,7 +296,7 @@
 }
 
 .evBody {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -312,14 +312,16 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
 }
+/* Label entitas = tag mono netral. Dulu amber di tiap baris: pada 300 baris
+   warna brand jadi latar, bukan sinyal, dan bersaing dengan node ber-tone. */
 .entity {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--brand-hover);
+  color: var(--text-secondary);
   padding: 1px 7px;
-  border: 1px solid var(--border);
+  border: 1px dotted var(--border-strong);
   border-radius: var(--radius-xs);
-  background: var(--brand-soft);
+  background: var(--bg-surface-2);
 }
 .evMeta {
   display: flex;
@@ -337,14 +339,20 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
+/* Garis titik dari kejadian ke jamnya. Jam sengaja di tepi kanan supaya
+   kolomnya lurus, tapi di 1440px jaraknya ±700px dan mata kehilangan baris. */
+.leader {
+  flex: 1 1 0;
+  min-width: var(--space-4);
+  align-self: center;
+  border-bottom: 1px dotted var(--border-strong);
+}
 .time {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  padding-left: var(--space-2);
-  border-left: 1px solid var(--border);
 }
 
 /* ---------- Responsive ---------- */

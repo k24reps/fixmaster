@@ -144,7 +144,7 @@ export function PurchaseOrderModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? `Perbaiki ${editing.poNumber}` : 'Purchase Order Baru'}
+      title={editing ? `Perbaiki ${editing.poNumber}` : 'PO Baru'}
       size="lg"
       footer={
         <>

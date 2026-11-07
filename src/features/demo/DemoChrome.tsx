@@ -26,7 +26,9 @@ export function DemoChrome({ onReset }: DemoChromeProps) {
         </a>
         <div className={styles.status}>
           <span className={styles.led} aria-hidden />
-          <span className={styles.statusText}>MODE DEMO</span>
+          <span className={styles.statusText}>
+            <span className={styles.statusMode}>MODE </span>DEMO
+          </span>
           <span className={styles.statusSub}>data contoh · tidak tersimpan</span>
         </div>
       </div>

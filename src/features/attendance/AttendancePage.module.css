@@ -283,12 +283,14 @@
 
 /* ---------- Monthly recap (owner) ---------- */
 /* ---------- Pemilih periode ---------- */
-.periodBody {
+/* Baris kontrol polos, sama dengan toolbar halaman lain. Dulu satu kartu
+   penuh hanya untuk satu baris kontrol: bobotnya menyamai kartu data di
+   bawahnya, padahal ia hanya pengatur keduanya. */
+.periodBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-3) var(--space-4);
 }
 .periodLabel {
   display: inline-flex;

@@ -39,6 +39,16 @@
   color: var(--brand-hover);
   border-color: var(--border-brand);
 }
+/* Hitungan sebagai readout, bukan "(1)" dalam kurung. */
+.tabCount {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 6px;
+  border: 1px dotted currentColor;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
 .spacer {
   flex: 1;
 }

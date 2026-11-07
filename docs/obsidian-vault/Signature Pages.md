@@ -114,6 +114,14 @@ kembali bila diperlukan.
 
 ![[landing-phone-frame-mobile.png]]
 
+- **WhatsApp tanpa tumpang tindih (7 Nov 2026).** Di ≤760px tombol WhatsApp masuk ke bar aksi
+  bawah sebagai tombol persegi 44px di samping "Lihat paket & harga". Dasar layar yang tertutup
+  turun dari 120px ke 61px. Di layar lebar chip melayang baru muncul setelah layar pertama digulir
+  (scroll timeline 0–60vh), karena di 1440×900 dan tablet 820 ia menimpa pain rail saat halaman
+  dibuka. Nomor langkah `flowNo` tak lagi memakai `opacity` (4,1:1 → kontras penuh).
+
+![[minor-landing-bar-phone-light.png]]
+
 ## Landing V1 — Instrument Bench (legacy, dipertahankan)
 
 Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". **Revisi total (9 Jun 2026)** menambah elemen konversi (diadopsi dari analisis kompetitor FixNova/FixMate, tapi **diterjemahkan ke bahasa bench** — bukan tiru visual) + memperbaiki klaim plan yang basi. [`LandingPage`](src/features/landing/LandingPage.tsx):
@@ -189,6 +197,7 @@ Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa
 
 ![[privacy-dark.png]]
 
+- **Panjang baris (7 Nov 2026).** Paragraf, butir, dan intro dibatasi `65ch` (median 68 karakter di 1440px; dulu 90–104). Pelat dokumen dan judul bagian tetap selebar wadah 800px.
 - **Revisi 27 Sep 2026 (`PRIVASI-001` §3–4).** Lokasi data mengikuti server sungguhan: VPS di Jakarta, lalu lintas lewat Cloudflare (HTTPS), cadangan 2×/hari terenkripsi AES-256 di penyimpanan cloud. Kalimat "gateway pembayaran" diganti — langganan dikonfirmasi manual sejak `0047`. Pihak pemroses: penyedia server, jaringan, dan pengiriman email. Ubah bagian ini setiap kali lokasi server berpindah ([[Self-Hosting]]).
 
 ## Fallback Error — Fault Panel
@@ -340,6 +349,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 
 ## Supplier — Vendor Ledger
 
+Tab berlabel **"PO" dan "Supplier"**, masing-masing dengan chip hitungan mono bergaris titik (`.tabCount`), dalam `role="group"` + `aria-pressed`. Dulu "Purchase Order (1)". Modal buat PO berjudul "PO Baru".
+
 Tab PO jadi **baris docket** dengan spine status (biru dipesan / amber sebagian / hijau diterima / abu draft), chip PO mono, total tabular, **tombol Terima mekanis**. Tab Supplier jadi kartu vendor + readout pembelian.
 
 Deret ringkasan menampilkan **total PO, PO aktif, dan jumlah supplier** sehingga halaman
@@ -437,6 +448,11 @@ definisi, readout rumus mono, contoh angka konter, dan "muncul di". Anchor yang 
 spine + LED brand; `scroll-margin-top` 9rem supaya judul tak tertutup topbar menempel. Judul
 topbar diambil di `AppLayout` (bukan NAV_ITEMS). Isi di `features/glossary/terms.ts`.
 
+- **Indeks = daftar isi bernomor (7 Nov 2026).** Nomor indeks sama dengan kode TERM-nn. Di layar
+  lebar indeks tersusun dalam kolom 17rem (tiga kolom, dibaca ke bawah, istilah terpanjang tetap
+  satu baris). Di bawah tiga kolom (container `glossary` ≤53.99rem) ia jadi satu baris geser 44px
+  dengan tepi pudar. Dulu awan chip: 8 baris (300px) di ponsel sebelum istilah pertama.
+
 ## Laporan — Analyzer Printout
 
 Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif. Sejak 19 Jun 2026 diperkaya **8 visual analitik** (logika agregasi murni di [`lib/business/reports.ts`](src/lib/business/reports.ts), teruji 19 unit test):
@@ -507,7 +523,8 @@ Halaman `/activity` ([`ActivityLogPage`](src/features/activity/ActivityLogPage.t
   - Readout dilabeli **`TERMUAT`**, bukan `TOTAL`: angkanya jumlah event dalam jendela yang dimuat. Melabelinya TOTAL menyesatkan — owner bisa menyimpulkan timnya lebih sepi dari kenyataan hanya karena jendelanya sempit.
   - Tombol muat-bulan-lama sengaja dirender **di luar** cabang loading/empty/isi. Kalau hanya muncul saat ada isi, bulan yang sepi jadi jalan buntu: owner melihat "Belum ada aktivitas" tanpa cara memuat bulan sebelumnya.
 - **Control strip**: cari (nama aktor / label objek), dropdown peran, dropdown aksi, tombol reset (muncul bila ada filter).
-- **Trace rail**: event dikelompokkan per hari (header tanggal sticky + hitung). Sebuah **spine vertikal putus-putus** (sinyal kanal) membentang di belakang **signal-node** — lingkaran ber-ring tone (success/warning/danger/info via `actionMeta`) berisi ikon aksi. Tiap baris: label aksi, label entitas (chip mono amber), aktor + badge peran, dan **timestamp `HH:MM`** tabular berpembatas kiri.
+- **Trace rail**: event dikelompokkan per hari (header tanggal sticky + hitung). Sebuah **spine vertikal putus-putus** (sinyal kanal) membentang di belakang **signal-node** — lingkaran ber-ring tone (success/warning/danger/info via `actionMeta`) berisi ikon aksi. Tiap baris: label aksi, label entitas (tag mono netral bergaris titik, sejak 7 Nov 2026; dulu amber di tiap baris), aktor + badge peran, lalu **garis titik** yang menyambung ke **timestamp `HH:MM`** tabular di tepi kanan.
+- **Filter aksi berkelompok (7 Nov 2026).** 36 aksi dikelompokkan per menu (Servis, Kasir, Pelanggan, Inventori, Supplier, Keuangan, Tugas, Absensi, Akun & sistem) lewat `groupedActionOptions()`; awalan baru jatuh ke "Lainnya", jadi tidak pernah hilang dari filter.
 - **Append-only**: tak ada aksi edit/hapus — jejak audit kebal manipulasi. Aksi tercatat: login, POS jual/void, pemasukan/pengeluaran create+update+delete, transfer wallet, inventori CRUD, pelanggan CRUD, absensi check-in/out/koreksi/hapus, tugas buat/selesai, servis create & ubah status. (19 Jun 2026: ditambah `task.create`, `task.complete`, `attendance.checkin`, `attendance.checkout` — sebelumnya tugas tak di-log & absensi hanya koreksi.) Logika presentasi murni di `lib/business/activity.ts`; penulisan via `logActivity()` fire-and-forget. State kosong & loading juga bertema (pulse / spinner mono). Lihat [[Data Layer]].
 
 ![[activity-dark.png]]
@@ -530,14 +547,17 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 - **Kontrol owner + lokalisasi (9 Agu 2026).** Owner dapat memilih bulan (default bulan
   berjalan), melihat total jam per karyawan, mengabsenkan manual, serta mengoreksi baris.
   Readout bulan selalu memakai locale aplikasi (`Agustus 2026`, bukan label native
-  browser berbahasa Inggris). `Check Out` memakai aksi secondary—bukan danger—karena
-  menyelesaikan shift bukan tindakan destruktif.
+  browser berbahasa Inggris). `Absen Keluar` (dulu `Check Out`) memakai aksi secondary—bukan
+  danger—karena menyelesaikan shift bukan tindakan destruktif.
 
 - **Rekap per RENTANG, bukan per bulan (4 Sep 2026).** Periode gaji toko jarang jatuh persis
   tanggal 1 sampai akhir bulan; 26–25 dan per-dua-minggu sama umumnya. Selektor bulan diganti
   rentang bebas (`Dari`/`Sampai`) dengan pintasan Bulan ini / Bulan lalu / 7 hari. Rekap DAN riwayat
   mengikuti rentang yang sama.
 - **Riwayat bisa difilter per karyawan (5 Sep 2026).**
+- **Salinan & toolbar periode (7 Nov 2026).** Tombol, toast, galat, dan label log memakai "Absen
+  Masuk/Keluar" (kode aksi `attendance.checkin/checkout` tetap). Kontrol periode keluar dari
+  kartunya dan jadi toolbar polos (`.periodBar`, `role="group"`), sama dengan halaman lain.
 - **Absensi jadi owner-only (`0056`, 5 Sep 2026).** Halaman ini sengaja TIDAK memakai `isManager()`.
   Rekap jam kerja seluruh tim adalah dasar perhitungan upah sekaligus potret siapa yang sering
   telat — itu milik **pemilik**, bukan siapa pun yang kebetulan berperan manager. Admin melihat
@@ -685,6 +705,11 @@ Fitur tambahan (profit per unit — revisi 11 Jun 2026):
 
 ---
 
+- **Judul & aksi (7 Nov 2026).** Topbar berjudul "Detail Servis" (dulu "Servis", sama dengan
+  daftarnya). Tombol WhatsApp jadi sekunder (transparan, ikon hijau, hover hijau lembut) agar tidak
+  bersaing dengan Ubah Status. Tahap stepper tanpa `min-width: 92px`; di 1025px stepper tidak
+  lagi menggulir.
+
 ## Pengaturan — Operasional
 
 Halaman `/settings` punya delapan tab untuk owner cloud (tab yang tak relevan tetap
@@ -706,6 +731,10 @@ difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alu
 ![[settings-operasional-dark.png]]
 
 ---
+
+- **Tab bagian & Profil (7 Nov 2026).** Tujuh tombol bagian berada dalam `role="group"` dengan
+  `aria-pressed`. Simpan Profil nonaktif sampai nama, alamat, atau telepon berubah, dan tombol
+  utama nonaktif kini netral bergaris putus (lihat [[Conventions]]).
 
 ## Pengaturan — Navigasi Mobile
 

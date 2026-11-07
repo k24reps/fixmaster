@@ -37,7 +37,7 @@ export function Button({
     .join(' ');
 
   return (
-    <button className={classes} disabled={disabled || loading} {...rest}>
+    <button className={classes} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
       {loading && <Icon name="circle-notch" className={`${styles.spin}`} aria-hidden />}
       {!loading && iconLeft}
       {children && <span>{children}</span>}

@@ -372,7 +372,7 @@ export function AttendancePage() {
           deletedAt: null,
         });
       }
-      toast.success(`Check-in ${localTimeStr()}`);
+      toast.success(`Absen masuk ${localTimeStr()}`);
       logActivity({
         action: 'attendance.checkin',
         entityType: 'attendance',
@@ -381,7 +381,7 @@ export function AttendancePage() {
         outletId: targetOutlet?.id ?? null,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal check-in');
+      toast.error(e instanceof Error ? e.message : 'Gagal mencatat absen masuk');
     } finally {
       setBusy(false);
     }
@@ -411,7 +411,7 @@ export function AttendancePage() {
           totalHours: calcHours(myToday.checkIn ?? '00:00', out),
         });
       }
-      toast.success(`Check-out ${out}`);
+      toast.success(`Absen keluar ${out}`);
       logActivity({
         action: 'attendance.checkout',
         entityType: 'attendance',
@@ -420,7 +420,7 @@ export function AttendancePage() {
         meta: { time: out, totalHours: calcHours(myToday.checkIn ?? '00:00', out) },
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal check-out');
+      toast.error(e instanceof Error ? e.message : 'Gagal mencatat absen keluar');
     } finally {
       setBusy(false);
     }
@@ -517,17 +517,17 @@ export function AttendancePage() {
           )}
         </div>
         <div className={styles.clockActions}>
-          {/* Tombol Check In hilang begitu ADA baris hari ini, apa pun
+          {/* Tombol Absen Masuk hilang begitu ADA baris hari ini, apa pun
               statusnya. Dulu baris izin tidak dikenali, tombolnya tetap
               muncul, dan menekannya hanya menghasilkan penolakan. */}
           {!myRow && (
             <Button size="lg" onClick={checkIn} loading={busy} iconLeft={<Icon name="right-to-bracket" aria-hidden />}>
-              Check In
+              Absen Masuk
             </Button>
           )}
           {myToday && (
             <Button size="lg" variant="secondary" onClick={checkOut} loading={busy} iconLeft={<Icon name="right-from-bracket" aria-hidden />}>
-              Check Out
+              Absen Keluar
             </Button>
           )}
           {myTodayDone && (
@@ -563,7 +563,7 @@ export function AttendancePage() {
           ) : todayRecords.length === 0 ? (
             <EmptyState
               icon={<Icon name="user-clock" aria-hidden />}
-              title="Belum ada check-in"
+              title="Belum absen masuk"
               description="Kehadiran tim hari ini akan tampil di sini."
             />
           ) : (
@@ -602,14 +602,12 @@ export function AttendancePage() {
       {/* Kontrol periode berdiri sendiri di atas kedua kartu yang dikendalikannya.
           Menaruhnya di dalam salah satu header akan menyiratkan ia hanya
           mengatur kartu itu. */}
-      <Card>
-        <CardBody className={styles.periodBody}>
-          <span className={styles.periodLabel}>
-            <Icon name="calendar" aria-hidden /> Periode
-          </span>
-          {periodPicker}
-        </CardBody>
-      </Card>
+      <div className={styles.periodBar} role="group" aria-label="Periode">
+        <span className={styles.periodLabel}>
+          <Icon name="calendar" aria-hidden /> Periode
+        </span>
+        {periodPicker}
+      </div>
 
       {owner && (
         <Card>
@@ -730,7 +728,7 @@ export function AttendancePage() {
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        Lokasi check-in
+                        Lokasi absen masuk
                       </a>
                     )}
                   </span>

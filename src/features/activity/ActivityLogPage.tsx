@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardBody, Button, EmptyState, Icon, Input, Select, Badge } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
-import { actionMeta, roleLabel, filterActivity, ACTION_META } from '@/lib/business/activity';
+import { actionMeta, roleLabel, filterActivity, groupedActionOptions } from '@/lib/business/activity';
 import { fmtDate, localDateOf, localDateStr, localTimeStr } from '@/lib/time';
 import { purgeActivityLogs } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
@@ -22,10 +22,8 @@ function fmtClock(iso: string): string {
 
 // Derived from ACTION_META (single source of truth) so every recorded verb is
 // filterable — a hand-copied list here kept falling behind new verbs.
-const ACTION_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Semua aksi' },
-  ...Object.entries(ACTION_META).map(([value, meta]) => ({ value, label: meta.label })),
-];
+const ACTION_ALL = [{ value: 'all', label: 'Semua aksi' }];
+const ACTION_GROUPS = groupedActionOptions();
 
 /** DOM cap: only the newest rows are rendered (matches FinancePage's cap). */
 const MAX_RENDERED = 300;
@@ -178,7 +176,8 @@ export function ActivityLogPage() {
         <Select
           value={action}
           onChange={(e) => setAction(e.target.value)}
-          options={ACTION_OPTIONS}
+          options={ACTION_ALL}
+          groups={ACTION_GROUPS}
           aria-label="Filter aksi"
         />
         {hasFilter && (
@@ -249,6 +248,7 @@ export function ActivityLogPage() {
                               <Badge tone="neutral">{roleLabel(log.actorRole)}</Badge>
                             </div>
                           </div>
+                          <span className={styles.leader} aria-hidden />
                           <time className={styles.time}>{fmtClock(log.createdAt)}</time>
                         </li>
                       );

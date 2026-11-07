@@ -15,6 +15,7 @@
   backdrop-filter: blur(18px);
   flex-shrink: 0;
   overflow: hidden;
+  container: demobar / inline-size;
 }
 
 /* Corner screws — bench-instrument idiom. */
@@ -50,6 +51,7 @@
   min-width: 0;
 }
 .led {
+  flex-shrink: 0;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -69,6 +71,20 @@
   letter-spacing: 0.1em;
   color: var(--text-primary);
 }
+/* Isi bar di bawah 330px (terukur di ponsel: Beranda 44 + LED 9 + "MODE DEMO"
+   88 + Reset 44 + Daftar Gratis 109 + jarak 36): kata "MODE" mengalah dan
+   jaraknya dirapatkan. Dulu teksnya menimpa tombol Reset di 320px dan LED-nya
+   terjepit ke lebar 0. Container, bukan media: Pembesaran mengubah lebar bar. */
+@container demobar (max-width: 329px) {
+  .statusMode {
+    display: none;
+  }
+  .status,
+  .actions {
+    gap: 6px;
+  }
+}
+
 /* Yang boleh mengalah saat bar sempit: keterangan dipotong, tombol tidak. */
 .statusSub {
   min-width: 0;

@@ -146,12 +146,24 @@ export function SuppliersPage() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.tabs}>
-        <button className={[styles.tab, tab === 'po' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('po')}>
-          Purchase Order ({purchaseOrders.length})
+      <div className={styles.tabs} role="group" aria-label={t('suppliers.tabsAria')}>
+        <button
+          type="button"
+          className={[styles.tab, tab === 'po' ? styles.tabActive : ''].join(' ')}
+          aria-pressed={tab === 'po'}
+          onClick={() => setTab('po')}
+        >
+          {t('suppliers.tabPo')}
+          <span className={styles.tabCount}>{purchaseOrders.length}</span>
         </button>
-        <button className={[styles.tab, tab === 'suppliers' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('suppliers')}>
-          Supplier ({suppliers.length})
+        <button
+          type="button"
+          className={[styles.tab, tab === 'suppliers' ? styles.tabActive : ''].join(' ')}
+          aria-pressed={tab === 'suppliers'}
+          onClick={() => setTab('suppliers')}
+        >
+          {t('suppliers.tabSuppliers')}
+          <span className={styles.tabCount}>{suppliers.length}</span>
         </button>
         <div className={styles.spacer} />
         {tab === 'po' ? (
@@ -203,7 +215,7 @@ export function SuppliersPage() {
           <Card>
             <EmptyState
               icon={<Icon name="file-invoice" aria-hidden />}
-              title="Belum ada Purchase Order"
+              title="Belum ada PO"
               description={
                 suppliers.length === 0
                   ? 'Tambahkan supplier terlebih dahulu.'

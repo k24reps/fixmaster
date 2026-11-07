@@ -269,11 +269,13 @@ export function SettingsPage() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.tabs}>
+      <div className={styles.tabs} role="group" aria-label={t('settingsPage.sectionsAria')}>
         {visibleTabs.map((item) => (
           <button
             key={item.id}
+            type="button"
             className={[styles.tab, tab === item.id ? styles.tabActive : ''].join(' ')}
+            aria-pressed={tab === item.id}
             onClick={() => setTab(item.id)}
           >
             <Icon name={item.icon} aria-hidden /> {item.label}
@@ -483,6 +485,12 @@ function BusinessTab() {
   const [phone, setPhone] = useState(org?.phone ?? '');
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Sama dengan Target dan Sewa: tombol simpan hanya menyala bila ada yang
+  // berubah. Dulu tab Usaha membuka dengan tiga tombol amber sekaligus.
+  const dirty =
+    name.trim() !== (org?.name ?? '') ||
+    address.trim() !== (org?.address ?? '') ||
+    phone.trim() !== (org?.phone ?? '');
 
   const save = async () => {
     if (!org) return;
@@ -632,7 +640,7 @@ function BusinessTab() {
           />
         </div>
         <div className={styles.saveFoot}>
-          <Button onClick={save} loading={busy}>
+          <Button onClick={save} loading={busy} disabled={!dirty}>
             {t('settingsPage.simpanPerubahan')}
           </Button>
         </div>

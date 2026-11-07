@@ -4537,3 +4537,76 @@ di ponsel diturunkan ke 8px. Temuan ini datang dari `scrollWidth`, bukan dari sc
 ![[summary-strip-phone-dark.png]]
 
 #decision #ui #layout #consistency
+
+## Catatan kecil critique (7 Nov 2026)
+
+Penutup critique layout 7 Nov: catatan kecil dan baris "lemah/cukup" di tabel per halaman yang
+belum tertangani tahap sebelumnya. Semua diukur dari DOM rect di demo.
+
+**Warna dan status**
+- **Tombol utama nonaktif tidak lagi amber pudar.** `opacity` di atas amber tetap terbaca sebagai
+  aksi utama (Tugas, Profil Pengaturan). Kini `.primary:disabled:not([aria-busy])` memakai
+  permukaan netral dan garis putus. `Button` memberi `aria-busy` saat `loading`, jadi tombol yang
+  sedang menyimpan tetap amber. Profil Pengaturan baru aktif bila nama, alamat, atau telepon
+  berubah.
+- **Tugas selesai tanpa `opacity: .65`.** Kontrasnya turun ke 3,3:1. Status selesai sudah terbaca
+  dari coretan, warna redup, dan spine hijau.
+- **Label entitas Log jadi tag mono netral** (teks sekunder, garis titik). Amber di 300 baris
+  menjadi latar, bukan sinyal, dan bersaing dengan node ber-tone.
+- **WhatsApp Detail Servis jadi tombol sekunder** dengan ikon hijau. Hijau padat bersaing dengan
+  Ubah Status.
+- **`flowNo` landing tanpa `opacity: 0.75`**: 4,1:1 naik ke kontras penuh `--readout-muted`.
+
+**Salinan**
+- "Tugas Internal" → "Tugas", "Check In/Out" → "Absen Masuk/Keluar" (tombol, toast, galat, label
+  log; kode aksi tetap), "Purchase Order (1)" → tab "PO" / "Supplier" dengan chip hitungan mono,
+  modal "PO Baru".
+- Topbar Detail Servis berjudul "Detail Servis" (`serviceDetail.pageTitle`); dulu "Servis", sama
+  dengan daftarnya.
+
+**Tata letak**
+- **h1 topbar 18,4px di ≤768px** (dulu 16px, setara isi badan).
+- **Stepper Detail Servis tanpa `min-width: 92px`.** Tujuh tahap × 92 menggulir 27px di 1025px.
+  Kini lebar scroller = isinya (665 = 665).
+- **Bar demo pakai container query.** Di ≤329px isi, kata "MODE" disembunyikan dan jarak turun ke
+  6px. Di 320/360px status dan aksi tak lagi bertumpuk.
+- **Tab Keuangan di 320px** kehilangan padding bar-nya; PENGELUARAN kurang 7px.
+- **Log:** garis titik dari kejadian ke jamnya (jam tetap rata kanan, tapi di 1440px berjarak
+  ±700px). Filter aksi dikelompokkan per menu lewat `groupedActionOptions()`
+  (`lib/business/activity.ts`): 36 aksi dalam 9 `<optgroup>`, awalan baru jatuh ke "Lainnya".
+- **Istilah:** indeks jadi daftar isi bernomor (nomor = kode TERM-nn) dalam kolom 17rem. Di bawah
+  tiga kolom (`@container glossary (max-width: 53.99rem)`) ia jadi satu baris geser dengan tepi
+  pudar. Lembar pertama di ponsel naik dari y=549 ke y=306.
+- **Absensi:** kontrol periode keluar dari kartu dan jadi toolbar polos seperti halaman lain.
+- **Privasi/Ketentuan:** prosa dan intro dibatasi `65ch`. Median baris 68 karakter di 1440px
+  (dulu 90–104).
+- **Landing ponsel:** WhatsApp masuk ke bar aksi sebagai tombol persegi. Dasar layar yang
+  tertutup turun dari 120px ke 61px.
+- **Landing lebar:** chip WhatsApp melayang baru muncul setelah layar pertama digulir
+  (`animation-timeline: scroll(root)`, rentang 0–60vh). Di 1440×900 dan tablet 820 ia menimpa
+  pain rail saat halaman dibuka. Peramban tanpa scroll timeline tetap menampilkannya sejak awal.
+
+**A11y.** Tab Pengaturan dan tab Supplier: `role="group"` + `aria-pressed`, `type="button"`.
+
+**Tidak diubah, sengaja:** glow di LCD Kasir, jam Absensi, dan sorot Lacak (identitas bench); tautan
+kategori Laporan (area sentuhnya sudah 24px lewat `::after`, critique hanya mengukur rect `a`);
+nama supplier di 1097px dan banner 960px @1.25 (tidak terulang saat diukur ulang).
+
+**Pelajaran: container query mengukur content box.** Ambang pertama bar demo ditulis 353px (lebar
+bar penuh), padahal padding 12px × 2 tidak ikut. Yang benar 329px: jumlah lebar isi yang diukur.
+
+**Pelajaran: `scrollWidth` anak ≠ luapan scroller.** Probe melaporkan tiap tahap stepper meluap
+44px. Itu garis penghubung `position: absolute` yang sengaja menjulur ke tahap berikutnya. Yang
+menentukan gulir adalah scroller-nya, dan scroller itu bersih.
+
+**Verifikasi:** 320/360/375/390/768/1025/1280/1440/1920, tanpa luapan dokumen. Gerbang: build,
+724 tes (3 baru untuk `groupedActionOptions`), lint hijau; `impeccable detect --scope layout`
+bersih untuk 16 berkas yang disentuh.
+
+![[minor-log-row-dark.png]]
+![[minor-istilah-index-dark.png]]
+![[minor-istilah-phone-dark.png]]
+![[minor-absensi-period-dark.png]]
+![[minor-landing-bar-phone-light.png]]
+
+#decision #ui #layout #a11y #copy

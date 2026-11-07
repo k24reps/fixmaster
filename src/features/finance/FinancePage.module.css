@@ -776,10 +776,15 @@ button.walletCell[aria-pressed='true'] .walletLed {
     padding-inline: var(--space-2);
   }
 }
-/* 320px: "Pengeluaran" + ikon tak muat sepertiga baris (terukur) — ikon dilepas. */
+/* 320px: "Pengeluaran" + ikon tak muat sepertiga baris (terukur) — ikon dilepas.
+   Tab "PENGELUARAN" juga kurang 7px (terukur); padding samping bilah tab
+   dilepas, empat tab tetap dibagi space-between. */
 @container finance (max-width: 360px) {
   .actions svg {
     display: none;
+  }
+  .tabBar {
+    padding: 0;
   }
 }
 

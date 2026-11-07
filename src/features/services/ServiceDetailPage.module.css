@@ -231,10 +231,11 @@
   border-radius: var(--radius-md);
   overflow-x: auto;
 }
+/* Lebar minimum tahap = min-content labelnya (bawaan flex), bukan 92px tetap:
+   di 1025px tujuh tahap x 92 membuat strip menggulir 27px. */
 .stage {
   position: relative;
   flex: 1;
-  min-width: 92px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -377,13 +378,20 @@
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
 }
+/* Dulu hijau WhatsApp padat: bidang berwarna terbesar di halaman, bersaing
+   dengan Ubah Status (critique). Kini sekunder dengan ikon hijau, sama dengan
+   tombol WhatsApp di kartu Pelanggan. */
 .waBtn {
-  background: var(--whatsapp);
-  color: var(--whatsapp-ink);
-  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+.waBtn svg {
+  color: var(--success-text);
 }
 .waBtn:hover {
-  filter: brightness(1.05);
+  border-color: var(--success);
+  background: var(--success-soft);
 }
 .ghostBtn {
   background: transparent;

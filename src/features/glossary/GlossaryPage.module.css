@@ -1,6 +1,7 @@
 /* Kamus Istilah — "datasheet komponen": tiap istilah satu lembar dengan kode
    TERM-nn, LED, readout rumus mono, dan pemisah titik. Token saja. */
 .wrap {
+  container: glossary / inline-size;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -14,31 +15,114 @@
   color: var(--text-secondary);
 }
 
+/* Indeks = daftar isi datasheet: nomornya sama dengan kode TERM-nn di
+   lembar, dibaca ke bawah per kolom. Dulu awan chip yang membungkus tak
+   beraturan: 3 baris di desktop, 8 baris (300px) di ponsel sebelum
+   istilah pertama. 17rem = istilah terpanjang ("HPP (Harga Pokok / Harga
+   Modal)", terukur ±270px) tetap satu baris. */
 .index {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  columns: 17rem;
+  column-gap: var(--space-5);
   padding-bottom: var(--space-3);
   border-bottom: 1px dotted var(--border-strong);
 }
 .chip {
-  padding: 5px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-input);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  break-inside: avoid;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.03em;
   color: var(--text-secondary);
   text-decoration: none;
 }
+.chipNo {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
 .chip:hover {
-  border-color: var(--brand);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
-.chipOn {
-  border-color: var(--brand);
+.chipOn,
+.chipOn .chipNo {
   color: var(--brand-text);
+}
+.chipOn {
+  background: var(--brand-soft);
+}
+
+/* Sempit (di bawah tiga kolom = 3 x 17rem + 2 jarak): indeks jadi satu
+   baris geser. Dua kolom pun masih 7 baris; satu baris mengembalikan
+   istilah pertama ke layar pertama. Tepi yang memudar menandai chip di luar layar (pola chip
+   kategori di CatalogControls). */
+@property --gloss-fade-l {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --gloss-fade-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@container glossary (max-width: 53.99rem) {
+  .index {
+    columns: auto;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .chip {
+    flex-shrink: 0;
+    align-items: center;
+    min-height: var(--control-h);
+    padding: 0 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    white-space: nowrap;
+  }
+  .chipOn {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+  }
+}
+@supports (animation-timeline: scroll()) {
+  @container glossary (max-width: 53.99rem) {
+    .index {
+      mask-image: linear-gradient(
+        to right,
+        transparent,
+        black var(--gloss-fade-l),
+        black calc(100% - var(--gloss-fade-r)),
+        transparent
+      );
+      animation: gloss-edge linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+}
+@keyframes gloss-edge {
+  0% {
+    --gloss-fade-l: 0px;
+    --gloss-fade-r: var(--space-8);
+  }
+  6% {
+    --gloss-fade-l: var(--space-8);
+  }
+  94% {
+    --gloss-fade-r: var(--space-8);
+  }
+  100% {
+    --gloss-fade-l: var(--space-8);
+    --gloss-fade-r: 0px;
+  }
 }
 
 .sheets {

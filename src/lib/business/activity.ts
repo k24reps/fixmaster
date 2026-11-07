@@ -32,8 +32,8 @@ export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'customer.delete': { label: 'Hapus pelanggan', icon: 'trash', tone: 'danger' },
   'attendance.update': { label: 'Koreksi absensi', icon: 'pen', tone: 'neutral' },
   'attendance.delete': { label: 'Hapus absensi', icon: 'trash', tone: 'danger' },
-  'attendance.checkin': { label: 'Check-in', icon: 'right-to-bracket', tone: 'success' },
-  'attendance.checkout': { label: 'Check-out', icon: 'right-from-bracket', tone: 'info' },
+  'attendance.checkin': { label: 'Absen masuk', icon: 'right-to-bracket', tone: 'success' },
+  'attendance.checkout': { label: 'Absen keluar', icon: 'right-from-bracket', tone: 'info' },
   'task.create': { label: 'Tambah tugas', icon: 'list-check', tone: 'success' },
   'task.complete': { label: 'Selesaikan tugas', icon: 'circle-check', tone: 'success' },
   'task.uncomplete': { label: 'Batalkan tanda selesai', icon: 'clock-rotate-left', tone: 'warning' },
@@ -54,6 +54,48 @@ export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'wallet.transfer.edit': { label: 'Ubah transfer saldo', icon: 'pen', tone: 'warning' },
   'wallet.transfer.void': { label: 'Batalkan transfer saldo', icon: 'circle-xmark', tone: 'danger' },
 };
+
+/**
+ * Kelompok filter aksi, urut seperti rail. 37 aksi dalam satu daftar datar
+ * memaksa pemilik membaca semuanya untuk menemukan satu; dikelompokkan per
+ * menu, ia cukup melompat ke judulnya. Kunci = awalan kode aksi.
+ */
+const ACTION_GROUPS: { label: string; prefixes: string[] }[] = [
+  { label: 'Servis', prefixes: ['service'] },
+  { label: 'Kasir', prefixes: ['sale'] },
+  { label: 'Pelanggan', prefixes: ['customer'] },
+  { label: 'Inventori', prefixes: ['inventory'] },
+  { label: 'Supplier', prefixes: ['po'] },
+  { label: 'Keuangan', prefixes: ['income', 'expense', 'wallet'] },
+  { label: 'Tugas', prefixes: ['task'] },
+  { label: 'Absensi', prefixes: ['attendance'] },
+  { label: 'Akun & sistem', prefixes: ['auth', 'member', 'invite', 'settings', 'activity', 'data'] },
+];
+
+export interface ActionOptionGroup {
+  label: string;
+  options: { value: string; label: string }[];
+}
+
+/**
+ * Opsi filter aksi berkelompok. Aksi berawalan baru yang belum dipetakan
+ * masuk "Lainnya", jadi tidak pernah hilang dari filter.
+ */
+export function groupedActionOptions(): ActionOptionGroup[] {
+  const entries = Object.entries(ACTION_META) as [ActivityAction, ActionMeta][];
+  const groups: ActionOptionGroup[] = ACTION_GROUPS.map((g) => ({
+    label: g.label,
+    options: entries
+      .filter(([value]) => g.prefixes.includes(value.split('.')[0]))
+      .map(([value, meta]) => ({ value, label: meta.label })),
+  }));
+  const known = new Set(ACTION_GROUPS.flatMap((g) => g.prefixes));
+  const rest = entries
+    .filter(([value]) => !known.has(value.split('.')[0]))
+    .map(([value, meta]) => ({ value, label: meta.label }));
+  if (rest.length) groups.push({ label: 'Lainnya', options: rest });
+  return groups.filter((g) => g.options.length > 0);
+}
 
 const FALLBACK_META: ActionMeta = { label: 'Aktivitas', icon: 'info-circle', tone: 'neutral' };
 
