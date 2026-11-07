@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Select, Button, Icon } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { capitalizeLines } from '@/lib/text';
@@ -72,7 +73,7 @@ export function TaskTemplateModal({
   // satu-satunya cara menghentikan template adalah menghapusnya.
   const [active, setActive] = useState(true);
   const [endDate, setEndDate] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'name' | 'items' | 'monthDays'>();
   const [busy, setBusy] = useState(false);
 
   useResetOnOpen(open, editing?.id ?? 'new', () => {
@@ -119,7 +120,7 @@ export function TaskTemplateModal({
     });
 
   const save = async () => {
-    if (!name.trim()) return setError('Nama template wajib diisi');
+    if (!name.trim()) return fail('name', 'Nama template wajib diisi');
 
     // Resolve the final item list: edit mode uses the editor, create mode the
     // bulk textarea. Blank titles are dropped so an empty row can't sneak in.
@@ -129,7 +130,7 @@ export function TaskTemplateModal({
           .map((it, idx) => ({ ...it, title: it.title.trim(), sortOrder: idx }))
       : parsedBulk.map((t, idx) => ({ id: newId(), title: t, description: '', sortOrder: idx }));
 
-    if (finalItems.length === 0) return setError('Isi minimal satu tugas di dalam template');
+    if (finalItems.length === 0) return fail('items', 'Isi minimal satu tugas di dalam template');
     if (recurrence === 'weekly' && weekdays.length === 0) return setError('Pilih minimal satu hari');
 
     const parsedMonthDays = monthDays
@@ -137,7 +138,7 @@ export function TaskTemplateModal({
       .map((s) => Number(s.trim()))
       .filter((n) => n >= 1 && n <= 31);
     if (recurrence === 'monthly' && parsedMonthDays.length === 0)
-      return setError('Masukkan tanggal yang valid (1-31)');
+      return fail('monthDays', 'Masukkan tanggal yang valid (1-31)');
 
     setBusy(true);
     const now = new Date().toISOString();
@@ -232,6 +233,7 @@ export function TaskTemplateModal({
 
         <Input
           label="Nama Template"
+          invalid={invalid('name')}
           name="template-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -302,6 +304,7 @@ export function TaskTemplateModal({
             <textarea
               id="task-titles"
               className={styles.titlesArea}
+              aria-invalid={invalid('items')}
               value={bulkTitles}
               onChange={(e) => setBulkTitles(capitalizeLines(e.target.value))}
               placeholder={'Satu tugas per baris, contoh:\nBersih-bersih area kerja\nCek stok sparepart\nBackup data kasir'}
@@ -359,6 +362,7 @@ export function TaskTemplateModal({
         {recurrence === 'monthly' && (
           <Input
             label="Tanggal dalam Bulan"
+            invalid={invalid('monthDays')}
             name="month-days"
             value={monthDays}
             onChange={(e) => setMonthDays(e.target.value)}

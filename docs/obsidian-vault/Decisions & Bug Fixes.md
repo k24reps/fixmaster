@@ -4641,7 +4641,7 @@ Padat) dijalankan ulang setelah tiga perbaikan terakhir; hasilnya di bawah.
 
 Critique impeccable lensa warna atas semua menu demo, landing, dan halaman publik, dua tema,
 dua penilai terpisah (desain + detektor/ukur DOM). Skor **25/40** (arsip
-`.impeccable/critique/2026-11-07T12-49-34Z__src-features.md`). Belum ada yang diperbaiki; pemilik
+`.impeccable/critique/2026-11-07T12-49-34Z__src-features.md`). Perbaikannya bertahap di bawah; pemilik
 memilih urutannya. Lima isu prioritas:
 
 1. **[P1] Amber dipakai untuk hampir semua hal.** FM-ID, nama pelanggan, harga final, avatar,
@@ -4670,5 +4670,36 @@ gradien dilewati, sehingga "EVENT RECORDER" (3.49:1, Log gelap) lolos. Jangan an
 **Pelajaran: detektor tidak menangkap dosis warna.** `impeccable detect` dan kedua gerbang
 proyek tidak melihat amber yang dipakai di mana-mana atau status yang berganti rona antar
 halaman. Itu hanya muncul dari menilai foto dan memetakan teks status → rona lintas halaman.
+
+Pemilik memilih mengerjakan semuanya bertahap, satu commit per tahap.
+
+### Tahap 1: kontras, tepi kolom, galat kolom
+
+- **Token baru `--border-control`** (padat, rona logam VOLT 257°): gelap `#7b8189`, terang
+  `#757b83`. Dipakai di `Input`, `Select`, `Textarea`, `ViewToggle`, kotak PIN, ceklis Tugas, dan 17
+  aturan kolom di halaman fitur. Terukur di DOM, 80 kolom di 9 menu + Servis Baru, dua tema: semuanya
+  ≥3:1 terhadap latar luar dan isinya (sebelumnya 1.29–1.77:1). `--border-strong` tetap untuk tepi
+  kartu dan tombol; ia alfa, jadi rasionya bergantung pada lapisan di bawah.
+  `audit-tokens` kini memeriksa `--border-control` terhadap kartu, kartu sekunder, modal, dan isian.
+- **Enam teks gagal kontras diperbaiki.** Polanya sama: token isian dipakai sebagai warna teks.
+  `.recTag` Log → `--danger-text`; tanggal jam Absensi (panel selalu gelap) → `--readout-muted`;
+  kode dokumen, nomor bab, dan tautan di halaman legal → `--brand-text`; tag mode Auth →
+  `--brand-text`; angka rail `tone_crit` → `--danger-text`. Rail `tone_info` pindah dari cyan ke
+  token info (cyan = readout instrumen; teks cyan di rail terang hanya 4.4:1).
+- **Galat form menandai kolomnya.** Hook `useFormFault` menyimpan pesan **dan** kolom penyebabnya;
+  `Input`/`Select`/`Textarea` menerima prop `invalid` (tepi `--danger` + `aria-invalid`) tanpa
+  mengulang pesannya di bawah kolom. Dipasang di 10 form: Servis, Pelanggan, Supplier, Inventori,
+  Template Tugas, PO, Kas, Gaji, Hitung Kas, Klaim Garansi. Galat tanpa kolom (duplikat, saldo
+  kurang konfirmasi, server) tetap lewat `setError`.
+- **LED galat.** Reset sandi dengan tautan kedaluwarsa: LED `danger` diam, bukan cyan berdenyut
+  "siap". Lacak servis (tak ditemukan, gagal muat, terlalu sering): spine dan ikon `warning`, bukan
+  kotak abu yang terbaca seperti keadaan kosong.
+- **`audit-contrast` menutup dua celahnya.** Menu "Tugas Internal" → "Tugas". Latar gradien kini
+  diuji terhadap tiap titik warnanya dan dilaporkan di daftar "periksa manual" (titik terburuk belum
+  tentu di bawah teks, jadi tidak menggagalkan gerbang). Elemen dilewati turun dari ±2.360 ke 12.
+  Satu-satunya temuan gradien: petunjuk mode dev di Wizard (4.16:1 gelap), hanya tampil di dev.
+
+**Verifikasi:** `audit-tokens` 0 pelanggaran; `audit-contrast` BERSIH (0 di bawah ambang, termasuk
+menu Tugas); `/privacy`, `/terms`, `/reset-password` 0 gagal di dua tema; build, 724 tes, lint hijau.
 
 #decision #ui #color #a11y #critique

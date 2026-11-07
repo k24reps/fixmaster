@@ -8,6 +8,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   hint?: string;
   error?: string;
+  /**
+   * Tandai kolom ini salah tanpa mengulang pesannya di bawah kolom — pesannya
+   * sudah tampil di `FormError` puncak form (lihat `useFormFault`).
+   */
+  invalid?: boolean;
   iconLeft?: ReactNode;
   /**
    * Disable auto-capitalization of the first letter. Use for fields where the
@@ -36,6 +41,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     label,
     hint,
     error,
+    invalid,
     iconLeft,
     className,
     id,
@@ -79,7 +85,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           {label}
         </label>
       )}
-      <div className={[styles.wrap, error ? styles.hasError : ''].join(' ')}>
+      <div className={[styles.wrap, error || invalid ? styles.hasError : ''].join(' ')}>
         {iconLeft && <span className={styles.icon}>{iconLeft}</span>}
         <input
           ref={ref}
@@ -91,7 +97,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             revealable ? styles.withReveal : '',
             className ?? '',
           ].join(' ')}
-          aria-invalid={!!error}
+          aria-invalid={!!error || !!invalid}
           onChange={handleChange}
           {...rest}
         />

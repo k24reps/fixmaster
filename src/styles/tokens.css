@@ -238,6 +238,12 @@
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.165);
   --border-brand: rgba(245, 166, 35, 0.45);
+  /* Tepi kolom isian dan kontrol: wajib 3:1 terhadap latar di sekitarnya
+     (WCAG 1.4.11). --border-strong hanya 1.7:1, jadi kolom tampak sebagai
+     teks melayang. Padat, bukan alfa, supaya rasionya tidak bergantung pada
+     lapisan di bawahnya: 3.2:1 di modal (--bg-elevated), 3.6:1 di kartu
+     sekunder, 4.1:1 di kartu. Rona logam VOLT 257deg. */
+  --border-control: #7b8189;
 
   --brand: var(--brand-500);
   --brand-hover: var(--brand-400);
@@ -336,6 +342,8 @@
   --border: rgba(24, 32, 44, 0.16);
   --border-strong: rgba(24, 32, 44, 0.27);
   --border-brand: rgba(192, 117, 10, 0.6);
+  /* 3.4:1 di kartu sekunder (terburuk), 4.2:1 di kartu, 3.8:1 di isian. */
+  --border-control: #757b83;
 
   /* Isian brand sebagai bentuk (LED, sel ikon aktif) wajib 3:1 di atas kartu;
      amber logo #f5a623 di atas baja hanya 2:1. Maka bentuk memakai amber logo

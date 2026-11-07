@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Button, Select, FormFields, FormRow, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
 import { adjustInventoryStock, purchaseInventoryStock } from '@/data/supabase-client';
@@ -45,7 +46,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const [inSource, setInSource] = useState<'buy' | 'adjust' | null>(null);
   const [unitCost, setUnitCost] = useState('');
   const [payWalletId, setPayWalletId] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'name' | 'stock' | 'unitCost' | 'outlet'>();
   const [busy, setBusy] = useState(false);
 
   // Barang baru selalu mulai kosong; mode edit mencerminkan recordnya.
@@ -81,12 +82,12 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
   const previewCost = averageCost(editing?.stock ?? 0, editing?.costPrice ?? 0, added, unit);
 
   const save = async () => {
-    if (!name.trim()) return setError(t('inventory.namaBarangWajibDiisi'));
-    if (stockNum < 0) return setError(t('inventory.stokTidakBolehNegatif'));
+    if (!name.trim()) return fail('name', t('inventory.namaBarangWajibDiisi'));
+    if (stockNum < 0) return fail('stock', t('inventory.stokTidakBolehNegatif'));
     if (added > 0 && !inSource) return setError(t('inventory.inSourceRequired'));
-    if (buying && unit <= 0) return setError(t('inventory.unitCostRequired'));
+    if (buying && unit <= 0) return fail('unitCost', t('inventory.unitCostRequired'));
     if (buying && walletPick && !outletId && mustPickOutlet(outlets.length)) {
-      return setError(t('inventory.pickOutletFirst'));
+      return fail('outlet', t('inventory.pickOutletFirst'));
     }
 
     setBusy(true);
@@ -201,7 +202,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label={t('inventory.namaSparepartProduk')} value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input invalid={invalid('name')} label={t('inventory.namaSparepartProduk')} value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <Input
           label={t('inventory.kategori')}
           value={category}
@@ -217,6 +218,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
         {outlets.length > 1 && (
           <Select
             label={t('inventory.cabangPemilikStok')}
+            invalid={invalid('outlet')}
             value={outletId}
             onChange={(e) => setOutletId(e.target.value)}
             options={[
@@ -229,6 +231,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
         <FormRow>
           <Input
             label={t('inventory.stok')}
+            invalid={invalid('stock')}
             type="number"
             value={stock}
             onChange={(e) => setStock(e.target.value)}
@@ -269,6 +272,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
                 <FormRow>
                   <Input
                     label={t('inventory.unitCost')}
+                    invalid={invalid('unitCost')}
                     inputMode="numeric"
                     value={unitCost}
                     onChange={(e) => setUnitCost(fmtRpInput(e.target.value))}

@@ -655,7 +655,7 @@ button.walletCell[aria-pressed='true'] .walletLed {
   min-height: 32px;
   padding: 4px 28px 4px 10px;
   background: var(--bg-input);
-  border: 1px dotted var(--border-strong);
+  border: 1px dotted var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-mono);

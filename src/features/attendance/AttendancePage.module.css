@@ -60,7 +60,8 @@
 .clockDate {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  /* Panel jam selalu gelap; --text-muted tema terang cuma 3:1 di atasnya. */
+  color: var(--readout-muted);
 }
 .clockStatus {
   display: inline-flex;
@@ -328,7 +329,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-xs);
   background: var(--bg-surface-2);
   color: var(--text-primary);
@@ -380,7 +381,7 @@
   min-height: var(--control-h);
   max-width: 240px;
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-xs);
   background: var(--bg-surface-2);
   color: var(--text-primary);

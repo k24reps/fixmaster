@@ -314,16 +314,18 @@
   border: 1px solid var(--border-strong);
   opacity: 0.75;
 }
+/* Info = pekerjaan berjalan, biru sinyal. Cyan tetap milik readout
+   instrumen; di rail terang teks cyan juga cuma 4.4:1. */
 .tone_info {
-  background: var(--accent-soft);
+  background: var(--info-soft);
   border-color: transparent;
 }
 .tone_info .readoutLed {
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
+  background: var(--info);
+  box-shadow: 0 0 6px var(--info);
 }
 .tone_info .readoutNum {
-  color: var(--accent-text);
+  color: var(--info-text);
 }
 .tone_good {
   background: var(--success-soft);
@@ -353,7 +355,7 @@
   box-shadow: 0 0 7px var(--danger);
 }
 .tone_crit .readoutNum {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .pulse .readoutLed {
   animation: fm-pulse 1s var(--ease-in-out) var(--pulse-cycles);

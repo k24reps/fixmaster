@@ -119,6 +119,10 @@ const PAIRS = [
   ['--info', '--bg-surface', 3, 'isian info sebagai bentuk'],
   ['--accent', '--bg-surface', 3, 'isian aksen sebagai bentuk'],
   ['--focus-ring', '--bg-app', 3, 'cincin fokus di latar app'],
+  ['--border-control', '--bg-surface', 3, 'tepi kolom isian di kartu'],
+  ['--border-control', '--bg-surface-2', 3, 'tepi kolom isian di kartu sekunder'],
+  ['--border-control', '--bg-elevated', 3, 'tepi kolom isian di modal'],
+  ['--border-control', '--bg-input', 3, 'tepi kolom isian terhadap isinya'],
   ['--focus-ring', '--bg-surface', 3, 'cincin fokus di kartu'],
 ];
 

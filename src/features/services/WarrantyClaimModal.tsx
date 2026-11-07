@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Select, Button, FormFields, FormRow, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { createWarrantyClaim } from '@/data/supabase-client';
 import { newId, nextDocNumber } from '@/lib/id';
@@ -51,7 +52,7 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
   const [recordLoss, setRecordLoss] = useState(false);
   const [lossAmount, setLossAmount] = useState('');
   const [walletId, setWalletId] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'complaint' | 'loss' | 'wallet'>();
   const [busy, setBusy] = useState(false);
   // Kunci bagian yang dicentang (`kind:name`).
   const [picked, setPicked] = useState<string[]>([]);
@@ -74,15 +75,15 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
   const save = async () => {
     const chosen = items.filter((i) => picked.includes(itemKey(i)));
     if (chosen.length === 0) return setError(t('warrantyClaim.pickItems'));
-    if (!complaint.trim()) return setError(t('warrantyClaim.complaintRequired'));
+    if (!complaint.trim()) return fail('complaint', t('warrantyClaim.complaintRequired'));
     const running = openClaimFor(services, origin.id);
     if (running) return setError(interpolate(t('warrantyClaim.running'), { no: running.serviceNo }));
     const loss = recordLoss ? parseRpInput(lossAmount) : 0;
     const wallet = wallets.find((w) => w.id === walletId);
     if (recordLoss) {
-      if (loss <= 0) return setError(t('warrantyClaim.lossRequired'));
-      if (!wallet) return setError(t('warrantyClaim.walletRequired'));
-      if (wallet.balance < loss) return setError(interpolate(t('warrantyClaim.walletShort'), { wallet: wallet.name, amount: fmtRp(wallet.balance) }));
+      if (loss <= 0) return fail('loss', t('warrantyClaim.lossRequired'));
+      if (!wallet) return fail('wallet', t('warrantyClaim.walletRequired'));
+      if (wallet.balance < loss) return fail('wallet', interpolate(t('warrantyClaim.walletShort'), { wallet: wallet.name, amount: fmtRp(wallet.balance) }));
     }
 
     setBusy(true);
@@ -242,6 +243,7 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
         </div>
         <Input
           label={t('warrantyClaim.complaint')}
+          invalid={invalid('complaint')}
           value={complaint}
           onChange={(e) => setComplaint(e.target.value)}
           placeholder={t('warrantyClaim.complaintPh')}
@@ -259,12 +261,14 @@ export function WarrantyClaimModal({ open, onClose, origin, services, onSaved }:
           <FormRow>
             <Input
               label={t('warrantyClaim.lossAmount')}
+              invalid={invalid('loss')}
               value={lossAmount}
               onChange={(e) => setLossAmount(fmtRpInput(e.target.value))}
               placeholder="100.000"
             />
             <Select
               label={t('warrantyClaim.wallet')}
+              invalid={invalid('wallet')}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
               options={wallets.map((w) => ({ value: w.id, label: w.name }))}

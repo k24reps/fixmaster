@@ -3,8 +3,11 @@
  * daftar token. Ini menangkap warna hasil racikan (`color-mix`, lapisan
  * semi-transparan, tumpukan latar) yang tak terlihat di scripts/audit-tokens.mjs.
  *
- * Komposit yang tidak bisa dipastikan — latar bergambar/gradien, atau rantai
- * induk yang tetap transparan — DILEWATI dan dihitung terpisah, bukan ditebak.
+ * Komposit yang tidak bisa dipastikan — latar bergambar, atau rantai induk
+ * yang tetap transparan — DILEWATI dan dihitung terpisah, bukan ditebak.
+ * Latar gradien diuji terhadap TIAP titik warnanya (kasus terburuk) dan
+ * dilaporkan di daftar sendiri: titik terburuk belum tentu berada di bawah
+ * teksnya, jadi ia diperiksa manual, tidak ikut menggagalkan gerbang.
  *
  * Butuh dev server jalan:
  *   BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs
@@ -40,25 +43,44 @@ const scan = () => {
     return [0, 1, 2].map((i) => fg[i] * a + bg[i] * (1 - a));
   };
 
-  /** Latar efektif sebuah elemen, atau null bila tidak bisa dipastikan. */
+  /** Tumpuk lapisan semi-transparan (terdekat ke teks di indeks 0) di atas dasar. */
+  const compose = (stack, base) => {
+    let acc = base;
+    for (let i = stack.length - 1; i >= 0; i--) acc = over(stack[i], acc);
+    return acc;
+  };
+
+  /**
+   * Latar efektif sebuah elemen: { colors, gradient } atau null bila tidak bisa
+   * dipastikan. Lebih dari satu warna = titik-titik sebuah gradien.
+   */
   const bgOf = (el) => {
     const stack = [];
     for (let n = el; n; n = n.parentElement) {
       const s = getComputedStyle(n);
-      if (s.backgroundImage && s.backgroundImage !== 'none') return null; // gradien/gambar
+      const img = s.backgroundImage;
+      if (img && img !== 'none') {
+        if (/url\(/.test(img) || !/gradient/.test(img)) return null; // gambar
+        const stops = (img.match(/rgba?\([^)]*\)/g) || []).map(parse).filter(Boolean);
+        if (!stops.length) return null;
+        // Dasar gradien: warna latar elemen ini sendiri, lalu induknya.
+        const own = parse(s.backgroundColor);
+        const below = n.parentElement ? bgOf(n.parentElement) : null;
+        let bases = below ? below.colors : [[255, 255, 255]];
+        if (own && own[3] > 0) bases = bases.map((b) => over(own, b));
+        const colors = [];
+        for (const st of stops) for (const b of bases) colors.push(compose(stack, over(st, b)));
+        return { colors, gradient: true };
+      }
       const c = parse(s.backgroundColor);
       if (!c || c[3] === 0) continue;
-      stack.push(c);
-      if (c[3] === 1) {
-        let acc = [c[0], c[1], c[2]];
-        for (let i = stack.length - 2; i >= 0; i--) acc = over(stack[i], acc);
-        return acc;
-      }
+      if (c[3] === 1) return { colors: [compose(stack, [c[0], c[1], c[2]])], gradient: false };
+      stack.unshift(c);
     }
     return null;
   };
 
-  const out = { fail: [], skipped: 0, checked: 0 };
+  const out = { fail: [], gradFail: [], skipped: 0, checked: 0 };
   for (const el of document.querySelectorAll('*')) {
     const text = Array.from(el.childNodes)
       .filter((n) => n.nodeType === 3)
@@ -77,9 +99,18 @@ const scan = () => {
       out.skipped++;
       continue;
     }
-    const f = fg[3] < 1 ? over(fg, bg) : [fg[0], fg[1], fg[2]];
-    const [hi, lo] = [lum(f), lum(bg)].sort((a, b) => b - a);
-    const ratio = (hi + 0.05) / (lo + 0.05);
+    // Rasio terburuk di antara semua kemungkinan latar (satu, kecuali gradien).
+    let ratio = Infinity;
+    let worst = bg.colors[0];
+    for (const b of bg.colors) {
+      const f = fg[3] < 1 ? over(fg, b) : [fg[0], fg[1], fg[2]];
+      const [hi, lo] = [lum(f), lum(b)].sort((x, y) => y - x);
+      const r = (hi + 0.05) / (lo + 0.05);
+      if (r < ratio) {
+        ratio = r;
+        worst = b;
+      }
+    }
 
     const px = parseFloat(s.fontSize);
     const bold = +s.fontWeight >= 700;
@@ -87,12 +118,12 @@ const scan = () => {
     const min = large ? 3 : 4.5;
     out.checked++;
     if (ratio < min) {
-      out.fail.push({
+      (bg.gradient ? out.gradFail : out.fail).push({
         ratio: +ratio.toFixed(2),
         min,
         px: +px.toFixed(1),
         fg: s.color,
-        bg: `rgb(${bg.map((v) => Math.round(v)).join(', ')})`,
+        bg: `rgb(${worst.map((v) => Math.round(v)).join(', ')})`,
         text: text.slice(0, 45),
         cls: (el.className && el.className.baseVal !== undefined
           ? el.className.baseVal
@@ -114,6 +145,7 @@ const routes = [
 ];
 
 let total = 0;
+let gradTotal = 0;
 const report = async (page, label) => {
   const r = await page.evaluate(scan);
   total += r.fail.length;
@@ -121,6 +153,11 @@ const report = async (page, label) => {
   for (const f of r.fail.slice(0, 12)) {
     console.log(`  ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
        fg ${f.fg}  bg ${f.bg}  .${f.cls}`);
+  }
+  gradTotal += r.gradFail.length;
+  for (const f of r.gradFail.slice(0, 6)) {
+    console.log(`  [gradien, periksa manual] ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
+       fg ${f.fg}  titik terburuk ${f.bg}  .${f.cls}`);
   }
 };
 for (const theme of ['dark', 'light']) {
@@ -143,17 +180,7 @@ for (const theme of ['dark', 'light']) {
       }, BASELINE);
     }
     await page.waitForTimeout(2500);
-    const r = await page.evaluate(scan);
-    total += r.fail.length;
-    console.log(
-      `\n${name} / ${theme} — diperiksa ${r.checked}, dilewati ${r.skipped} (komposit tak terbaca), gagal ${r.fail.length}`,
-    );
-    for (const f of r.fail.slice(0, 12)) {
-      console.log(
-        `  ${f.ratio}:1 (min ${f.min}) ${f.px}px  "${f.text}"
-       fg ${f.fg}  bg ${f.bg}  .${f.cls}`,
-      );
-    }
+    await report(page, `${name} / ${theme}`);
     await page.close();
   }
 }
@@ -163,7 +190,7 @@ for (const theme of ['dark', 'light']) {
 // 58 teks tema terang di bawah ambang (primitif terang tema gelap dipakai sebagai
 // warna teks) tersembunyi di 9 halaman lain sampai 24 Sep 2026.
 const MENUS = ['Servis', 'Kasir', 'Pelanggan', 'Inventori', 'Supplier', 'Keuangan',
-  'Tugas Internal', 'Absensi', 'Laporan', 'Log Aktivitas', 'Pengaturan'];
+  'Tugas', 'Absensi', 'Laporan', 'Log Aktivitas', 'Pengaturan'];
 for (const theme of ['dark', 'light']) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
   await page.goto(BASE + '/demo', { waitUntil: 'networkidle' });
@@ -257,3 +284,4 @@ for (const theme of ['dark', 'light']) {
 
 await browser.close();
 console.log(`\n${total === 0 ? 'BERSIH' : 'ADA TEMUAN'} — ${total} elemen di bawah ambang`);
+if (gradTotal) console.log(`Di atas gradien (kasus terburuk, periksa manual): ${gradTotal}`);

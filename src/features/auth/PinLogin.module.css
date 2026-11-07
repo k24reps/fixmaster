@@ -162,7 +162,7 @@
   font-size: 1.6rem;
   font-weight: var(--fw-bold);
   background: var(--bg-input);
-  border: 2px solid var(--border-strong);
+  border: 2px solid var(--border-control);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   transition: all var(--dur-fast) var(--ease-out);

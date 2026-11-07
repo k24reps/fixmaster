@@ -104,7 +104,7 @@
   width: 26px;
   height: 26px;
   border-radius: var(--radius-xs);
-  border: 2px solid var(--border-strong);
+  border: 2px solid var(--border-control);
   border-bottom-width: 4px;
   display: flex;
   align-items: center;

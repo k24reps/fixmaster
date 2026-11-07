@@ -369,7 +369,7 @@
   padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--brand-soft);
-  color: var(--brand);
+  color: var(--brand-text);
   border: 1px solid var(--border-brand);
 }
 
@@ -389,6 +389,11 @@
   background: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft), 0 0 9px var(--accent);
   animation: fm-pulse 1.8s var(--ease-in-out) var(--pulse-cycles);
+}
+/* Tautan reset kedaluwarsa: terminal mati, bukan "siap" cyan berdenyut. */
+.ledFault {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
 }
 
 .heading {

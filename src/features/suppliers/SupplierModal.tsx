@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Button, FormFields, FormRow, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { newId } from '@/lib/id';
 import { findByPhone } from '@/lib/business/customers';
@@ -23,7 +24,7 @@ export function SupplierModal({ open, onClose, editing, suppliers }: SupplierMod
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'name' | 'phone'>();
   const [busy, setBusy] = useState(false);
 
   useResetOnOpen(open, editing?.id ?? 'new', () => {
@@ -36,18 +37,18 @@ export function SupplierModal({ open, onClose, editing, suppliers }: SupplierMod
   });
 
   const save = async () => {
-    if (!name.trim()) return setError('Nama supplier wajib diisi');
+    if (!name.trim()) return fail('name', 'Nama supplier wajib diisi');
     // Data ganda supplier menyebar ke PO dan laporan belanja: nomor yang sama
     // diblokir (database menolaknya juga, 0072), nama yang sama diblokir hanya
     // untuk entri baru — mengubah nama supplier lama tetap bebas.
     const others = suppliers.filter((s) => s.id !== editing?.id && !s.deletedAt);
     const dup = findByPhone(others, phone);
-    if (dup) return setError(`No. telepon sudah terdaftar atas supplier "${dup.name}"`);
+    if (dup) return fail('phone', `No. telepon sudah terdaftar atas supplier "${dup.name}"`);
     if (!editing) {
       const sameName = others.find(
         (s) => s.name.trim().toLowerCase() === name.trim().toLowerCase(),
       );
-      if (sameName) return setError(`Supplier "${sameName.name}" sudah ada`);
+      if (sameName) return fail('name', `Supplier "${sameName.name}" sudah ada`);
     }
 
     setBusy(true);
@@ -94,9 +95,9 @@ export function SupplierModal({ open, onClose, editing, suppliers }: SupplierMod
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama Supplier" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input invalid={invalid('name')} label="Nama Supplier" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <FormRow>
-          <Input label="No. Telepon" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
+          <Input invalid={invalid('phone')} label="No. Telepon" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </FormRow>
         <Input label="Alamat" value={address} onChange={(e) => setAddress(e.target.value)} />

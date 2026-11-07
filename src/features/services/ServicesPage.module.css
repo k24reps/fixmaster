@@ -38,7 +38,7 @@
 .dateInput {
   min-height: var(--control-h);
   padding: 6px 10px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
@@ -121,7 +121,7 @@
   min-height: var(--control-h);
   padding: 9px 14px;
   background: var(--bg-input);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: var(--text-sm);

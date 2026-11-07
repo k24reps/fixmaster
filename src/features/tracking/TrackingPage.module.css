@@ -113,7 +113,7 @@
   min-height: var(--control-h);
   padding: 12px 16px;
   background: var(--bg-input);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -195,6 +195,14 @@
   font-size: 1.75rem;
   margin-bottom: var(--space-3);
   color: var(--text-muted);
+}
+/* Status gagal tampil (tak ditemukan, gagal muat, terlalu sering): spine dan
+   ikon warning. Kotak abu polos terbaca seperti keadaan kosong biasa. */
+.fault {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+.fault > svg {
+  color: var(--warning);
 }
 .notFoundNo {
   font-family: var(--font-mono);

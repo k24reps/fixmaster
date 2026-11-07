@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Select, Button, Icon } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
 import { isCloudMode } from '@/stores/demo';
@@ -41,7 +42,7 @@ export function PurchaseOrderModal({
   const [supplierId, setSupplierId] = useState('');
   const [lines, setLines] = useState<PurchaseOrderLine[]>([]);
   const [note, setNote] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'supplier'>();
   const [busy, setBusy] = useState(false);
 
   const [lastOpen, setLastOpen] = useState(false);
@@ -72,7 +73,7 @@ export function PurchaseOrderModal({
   };
 
   const save = async () => {
-    if (!supplierId) return setError('Pilih supplier');
+    if (!supplierId) return fail('supplier', 'Pilih supplier');
     if (lines.length === 0) return setError('Tambahkan minimal 1 barang');
     // Qty bilangan bulat: kolom stok integer, jadi "2,5 pcs" dulu dibulatkan
     // diam-diam saat barang diterima (server menolaknya sejak 0071).
@@ -161,6 +162,7 @@ export function PurchaseOrderModal({
         {error && <p className={styles.error}>{error}</p>}
         <Select
           label="Supplier"
+          invalid={invalid('supplier')}
           value={supplierId}
           onChange={(e) => setSupplierId(e.target.value)}
           options={suppliers.map((s) => ({ value: s.id, label: s.name }))}

@@ -21,7 +21,7 @@
   width: 100%;
   padding: 10px 38px 10px 14px;
   background: var(--bg-input);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-base);

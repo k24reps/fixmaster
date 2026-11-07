@@ -128,7 +128,10 @@ export function ResetPasswordPage() {
           <span className={[styles.screw, styles.screwBR].join(' ')} aria-hidden />
 
           <div className={styles.terminalTop}>
-            <span className={[styles.led, styles.ledLive].join(' ')} aria-hidden />
+            <span
+              className={[styles.led, phase === 'no-session' ? styles.ledFault : styles.ledLive].join(' ')}
+              aria-hidden
+            />
             <span className={styles.terminalLabel}>Terminal Akses</span>
             <span className={styles.modeTag}>reset</span>
             <button

@@ -8,6 +8,7 @@ import {
   FormRow,
   FormError,
 } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
@@ -182,7 +183,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const [employeeId, setEmployeeId] = useState('');
   const { data: employees } = useCollection('employees');
   const [advances, setAdvances] = useState<Map<string, PayrollRow>>(new Map());
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'category' | 'outlet' | 'employee' | 'amount' | 'wallet' | 'date'>();
   const [busy, setBusy] = useState(false);
   // Peringatan catat ganda sudah ditampilkan untuk isian ini; Simpan berikutnya lanjut.
   const [dupAck, setDupAck] = useState(false);
@@ -247,14 +248,14 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
   const save = async (again = false) => {
     if (busy) return;
     const value = parseRpInput(amount);
-    if (!category) return setError(t('finance.categoryRequired'));
-    if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
-    if (!editing && EMPLOYEE_REQUIRED.has(category) && !employeeId) return setError(t('finance.employeeRequired'));
-    if (value <= 0) return setError(t('finance.amountRequired'));
-    if (!walletId) return setError(t('finance.walletRequired'));
+    if (!category) return fail('category', t('finance.categoryRequired'));
+    if (needOutlet && !outletId) return fail('outlet', t('finance.outletRequired'));
+    if (!editing && EMPLOYEE_REQUIRED.has(category) && !employeeId) return fail('employee', t('finance.employeeRequired'));
+    if (value <= 0) return fail('amount', t('finance.amountRequired'));
+    if (!walletId) return fail('wallet', t('finance.walletRequired'));
     // Baris bulan lalu yang diedit tak pernah sampai di sini (tombolnya tak ada).
     const dateError = entryDateError(date, today);
-    if (dateError) return setError(dateError);
+    if (dateError) return fail('date', dateError);
     const note = description.trim();
     const target = wallets.find((w) => w.id === walletId);
     if (kind === 'expense' && !editing && target && value > target.balance && !overAck) {
@@ -400,6 +401,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           {needOutlet && (
             <Select
               label={t('finance.outlet')}
+              invalid={invalid('outlet')}
               value={outletId}
               onChange={(e) => change(setOutletId)(e.target.value)}
               options={outletOptions}
@@ -409,6 +411,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           )}
           <Select
             label={t('finance.category')}
+            invalid={invalid('category')}
             value={category}
             onChange={(e) => change(setCategory)(e.target.value)}
             options={legacy.map((c) => ({ value: c, label: categoryLabel(c) }))}
@@ -418,6 +421,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           {EMPLOYEE_CATEGORIES.has(category) && (
             <Select
               label={EMPLOYEE_REQUIRED.has(category) ? t('finance.employee') : t('finance.employeeOptional')}
+              invalid={invalid('employee')}
               value={employeeId}
               onChange={(e) => change(setEmployeeId)(e.target.value)}
               placeholder={t('finance.pickEmployee')}
@@ -448,6 +452,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
           )}
           <Input
             label={t('finance.date')}
+            invalid={invalid('date')}
             type="date"
             value={date}
             min={editing ? undefined : monthStart}
@@ -459,6 +464,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             <Input
               ref={amountRef}
               label={t('finance.amount')}
+              invalid={invalid('amount')}
               value={amount}
               inputMode="numeric"
               onChange={(e) => change(setAmount)(fmtRpInput(e.target.value))}
@@ -467,6 +473,7 @@ export function EntryModal({ open, onClose, kind, wallets, editing, existing = [
             />
             <Select
               label={t('finance.wallet')}
+              invalid={invalid('wallet')}
               value={walletId}
               onChange={(e) => {
                 change(setWalletId)(e.target.value);

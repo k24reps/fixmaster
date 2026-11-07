@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Button, FormFields, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { syncCustomerToServices } from '@/data/supabase-client';
 import { newId } from '@/lib/id';
@@ -25,7 +26,7 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved, init
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'name' | 'phone'>();
   const [busy, setBusy] = useState(false);
 
   // Isi ulang setiap kali jendela DIBUKA. Dulu hanya saat targetnya berganti,
@@ -44,8 +45,8 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved, init
   }
 
   const save = async () => {
-    if (!name.trim()) return setError('Nama wajib diisi');
-    if (!phone.trim()) return setError('No. HP wajib diisi');
+    if (!name.trim()) return fail('name', 'Nama wajib diisi');
+    if (!phone.trim()) return fail('phone', 'No. HP wajib diisi');
 
     setBusy(true);
     // Cloud: daftar di tangan hanya potongan (hasil cari/halaman), jadi nomor
@@ -56,7 +57,7 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved, init
     const dup = checkDuplicate(candidates, { id: editing?.id, name, phone });
     if (!dup.ok) {
       setBusy(false);
-      return setError(dup.reason ?? 'Duplikat');
+      return fail('phone', dup.reason ?? 'Duplikat');
     }
 
     const now = new Date().toISOString();
@@ -135,9 +136,10 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved, init
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input label="Nama" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input invalid={invalid('name')} label="Nama" value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
         <Input
           label="No. HP / WhatsApp"
+          invalid={invalid('phone')}
           value={phone}
           inputMode="tel"
           onChange={(e) => setPhone(e.target.value)}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Button, Select, FormFields, FormRow, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore, mustPickOutlet } from '@/stores/session';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
@@ -40,7 +41,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
   const [outletId, setOutletId] = useState('');
   const [date, setDate] = useState(localDateStr());
   const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'employee' | 'gross' | 'deduction' | 'outlet' | 'wallet' | 'date'>();
   const [busy, setBusy] = useState(false);
   const [paid, setPaid] = useState<string[]>([]);
 
@@ -88,16 +89,16 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
   };
 
   const save = async (another: boolean) => {
-    if (!employee) return setError(t('payroll.employeeRequired'));
-    if (grossNum <= 0) return setError(t('payroll.grossRequired'));
+    if (!employee) return fail('employee', t('payroll.employeeRequired'));
+    if (grossNum <= 0) return fail('gross', t('payroll.grossRequired'));
     if (deductNum > outstanding) {
-      return setError(interpolate(t('payroll.deductTooBig'), { amount: fmtRp(outstanding) }));
+      return fail('deduction', interpolate(t('payroll.deductTooBig'), { amount: fmtRp(outstanding) }));
     }
-    if (deductNum > grossNum) return setError(t('payroll.deductOverGross'));
-    if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
-    if (!walletId) return setError(t('payroll.walletRequired'));
+    if (deductNum > grossNum) return fail('deduction', t('payroll.deductOverGross'));
+    if (needOutlet && !outletId) return fail('outlet', t('finance.outletRequired'));
+    if (!walletId) return fail('wallet', t('payroll.walletRequired'));
     const dateErr = entryDateError(date, today);
-    if (dateErr) return setError(dateErr);
+    if (dateErr) return fail('date', dateErr);
     setBusy(true);
     try {
       await paySalary({
@@ -162,6 +163,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
         {needOutlet && (
           <Select
             label={t('finance.outlet')}
+            invalid={invalid('outlet')}
             value={outletId}
             onChange={(e) => setOutletId(e.target.value)}
             options={outlets
@@ -172,6 +174,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
         )}
         <Select
           label={t('payroll.employee')}
+          invalid={invalid('employee')}
           value={employeeId}
           onChange={(e) => pickEmployee(e.target.value)}
           placeholder={t('payroll.pickEmployee')}
@@ -187,6 +190,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
         <FormRow>
           <Input
             label={t('payroll.gross')}
+            invalid={invalid('gross')}
             inputMode="numeric"
             value={gross}
             onChange={(e) => {
@@ -198,6 +202,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
           />
           <Input
             label={t('payroll.deduction')}
+            invalid={invalid('deduction')}
             inputMode="numeric"
             value={deduction}
             onChange={(e) => {
@@ -212,6 +217,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
         <FormRow>
           <Select
             label={t('payroll.wallet')}
+            invalid={invalid('wallet')}
             value={walletId}
             onChange={(e) => {
               setWalletId(e.target.value);
@@ -222,6 +228,7 @@ export function PayrollModal({ open, onClose, wallets }: PayrollModalProps) {
           />
           <Input
             label={t('finance.date')}
+            invalid={invalid('date')}
             type="date"
             value={date}
             min={today.slice(0, 8) + '01'}

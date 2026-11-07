@@ -1,6 +1,7 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState } from 'react';
 import { Modal, Input, Select, Button, FormFields, FormError } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
 import { localDateStr } from '@/lib/time';
 import { reconcileWallet } from '@/lib/business/finance';
@@ -36,7 +37,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
   const [walletId, setWalletId] = useState('');
   const [counted, setCounted] = useState('');
   const [outletId, setOutletId] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'count' | 'outlet'>();
   const [busy, setBusy] = useState(false);
 
   const [wasOpen, setWasOpen] = useState(false);
@@ -59,13 +60,14 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
     .map((o) => ({ value: o.id, label: o.name }));
 
   const apply = async () => {
-    if (!wallet || !hasCount) return setError(t('finance.countRequired'));
+    if (!wallet) return setError(t('finance.countRequired'));
+    if (!hasCount) return fail('count', t('finance.countRequired'));
     if (!entry) {
       toast.success(t('finance.countMatch').replace('{wallet}', wallet.name));
       onClose();
       return;
     }
-    if (needOutlet && !outletId) return setError(t('finance.outletRequired'));
+    if (needOutlet && !outletId) return fail('outlet', t('finance.outletRequired'));
     setBusy(true);
     // Kurang = beban (Selisih Kas Kurang); lebih = non-operasional, bukan omzet.
     const category = entry.kind === 'expense' ? 'Selisih Kas Kurang' : 'Selisih Kas Lebih';
@@ -147,6 +149,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
           </div>
           <Input
             label={t('finance.countLabel')}
+            invalid={invalid('count')}
             hint={t('finance.countHint')}
             inputMode="numeric"
             value={counted}
@@ -191,6 +194,7 @@ export function CountModal({ open, onClose, wallets, initialWalletId }: CountMod
           {needOutlet && (
             <Select
               label={t('finance.outlet')}
+              invalid={invalid('outlet')}
               value={outletId}
               onChange={(e) => {
                 setOutletId(e.target.value);

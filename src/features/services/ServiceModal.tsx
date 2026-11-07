@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Input, Select, Button, FormFields, FormRow, FormError, Icon } from '@/components/ui';
+import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { newId, nextDocNumber } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
@@ -98,7 +99,7 @@ export function ServiceModal({
   const [technicianId, setTechnicianId] = useState('');
   const [estimateCost, setEstimateCost] = useState('');
   const [outletId, setOutletId] = useState('');
-  const [error, setError] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<'name' | 'phone' | 'device' | 'category' | 'outlet' | 'lock'>();
   const [busy, setBusy] = useState(false);
   const t = useT();
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
@@ -237,16 +238,16 @@ export function ServiceModal({
   };
 
   const save = async () => {
-    if (!customerName.trim()) return setError(t('serviceForm.nameRequired'));
-    if (!customerPhone.trim()) return setError(t('serviceForm.phoneRequired'));
-    if (!device.trim()) return setError(t('serviceForm.deviceRequired'));
-    if (categories.length && !category) return setError(t('serviceForm.categoryRequired'));
+    if (!customerName.trim()) return fail('name', t('serviceForm.nameRequired'));
+    if (!customerPhone.trim()) return fail('phone', t('serviceForm.phoneRequired'));
+    if (!device.trim()) return fail('device', t('serviceForm.deviceRequired'));
+    if (categories.length && !category) return fail('category', t('serviceForm.categoryRequired'));
     // OQ-C (same guard as PosPage/EntryModal): a multi-outlet user must pick a
     // branch first so the ticket isn't silently stamped to the primary outlet.
-    if (needOutlet && !outletId) return setError(t('serviceForm.outletRequired'));
+    if (needOutlet && !outletId) return fail('outlet', t('serviceForm.outletRequired'));
     // Jenis dipilih tanpa isi = lupa mengetik. Saat edit, kosong berarti "tetap".
     if (lockKind && !lockSecret.trim() && !(editing?.secretKind === lockKind)) {
-      return setError(t('serviceForm.lockRequired'));
+      return fail('lock', t('serviceForm.lockRequired'));
     }
 
     setBusy(true);
@@ -449,6 +450,7 @@ export function ServiceModal({
         {needOutlet && (
           <Select
             label={t('serviceForm.outlet')}
+            invalid={invalid('outlet')}
             value={outletId}
             onChange={(e) => {
               setOutletId(e.target.value);
@@ -463,6 +465,7 @@ export function ServiceModal({
           <div className={styles.suggestWrap}>
             <Input
               label={t('serviceForm.customerName')}
+              invalid={invalid('name')}
               value={customerName}
               autoCapWords
               onChange={(e) => {
@@ -481,6 +484,7 @@ export function ServiceModal({
           <div className={styles.suggestWrap}>
             <Input
               label={t('serviceForm.customerPhone')}
+              invalid={invalid('phone')}
               value={customerPhone}
               inputMode="tel"
               onChange={(e) => {
@@ -499,6 +503,7 @@ export function ServiceModal({
         <FormRow>
           <Select
             label={t('serviceForm.category')}
+            invalid={invalid('category')}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             options={categories.map((c) => ({ value: c, label: c }))}
@@ -506,6 +511,7 @@ export function ServiceModal({
           />
           <Input
             label={t('serviceForm.device')}
+            invalid={invalid('device')}
             placeholder={t('serviceForm.devicePh')}
             value={device}
             autoCapWords
@@ -601,6 +607,7 @@ export function ServiceModal({
             {lockKind && (
               <Input
                 label={t('serviceForm.lockValue')}
+                invalid={invalid('lock')}
                 value={lockSecret}
                 onChange={(e) => setLockSecret(e.target.value)}
                 inputMode={lockKind === 'sandi' ? 'text' : 'numeric'}

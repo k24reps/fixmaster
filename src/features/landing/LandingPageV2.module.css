@@ -1326,7 +1326,7 @@
   margin: var(--space-8) auto 0;
   padding: 4px;
   background: var(--bg-input);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
 }
 .termOption {

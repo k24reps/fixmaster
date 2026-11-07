@@ -86,7 +86,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.22em;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .recTitle strong {
   font-family: var(--font-display);

@@ -254,14 +254,14 @@ export function TrackingPage() {
         )}
 
         {throttleMsg && (
-          <div className={styles.notFound}>
+          <div className={[styles.notFound, styles.fault].join(' ')}>
             <Icon name="triangle-exclamation" aria-hidden />
             <p>{throttleMsg}</p>
           </div>
         )}
 
         {loadFailed && (
-          <div className={styles.notFound} role="alert">
+          <div className={[styles.notFound, styles.fault].join(' ')} role="alert">
             <Icon name="triangle-exclamation" aria-hidden />
             <p>Status servis belum bisa dimuat.</p>
             <p className={styles.notFoundHint}>
@@ -279,7 +279,7 @@ export function TrackingPage() {
             Yang bisa dilakukan: mengulang nomor yang dicari (menangkap salah
             ketik) dan menyebut kedua kemungkinan itu apa adanya. */}
         {notFound && (
-          <div className={styles.notFound}>
+          <div className={[styles.notFound, styles.fault].join(' ')}>
             <Icon name="circle-question" aria-hidden />
             <p>
               Nomor <strong className={styles.notFoundNo}>{searchNo.trim()}</strong> tidak ditemukan.

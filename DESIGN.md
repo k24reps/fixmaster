@@ -271,7 +271,7 @@ Shadow is therefore reserved and meaningful. It says one of exactly two things: 
 
 Radii are machined rather than soft: `--radius-xs` 5px for tags and focus outlines, `sm` 8px for buttons and inner controls, `md` 12px for inputs and inner panels, `lg` 16px for cards and chassis, `xl` 24px for full-width plates. `--radius-full` (999px) is reserved for pills, LEDs, and indicator dots — nothing rectangular becomes a capsule.
 
-Borders are structural and always present: `--border` for quiet internal division, `--border-strong` for a real edge, `--border-brand` for an active or focused edge. A card without a border is unfinished, because in light theme the tonal step alone is too subtle to define the object.
+Borders are structural and always present: `--border` for quiet internal division, `--border-strong` for a real edge, `--border-control` for the edge of anything you type into or pick from, `--border-brand` for an active or focused edge. `--border-control` is opaque and clears 3:1 against every surface a control sits on (WCAG 1.4.11); the translucent `--border-strong` only reaches 1.7:1, which made empty fields read as floating text. A card without a border is unfinished, because in light theme the tonal step alone is too subtle to define the object.
 
 Three recurring silhouettes define the form language:
 
@@ -313,10 +313,10 @@ Three recurring silhouettes define the form language:
 - **Accent:** Optional diagnostic spine in brand / success / warning / danger / info.
 
 ### Inputs / Fields
-- **Style:** Recessed — `--bg-input` sits *below* the card surface, with `--border-strong` and `--radius-md` (12px), 46px tall.
+- **Style:** Recessed — `--bg-input` sits *below* the card surface, with `--border-control` and `--radius-md` (12px), 46px tall.
 - **Label:** Mono uppercase 12px at 0.07em in `--text-muted`, sitting 7px above the field.
 - **Focus:** Border becomes `--brand`, background lifts to `--bg-surface`, and a 3px `--ring` appears. The field brightens as it activates, like a powered channel.
-- **Error:** `--danger` border with a 22% danger-tinted ring; message in `--danger-text` at 12px.
+- **Error:** `--danger` border with a 22% danger-tinted ring; message in `--danger-text` at 12px. When the message lives in the form-top `FormError`, the field still turns `--danger` through the `invalid` prop, so a long form shows which field failed.
 
 ### Navigation
 - **Style:** Sidebar items are instrument channels — a 32px icon cell, a sans label, and a right-aligned live readout (LED plus mono count). Minimum height 48px, `--radius-sm`.

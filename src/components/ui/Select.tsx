@@ -12,6 +12,11 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   hint?: string;
   error?: string;
+  /**
+   * Tandai kolom ini salah tanpa mengulang pesannya di bawah kolom — pesannya
+   * sudah tampil di `FormError` puncak form (lihat `useFormFault`).
+   */
+  invalid?: boolean;
   options: SelectOption[];
   /** Opsi berkelompok (`<optgroup>`), dirender sesudah `options`. */
   groups?: { label: string; options: SelectOption[] }[];
@@ -19,7 +24,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, hint, error, options, groups, placeholder, className, id, ...rest },
+  { label, hint, error, invalid, options, groups, placeholder, className, id, ...rest },
   ref,
 ) {
   const autoId = useId(); // lihat Input: label tanpa id tidak pernah terhubung
@@ -31,12 +36,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           {label}
         </label>
       )}
-      <div className={[styles.wrap, error ? styles.hasError : ''].join(' ')}>
+      <div className={[styles.wrap, error || invalid ? styles.hasError : ''].join(' ')}>
         <select
           ref={ref}
           id={selectId}
           className={[styles.select, className ?? ''].join(' ')}
-          aria-invalid={!!error}
+          aria-invalid={!!error || !!invalid}
           {...rest}
         >
           {placeholder && <option value="">{placeholder}</option>}

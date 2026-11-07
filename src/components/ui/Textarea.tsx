@@ -8,6 +8,11 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   hint?: string;
   error?: string;
   /**
+   * Tandai kolom ini salah tanpa mengulang pesannya di bawah kolom — pesannya
+   * sudah tampil di `FormError` puncak form (lihat `useFormFault`).
+   */
+  invalid?: boolean;
+  /**
    * Disable auto-capitalization of the first letter. Use for fields where the
    * user controls casing (e.g. message templates with {placeholders}, codes).
    */
@@ -21,7 +26,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
  * position is preserved.
  */
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { label, hint, error, className, id, noAutoCap, onChange, ...rest },
+  { label, hint, error, invalid, className, id, noAutoCap, onChange, ...rest },
   ref,
 ) {
   const autoId = useId(); // lihat Input: label tanpa id tidak pernah terhubung
@@ -46,8 +51,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
       <textarea
         ref={ref}
         id={areaId}
-        className={[styles.area, error ? styles.hasError : '', className ?? ''].join(' ')}
-        aria-invalid={!!error}
+        className={[styles.area, error || invalid ? styles.hasError : '', className ?? ''].join(' ')}
+        aria-invalid={!!error || !!invalid}
         onChange={handleChange}
         {...rest}
       />
