@@ -4337,3 +4337,45 @@ tetap terlihat.
 Lihat [[Signature Pages#Kasir POS — Register Readout]].
 
 #decision #ui #layout #pos
+
+## Laporan: angka metrik utuh & indeks bagian (7 Nov 2026)
+
+Temuan critique layout: di 834–1152px angka metrik terpotong ("Rp 6.450.00") dan label
+PENGELUARAN terpotong; "Tidak ada data periode lalu" diulang di tiga kartu padahal vonis di atas
+sudah menyebutnya; halaman ±6 layar tanpa cara melompat ke bagian bawah (piutang, transaksi).
+
+**Akar masalah angka terpotong:** ukuran nilai ber-`vw` (`clamp(lg, 2vw, xl)`) dan satu-satunya
+ambang tata letak 720px. `vw` tidak tahu sidebar memakan ruang dan tidak ikut Pembesaran
+aplikasi, jadi di pita tablet kartu menyempit lebih cepat daripada angkanya.
+
+**Keputusan:**
+- Nilai tetap `--text-xl`; yang berubah tata letak kartunya, lewat `@container laporan`:
+  sebaris ≥1063px, ikon di atas angka sampai 871px, dua kolom sebaris sampai 510px, dua kolom
+  ditumpuk di bawahnya. Ikon diperkecil 44 → 40px dan gap 12 → 8 supaya 1440×900 (wadah
+  1082px) tetap sebaris.
+- Ponsel: `clamp(var(--text-sm), calc(6.4cqi - 4.2px), var(--text-xl))`. Rumusnya dari isi
+  kartu dua kolom `W/2 - 32px` dibagi 13 × 0,6em.
+- Baris delta hilang saat tidak ada pembanding; teks "vs periode lalu" dan "Sudah termasuk di
+  Pemasukan" pindah ke i18n (`reports.deltaVsPrev`, `reports.posIncluded`).
+- Indeks "Isi laporan" (6 kanal, readout + LED status) di bawah metrik. Lihat
+  [[Signature Pages#Laporan — Analyzer Printout]].
+- Area sentuh `.catLink` (tautan kategori) diperluas lewat `::after` di semua perangkat, bukan
+  hanya ponsel; di dalam `.channel` pseudo-elemen menutup seluruh baris.
+
+**Pelajaran: lebar karakter mono 0,6em, bukan 0,45em.** Ambang pertama dihitung dengan 0,45em
+(14 karakter = 141px) dan masih memotong 3,6px di 1097px. Ukuran nyata: "Rp 6.450.000" = 161,3px
+pada 22,4px. Ukur klon `width: max-content; white-space: nowrap`, jangan `Range` (ikut menghitung
+isi Term yang tersembunyi dan lebar flex yang diregangkan).
+
+**Pelajaran: "terpotong" ≠ "membungkus".** `fmtRp` memakai spasi biasa, jadi angka panjang
+membungkus setelah "Rp". Pengukur yang membandingkan lebar tanpa bungkus dengan lebar kartu
+melaporkan bungkus sebagai potongan. Ukur jumlah baris (tinggi ÷ line-height) dan luberan nyata
+(`scrollWidth`, tepi kanan rect) secara terpisah.
+
+**Verifikasi (demo, tema gelap):** 11 lebar 320–1920: luberan 0, semua nilai demo sebaris.
+Uji angka panjang ("Rp 125.450.000", "-Rp 12.500.000"): 2 baris di 320/390/1280/1440, sebaris
+di 744/1097, luberan 0. Indeks: tak ada readout terpotong; 6 kolom ≥1280, 3 kolom 744–1152,
+2 kolom di ponsel. Enam lompatan mendarat di bawah topbar (1440: +12px, 390: +34px) dan fokus
+pindah ke bagian. `impeccable detect --scope layout`: bersih.
+
+#decision #ui #layout #reports

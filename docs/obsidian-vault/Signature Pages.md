@@ -424,9 +424,25 @@ topbar diambil di `AppLayout` (bukan NAV_ITEMS). Isi di `features/glossary/terms
 
 Metric tile mono (spine + LED), break-even jadi **tick gauge**, breakdown kategori + leaderboard jadi **channel analyzer** dengan bar proporsi relatif. Sejak 19 Jun 2026 diperkaya **8 visual analitik** (logika agregasi murni di [`lib/business/reports.ts`](src/lib/business/reports.ts), teruji 19 unit test):
 
-Deret empat metrik memakai satu baris seimbang di desktop dan horizontal rail di mobile;
-kontrol tanggal menumpuk tanpa overflow, dan grafik tren sudah tampak di viewport mobile
-pertama agar laporan tidak terasa seperti deretan kartu ringkasan saja.
+Deret empat metrik: empat kolom sebaris (ikon di kiri) bila wadah ≥1063px, empat kolom dengan
+ikon di atas angka sampai 871px, lalu dua kolom (ikon sebaris lagi sampai 510px, di bawahnya
+ditumpuk). Ambangnya `@container laporan`, diturunkan dari lebar terukur: 13 karakter mono
+("Rp 99.999.999") selalu sebaris; angka yang lebih panjang membungkus setelah "Rp", tak pernah
+terpotong. Di ponsel nilai menyusut `clamp(--text-sm, 6.4cqi - 4.2px, --text-xl)`. Kontrol
+tanggal menumpuk tanpa overflow.
+
+**Indeks "Isi laporan" (7 Nov 2026).** Halaman ±6 layar, jadi tepat di bawah metrik ada deret
+kanal: Break-even · Kategori · Sparepart · Servis & teknisi · Piutang · Rincian transaksi. Tiap
+kanal = label + readout mono (mis. "97% tertutup", "2 perlu restok", "Rp 350.000"); LED hanya
+pada kanal yang punya status (break-even tertutup/tidak, restok, umur piutang 31+ = merah).
+Klik menggulir halus (tanpa animasi bila `prefers-reduced-motion`) dan memindahkan fokus ke
+bagian tujuan (`tabIndex=-1`, `scroll-margin-top` = topbar sticky + jarak). Kolom 6 → 3 → 2
+pada wadah 922px / 457px (anggaran readout 15 karakter + LED). Readout menampilkan "…" saat
+data servis masih dimuat.
+
+Tanpa data periode lalu, kartu metrik **tidak** menampilkan baris delta sama sekali: vonis di
+atas sudah menyebutnya sekali ("tidak ada data periode lalu untuk dibandingkan"), sebelumnya
+kalimat yang sama diulang di tiga kartu.
 1. **Tren Pemasukan vs Pengeluaran** — grafik garis **SVG murni** (komponen [`TrendChart`](src/features/reports/TrendChart.tsx), tanpa library; geometrinya dari `trendGeometry` di `lib/business/reports.ts`, dipakai bersama grafik di laporan PDF supaya keduanya tak bisa menggambar bentuk berbeda) dengan crosshair hover, area pemasukan, gridline + label mono. Bucket auto: harian (≤31 hr) / mingguan (≤184 hr) / bulanan (selebihnya).
 2. **Rincian Transaksi** — tabel on-screen (versi layar dari CSV): tag jenis, kategori, keterangan, nominal bertanda; cap 100 baris (sisanya via ekspor).
 3. **Laba per Kategori Perangkat** — omzet + laba kotor (finalCost − biaya part) per jenis perangkat (HP/laptop/dst), servis selesai/lunas.

@@ -1,5 +1,5 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
 import { useFeature } from '@/hooks/useFeature';
@@ -372,6 +372,78 @@ export function ReportsPage() {
     toast.success(`${receivables.length} piutang diekspor`);
   };
 
+  // Kanal indeks. LED hanya pada kanal yang punya status (Lit-Signal): sisanya
+  // cuma hitungan, dan lampu di sana akan menyala tanpa arti.
+  const pendingReadout = '…';
+  const ticketTotal = funnel.reduce((s, f) => s + f.count, 0);
+  const indexItems: { id: string; label: string; readout: string; tone?: 'ok' | 'warn' | 'crit' }[] = [
+    ...(breakEven
+      ? [
+          breakEven.overhead.total === 0
+            ? { id: 'lap-be', label: t('reports.idxBe'), readout: t('reports.idxBeEmpty') }
+            : {
+                id: 'lap-be',
+                label: t('reports.idxBe'),
+                readout: interpolate(t('reports.idxBeCovered'), { pct: fmtPercent(breakEven.pct, 0) }),
+                tone: breakEven.pct >= 1 ? ('ok' as const) : ('warn' as const),
+              },
+        ]
+      : []),
+    {
+      id: 'lap-kategori',
+      label: t('reports.idxCategories'),
+      readout: reportPending
+        ? pendingReadout
+        : interpolate(t('reports.idxCatCount'), { n: String(incomeByCategory.length + expenseByCategory.length) }),
+    },
+    reportPending
+      ? { id: 'lap-stok', label: t('reports.idxParts'), readout: pendingReadout }
+      : restock.length > 0
+        ? {
+            id: 'lap-stok',
+            label: t('reports.idxParts'),
+            readout: interpolate(t('reports.idxRestock'), { n: String(restock.length) }),
+            tone: 'warn' as const,
+          }
+        : { id: 'lap-stok', label: t('reports.idxParts'), readout: t('reports.idxStockOk'), tone: 'ok' as const },
+    {
+      id: 'lap-servis',
+      label: t('reports.idxService'),
+      readout: reportPending ? pendingReadout : interpolate(t('reports.idxTickets'), { n: String(ticketTotal) }),
+    },
+    reportPending
+      ? { id: 'lap-piutang', label: t('reports.idxReceivables'), readout: pendingReadout }
+      : receivables.length > 0
+        ? {
+            id: 'lap-piutang',
+            label: t('reports.idxReceivables'),
+            readout: fmtRp(receivablesTotal),
+            tone: receivables.some((r) => r.bucket === '31+') ? ('crit' as const) : ('warn' as const),
+          }
+        : {
+            id: 'lap-piutang',
+            label: t('reports.idxReceivables'),
+            readout: t('reports.idxNoReceivables'),
+            tone: 'ok' as const,
+          },
+    {
+      id: 'lap-transaksi',
+      label: t('reports.idxTxn'),
+      readout: reportPending ? pendingReadout : interpolate(t('reports.idxTxnCount'), { n: String(txnRows.length) }),
+    },
+  ];
+  // Lompatan dikerjakan sendiri, bukan oleh hash: router demo bukan
+  // BrowserRouter, dan fokus perlu pindah ke kartu agar Tab berikutnya
+  // melanjutkan dari sana, bukan dari indeks.
+  const jumpTo = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    e.preventDefault();
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    el.focus({ preventScroll: true });
+  };
+
   return (
     <div className={styles.wrap}>
       <Card>
@@ -467,25 +539,22 @@ export function ReportsPage() {
           value={fmtRp(summary.income)}
           icon={<Icon name="arrow-down" aria-hidden />}
           tone="success"
-          delta={comparison.incomeDelta}
-          noBaseline={noBaseline}
+          delta={noBaseline ? null : comparison.incomeDelta}
         />
         <Metric
           label={t('reports.pengeluaran')}
           value={fmtRp(summary.expense)}
           icon={<Icon name="arrow-up" aria-hidden />}
           tone="danger"
-          delta={comparison.expenseDelta}
+          delta={noBaseline ? null : comparison.expenseDelta}
           deltaInverse
-          noBaseline={noBaseline}
         />
         <Metric
           label={<Term id="arus-kas-bersih">{t('reports.arusKasBersih')}</Term>}
           value={fmtRp(summary.net)}
           icon={<Icon name="chart-line" aria-hidden />}
           tone="brand"
-          delta={comparison.netDelta}
-          noBaseline={noBaseline}
+          delta={noBaseline ? null : comparison.netDelta}
         />
         <Metric
           label={t('reports.penjualanPos')}
@@ -494,9 +563,29 @@ export function ReportsPage() {
           tone="accent"
           /* Pembayaran penjualan sudah membukukan pemasukan, jadi angka ini
              BAGIAN dari Pemasukan di kiri — bukan tambahannya. */
-          note="Sudah termasuk di Pemasukan"
+          note={t('reports.posIncluded')}
         />
       </div>
+
+      {/* Indeks: 13 kartu menempati ±6 layar di laptop dan ponsel, tanpa satu
+          pun lompatan. Tiap kanal membawa angka kuncinya sendiri, jadi deret ini
+          juga ringkasan: restok, piutang, dan break-even terbaca tanpa menggulir. */}
+      <nav className={styles.index} aria-label={t('reports.idxTitle')}>
+        <span className={styles.indexTitle}>{t('reports.idxTitle')}</span>
+        <ol className={styles.indexList}>
+          {indexItems.map((it) => (
+            <li key={it.id}>
+              <a href={`#${it.id}`} className={styles.indexLink} onClick={(e) => jumpTo(e, it.id)}>
+                <span className={styles.indexLabel}>{it.label}</span>
+                <span className={styles.indexReadout}>
+                  {it.tone && <span className={styles.indexLed} data-tone={it.tone} aria-hidden />}
+                  {it.readout}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
 
       {/* 1. Income vs expense trend chart */}
       <Card>
@@ -513,7 +602,7 @@ export function ReportsPage() {
       </Card>
 
       {breakEven && (
-        <Card accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
+        <Card id="lap-be" tabIndex={-1} className={styles.jumpTarget} accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
           <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={<Term id="break-even">{t('reports.indikatorBreakEven')}</Term>} />
           <CardBody>
             {breakEven.overhead.total === 0 ? (
@@ -603,7 +692,7 @@ export function ReportsPage() {
         </Card>
       )}
 
-      <div className={styles.grid}>
+      <div id="lap-kategori" tabIndex={-1} className={[styles.grid, styles.jumpTarget].join(' ')}>
         <Card>
           <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title={t('reports.pemasukanPerKategori')} />
           <CardBody className={styles.noPad}>
@@ -717,7 +806,7 @@ export function ReportsPage() {
         </CardBody>
       </Card>
 
-      <div className={styles.grid}>
+      <div id="lap-stok" tabIndex={-1} className={[styles.grid, styles.jumpTarget].join(' ')}>
         {/* 4a. Sparepart usage */}
         <Card>
           <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title={t('reports.sparepartTerlaris')} />
@@ -794,7 +883,7 @@ export function ReportsPage() {
       </div>
 
       {/* 5. Service funnel + turnaround */}
-      <Card>
+      <Card id="lap-servis" tabIndex={-1} className={styles.jumpTarget}>
         <CardHeader
           icon={<Icon name="filter" aria-hidden />}
           title={t('reports.funnelServisTiketMasuk')}
@@ -911,7 +1000,7 @@ export function ReportsPage() {
       </Card>
 
       {/* 8. Receivables aging */}
-      <Card>
+      <Card id="lap-piutang" tabIndex={-1} className={styles.jumpTarget}>
         <CardHeader
           icon={<Icon name="coins" aria-hidden />}
           title={t('reports.piutangServisSelesaiBelum')}
@@ -975,7 +1064,7 @@ export function ReportsPage() {
       </Card>
 
       {/* 2. Transaction detail table */}
-      <Card>
+      <Card id="lap-transaksi" tabIndex={-1} className={styles.jumpTarget}>
         <CardHeader
           icon={<Icon name="clipboard-list" aria-hidden />}
           title={t('reports.rincianTransaksi')}
@@ -1042,21 +1131,19 @@ function Metric({
   tone,
   delta,
   deltaInverse,
-  noBaseline,
   note,
 }: {
   label: ReactNode;
   value: ReactNode;
   icon: ReactNode;
   tone: 'success' | 'danger' | 'brand' | 'accent';
+  /** Tanpa periode pembanding, delta `null` dan kartu diam: kalimat vonis di
+   *  atasnya sudah mengatakan "tidak ada data periode lalu" sekali. Dulu tiap
+   *  kartu mengulanginya, tiga kali, dan membungkus empat baris di 1097px. */
   delta?: number | null;
   deltaInverse?: boolean;
   /** Keterangan tetap di bawah angka (mis. "sudah termasuk di Pemasukan"). */
   note?: string;
-  /** `true` saat kartu ini memang membandingkan periode, tapi periode lalu
-   *  tidak punya data sama sekali. Dibedakan dari "kartu tanpa perbandingan"
-   *  (delta `undefined`) supaya kekosongan itu dikatakan, bukan disembunyikan. */
-  noBaseline?: boolean;
 }) {
   const t = useT();
   // For expense, a rise is "bad" → invert the good/bad color mapping.
@@ -1075,12 +1162,7 @@ function Metric({
         {showDelta && (
           <span className={[styles.metricDelta, good ? styles.inc : styles.exp].join(' ')}>
             <Icon name={isUp ? 'arrow-trend-up' : 'arrow-trend-down'} aria-hidden />
-            {fmtPercent(Math.abs(delta as number))} vs periode lalu
-          </span>
-        )}
-        {!showDelta && noBaseline && (
-          <span className={[styles.metricDelta, styles.metricNoBase].join(' ')}>
-            {t('reports.tidakAdaDataPeriode')}
+            {interpolate(t('reports.deltaVsPrev'), { pct: fmtPercent(Math.abs(delta as number)) })}
           </span>
         )}
         {note && (
