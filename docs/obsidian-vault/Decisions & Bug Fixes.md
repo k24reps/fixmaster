@@ -4636,3 +4636,39 @@ Padat) dijalankan ulang setelah tiga perbaikan terakhir; hasilnya di bawah.
 ![[minor-landing-bar-phone-light.png]]
 
 #decision #ui #layout #a11y #copy
+
+## Critique warna semua menu (7 Nov 2026)
+
+Critique impeccable lensa warna atas semua menu demo, landing, dan halaman publik, dua tema,
+dua penilai terpisah (desain + detektor/ukur DOM). Skor **25/40** (arsip
+`.impeccable/critique/2026-11-07T12-49-34Z__src-features.md`). Belum ada yang diperbaiki; pemilik
+memilih urutannya. Lima isu prioritas:
+
+1. **[P1] Amber dipakai untuk hampir semua hal.** FM-ID, nama pelanggan, harga final, avatar,
+   ubin kepala kartu, `STATUS_TONE.diterima: 'brand'`, dan angka peringatan rail
+   (`.tone_warn .readoutNum` = `--brand-text`). Merek muncul di 6–19 elemen non-interaktif per
+   halaman, jadi aksi utama kalah suara.
+2. **[P1] Satu keadaan, banyak rona.** "Menunggu diambil" biru di Dashboard (`dashboard.ts`,
+   `info`) tetapi oranye di Servis (`warning`); Selesai = Lunas hijau; info teal di rail tapi biru
+   di badge; stok AMAN teal padahal DESIGN.md menetapkan success; landing teal untuk 5 status.
+3. **[P1] Batas kolom 1.29–1.77:1 dan enam teks gagal kontras.** Pola umumnya: token isian
+   (`--brand`, `--danger`) dipakai sebagai warna teks, bukan `*-text`. Galat form tidak
+   menandai kolomnya.
+4. **[P2] Merah untuk pengeluaran rutin**, sementara kas bersih negatif tampil netral.
+5. **[P2] `--bg-surface-2` terang lebih gelap dari kartu**, sehingga tombol dan sel terangkat
+   terbaca nonaktif; 186 pemakaian primitif palet tidak dipetakan ulang di tema terang.
+
+**Yang terbukti bekerja:** instrumen (LCD Kasir, well Dashboard, jam Absensi) tetap hitam di dua
+tema; pil status tidak bergantung warna saja; cincin fokus 4.25–10.43:1; `audit-tokens` 0
+pelanggaran; nol warna hardcode di CSS module dan TSX.
+
+**Celah gerbang yang ditemukan:** `scripts/audit-contrast.mjs` masih mencari menu
+"Tugas Internal" (label kini "Tugas"), jadi Tugas tidak pernah diperiksa; elemen di atas latar
+gradien dilewati, sehingga "EVENT RECORDER" (3.49:1, Log gelap) lolos. Jangan anggap
+`audit-contrast` hijau berarti semua menu bersih.
+
+**Pelajaran: detektor tidak menangkap dosis warna.** `impeccable detect` dan kedua gerbang
+proyek tidak melihat amber yang dipakai di mana-mana atau status yang berganti rona antar
+halaman. Itu hanya muncul dari menilai foto dan memetakan teks status → rona lintas halaman.
+
+#decision #ui #color #a11y #critique
