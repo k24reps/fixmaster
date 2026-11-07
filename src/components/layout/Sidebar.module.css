@@ -130,8 +130,16 @@
 }
 
 /* ---------- Diagnostic rail ---------- */
+.navWell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--rail-well);
+}
 .nav {
   flex: 1;
+  min-height: 0;
   padding: var(--space-3);
   /* Bayangan gulir: lapis penutup ikut menggulir (`local`), lapis bayangan
      diam (`scroll`), jadi bayangan hanya muncul di sisi yang masih ada
@@ -148,12 +156,62 @@
   flex-direction: column;
   gap: 4px;
 }
+/* Tepi pudar menggantikan bayangan gulir di atas bila peramban mendukung
+   timeline gulir: bayangan 11px bergaris tipis tadi nyaris tak terlihat di
+   1280×720 (critique: "tanpa tanda gulir"). Isi kanal memudar ke sumur di
+   belakangnya; tanpa luapan timeline tak aktif, jadi tanpa pudar. Pola sama
+   dengan chip kategori (CatalogControls). */
+@property --rail-fade-t {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rail-fade-b {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@supports (animation-timeline: scroll()) {
+  .nav {
+    background: none;
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black var(--rail-fade-t),
+      black calc(100% - var(--rail-fade-b)),
+      transparent
+    );
+    animation: rail-edge linear both;
+    animation-timeline: scroll(self block);
+  }
+}
+@keyframes rail-edge {
+  0% {
+    --rail-fade-t: 0px;
+    --rail-fade-b: var(--space-6);
+  }
+  8% {
+    --rail-fade-t: var(--space-6);
+  }
+  92% {
+    --rail-fade-b: var(--space-6);
+  }
+  100% {
+    --rail-fade-t: var(--space-6);
+    --rail-fade-b: 0px;
+  }
+}
 .navItem {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: var(--nav-item-h);
-  padding: 7px 9px;
+  /* 48px bila ruang cukup, menyusut sampai 40px sebelum rail perlu digulir:
+     12 kanal butuh 644px di 48px, tapi rail demo 1366×768 hanya 472px.
+     Tanpa ambang tinggi, jadi Pembesaran aplikasi ikut terhitung. Isi 32px
+     dipusatkan oleh tinggi baris, bukan padding vertikal. */
+  height: var(--nav-item-h);
+  min-height: 40px;
+  padding: 0 9px;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: var(--text-sm);
@@ -165,6 +223,27 @@
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out);
+}
+/* Laci tablet sentuh: area ketuk tetap 44px meski rail pendek. */
+@media (pointer: coarse) {
+  .navItem {
+    min-height: 44px;
+  }
+}
+/* Tiga grup tanpa judul (operasional, kantor, sistem), dipisah sambungan
+   bertitik di celah yang sedikit dilebarkan: +5px per grup, bukan baris
+   judul 20px yang memakan ruang kanal. Grup dari NAV_ITEMS.group. */
+.seam {
+  margin-top: 5px;
+}
+.seam::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: -6px;
+  border-top: 1px dotted var(--border-strong);
+  pointer-events: none;
 }
 .navItem:hover {
   background: var(--rail-panel);
@@ -355,7 +434,8 @@
 /* ---------- Business unit (shop identity + branch selector) ---------- */
 /* Unit usaha + cabang + operator dulu memakan 208px (134 + 74) di bawah kanal
    48px — tiga readout yang terasa lebih berat dari menu yang mereka layani.
-   Dirapatkan tanpa membuang label: padding 12, logo/avatar 32, cabang 44px. */
+   Kini satu baris bila toko punya cabang: logo dan nama toko menjadi pelat
+   sakelar cabang (113 → 68px). Tanpa cabang, identitas toko berdiri sendiri. */
 .bizBlock {
   flex-shrink: 0;
   padding: var(--space-3);
@@ -423,12 +503,13 @@
   position: relative;
 }
 .branchBtn {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-height: var(--control-h);
-  padding: 6px 10px;
+  padding: 5px 10px 5px 5px;
   border-radius: var(--radius-md);
   border: 1px solid var(--rail-divider);
   background: var(--rail-control);
@@ -449,8 +530,8 @@
   box-shadow: inset 0 0 0 1px var(--brand);
 }
 .branchLed {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--brand-400);
@@ -465,18 +546,34 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
   line-height: 1.15;
 }
-.branchTag {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+/* Nama toko membungkus, tidak dipotong (keputusan lama sidebar): di Padat
+   rail 248px hanya menyisakan ±135px, dan "TechFix Service Center" jadi
+   "TechFix Servi…". Dua baris menaikkan pelat 44 → 60px, bukan memotong nama. */
+.branchOrg {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+}
+/* Baris kanal: LED + nama cabang sebagai readout mono. */
+.branchLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 .branchName {
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -577,7 +674,7 @@
 }
 .collapsed .navItem {
   justify-content: center;
-  padding: 7px 0;
+  padding: 0;
 }
 .collapsed .navIconCell {
   width: 36px;
@@ -600,7 +697,8 @@
   display: none;
 }
 /* collapsed: business block shrinks to just the centered logo; the
-   branch selector hides its text and shows only the status LED. */
+   branch selector hides its text and keeps the status LED on the logo's
+   corner. */
 .collapsed .bizBlock {
   padding: var(--space-3) 0;
   align-items: center;
@@ -608,13 +706,23 @@
 .collapsed .bizInfo {
   display: none;
 }
-.collapsed .branchMain,
-.collapsed .branchCaret {
+.collapsed .branchCaret,
+.collapsed .branchOrg,
+.collapsed .branchName {
   display: none;
+}
+.collapsed .branchMain,
+.collapsed .branchLine {
+  display: contents;
+}
+.collapsed .branchLed {
+  position: absolute;
+  top: 3px;
+  right: 3px;
 }
 .collapsed .branchBtn {
   justify-content: center;
-  padding: 8px 0;
+  padding: 5px 0;
   width: var(--control-h);
   margin: 0 auto;
 }
@@ -666,11 +774,23 @@
   .collapsed .branchBtn {
     width: 100%;
     justify-content: flex-start;
-    padding: 8px 10px;
+    padding: 5px 10px 5px 5px;
+  }
+  .collapsed .branchLine {
+    display: flex;
+  }
+  .collapsed .branchOrg {
+    display: -webkit-box;
+  }
+  .collapsed .branchName {
+    display: block;
+  }
+  .collapsed .branchLed {
+    position: static;
   }
   .collapsed .navItem {
     justify-content: flex-start;
-    padding: 7px 9px;
+    padding: 0 9px;
   }
   .collapsed .navIconCell {
     width: 32px;

@@ -4443,3 +4443,50 @@ menangkapnya. Ukur tepi kiri anak terhadap tepi kiri lajur. Aturan 44px global h
 - **Detector:** `impeccable detect --scope layout` bersih.
 
 #decision #ui #layout #mobile #services
+
+## Sidebar: kanal aktif & tanda gulir (7 Nov 2026)
+
+**Masalah (critique P2).** Di laptop pendek, halaman yang sedang dibuka bisa tak punya tanda di
+menu:
+- Rail demo 1366×768 hanya 472px. Dua belas kanal 48px butuh 644px, sehingga Log Aktivitas dan
+  Pengaturan berada di bawah tepi.
+- Satu-satunya tanda gulir adalah bayangan 11px yang nyaris tak terlihat.
+- Dasar rail memakan 113px untuk dua blok: identitas toko, lalu sakelar cabang.
+
+**Perbaikan.** Rinciannya ada di [[Sidebar - Live Diagnostic Rail#Kanal aktif & tanda gulir (7 Nov 2026)]].
+- **Baris lentur** `height: var(--nav-item-h); min-height: 40px` (44px pada pointer kasar).
+  Tinggi baris menyusut sebelum rail perlu digulir.
+- **Tepi pudar** yang digerakkan timeline gulir, dengan latar di `.navWell`. Bayangan gulir
+  lama dibuang.
+- **Kanal aktif digulir masuk**, dengan jarak 28px. Bila kanal muat di ujung gulir, rail
+  ditempel ke ujung itu.
+- **Tiga grup tanpa judul** dari `NAV_ITEMS.group`, dipisah sambungan bertitik.
+- **Dasar rail satu baris** (113 → 68px).
+
+**Pelajaran: demo bukan ukuran app asli.** Banner demo menaikkan `--app-inset-top` ke ±88px,
+sementara app asli 14px. Rail app asli di viewport yang sama 74px lebih tinggi. Kasus "1366×768"
+di critique berasal dari demo. App asli 1366×768 setara demo 1366×842, dan di sana 12 kanal muat
+(42,7px). Yang benar-benar perlu digulir adalah app asli 1280×720, yang kurang 16px. Ukur
+keduanya sebelum memilih angka.
+
+**Pelajaran: gulir "seperlunya" bisa memotong tetangga.** Versi pertama hanya menggeser sejauh
+kanal aktif keluar dari jarak 28px. Kembali dari Pengaturan ke Servis berhenti di scrollTop 28,
+dan Dashboard terpotong di bawah tepi atas, padahal di posisi 0 tidak ada pudar. Bila kanal muat
+di ujung, tempel ke ujung itu.
+
+**Pelajaran: kerapatan Padat menyempitkan rail, bukan hanya baris.** Pelat satu baris pertama
+memotong nama toko dengan elipsis. Di Lapang ia muat (165px), tapi di Padat `--sidebar-width`
+turun ke 248px dan sisa ruangnya 143px. `audit-zoom` (Lapang) bersih, sedangkan `DENSITY=padat`
+menandai 121 dari 132 baris. Nama toko kini membungkus dua baris (pelat 44 → 60px), sesuai
+keputusan lama bahwa nama toko panjang tidak dipotong. Jalankan probe di kedua kerapatan bila
+mengubah apa pun di rail.
+
+**Verifikasi (demo, DOM rect):**
+- **Kanal aktif:** terlihat di semua ukuran dan rute (1280×720–1920×1080, 6 rute).
+- **Dilipat 1440:** lebar rail 78, baris 45, pelat 44×44, LED di pojok logo (32, 4).
+- **Laci sentuh:** baris 44 di 1024 dan 48 di 834.
+- **Luapan:** 0 di semua keadaan.
+- **Tes:** `grup rail` menjaga anggota grup berurutan dan peran karyawan melihat dua grup.
+- **Detector:** `impeccable detect --scope layout` bersih.
+
+#decision #ui #layout #sidebar

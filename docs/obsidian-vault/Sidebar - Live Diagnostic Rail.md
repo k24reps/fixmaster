@@ -9,17 +9,17 @@ created: 2026-06-04
 
 Bagian dari [[00 - FixMaster MOC]].
 
-Sidebar bukan sekadar daftar menu, melainkan **panel kendali bench yang hidup**. Konsep terpilih: **arah B (Live Diagnostic Rail) + active-as-channel**, tanpa grup bersekat.
+Sidebar bukan sekadar daftar menu, melainkan **panel kendali bench yang hidup**. Konsep terpilih: **arah B (Live Diagnostic Rail) + active-as-channel**. Sejak 7 Nov 2026 kanal dibagi tiga grup **tanpa judul** yang dipisah sambungan bertitik (lihat [[#Kanal aktif & tanda gulir (7 Nov 2026)]]).
 
 ## Tiga lapis
 
 1. **Active-as-channel** — menu aktif menyala seperti channel terpilih: plate amber + icon cell solid + full border-brand (bukan blok highlight biasa).
 2. **Readout live** — tiap item membawa **LED + angka** dari data nyata, lewat hook `useNavSignals` yang memakai ulang logika di [[Data Layer]] (`isActive`, `isOverdue`, dst). Angka di rail identik dengan halamannya.
-3. **Identitas produk vs usaha terpisah** — **header atas = produk FixMaster** (monogram "FM" gradient brand→cyan + power-LED + tagline `BENCH OS` mono + plan badge). **Blok "UNIT USAHA"** (di atas footer operator) = identitas toko: logo (`org.logoDataUrl`, fallback inisial) + nama toko + **selector cabang**. Footer = **modul operator** (avatar plate + online-LED + role mono).
+3. **Identitas produk vs usaha terpisah** — **header atas = produk FixMaster** (monogram "FM" gradient brand→cyan + power-LED + tagline `BENCH OS` mono + plan badge). **Dasar rail = identitas toko**: logo (`org.logoDataUrl`, fallback inisial) + nama toko + **selector cabang**, menyatu dalam satu pelat bila toko punya cabang. Nama, peran, dan Keluar ada di menu akun Topbar (`AccountMenu`), bukan di rail.
 
 ## Selector cabang (branch switch)
 
-Tombol bergaya channel-switch dengan LED status (cyan = Semua Outlet, amber = cabang spesifik) + dropdown **buka-ke-atas** (karena letaknya dekat dasar). Opsi: "Semua Outlet" (tampilan HQ) + tiap outlet (badge "Utama" untuk primary). Memilih cabang memanggil `setActiveOutlet` → benar-benar memfilter data seluruh app (lihat scoping per-outlet di [[Data Layer]]). Logo toko diatur di **Pengaturan → Usaha** (uploader resize ke ~256px data URL).
+Satu pelat 44 px (60 px bila nama toko perlu dua baris, mis. di kerapatan Padat yang lebar rail-nya 248 px; nama tidak pernah dipotong): logo toko, nama toko (display, tebal), lalu baris kanal berisi LED status (cyan = Semua Outlet, amber = cabang spesifik) + nama cabang mono, dan caret. Saat rail dilipat, pelat menyusut ke logo dengan LED di pojok kanan atasnya. Dropdown **buka-ke-atas** (karena letaknya dekat dasar). Opsi: "Semua Outlet" (tampilan HQ) + tiap outlet (badge "Utama" untuk primary). Memilih cabang memanggil `setActiveOutlet` → benar-benar memfilter data seluruh app (lihat scoping per-outlet di [[Data Layer]]). Logo toko diatur di **Pengaturan → Usaha** (uploader resize ke ~256px data URL).
 
 ## Tabel sinyal (`useNavSignals`)
 
@@ -70,6 +70,38 @@ Tombol bergaya channel-switch dengan LED status (cyan = Semua Outlet, amber = ca
 ![[rail-tablet-light.png]]
 ![[mobile-bottom-nav-dark.png]]
 ![[mobile-more-dark.png]]
+
+### Kanal aktif & tanda gulir (7 Nov 2026)
+
+Critique layout menemukan bahwa di laptop pendek, halaman yang sedang dibuka bisa tak punya tanda di menu. Di demo 1366×768 rail hanya 472 px, padahal 12 kanal 48 px butuh 644 px. Akibatnya Log Aktivitas dan Pengaturan berada di bawah tepi, dan bayangan gulir 11 px nyaris tak terlihat.
+
+- **Tiga grup tanpa judul** dari `NAV_ITEMS.group` (`src/config/navigation.ts`):
+
+  | Grup | Kanal |
+  |---|---|
+  | `ops` | Dashboard, Servis, Kasir, Pelanggan, Inventori, Supplier |
+  | `office` | Keuangan, Tugas, Absensi, Laporan |
+  | `system` | Log Aktivitas, Pengaturan |
+
+  Sambungan bertitik (`.seam`) hanya menambah 5 px per grup; baris judul akan memakan 20 px. Anggota satu grup wajib berurutan, dan tes `grup rail` di `navigation.test.ts` menjaganya.
+- **Baris lentur 48 → 40 px**: `height: var(--nav-item-h)` dengan `min-height: 40px`. Baris menyusut sebelum rail perlu digulir. Tidak ada ambang tinggi, jadi Pembesaran aplikasi ikut terhitung. Pada `pointer: coarse` minimumnya 44 px.
+- **Tepi pudar** menggantikan bayangan gulir. `mask-image` digerakkan `animation-timeline: scroll(self block)` (pola yang sama dengan chip kategori). Latar pindah ke `.navWell` di belakang `<nav>` supaya yang memudar hanya isinya. Tanpa luapan, timeline tidak aktif, jadi tidak ada pudar.
+- **Kanal aktif digulir masuk** (`useLayoutEffect` pada `pathname`/`collapsed`), dengan jarak 28 px yang melewati pudar 24 px. Bila kanal muat di ujung gulir, rail ditempel ke ujung itu. Contohnya, kembali ke Servis menggulir ke 0, bukan 28 px yang memotong Dashboard.
+- **Dasar rail satu baris**: blok unit usaha (113 px) dan sakelar cabang digabung menjadi satu pelat (68 px). Ruang 45 px itu kembali ke kanal.
+
+Hasil ukur DOM (demo kecuali disebut lain):
+
+| Viewport | Tinggi baris | Hasil |
+|---|---|---|
+| 1920×1080 | 48 px | 12 kanal muat |
+| 1440×900 | 47,5 px | muat |
+| 1536×864 | 44,5 px | muat |
+| App asli 1366×768 (= demo 1366×842) | 42,7 px | muat |
+| App asli 1280×720 (= demo 1280×794) | 40 px | kurang 16 px, digulir dengan pudar |
+| Demo 1366×768 | 40 px | digulir 42 px, kanal aktif tetap terlihat |
+
+![[rail-short-before-dark.png]]
+![[rail-short-after-dark.png]]
 
 ## Revisi dari feedback (sudah diperbaiki & diverifikasi)
 

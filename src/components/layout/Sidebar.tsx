@@ -1,6 +1,6 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { NavLink } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { Icon } from '@/components/ui';
 import { PLANS } from '@/config/plans';
 import { getVisibleNavigation } from '@/lib/business/navigation';
@@ -42,6 +42,44 @@ export function Sidebar({
   // users see what upgrading unlocks (the upgrade "itch").
   const visibleNav = employee ? getVisibleNavigation(employee.role, plan) : [];
 
+  // Kanal aktif selalu terlihat. Di 1366×768 (demo) Log dan Pengaturan berada
+  // di bawah tepi rail, jadi halaman yang sedang dibuka tak punya tanda di
+  // menu. Jarak 28px melewati tepi pudar 24px. Di ujung gulir tepi pudarnya
+  // hilang, jadi kanal yang muat di sana ditempel ke ujung: kembali ke Servis
+  // menggulir ke 0, bukan ke 28px yang memotong Dashboard. Layout effect:
+  // tanpa lompatan yang sempat tergambar.
+  const navRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const item = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !item) return;
+    const pad = 28;
+    const view = nav.clientHeight;
+    const max = nav.scrollHeight - view;
+    const top = item.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop;
+    const bottom = top + item.offsetHeight;
+    let next = nav.scrollTop;
+    if (top - next < pad) next = top - pad;
+    else if (bottom - next > view - pad) next = bottom - view + pad;
+    if (next === nav.scrollTop) return;
+    if (bottom <= view - pad) next = 0;
+    else if (top - max >= pad) next = max;
+    nav.scrollTop = next;
+  }, [pathname, collapsed]);
+
+  const logo = (
+    <span className={styles.bizLogo} aria-hidden>
+      {org?.logoDataUrl ? (
+        <img src={org.logoDataUrl} alt="" />
+      ) : (
+        <span className={styles.bizLogoFallback}>
+          {(org?.name ?? 'F').charAt(0).toUpperCase()}
+        </span>
+      )}
+    </span>
+  );
+
   return (
     <>
       <div
@@ -81,15 +119,20 @@ export function Sidebar({
         </div>
 
         {/* ---------- Diagnostic rail ---------- */}
-        <nav className={styles.nav} aria-label="Navigasi utama">
-          {visibleNav.map(({ item, locked }) => {
+        {/* Sumur terpisah dari <nav>: tepi pudar menyamarkan isi nav, dan
+            latar sumur di belakangnya menjaga warnanya tetap utuh. */}
+        <div className={styles.navWell}>
+        <nav ref={navRef} className={styles.nav} aria-label="Navigasi utama">
+          {visibleNav.map(({ item, locked }, i) => {
+            // Sambungan bertitik di awal tiap grup: operasional, kantor, sistem.
+            const seam = i > 0 && visibleNav[i - 1].item.group !== item.group ? styles.seam : '';
             if (locked) {
               return (
                 <NavLink
                   key={item.to}
                   to="/settings"
                   onClick={onCloseMobile}
-                  className={[styles.navItem, styles.locked].join(' ')}
+                  className={[styles.navItem, styles.locked, seam].join(' ')}
                   title={`${t(item.labelKey)} (tersedia di paket Pro)`}
                 >
                   <span className={styles.navIconCell} aria-hidden>
@@ -111,7 +154,7 @@ export function Sidebar({
                 end={item.to === '/'}
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
-                  [styles.navItem, isActive ? styles.active : ''].join(' ')
+                  [styles.navItem, isActive ? styles.active : '', seam].join(' ')
                 }
                 title={t(item.labelKey)}
               >
@@ -140,26 +183,16 @@ export function Sidebar({
             );
           })}
         </nav>
+        </div>
 
         {/* ---------- Business unit (shop identity + branch selector) ---------- */}
+        {/* Satu baris bila ada cabang: logo, nama toko, dan cabang aktif menyatu
+            dalam satu sakelar (113 → 68px), ruang itu kembali ke kanal. */}
         <div className={styles.bizBlock}>
-          <div className={styles.bizIdentity}>
-            <span className={styles.bizLogo}>
-              {org?.logoDataUrl ? (
-                <img src={org.logoDataUrl} alt="" />
-              ) : (
-                <span className={styles.bizLogoFallback}>
-                  {(org?.name ?? 'F').charAt(0).toUpperCase()}
-                </span>
-              )}
-            </span>
-            <div className={styles.bizInfo}>
-              <small className={styles.bizLabel}>UNIT USAHA</small>
-              <strong className={styles.bizName}>{org?.name ?? <EmptyValue />}</strong>
-            </div>
-          </div>
-          {outlets.length > 0 && (
+          {outlets.length > 0 ? (
             <BranchSelector
+              logo={logo}
+              orgName={org?.name}
               outlets={
                 allowedOutletIds.length > 0
                   ? outlets.filter((o) => allowedOutletIds.includes(o.id))
@@ -168,6 +201,14 @@ export function Sidebar({
               activeOutletId={activeOutletId}
               onSelect={setActiveOutlet}
             />
+          ) : (
+            <div className={styles.bizIdentity}>
+              {logo}
+              <div className={styles.bizInfo}>
+                <small className={styles.bizLabel}>{t('nav.mobile.businessUnit')}</small>
+                <strong className={styles.bizName}>{org?.name ?? <EmptyValue />}</strong>
+              </div>
+            </div>
           )}
         </div>
       </aside>
@@ -179,16 +220,22 @@ export function Sidebar({
  * Prominent branch (outlet) selector styled like a bench channel switch.
  * "Semua Outlet" (null) shows org-wide data; picking a branch scopes the
  * whole app to that outlet. Opens upward since it sits near the bottom.
+ * Identitas toko (logo + nama) menjadi pelat sakelarnya.
  */
 function BranchSelector({
+  logo,
+  orgName,
   outlets,
   activeOutletId,
   onSelect,
 }: {
+  logo: ReactNode;
+  orgName: string | undefined;
   outlets: Outlet[];
   activeOutletId: ID | null;
   onSelect: (id: ID | null) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -202,7 +249,8 @@ function BranchSelector({
   }, [open]);
 
   const active = outlets.find((o) => o.id === activeOutletId) ?? null;
-  const label = active ? active.name : 'Semua Outlet';
+  const allLabel = t('nav.mobile.allOutlets');
+  const label = active ? active.name : allLabel;
 
   return (
     <div className={styles.branchSel} ref={ref}>
@@ -212,12 +260,15 @@ function BranchSelector({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={`Cabang aktif: ${label}`}
+        title={`${t('nav.mobile.activeOutlet')}: ${label}`}
       >
-        <span className={styles.branchLed} aria-hidden />
+        {logo}
         <span className={styles.branchMain}>
-          <span className={styles.branchTag}>CABANG</span>
-          <span className={styles.branchName}>{label}</span>
+          <span className={styles.branchOrg}>{orgName ?? <EmptyValue />}</span>
+          <span className={styles.branchLine}>
+            <span className={styles.branchLed} aria-hidden />
+            <span className={styles.branchName}>{label}</span>
+          </span>
         </span>
         <Icon name="chevron-down" className={styles.branchCaret} aria-hidden />
       </button>
@@ -235,7 +286,7 @@ function BranchSelector({
             }}
           >
             <Icon name="boxes-stacked" className={styles.branchOptIcon} aria-hidden />
-            <span className={styles.branchOptName}>Semua Outlet</span>
+            <span className={styles.branchOptName}>{allLabel}</span>
             {!activeOutletId && <Icon name="check" className={styles.branchCheck} aria-hidden />}
           </button>
           {outlets.map((o) => (
