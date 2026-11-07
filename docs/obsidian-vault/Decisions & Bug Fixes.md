@@ -4265,8 +4265,16 @@ dan `line-height: 1.2`: dua baris (34px di tombol 44px) di 320/360, satu baris d
 sparepart, BOM, dan riwayat Kasir. Tombol "Salin tautan lacak" 168px. Simpan pembelian luar
 dari detail menghasilkan toast "Pembelian luar dicatat di Keuangan" dan baris "DIBELI DI LUAR".
 
-**Belum dikerjakan:** "Edit" dan "Ubah" masih campur. Banyak teks halaman lama masih hardcoded,
-belum lewat i18n. Chip status "Konfirmasi Biaya" dibiarkan karena lebih deskriptif dari nama
-status "Konfirmasi".
+**Lanjutan (7 Nov 2026) — "Edit" diseragamkan jadi "Ubah".** Semua tombol, judul modal, dan
+aria-label berbahasa Indonesia kini memakai "Ubah": Ubah Pemasukan/Pengeluaran/transfer,
+Ubah {no} tiket, Ubah Sparepart, Ubah Pelanggan, Ubah Supplier, Ubah Template Tugas, Ubah
+absensi, dan aktivitas "Ubah transfer saldo". Entri riwayat tiket (Log Teknisi, linimasa
+StatusModal) **tidak** memakai "Ubah": kata kerja perintah terbaca salah sebagai catatan
+kejadian. Kunci baru `serviceDetail.historyEdited` = "Diperbarui" (en "Updated"), sama dengan
+kata di halaman lacak publik. `en.ts` tetap "Edit". Satu-satunya "Edit" tersisa di `src/`
+adalah komentar kode.
+
+**Belum dikerjakan:** Banyak teks halaman lama masih hardcoded, belum lewat i18n. Chip status
+"Konfirmasi Biaya" dibiarkan karena lebih deskriptif dari nama status "Konfirmasi".
 
 #decision #ui #copy

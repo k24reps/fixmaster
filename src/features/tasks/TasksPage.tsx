@@ -393,7 +393,7 @@ export function TasksPage() {
                             <button
                               className={styles.iconBtn}
                               onClick={() => { setEditing(tpl); setModalOpen(true); }}
-                              aria-label="Edit template"
+                              aria-label="Ubah template"
                               title="Atur isi & urutan tugas template"
                             >
                               <Icon name="pen" aria-hidden />
@@ -572,7 +572,7 @@ export function TasksPage() {
                       >
                         <Icon name="arrow-down" aria-hidden />
                       </button>
-                      <button className={styles.iconBtn} onClick={() => { setEditing(t); setModalOpen(true); }} aria-label="Edit">
+                      <button className={styles.iconBtn} onClick={() => { setEditing(t); setModalOpen(true); }} aria-label="Ubah">
                         <Icon name="pen" aria-hidden />
                       </button>
                       <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => setToDelete(t)} aria-label="Hapus">

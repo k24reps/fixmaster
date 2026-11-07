@@ -80,7 +80,7 @@ export function SupplierModal({ open, onClose, editing, suppliers }: SupplierMod
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Supplier' : 'Supplier Baru'}
+      title={editing ? 'Ubah Supplier' : 'Supplier Baru'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

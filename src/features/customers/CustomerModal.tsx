@@ -121,7 +121,7 @@ export function CustomerModal({ open, onClose, editing, customers, onSaved, init
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Pelanggan' : 'Pelanggan Baru'}
+      title={editing ? 'Ubah Pelanggan' : 'Pelanggan Baru'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

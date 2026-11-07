@@ -304,7 +304,7 @@ export function SuppliersPage() {
                       <span className={styles.vendorStatValue}>{fmtRp(vs.total)}</span>
                     </div>
                     <div className={styles.cardActions}>
-                      <button className={styles.iconBtn} onClick={() => { setEditingSupplier(s); setSupplierModal(true); }} aria-label="Edit">
+                      <button className={styles.iconBtn} onClick={() => { setEditingSupplier(s); setSupplierModal(true); }} aria-label="Ubah">
                         <Icon name="pen" aria-hidden />
                       </button>
                       <button className={[styles.iconBtn, styles.danger].join(' ')} onClick={() => setDeleteSupplier(s)} aria-label="Hapus">

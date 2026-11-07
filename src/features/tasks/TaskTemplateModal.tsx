@@ -214,7 +214,7 @@ export function TaskTemplateModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit Template Tugas' : 'Template Tugas Baru'}
+      title={editing ? 'Ubah Template Tugas' : 'Template Tugas Baru'}
       size="lg"
       footer={
         <>

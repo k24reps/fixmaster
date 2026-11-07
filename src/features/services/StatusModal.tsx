@@ -1239,7 +1239,7 @@ export function StatusModal({
                       : k === 'unpickup'
                         ? t('serviceDetail.unpicked')
                         : k === 'edit'
-                          ? t('serviceDetail.edit')
+                          ? t('serviceDetail.historyEdited')
                           : t(`statusLabel.${k}`);
                   })()}</strong>
                   <small>

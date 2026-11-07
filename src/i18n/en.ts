@@ -764,6 +764,7 @@ export const en: Dictionary = {
   'serviceDetail.linkCopied': 'Tracking link copied',
   'serviceDetail.linkCopyFailed': 'Could not copy the link. Copy it from the receipt.',
   'serviceDetail.edit': 'Edit',
+  'serviceDetail.historyEdited': 'Updated',
   'serviceDetail.printReceipt': 'Print Receipt',
   'serviceDetail.markPickedUp': 'Mark Picked Up',
   'serviceDetail.claimWarranty': 'Warranty Claim',

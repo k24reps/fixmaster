@@ -176,7 +176,7 @@ export function CustomersPage() {
           e.stopPropagation();
           openEdit(c);
         }}
-        aria-label="Edit"
+        aria-label="Ubah"
       >
         <Icon name="pen" aria-hidden />
       </button>

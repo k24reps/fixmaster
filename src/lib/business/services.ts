@@ -166,7 +166,7 @@ export const UNPICK_NOTE = 'Tanda ambil dibatalkan';
 
 /**
  * Jenis entri riwayat untuk ditampilkan. Tanda ambil tercatat sebagai `edit`
- * biasa, sehingga Log Teknisi menulis "Edit" dan halaman lacak pelanggan "edit"
+ * biasa, sehingga Log Teknisi menulis "Diperbarui" dan halaman lacak pelanggan "edit"
  * mentah; catatannya yang membedakan.
  */
 export function historyKind(

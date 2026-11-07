@@ -755,7 +755,7 @@ export function AttendancePage() {
                   </span>
                   {owner && (
                     <span className={styles.actionsCol}>
-                      <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Edit absensi">
+                      <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Ubah absensi">
                         <Icon name="pen" aria-hidden />
                       </button>
                       <button className={[styles.rowBtn, styles.danger].join(' ')} onClick={() => setToDelete(a)} aria-label="Hapus absensi">

@@ -489,7 +489,7 @@ export function ServiceDetailPage() {
       : k === 'unpickup'
         ? t('serviceDetail.unpicked')
         : k === 'edit'
-          ? t('serviceDetail.edit')
+          ? t('serviceDetail.historyEdited')
           : t(`statusLabel.${k}`);
   };
   const openStatus = (handover = false) => {
