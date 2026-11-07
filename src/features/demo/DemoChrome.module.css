@@ -85,7 +85,7 @@
   }
 }
 
-/* Yang boleh mengalah saat bar sempit: keterangan dipotong, tombol tidak. */
+/* Yang boleh mengalah saat bar sempit: keterangan, bukan tombol. */
 .statusSub {
   min-width: 0;
   overflow: hidden;
@@ -95,6 +95,16 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+/* Bar dengan semua label butuh 772px isi (terukur di 1440). Di bawahnya
+   keterangan hilang utuh. Dulu `@media (max-width: 640px)` yang menyembunyikannya,
+   jadi di 641-830px dan di 960px dengan Pembesaran 125% ia terpotong
+   "data contoh · tidak tersimpa…". */
+@container demobar (max-width: 48.3rem) {
+  .statusSub {
+    display: none;
+  }
 }
 
 /* ---------- Actions ---------- */
@@ -164,9 +174,6 @@
 @media (max-width: 640px) {
   .bar {
     padding: var(--space-2) var(--space-3);
-  }
-  .statusSub {
-    display: none;
   }
   .resetBtn span,
   .backBtn span {

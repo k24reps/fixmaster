@@ -57,6 +57,7 @@
 .docketList {
   display: flex;
   flex-direction: column;
+  container: polist / inline-size;
 }
 .docket {
   position: relative;
@@ -108,12 +109,17 @@
   gap: 2px;
   min-width: 0;
 }
+/* Nama supplier membungkus, maksimal dua baris. Satu baris + ellipsis
+   memotong "PT Sumber Komponen" jadi "PT Sumber Kom…" di 1097px. */
 .docketInfo strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .docketInfo small {
   font-family: var(--font-mono);
@@ -132,6 +138,25 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/* Bagian tetap satu baris PO = 685px (terukur: padding 43, chip 116,
+   total "Rp 12.500.000" 109, status "Sebagian Diterima" + Terima + ubah 369,
+   tiga celah 48). Ditambah 160px untuk nama, ambangnya 845px. Di bawah itu
+   status dan tombol turun ke baris kedua, di bawah nama dan total. */
+@container polist (max-width: 52.99rem) {
+  .docket {
+    grid-template-columns: 116px 1fr auto;
+    row-gap: var(--space-2);
+  }
+  .docketRight {
+    grid-column: 2 / -1;
+  }
+  /* Status di kiri, tombol mengumpul di kanan. `space-between` menyebar
+     empat item dan meninggalkan tombol Terima mengambang di tengah. */
+  .docketRight > :first-child {
+    margin-inline-end: auto;
+  }
 }
 
 /* mechanical "receive" key */

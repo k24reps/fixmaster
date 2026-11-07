@@ -182,6 +182,8 @@ Pengunjung **memakai FixMaster yang sungguhan** sebelum daftar — bukan video, 
 
 **Faceplate demo** ([`DemoChrome`](src/features/demo/DemoChrome.tsx)): bar instrumen menetap di atas app — sekrup sudut, **LED warning berdenyut**, readout mono `MODE DEMO · data contoh · tidak tersimpan`, tombol **Reset Demo** (re-seed dataset awal), dan CTA brand **Daftar Gratis** (`exitDemoToSignup` → `/?auth=1`). Bukan banner SaaS generik.
 
+Bar ini container `demobar`. Keterangan "data contoh · tidak tersimpan" hilang utuh bila isi bar di bawah 772px (terukur, semua label tampil), dan kata "MODE" mengalah di bawah 329px. Keduanya container query karena Pembesaran aplikasi mengubah lebar bar tanpa menggeser media query (7 Nov 2026).
+
 **Aksi sensitif dijinakkan** (`demoGuard()` di [`stores/demo.ts`](src/stores/demo.ts)): Keluar/ganti akun (Sidebar), Reset & Hapus Akun + Backup/Restore (Settings), Kirim WhatsApp & Cetak Nota (NotifyModal) → semua menampilkan toast + ajakan daftar, **tanpa** menjalankan logika destruktif/keluar-app.
 
 **Landing**: poster "Coba Langsung" + tombol "Buka Demo Layar Penuh" sama-sama **meng-link ke rute `/demo`** (navigasi penuh). Iframe embed sudah **dihapus** (gagal di produksi karena header `X-Frame-Options: DENY` / CSP `frame-ancestors 'none'` — yang kini dikembalikan ke setelan paling ketat). Detail di [[Decisions & Bug Fixes]].
@@ -352,6 +354,8 @@ Panel diagnostik: metric tile mono + level-meter. Membaca KPI dari `computeKpis(
 Tab berlabel **"PO" dan "Supplier"**, masing-masing dengan chip hitungan mono bergaris titik (`.tabCount`), dalam `role="group"` + `aria-pressed`. Dulu "Purchase Order (1)". Modal buat PO berjudul "PO Baru".
 
 Tab PO jadi **baris docket** dengan spine status (biru dipesan / amber sebagian / hijau diterima / abu draft), chip PO mono, total tabular, **tombol Terima mekanis**. Tab Supplier jadi kartu vendor + readout pembelian.
+
+- **Docket dua baris di daftar sempit (7 Nov 2026).** Satu baris docket butuh 685px tanpa nama (status terlebar "Sebagian Diterima" + Terima + ubah = 369px). Di bawah 845px isi (`@container polist (max-width: 52.99rem)`, mis. 1097px @100% atau laptop dengan Pembesaran), status dan tombol turun ke baris kedua: status di kiri, tombol mengumpul di kanan. Nama supplier membungkus maksimal dua baris, tidak lagi dipotong "PT Sumber Kom…".
 
 Deret ringkasan menampilkan **total PO, PO aktif, dan jumlah supplier** sehingga halaman
 tetap memberi orientasi saat data sedikit; tombol aksi memenuhi target sentuh mobile.
@@ -577,6 +581,7 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 - **Filter:** Teknisi, Urutan, Tertahan, dan Sembunyikan arsip dilipat ke satu tombol slider di samping kolom cari. Angka pada tombol itu = filter lanjutan aktif + filter terlipat yang menyala. Baris filter hilang bila kosong, dan tetap tampil bila ada tombol reset atau chip Siap ambil.
 - **Servis Baru:** pindah ke dok zona jempol (`ThumbDock`), mengambang 8px di atas menu bawah.
 - **Chip status:** memudar di tepi yang masih menyimpan chip, supaya terbaca bisa digeser. Pola ini dipakai bersama lewat `CategoryChips`.
+- **Nomor tiket di kartu** setinggi tombol status di sebelahnya (`--control-h`, 44px). Dulu 59×22px, padahal itu satu-satunya jalan ke detail dari kartu.
 
 Di desktop, nama perangkat boleh dua baris (dulu "MacBook Pro 13" 2019" terpotong di lajur 117px). Di tablet sentuh, ikon aksi 44px dan lajurnya 4 × `--control-h`. Detail: [[Decisions & Bug Fixes#Daftar Servis ponsel: antrean di layar pertama (7 Nov 2026)]].
 

@@ -4585,15 +4585,37 @@ belum tertangani tahap sebelumnya. Semua diukur dari DOM rect di demo.
 - **Landing lebar:** chip WhatsApp melayang baru muncul setelah layar pertama digulir
   (`animation-timeline: scroll(root)`, rentang 0–60vh). Di 1440×900 dan tablet 820 ia menimpa
   pain rail saat halaman dibuka. Peramban tanpa scroll timeline tetap menampilkannya sejak awal.
+- **Docket PO Supplier dua baris di daftar sempit.** Di 1097px nama supplier hanya dapat 138px
+  karena status + tombol (291px) tetap sebaris. Bagian tetap satu baris = 685px (status terlebar
+  "Sebagian Diterima" + Terima + ubah 369px, total "Rp 12.500.000" 109px). Ditambah 160px untuk
+  nama, ambangnya 845px: `@container polist (max-width: 52.99rem)`. Di bawahnya status dan tombol
+  turun ke baris kedua, tombol mengumpul di kanan (`space-between` membuat Terima mengambang di
+  tengah). Nama membungkus maksimal dua baris, tidak lagi ellipsis satu baris.
+- **Keterangan bar demo hilang utuh, tidak terpotong.** `@media (max-width: 640px)` yang
+  menyembunyikannya tak bergeser oleh Pembesaran, jadi di 641–830px dan di 960px @125%
+  "data contoh · tidak tersimpa…" terpotong. Kini `@container demobar (max-width: 48.3rem)`:
+  bar dengan semua label butuh 772px isi (terukur di 1440).
+- **Nomor tiket kartu Servis ponsel 44px.** Tautan "FM-0006" 59×22px adalah satu-satunya jalan ke
+  detail dari kartu. Kini `min-height: var(--control-h)`, sama dengan tombol status di sebelahnya.
+  Kartu bertambah 4px, tiket pertama tetap di y=373.
 
 **A11y.** Tab Pengaturan dan tab Supplier: `role="group"` + `aria-pressed`, `type="button"`.
 
 **Tidak diubah, sengaja:** glow di LCD Kasir, jam Absensi, dan sorot Lacak (identitas bench); tautan
-kategori Laporan (area sentuhnya sudah 24px lewat `::after`, critique hanya mengukur rect `a`);
-nama supplier di 1097px dan banner 960px @1.25 (tidak terulang saat diukur ulang).
+kategori Laporan (area sentuhnya sudah 24px lewat `::after`, critique hanya mengukur rect `a`).
 
 **Pelajaran: container query mengukur content box.** Ambang pertama bar demo ditulis 353px (lebar
 bar penuh), padahal padding 12px × 2 tidak ikut. Yang benar 329px: jumlah lebar isi yang diukur.
+
+**Pelajaran: ukur ulang dengan probe yang sama.** Nama supplier di 1097px dan keterangan bar demo
+di 960px @1.25 sempat ditandai "tidak terulang" karena diukur ulang dengan skrip buatan sendiri.
+`audit-zoom` melaporkan keduanya terus-menerus sejak pagi. Bila sebuah temuan probe tampak tidak
+terulang, jalankan lagi probe yang melaporkannya sebelum menutupnya.
+
+**Pelajaran: dua laporan, dua skema.** `zoom-report.json` memakai `tables`/`overlaps`/`clipped`,
+`mobile-report.json` memakai `scrollers`/`offenders`/`tiny`. Peringkas yang hanya membaca kunci
+zoom melaporkan ponsel dan tablet "0 masalah" padahal ada target sentuh 22px. Di zoom-report,
+`tables` juga mencatat tiap wadah tabel, termasuk yang tidak meluap: saring `over > 0`.
 
 **Pelajaran: `scrollWidth` anak ≠ luapan scroller.** Probe melaporkan tiap tahap stepper meluap
 44px. Itu garis penghubung `position: absolute` yang sengaja menjulur ke tahap berikutnya. Yang
@@ -4601,7 +4623,11 @@ menentukan gulir adalah scroller-nya, dan scroller itu bersih.
 
 **Verifikasi:** 320/360/375/390/768/1025/1280/1440/1920, tanpa luapan dokumen. Gerbang: build,
 724 tes (3 baru untuk `groupedActionOptions`), lint hijau; `impeccable detect --scope layout`
-bersih untuk 16 berkas yang disentuh.
+bersih untuk 16 berkas yang disentuh. Probe penuh §4 (ponsel, pita tablet, zoom, Pembesaran 125%,
+Padat) dijalankan ulang setelah tiga perbaikan terakhir; hasilnya di bawah.
+
+![[minor-supplier-po-1097-dark.png]]
+![[minor-servis-kartu-phone-dark.png]]
 
 ![[minor-log-row-dark.png]]
 ![[minor-istilah-index-dark.png]]

@@ -99,7 +99,9 @@ BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguha
 Gerbang token saja TIDAK cukup: komponen meracik warna lewat `color-mix` dan lapisan
 semi-transparan yang tak terlihat dari `tokens.css`. Ukur DOM juga.
 
-Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. **Saring dua
+Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. Skemanya
+berbeda: zoom memakai `tables`/`overlaps`/`clipped` (`tables` juga memuat wadah yang tidak
+meluap, saring `over > 0`), mobile memakai `scrollers`/`offenders`/`tiny`. **Saring dua
 positif palsu** sebelum menyimpulkan: `caption._srOnly` (caption khusus pembaca layar, memang
 di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat
 merah total padahal bersih.
