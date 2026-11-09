@@ -629,7 +629,6 @@ export const en: Dictionary = {
   'pos.processFailed': 'Could not process the sale',
   'pos.tabRegister': 'Register',
   'pos.tabHistory': 'Recent Sales',
-  'pos.viewLabel': 'Product view',
   'pos.categoryLabel': 'Product category',
   'pos.noMatchTitle': 'No matching products',
   'pos.noMatchBody': 'Try another keyword or category.',

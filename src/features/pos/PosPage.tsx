@@ -9,9 +9,7 @@ import {
   Modal,
   LoadState,
   loadPending,
-  ViewToggle,
   CategoryChips,
-  usePersistedView,
   countCategories,
   categoryOf,
 } from '@/components/ui';
@@ -86,7 +84,6 @@ export function PosPage() {
   const monthStart = monthRange().from;
 
   const [query, setQuery] = useState('');
-  const [view, chooseView] = usePersistedView('fixmaster-pos-view');
   const [category, setCategory] = useState('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState('');
@@ -722,7 +719,6 @@ export function PosPage() {
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
           />
           {finePointer && <kbd className={styles.kbd} aria-hidden>/</kbd>}
-          <ViewToggle value={view} onChange={chooseView} label={t('pos.viewLabel')} />
         </div>
         <CategoryChips
           categories={categoryCounts}
@@ -751,51 +747,10 @@ export function PosPage() {
               />
             )}
           </Card>
-        ) : view === 'list' ? (
-          <div className={styles.productList}>
-            {available.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.productRow}
-                onClick={() => addToCart(item)}
-                disabled={item.stock <= 0}
-              >
-                <span className={styles.productRowMain}>
-                  <strong>{item.name}</strong>
-                  <small>{categoryOf(item.category)}</small>
-                </span>
-                {stockBadge(item)}
-                <span className={styles.productRowPrice}>{fmtRp(item.sellPrice)}</span>
-              </button>
-            ))}
-          </div>
-        ) : view === 'tiles' ? (
-          <div className={styles.tileGrid}>
-            {available.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.productTile}
-                onClick={() => addToCart(item)}
-                disabled={item.stock <= 0}
-                title={item.name}
-              >
-                <span className={styles.tileName}>{item.name}</span>
-                <span className={styles.tileMeta}>
-                  <strong>{fmtRp(item.sellPrice)}</strong>
-                  {item.stock <= 0 ? (
-                    <span className={styles.soldOut}>{t('pos.outOfStock')}</span>
-                  ) : (
-                    <span className={item.stock <= item.minStock ? styles.tileLow : undefined}>
-                      stok {item.stock}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
         ) : (
+          /* Satu tampilan saja: kartu. Nama turun baris utuh, jadi nomor model
+             di ujungnya (A1989, Pro Max) tetap terbaca; Daftar dan Ringkas dulu
+             memotongnya, dan tombol pilihannya memakan lebar kolom cari. */
           <div className={styles.productGrid}>
             {available.map((item) => (
               <button

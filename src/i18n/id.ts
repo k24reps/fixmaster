@@ -637,7 +637,6 @@ export const id = {
   'pos.processFailed': 'Gagal memproses transaksi',
   'pos.tabRegister': 'Kasir',
   'pos.tabHistory': 'Transaksi Terakhir',
-  'pos.viewLabel': 'Tampilan produk',
   'pos.categoryLabel': 'Kategori produk',
   'pos.noMatchTitle': 'Tidak ada produk yang cocok',
   'pos.noMatchBody': 'Coba kata kunci atau kategori lain.',
