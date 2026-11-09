@@ -4984,3 +4984,134 @@ Bar Proses di 320px (pilih cara bayar, uang kurang, kembalian, uang pas); nomina
 Lihat [[Signature Pages#Kasir POS — Register Readout]].
 
 #decision #ui #layout #pos #critique #a11y
+
+## Daftar Servis di laptop: critique 25/40 dalam lima tahap (9 Nov 2026)
+
+Critique tabel kolom Servis di desktop (`.impeccable/critique/2026-11-09T11-45-18Z__src-features-services.md`)
+memberi skor 25/40: satu P1 (tabel jatuh jadi tumpukan di laptop 1280–1440px) dan empat P2
+(teks identitas terpotong, baris tanpa spine, keyboard dan pembaca layar, konteks hilang saat
+interupsi). Pemilik memilih "tata letak laptop dulu", "semua lima, bertahap", dan "boleh
+keduanya" (seluruh baris jadi tautan, ikon Lihat tiket dilepas, kolom Teknisi hilang sendiri).
+Satu commit per tahap, gerbang build/test/lint di tiap tahap.
+
+### Tahap 1: tetap tabel di laptop (P1)
+
+- **Akar:** ambang judul kolom tetap 1181px terlewat di hampir semua laptop (kontainer =
+  viewport − 360 pada kerapatan bawaan; 1440px → 1080). Di bawahnya baris menumpuk jadi
+  150–193px, dua tiket per layar.
+- **Lajur aksi 10rem → 7.5rem.** Seluruh baris membuka tiket (`openTicket`, dengan penjaga untuk
+  kontrol di dalam baris, seleksi teks, dan klik bermodifikasi); ikon "Lihat tiket" hanya tersisa
+  di Kartu ponsel. Jalur papan ketik dan pembaca layar tetap tautan nomor tiket.
+- **Kolom Teknisi hilang sendiri** bila tiket di daftar hanya punya satu nama (`distinctTechs`;
+  demo: 7 dari 7 tiket "Rizal Pratama"). Yang dihitung nama pada tiket, bukan jumlah karyawan.
+- **Baris Penanganan kosong tak tampil** sebelum Selesai/Lunas (`showFixLine`). Label
+  Keluhan/Penanganan disembunyikan lewat `data-single`, bukan `:only-child`.
+- **Ambang dari lantai, bukan angka tetap.** Tiap lajur utama `minmax(lantai, fr)`. Lantai (px):
+  nomor 104, pelanggan 132, perangkat 120, catatan 156, teknisi 88, ditambah jeda 12px dan lajur
+  kanan 508px. Lima segmen → **1156px**, ≤ empat segmen → **1056px**
+  (`.rowList:not([data-segs='5'])`). Tabel kini mulai di viewport ≈1416px di demo (empat segmen),
+  dan Padat di 1366px ikut dapat tabel. Bawaan mengalir (`flex-wrap`); tabel hanya di blok
+  `@container min-width`, sesuai AGENTS.md §3.
+- Terukur di demo, tinggi baris: 1280px 150–193 → 91–117, 1366px 112–138 → 71–116,
+  1440px 90–133 → 56–98.
+
+### Tahap 2: identitas terbaca utuh (P2)
+
+- Nomor tiket `--text-sm` tebal (dulu `--text-xs`, teks terkecil di baris). "ABCDE-100000"
+  (awalan 5 huruf batas Wizard + 6 digit) terukur 100,8px di lajur 104px.
+- Nomor HP `--font-mono` (aturan desain: angka mono). Lajur pelanggan 7rem → 8.25rem:
+  "+62 812-3456-78901" terukur 129,6px, tanpa elipsis, karena nomor yang kehilangan digit sama
+  dengan nomor salah. Selisih 20px diambil dari lantai catatan (11rem → 9.75rem), sehingga jumlah
+  lantai dan ambang 1156/1056px tak bergeser.
+- Nama pelanggan boleh dua baris, plus `title` pada nama dan nomor HP. Hanya di baris Daftar;
+  Kartu memakai `.customerName` yang sama dan tak berubah. Harganya: baris tertinggi di 1440px
+  98 → 103px.
+
+### Tahap 3: spine dan satu zona status (P2)
+
+- **Spine 3px di tiap baris** lewat `data-tone={STATUS_TONE[s.status]}`, berbagi aturan CSS dengan
+  `.jobCard` (selector digabung, bukan salinan), jadi satu status tak pernah punya dua warna di dua
+  tampilan.
+- **"Belum diambil / Diambil" pindah** dari kolom Perangkat ke lajur Status, di bawah lencana dan
+  di atas "Tertahan N hari": satu zona pindai. Teks stall tetap "tanpa aktivitas" (bukan klaim
+  durasi), jadi dua baris tak dilebur jadi satu kalimat. Kartu ponsel tak berubah.
+- LED "Belum diambil" `flex-shrink: 0` (dulu terjepit jadi oval 3,9×7px).
+- Efek samping terukur: baris di 1440px 56,86,65,65,86,103,69; di 1920px tinggi maksimum 78 → 89,
+  hanya untuk tiket yang memajang tiga sinyal sekaligus (Lunas + belum diambil + tertahan).
+
+### Tahap 4: keyboard dan pembaca layar (P2)
+
+- Tombol status bernama "Ubah status FM-0006: Diterima" (kunci `services.statusChangeAria`,
+  id + en; `services.statusAria` sudah dipakai filter). Nama memuat teks lencana, jadi kendali
+  suara "klik Diterima" tetap jalan. Tombol ambil (manajer) menyebut akibat kliknya, bukan hanya
+  di `title`.
+- Empat tombol ikon (sparepart, lihat tiket, WhatsApp, ubah) `aria-describedby` ke nomor tiket
+  (`svc-no-<id>`): terukur terbaca "Ubah … FM-0007".
+- **`aria-label` pada `<span>` biasa tak dibacakan.** Label margin kini angka `aria-hidden` +
+  teks `fm-visually-hidden` ("Modal Rp 850.000 / Profit Rp 650.000").
+- Judul kolom `aria-hidden` (div biasa tanpa hubungan ke sel; `ul` tak pernah jadi tabel bagi
+  pembaca layar); tiap sel membawa label tersembunyi. Label Keluhan/Penanganan yang mengulang
+  judul disembunyikan secara visual, bukan `display: none` (yang menghapusnya dari pohon
+  aksesibilitas).
+- Pensil status tampil di `:focus-visible` (terukur opacity 1 + cincin 3px). Perhentian tab
+  per baris 6–7 → 5–6.
+
+### Tahap 5: konteks daftar bertahan saat tiket dibuka (P2)
+
+Kotak cari, saringan, urutan, dan posisi gulir dulu lenyap sesudah tiket dibuka. Tautan "Kembali
+ke daftar" di detail hanyalah `<Link to="/services">`, jadi menaruh state di URL saja tak cukup;
+ingatan harus hidup di luar komponen.
+
+- **`lib/business/serviceListView.ts` (murni, 13 tes)** memutuskan tampilan awal:
+  1. tautan Dashboard (`?status/?pickup/?tech/?date/?open`) pada entri riwayat BARU menang atas
+     ingatan, tanpa gulir (tombol "Tiket saya" harus selalu membuka itu);
+  2. ingatan milik pengguna + outlet yang sama dan lebih muda dari **30 menit** dipulihkan;
+  3. selain itu bersih. `?new=1` bukan saringan: ia hanya membuka modal.
+
+  Kunci entri riwayat (`location.key`) membuat tombol Kembali peramban ke entri berparameter
+  yang sama memulihkan apa yang sempat diketik, sedangkan klik baru pada tautan Dashboard yang
+  sama tetap membuka saringan segar.
+- `features/services/listMemory.ts`: sessionStorage per tab (hilang saat tab ditutup, tak
+  terbawa antar perangkat), dibungkus try/catch, dengan salinan di memori. Setiap kolom dipaksa ke
+  nilai sah saat dibaca: status yang sudah dihapus atau JSON terpotong jatuh ke bawaan, tak pernah
+  menyaring daftar jadi kosong.
+- **Gulir:** pendengar `scroll` capture (peristiwa ini tak menggelembung, dan wadah gulir demo
+  adalah elemen, bukan dokumen). Dicatat hanya selama halaman masih terpasang (`isConnected`):
+  peralihan rute memotong gulir ke 0 dan itu bukan posisi daftar. Dipulihkan sekali setelah
+  baris pertama ada; penanda "sudah pulih" dinyalakan DI DALAM `requestAnimationFrame`, supaya
+  pembatalan efek tak menelannya. `AppLayout` mereset gulir tiap rute dari efeknya, dan
+  pemulihan datang sesudah itu karena menunggu data.
+- **Tidak dipulihkan, sengaja:** panel "Filter lainnya" (hitungan filter aktif di tombolnya
+  sudah menjelaskan), jumlah baris yang dimuat (`limit`; daftar berjendela tampil utuh), dan modal.
+
+**Sengaja tidak dikerjakan:** sortir per kolom (tidak diminta; urutan tetap Terbaru/Terlama),
+`statusBtn` 185px di lajur 176px (selisih lama), dan temuan tab sisi di
+`ServiceDetailPage.module.css` serta `SparepartPickerModal.module.css` (bukan daftar).
+
+**Penjaga:** `servicesTableWidth.test.ts` (19 tes) membaca sumber mentah dan mengunci: lantai
+lajur dihitung dari token (bukan angka tetap), ambang 1156/1056, spine + peta nada bersama,
+zona status + LED, nama tombol + `aria-describedby`, label margin tersembunyi, judul
+`aria-hidden`, dan kabel ingatan daftar (`resolveListView`, `isConnected`, capture, flag di rAF).
+`serviceListView.test.ts` mengunci urutan keputusan, masa berlaku, pemilik, dan pemaksaan nilai.
+
+**Verifikasi:** build dan lint bersih; tes 736 → **762 / 69 berkas** (741, 743, 745, 748, lalu 762
+sesudah Tahap 5). `audit-tokens` 0 pelanggaran. `audit-zoom` pada kerapatan bawaan, `ZOOM=1.25`,
+dan `DENSITY=padat`: nol pelanggaran lantai 12px, nol luberan dokumen, nol overlap, nol tabel
+meluap; satu-satunya teks ter-clip adalah teks khusus pembaca layar (positif palsu yang sudah
+dikenal). `audit-mobile` pada 320/360/375/390/414 dan pita tablet 744–1152: nol luberan dokumen.
+Satu-satunya wadah geser yang dilaporkan ialah rail chip status bersama
+(`CatalogControls.categoryBar`, dengan pudar tepi; 672px di Servis, +5px di 1025px), berkas yang
+tidak disentuh kelima tahap ini. `audit-contrast` di landing + 12 menu demo × 2 tema: 0 elemen di
+bawah ambang; dua kasus di atas gradien tetap dinilai manual seperti sebelumnya. Konteks daftar
+diuji di dua lingkungan (demo, gulir lewat elemen; aplikasi nyata, gulir lewat dokumen) lewat
+tautan "Kembali ke daftar", sidebar, dan Kembali/Maju peramban.
+
+Lihat [[Signature Pages#Daftar Servis — Repair Job Cards]].
+
+![[servis-laptop-1440-dark.png]]
+![[servis-laptop-1280-light.png]]
+![[servis-laptop-1366-padat.png]]
+![[servis-fokus-status.png]]
+![[servis-konteks-pulih.png]]
+
+#decision #ui #layout #services #critique #a11y

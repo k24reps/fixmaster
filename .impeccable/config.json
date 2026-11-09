@@ -38,6 +38,12 @@
         ],
         "createdAt": "2026-11-06T23:01:38.131Z",
         "reason": "agent: status spine is the sanctioned bench motif (AGENTS.md §3 'spine tepi kartu', DESIGN.md Spine, Not the Fill Rule); 3px, token colour, predates this change"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "var\\(--font-mono\\)",
+        "createdAt": "2026-11-09T15:03:25.288Z",
+        "reason": "Agent: servicesTableWidth.test.ts asserts via regex that the CSS uses the documented --font-mono token (DESIGN.md mono readout); the test declares no font"
       }
     ]
   }
