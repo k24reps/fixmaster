@@ -4304,6 +4304,11 @@ baris diskon, ringkasan, dan status bayar selalu tampil walau kosong.
 - Ponsel/tablet: `.payBar` sticky di dasar layar, di atas menu bawah di ≤720px. Dock keranjang
   memakai `rootMargin` bawah = `--mobile-nav-height` + 72px, sehingga dock hilang tepat saat
   bar Proses muncul (dulu `threshold: 0.2`, sempat ada dua bar sekaligus).
+  **Dikoreksi 9 Nov 2026:** angka 72 hanya tebakan. Dock tergambar 44px, bukan 56px, dan zoom
+  aplikasi memperbesar menu + dock tanpa mengubah token. Observer juga membaca entri pertama yang
+  bisa basi, jadi di 320px dock tetap menutupi Proses. Batasnya kini diukur dari dock yang
+  tergambar, dan observer membaca entri terakhir. Lihat
+  [[#Kasir di ponsel: critique 23/40 dalam lima tahap (9 Nov 2026)]].
 
 **Pelajaran: `overflow: clip`, bukan `hidden`.** Di ≤1024px panel perlu memotong sudut
 membulat. `overflow: hidden` menjadikan panel wadah gulir, dan `position: sticky` pada `.payBar`
@@ -4869,3 +4874,113 @@ TOTAL SALDO ber-spine; ikon peristiwa Log bertinta peran:
 ![[warna-t5-log-light.png]]
 
 #decision #ui #color #a11y #critique
+
+## Kasir di ponsel: critique 23/40 dalam lima tahap (9 Nov 2026)
+
+Critique Kasir di ponsel (`.impeccable/critique/2026-11-09T09-39-04Z__src-features-pos.md`)
+memberi skor 23/40 dengan satu P0, tiga P1, dan satu P2. Semuanya dikerjakan bertahap, satu
+commit lokal per tahap, dengan gerbang build/test/lint di tiap tahap.
+
+### Tahap 1: kolom tak ikut melebar, dock tak menutupi Proses (P0, P1)
+
+- **Akar P0:** trek grid `1fr` polos punya minimum = isi terpanjang. Baris 13 chip kategori
+  melebarkan kolom katalog ke 1266px di layar 390px, dan total LCD ikut keluar layar. Trek kini
+  `minmax(0, 1fr)` (desktop dan ≤1024px), `.products` `min-width: 0`, sehingga baris chip
+  menggulir sendiri. Diukur di 320/360/390/1366: lebar dokumen = viewport.
+- **Akar P1 dock:** dua kesalahan sekaligus. Observer membaca `entries[0]`, padahal sesudah
+  cabang dipilih satu panggilan bisa membawa `[false, true]` untuk panel yang sama. Batas serah
+  terima juga tebakan (`--mobile-nav-height` + 72), padahal dock tergambar 44px (aturan
+  `min-height` global, bukan 56px CSS), dan zoom aplikasi memperbesar menu + dock tanpa mengubah
+  token. Kini observer membaca entri terakhir, dan batasnya diukur dari dock yang tergambar
+  (`measureDock`). Sapuan gulir di 320/360/390 dan zoom 125%: 0 posisi dock bertumpuk dengan bar
+  Proses (kode lama: 30 di 320px).
+
+### Tahap 2: satu tampilan katalog, kartu
+
+Permintaan pemilik: satu tampilan di desktop dan ponsel. Kartu dipilih karena nama produk turun
+baris utuh, sehingga nomor model di ujungnya (A1989, Pro Max) tetap terbaca. Daftar memotong
+satu baris, Ringkas dua baris. `ViewToggle`, `usePersistedView`, cabang list/tiles, dan CSS
+`.productList`/`.productRow`/`.tileGrid`/`.productTile` dihapus. Kolom cari jadi selebar baris,
+dan placeholder "Cari nama, kategori, atau SKU…" muat di 320px. Inventori dan Pelanggan tetap
+punya pemilih tampilan.
+
+### Tahap 3: bar Proses jadi readout uang (P1)
+
+Di ponsel, LCD dan status pembayaran sudah tergulir ke atas saat kasir menerima uang. Bar yang
+menempel hanya berbunyi "Proses Rp 3.450.000" dan mati tanpa penjelasan bila uang kurang.
+
+- Bar dibagi dua: label aksi di kiri, readout mono di kanan (TOTAL, SISA, KEMBALIAN, atau Uang
+  pas). Keadaannya dari `payBarState()` murni di `lib/business/pos.ts` (`pick`, `due`, `excess`,
+  `discount`, `change`, `exact`), dengan enam tes.
+- **`aria-disabled`, bukan `disabled`.** Tombol `disabled` menelan ketukan. Bar yang belum siap
+  kini tetap bisa diketuk, dan `guidePay` memfokus tuts bayar, kolom nominal, atau diskon yang
+  kurang. `Button.module.css` memberi `[aria-disabled='true']` tampilan bergaris putus yang sama
+  dan mematikan hover/active.
+- Memilih tuts bayar di layar sentuh menggeser status bayar ke atas bar.
+  `scroll-margin-bottom` (96px, ditambah tinggi menu di ≤720px) menjaga kolom tujuan tak mendarat
+  di balik bar.
+- **Jebakan Playwright:** tombol ber-`aria-disabled="true"` dianggap tidak aktif, jadi `tap()`
+  menunggu sampai habis waktu. Probe mengetuknya dengan `{ force: true }`.
+
+### Tahap 4: baris riwayat dua baris (P1)
+
+Riwayat dulu satu baris flex: info, total, lalu sampai tiga tuts 40px. Di 320px kolom info
+tergencet dan nomor faktur terpotong. Baris kini grid berarea: nomor + jam dan total di baris
+pertama, rincian (item · dompet · kasir · pelanggan) di baris kedua, tuts di kanan. Di wadah
+`@container (max-width: 432px)` tuts turun ke barisnya sendiri di bawah divider titik. Ambangnya
+diukur dari baris terburuk di layar sentuh: padding 26 + nomor 117 + "Rp 999.999.999" 118 + tiga
+tuts 148 + dua jeda 24 = 433px. Kepala hari (`flex-wrap`) menurunkan ringkasannya utuh ke baris
+kedua di 320/360, bukan dua kolom yang masing-masing patah.
+
+### Tahap 5: teks 320px dan catatan kecil (P2)
+
+- **Nominal pembayaran:** sebaris, label 90px menyisakan 94px untuk kolom nominal di 320px, dan
+  "3.450.000" terpotong 7px. `.payments` jadi wadah; di `@container (max-width: 270px)` nama
+  dompet naik ke atas kolom (label mono kecil) dan kolom nominal melebar ke 194px. Ambang dari
+  kasus sentuh terburuk: label 90 + jeda 16 + tuts hapus 44 + kolom untuk "888.888.888" 121 =
+  271px. Petunjuk tender ikut turun ke barisnya sendiri.
+- **LCD 9 digit:** `font-size: min(2.35rem, 100cqi / (var(--lcd-chars) * 0.62))`, dengan
+  `--lcd-chars` = panjang teks total dari TSX dan `.register` sebagai wadah. "Rp 140.460.000"
+  sebaris di 320 (28,3px), 360 (32,9px), 390 (36,4px). Desktop tetap 37,6px (batas atas).
+- **Chip cabang** boleh selebar register (dulu 60%, meluap 17px di 320). Meta register membungkus.
+- **Saran pelanggan** dulu tetap terbuka menutupi diskon dan tuts bayar. Kini Escape dan ketukan
+  di luar menutupnya, sedangkan mengetik atau fokus lagi membukanya kembali. Kolomnya jadi
+  `role="combobox"` dengan `aria-expanded`. State-nya `suggestOpen`, terpisah dari `custOpen`
+  (yang mengatur tampil-tidaknya kolom pelanggan).
+- **Live region:** `aria-live` dulu membungkus seluruh register, jadi tiap ubah qty membacakan
+  ulang cabang, nomor faktur, dan jumlah baris. Kini hanya `<p class="fm-visually-hidden">` yang
+  berisi total dan baris kedua LCD.
+- **Tab ↔ panel:** tab yang terpilih punya `aria-controls="pos-panel"`, dan panelnya
+  `role="tabpanel"` dengan `aria-labelledby`.
+- Literal `LIVE`, `TOTAL · IDR`, `PUSAT`, `stok {n}`, dan teks keranjang kosong pindah ke i18n.
+  Kembalian sesudah LUNAS dicetak mono. Spasi tak terputus menjaga "× qty" tak patah.
+
+**Sengaja tidak dikerjakan:** takik `.productCard::after` (selera desain), ruang kosong di bawah
+panel LUNAS, dan fokus otomatis "Transaksi Baru" (keputusan lama: fokus ke kolom cari).
+
+**Penjaga:** `src/features/pos/posLayout.test.ts` membaca sumber mentah (`?raw`) dan mengunci trek
+`minmax(0, 1fr)`, entri observer terakhir, tampilan tunggal, `aria-disabled` + `guidePay`,
+`scroll-margin-bottom`, grid riwayat + `@container (max-width: 432px)`, `--lcd-chars`, ambang
+270px, `combobox`, live region yang bukan register, dan ketiadaan literal.
+
+**Verifikasi:** build, lint, **736 test / 68 berkas** hijau. Probe Playwright khusus Kasir (demo,
+320/360/390-terang/820/1366, zoom 125%): dock 0 tumpang tindih dengan bar Proses dan transaksi
+selesai LUNAS di tiap lebar; 19 cek ketukan bar lolos (fokus jatuh ke kolom yang terlihat di atas
+bar); chip cabang, kolom nominal, LCD, dan uang 0 piksel terpotong atau patah; saran pelanggan
+tertutup sesudah Escape dan ketukan di luar. Probe repo: `audit-tokens` 0 pelanggaran;
+`audit-mobile` (5 lebar ponsel + pita tablet 744–1152) 0 luberan dokumen, dan Kasir 0 scroller,
+0 teks terpotong, 0 target kecil di kesepuluh lebar; `audit-zoom` biasa, `ZOOM=1.25`, dan
+`DENSITY=padat` masing-masing 0 temuan di 132 kombinasi halaman × lebar; `audit-contrast` BERSIH
+dua tema (dua kasus gradien = petunjuk "Mode dev" di login, bukan Kasir).
+
+Bar Proses di 320px (pilih cara bayar, uang kurang, kembalian, uang pas); nominal bertumpuk di
+320px; LCD 9 digit di 320 dan 360; riwayat di 320, 390, dan desktop:
+
+![[kasir-ponsel-bar-320.png]]
+![[kasir-ponsel-320-bayar.png]]
+![[kasir-ponsel-lcd.png]]
+![[kasir-ponsel-riwayat.png]]
+
+Lihat [[Signature Pages#Kasir POS — Register Readout]].
+
+#decision #ui #layout #pos #critique #a11y

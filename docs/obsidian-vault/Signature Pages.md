@@ -258,7 +258,7 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
   1366×768 tombol Proses terlihat tanpa menggulir.
 - **Pelanggan & Diskon dilipat** jadi dua tuts bergaris putus (`.extraKey`, mono, 44px).
   Masing-masing terbuka sendiri bila sudah berisi. Ringkasan Subtotal/Diskon/Total hanya
-  muncul bila ada diskon, karena total sudah tertulis di LCD dan di tombol "Proses · Rp …".
+  muncul bila ada diskon, karena total sudah tertulis di LCD dan di readout bar Proses.
 - **Status bayar** di desktop hanya tampil bila memberi info baru: lebih dari satu
   pembayaran, lebih bayar, atau belum ada uang masuk. Sisa/kembalian biasa sudah ada di baris
   kedua LCD.
@@ -268,6 +268,34 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
 - **Ponsel & tablet (≤1024px):** bar Proses menempel di dasar layar, di atas menu bawah.
   Dock keranjang menyerahkan tempatnya ke bar itu tepat saat register masuk layar.
 - Kartu pilih cabang diberi padding; "Kosongkan" setinggi 44px.
+
+**Kasir di ponsel (9 Nov 2026, critique 23/40).** Lima tahap, satu commit per tahap:
+- **Kolom tak ikut melebar.** Trek grid memakai `minmax(0, 1fr)` di semua lebar, dan baris chip
+  kategori menggulir sendiri. Dulu 13 kategori melebarkan kolom ke 1266px di layar 390px, sehingga
+  total LCD keluar layar.
+- **Dock tak menutupi Proses.** Observer membaca entri terakhir. Batas serah terima diambil dari
+  tinggi dock yang benar-benar tergambar, jadi zoom aplikasi ikut terhitung.
+- **Satu tampilan katalog: kartu**, di desktop dan ponsel. Pemilih Kartu/Daftar/Ringkas dihapus
+  atas permintaan pemilik. Kartu menurunkan nama produk ke baris berikutnya secara utuh, jadi nomor
+  model di ujungnya (A1989, Pro Max) tetap terbaca. Tanpa pemilih, kolom cari selebar baris.
+- **Bar Proses = aksi + readout uang.** Label aksi di kiri, readout mono di kanan (TOTAL, SISA,
+  KEMBALIAN, atau Uang pas). Keadaannya dari `payBarState()` di `lib/business/pos.ts`. Bila belum
+  siap ("Pilih cara bayar", "Uang kurang", "Lebih bayar · cek pembayaran", "Diskon melebihi
+  batas"), bar memakai `aria-disabled` bergaris putus, bukan `disabled`. Ketukan memfokus tuts
+  bayar, kolom nominal, atau diskon yang kurang, dan `scroll-margin-bottom` menjaga kolom itu
+  tetap di atas bar.
+- **Riwayat dua baris.** Nomor + jam dan total di baris pertama, rincian di baris kedua, tuts di
+  kanan. Di wadah ≤432px tuts turun ke barisnya sendiri di bawah divider titik.
+- **Teks 320px.** Angka LCD mengecil sesuai jumlah karakter (`--lcd-chars`), sehingga total 9
+  digit tetap sebaris. Di wadah pembayaran ≤270px nama dompet naik ke atas kolom nominal (label
+  mono). Chip cabang boleh selebar register. Daftar saran pelanggan bisa ditutup dengan Escape
+  atau ketukan di luar (kolomnya kini `combobox`). Pembaca layar hanya mendengar total, bukan
+  seluruh register. Tab menunjuk panelnya.
+
+![[kasir-ponsel-bar-320.png]]
+![[kasir-ponsel-riwayat.png]]
+
+Detail dan angka ukurnya: [[Decisions & Bug Fixes#Kasir di ponsel: critique 23/40 dalam lima tahap (9 Nov 2026)]].
 
 ![[pos-dark.png]]
 
@@ -598,7 +626,7 @@ Di desktop, nama perangkat boleh dua baris (dulu "MacBook Pro 13" 2019" terpoton
 ![[services-quick-modal-1440-dark.png]]
 ![[services-quick-modal-320-light.png]]
 
-**Tampilan ditentukan perangkat (7 Nov 2026, permintaan pemilik).** Pemilih tampilan (Kartu · Daftar · Ringkas) dihapus dari bilah alat. Ponsel (viewport ≤720px) selalu menampilkan **Kartu**; layar yang lebih lebar selalu **Daftar**. Tampilan Ringkas dihapus seluruhnya (markup dan CSS `.tileGrid`/`.tile*`). Ambang 720px sama dengan tata letak ponsel halaman ini di CSS, dibaca lewat hook baru `useMediaQuery` (`src/hooks/useMediaQuery.ts`), dan berganti langsung saat jendela diubah ukurannya. Daftar di layar sempit (tablet 768px, atau laptop dengan Pembesaran 150%) tetap dijaga `@container svcRows`. Kasir, Inventori, dan Pelanggan tetap punya pemilih tampilan. Detail: [[Decisions & Bug Fixes#Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)]].
+**Tampilan ditentukan perangkat (7 Nov 2026, permintaan pemilik).** Pemilih tampilan (Kartu · Daftar · Ringkas) dihapus dari bilah alat. Ponsel (viewport ≤720px) selalu menampilkan **Kartu**; layar yang lebih lebar selalu **Daftar**. Tampilan Ringkas dihapus seluruhnya (markup dan CSS `.tileGrid`/`.tile*`). Ambang 720px sama dengan tata letak ponsel halaman ini di CSS, dibaca lewat hook baru `useMediaQuery` (`src/hooks/useMediaQuery.ts`), dan berganti langsung saat jendela diubah ukurannya. Daftar di layar sempit (tablet 768px, atau laptop dengan Pembesaran 150%) tetap dijaga `@container svcRows`. Inventori dan Pelanggan tetap punya pemilih tampilan. Kasir sejak 9 Nov 2026 hanya memakai kartu. Detail: [[Decisions & Bug Fixes#Tampilan Daftar Servis mengikuti perangkat (7 Nov 2026)]].
 
 ![[services-view-phone-390-dark.png]]
 ![[services-view-list-1440-light.png]]
