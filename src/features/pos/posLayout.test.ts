@@ -50,4 +50,20 @@ describe('tata letak Kasir', () => {
     expect(css).toContain('@container (max-width: 432px)');
     expect(tsx).toContain('className={styles.historyActions}');
   });
+
+  it('teks 320px: LCD pas lebar, nominal turun, live region sempit, tanpa literal', () => {
+    // Total 9 digit dulu patah dua baris di LCD 320px.
+    expect(tsx).toContain("'--lcd-chars': totalText.length");
+    expect(css).toContain('var(--lcd-chars, 12)');
+    expect(css).toMatch(/\.register \{[^}]*container-type: inline-size/);
+    // Kolom nominal 94px memotong "3.450.000"; ambang diukur, wajib @container.
+    expect(css).toMatch(/\.payments \{[^}]*container-type: inline-size/);
+    expect(css).toContain('@container (max-width: 270px)');
+    // aria-live di seluruh register membacakan cabang & faktur tiap ubah qty.
+    expect(tsx).not.toMatch(/className=\{styles\.register\} aria-live/);
+    expect(tsx).toContain('role="combobox"');
+    for (const lit of ['TOTAL · IDR', '>PUSAT<', '>LIVE<', 'Klik produk', '>stok {']) {
+      expect(tsx).not.toContain(lit);
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   Card,
   Input,
@@ -157,7 +157,21 @@ export function PosPage() {
   // Panah + Enter di kolom pelanggan: baris cocok, lalu "Tambah pelanggan baru".
   const showCustMatches = !!custQuery.trim() && !(serverSearch && custQuery.trim().length < 3);
   const custOptions = showCustMatches ? custMatches.length : 0;
-  const custNav = useListNav(custQuery.trim() ? custOptions + 1 : 0, (i) => {
+  // Daftar saran menutupi diskon dan tuts bayar di ponsel. Escape atau
+  // ketukan di luar menutupnya; teksnya tetap, mengetik atau fokus lagi
+  // membukanya kembali.
+  const [suggestOpen, setSuggestOpen] = useState(true);
+  const custBoxRef = useRef<HTMLDivElement>(null);
+  const custListOpen = suggestOpen && !!custQuery.trim();
+  useEffect(() => {
+    if (!custListOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!custBoxRef.current?.contains(e.target as Node)) setSuggestOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [custListOpen]);
+  const custNav = useListNav(custListOpen ? custOptions + 1 : 0, (i) => {
     if (i < custOptions) {
       setCustomer(custMatches[i]);
       setCustQuery('');
@@ -670,7 +684,7 @@ export function PosPage() {
         >
           <span className={styles.outletLed} aria-hidden />
           <span className={styles.outletOptName}>{o.name}</span>
-          {o.isPrimary && <span className={styles.outletOptTag}>PUSAT</span>}
+          {o.isPrimary && <span className={styles.outletOptTag}>{t('pos.outletMain')}</span>}
         </button>
       ))}
     </div>
@@ -680,7 +694,9 @@ export function PosPage() {
     item.stock <= 0 ? (
       <Badge tone="danger">{t('pos.outOfStock')}</Badge>
     ) : (
-      <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>stok {item.stock}</Badge>
+      <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>
+        {interpolate(t('pos.stockLeft'), { n: String(item.stock) })}
+      </Badge>
     );
 
   // Baris kedua LCD: yang harus dilihat kasir berikutnya — sisa, kembalian, pas.
@@ -712,7 +728,9 @@ export function PosPage() {
         <button
           type="button"
           role="tab"
+          id="pos-tab-register"
           aria-selected={tab === 'pos'}
+          aria-controls={tab === 'pos' ? 'pos-panel' : undefined}
           className={[styles.tab, tab === 'pos' ? styles.tabActive : ''].join(' ')}
           onClick={() => setTab('pos')}
         >
@@ -723,7 +741,9 @@ export function PosPage() {
         <button
           type="button"
           role="tab"
+          id="pos-tab-history"
           aria-selected={tab === 'history'}
+          aria-controls={tab === 'history' ? 'pos-panel' : undefined}
           className={[styles.tab, tab === 'history' ? styles.tabActive : ''].join(' ')}
           onClick={() => setTab('history')}
         >
@@ -733,7 +753,7 @@ export function PosPage() {
       </div>
 
       {tab === 'pos' && (
-      <div className={styles.layout}>
+      <div className={styles.layout} id="pos-panel" role="tabpanel" aria-labelledby="pos-tab-register">
         <div className={styles.products}>
         {needOutlet ? (
           <Card padding className={styles.outletPick}>
@@ -819,16 +839,26 @@ export function PosPage() {
       </div>
 
       <Card id="pos-cart" className={styles.cartPanel}>
-        <div className={styles.register} aria-live="polite">
+        {/* Pembaca layar hanya mendengar angka uangnya. Dulu aria-live
+            membungkus seluruh register, jadi tiap ubah qty membacakan ulang
+            cabang, nomor faktur, dan jumlah baris. */}
+        <p className="fm-visually-hidden" aria-live="polite" aria-atomic="true">
+          {done ? `${t('pos.lcdPaid')}. ` : ''}
+          {t('common.total')} {totalText}
+          {lcdSub ? `. ${lcdSub.label} ${lcdSub.value}` : ''}
+        </p>
+        <div className={styles.register}>
           <div className={styles.registerTop}>
             {done ? (
               <span className={styles.paidTag}>{t('pos.lcdPaid')}</span>
             ) : (
-              <span className={styles.live}>LIVE</span>
+              <span className={styles.live}>{t('pos.lcdLive')}</span>
             )}
-            <span>TOTAL · IDR</span>
+            <span>{t('common.total')}</span>
           </div>
-          <div className={styles.lcd}>
+          {/* Ukuran angka mengikuti jumlah karakter supaya total 9 digit tetap
+              sebaris di 320px (lihat .lcd). */}
+          <div className={styles.lcd} style={{ '--lcd-chars': totalText.length } as CSSProperties}>
             <span className={styles.lcdGhost} aria-hidden>{totalGhost}</span>
             {totalText}
           </div>
@@ -869,7 +899,9 @@ export function PosPage() {
             </p>
             <p className={styles.doneChange}>
               {done.change > 0
-                ? t('pos.doneChange').replace('{amount}', fmtRp(done.change))
+                ? t('pos.doneChange')
+                    .split('{amount}')
+                    .flatMap((part, i) => (i ? [<strong key={i}>{fmtRp(done.change)}</strong>, part] : [part]))
                 : t('pos.doneExact')}
             </p>
             <div className={styles.doneActions}>
@@ -921,7 +953,7 @@ export function PosPage() {
           {cart.length === 0 ? (
             <>
             <p className={styles.emptyCart}>
-              {outletNotice ? t('pos.outletChanged') : cleared ? t('pos.cleared') : 'Belum ada item. Klik produk untuk menambahkan.'}
+              {outletNotice ? t('pos.outletChanged') : cleared ? t('pos.cleared') : t('pos.cartEmpty')}
             </p>
             {cleared && !outletNotice && (
               <button type="button" className={styles.restoreBtn} onClick={restoreCart}>
@@ -934,7 +966,7 @@ export function PosPage() {
             cart.map((c) => (
               <div key={c.itemId} className={styles.cartItem}>
                 <strong className={styles.cartItemName}>{c.name}</strong>
-                <small className={styles.cartItemUnit}>{fmtRp(c.sellPrice)} × {c.qty}</small>
+                <small className={styles.cartItemUnit}>{fmtRp(c.sellPrice)} ×{'\u00a0'}{c.qty}</small>
                 <div className={styles.qtyControl}>
                   <button type="button" onClick={() => setQty(c.itemId, c.qty - 1)} aria-label={interpolate(t('pos.qtyMinus'), { name: c.name })}>
                     <Icon name="minus" aria-hidden />
@@ -966,7 +998,7 @@ export function PosPage() {
             <div className={styles.tearLine} aria-hidden />
             <div className={styles.checkout}>
             {showCust && (
-            <div className={styles.customerBox}>
+            <div className={styles.customerBox} ref={custBoxRef}>
               {customer ? (
                 <div className={styles.customerChip}>
                   <Icon name="users" aria-hidden />
@@ -982,8 +1014,23 @@ export function PosPage() {
                     placeholder={t('pos.custOptional')}
                     aria-label={t('pos.custOptional')}
                     value={custQuery}
-                    onChange={(e) => setCustQuery(e.target.value)}
-                    onKeyDown={custNav.onKeyDown}
+                    onChange={(e) => {
+                      setCustQuery(e.target.value);
+                      setSuggestOpen(true);
+                    }}
+                    onFocus={() => setSuggestOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape' && custListOpen) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSuggestOpen(false);
+                        return;
+                      }
+                      custNav.onKeyDown(e);
+                    }}
+                    role="combobox"
+                    aria-expanded={custListOpen}
+                    aria-autocomplete="list"
                     aria-controls="pos-customer-suggest"
                     aria-activedescendant={custNav.active >= 0 ? `pos-cust-${custNav.active}` : undefined}
                     iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -992,7 +1039,7 @@ export function PosPage() {
                       tidak ditemukan — dan selalu menawarkan pelanggan baru. Dulu
                       kolom ini diam saja bila tak ada yang cocok, dan Kasir tak bisa
                       membuat pelanggan. */}
-                  {custQuery.trim() && (
+                  {custListOpen && (
                     <ul className={styles.custSuggest} id="pos-customer-suggest" role="listbox">
                       {serverSearch && custQuery.trim().length < 3 ? (
                         <li className={styles.custHint}>{t('pos.custMinChars')}</li>
@@ -1244,7 +1291,7 @@ export function PosPage() {
       )}
 
       {tab === 'history' && (
-        <Card className={styles.history}>
+        <Card className={styles.history} id="pos-panel" role="tabpanel" aria-labelledby="pos-tab-history">
           <div className={styles.historyHead}>
             <h2>
               <Icon name="clock-rotate-left" aria-hidden /> {t('pos.tabHistory')}

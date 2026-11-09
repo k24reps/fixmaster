@@ -219,6 +219,7 @@
 .outletOptTag {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
@@ -289,6 +290,8 @@
    berganti tema. */
 .register {
   position: relative;
+  /* Wadah untuk ukuran angka LCD (cqi di .lcd). */
+  container-type: inline-size;
   padding: var(--space-4) var(--space-5) var(--space-3);
   background: radial-gradient(130% 150% at 0% 0%, var(--readout-surface), var(--readout-base));
   border-bottom: 1px solid var(--border-strong);
@@ -330,11 +333,16 @@
   box-shadow: 0 0 7px var(--accent);
   animation: fm-pulse 1.8s var(--ease-in-out) var(--pulse-cycles);
 }
+/* Angka LCD selalu sebaris. Di 320px "Rp 3.450.000" pada 2.35rem sudah
+   patah jadi dua baris, "Rp 140.460.000" apalagi. Lebar satu karakter mono
+   ≈ 0.62em (0.6 + letter-spacing), jadi ukuran = lebar wadah / jumlah
+   karakter (--lcd-chars dari PosPage.tsx), dibatasi 2.35rem. */
 .lcd {
   position: relative;
   font-family: var(--font-mono);
   font-weight: var(--fw-bold);
-  font-size: 2.35rem;
+  font-size: min(2.35rem, 100cqi / (var(--lcd-chars, 12) * 0.62));
+  white-space: nowrap;
   line-height: 1.05;
   letter-spacing: 0.01em;
   color: var(--brand-400);
@@ -393,11 +401,14 @@
   text-shadow: none;
   pointer-events: none;
 }
+/* Nama cabang lebih penting daripada hitungan baris: bila tak muat sebaris,
+   hitungan yang turun, bukan nama cabang yang dielipsis. */
 .registerMeta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-3);
+  gap: 4px var(--space-3);
   margin-top: 8px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -411,7 +422,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  max-width: 60%;
+  max-width: 100%;
   padding: 4px 8px;
   margin: -4px -8px;
   border-radius: var(--radius-xs);
@@ -468,6 +479,14 @@
   color: var(--text-secondary);
   padding-bottom: var(--space-3);
   border-bottom: 1px dotted var(--border-strong);
+}
+/* Aturan Angka Mono: nominal yang diserahkan dibaca sebagai readout. */
+.doneChange strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 .doneActions {
   display: flex;
@@ -931,6 +950,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  container-type: inline-size;
 }
 .paymentsHeader {
   display: flex;
@@ -1013,6 +1033,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Wadah sempit: nama dompet naik ke atas kolom nominal. Sebaris, kolom
+   label 90px menyisakan 94px untuk nominal di 320px dan "3.450.000" sudah
+   terpotong 7px. Ambang diukur dari kasus terburuk layar sentuh: 90 label
+   + 16 jeda + 44 tuts hapus + 121 kolom yang memuat "888.888.888" = 271px.
+   Petunjuk tender ikut turun ke barisnya sendiri, bukan tiga baris rata
+   kanan di samping "BAYAR". */
+@container (max-width: 270px) {
+  .paymentRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+  .paymentRow label {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .paymentsHeader {
+    flex-wrap: wrap;
+  }
+  .tenderHint {
+    flex-basis: 100%;
+    text-align: left;
+  }
 }
 .tenderRemove {
   display: inline-flex;
