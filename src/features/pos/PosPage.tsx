@@ -32,6 +32,8 @@ import {
   settleTender,
   changeRowIndex,
   cashSuggestions,
+  payBarState,
+  payBarReady,
   pickOnEnter,
   groupSalesByDay,
   toSaleLines,
@@ -370,6 +372,13 @@ export function PosPage() {
     );
   };
 
+  const reveal = (el: HTMLElement | null, block: ScrollLogicalPosition) => {
+    if (!el) return null;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block });
+    return el;
+  };
+
   // Tombol wallet: yang belum dipakai ditambahkan dengan SISA tagihan, jadi
   // pembayaran pas cukup satu ketukan; yang sudah dipakai difokuskan saja.
   const pickWallet = (walletId: string) => {
@@ -378,6 +387,10 @@ export function PosPage() {
       return;
     }
     setTender((prev) => [...prev, { walletId, amount: Math.max(0, settle.due) }]);
+    // Di layar sentuh kolom nominal, nominal cepat, dan status muncul di
+    // bawah tuts, tepat di balik bar Proses yang menempel. Geser secukupnya
+    // supaya terlihat (scroll-margin di CSS memberi ruang bar).
+    if (!finePointer) requestAnimationFrame(() => reveal(document.getElementById('pos-pay-status'), 'nearest'));
   };
   // Nominal diubah DI TEMPAT — urutan baris tetap, karena baris terakhir yang
   // menyerahkan kembalian.
@@ -466,6 +479,38 @@ export function PosPage() {
       : settle.paid === 0
         ? interpolate(t('pos.statusEmpty'), { amount: fmtRp(total) })
         : interpolate(t('pos.statusDue'), { amount: fmtRp(settle.due) });
+
+  // Bar Proses menyebut keadaan uang. Selama belum siap, ia tetap bisa
+  // diketuk (aria-disabled, bukan disabled) dan menuntun ke kolom yang kurang.
+  const bar = payBarState(settle, tender.length, discountOver);
+  const barReady = payBarReady(bar);
+  const guidePay = () => {
+    const target =
+      bar.kind === 'discount'
+        ? discInputRef.current
+        : bar.kind === 'pick'
+          ? document.querySelector<HTMLElement>('#pos-tender-keys button')
+          : document.getElementById(`tender-${changeTender?.walletId ?? ''}`);
+    reveal(target, 'center')?.focus({ preventScroll: true });
+  };
+  const payReadout: { caption: string; value: string } | null =
+    bar.kind === 'pick'
+      ? { caption: t('common.total'), value: fmtRp(total) }
+      : bar.kind === 'due'
+        ? { caption: t('pos.lcdDue'), value: fmtRp(bar.amount) }
+        : bar.kind === 'change'
+          ? { caption: t('pos.lcdChange'), value: fmtRp(bar.amount) }
+          : bar.kind === 'exact'
+            ? { caption: t('pos.lcdChange'), value: t('pos.lcdExact') }
+            : null;
+  const payAction = {
+    discount: t('pos.payDiscount'),
+    pick: t('pos.payPick'),
+    excess: t('pos.payExcess'),
+    due: t('pos.payDue'),
+    change: t('pos.payProcess'),
+    exact: t('pos.payProcess'),
+  }[bar.kind];
 
   const checkout = async () => {
     const cartCheck = validateCart(cart);
@@ -1065,9 +1110,11 @@ export function PosPage() {
             <div className={styles.payments}>
               <div className={styles.paymentsHeader}>
                 <span>{t('pos.tender')}</span>
-                {tender.length === 0 && <span className={styles.tenderHint}>{t('pos.tenderHint')}</span>}
+                {tender.length === 0 && (
+                  <span id="pos-tender-hint" className={styles.tenderHint}>{t('pos.tenderHint')}</span>
+                )}
               </div>
-              <div className={styles.tenderKeys} role="group" aria-label={t('pos.tenderKeys')}>
+              <div id="pos-tender-keys" className={styles.tenderKeys} role="group" aria-label={t('pos.tenderKeys')}>
                 {wallets.map((w) => (
                   <button
                     key={w.id}
@@ -1136,6 +1183,7 @@ export function PosPage() {
                   dompet kembalian saat bayar campur, lebih bayar, nominal 0. */}
               {tender.length > 0 && (
                 <div
+                  id="pos-pay-status"
                   className={[
                     styles.paymentStatus,
                     settle.ok ? styles.ok : settle.paid === 0 ? styles.idle : styles.bad,
@@ -1154,12 +1202,21 @@ export function PosPage() {
             <div className={styles.payBar}>
               <Button
                 fullWidth
-                onClick={checkout}
+                className={styles.payBtn}
+                data-state={bar.kind}
+                onClick={barReady ? checkout : guidePay}
                 loading={busy}
-                disabled={!settle.ok || discountOver}
-                iconLeft={busy ? undefined : <Icon name="circle-check" aria-hidden />}
+                aria-disabled={!barReady || undefined}
+                aria-describedby={tender.length ? 'pos-pay-status' : 'pos-tender-hint'}
+                iconLeft={busy ? undefined : <Icon name={barReady ? 'circle-check' : 'arrow-up'} aria-hidden />}
               >
-                {t('pos.process').replace('{amount}', fmtRp(total))}
+                <span className={styles.payAction}>{payAction}</span>
+                {payReadout && (
+                  <span className={styles.payReadout}>
+                    <small>{payReadout.caption}</small>
+                    <strong>{payReadout.value}</strong>
+                  </span>
+                )}
               </Button>
             </div>
           </>

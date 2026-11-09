@@ -32,4 +32,13 @@ describe('tata letak Kasir', () => {
     expect(css).not.toContain('.tileGrid');
     expect(tsx).toContain('className={styles.productGrid}');
   });
+
+  it('bar Proses yang belum siap tetap bisa diketuk dan menuntun', () => {
+    // disabled menelan ketukan tanpa penjelasan; kasir di ponsel tak tahu
+    // kolom mana yang kurang karena status ada di balik bar.
+    expect(tsx).not.toMatch(/disabled=\{!settle\.ok/);
+    expect(tsx).toContain('aria-disabled={!barReady || undefined}');
+    expect(tsx).toContain('onClick={barReady ? checkout : guidePay}');
+    expect(css).toMatch(/\.checkout :is\(input, button\),\s*\.paymentStatus \{\s*scroll-margin-bottom/);
+  });
 });

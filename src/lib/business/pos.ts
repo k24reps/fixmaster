@@ -131,6 +131,36 @@ export function settleTender(
 }
 
 /**
+ * Apa yang disebut bar Proses. Bar itu menempel di jangkauan jempol, sedangkan
+ * LCD sudah tergulir ke atas saat kasir menerima uang; jadi bar menyebut angka
+ * yang ditunggu (kurang berapa, kembalian berapa), bukan mengulang total.
+ * Urutan = apa yang harus dibereskan dulu: diskon di atas batas mengubah
+ * total, jadi ia mendahului urusan pembayaran.
+ */
+export type PayBarState =
+  | { kind: 'discount' }
+  | { kind: 'pick' }
+  | { kind: 'excess' }
+  | { kind: 'due'; amount: number }
+  | { kind: 'change'; amount: number }
+  | { kind: 'exact' };
+
+export function payBarState(
+  settle: Pick<TenderSettlement, 'ok' | 'due' | 'change' | 'excess'>,
+  tenderCount: number,
+  discountOver: boolean,
+): PayBarState {
+  if (discountOver) return { kind: 'discount' };
+  if (tenderCount === 0) return { kind: 'pick' };
+  if (settle.excess) return { kind: 'excess' };
+  if (!settle.ok) return { kind: 'due', amount: settle.due };
+  return settle.change > 0 ? { kind: 'change', amount: settle.change } : { kind: 'exact' };
+}
+
+/** Bar hanya memproses di dua keadaan ini; selainnya ketukan menuntun ke kolom yang kurang. */
+export const payBarReady = (s: PayBarState): boolean => s.kind === 'change' || s.kind === 'exact';
+
+/**
  * Nominal uang yang lazim diserahkan untuk tagihan `due`: pas, lalu pembulatan
  * ke atas pecahan 10rb/50rb/100rb/500rb/1jt. Maksimal empat, tanpa kembar.
  */

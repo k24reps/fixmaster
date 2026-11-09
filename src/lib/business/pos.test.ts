@@ -13,6 +13,8 @@ import {
   cashSuggestions,
   pickOnEnter,
   groupSalesByDay,
+  payBarState,
+  payBarReady,
   type CartItem,
 } from './pos';
 import type { SaleLine } from '@/data/types';
@@ -178,5 +180,34 @@ describe('settleTender dengan wallet tunai', () => {
   it('tanpa wallet tunai: baris terakhir', () => {
     expect(changeRowIndex([{ walletId: 'a', amount: 1 }, { walletId: 'b', amount: 1 }])).toBe(1);
     expect(changeRowIndex([{ walletId: 'tunai', amount: 1 }, { walletId: 'b', amount: 1 }], cash)).toBe(0);
+  });
+});
+
+describe('payBarState', () => {
+  const settle = (over: Partial<{ ok: boolean; due: number; change: number; excess: boolean }>) => ({
+    ok: false, due: 0, change: 0, excess: false, ...over,
+  });
+  it('belum ada cara bayar: minta pilih', () => {
+    expect(payBarState(settle({ due: 300000 }), 0, false)).toEqual({ kind: 'pick' });
+  });
+  it('kurang bayar menyebut sisanya', () => {
+    expect(payBarState(settle({ due: 150000 }), 1, false)).toEqual({ kind: 'due', amount: 150000 });
+  });
+  it('lunas menyebut kembalian, atau pas', () => {
+    expect(payBarState(settle({ ok: true, change: 850000 }), 1, false)).toEqual({ kind: 'change', amount: 850000 });
+    expect(payBarState(settle({ ok: true }), 2, false)).toEqual({ kind: 'exact' });
+  });
+  it('lebih bayar non-tunai bukan kembalian', () => {
+    expect(payBarState(settle({ change: 100000, excess: true }), 2, false)).toEqual({ kind: 'excess' });
+  });
+  it('diskon di atas batas didahulukan, walau pembayaran sudah cukup', () => {
+    expect(payBarState(settle({ ok: true, change: 5000 }), 1, true)).toEqual({ kind: 'discount' });
+    expect(payBarState(settle({ due: 1 }), 0, true)).toEqual({ kind: 'discount' });
+  });
+  it('hanya kembalian dan pas yang siap diproses', () => {
+    expect(payBarReady({ kind: 'change', amount: 1 })).toBe(true);
+    expect(payBarReady({ kind: 'exact' })).toBe(true);
+    for (const kind of ['pick', 'excess', 'discount'] as const) expect(payBarReady({ kind })).toBe(false);
+    expect(payBarReady({ kind: 'due', amount: 1 })).toBe(false);
   });
 });

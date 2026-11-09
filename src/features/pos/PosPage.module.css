@@ -693,6 +693,58 @@
     linear-gradient(var(--surface-glass-strong), var(--surface-glass-strong)),
     var(--bg-surface);
 }
+/* Bar Proses = penunjuk uang: aksi di kiri, readout mono di kanan (TOTAL,
+   SISA, KEMBALIAN). Saat kasir menerima uang LCD sudah tergulir ke atas, jadi
+   angka yang ditunggu pelanggan harus ada di bar yang menempel ini. Button
+   membungkus isinya dalam satu span; span itulah yang dibagi dua. */
+.payBtn {
+  justify-content: flex-start;
+  text-align: left;
+}
+.payBtn > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.payAction {
+  white-space: normal;
+  line-height: 1.25;
+}
+.payReadout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.payReadout small {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.payReadout strong {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+}
+/* Belum siap: bar bergaris putus (Button), keterangan redup, angkanya tetap
+   terang. Sisa tagihan memakai tinta peringatan yang sama dengan status
+   "Kurang" di atasnya. */
+.payBtn[aria-disabled='true'] .payReadout small {
+  color: var(--text-muted);
+}
+.payBtn[aria-disabled='true'] .payReadout strong {
+  color: var(--text-primary);
+}
+.payBtn[data-state='due'] .payReadout strong {
+  color: var(--warning-text);
+}
 /* Pelanggan & diskon terlipat: tuts tambahan bergaris putus, bahasa yang sama
    dengan nominal cepat di bawahnya. */
 .extras {
@@ -1288,6 +1340,12 @@
     bottom: env(safe-area-inset-bottom);
     z-index: 2;
   }
+  /* Kolom yang dituju (fokus, ketukan bar, tuts bayar) mendarat di atas bar
+     Proses yang menempel, bukan di baliknya. 96px ≈ tinggi bar + jeda. */
+  .checkout :is(input, button),
+  .paymentStatus {
+    scroll-margin-bottom: 96px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1297,6 +1355,10 @@
   /* Duduk tepat di atas menu bawah (yang mengambang --space-2 dari tepi). */
   .payBar {
     bottom: calc(var(--mobile-nav-height) + var(--space-2) + env(safe-area-inset-bottom));
+  }
+  .checkout :is(input, button),
+  .paymentStatus {
+    scroll-margin-bottom: calc(var(--mobile-nav-height) + var(--space-2) + 96px);
   }
   .productGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
