@@ -1,6 +1,6 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -39,6 +39,8 @@ import {
 import { walletsForOutlet } from '@/lib/business/finance';
 import { addServiceModalLine, addServicePart } from '@/data/serviceParts';
 import { resolveServiceColumns } from '@/lib/business/serviceColumns';
+import { resolveListView } from '@/lib/business/serviceListView';
+import { readListSnapshot, readScroll, saveListScroll, saveListView, writeScroll } from './listMemory';
 import {
   compareServices,
   createdRange,
@@ -123,19 +125,27 @@ export function ServicesPage() {
   // Hanya untuk Modal Dadakan di aksi cepat sparepart, yang khusus owner/admin.
   const { data: allWallets } = useCollection('wallets', { enabled: isManager });
 
-  const [query, setQuery] = useState('');
-  const requestedStatus = searchParams.get('status');
-  const initialStatus = (Object.keys(STATUS_LABELS) as ServiceStatus[]).includes(
-    requestedStatus as ServiceStatus,
-  )
-    ? (requestedStatus as ServiceStatus)
-    : 'all';
-  // Tidak ada lagi select Pengambilan; `?pickup=awaiting` tetap dihormati karena
-  // alert "unit menunggu diambil" di Dashboard menaut ke sana (lihat dashboard.ts).
-  const initialPickup = searchParams.get('pickup') === 'awaiting' ? 'awaiting' : 'all';
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>(initialStatus);
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting'>(initialPickup);
+  // Tampilan awal = tautan yang membuka halaman ini (?status/?pickup/?tech/
+  // ?date/?open dari Dashboard) ATAU ingatan sesi bila pengguna baru saja
+  // membuka tiket dan kembali. Aturannya ada di resolveListView.
+  // `?pickup=awaiting` tetap dihormati: alert "unit menunggu diambil" di
+  // Dashboard menaut ke sana (lihat dashboard.ts); `?tech=me` = "Tiket saya".
+  const { key: entryKey } = useLocation();
+  const listOwner = `${activeOutlet ?? ''}:${me?.id ?? ''}`;
+  const [initial] = useState(() =>
+    resolveListView({
+      snapshot: readListSnapshot(),
+      owner: listOwner,
+      entryKey,
+      params: searchParams,
+      now: Date.now(),
+    }),
+  );
+  const start = initial.view;
+  const [query, setQuery] = useState(start.query);
+  const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>(start.status);
+  const [categoryFilter, setCategoryFilter] = useState(start.category);
+  const [pickupFilter, setPickupFilter] = useState<'all' | 'awaiting'>(start.pickup);
   const [moreOpen, setMoreOpen] = useState(false);
   // Tampilan ditentukan perangkat, bukan dipilih (keputusan pemilik, 7 Nov
   // 2026): kartu di ponsel, daftar di layar yang lebih lebar. Ambangnya sama
@@ -143,21 +153,18 @@ export function ServicesPage() {
   // Media query, bukan @container: ini selera per perangkat, sedangkan daftar
   // sendiri sudah muat di lebar berapa pun lewat container query.
   const view = useMediaQuery('(max-width: 720px)') ? 'cards' : 'list';
-  // `?tech=me` = "Tiket saya" dari panel Meja Saya di Dashboard.
-  const [techFilter, setTechFilter] = useState(() => (searchParams.get('tech') === 'me' ? 'me' : 'all'));
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [techFilter, setTechFilter] = useState(start.tech);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>(start.payment);
   // `?date=month` = "Unit masuk bulan ini" dari Dashboard.
-  const [dateFilter, setDateFilter] = useState<DateFilter>(() =>
-    searchParams.get('date') === 'month' ? 'thisMonth' : 'all',
-  );
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
-  const [stalledOnly, setStalledOnly] = useState(false);
-  const [sort, setSort] = useState<ServiceSort>('newest');
+  const [dateFilter, setDateFilter] = useState<DateFilter>(start.date);
+  const [customFrom, setCustomFrom] = useState(start.from);
+  const [customTo, setCustomTo] = useState(start.to);
+  const [stalledOnly, setStalledOnly] = useState(start.stalledOnly);
+  const [sort, setSort] = useState<ServiceSort>(start.sort);
   // Tiket tuntas (lunas/batal DAN sudah diambil) ikut tampil menurut urutan
   // tanggal; "Sembunyikan tuntas" menyaringnya saat daftar dipakai sebagai antrean kerja.
   // `?open=1` = "Tiket saya belum tuntas" dari Dashboard.
-  const [hideClosed, setHideClosed] = useState(() => searchParams.get('open') === '1');
+  const [hideClosed, setHideClosed] = useState(start.hideClosed);
   // `?new=1` membuka Servis Baru langsung (tombol cepat Dashboard).
   const [editOpen, setEditOpen] = useState(() => searchParams.get('new') === '1');
   const [editing, setEditing] = useState<Service | null>(null);
@@ -386,6 +393,75 @@ export function ServicesPage() {
     if (window.getSelection()?.toString()) return;
     navigate(`/services/${id}`);
   };
+
+  // Ingatan daftar: saringan dicatat tiap berubah, gulir tiap bergeser, supaya
+  // membuka tiket lalu kembali (tautan "Kembali ke daftar", sidebar, atau tombol
+  // Kembali peramban) mendarat di tempat yang sama, bukan kotak cari kosong di
+  // puncak daftar. Bentuk & masa berlakunya: lib/business/serviceListView.ts.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    saveListView(listOwner, entryKey, {
+      query,
+      status: statusFilter,
+      category: categoryFilter,
+      pickup: pickupFilter,
+      tech: techFilter,
+      payment: paymentFilter,
+      date: dateFilter,
+      from: customFrom,
+      to: customTo,
+      stalledOnly,
+      sort,
+      hideClosed,
+    });
+  }, [
+    listOwner,
+    entryKey,
+    query,
+    statusFilter,
+    categoryFilter,
+    pickupFilter,
+    techFilter,
+    paymentFilter,
+    dateFilter,
+    customFrom,
+    customTo,
+    stalledOnly,
+    sort,
+    hideClosed,
+  ]);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        // Halaman ini sudah tergantikan (peralihan rute) → peramban memotong
+        // gulir ke 0 dan itu bukan posisi daftar; jangan dicatat.
+        if (wrapRef.current?.isConnected) saveListScroll(readScroll());
+      });
+    };
+    // Capture: peristiwa scroll tak menggelembung, dan wadah gulir bisa dokumen
+    // atau elemen (demo).
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll, { capture: true });
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  // Pulihkan gulir sekali, setelah baris pertama benar-benar ada. Flag dinyalakan
+  // di dalam rAF: kalau efek ini dijalankan ulang sebelum bingkai tiba, pembatalan
+  // tak boleh menelan pemulihan.
+  const scrollRestored = useRef(initial.scrollTop <= 0);
+  const hasRows = rows.length > 0;
+  useEffect(() => {
+    if (scrollRestored.current || loading || !hasRows) return;
+    const raf = requestAnimationFrame(() => {
+      scrollRestored.current = true;
+      writeScroll(initial.scrollTop);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [loading, hasRows, initial.scrollTop]);
 
   const openNew = () => {
     setEditing(null);
@@ -665,7 +741,7 @@ export function ServicesPage() {
   );
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} ref={wrapRef}>
       <ConfirmDialog
         open={!!pickupConfirm}
         title={t('services.unpaidTitle')}

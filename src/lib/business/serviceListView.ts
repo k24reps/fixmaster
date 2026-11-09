@@ -1,0 +1,161 @@
+import type { ServiceStatus } from '@/data/types';
+import type { DateFilter, PaymentFilter, ServiceSort } from './serviceFilters';
+import { STATUS_LABELS } from './services';
+
+/**
+ * Konteks Daftar Servis: apa yang sedang dicari/disaring, dan sejauh mana
+ * digulir. Membuka tiket lalu kembali ke daftar dulu mengembalikan kotak cari
+ * kosong dan daftar di puncak — padahal tiket dibuka justru di tengah
+ * pekerjaan ("cari Andi, buka tiketnya, cek, balik"). Modul ini murni; sesi
+ * penyimpanannya ada di `features/services/listMemory.ts`.
+ */
+export interface ServiceListView {
+  query: string;
+  status: ServiceStatus | 'all';
+  category: string;
+  pickup: 'all' | 'awaiting';
+  tech: string;
+  payment: PaymentFilter;
+  date: DateFilter;
+  from: string;
+  to: string;
+  stalledOnly: boolean;
+  sort: ServiceSort;
+  hideClosed: boolean;
+}
+
+export const EMPTY_LIST_VIEW: ServiceListView = {
+  query: '',
+  status: 'all',
+  category: 'all',
+  pickup: 'all',
+  tech: 'all',
+  payment: 'all',
+  date: 'all',
+  from: '',
+  to: '',
+  stalledOnly: false,
+  sort: 'newest',
+  hideClosed: false,
+};
+
+export interface ServiceListSnapshot {
+  /** Outlet + pengguna: filter teknisi milik satu orang tak boleh bocor ke orang lain. */
+  owner: string;
+  /** `location.key` entri riwayat tempat daftar ini dipasang. */
+  entryKey: string;
+  savedAt: number;
+  scrollTop: number;
+  view: ServiceListView;
+}
+
+/**
+ * Seberapa lama ingatan daftar dipercaya. Interupsi di meja servis hitungan
+ * menit; "Andi" yang dicari kemarin sore bukan konteks, melainkan jebakan
+ * ("tiket saya hilang?").
+ */
+export const LIST_MEMORY_MS = 30 * 60_000;
+
+/** Parameter URL yang berarti "buka daftar dengan saringan ini" (tautan Dashboard). */
+const FILTER_PARAMS = ['status', 'pickup', 'tech', 'date', 'open'] as const;
+
+const STATUSES = Object.keys(STATUS_LABELS) as ServiceStatus[];
+const PAYMENTS: PaymentFilter[] = ['all', 'unpaid', 'dp'];
+const DATES: DateFilter[] = ['all', 'last7', 'thisMonth', 'custom'];
+const SORTS: ServiceSort[] = ['newest', 'oldest'];
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_QUERY = 200;
+
+/**
+ * Tampilan yang diminta tautan (`?status=`, `?pickup=awaiting`, `?tech=me`,
+ * `?date=month`, `?open=1`), atau null bila URL tak membawa saringan. `?new=1`
+ * sengaja bukan saringan: ia hanya membuka modal Servis Baru.
+ */
+export function viewFromParams(params: URLSearchParams): ServiceListView | null {
+  if (!FILTER_PARAMS.some((k) => params.has(k))) return null;
+  const status = params.get('status');
+  return {
+    ...EMPTY_LIST_VIEW,
+    status: STATUSES.includes(status as ServiceStatus) ? (status as ServiceStatus) : 'all',
+    pickup: params.get('pickup') === 'awaiting' ? 'awaiting' : 'all',
+    tech: params.get('tech') === 'me' ? 'me' : 'all',
+    date: params.get('date') === 'month' ? 'thisMonth' : 'all',
+    hideClosed: params.get('open') === '1',
+  };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
+  allowed.includes(v as T) ? (v as T) : fallback;
+
+const str = (v: unknown, fallback: string, max = 120) =>
+  typeof v === 'string' ? v.slice(0, max) : fallback;
+
+/**
+ * Baca ingatan dari teks tersimpan. Setiap kolom dipaksa ke nilai sah, jadi
+ * nilai rusak/usang (status yang sudah dihapus, JSON terpotong) jatuh ke
+ * bawaan — tidak pernah melempar dan tak pernah menyaring daftar jadi kosong.
+ */
+export function parseListSnapshot(raw: string | null): ServiceListSnapshot | null {
+  if (!raw) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(data) || !isRecord(data.view)) return null;
+  if (typeof data.owner !== 'string' || typeof data.entryKey !== 'string') return null;
+  if (typeof data.savedAt !== 'number' || !Number.isFinite(data.savedAt)) return null;
+  const v = data.view;
+  const scroll = typeof data.scrollTop === 'number' && Number.isFinite(data.scrollTop) ? data.scrollTop : 0;
+  return {
+    owner: data.owner,
+    entryKey: data.entryKey,
+    savedAt: data.savedAt,
+    scrollTop: Math.max(0, scroll),
+    view: {
+      query: str(v.query, '', MAX_QUERY),
+      status: pick<ServiceStatus | 'all'>(v.status, ['all', ...STATUSES], 'all'),
+      category: str(v.category, 'all'),
+      pickup: pick(v.pickup, ['all', 'awaiting'], 'all'),
+      tech: str(v.tech, 'all'),
+      payment: pick(v.payment, PAYMENTS, 'all'),
+      date: pick(v.date, DATES, 'all'),
+      from: typeof v.from === 'string' && DAY.test(v.from) ? v.from : '',
+      to: typeof v.to === 'string' && DAY.test(v.to) ? v.to : '',
+      stalledOnly: v.stalledOnly === true,
+      sort: pick(v.sort, SORTS, 'newest'),
+      hideClosed: v.hideClosed === true,
+    },
+  };
+}
+
+/**
+ * Tampilan awal daftar saat dipasang. Urutan keputusan:
+ * 1. Tautan membawa saringan (Dashboard) pada entri riwayat BARU → saringan
+ *    itu menang, tanpa gulir: tombol "Tiket saya" harus selalu membuka itu.
+ * 2. Ada ingatan segar milik pengguna yang sama → pulihkan (kotak cari,
+ *    saringan, urutan, gulir). Ini juga berlaku untuk tombol Kembali peramban
+ *    ke entri berparameter yang sama (`entryKey` sama), sehingga "Dashboard →
+ *    Tiket saya → buka tiket → Kembali" tidak membuang apa yang diketik.
+ * 3. Selain itu → bersih.
+ */
+export function resolveListView(o: {
+  snapshot: ServiceListSnapshot | null;
+  owner: string;
+  entryKey: string;
+  params: URLSearchParams;
+  now: number;
+}): { view: ServiceListView; scrollTop: number } {
+  const fromUrl = viewFromParams(o.params);
+  const mine =
+    o.snapshot && o.snapshot.owner === o.owner && o.now - o.snapshot.savedAt <= LIST_MEMORY_MS
+      ? o.snapshot
+      : null;
+  if (fromUrl && mine?.entryKey !== o.entryKey) return { view: fromUrl, scrollTop: 0 };
+  if (mine) return { view: mine.view, scrollTop: mine.scrollTop };
+  return { view: EMPTY_LIST_VIEW, scrollTop: 0 };
+}

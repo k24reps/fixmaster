@@ -202,6 +202,23 @@ describe('tampilan Daftar servis', () => {
     expect(css.match(/\[data-single\] \.clamp b \{\s*position: absolute;/g)).toHaveLength(2);
   });
 
+  it('konteks daftar bertahan saat tiket dibuka: ingatan sesi, bukan state yang lenyap', () => {
+    // Tampilan awal lewat satu pemutus (tautan vs ingatan), bukan baca ?status dst. satu-satu.
+    expect(tsx).toContain('resolveListView({');
+    expect(tsx).toContain('readListSnapshot()');
+    expect(tsx).not.toContain("searchParams.get('status')");
+    expect(tsx).toContain('useState(start.query)');
+    expect(tsx).toContain('useState(start.hideClosed)');
+    // Setiap perubahan saringan dicatat; gulir dicatat hanya selama halaman ini masih terpasang
+    // (peralihan rute memotong gulir ke 0 — itu bukan posisi daftar).
+    expect(tsx).toContain('saveListView(listOwner, entryKey, {');
+    expect(tsx).toContain('wrapRef.current?.isConnected');
+    // Peristiwa scroll tak menggelembung dan wadahnya bisa elemen (demo): harus capture.
+    expect(tsx).toMatch(/addEventListener\('scroll', onScroll, \{ capture: true/);
+    // Penanda "sudah dipulihkan" dinyalakan DI DALAM rAF, supaya pembatalan efek tak menelannya.
+    expect(tsx).toMatch(/requestAnimationFrame\(\(\) => \{\s*scrollRestored\.current = true;/);
+  });
+
   it('baris Penanganan kosong tak tampil sebelum tiket selesai', () => {
     expect(tsx).toContain('{showFixLine(s) && (');
     expect(tsx).toContain("s.status === 'selesai' || s.status === 'lunas'");
