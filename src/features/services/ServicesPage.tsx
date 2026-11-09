@@ -1,6 +1,6 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -288,6 +288,18 @@ export function ServicesPage() {
   // Toko satu orang (mis. paket Solo) tidak butuh filter teknisi.
   const activeTechs = techs.filter((e) => e.active !== false);
   const showTechFilter = activeTechs.length > 1;
+  // Kolom Teknisi hanya berguna bila isinya membedakan tiket. Toko satu teknisi
+  // (atau yang tak pernah mengisinya) mengulang nama yang sama di tiap baris dan
+  // memakan lajur yang dibutuhkan keluhan; di demo "Rizal Pratama" ada di 7 dari
+  // 7 tiket. Yang dihitung nama pada tiketnya, bukan jumlah karyawan aktif: semua
+  // karyawan bisa dipilih jadi teknisi, jadi toko berkaryawan banyak tetap bisa
+  // hanya punya satu nama di daftar. Tiket tanpa teknisi dihitung sebagai satu
+  // nilai sendiri, supaya campuran "ada / belum ditugaskan" tetap terlihat.
+  const distinctTechs = useMemo(
+    () => new Set(services.map((s) => s.technicianName || '')).size,
+    [services],
+  );
+  const showTech = cols.has('technician') && distinctTechs > 1;
   // Di ponsel teknisi, urutan, Tertahan & arsip dilipat ke tombol filter di
   // samping kolom cari (CSS); yang aktif ikut dihitung di tombol itu.
   const foldedOnMobile = [
@@ -335,19 +347,41 @@ export function ServicesPage() {
   const showFix = cols.has('completionNote');
   const showNotes = showComplaint || showFix;
 
+  // Tiket yang belum selesai belum punya penanganan: baris "Penanganan –" hanya
+  // jadi derau di empat dari tujuh tiket. Selesai/Lunas tanpa catatan tetap
+  // menampilkan tanda kosong, karena itu catatan yang lupa diisi.
+  const showFixLine = (s: Service) =>
+    showFix && (!!s.completionNote || s.status === 'selesai' || s.status === 'lunas');
+
   // Lajur segmen Daftar dari kolom yang diaktifkan toko, supaya segmen antar
-  // baris sejajar tanpa kepala tabel. Urutan = urutan segmen di JSX (nomor dulu).
-  const rowTracks = [
+  // baris sejajar. Urutan = urutan segmen di JSX (nomor dulu). Tiap lajur punya
+  // lantai (minmax) selebar isi terpendek yang masih terbaca; jumlah lantainya
+  // menurunkan ambang judul kolom di CSS (`@container svcRows (min-width: …)`).
+  const tracks = [
     '6.5rem',
     // Segmen keluhan-penanganan paling lebar (tiga baris ringkasan kerja); nama
     // pelanggan & teknisi pendek dan boleh dua baris, jadi lajurnya lebih sempit.
-    cols.has('customer') && 'minmax(0, 0.9fr)',
-    cols.has('device') && 'minmax(0, 1fr)',
-    showNotes && `minmax(0, ${showComplaint && showFix ? 2.5 : showFix ? 1.6 : 0.9}fr)`,
-    cols.has('technician') && 'minmax(0, 0.7fr)',
+    cols.has('customer') && 'minmax(7rem, 0.9fr)',
+    cols.has('device') && 'minmax(7.5rem, 1fr)',
+    showNotes && `minmax(11rem, ${showComplaint && showFix ? 2.5 : showFix ? 1.6 : 0.9}fr)`,
+    showTech && 'minmax(5.5rem, 0.7fr)',
   ]
-    .filter(Boolean)
-    .join(' ');
+    .filter(Boolean);
+  const rowTracks = tracks.join(' ');
+  // Jumlah segmen = jumlah lajur; CSS memilih ambang tabel dari sini.
+  const segCount = tracks.length;
+
+  // Seluruh baris Daftar membuka tiket. Jalur papan ketik & pembaca layar tetap
+  // tautan nomor tiket (satu perhentian tab per baris), jadi ini hanya jalan
+  // pintas untuk penunjuk. Klik pada kontrol di dalam baris, seleksi teks, dan
+  // klik bermodifikasi (tab baru lewat tautan nomor) dibiarkan apa adanya.
+  const navigate = useNavigate();
+  const openTicket = (e: MouseEvent<HTMLElement>, id: string) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if ((e.target as HTMLElement).closest('a, button, input, select, textarea, label')) return;
+    if (window.getSelection()?.toString()) return;
+    navigate(`/services/${id}`);
+  };
 
   const openNew = () => {
     setEditing(null);
@@ -547,7 +581,9 @@ export function ServicesPage() {
   // untuk semua tiket; tanda ambil ada di label status ambil (renderPickup).
   // Sparepart hanya untuk tiket yang masih dikerjakan, dan ditaruh paling kiri:
   // kelompoknya rata kanan, jadi tiga aksi tetap sejajar antarbaris.
-  const renderActions = (s: Service) => (
+  // `viewLink` hanya untuk Kartu: di Daftar seluruh baris sudah tautan ke tiket
+  // (openTicket), jadi ikon tautannya menghabiskan 40px lajur tanpa menambah jalan.
+  const renderActions = (s: Service, viewLink = false) => (
     <>
       {canQuickAddParts(s.status) && (
         <button
@@ -559,14 +595,16 @@ export function ServicesPage() {
           <Icon name="microchip" aria-hidden />
         </button>
       )}
-      <Link
-        className={styles.iconBtn}
-        to={`/services/${s.id}`}
-        title={t('services.viewTicket')}
-        aria-label={t('services.viewTicket')}
-      >
-        <Icon name="up-right-from-square" aria-hidden />
-      </Link>
+      {viewLink && (
+        <Link
+          className={styles.iconBtn}
+          to={`/services/${s.id}`}
+          title={t('services.viewTicket')}
+          aria-label={t('services.viewTicket')}
+        >
+          <Icon name="up-right-from-square" aria-hidden />
+        </Link>
+      )}
       <button
         className={styles.iconBtn}
         onClick={() => {
@@ -857,6 +895,7 @@ export function ServicesPage() {
             {view === 'list' && (
               <div
                 className={styles.rowList}
+                data-segs={segCount}
                 style={{ '--row-cols': rowTracks } as CSSProperties}
               >
               {/* Judul kolom: hanya di tata letak lebar, saat segmen berbaris dalam lajur. */}
@@ -872,7 +911,7 @@ export function ServicesPage() {
                         : t(showFix ? 'services.colFix' : 'services.colComplaint')}
                     </span>
                   )}
-                  {cols.has('technician') && <span>{t('services.colTech')}</span>}
+                  {showTech && <span>{t('services.colTech')}</span>}
                 </div>
                 <span className={styles.rowStatus}>{t('common.status')}</span>
                 {cols.has('cost') && <span className={styles.rowCost}>{t('services.colCost')}</span>}
@@ -883,6 +922,7 @@ export function ServicesPage() {
                   <li
                     key={s.id}
                     className={[styles.row, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}
+                    onClick={(e) => openTicket(e, s.id)}
                   >
                     <div className={styles.rowMain}>
                       {/* Nomor + tanggal masuk: satu identitas tiket, satu segmen. */}
@@ -908,13 +948,17 @@ export function ServicesPage() {
                         </div>
                       )}
                       {showNotes && (
-                        <div className={styles.rowCell} data-seg="notes">
+                        <div
+                          className={styles.rowCell}
+                          data-seg="notes"
+                          data-single={showComplaint !== showFix ? 'true' : undefined}
+                        >
                           {showComplaint && (
                             <span className={styles.clamp} title={s.complaint || undefined}>
                               <b>{t('services.colComplaint')}</b> {s.complaint || <EmptyValue />}
                             </span>
                           )}
-                          {showFix && (
+                          {showFixLine(s) && (
                             <span
                               className={[styles.clamp, styles.clamp3].join(' ')}
                               title={s.completionNote || undefined}
@@ -924,7 +968,7 @@ export function ServicesPage() {
                           )}
                         </div>
                       )}
-                      {cols.has('technician') && (
+                      {showTech && (
                         <div className={styles.rowCell} data-seg="technician">
                           <span className={styles.rowTech} title={t('services.colTech')}>
                             <Icon name="screwdriver-wrench" aria-hidden />
@@ -988,7 +1032,7 @@ export function ServicesPage() {
                   </div>
                   <div className={styles.jobFoot}>
                     <div className={styles.jobCost}>{renderCost(s)}</div>
-                    <div className={styles.jobActions}>{renderActions(s)}</div>
+                    <div className={styles.jobActions}>{renderActions(s, true)}</div>
                   </div>
                 </li>
               ))}

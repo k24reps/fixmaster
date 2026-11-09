@@ -360,9 +360,10 @@
 }
 .row {
   display: grid;
-  /* Aksi 10rem = empat tombol 40px (sparepart hanya di tiket yang masih
-     dikerjakan); lajur tetap supaya judul & baris sejajar. */
-  grid-template-columns: minmax(0, 1fr) 11rem 9rem 10rem;
+  /* Aksi 7.5rem = tiga tombol 40px (sparepart hanya di tiket yang masih
+     dikerjakan, WhatsApp, ubah; membuka tiket = klik barisnya). Lajur tetap
+     supaya judul & baris sejajar. */
+  grid-template-columns: minmax(0, 1fr) 11rem 9rem 7.5rem;
   grid-template-areas: 'main status cost actions';
   align-items: center;
   column-gap: var(--space-4);
@@ -372,7 +373,7 @@
   transition: background var(--dur-fast) var(--ease-out);
 }
 .rowNoCost {
-  grid-template-columns: minmax(0, 1fr) 11rem 10rem;
+  grid-template-columns: minmax(0, 1fr) 11rem 7.5rem;
   grid-template-areas: 'main status actions';
 }
 .row + .row {
@@ -381,8 +382,18 @@
 .row:hover {
   background: var(--bg-hover);
 }
+/* Seluruh baris membuka tiket (openTicket di TSX); kursor menjanjikan itu,
+   dan warna hover tak lagi berbohong. Kepala kolom tidak ikut. */
+.rows > .row {
+  cursor: pointer;
+}
 /* Judul kolom (tata letak lebar saja): gaya label sistem, lajur sama dengan
-   baris karena memakai .row dan --row-cols yang sama. */
+   baris karena memakai .row dan --row-cols yang sama. Tersembunyi selama
+   segmen mengalir; blok `@container svcRows (min-width: …)` di bawah
+   menampilkannya begitu semua lantai lajur muat sebaris. */
+.rowHead {
+  display: none;
+}
 .rowHead,
 .rowHead:hover {
   min-height: 0;
@@ -405,21 +416,15 @@
 .rowHead .rowActions {
   padding-right: 12px;
 }
-/* Saat judul kolom tampil, label & ikon di dalam segmen hanya mengulang.
-   Kecuali segmen keluhan-penanganan berisi dua baris: tanpa label, baris
-   mana keluhan dan mana penanganan tak bisa dibedakan. */
-@container svcRows (min-width: 1181px) {
-  .rows .clamp:only-child b,
-  .rows .rowTech svg {
-    display: none;
-  }
-}
+/* Bawaan = segmen mengalir dan membungkus di kiri (laptop, tablet): identitas
+   tiket sebaris, keluhan-penanganan di baris di bawahnya. Menjadi tabel hanya
+   bila semua lantai lajur muat sebaris (blok `min-width` di bawah). */
 .rowMain {
   grid-area: main;
-  display: grid;
-  grid-template-columns: var(--row-cols);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: var(--space-4);
+  gap: 2px var(--space-4);
   min-width: 0;
 }
 .rowCell {
@@ -492,27 +497,59 @@
   display: flex;
   justify-content: flex-end;
 }
-/* Ruang menyempit, bertahap (ambang dari lebar kontainer, jadi zoom aplikasi
-   ikut dihitung). ≤1180px: lajur status/biaya/aksi tetap, segmen mengalir dan
-   membungkus di kiri alih-alih diperas jadi potongan sempit. */
-@container svcRows (max-width: 1180px) {
-  /* Segmen tak lagi berbaris dalam lajur: judul tak bisa sejajar, label di
-     dalam segmen yang mengambil alih. */
+/* Segmen mengalir (di bawah ambang tabel): lajur status/biaya/aksi tetap,
+   segmen membungkus di kiri alih-alih diperas jadi potongan sempit. Judul tak
+   bisa sejajar di sini, jadi label di dalam segmen yang mengambil alih. */
+.rowMain > .rowCell {
+  flex: 1 1 9rem;
+}
+/* Nomor + tanggal cukup selebar lajur tabelnya; tanpa ini ia ikut membengkak
+   ke 9rem dan mendorong perangkat ke baris kedua. */
+.rowCell[data-seg='id'] {
+  flex: 0 1 6.5rem;
+}
+/* Teks bebas dua baris butuh lebar dua kali segmen lain, supaya tidak
+   terjepit sebesar kolom teknisi saat keduanya turun ke baris berikutnya. */
+.rowMain > .rowCell[data-seg='notes'] {
+  flex: 2 1 14rem;
+}
+/* Tabel bila lantai semua lajur muat sebaris. Ambang = jumlah lantai (rowTracks
+   di TSX) + lajur kanan 11 + 9 + 7.5rem + tiga jarak 16px + padding 20px, diukur
+   dari wadah (jadi zoom aplikasi ikut dihitung):
+     5 segmen  104+112+120+176+88 + 4×12 = 648 + 508 → 1156px
+     ≤4 segmen 104+112+120+176    + 3×12 = 548 + 508 → 1056px
+   Persis, tak dibulatkan: kerapatan Padat di 1366px memberi wadah 1056px, dan
+   pembulatan ke 1060 menyingkirkannya dari tabel padahal jarak Padat lebih
+   rapat sehingga muat. Toko satu teknisi (kolom Teknisi otomatis hilang) jadi
+   tabel sejak 1056px; data-segs dari TSX = jumlah segmen. Saat judul tampil, label & ikon di dalam
+   segmen hanya mengulang — kecuali segmen keluhan-penanganan berisi dua baris:
+   tanpa label, baris mana keluhan dan mana penanganan tak bisa dibedakan. */
+@container svcRows (min-width: 1156px) {
   .rowHead {
-    display: none;
+    display: grid;
   }
   .rowMain {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px var(--space-4);
+    display: grid;
+    grid-template-columns: var(--row-cols);
+    gap: 0 var(--space-3);
   }
-  .rowMain > .rowCell {
-    flex: 1 1 9rem;
+  .rows [data-single] .clamp b,
+  .rows .rowTech svg {
+    display: none;
   }
-  /* Teks bebas dua baris butuh lebar dua kali segmen lain, supaya tidak
-     terjepit sebesar kolom teknisi saat keduanya turun ke baris berikutnya. */
-  .rowMain > .rowCell[data-seg='notes'] {
-    flex: 2 1 14rem;
+}
+@container svcRows (min-width: 1056px) {
+  .rowList:not([data-segs='5']) .rowHead {
+    display: grid;
+  }
+  .rowList:not([data-segs='5']) .rowMain {
+    display: grid;
+    grid-template-columns: var(--row-cols);
+    gap: 0 var(--space-3);
+  }
+  .rowList:not([data-segs='5']) .rows [data-single] .clamp b,
+  .rowList:not([data-segs='5']) .rows .rowTech svg {
+    display: none;
   }
 }
 /* ≤860px: biaya dan aksi turun ke baris kedua, seperti Inventori. */
@@ -725,11 +762,10 @@
   color: var(--brand-hover);
 }
 
-/* Nomor tiket = pintu ke detail, tapi hanya 17px tinggi (audit-mobile).
-   Padding + margin negatif memperbesar area sentuh ke 45px tanpa menggeser
-   tata letak baris. Tablet sentuh juga butuh: di sana tautannya 50×17, dan
-   ikon "Lihat tiket" (tautan, jadi aturan 44px global <button> tak berlaku)
-   40×40. */
+/* Nomor tiket = pintu papan ketik ke detail, tapi hanya 17px tinggi
+   (audit-mobile). Padding + margin negatif memperbesar area sentuh ke 45px
+   tanpa menggeser tata letak baris. Tablet sentuh juga butuh: di sana
+   tautannya 50×17 (tautan, jadi aturan 44px global <button> tak berlaku). */
 @media (max-width: 720px), (pointer: coarse) {
   .noLink {
     display: inline-block;
@@ -741,16 +777,16 @@
     min-height: var(--control-h);
   }
 }
-/* Empat ikon 44px butuh 176px, lajur tetap 10rem hanya 160px: di tablet sentuh
-   1024 & 1366 tombol keempat meluap 16px keluar baris. Hanya selama lajurnya
-   tetap; ≤860px aksi turun ke baris kedua dengan lebar auto. */
+/* Tiga ikon 44px butuh 132px, lajur tetap 7.5rem hanya 120px: di tablet sentuh
+   tombol ketiga meluap 12px keluar baris. Hanya selama lajurnya tetap; ≤860px
+   aksi turun ke baris kedua dengan lebar auto. */
 @media (pointer: coarse) {
   @container svcRows (min-width: 861px) {
     .row {
-      grid-template-columns: minmax(0, 1fr) 11rem 9rem calc(var(--control-h) * 4);
+      grid-template-columns: minmax(0, 1fr) 11rem 9rem calc(var(--control-h) * 3);
     }
     .rowNoCost {
-      grid-template-columns: minmax(0, 1fr) 11rem calc(var(--control-h) * 4);
+      grid-template-columns: minmax(0, 1fr) 11rem calc(var(--control-h) * 3);
     }
     .rowHead .rowActions {
       padding-right: 14px;
