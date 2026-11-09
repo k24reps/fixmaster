@@ -145,6 +145,28 @@ describe('tampilan Daftar servis', () => {
     expect(css).toMatch(/\.rowCell > \.customerName \{[^}]*-webkit-line-clamp: 2;[^}]*white-space: normal;/);
   });
 
+  it('baris punya spine 3px dengan peta nada yang sama dengan Kartu', () => {
+    // Satu peta STATUS_TONE untuk dua tampilan: dipasang sebagai data-tone di keduanya.
+    expect(tsx.match(/data-tone=\{STATUS_TONE\[s\.status\]\}/g)).toHaveLength(2);
+    expect(css).toMatch(/\.rows > \.row::before \{[^}]*width: 3px;/);
+    expect(css).toMatch(/\.row \{\s*position: relative;/);
+    // Tiap nada berbagi aturan dengan Kartu, bukan salinan yang bisa melenceng.
+    for (const tone of ['info', 'warning', 'accent', 'success', 'danger']) {
+      expect(css).toContain(`.jobCard[data-tone='${tone}']::before,\n.rows > .row[data-tone='${tone}']::before {`);
+    }
+  });
+
+  it('status ambil dan tertahan satu zona di lajur status, LED tak terjepit', () => {
+    const device = tsx.slice(tsx.indexOf('data-seg="device"'), tsx.indexOf('data-seg="notes"'));
+    expect(device).not.toContain('renderPickup');
+    const lane = tsx.slice(tsx.indexOf('<div className={styles.rowStatus}>'));
+    const laneBody = lane.slice(0, lane.indexOf('</div>'));
+    expect(laneBody).toContain('{renderStatus(s)}');
+    expect(laneBody.indexOf('{renderPickup(s)}')).toBeGreaterThan(laneBody.indexOf('{renderStatus(s)}'));
+    expect(laneBody.indexOf('{renderStall(s)}')).toBeGreaterThan(laneBody.indexOf('{renderPickup(s)}'));
+    expect(css).toMatch(/\.pickupWait::before \{[^}]*flex-shrink: 0;/);
+  });
+
   it('baris Penanganan kosong tak tampil sebelum tiket selesai', () => {
     expect(tsx).toContain('{showFixLine(s) && (');
     expect(tsx).toContain("s.status === 'selesai' || s.status === 'lunas'");

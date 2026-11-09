@@ -926,6 +926,7 @@ export function ServicesPage() {
                   <li
                     key={s.id}
                     className={[styles.row, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}
+                    data-tone={STATUS_TONE[s.status]}
                     onClick={(e) => openTicket(e, s.id)}
                   >
                     <div className={styles.rowMain}>
@@ -955,7 +956,6 @@ export function ServicesPage() {
                             {s.device}
                           </span>
                           <small className={styles.sub}>{s.category}</small>
-                          {renderPickup(s)}
                         </div>
                       )}
                       {showNotes && (
@@ -988,8 +988,13 @@ export function ServicesPage() {
                         </div>
                       )}
                     </div>
+                    {/* Satu zona pindai: lencana status, lalu sinyal "belum diambil" dan
+                        "tertahan". Dulu yang pertama di kolom perangkat, yang kedua di
+                        sini, sehingga satu unit (Lunas, tak diambil 9 hari) memajang dua
+                        sinyal di dua tempat. */}
                     <div className={styles.rowStatus}>
                       {renderStatus(s)}
+                      {renderPickup(s)}
                       {renderStall(s)}
                     </div>
                     {cols.has('cost') && (

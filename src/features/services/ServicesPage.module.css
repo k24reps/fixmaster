@@ -154,8 +154,11 @@
   overflow: hidden;
 }
 /* status spine — colored by data-tone. 3px, per the Spine, Not the Fill Rule
-   (the only card spine in the app that was 4px). */
-.jobCard::before {
+   (the only card spine in the app that was 4px). Kartu dan baris Daftar berbagi
+   satu peta nada (data-tone = STATUS_TONE di TSX), jadi satu status tak pernah
+   punya dua warna di dua tampilan. */
+.jobCard::before,
+.rows > .row::before {
   content: '';
   position: absolute;
   left: 0;
@@ -164,19 +167,24 @@
   width: 3px;
   background: var(--text-muted);
 }
-.jobCard[data-tone='info']::before {
+.jobCard[data-tone='info']::before,
+.rows > .row[data-tone='info']::before {
   background: var(--info);
 }
-.jobCard[data-tone='warning']::before {
+.jobCard[data-tone='warning']::before,
+.rows > .row[data-tone='warning']::before {
   background: var(--warning);
 }
-.jobCard[data-tone='accent']::before {
+.jobCard[data-tone='accent']::before,
+.rows > .row[data-tone='accent']::before {
   background: var(--accent);
 }
-.jobCard[data-tone='success']::before {
+.jobCard[data-tone='success']::before,
+.rows > .row[data-tone='success']::before {
   background: var(--success);
 }
-.jobCard[data-tone='danger']::before {
+.jobCard[data-tone='danger']::before,
+.rows > .row[data-tone='danger']::before {
   background: var(--danger);
 }
 .jobTop {
@@ -359,6 +367,7 @@
   list-style: none;
 }
 .row {
+  position: relative;
   display: grid;
   /* Aksi 7.5rem = tiga tombol 40px (sparepart hanya di tiket yang masih
      dikerjakan, WhatsApp, ubah; membuka tiket = klik barisnya). Lajur tetap
@@ -445,8 +454,8 @@
 /* Nama perangkat boleh dua baris: wadah daftar mentok di 1314px, jadi dengan
    semua kolom aktif lajurnya hanya 117px di layar selebar apa pun, dan
    "MacBook Pro 13" 2019" kehilangan tahun modelnya — pembeda antartiket.
-   Baris hanya meninggi bila nama dua baris bertemu lencana ambil (terukur
-   78→98px di demo); selebihnya segmen catatan yang menentukan tinggi. */
+   Lencana ambil kini di lajur status, jadi kolom ini paling tinggi nama dua
+   baris + kategori; selebihnya segmen catatan yang menentukan tinggi baris. */
 .rowTitle {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -640,13 +649,20 @@
 .pickupWait {
   color: var(--accent-text);
 }
+/* flex-shrink: 0 — tanpa ini LED (item flex) ikut diperas saat lajurnya sempit
+   dan jadi oval 3,9×7px, dibaca sebagai noda, bukan lampu. */
 .pickupWait::before {
   content: '';
+  flex-shrink: 0;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 6px var(--accent);
+}
+.pickupWait > svg,
+.pickupDone > svg {
+  flex-shrink: 0;
 }
 .pickupDone {
   color: var(--text-muted);
