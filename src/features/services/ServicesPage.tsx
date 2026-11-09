@@ -361,9 +361,13 @@ export function ServicesPage() {
     '6.5rem',
     // Segmen keluhan-penanganan paling lebar (tiga baris ringkasan kerja); nama
     // pelanggan & teknisi pendek dan boleh dua baris, jadi lajurnya lebih sempit.
-    cols.has('customer') && 'minmax(7rem, 0.9fr)',
+    // Lantai pelanggan = nomor HP mono 18 karakter ("+62 812-3456-78901" = 129,6px
+    // terukur): nomor yang kehilangan digit sama dengan nomor salah, jadi tak boleh
+    // dipotong. Selisihnya diambil dari lantai catatan, sehingga jumlah lantai (dan
+    // ambang judul kolom di CSS) tak bergeser.
+    cols.has('customer') && 'minmax(8.25rem, 0.9fr)',
     cols.has('device') && 'minmax(7.5rem, 1fr)',
-    showNotes && `minmax(11rem, ${showComplaint && showFix ? 2.5 : showFix ? 1.6 : 0.9}fr)`,
+    showNotes && `minmax(9.75rem, ${showComplaint && showFix ? 2.5 : showFix ? 1.6 : 0.9}fr)`,
     showTech && 'minmax(5.5rem, 0.7fr)',
   ]
     .filter(Boolean);
@@ -934,8 +938,15 @@ export function ServicesPage() {
                       </div>
                       {cols.has('customer') && (
                         <div className={styles.rowCell} data-seg="customer">
-                          <strong className={styles.customerName}>{s.customerName}</strong>
-                          <small className={styles.sub}>{s.customerPhone}</small>
+                          <strong className={styles.customerName} title={s.customerName || undefined}>
+                            {s.customerName}
+                          </strong>
+                          <small
+                            className={[styles.sub, styles.phone].join(' ')}
+                            title={s.customerPhone || undefined}
+                          >
+                            {s.customerPhone}
+                          </small>
                         </div>
                       )}
                       {cols.has('device') && (

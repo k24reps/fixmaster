@@ -3,6 +3,7 @@ import tsx from './ServicesPage.tsx?raw';
 import css from './ServicesPage.module.css?raw';
 import detailTsx from './ServiceDetailPage.tsx?raw';
 import pickerTsx from './SparepartPickerModal.tsx?raw';
+import tokens from '../../styles/tokens.css?raw';
 
 /**
  * Tampilan Daftar Servis berupa baris seperti Inventori & Kasir, bukan tabel.
@@ -110,6 +111,38 @@ describe('tampilan Daftar servis', () => {
     // Persis, tak dibulatkan: pembulatan membuang ruang (Padat di 1366px = wadah 1056px).
     expect(t5 - five).toBeLessThan(8);
     expect(t4 - four).toBeLessThan(8);
+  });
+
+  it('nomor tiket dan nomor HP muat utuh di lajurnya, bukan dipotong elipsis', () => {
+    // Lebar mono = 0,6em per karakter (JetBrains Mono terukur 7,2px di 12px).
+    const rem = (v: string) => parseFloat(v) * 16;
+    const size = (token: string) => {
+      const m = new RegExp(`${token}:\\s*([\\d.]+)rem`).exec(tokens);
+      if (!m) throw new Error(`token tak ketemu: ${token}`);
+      return rem(m[1]);
+    };
+    const floor = (re: RegExp, src: string) => {
+      const m = re.exec(src);
+      if (!m) throw new Error(`tak ketemu: ${re}`);
+      return rem(m[1]);
+    };
+    // Nomor HP terpanjang yang wajar: "+62 812-3456-78901" (18 karakter).
+    const phoneNeed = 18 * 0.6 * size('--text-xs');
+    expect(floor(/cols\.has\('customer'\) && 'minmax\((\d+(?:\.\d+)?)rem/, tsx)).toBeGreaterThanOrEqual(phoneNeed);
+    // Nomor tiket terpanjang: awalan 5 huruf (batas Wizard) + "-" + 6 digit, tebal.
+    const idNeed = 12 * 0.6 * size('--text-sm');
+    expect(floor(/const tracks = \[\s*'(\d+(?:\.\d+)?)rem'/, tsx)).toBeGreaterThanOrEqual(idNeed);
+    // Nomor HP mono; nomor tiket --text-sm tebal (bukan --text-xs).
+    expect(css).toMatch(/\.phone \{\s*font-family: var\(--font-mono\);/);
+    expect(tsx).toContain('className={[styles.sub, styles.phone].join(\' \')}');
+    expect(css).toMatch(/\.mono \{\s*font-family: var\(--font-mono\);\s*font-size: var\(--text-sm\);\s*font-weight: var\(--fw-bold\);/);
+  });
+
+  it('nama pelanggan boleh dua baris dan punya title; nomor HP juga', () => {
+    expect(tsx).toContain('title={s.customerName || undefined}');
+    expect(tsx).toContain('title={s.customerPhone || undefined}');
+    // Hanya di baris Daftar: Kartu memakai .customerName yang sama dan tak boleh ikut berubah.
+    expect(css).toMatch(/\.rowCell > \.customerName \{[^}]*-webkit-line-clamp: 2;[^}]*white-space: normal;/);
   });
 
   it('baris Penanganan kosong tak tampil sebelum tiket selesai', () => {
