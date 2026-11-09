@@ -677,6 +677,7 @@ export const en: Dictionary = {
   'services.stallHint': 'No activity on this ticket',
   'services.stalledDays': 'Stalled {n} days',
   'services.statusHint': 'Click to change status',
+  'services.statusChangeAria': 'Change status of {no}: {status}',
   'services.estimateHint': 'Estimate, final cost not set yet',
   'services.estimateShort': 'Est. {amount}',
   'services.modalAria': 'Cost {amount}',

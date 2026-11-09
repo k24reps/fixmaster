@@ -167,6 +167,41 @@ describe('tampilan Daftar servis', () => {
     expect(css).toMatch(/\.pickupWait::before \{[^}]*flex-shrink: 0;/);
   });
 
+  it('tombol yang berulang tiap baris menyebut tiketnya untuk pembaca layar', () => {
+    // Tombol status: nama memuat teks lencana (label-in-name) + nomor tiket.
+    expect(tsx).toContain("aria-label={interpolate(t('services.statusChangeAria'), {");
+    // Tombol ikon (sparepart, lihat tiket, WhatsApp, ubah) menunjuk nomor tiketnya.
+    expect(tsx.match(/aria-describedby=\{noId\(s\)\}/g)).toHaveLength(4);
+    // Nomor tiket di Daftar dan di Kartu memegang id-nya.
+    expect(tsx.match(/ id=\{noId\(s\)\}/g)).toHaveLength(2);
+    expect(tsx).toContain("const noId = (s: Service) => `svc-no-${s.id}`;");
+    // Tombol ambil (manajer): nama memuat teks yang terlihat, tiket, dan akibat klik.
+    expect(tsx).toContain(
+      "aria-label={`${t(s.pickedUp ? 'services.pickedUp' : 'services.notPickedUp')} ${s.serviceNo}. ${action}`}",
+    );
+    // Pensil di tombol status juga tampil saat fokus keyboard, bukan hanya hover.
+    expect(css).toContain('.statusBtn:focus-visible > svg');
+  });
+
+  it('label margin lewat teks tersembunyi; aria-label pada <span> tak dibacakan', () => {
+    expect(tsx).not.toMatch(/<span[^>]*aria-label=\{interpolate\(t\('services\.(modal|profit)Aria'\)/);
+    expect(tsx).toContain('<span aria-hidden>-{fmtNumber(modal)}</span>');
+    expect(tsx).toContain("interpolate(t('services.modalAria'), { amount: fmtRp(modal) })");
+    expect(tsx).toContain("interpolate(t('services.profitAria'), { amount: fmtRp(profit) })");
+    expect(tsx.match(/className="fm-visually-hidden"/g)?.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('judul kolom disembunyikan dari pembaca layar; tiap sel membawa labelnya sendiri', () => {
+    expect(tsx).toMatch(/styles\.rowHead[\s\S]{0,120}aria-hidden="true"/);
+    for (const key of ['colCustomer', 'colDevice', 'colTech', 'colCost']) {
+      expect(tsx).toContain(`{srLabel('services.${key}')}`);
+    }
+    // Label keluhan/penanganan yang mengulang judul disembunyikan secara visual,
+    // bukan display: none (yang menghapusnya dari pohon aksesibilitas).
+    expect(css).not.toMatch(/\.clamp b\s*\{\s*display: none/);
+    expect(css.match(/\[data-single\] \.clamp b \{\s*position: absolute;/g)).toHaveLength(2);
+  });
+
   it('baris Penanganan kosong tak tampil sebelum tiket selesai', () => {
     expect(tsx).toContain('{showFixLine(s) && (');
     expect(tsx).toContain("s.status === 'selesai' || s.status === 'lunas'");

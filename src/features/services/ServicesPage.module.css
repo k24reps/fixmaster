@@ -340,7 +340,8 @@
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
-.statusBtn:hover > svg {
+.statusBtn:hover > svg,
+.statusBtn:focus-visible > svg {
   opacity: 1;
   color: var(--brand-hover);
 }
@@ -543,7 +544,10 @@
    rapat sehingga muat. Toko satu teknisi (kolom Teknisi otomatis hilang) jadi
    tabel sejak 1056px; data-segs dari TSX = jumlah segmen. Saat judul tampil, label & ikon di dalam
    segmen hanya mengulang — kecuali segmen keluhan-penanganan berisi dua baris:
-   tanpa label, baris mana keluhan dan mana penanganan tak bisa dibedakan. */
+   tanpa label, baris mana keluhan dan mana penanganan tak bisa dibedakan.
+   Label yang mengulang itu disembunyikan secara visual, BUKAN display: none:
+   judul kolomnya aria-hidden, jadi label inilah satu-satunya nama sel bagi
+   pembaca layar. */
 @container svcRows (min-width: 1156px) {
   .rowHead {
     display: grid;
@@ -553,7 +557,15 @@
     grid-template-columns: var(--row-cols);
     gap: 0 var(--space-3);
   }
-  .rows [data-single] .clamp b,
+  .rows [data-single] .clamp b {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .rows .rowTech svg {
     display: none;
   }
@@ -567,7 +579,15 @@
     grid-template-columns: var(--row-cols);
     gap: 0 var(--space-3);
   }
-  .rowList:not([data-segs='5']) .rows [data-single] .clamp b,
+  .rowList:not([data-segs='5']) .rows [data-single] .clamp b {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .rowList:not([data-segs='5']) .rows .rowTech svg {
     display: none;
   }

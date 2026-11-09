@@ -685,6 +685,9 @@ export const id = {
   'services.stallHint': 'Tidak ada aktivitas pada tiket ini',
   'services.stalledDays': 'Tertahan {n} hari',
   'services.statusHint': 'Klik untuk mengubah status',
+  // Nama tombol status: memuat teks lencananya (label-in-name), plus nomor tiket
+  // karena tombol yang sama berulang di setiap baris.
+  'services.statusChangeAria': 'Ubah status {no}: {status}',
   'services.estimateHint': 'Estimasi, biaya final belum ditetapkan',
   'services.estimateShort': 'Est. {amount}',
   'services.modalAria': 'Modal {amount}',

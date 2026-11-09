@@ -484,6 +484,18 @@ export function ServicesPage() {
     }
   };
 
+  // Tombol ikon yang sama berulang di setiap baris ("Ubah", "Notifikasi & nota"):
+  // tiap tombol menunjuk nomor tiketnya lewat aria-describedby supaya pembaca
+  // layar tahu ia milik tiket yang mana. Daftar dan Kartu tak pernah tampil
+  // bersamaan, jadi id ini unik di halaman.
+  const noId = (s: Service) => `svc-no-${s.id}`;
+
+  // Label sel yang tampil sebagai judul kolom (atau tak tampil sama sekali di
+  // tata letak mengalir) tetap sampai ke pembaca layar sebagai teks tersembunyi.
+  const srLabel = (key: Parameters<typeof t>[0]) => (
+    <span className="fm-visually-hidden">{t(key)}: </span>
+  );
+
   // Pickup indicator: prominent "Belum diambil" for closed-but-uncollected
   // units, dim "Diambil" for collected ones, nothing for in-progress tickets.
   // Manajer mengklik labelnya untuk menandai/membatalkan pengambilan (dulu tombol
@@ -508,6 +520,9 @@ export function ServicesPage() {
         className={[cls, styles.pickupBtn].join(' ')}
         onClick={() => void togglePickup(s)}
         title={action}
+        // Nama memuat teks yang terlihat, lalu tiketnya dan apa yang terjadi bila
+        // diklik: dulu hanya title yang memuatnya, dan title tak terbaca keyboard.
+        aria-label={`${t(s.pickedUp ? 'services.pickedUp' : 'services.notPickedUp')} ${s.serviceNo}. ${action}`}
       >
         {content}
       </button>
@@ -535,6 +550,10 @@ export function ServicesPage() {
         setStatusOpen(true);
       }}
       title={t('services.statusHint')}
+      aria-label={interpolate(t('services.statusChangeAria'), {
+        no: s.serviceNo,
+        status: t(`statusLabel.${s.status}`),
+      })}
     >
       <Badge tone={STATUS_TONE[s.status]} dot>
         {t(`statusLabel.${s.status}`)}
@@ -564,16 +583,23 @@ export function ServicesPage() {
             sub-baris cuma mengulang angka di atasnya. */}
         {isOwner && modal > 0 && (
           <span className={styles.breakdown}>
-            <span className={styles.modal} aria-label={interpolate(t('services.modalAria'), { amount: fmtRp(modal) })}>
-              -{fmtNumber(modal)}
+            {/* Label margin lewat teks tersembunyi, bukan aria-label: aria-label pada
+                <span> biasa tak dibacakan, sehingga pembaca layar hanya mengucap
+                "-850.000 +650.000" tanpa tahu mana modal dan mana profit. */}
+            <span className={styles.modal}>
+              <span aria-hidden>-{fmtNumber(modal)}</span>
+              <span className="fm-visually-hidden">
+                {interpolate(t('services.modalAria'), { amount: fmtRp(modal) })}
+              </span>
             </span>
-            <span
-              className={styles.profit}
-              data-loss={profit < 0 ? 'true' : undefined}
-              aria-label={interpolate(t('services.profitAria'), { amount: fmtRp(profit) })}
-            >
-              {profit >= 0 && '+'}
-              {fmtNumber(profit)}
+            <span className={styles.profit} data-loss={profit < 0 ? 'true' : undefined}>
+              <span aria-hidden>
+                {profit >= 0 && '+'}
+                {fmtNumber(profit)}
+              </span>
+              <span className="fm-visually-hidden">
+                {interpolate(t('services.profitAria'), { amount: fmtRp(profit) })}
+              </span>
             </span>
           </span>
         )}
@@ -595,6 +621,7 @@ export function ServicesPage() {
           onClick={() => setPartsFor(s.id)}
           title={t('services.addPart')}
           aria-label={t('services.addPart')}
+          aria-describedby={noId(s)}
         >
           <Icon name="microchip" aria-hidden />
         </button>
@@ -605,6 +632,7 @@ export function ServicesPage() {
           to={`/services/${s.id}`}
           title={t('services.viewTicket')}
           aria-label={t('services.viewTicket')}
+          aria-describedby={noId(s)}
         >
           <Icon name="up-right-from-square" aria-hidden />
         </Link>
@@ -617,6 +645,7 @@ export function ServicesPage() {
         }}
         title={t('services.notifyReceipt')}
         aria-label={t('services.notifyReceipt')}
+        aria-describedby={noId(s)}
       >
         <Icon name="whatsapp" aria-hidden />
       </button>
@@ -628,6 +657,7 @@ export function ServicesPage() {
         }}
         title={t('common.edit')}
         aria-label={t('common.edit')}
+        aria-describedby={noId(s)}
       >
         <Icon name="pen" aria-hidden />
       </button>
@@ -902,8 +932,14 @@ export function ServicesPage() {
                 data-segs={segCount}
                 style={{ '--row-cols': rowTracks } as CSSProperties}
               >
-              {/* Judul kolom: hanya di tata letak lebar, saat segmen berbaris dalam lajur. */}
-              <div className={[styles.row, styles.rowHead, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}>
+              {/* Judul kolom: hanya di tata letak lebar, saat segmen berbaris dalam lajur.
+                  aria-hidden: ia div biasa tanpa hubungan ke sel di bawahnya, dan baris di
+                  bawah (ul) tak pernah jadi tabel bagi pembaca layar. Sebagai gantinya tiap
+                  sel membawa labelnya sendiri sebagai teks tersembunyi (srLabel). */}
+              <div
+                className={[styles.row, styles.rowHead, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}
+                aria-hidden="true"
+              >
                 <div className={styles.rowMain}>
                   <span>{t('services.colNo')}</span>
                   {cols.has('customer') && <span>{t('services.colCustomer')}</span>}
@@ -932,13 +968,14 @@ export function ServicesPage() {
                     <div className={styles.rowMain}>
                       {/* Nomor + tanggal masuk: satu identitas tiket, satu segmen. */}
                       <div className={[styles.rowCell, styles.mono].join(' ')} data-seg="id">
-                        <Link to={`/services/${s.id}`} className={styles.noLink}>
+                        <Link to={`/services/${s.id}`} className={styles.noLink} id={noId(s)}>
                           {s.serviceNo}
                         </Link>
                         <small className={styles.sub}>{fmtDate(localDateOf(s.createdAt))}</small>
                       </div>
                       {cols.has('customer') && (
                         <div className={styles.rowCell} data-seg="customer">
+                          {srLabel('services.colCustomer')}
                           <strong className={styles.customerName} title={s.customerName || undefined}>
                             {s.customerName}
                           </strong>
@@ -952,6 +989,7 @@ export function ServicesPage() {
                       )}
                       {cols.has('device') && (
                         <div className={styles.rowCell} data-seg="device">
+                          {srLabel('services.colDevice')}
                           <span className={styles.rowTitle} title={s.device || undefined}>
                             {s.device}
                           </span>
@@ -981,6 +1019,7 @@ export function ServicesPage() {
                       )}
                       {showTech && (
                         <div className={styles.rowCell} data-seg="technician">
+                          {srLabel('services.colTech')}
                           <span className={styles.rowTech} title={t('services.colTech')}>
                             <Icon name="screwdriver-wrench" aria-hidden />
                             <span>{s.technicianName || <EmptyValue />}</span>
@@ -998,7 +1037,10 @@ export function ServicesPage() {
                       {renderStall(s)}
                     </div>
                     {cols.has('cost') && (
-                      <div className={styles.rowCost}>{renderCost(s)}</div>
+                      <div className={styles.rowCost}>
+                        {srLabel('services.colCost')}
+                        {renderCost(s)}
+                      </div>
                     )}
                     <div className={styles.rowActions}>{renderActions(s)}</div>
                   </li>
@@ -1012,7 +1054,7 @@ export function ServicesPage() {
               {shownRows.map((s) => (
                 <li key={s.id} className={styles.jobCard} data-tone={STATUS_TONE[s.status]}>
                   <div className={styles.jobTop}>
-                    <Link to={`/services/${s.id}`} className={styles.jobNo}>
+                    <Link to={`/services/${s.id}`} className={styles.jobNo} id={noId(s)}>
                       {s.serviceNo}
                     </Link>
                     {renderStatus(s)}
@@ -1047,7 +1089,10 @@ export function ServicesPage() {
                     )}
                   </div>
                   <div className={styles.jobFoot}>
-                    <div className={styles.jobCost}>{renderCost(s)}</div>
+                    <div className={styles.jobCost}>
+                      {srLabel('services.colCost')}
+                      {renderCost(s)}
+                    </div>
                     <div className={styles.jobActions}>{renderActions(s, true)}</div>
                   </div>
                 </li>
