@@ -41,4 +41,13 @@ describe('tata letak Kasir', () => {
     expect(tsx).toContain('onClick={barReady ? checkout : guidePay}');
     expect(css).toMatch(/\.checkout :is\(input, button\),\s*\.paymentStatus \{\s*scroll-margin-bottom/);
   });
+
+  it('baris riwayat dua baris, tuts turun lewat container query', () => {
+    // Satu baris flex menggencet info di 320px. Ambang menjaga muat/tidak
+    // muat, jadi wajib @container (AGENTS.md §3), bukan @media.
+    expect(css).toMatch(/\.historyList \{[^}]*container-type: inline-size/);
+    expect(css).toMatch(/\.historyRow \{[^}]*display: grid/);
+    expect(css).toContain('@container (max-width: 432px)');
+    expect(tsx).toContain('className={styles.historyActions}');
+  });
 });

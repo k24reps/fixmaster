@@ -1273,58 +1273,58 @@ export function PosPage() {
                 <ul className={styles.historyList}>
                   {day.rows.map((s) => (
                     <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
-                      <div className={styles.historyInfo}>
-                        <strong>
-                          {s.saleNo}
-                          <span className={styles.historyTime}>
-                            {s.createdAt
-                              ? new Date(s.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                              : ''}
-                          </span>
-                        </strong>
-                        <small>
-                          {interpolate(t('pos.itemCount'), { n: String(s.lines.length) })}
-                          {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || EMPTY_VALUE).join(' + ')}`}
-                          {s.cashierName ? ` · ${s.cashierName}` : ''}
-                          {s.customerName ? ` · ${s.customerName}` : ''}
-                        </small>
-                      </div>
+                      <strong className={styles.historyNo}>
+                        {s.saleNo}
+                        <span className={styles.historyTime}>
+                          {s.createdAt
+                            ? new Date(s.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                            : ''}
+                        </span>
+                      </strong>
                       <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
-                      {s.customerId && !s.voided && (
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => void resendWa(s)}
-                          aria-label={t('pos.resendWa').replace('{no}', s.saleNo)}
-                          title={t('pos.resendWa').replace('{no}', s.saleNo)}
-                        >
-                          <Icon name="whatsapp" aria-hidden />
-                        </button>
-                      )}
-                      {org && (
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => printSaleReceipt(s, org)}
-                          aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
-                          title={t('pos.printTitle')}
-                        >
-                          <Icon name="receipt" aria-hidden />
-                        </button>
-                      )}
-                      {s.voided ? (
-                        <Badge tone="danger">{t('pos.voidedBadge')}</Badge>
-                      ) : !isMgr || s.date < monthStart ? null : (
-                        <button
-                          type="button"
-                          className={styles.voidBtn}
-                          onClick={() => { setVoidTarget(s); setVoidReason(''); }}
-                          aria-label={interpolate(t('pos.voidAria'), { no: s.saleNo })}
-                          title={t('pos.voidTitle')}
-                        >
-                          <Icon name="circle-xmark" aria-hidden />
-                        </button>
-                      )}
+                      <small className={styles.historyMeta}>
+                        {interpolate(t('pos.itemCount'), { n: String(s.lines.length) })}
+                        {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || EMPTY_VALUE).join(' + ')}`}
+                        {s.cashierName ? ` · ${s.cashierName}` : ''}
+                        {s.customerName ? ` · ${s.customerName}` : ''}
+                      </small>
+                      <div className={styles.historyActions}>
+                        {s.customerId && !s.voided && (
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => void resendWa(s)}
+                            aria-label={t('pos.resendWa').replace('{no}', s.saleNo)}
+                            title={t('pos.resendWa').replace('{no}', s.saleNo)}
+                          >
+                            <Icon name="whatsapp" aria-hidden />
+                          </button>
+                        )}
+                        {org && (
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => printSaleReceipt(s, org)}
+                            aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
+                            title={t('pos.printTitle')}
+                          >
+                            <Icon name="receipt" aria-hidden />
+                          </button>
+                        )}
+                        {s.voided ? (
+                          <Badge tone="danger">{t('pos.voidedBadge')}</Badge>
+                        ) : !isMgr || s.date < monthStart ? null : (
+                          <button
+                            type="button"
+                            className={styles.voidBtn}
+                            onClick={() => { setVoidTarget(s); setVoidReason(''); }}
+                            aria-label={interpolate(t('pos.voidAria'), { no: s.saleNo })}
+                            title={t('pos.voidTitle')}
+                          >
+                            <Icon name="circle-xmark" aria-hidden />
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

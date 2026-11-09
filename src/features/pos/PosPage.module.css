@@ -1117,6 +1117,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  container-type: inline-size;
 }
 .historyScope {
   font-family: var(--font-mono);
@@ -1131,8 +1132,11 @@
 /* Kepala hari: tanggal + jumlah transaksi + total (tanpa yang batal). */
 .historyDayHead {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-3);
+  /* Di 320px tanggal & ringkasan tak muat sebaris: ringkasan turun utuh,
+     bukan dua kolom yang masing-masing patah. */
+  gap: 2px var(--space-3);
   padding: 6px var(--space-3);
   margin-bottom: var(--space-2);
   border-bottom: 1px dotted var(--border-strong);
@@ -1149,10 +1153,18 @@
   font-weight: var(--fw-normal);
   color: var(--text-muted);
 }
+/* Satu transaksi = dua baris struk: nomor + jam ... total, lalu rincian.
+   Tuts aksi di kanan selama muat. Dulu satu baris flex: di 320px info
+   tergencet di samping total + tiga tuts 40px, nomor faktur terpotong. */
 .historyRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'no total actions'
+    'meta meta actions';
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
+  row-gap: 2px;
   padding: var(--space-2) var(--space-3);
   background: var(--surface-glass);
   border: 1px solid var(--border);
@@ -1164,24 +1176,55 @@
 .historyRow.voided .historyTotal {
   text-decoration: line-through;
 }
-.historyInfo {
-  flex: 1;
+.historyNo {
+  grid-area: no;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.historyInfo strong {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-}
-.historyInfo small {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 .historyTotal {
+  grid-area: total;
+  justify-self: end;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.historyMeta {
+  grid-area: meta;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.historyActions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.historyActions:empty {
+  display: none;
+}
+/* Wadah sempit: tuts turun ke baris sendiri di bawah divider titik, rata
+   kanan di bawah totalnya. Ambang diukur dari baris terburuk di layar
+   sentuh: 26 bingkai + 117 nomor & jam + 118 "Rp 999.999.999" + 148 tiga
+   tuts 44px + 24 jeda = 433px. */
+@container (max-width: 432px) {
+  .historyRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'no total'
+      'meta meta'
+      'actions actions';
+  }
+  .historyActions {
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px dotted var(--border-strong);
+  }
 }
 .iconBtn {
   display: inline-flex;
