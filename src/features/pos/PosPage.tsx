@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   Input,
@@ -282,18 +282,34 @@ export function PosPage() {
 
   // Dock ponsel hanya berguna selama register belum terlihat. Ia menyerahkan
   // tempatnya ke bar Proses yang menempel di atas menu bawah: garis serah
-  // terimanya digeser setinggi menu + bar, supaya keduanya tak pernah tampil
-  // bertumpuk atau sama-sama hilang di tengah guliran.
+  // terimanya = tepi atas dock, supaya keduanya tak pernah tampil bertumpuk
+  // atau sama-sama hilang di tengah guliran.
+  //
+  // Tepi itu DIUKUR, bukan dihitung dari CSS: aturan min-height global membuat
+  // dock tergambar 44px, bukan 56px, dan zoom aplikasi memperbesar menu + dock
+  // tanpa mengubah token. Tebakan "menu + 72" meleset di keduanya. Dock yang
+  // display:none (>720px) tak punya tinggi; angka itu diabaikan.
+  const [dockReach, setDockReach] = useState(0);
+  const measureDock = useCallback((dock: HTMLButtonElement | null) => {
+    const r = dock?.getBoundingClientRect();
+    if (r && r.height > 0) setDockReach(Math.round(window.innerHeight - r.top));
+  }, []);
   useEffect(() => {
     const el = document.getElementById('pos-cart');
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mobile-nav-height')) || 0;
-    const io = new IntersectionObserver(([e]) => setCartInView(e.isIntersecting), {
-      rootMargin: `0px 0px -${Math.round(nav + 72)}px 0px`,
-    });
+    const reach = dockReach || Math.round(nav + 72);
+    // Entri TERAKHIR yang berlaku. Sesudah cabang dipilih, satu panggilan bisa
+    // membawa dua entri untuk panel yang sama ([false, true]); membaca yang
+    // pertama membuat dock bertahan di atas Proses (terukur di 320px: ketukan
+    // ke Proses mengenai dock dan halaman malah menggulir).
+    const io = new IntersectionObserver((entries) => {
+      const latest = entries[entries.length - 1];
+      if (latest) setCartInView(latest.isIntersecting);
+    }, { rootMargin: `0px 0px -${reach}px 0px` });
     io.observe(el);
     return () => io.disconnect();
-  }, [tab, needOutlet]);
+  }, [tab, needOutlet, dockReach]);
 
   // "/" memfokuskan pencarian dari mana saja di halaman (kecuali saat mengetik).
   useEffect(() => {
@@ -1201,6 +1217,7 @@ export function PosPage() {
 
       {tab === 'pos' && cart.length > 0 && !done && !cartInView && (
         <button
+          ref={measureDock}
           type="button"
           className={styles.mobileCartDock}
           onClick={() => document.getElementById('pos-cart')?.scrollIntoView({ behavior: 'smooth' })}

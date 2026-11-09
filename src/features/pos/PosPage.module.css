@@ -73,8 +73,12 @@
      hubungannya terbalik. Karena itu ruang sempit harus diserap oleh trek-nya
      sendiri. Tanpa ini, zoom aplikasi 125% pada jendela 1097px membuat halaman
      meluber 31px (terukur). Di lebar normal 1fr tetap menyisakan 400px penuh,
-     jadi tampilannya tak berubah. */
-  grid-template-columns: 1fr minmax(320px, 400px);
+     jadi tampilannya tak berubah.
+     minmax(0, 1fr), bukan 1fr polos: minimum otomatis 1fr = lebar isi
+     terpanjang, dan baris chip kategori yang panjang lalu melebarkan seluruh
+     kolom (terukur di 390px: 7 kategori = 674px, 13 = 1266px; total LCD
+     keluar layar). Dengan minimum 0, baris chip menggulir sendiri. */
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
   gap: var(--space-4);
   align-items: start;
 }
@@ -84,6 +88,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-width: 0;
 }
 .productGrid {
   display: grid;
@@ -1286,7 +1291,7 @@
 @media (min-width: 1025px) {
   .pagePos {
     display: grid;
-    grid-template-columns: 1fr minmax(320px, 400px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
     grid-template-rows: auto 1fr;
     align-items: start;
   }
@@ -1383,7 +1388,7 @@
 
 @media (max-width: 1024px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   /* clip, bukan hidden/auto: keduanya menjadikan panel wadah gulir sehingga
      bar Proses menempel ke panel, bukan ke layar. clip tetap memotong sudut. */
@@ -1439,7 +1444,9 @@
     grid-template-columns: 1fr auto auto;
     align-items: center;
     gap: var(--space-3);
-    min-height: 56px;
+    /* Tanpa min-height sendiri: aturan global (global.css, ≤720px) memaksa
+       --control-h dengan !important. Batas serah terima dock → bar Proses
+       diukur dari dock yang tergambar (PosPage.tsx), bukan dari angka ini. */
     padding: 10px var(--space-4);
     border: 1px solid var(--border-brand);
     border-radius: var(--radius-md);
