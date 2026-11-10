@@ -30,17 +30,9 @@
 .modal:focus {
   outline: none;
 }
-/* accent spine across the top edge — instrument faceplate */
-.modal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--gradient-brand-accent);
-  z-index: 1;
-}
+/* Tanpa strip aksen di tepi atas: jendela dialog tak memetakan status apa pun
+   (semuanya brand), jadi 3px gradien itu hanya hiasan. Tepi dibawa bingkai 1px
+   --border-strong + bayangan; sinyal tetap di judul dan LED header. */
 
 .sm {
   max-width: 420px;
