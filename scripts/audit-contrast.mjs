@@ -189,7 +189,8 @@ for (const theme of ['dark', 'light']) {
 // jadi sidebar diklik. Sebelum ini hanya dashboard + landing yang diperiksa, dan
 // 58 teks tema terang di bawah ambang (primitif terang tema gelap dipakai sebagai
 // warna teks) tersembunyi di 9 halaman lain sampai 24 Sep 2026.
-const MENUS = ['Servis', 'Kalkulator Biaya', 'Kasir', 'Pelanggan', 'Inventori', 'Supplier', 'Keuangan',
+// 'Kasir' cocok dengan "Kasir & Stok" (Inventori dilebur ke sana 10 Nov 2026).
+const MENUS = ['Servis', 'Kalkulator Biaya', 'Kasir', 'Pelanggan', 'Supplier', 'Keuangan',
   'Tugas', 'Absensi', 'Laporan', 'Log Aktivitas', 'Pengaturan'];
 for (const theme of ['dark', 'light']) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
@@ -239,13 +240,21 @@ for (const theme of ['dark', 'light']) {
     // Kasir dengan keranjang terisi. Menu Kasir di atas hanya memindai keranjang
     // kosong, sehingga status pembayaran (1,5:1 di tema terang) lolos sampai
     // critique Kasir 27 Sep 2026.
+    // Sejak 10 Nov 2026 katalog tampil di Semua Outlet; cabang baru ditanya
+    // lewat dialog saat barang pertama ditambahkan, dan tombol jual adalah
+    // area tambah di dalam kartu (kartunya sendiri <article>).
     ['Kasir-Keranjang', async () => {
       await page.getByRole('link', { name: /^Kasir/ }).first().click();
       await page.waitForTimeout(900);
-      const pick = page.getByRole('button', { name: /Pusat/ }).first();
-      if (await pick.isVisible().catch(() => false)) await pick.click();
-      await page.waitForTimeout(600);
-      await page.locator('[class*="productCard"]:not([disabled])').first().click();
+      await page.locator('main article button[class*="addArea"]:not([disabled])').first().click();
+      const opt = page.locator('[role="dialog"] button[class*="outletOpt"]').first();
+      if (await opt.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await opt.click();
+        await page.waitForTimeout(600);
+        if ((await page.locator('#pos-cart li').count()) === 0) {
+          await page.locator('main article button[class*="addArea"]:not([disabled])').first().click();
+        }
+      }
     }],
     ['Kasir-Kurang', async () => {
       await page.locator('button[class*="tenderKey"]').first().click();
