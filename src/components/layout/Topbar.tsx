@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { ZoomAnnouncer } from './DisplayControls';
@@ -22,6 +22,11 @@ interface TopbarProps {
   title: string;
   subtitle?: string;
   onToggleMobile: () => void;
+  /** Keadaan laci sidebar, untuk aria-expanded; ref-nya dipakai laci untuk
+      mengembalikan fokus ke tombol ini saat ditutup. */
+  mobileOpen: boolean;
+  drawerId: string;
+  toggleRef: RefObject<HTMLButtonElement | null>;
 }
 
 const SYNC_LABEL: Record<'connecting' | 'live' | 'offline', string> = {
@@ -160,14 +165,28 @@ function AccountMenu() {
   );
 }
 
-export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
+export function Topbar({
+  title,
+  subtitle,
+  onToggleMobile,
+  mobileOpen,
+  drawerId,
+  toggleRef,
+}: TopbarProps) {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const t = useT();
 
   return (
     <header className={styles.topbar}>
-      <button className={styles.mobileToggle} onClick={onToggleMobile} aria-label="Menu">
+      <button
+        ref={toggleRef}
+        className={styles.mobileToggle}
+        onClick={onToggleMobile}
+        aria-label="Menu"
+        aria-expanded={mobileOpen}
+        aria-controls={drawerId}
+      >
         <Icon name="bars" aria-hidden />
       </button>
 

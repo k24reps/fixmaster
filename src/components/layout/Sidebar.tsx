@@ -1,6 +1,6 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, type ReactNode, type RefObject } from 'react';
 import { Icon } from '@/components/ui';
 import { PLANS } from '@/config/plans';
 import { getVisibleNavigation } from '@/lib/business/navigation';
@@ -9,6 +9,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { useNavSignals } from '@/hooks/useNavSignals';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useDrawerFocus } from '@/hooks/useDrawerFocus';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
 
@@ -28,6 +29,10 @@ interface SidebarProps {
   mobileOpen: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
+  /** Id laci (dirujuk `aria-controls` tombol menu) dan tombol itu sendiri,
+      tujuan fokus saat laci ditutup. */
+  drawerId: string;
+  toggleRef: RefObject<HTMLElement | null>;
 }
 
 export function Sidebar({
@@ -35,6 +40,8 @@ export function Sidebar({
   mobileOpen,
   onToggleCollapse,
   onCloseMobile,
+  drawerId,
+  toggleRef,
 }: SidebarProps) {
   const org = useSessionStore((s) => s.org);
   const employee = useSessionStore((s) => s.currentEmployee);
@@ -49,6 +56,16 @@ export function Sidebar({
   // (collapsed), jadi TIDAK pernah inert.
   const isDrawer = useMediaQuery(DRAWER_QUERY);
   const drawerClosed = isDrawer && !mobileOpen;
+  const drawerOpen = isDrawer && mobileOpen;
+  // Terbuka: fokus masuk, Tab berputar di laci, Esc menutup. Tertutup: fokus
+  // kembali ke tombol menu. Di rail desktop hook ini tak melakukan apa-apa.
+  const asideRef = useRef<HTMLElement>(null);
+  useDrawerFocus({
+    active: drawerOpen,
+    containerRef: asideRef,
+    returnRef: toggleRef,
+    onClose: onCloseMobile,
+  });
   // Nama, peran, dan Keluar kini di menu akun Topbar (AccountMenu), bukan kartu
   // di dasar rail: sidebar hanya navigasi dan unit usaha.
 
@@ -105,6 +122,8 @@ export function Sidebar({
       />
       <aside
         inert={drawerClosed}
+        id={drawerId}
+        ref={asideRef}
         className={[
           styles.sidebar,
           collapsed ? styles.collapsed : '',
@@ -256,6 +275,7 @@ function BranchSelector({
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -271,8 +291,20 @@ function BranchSelector({
   const label = active ? active.name : allLabel;
 
   return (
-    <div className={styles.branchSel} ref={ref}>
+    <div
+      className={styles.branchSel}
+      ref={ref}
+      // Esc menutup menunya dulu; preventDefault membuat laci (useDrawerFocus)
+      // tak ikut menutup pada Esc yang sama.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return;
+        e.preventDefault();
+        setOpen(false);
+        btnRef.current?.focus();
+      }}
+    >
       <button
+        ref={btnRef}
         type="button"
         className={[styles.branchBtn, open ? styles.branchBtnOpen : '', active ? '' : styles.branchAll].join(' ')}
         onClick={() => setOpen((o) => !o)}

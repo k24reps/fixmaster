@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useId, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -79,6 +79,10 @@ const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {
 export function AppLayout() {
   const [collapsed, toggleCollapsed] = useZoomRail();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Tombol menu dan laci saling merujuk: aria-controls, dan fokus kembali ke
+  // tombol saat laci ditutup (useDrawerFocus).
+  const drawerId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const contentRef = useRef<HTMLElement>(null);
   const t = useT();
@@ -129,12 +133,17 @@ export function AppLayout() {
         mobileOpen={mobileOpen}
         onToggleCollapse={toggleCollapsed}
         onCloseMobile={() => setMobileOpen(false)}
+        drawerId={drawerId}
+        toggleRef={toggleRef}
       />
       <div className={styles.main}>
         <Topbar
           title={title}
           subtitle={subtitle}
           onToggleMobile={() => setMobileOpen((o) => !o)}
+          mobileOpen={mobileOpen}
+          drawerId={drawerId}
+          toggleRef={toggleRef}
         />
         <main ref={contentRef} id="konten" tabIndex={-1} className={styles.content}>
           <ErrorBoundary resetKey={location.pathname}>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 import { useT } from '@/i18n';
+import { FOCUSABLE_SELECTOR } from '@/lib/focusTrap';
 import styles from './Modal.module.css';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
@@ -20,9 +21,6 @@ interface ModalProps {
 // Dulu tiap jendela memasang listener sendiri di document, sehingga Esc di
 // ConfirmDialog ikut menutup jendela di bawahnya beserta isian formnya.
 const openStack: symbol[] = [];
-
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
   const t = useT();
@@ -60,7 +58,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
         return;
       }
       if (e.key !== 'Tab') return;
-      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
         (el) => el.offsetParent !== null,
       );
       if (items.length === 0) {
