@@ -137,14 +137,15 @@
   padding: var(--space-4);
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
   border-radius: var(--radius-md);
   /* Topbar menempel (+ bar demo) menutupi judul kartu bila anchor mendarat tepat di atas. */
   scroll-margin-top: 9rem;
 }
-/* Istilah yang dibuka dari layar: spine & LED brand menyala. */
+/* Istilah yang dibuka dari layar: bingkai & LED brand menyala. Dulu tepi kirinya
+   3px (netral saat diam, brand saat menyala): itu bukan spine status, hanya
+   penanda "sedang dituju" yang sudah dibawa bingkai, cincin, dan LED. */
 .sheetOn {
-  border-left-color: var(--brand);
+  border-color: var(--brand);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
 }
 .head {
