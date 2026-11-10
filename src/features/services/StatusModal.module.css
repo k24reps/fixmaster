@@ -322,8 +322,6 @@
   background: var(--warning);
 }
 
-/* Servis ditunggu: satu sakelar di bawah biaya — spine brand menandai bahwa
-   Terapkan kini juga membukukan pelunasan dan serah terima unit. */
 /* Label tombol utama menyebut nominalnya; di ponsel ia boleh patah dua baris
    alih-alih meluber keluar tombol ("Selesai & Lunas · Rp 12.500.000"). */
 .applyBtn {
@@ -331,28 +329,20 @@
   line-height: 1.25;
   text-align: center;
 }
+/* Servis ditunggu: satu sakelar di bawah biaya; Terapkan kini juga membukukan
+   pelunasan dan serah terima unit. Dulu ada spine brand 3px di tepi kirinya,
+   tetapi warnanya tak pernah berubah (brand terus, hidup atau mati), jadi ia
+   tak memetakan apa pun. Keadaan sakelar dibawa .expressToggle: LED, bingkai,
+   dan teks yang menyala hijau saat aktif. */
 .expressRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  position: relative;
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  padding: var(--space-3);
   background: var(--bg-surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-}
-/* Spine diagnostik (DESIGN.md): batang 3px menjorok dari atas-bawah, ujung luar
-   membulat — bukan border-left tebal. */
-.expressRow::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
-  background: var(--brand);
 }
 .expressText {
   display: flex;
