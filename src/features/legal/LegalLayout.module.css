@@ -241,16 +241,29 @@
   text-decoration: underline;
 }
 
-/* Callout catatan tinjauan hukum: spine peringatan, bukan isian penuh
-   (aturan spine-bukan-isian; isian jingga satu blok terbaca seperti galat). */
+/* Callout catatan tinjauan hukum: bingkai 1px peringatan + LED + "Catatan:"
+   tebal, bukan isian penuh (isian jingga satu blok terbaca seperti galat).
+   Bukan spine: callout ini satu nada saja dan tak memetakan status, jadi tepi
+   kiri 3px hanya menggandakan sinyal yang sudah dibawa bingkai, LED, dan teks. */
 .prose :global(.callout) {
   display: flex;
+  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4);
   background: transparent;
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--warning);
+  border: 1px solid var(--warning);
   border-radius: var(--radius-sm);
+}
+.prose :global(.callout)::before {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  /* LED di tengah baris pertama teks: (tinggi baris --text-sm × 1,7 − 7px) / 2 */
+  margin-top: calc((var(--text-sm) * 1.7 - 7px) / 2);
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning);
 }
 .prose :global(.callout p) {
   margin: 0;
