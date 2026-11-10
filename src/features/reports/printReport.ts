@@ -49,7 +49,7 @@ const INK = {
   faint: '#9a9189',
   rule: '#ddd6cc',
   ruleSoft: '#efeae2',
-  /* brand-700 untuk bentuk (garis kop, spine vonis, bar). Sebagai teks kecil
+  /* brand-700 untuk bentuk (garis kop, bingkai vonis, bar). Sebagai teks kecil
      ia hanya 3,6:1 di kertas putih, jadi judul memakai brand-800 (5,4:1). */
   brand: '#c0750a',
   brandText: '#985c0f',
@@ -100,9 +100,12 @@ const A4_STYLE = `
   .rule-soft { height: 1px; background: ${INK.rule}; margin: 0 0 14px; }
 
   /* ---------- Vonis ---------- */
+  /* Bingkai 1px, bukan tepi kiri 3px: di cetak vonis selalu brand, tak
+     memetakan status (headline-nya yang menyebut sehat atau rugi), jadi tepi
+     tebal hanya hiasan. */
   .verdict {
     background: ${INK.brandSoft};
-    border-left: 3px solid ${INK.brand};
+    border: 1px solid ${INK.brand};
     padding: 9px 12px;
     margin-bottom: 14px;
     break-inside: avoid;
