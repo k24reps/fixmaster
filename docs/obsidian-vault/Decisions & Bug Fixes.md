@@ -5270,7 +5270,8 @@ per satu): `Modal.module.css` `.modal::before` (strip atas), `GlossaryPage.modul
 `LegalLayout.module.css:252`, `printReport.ts:105` (HTML cetak), `StatusModal.module.css`
 `.expressRow::before`, `SuppliersPage.module.css` `.docket::before`, `TasksPage.module.css`
 `.taskItem::before`. `servicesTableWidth.test.ts:199` juga ditandai, tetapi itu regex di dalam tes
-(positif palsu).
+(positif palsu). **Sudah dipilah semuanya**, lihat
+[[#Tujuh temuan side-tab sisa, dipilah (10 Nov 2026)]].
 
 **Verifikasi:** build dan lint bersih; tes 797/70 berkas → **819 / 72 berkas** (`focusTrap.test.ts` 7,
 `useDrawerFocus.test.tsx` 12, `sidebarInert.test.ts` +3). Lint sempat memberi satu peringatan
@@ -6146,3 +6147,72 @@ hanya lewat tes pemetaan; printer termal fisik.
 masih literal bahasa Indonesia, belum lewat `useT()`, sama seperti sebelum tahap ini.
 
 #decision #print #receipt #tracking #security
+
+---
+
+## Tujuh temuan side-tab sisa, dipilah (10 Nov 2026)
+
+Sisa pindai `impeccable detect --no-advisory src` setelah tiga temuan di atas: tujuh `side-tab`
+(delapan dengan regex di `servicesTableWidth.test.ts:199`, positif palsu yang tetap ditandai).
+Aturan pilah tetap yang sama: **spine = tepi 3px berwarna token yang warnanya BERUBAH menurut
+status/kategori** (keputusan pemilik R-37, `DESIGN.md` "The Spine, Not the Fill", `AGENTS.md` §3).
+Tiga pertanyaan per temuan: (1) apakah warna tepinya berubah menurut status? (2) adakah pembawa
+kedua (lencana teks, LED, label) sehingga warna bukan satu-satunya petunjuk? (3) bila tepinya
+dibuang, apakah ada sinyal yang hilang? Satu komit per butir.
+
+| Berkas | Putusan | Alasan |
+|---|---|---|
+| `Modal.module.css` `.modal::before` (gradien 3px di tepi atas) | **Dibuang** | Sama untuk semua dialog (brand terus), tak memetakan apa pun. Tepi dibawa bingkai 1px `--border-strong`, bayangan, seam titik, dan LED header. `::before`-nya hilang total. |
+| `GlossaryPage.module.css` `.sheet` (tepi kiri 3px) | **Dibuang** | Netral saat diam, brand saat kartu dituju dari layar lain: penanda sorot, bukan status. `.sheetOn` kini mewarnai seluruh bingkai (`border-color`), cincin 1px dan LED tetap. |
+| `LegalLayout.module.css` `.callout` | **Dibuang** | Satu nada saja ("Catatan:" tinjauan hukum), jadi tak ada pemetaan; preseden `FormError` dan `.costNotice`. Kini bingkai 1px `--warning` + LED 7px + label tebal. LED sejajar tengah baris pertama (terukur 27,9px = 27,9px). |
+| `printReport.ts` `.verdict` (HTML cetak) | **Dibuang** | Di kertas vonis selalu brand; headline-nya yang menyebut sehat/rugi, warna tepinya tak berubah. Isian lembut tetap, bingkai 1px brand menggantikan tepi. |
+| `StatusModal.module.css` `.expressRow::before` | **Dibuang** (putusan dibalik) | Brand terus, hidup atau mati. Keadaan sakelar sudah dibawa `.expressToggle` (LED, bingkai, teks hijau "Langsung lunas"). Padding kiri dan `position: relative` yang hanya melayani spine ikut dibuang. |
+| `SuppliersPage.module.css` `.docket::before` | **Dipertahankan, didaftarkan** | Memetakan status PO (draft/ordered/partial/received/cancelled) ke token yang sama dengan lencana `PO_STATUS_TONE` di sebelahnya, jadi warna bukan satu-satunya petunjuk. |
+| `TasksPage.module.css` `.taskItem::before` | **Dipertahankan, didaftarkan** | Memetakan keadaan tugas (tertunda warning, telat danger, selesai success). Label "Telat · tanggal", kotak centang, dan coretan ikut membawanya. |
+
+- **Putusan `.expressRow` membalik catatan critique 9 Nov**, yang menyebut spine-nya "resmi"
+  (`.impeccable/critique/2026-11-09T11-45-18Z__src-features-services.md`) tanpa menguji
+  pemetaannya. Terukur: warna spine tak pernah berubah. Mengembalikannya satu komit; bila pemilik
+  ingin spine di sana, jadikan ia memetakan keadaan sakelar (netral saat mati, `--success` saat
+  hidup) agar menjadi spine sungguhan, bukan brand statis.
+- **Callout legal dan vonis cetak adalah putusan agent yang paling bisa diperdebatkan** (sama-sama
+  satu nada). Keduanya diperlakukan seperti `FormError`: sinyal dibawa bingkai 1px + LED/teks.
+- **Dua yang didaftarkan masuk `.impeccable/config.json`** (`ignoreValues`, `side-tab` `*`, per
+  berkas, alasan tertulis "Decided by the agent, not confirmed by the user"). Detektor hanya
+  menerima `*` untuk `side-tab`, jadi **seluruh** `SuppliersPage.module.css` (370 baris) dan
+  `TasksPage.module.css` (340 baris) tak lagi diperiksa untuk `side-tab`; temuan baru di sana akan
+  diam. Saat didaftarkan, `.docket` dan `.taskItem` adalah satu-satunya temuan `side-tab` di
+  berkas masing-masing. Tak ada `ignore-file`/`ignore-rule` yang dipakai. Untuk membalik: hapus
+  entrinya dari config dan buang spine-nya.
+- Tak ada spine yang dipindah ke `::before`/`box-shadow` demi lolos detektor; `.docket` dan
+  `.taskItem` memang sudah `::before` sejak awal.
+- **Hasil detektor:** 16 → **9 temuan**, `side-tab` tersisa hanya regex di tes. Delapan lainnya di
+  luar butir ini dan tak disentuh: `layout-transition` (`InventoryPage` 199, `ReportsPage` 222 dan
+  542) serta `overused-font` (`printReport.ts:73`, `global.css` ×4).
+
+![[sidetab-modal-expressrow-1440-dark.png]]
+![[sidetab-legal-callout-1440-dark.png]]
+![[sidetab-glossary-1440-dark.png]]
+![[sidetab-vonis-cetak.png]]
+
+**Verifikasi:** `npm run build` bersih, lint bersih, tes tetap **819 / 72 berkas** (tak ada tes baru:
+yang berubah hanya CSS dan satu string CSS cetak, dan gerbangnya detektor itu sendiri).
+`audit-tokens` LULUS, 0 pelanggaran. `audit-contrast`: 0 elemen di bawah ambang (landing + 12 menu
+demo × 2 tema). `audit-zoom` pada kerapatan bawaan, `ZOOM=1.25`, dan `DENSITY=padat`, masing-masing
+132 pengukuran (11 lebar × 12 halaman): nol luberan dokumen, nol tabel meluap, nol overlap, nol
+teks ter-clip di luar positif palsu yang dikenal; lantai 12px nol pelanggaran. `audit-mobile` pada
+320/360/375/390/414 dan pita tablet 744/834/1025/1112/1152: nol luberan dokumen, nol pelanggar.
+Yang tetap muncul hanya yang sudah dicatat sebelumnya: target kecil `a._term` (tautan istilah
+sebaris) di `/`, `/finance`, `/reports` plus tautan kecil `a._681` di `/reports`, dan wadah geser
+`div._75` di `/services`, `/customers`, `/inventory` (kelas bersama rail chip). Halaman yang
+berubah tak punya probe audit (Glosarium, Privasi/Syarat, dialog, HTML cetak), jadi diukur langsung
+di DOM: LED callout legal sejajar tengah baris pertama (27,9px = 27,9px), `.modal::before` kini
+`content: none`, `.expressRow` padding 12px dan tanpa `::before`, `.sheetOn` mewarnai keempat
+sisi bingkai, `.verdict` cetak berbingkai 1px di keempat sisi. Probe pita tablet memakai
+`MOBILE=0 WIDTHS=744,834,1025,1112,1152`.
+
+**Ditinggalkan (di luar butir ini):** `overused-font` di `printReport.ts:73` (`'Inter'` di CSS cetak,
+sama dengan font aplikasi) dan temuan `layout-transition`; keduanya sudah ada sebelum sesi ini dan
+tak disentuh.
+
+#decision #design-system #a11y
