@@ -641,13 +641,15 @@ Di desktop, nama perangkat boleh dua baris (dulu "MacBook Pro 13" 2019" terpoton
 - **Identitas:** nomor tiket `--text-sm` tebal, nomor HP mono (lajur pelanggan 8.25rem muat "+62 812-3456-78901"), nama pelanggan boleh dua baris, dan nama + HP punya `title`.
 - **Spine + satu zona status:** tiap baris punya spine 3px dari `STATUS_TONE`, berbagi aturan CSS dengan `.jobCard`. "Belum diambil/Diambil" pindah ke lajur Status, di bawah lencana dan di atas "Tertahan N hari".
 - **Keyboard & pembaca layar:** nama tombol memuat nomor tiketnya ("Ubah status FM-0006: Diterima"), tombol ikon `aria-describedby` ke nomor tiket, label margin lewat teks tersembunyi, judul kolom `aria-hidden` dan tiap sel membawa labelnya sendiri, pensil status tampil di `:focus-visible`.
-- **Konteks bertahan (Tahap 5):** kotak cari, saringan, urutan, dan gulir dipulihkan sesudah tiket dibuka, lewat "Kembali ke daftar", sidebar, atau Back/Forward peramban (`lib/business/serviceListView.ts` + `features/services/listMemory.ts`, sessionStorage per tab, 30 menit). Tautan Dashboard pada entri riwayat baru tetap menang atas ingatan.
+- **Konteks bertahan (Tahap 5):** kotak cari, saringan, urutan, dan gulir dipulihkan sesudah tiket dibuka, lewat "Kembali ke daftar", sidebar, atau Back/Forward peramban (`lib/business/serviceListView.ts` + `features/services/listMemory.ts`, sessionStorage per tab, 30 menit). Tautan Dashboard pada entri riwayat baru tetap menang atas ingatan. Sejak 10 Nov 2026 `limit` ("Tampilkan lebih banyak") ikut diingat, dan gulir menunggu jendela serta arsip yang diminta pencarian/rentang sebelum dipulihkan (`scrollRestoreStep`).
+- **Urut per kolom (10 Nov 2026, pilihan pemilik):** judul **No. Servis, Pelanggan, Status, Biaya** di tata letak lebar adalah tombol. Klik = naik, klik lagi = turun, klik ketiga = kembali ke Terbaru (No. Servis: hanya Terbaru ↔ Terlama). Panah mono muncul di kolom aktif (warna brand) dan samar saat hover/fokus; target ≥24px. Dropdown "Urutkan" tetap dan sinkron dua arah, jadi Kartu di ponsel ikut terurut. Biaya = nominal yang tampil (final, atau estimasi bila final belum ada); nilai kosong selalu di dasar; seri jatuh ke Terbaru. Kolom yang disembunyikan toko tetap bisa diurutkan lewat dropdown.
 
 ![[servis-laptop-1440-dark.png]]
 ![[servis-laptop-1280-light.png]]
 ![[servis-laptop-1366-padat.png]]
 ![[servis-fokus-status.png]]
 ![[servis-konteks-pulih.png]]
+![[servis-urut-kolom-1440-dark.png]]
 
 **Critique UX tahap 1 (27 Sep 2026).** Lima StatCard diganti **strip readout** satu panel (3+2 di ponsel, sel rupiah dua jalur): tiket pertama kini terlihat di atas navigasi bawah (y 778 → 647 di 375px). Di ponsel pilihan Teknisi & Urutan dilipat ke "Filter lainnya" (hitungannya ikut); tautan nomor tiket berarea sentuh 45px. Detail: [[Decisions & Bug Fixes#UX Servis — critique tahap 1 (27 Sep 2026)]].
 
@@ -659,7 +661,7 @@ menjadi satu kolom), sehingga profit, status, dan aksi tidak terpotong di tablet
 status sendiri menjadi pemicu edit; tombol “Status” duplikat dihapus untuk mengurangi
 kepadatan aksi.
 
-**Paginasi 100 baris (17 Agu 2026).** Sebelumnya halaman ini menggambar **seluruh tiket sejak toko berdiri**, dua kali (tabel desktop + kartu mobile) — untuk bengkel lama itu ribuan baris dan browser tersendat. Kini `shownRows = rows.slice(0, limit)` dengan `PAGE_SIZE = 100` + footer **"Tampilkan lebih banyak"**, pola & class (`.loadMore`, `.loadMoreHint`) dipakai ulang dari Keuangan agar terasa satu produk. `limit` di-reset ke `PAGE_SIZE` saat salah satu dari empat filter berubah (query, status, perangkat, pengambilan).
+**Paginasi 100 baris (17 Agu 2026; potongan kini 50, `LIST_PAGE_SIZE` di `lib/business/serviceListView.ts`).** Sebelumnya halaman ini menggambar **seluruh tiket sejak toko berdiri**, dua kali (tabel desktop + kartu mobile) — untuk bengkel lama itu ribuan baris dan browser tersendat. Kini `shownRows = rows.slice(0, limit)` (hanya bila hasil arsip ikut digabung) + footer **"Tampilkan lebih banyak"**, pola & class (`.loadMore`, `.loadMoreHint`) dipakai ulang dari Keuangan agar terasa satu produk. `limit` di-reset ke `PAGE_SIZE` saat salah satu dari empat filter berubah (query, status, perangkat, pengambilan).
 
 > Yang **wajib dijaga**: lima KPI (`stats`) tetap dihitung dari `visible` — **seluruh** tiket — bukan dari `shownRows`. Kalau tidak, "Total Servis" dan "Pendapatan Aktual" berubah mengikuti seberapa banyak baris yang kebetulan sudah dimuat, dan itu laporan yang menyesatkan di halaman yang menampilkan uang. Terverifikasi di render asli: filter ke "Lunas" → 3 baris, footer `3 dari 3 tiket · 6 total`, sementara KPI tetap `6` dan `Rp 3.550.000`.
 

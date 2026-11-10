@@ -39,7 +39,13 @@ Satu pelat 44 px (60 px bila nama toko perlu dua baris, mis. di kerapatan Padat 
 - **Collapsed** — menara LED 78 px; status pindah ke pojok ikon, item idle disembunyikan.
 - **Tablet (721–1024 px)** — drawer selalu tampil penuh (bukan menara), mengambang
   dengan inset 8 px. Posisi tertutup memakai translasi melebihi lebar panel supaya
-  tidak meninggalkan garis 8 px di tepi layar.
+  tidak meninggalkan garis 8 px di tepi layar. Laci yang tertutup digeser keluar layar
+  dengan `transform`, bukan `display: none`, jadi sejak 10 Nov 2026 `<aside>` diberi
+  `inert` selama lebar laci (`DRAWER_QUERY`, ≤1024 px, sama persis dengan kueri CSS dan
+  dikunci `sidebarInert.test.ts`) DAN laci tak terbuka. Terukur: 14 tautan yang dulu
+  tetap ada di urutan Tab dan pohon pembaca layar kini 0 yang terjangkau. Di ≥1025 px
+  (termasuk rail diciutkan) sidebar tak pernah `inert`. Belum ada pengelolaan fokus laci
+  (jebakan fokus saat terbuka, fokus kembali ke tombol saat ditutup): tindak lanjut terpisah.
 - **Ponsel (≤720 px)** — drawer/hamburger diganti bottom navigation lima slot:
   **Beranda · Servis · Kasir · Inventori · Lainnya** secara default. Empat slot utama
   mengikuti konfigurasi owner; `Lainnya` membuka control deck berisi menu tersisa,

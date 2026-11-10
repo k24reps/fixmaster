@@ -5103,9 +5103,9 @@ ingatan harus hidup di luar komponen.
 - **Tidak dipulihkan, sengaja:** panel "Filter lainnya" (hitungan filter aktif di tombolnya
   sudah menjelaskan) dan modal.
 
-**Sengaja tidak dikerjakan:** sortir per kolom (tidak diminta; urutan tetap Terbaru/Terlama),
-`statusBtn` 185px di lajur 176px (selisih lama), dan temuan tab sisi di
-`ServiceDetailPage.module.css` serta `SparepartPickerModal.module.css` (bukan daftar).
+**Dulu sengaja ditunda, kini selesai (10 Nov 2026):** sortir per kolom, `statusBtn` 185px di lajur
+176px, temuan tab sisi di `ServiceDetailPage.module.css` dan `SparepartPickerModal.module.css`,
+serta `limit` yang tak diingat. Lihat [[#Daftar Servis di laptop: tujuh sisa critique (10 Nov 2026)]].
 
 **Penjaga:** `servicesTableWidth.test.ts` (19 tes) membaca sumber mentah dan mengunci: lantai
 lajur dihitung dari token (bukan angka tetap), ambang 1156/1056, spine + peta nada bersama,
@@ -5134,3 +5134,100 @@ Lihat [[Signature Pages#Daftar Servis — Repair Job Cards]].
 ![[servis-konteks-pulih.png]]
 
 #decision #ui #layout #services #critique #a11y
+
+
+## Daftar Servis di laptop: tujuh sisa critique (10 Nov 2026)
+
+Tujuh butir yang sengaja ditunda saat critique 25/40 ditutup (lihat bagian di atas), satu komit per
+butir. Tiga di antaranya menyentuh luar daftar (detail tiket, pemilih sparepart, sidebar); semuanya
+lahir dari temuan yang sama.
+
+1. **`statusBtn` menjorok dari lajur Status 176px.** Terukur di DOM: "Konfirmasi Biaya" dan
+   "Tunggu Sparepart" (16 karakter mono) memberi lencana 155,8px dan kotak tombol 185px, menjorok 3px
+   dari lajur 11rem (pensil yang tak terlihat saat diam + padding). Jarak lencana ke pensil 6px →
+   3px menaruh ujung kanan kotak tepat di tepi lajur (`overRight` 0 di 1056/1281/1440/1920).
+   **Lajur dan ambang 1156/1056px tidak disentuh.** Tes menghitung lebar lencana dari label
+   `statusLabel.*` terpanjang (metrik mono), jadi label baru yang lebih panjang tak bisa diam-diam
+   mengembalikan luberannya.
+2. **Temuan detektor `side-tab`, dipilah dua arah.**
+   - `SparepartPickerModal` `.context` (strip tiket tujuan): ini memang spine. Kini membawa
+     `data-tone` dari `STATUS_TONE`, jadi 3px kirinya berwarna status tiket lewat token persis
+     seperti baris Daftar. Temuannya didaftarkan di `.impeccable/config.json` (`ignoreValues`) dengan
+     alasan: keputusan pemilik R-37 dan Named Rule "The Spine, Not the Fill" di `DESIGN.md`.
+   - `ServiceDetailPage` `.costNotice`: BUKAN spine (tak memetakan status). Tepi kiri 3px dibuang;
+     bingkai 1px di empat sisi, sinyalnya LED + teks. Temuan hilang tanpa pengecualian.
+   - Tindak lanjut yang tidak dikerjakan di sini: temuan serupa di `FormError` dan `Toast`.
+3. **`3rem` hardcode di `.nfCode`** (nomor tiket di halaman detail) → `var(--text-3xl)`.
+4. **Label kolom Daftar lewat i18n.** `SERVICE_COLUMNS` (`lib/business/serviceColumns.ts`) menyimpan
+   teks Indonesia langsung padahal lib/business tak punya hook. Kini tiap kolom membawa `labelKey`
+   dan `hintKey` (`TranslationKey`, dijaga `satisfies`), dan `SettingsPage` menerjemahkannya lewat
+   `useT()`. Label memakai kunci `services.col*` yang sama dengan judul kolom di Daftar, jadi
+   Pengaturan dan Daftar tak bisa menyebut kolom yang sama dengan dua kata. Enam kunci petunjuk baru
+   `services.colHint*` (id + en); tes mengunci bahwa kunci ada di kedua bahasa dan teks id tak berubah.
+5. **Sidebar `inert` saat laci tertutup** (rinci di [[Sidebar - Live Diagnostic Rail]]). Di ≤1024px
+   sidebar adalah laci yang digeser dengan `transform`, bukan `display: none`, sehingga 14 tautannya
+   tetap di urutan Tab dan pohon pembaca layar. `<aside inert={drawerClosed}>`; kueri laci dipakai
+   bersama TSX dan CSS dan dikunci `sidebarInert.test.ts`. Terukur: 390/744/1024px tertutup = inert,
+   0 dari 14 terjangkau Tab; terbuka = tak inert; 1025/1440px termasuk rail diciutkan = tak inert.
+   **Belum:** jebakan fokus saat laci terbuka dan fokus kembali ke tombol saat ditutup.
+6. **Urut per kolom** (satu-satunya butir yang meminta keputusan pemilik; dijawab: kolom No. Servis,
+   Pelanggan, Status, Biaya; kendali = judul kolom jadi tombol, dropdown tetap dan sinkron).
+   - `ServiceSort` jadi nilai datar: `newest`/`oldest` + `customer|status|cost` × `Asc|Desc`. Satu nilai
+     dipakai dropdown, ingatan sesi, dan judul kolom; `newest`/`oldest` tetap bernama lama sehingga
+     ingatan yang sudah tersimpan tetap sah. `SERVICE_SORTS` adalah satu-satunya sumber koersi di
+     `parseListSnapshot`: nilai asing, usang, atau bertipe salah jatuh ke Terbaru.
+   - **Semantik** (`compareServices`, murni): pelanggan A-Z tak peduli huruf besar dan aksen, angka
+     dibaca sebagai angka; status mengikuti `STATUS_FLOW` (alur kerja, Batal di ujung); **biaya = nominal
+     yang tampil** (final, atau estimasi bila final belum ada), bukan field mentah. **Nilai kosong (nama
+     kosong, biaya 0) selalu di dasar apa pun arahnya**, jadi klik "turun" tak menaruh baris
+     tak berarti di puncak. Seri jatuh ke Terbaru, supaya urutan deterministik.
+   - Siklus klik: naik → turun → kembali ke Terbaru (`nextSort`); No. Servis hanya Terbaru ↔ Terlama.
+     Kolom yang disembunyikan toko (Pengaturan) tetap bisa diurutkan lewat dropdown.
+   - **Aksesibilitas:** wadah judul tak lagi `aria-hidden` karena isinya tombol sungguhan (grup
+     berlabel); hanya label murni yang `aria-hidden`. **Tanpa `aria-sort`**: atribut itu tak sah di luar
+     `columnheader`/`rowheader`, dan baris ini `ul` bukan tabel. Urutan aktif dibacakan lewat teks
+     tersembunyi. Target ≥24px (padding 4px), panah mono tersembunyi di kolom tak aktif, tampil di
+     hover dan `:focus-visible`. Terukur di demo 1440px: huruf judul Pelanggan dan No. Servis sejajar
+     sel di bawahnya sampai 0px, Biaya rata kanan dengan angkanya.
+7. **`limit` dan gulir** (butir yang membalik keputusan "Tidak dipulihkan, sengaja" di Tahap 5, ditulis
+   di sana). Ringkasnya: `limit` jadi kolom `ServiceListView` (dijepit `[50, 1000]`, bawaan 50 untuk
+   ingatan lama), dan gulir dipulihkan oleh `scrollRestoreStep` (`wait`/`restore`/`skip`) yang menunggu
+   jendela DAN arsip yang diminta. `useServiceArchive` kini mengembalikan `{ rows, pending }`.
+
+**Kenapa butir 7 tak terlihat di demo:** adapter lokal tak punya `queryServices`, jadi `archive` selalu
+kosong dan `shownRows = rows` (utuh). `limit` dan penantian arsip hanya bermakna di cloud. Yang
+diverifikasi di peramban (demo): `limit` 200 dan gulir 220 bertahan lewat buka tiket → kembali, tanpa
+galat konsol; yang diverifikasi murni (`scrollRestoreStep`, `limitOf`): urutan wait → wait → restore,
+jepitan nilai rusak.
+
+**Penjaga:** `servicesTableWidth.test.ts` (kini 24 tes) menambah lantai lajur status, spine pemilih,
+`.costNotice`/`.nfCode`, aturan `aria-hidden` baru, kabel judul urut, dan kabel `limit` + penantian
+arsip. `serviceFilters.test.ts` (+13) mengunci urutan tiap kolom, kosong di dasar, seri, dan siklus
+`nextSort`. `serviceListView.test.ts` (+11) mengunci koersi `sort` dan `limit` serta
+`scrollRestoreStep`. `serviceColumns.test.ts` bertambah (kunci ada di id + en, label = kunci Daftar,
+teks id tak berubah); `sidebarInert.test.ts` berkas baru.
+
+**Verifikasi:** build dan lint bersih; tes 762/69 berkas → **797 / 70 berkas**. `audit-tokens` LULUS,
+0 pelanggaran. `audit-zoom` pada kerapatan bawaan, `ZOOM=1.25`, dan `DENSITY=padat` (11 lebar × 12
+halaman): nol pelanggaran lantai 12px, nol luberan dokumen, nol overlap, nol tabel meluap; teks
+ter-clip hanya `span/p.fm-visually-hidden` dan `caption._srOnly` (positif palsu yang sudah dikenal),
+jadi tombol judul baru tak terpotong di ambang 1056/1156px maupun di zoom. `audit-mobile` pada
+320/360/375/390/414 dan pita tablet 744–1152: nol luberan dokumen, nol pelanggar, nol target sentuh
+kecil di `/services`. Satu-satunya wadah geser di `/services` tetap rail chip status bersama
+(`CatalogControls.categoryBar`: 290–384px di ponsel, +5px di 1025px), berkas yang tak disentuh. `audit-contrast`
+di landing + 12 menu demo × 2 tema: 0 elemen di bawah ambang; dua kasus di atas gradien (petunjuk mode dev
+di landing) tetap dinilai manual.
+
+> [!warning] Jebakan audit di worktree baru
+> `scripts/shots/` di-gitignore, jadi worktree baru tak punya foldernya, dan `audit-mobile.mjs` mati di
+> `writeFileSync` SETELAH mengukur semua lebar (laporan tak tertulis, keluar kode 1). `mkdir scripts/shots`
+> dulu, baru jalankan audit (`audit-zoom.mjs` juga menulis laporannya ke sana; `audit-tokens` dan
+> `audit-contrast` hanya menulis ke stdout).
+
+**Tindak lanjut yang sengaja tidak dikerjakan (di luar tujuh butir):** (a) pengelolaan fokus laci
+sidebar; (b) temuan `side-tab` di `FormError`, `Toast`, dan `SettingsPage.module.css` `.tapeRow` (spine
+status riwayat tagihan: perlu keputusan pemilik apakah termasuk spine R-37 atau dibuang).
+
+![[servis-urut-kolom-1440-dark.png]]
+
+#decision #ui #services #a11y #i18n #sort
