@@ -93,10 +93,28 @@
   padding: var(--space-2) var(--space-3);
   background: var(--bg-surface-2);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
+  border-left: 3px solid var(--text-muted);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   color: var(--text-secondary);
+}
+/* Spine = status tiket, bukan hiasan merek: peta nada yang sama dengan baris dan
+   Kartu di Daftar Servis (STATUS_TONE, data-tone dari TSX), jadi tiket yang
+   baru diklik tampil dengan warna yang sama di jendela ini. 3px, token. */
+.context[data-tone='info'] {
+  border-left-color: var(--info);
+}
+.context[data-tone='warning'] {
+  border-left-color: var(--warning);
+}
+.context[data-tone='accent'] {
+  border-left-color: var(--accent);
+}
+.context[data-tone='success'] {
+  border-left-color: var(--success);
+}
+.context[data-tone='danger'] {
+  border-left-color: var(--danger);
 }
 .contextNo {
   font-family: var(--font-mono, monospace);

@@ -3,6 +3,8 @@ import tsxRaw from './ServicesPage.tsx?raw';
 import cssRaw from './ServicesPage.module.css?raw';
 import detailTsxRaw from './ServiceDetailPage.tsx?raw';
 import pickerTsxRaw from './SparepartPickerModal.tsx?raw';
+import pickerCssRaw from './SparepartPickerModal.module.css?raw';
+import detailCssRaw from './ServiceDetailPage.module.css?raw';
 import tokensRaw from '../../styles/tokens.css?raw';
 import { id } from '@/i18n/id';
 
@@ -12,6 +14,8 @@ const tsx = lf(tsxRaw);
 const css = lf(cssRaw);
 const detailTsx = lf(detailTsxRaw);
 const pickerTsx = lf(pickerTsxRaw);
+const pickerCss = lf(pickerCssRaw);
+const detailCss = lf(detailCssRaw);
 const tokens = lf(tokensRaw);
 
 /**
@@ -187,6 +191,32 @@ describe('tampilan Daftar servis', () => {
     for (const tone of ['info', 'warning', 'accent', 'success', 'danger']) {
       expect(css).toContain(`.jobCard[data-tone='${tone}']::before,\n.rows > .row[data-tone='${tone}']::before {`);
     }
+  });
+
+  it('strip tiket di pemilih sparepart memakai spine yang sama dengan baris (peta STATUS_TONE)', () => {
+    // Spine resmi, bukan "side-stripe" hiasan: warnanya status tiket, dari peta yang sama.
+    expect(pickerTsx).toContain('data-tone={STATUS_TONE[ticket.status]}');
+    expect(pickerCss).toMatch(/\.context \{[^}]*border-left: 3px solid var\(--text-muted\);/);
+    const tones: Record<string, string> = {
+      info: '--info',
+      warning: '--warning',
+      accent: '--accent',
+      success: '--success',
+      danger: '--danger',
+    };
+    for (const [tone, token] of Object.entries(tones)) {
+      expect(pickerCss).toContain(`.context[data-tone='${tone}'] {\n  border-left-color: var(${token});\n}`);
+    }
+    // Warna hanya lewat token: tak ada hex di berkasnya.
+    expect(pickerCss).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+
+  it('kartu biaya di detail tiket berbingkai 1px (tanpa tepi kiri tebal) dan angka besar memakai token', () => {
+    const notice = detailCss.slice(detailCss.indexOf('.costNotice {'));
+    const noticeBody = notice.slice(0, notice.indexOf('}'));
+    expect(noticeBody).not.toContain('border-left-width');
+    expect(detailCss).not.toMatch(/font-size:\s*3rem/);
+    expect(detailCss).toMatch(/\.nfCode \{[^}]*font-size: var\(--text-3xl\);/);
   });
 
   it('status ambil dan tertahan satu zona di lajur status, LED tak terjepit', () => {

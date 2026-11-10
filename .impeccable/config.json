@@ -44,6 +44,15 @@
         "value": "var\\(--font-mono\\)",
         "createdAt": "2026-11-09T15:03:25.288Z",
         "reason": "Agent: servicesTableWidth.test.ts asserts via regex that the CSS uses the documented --font-mono token (DESIGN.md mono readout); the test declares no font"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/services/SparepartPickerModal.module.css"
+        ],
+        "createdAt": "2026-11-10T00:23:46.190Z",
+        "reason": "Agent: .context is the ticket status spine, 3px, token colours via data-tone from STATUS_TONE (same map as ServicesPage .row and .jobCard); owner R-37 kept the spine because it carries service status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine"
       }
     ]
   }

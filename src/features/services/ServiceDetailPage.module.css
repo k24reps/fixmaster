@@ -170,7 +170,10 @@
   color: var(--danger-text);
 }
 
-/* Biaya final belum mencakup part yang baru ditambah (LED amber, satu baris). */
+/* Biaya final belum mencakup part yang baru ditambah (LED amber, satu baris).
+   Pelat berbingkai 1px di keempat sisi; sinyalnya LED + teks, BUKAN tepi kiri
+   yang ditebalkan: itu spine, dan spine membawa status tiket (DESIGN.md "The
+   Spine, Not the Fill Rule"), sedangkan pelat ini bukan kartu atau baris. */
 .costNotice {
   display: flex;
   align-items: flex-start;
@@ -179,7 +182,6 @@
   margin-top: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--warning);
-  border-left-width: 3px;
   border-radius: var(--radius-sm);
   background: var(--warning-soft);
 }
@@ -863,7 +865,7 @@
 }
 .nfCode {
   font-family: var(--font-mono);
-  font-size: 3rem;
+  font-size: var(--text-3xl);
   font-weight: var(--fw-bold);
   color: var(--text-primary);
 }

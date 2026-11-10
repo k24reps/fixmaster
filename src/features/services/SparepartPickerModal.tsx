@@ -5,7 +5,7 @@ import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
 import { isManager } from '@/config/plans';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import { modalDadakanIssue, type ModalDadakanInput } from '@/lib/business/services';
+import { modalDadakanIssue, STATUS_TONE, type ModalDadakanInput } from '@/lib/business/services';
 import { toast } from '@/stores/toast';
 import type { Service, ServiceSparepart, Wallet } from '@/data/types';
 import styles from './SparepartPickerModal.module.css';
@@ -21,7 +21,7 @@ interface SparepartPickerModalProps {
   onPick: (line: ServiceSparepart) => void;
   /** Tiket tujuan, ditampilkan di atas pencarian. Dibuka dari Daftar Servis,
    * jendela ini tidak punya halaman tiket di belakangnya yang memberi tahu. */
-  ticket?: Pick<Service, 'serviceNo' | 'device' | 'customerName'>;
+  ticket?: Pick<Service, 'serviceNo' | 'device' | 'customerName' | 'status'>;
   /** Tab Modal Dadakan untuk part yang dibeli di luar stok (owner/admin).
    * Tanpa prop ini jendela hanya berisi inventori, seperti di detail tiket
    * yang punya form Modal Dadakan sendiri di panel BOM. */
@@ -152,7 +152,7 @@ export function SparepartPickerModal({
     >
       <div className={styles.body}>
         {ticket && (
-          <p className={styles.context}>
+          <p className={styles.context} data-tone={STATUS_TONE[ticket.status]}>
             <span className={styles.contextNo}>{ticket.serviceNo}</span>
             <span className={styles.dot} aria-hidden />
             <span className={styles.contextDevice}>{ticket.device}</span>
