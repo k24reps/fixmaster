@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import tsx from './ServicesPage.tsx?raw';
-import css from './ServicesPage.module.css?raw';
-import detailTsx from './ServiceDetailPage.tsx?raw';
-import pickerTsx from './SparepartPickerModal.tsx?raw';
-import tokens from '../../styles/tokens.css?raw';
+import tsxRaw from './ServicesPage.tsx?raw';
+import cssRaw from './ServicesPage.module.css?raw';
+import detailTsxRaw from './ServiceDetailPage.tsx?raw';
+import pickerTsxRaw from './SparepartPickerModal.tsx?raw';
+import tokensRaw from '../../styles/tokens.css?raw';
+import { id } from '@/i18n/id';
+
+// Checkout Windows (core.autocrlf) memberi CRLF pada ?raw; pola di bawah memakai LF.
+const lf = (s: string) => s.replace(/\r\n/g, '\n');
+const tsx = lf(tsxRaw);
+const css = lf(cssRaw);
+const detailTsx = lf(detailTsxRaw);
+const pickerTsx = lf(pickerTsxRaw);
+const tokens = lf(tokensRaw);
 
 /**
  * Tampilan Daftar Servis berupa baris seperti Inventori & Kasir, bukan tabel.
@@ -136,6 +145,30 @@ describe('tampilan Daftar servis', () => {
     expect(css).toMatch(/\.phone \{\s*font-family: var\(--font-mono\);/);
     expect(tsx).toContain('className={[styles.sub, styles.phone].join(\' \')}');
     expect(css).toMatch(/\.mono \{\s*font-family: var\(--font-mono\);\s*font-size: var\(--text-sm\);\s*font-weight: var\(--fw-bold\);/);
+  });
+
+  it('tombol status muat di lajur Status: label terpanjang tak menjorok dari lajurnya', () => {
+    const rem = (v: string) => parseFloat(v) * 16;
+    const lane = rem(/minmax\(0, 1fr\) (\d+(?:\.\d+)?)rem (?:\d+(?:\.\d+)?)rem (?:\d+(?:\.\d+)?)rem;/.exec(css)![1]);
+    const rule = /\.statusBtn \{([^}]*)\}/.exec(css)![1];
+    const gap = Number(/gap: (\d+)px/.exec(rule)![1]);
+    const padX = Number(/padding: \d+px (\d+)px/.exec(rule)![1]);
+    // Lencana = border 1 + padding 9 tiap sisi + LED 7 + jarak 5 + teks mono kapital
+    // (0,6em + tracking 0,045em per huruf, di --text-xs). Pensil = 0,7em dari 16px.
+    const xs = rem(new RegExp('--text-xs:\\s*([\\d.]+)rem').exec(tokens)![1]);
+    const longest = Math.max(
+      ...Object.entries(id)
+        .filter(([k]) => k.startsWith('statusLabel.'))
+        .map(([, v]) => v.length),
+    );
+    const badge = 2 * (1 + 9) + 7 + 5 + longest * (0.6 + 0.045) * xs;
+    const pencil = 0.7 * 16;
+    // Margin negatif = padding, jadi kotak mulai satu padding di kiri lajur dan
+    // ujung kanannya tak boleh melewati tepi lajur (sub-piksel dibulatkan peramban).
+    expect(badge + gap + pencil + padX).toBeLessThanOrEqual(lane + 0.5);
+    expect(rule).toMatch(new RegExp(`margin: -2px -${padX}px;`));
+    // Bahasa UI terkunci Indonesia; label Inggris (17 karakter) akan menjorok ±8px.
+    // Tinjau ulang bila kunci bahasa dibuka.
   });
 
   it('nama pelanggan boleh dua baris dan punya title; nomor HP juga', () => {

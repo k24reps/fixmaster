@@ -321,10 +321,17 @@
   color: var(--text-muted);
 }
 /* ---------- Clickable status badge ---------- */
+/* Kotak tombol = padding 6px + lencana + jarak + pensil + padding 6px, dengan
+   margin -6px di kedua sisi supaya lencananya sejajar tepi lajur. Lajur Status di
+   tabel 11rem (176px) dan label terpanjang ("Konfirmasi Biaya", "Tunggu Sparepart":
+   16 karakter mono) membuat lencana 155,8px. Dengan jarak 6px kotaknya 185px dan
+   menjorok 3px dari lajur; 3px menutup selisih itu sehingga ujung kanan kotak tepat
+   di tepi lajur. Lajurnya sendiri dikunci ambang tabel (11rem), jadi yang menyusut
+   jarak ke pensil, yang hanya tampil saat hover/fokus. */
 .statusBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   padding: 2px 6px;
   margin: -2px -6px;
   border-radius: var(--radius-sm);
