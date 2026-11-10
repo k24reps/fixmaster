@@ -5315,6 +5315,11 @@ dibuang, apakah ada sinyal yang hilang? Satu komit per butir.
   hidup) agar menjadi spine sungguhan, bukan brand statis.
 - **Callout legal dan vonis cetak adalah putusan agent yang paling bisa diperdebatkan** (sama-sama
   satu nada). Keduanya diperlakukan seperti `FormError`: sinyal dibawa bingkai 1px + LED/teks.
+- **Persetujuan pemilik (10 Nov 2026):** setelah laporan ini, pemilik membalas "Setuju semua" atas
+  tiga putusan di atas (`.expressRow` dibalik, callout legal, vonis cetak) dan atas pendaftaran
+  Suppliers/Tasks. Teks alasan di `.impeccable/config.json` untuk dua entri itu ditulis sebelum
+  persetujuan dan masih berbunyi "Decided by the agent, not confirmed by the user"; belum
+  disesuaikan.
 - **Dua yang didaftarkan masuk `.impeccable/config.json`** (`ignoreValues`, `side-tab` `*`, per
   berkas, alasan tertulis "Decided by the agent, not confirmed by the user"). Detektor hanya
   menerima `*` untuk `side-tab`, jadi **seluruh** `SuppliersPage.module.css` (370 baris) dan
