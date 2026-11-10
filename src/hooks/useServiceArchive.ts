@@ -16,13 +16,17 @@ const NONE: Service[] = [];
  * (≥3 huruf, ditunda 300 ms) atau memilih rentang tanggal yang lebih tua.
  * Pemanggil menggabungkan hasilnya ke daftar. Adapter lokal/demo tidak
  * punya `queryServices` — daftarnya sudah lengkap.
+ *
+ * `pending` = kueri diminta tetapi hasilnya belum ada (cache dingin). Pemulihan
+ * gulir menunggunya: tanpa baris arsip halaman masih pendek. Kueri yang gagal
+ * atau sudah punya data (walau basi) bukan pending.
  */
 export function useServiceArchive(opts: {
   enabled: boolean;
   term: string;
   /** Tanggal lokal inklusif, atau null. */
   range: { from: string; to: string } | null;
-}): Service[] {
+}): { rows: Service[]; pending: boolean } {
   const outletId = useSessionStore((s) => s.activeOutletId);
   const [term, setTerm] = useState(opts.term.trim());
   useEffect(() => {
@@ -34,7 +38,7 @@ export function useServiceArchive(opts: {
   const to = opts.range ? localDayStartISO(addDays(opts.range.to, 1)) : '';
   const active = opts.enabled && !!repository.queryServices && (term.length >= 3 || !!from);
 
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['collection', 'services', outletId, 'archive', term, from, to],
     queryFn: () =>
       repository.queryServices!({
@@ -45,5 +49,5 @@ export function useServiceArchive(opts: {
       }),
     enabled: active,
   });
-  return active ? (data ?? NONE) : NONE;
+  return { rows: active ? (data ?? NONE) : NONE, pending: active && isPending };
 }

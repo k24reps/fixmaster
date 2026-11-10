@@ -39,7 +39,7 @@ import {
 import { walletsForOutlet } from '@/lib/business/finance';
 import { addServiceModalLine, addServicePart } from '@/data/serviceParts';
 import { resolveServiceColumns } from '@/lib/business/serviceColumns';
-import { resolveListView } from '@/lib/business/serviceListView';
+import { LIST_PAGE_SIZE, resolveListView, scrollRestoreStep } from '@/lib/business/serviceListView';
 import { readListSnapshot, readScroll, saveListScroll, saveListView, writeScroll } from './listMemory';
 import {
   SERVICE_SORTS,
@@ -68,15 +68,6 @@ import styles from './ServicesPage.module.css';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
 import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
-
-/**
- * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
- * tiket sejak toko berdiri — untuk bengkel yang sudah lama jalan itu ribuan
- * baris, dan browser-nya tersendat. Pola tombol "Tampilkan lebih banyak" sama
- * dengan Keuangan (FinancePage); potongannya 50, bukan 100, karena satu tiket
- * servis jauh lebih padat daripada satu baris transaksi.
- */
-const PAGE_SIZE = 50;
 
 /**
  * Jendela daftar "panas" di cloud: SEMUA tiket yang belum tuntas (berapa pun
@@ -180,7 +171,9 @@ export function ServicesPage() {
   const [done, setDone] = useState<{ service: Service; variant: 'intake' | 'handover' } | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<Service | null>(null);
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  // Dipulihkan bersama gulir: tanpa itu daftar kembali 50 baris dan posisi
+  // gulir yang dalam tersangkut di ujung bawahnya.
+  const [limit, setLimit] = useState(start.limit);
   const [pickupConfirm, setPickupConfirm] = useState<Service | null>(null);
   // Tiket yang sedang ditambah sparepart dari daftar. Disimpan id-nya, lalu
   // barisnya dicari saat render, supaya part yang baru masuk langsung terbaca
@@ -204,7 +197,7 @@ export function ServicesPage() {
   // ditanyakan ke server.
   const dateRange = createdRange(dateFilter, today, { from: customFrom, to: customTo });
   const oldestLoaded = truncated ? Infinity : Date.parse(windowStart);
-  const archive = useServiceArchive({
+  const { rows: archive, pending: archivePending } = useServiceArchive({
     enabled: windowed,
     term: query,
     range: dateRange && Date.parse(localDayStartISO(dateRange.from)) < oldestLoaded ? dateRange : null,
@@ -324,7 +317,7 @@ export function ServicesPage() {
   // Setiap perubahan filter kembali ke potongan pertama daftar.
   const change = (apply: () => void) => {
     apply();
-    setLimit(PAGE_SIZE);
+    setLimit(LIST_PAGE_SIZE);
   };
   const resetFilters = () =>
     change(() => {
@@ -406,6 +399,7 @@ export function ServicesPage() {
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     saveListView(listOwner, entryKey, {
+      limit,
       query,
       status: statusFilter,
       category: categoryFilter,
@@ -422,6 +416,7 @@ export function ServicesPage() {
   }, [
     listOwner,
     entryKey,
+    limit,
     query,
     statusFilter,
     categoryFilter,
@@ -454,19 +449,26 @@ export function ServicesPage() {
       cancelAnimationFrame(raf);
     };
   }, []);
-  // Pulihkan gulir sekali, setelah baris pertama benar-benar ada. Flag dinyalakan
-  // di dalam rAF: kalau efek ini dijalankan ulang sebelum bingkai tiba, pembatalan
-  // tak boleh menelan pemulihan.
+  // Pulihkan gulir sekali, setelah baris yang dulu mengisi halaman benar-benar
+  // ada: jendela termuat DAN arsip yang diminta pencarian/rentang sudah tiba
+  // (scrollRestoreStep). Flag dinyalakan di dalam rAF: kalau efek ini dijalankan
+  // ulang sebelum bingkai tiba, pembatalan tak boleh menelan pemulihan.
   const scrollRestored = useRef(initial.scrollTop <= 0);
-  const hasRows = rows.length > 0;
+  const rowCount = rows.length;
   useEffect(() => {
-    if (scrollRestored.current || loading || !hasRows) return;
+    if (scrollRestored.current) return;
+    const step = scrollRestoreStep({ loading, archivePending, rowCount });
+    if (step === 'wait') return;
+    if (step === 'skip') {
+      scrollRestored.current = true;
+      return;
+    }
     const raf = requestAnimationFrame(() => {
       scrollRestored.current = true;
       writeScroll(initial.scrollTop);
     });
     return () => cancelAnimationFrame(raf);
-  }, [loading, hasRows, initial.scrollTop]);
+  }, [loading, archivePending, rowCount, initial.scrollTop]);
 
   const openNew = () => {
     setEditing(null);
@@ -1222,7 +1224,7 @@ export function ServicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                  onClick={() => setLimit((n) => n + LIST_PAGE_SIZE)}
                   iconLeft={<Icon name="arrow-down" aria-hidden />}
                 >
                   {t('services.showMore')}

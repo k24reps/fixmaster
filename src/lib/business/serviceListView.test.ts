@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_LIST_VIEW,
   LIST_MEMORY_MS,
+  LIST_PAGE_SIZE,
+  MAX_LIST_LIMIT,
   parseListSnapshot,
   resolveListView,
+  scrollRestoreStep,
   viewFromParams,
   type ServiceListSnapshot,
 } from './serviceListView';
@@ -108,6 +111,80 @@ describe('parseListSnapshot', () => {
       const raw = JSON.stringify({ ...snap(), view: { ...EMPTY_LIST_VIEW, sort } });
       expect(parseListSnapshot(raw)?.view.sort, JSON.stringify(sort)).toBe('newest');
     }
+  });
+});
+
+describe('limit (baris yang sudah "ditampilkan lebih banyak")', () => {
+  const limitOf = (limit: unknown) => {
+    const raw = JSON.stringify({ ...snap(), view: { ...EMPTY_LIST_VIEW, limit } });
+    return parseListSnapshot(raw)?.view.limit;
+  };
+
+  it('bawaan satu halaman, dan nilai sah bolak-balik apa adanya', () => {
+    expect(EMPTY_LIST_VIEW.limit).toBe(LIST_PAGE_SIZE);
+    for (const n of [LIST_PAGE_SIZE, 100, 250, MAX_LIST_LIMIT]) expect(limitOf(n), String(n)).toBe(n);
+  });
+
+  it('ingatan lama tanpa limit jatuh ke satu halaman, bukan NaN atau tanpa batas', () => {
+    const { limit: _omit, ...view } = EMPTY_LIST_VIEW;
+    void _omit;
+    const raw = JSON.stringify({ ...snap(), view });
+    expect(parseListSnapshot(raw)?.view.limit).toBe(LIST_PAGE_SIZE);
+  });
+
+  it('nilai rusak dijepit ke [satu halaman, batas waras]; bertipe salah jatuh ke satu halaman', () => {
+    expect(limitOf(0)).toBe(LIST_PAGE_SIZE);
+    expect(limitOf(-500)).toBe(LIST_PAGE_SIZE);
+    expect(limitOf(49)).toBe(LIST_PAGE_SIZE);
+    expect(limitOf(MAX_LIST_LIMIT + 1)).toBe(MAX_LIST_LIMIT);
+    expect(limitOf(9_999_999)).toBe(MAX_LIST_LIMIT);
+    expect(limitOf(120.4)).toBe(120);
+    for (const bad of ['200', null, true, [200], { n: 200 }]) {
+      expect(limitOf(bad), JSON.stringify(bad)).toBe(LIST_PAGE_SIZE);
+    }
+  });
+
+  it('kembali dari tiket memulihkan limit bersama gulirnya; tautan Dashboard mulai dari satu halaman', () => {
+    const deep = snap({ scrollTop: 4200, view: { ...EMPTY_LIST_VIEW, query: 'Andi', limit: 200 } });
+    const back = resolve({ snapshot: deep });
+    expect(back.view.limit).toBe(200);
+    expect(back.scrollTop).toBe(4200);
+    expect(resolve({ snapshot: deep, params: params('tech=me') }).view.limit).toBe(LIST_PAGE_SIZE);
+    expect(resolve({ snapshot: deep, owner: 'o2:e1' }).view.limit).toBe(LIST_PAGE_SIZE);
+  });
+});
+
+describe('scrollRestoreStep', () => {
+  const step = (o: Partial<Parameters<typeof scrollRestoreStep>[0]> = {}) =>
+    scrollRestoreStep({ loading: false, archivePending: false, rowCount: 120, ...o });
+
+  it('semua termuat dan ada baris → pulihkan', () => {
+    expect(step()).toBe('restore');
+  });
+
+  it('jendela belum dimuat → tunggu, berapa pun barisnya', () => {
+    expect(step({ loading: true })).toBe('wait');
+    expect(step({ loading: true, rowCount: 0 })).toBe('wait');
+  });
+
+  it('arsip diminta tapi belum tiba → tunggu, walau jendela sudah punya beberapa baris cocok', () => {
+    // Cari "Andi": 2 baris cocok ada di jendela, 40 lagi di arsip. Menggulir ke
+    // posisi baris ke-30 sekarang tersangkut di ujung 2 baris itu.
+    expect(step({ archivePending: true, rowCount: 2 })).toBe('wait');
+    expect(step({ archivePending: true, rowCount: 0 })).toBe('wait');
+  });
+
+  it('semua termuat tapi kosong → lewati, supaya posisi lama tak meloncat saat baris muncul kemudian', () => {
+    expect(step({ rowCount: 0 })).toBe('skip');
+  });
+
+  it('urutannya: arsip yang tiba menggeser keputusan dari tunggu ke pulihkan', () => {
+    const seq = [
+      { loading: true, archivePending: false, rowCount: 0 },
+      { loading: false, archivePending: true, rowCount: 2 },
+      { loading: false, archivePending: false, rowCount: 42 },
+    ].map(scrollRestoreStep);
+    expect(seq).toEqual(['wait', 'wait', 'restore']);
   });
 });
 

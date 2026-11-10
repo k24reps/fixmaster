@@ -9,7 +9,25 @@ import { STATUS_LABELS } from './services';
  * pekerjaan ("cari Andi, buka tiketnya, cek, balik"). Modul ini murni; sesi
  * penyimpanannya ada di `features/services/listMemory.ts`.
  */
+/**
+ * Baris yang dirender sekaligus. Sebelumnya halaman ini menggambar SELURUH
+ * tiket sejak toko berdiri — untuk bengkel yang sudah lama jalan itu ribuan
+ * baris, dan browser-nya tersendat. Pola tombol "Tampilkan lebih banyak" sama
+ * dengan Keuangan (FinancePage); potongannya 50, bukan 100, karena satu tiket
+ * servis jauh lebih padat daripada satu baris transaksi.
+ */
+export const LIST_PAGE_SIZE = 50;
+
+/**
+ * Batas waras untuk `limit` yang dibaca dari penyimpanan, bukan batas fitur:
+ * sama dengan max_rows PostgREST, jadi satu hasil arsip tak pernah lebih
+ * panjang. Nilai rusak yang besar tak boleh membuat daftar merender ribuan baris.
+ */
+export const MAX_LIST_LIMIT = 1000;
+
 export interface ServiceListView {
+  /** Berapa baris yang sudah "ditampilkan lebih banyak"; kelipatan LIST_PAGE_SIZE. */
+  limit: number;
   query: string;
   status: ServiceStatus | 'all';
   category: string;
@@ -25,6 +43,7 @@ export interface ServiceListView {
 }
 
 export const EMPTY_LIST_VIEW: ServiceListView = {
+  limit: LIST_PAGE_SIZE,
   query: '',
   status: 'all',
   category: 'all',
@@ -92,6 +111,12 @@ const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T):
 const str = (v: unknown, fallback: string, max = 120) =>
   typeof v === 'string' ? v.slice(0, max) : fallback;
 
+/** Ingatan lama (sebelum `limit` dicatat) dan nilai rusak jatuh ke satu halaman. */
+const limitOf = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v)
+    ? Math.min(MAX_LIST_LIMIT, Math.max(LIST_PAGE_SIZE, Math.round(v)))
+    : LIST_PAGE_SIZE;
+
 /**
  * Baca ingatan dari teks tersimpan. Setiap kolom dipaksa ke nilai sah, jadi
  * nilai rusak/usang (status yang sudah dihapus, JSON terpotong) jatuh ke
@@ -116,6 +141,7 @@ export function parseListSnapshot(raw: string | null): ServiceListSnapshot | nul
     savedAt: data.savedAt,
     scrollTop: Math.max(0, scroll),
     view: {
+      limit: limitOf(v.limit),
       query: str(v.query, '', MAX_QUERY),
       status: pick<ServiceStatus | 'all'>(v.status, ['all', ...STATUSES], 'all'),
       category: str(v.category, 'all'),
@@ -158,4 +184,29 @@ export function resolveListView(o: {
   if (fromUrl && mine?.entryKey !== o.entryKey) return { view: fromUrl, scrollTop: 0 };
   if (mine) return { view: mine.view, scrollTop: mine.scrollTop };
   return { view: EMPTY_LIST_VIEW, scrollTop: 0 };
+}
+
+export type ScrollRestoreStep = 'wait' | 'restore' | 'skip';
+
+/**
+ * Kapan posisi gulir boleh dipulihkan. Gulir yang ditulis ke halaman yang masih
+ * pendek tersangkut di ujung bawahnya dan tak pernah naik lagi, jadi baris yang
+ * dulu mengisi halaman harus sudah ada: jendela dimuat DAN arsip yang diminta
+ * pencarian/rentang tanggal sudah tiba (di daftar cloud, baris dari arsip bisa
+ * jauh lebih banyak daripada yang ada di jendela). Banyaknya baris yang dirender
+ * ikut `limit` yang dipulihkan, jadi tak perlu ditunggu terpisah.
+ *
+ * - `wait`: belum waktunya.
+ * - `restore`: tulis posisi sekarang.
+ * - `skip`: semuanya sudah termuat tapi daftarnya kosong; tak ada yang bisa
+ *   digulir, dan posisi lama tak boleh meloncat saat pengguna mengganti saringan
+ *   dan baris baru muncul.
+ */
+export function scrollRestoreStep(o: {
+  loading: boolean;
+  archivePending: boolean;
+  rowCount: number;
+}): ScrollRestoreStep {
+  if (o.loading || o.archivePending) return 'wait';
+  return o.rowCount > 0 ? 'restore' : 'skip';
 }

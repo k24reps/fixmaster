@@ -317,6 +317,26 @@ describe('tampilan Daftar servis', () => {
     expect(tsx).toMatch(/requestAnimationFrame\(\(\) => \{\s*scrollRestored\.current = true;/);
   });
 
+  it('limit dipulihkan bersama gulir, dan gulir menunggu arsip yang diminta', () => {
+    // Satu sumber ukuran halaman: modul murni, bukan salinan lokal yang bisa menyimpang.
+    expect(tsx).not.toMatch(/const PAGE_SIZE\b/);
+    expect(tsx).toContain('useState(start.limit)');
+    expect(tsx).toContain('setLimit(LIST_PAGE_SIZE);');
+    expect(tsx).toContain('setLimit((n) => n + LIST_PAGE_SIZE)');
+    // limit dicatat dan memicu pencatatan ulang saat "Tampilkan lebih banyak" diklik.
+    const save = tsx.slice(tsx.indexOf('saveListView(listOwner, entryKey, {'));
+    expect(save.slice(0, 120)).toMatch(/entryKey, \{\s*limit,/);
+    expect(save).toMatch(/\}, \[\s*listOwner,\s*entryKey,\s*limit,/);
+    // Pemulihan menunggu jendela DAN arsip; kosong dilewati, bukan ditunda selamanya.
+    expect(tsx).toContain('const { rows: archive, pending: archivePending } = useServiceArchive({');
+    expect(tsx).toContain('scrollRestoreStep({ loading, archivePending, rowCount })');
+    expect(tsx).toContain("if (step === 'wait') return;");
+    expect(tsx).toContain("if (step === 'skip') {");
+    expect(tsx).toContain('[loading, archivePending, rowCount, initial.scrollTop]');
+    // Bukan lagi sekadar "ada baris pertama": itu yang membuat gulir mendarat di halaman pendek.
+    expect(tsx).not.toContain('const hasRows');
+  });
+
   it('baris Penanganan kosong tak tampil sebelum tiket selesai', () => {
     expect(tsx).toContain('{showFixLine(s) && (');
     expect(tsx).toContain("s.status === 'selesai' || s.status === 'lunas'");

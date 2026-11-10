@@ -5077,12 +5077,31 @@ ingatan harus hidup di luar komponen.
   menyaring daftar jadi kosong.
 - **Gulir:** pendengar `scroll` capture (peristiwa ini tak menggelembung, dan wadah gulir demo
   adalah elemen, bukan dokumen). Dicatat hanya selama halaman masih terpasang (`isConnected`):
-  peralihan rute memotong gulir ke 0 dan itu bukan posisi daftar. Dipulihkan sekali setelah
-  baris pertama ada; penanda "sudah pulih" dinyalakan DI DALAM `requestAnimationFrame`, supaya
-  pembatalan efek tak menelannya. `AppLayout` mereset gulir tiap rute dari efeknya, dan
-  pemulihan datang sesudah itu karena menunggu data.
+  peralihan rute memotong gulir ke 0 dan itu bukan posisi daftar. Dipulihkan sekali; penanda
+  "sudah pulih" dinyalakan DI DALAM `requestAnimationFrame`, supaya pembatalan efek tak
+  menelannya. `AppLayout` mereset gulir tiap rute dari efeknya, dan pemulihan datang sesudah itu
+  karena menunggu data. (Syarat "kapan" diperketat di bawah: `limit` + arsip.)
+- **`limit` ikut diingat (dulu "tidak dipulihkan, sengaja"; dibalik 10 Nov 2026).** Alasan lama
+  ("daftar berjendela tampil utuh") hanya benar untuk daftar tanpa arsip. Begitu pencarian atau
+  rentang tanggal menggabungkan hasil arsip (cloud, sampai 1.000 baris), `shownRows` dipotong ke
+  `limit`; pengguna yang sudah menekan "Tampilkan lebih banyak" tiga kali, menggulir ke baris
+  ke-130, membuka tiket, lalu kembali mendapat 50 baris dan gulir yang tersangkut di ujung
+  bawahnya. Kini `limit` adalah kolom `ServiceListView` (bawaan = `LIST_PAGE_SIZE` 50, satu
+  sumber untuk halaman dan modul). Dibaca dengan `limitOf`: bulat, dijepit ke
+  `[LIST_PAGE_SIZE, MAX_LIST_LIMIT = 1000]`; ingatan lama tanpa `limit` atau bertipe salah jatuh
+  ke 50. `change()` tetap mengembalikannya ke 50 saat saringan berubah; tautan Dashboard
+  memulai dari 50.
+- **Gulir menunggu baris yang dulu mengisi halaman** (`scrollRestoreStep`, murni):
+  `wait` selama jendela belum dimuat ATAU arsip yang diminta belum tiba (`useServiceArchive`
+  kini mengembalikan `{ rows, pending }`; `pending` = diminta tapi belum ada data, kueri gagal
+  atau berdata basi bukan pending), `restore` bila ada baris, `skip` bila semuanya termuat tapi
+  kosong. Sebelumnya syaratnya hanya "ada baris pertama": mencari "Andi" dengan 2 cocokan di
+  jendela dan 40 di arsip memulihkan gulir ke halaman 2 baris. `skip` menutup lubang lama:
+  daftar kosong membiarkan penanda "belum pulih" menyala selamanya, lalu mengganti saringan
+  melompatkan layar ke posisi basi. Cabang arsip hanya terjadi di adapter cloud; demo/lokal
+  tak punya `queryServices`, jadi cabang itu diuji murni, bukan di peramban.
 - **Tidak dipulihkan, sengaja:** panel "Filter lainnya" (hitungan filter aktif di tombolnya
-  sudah menjelaskan), jumlah baris yang dimuat (`limit`; daftar berjendela tampil utuh), dan modal.
+  sudah menjelaskan) dan modal.
 
 **Sengaja tidak dikerjakan:** sortir per kolom (tidak diminta; urutan tetap Terbaru/Terlama),
 `statusBtn` 185px di lajur 176px (selisih lama), dan temuan tab sisi di
