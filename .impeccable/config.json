@@ -53,6 +53,24 @@
         ],
         "createdAt": "2026-11-10T00:23:46.190Z",
         "reason": "Agent: .context is the ticket status spine, 3px, token colours via data-tone from STATUS_TONE (same map as ServicesPage .row and .jobCard); owner R-37 kept the spine because it carries service status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/components/ui/Toast.module.css"
+        ],
+        "createdAt": "2026-11-10T01:31:44.275Z",
+        "reason": "Agent: .toast carries its tone (success/error/warning/info) as a 3px token-colour spine, the same motif as Daftar rows; owner R-37 kept the spine because it carries status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine Not the Fill Rule. Decided by the agent, not confirmed by the user"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/settings/SettingsPage.module.css"
+        ],
+        "createdAt": "2026-11-10T01:31:44.369Z",
+        "reason": "Agent: .tapeRow (invoice history receipt tape) carries invoice status (paid/pending/void) as a 3px token-colour spine, the same motif as the Finance tape; owner R-37 kept the spine because it carries status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine Not the Fill Rule. File-scoped because the detector only accepts * for side-tab; the only side-tab finding in this file. Decided by the agent, not confirmed by the user"
       }
     ]
   }

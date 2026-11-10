@@ -10,7 +10,10 @@
   gap: var(--space-4);
 }
 
-/* Fault readout — pulsing LED + message on a danger plate. */
+/* Fault readout — pulsing LED + message on a danger plate. Bingkai 1px di
+   empat sisi: sinyalnya LED + teks, bukan tepi kiri. Ini BUKAN spine (tak
+   memetakan status ke tepi kartu seperti baris Daftar), jadi 3px kirinya
+   dibuang, bukan dikecualikan dari detektor. */
 .error {
   display: flex;
   align-items: center;
@@ -19,7 +22,6 @@
   border-radius: var(--radius-sm);
   background: var(--danger-soft);
   border: 1px solid var(--danger);
-  border-left-width: 3px;
   /* --danger-text, bukan --danger: di tema gelap --danger di atas --danger-soft
      terukur 2,54:1 (28 Sep 2026). */
   color: var(--danger-text);
