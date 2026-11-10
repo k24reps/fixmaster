@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, CardBody, CardHeader, EmptyState, Icon, Input, Select } from '@/components/ui';
 import { EmptyValue } from '@/components/ui/EmptyValue';
@@ -79,6 +79,7 @@ function Calculator({ rates, manager }: { rates: QuoteRates; manager: boolean })
   const [custom, setCustom] = useState<CustomDraft[]>([]);
   const [extraPick, setExtraPick] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
+  const tapeRef = useRef<HTMLDivElement>(null);
 
   // Tingkat yang dihapus pemilik saat halaman terbuka jatuh ke tingkat pertama.
   const tier = rates.tiers.find((x) => x.id === tierId) ?? rates.tiers[0];
@@ -382,8 +383,23 @@ function Calculator({ rates, manager }: { rates: QuoteRates; manager: boolean })
             LCD bisa menempel di bawah layar sepanjang kolom isian. */}
         <div className={styles.quote}>
           <div className={styles.register}>
+            {/* Sempit: pita yang menempel jadi tombol ke struk, seperti dok
+                keranjang Kasir. Di dua kolom CSS menyembunyikannya. */}
+            <button
+              type="button"
+              className={styles.jump}
+              aria-label={t('quote.jumpToTape')}
+              onClick={() => {
+                // CSS reduced-motion global tidak menjangkau gulir dari JS.
+                const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                tapeRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+              }}
+            />
             <div className={styles.registerTop}>
-              <span>{t('quote.totalLabel')}</span>
+              <span className={styles.registerLabel}>
+                {t('quote.totalLabel')}
+                <Icon name="arrow-down" className={styles.jumpCue} aria-hidden />
+              </span>
               {result.highRisk && (
                 <span className={styles.riskTag}>
                   <span className={styles.riskTagLed} aria-hidden />
@@ -400,7 +416,7 @@ function Calculator({ rates, manager }: { rates: QuoteRates; manager: boolean })
             </div>
           </div>
 
-          <div className={styles.tape}>
+          <div className={styles.tape} ref={tapeRef}>
             {result.highRisk && (
               <div className={styles.risk} role="note">
                 <span className={styles.riskLed} aria-hidden />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, CardBody, CardHeader, Icon, Input, Select, Textarea } from '@/components/ui';
+import { Button, Card, CardBody, CardHeader, Icon, Input, Textarea } from '@/components/ui';
 import { getCategories, setQuoteRates } from '@/config/orgConfig';
 import type { QuoteExtra, QuoteRates, QuoteRounding } from '@/data/types';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
@@ -471,20 +471,39 @@ function QuoteRatesEditor({ current }: { current: QuoteRates }) {
                     error={has('extraName', index) ? t('quoteRates.extraNameMissing') : undefined}
                     onChange={(e) => patchExtra(index, { name: e.target.value })}
                   />
-                  <Select
-                    label={t('quoteRates.extraKind')}
-                    value={extra.kind}
-                    onChange={(e) =>
-                      patchExtra(index, {
-                        kind: e.target.value as ExtraDraft['kind'],
-                        amount: '',
-                      })
-                    }
-                    options={[
-                      { value: 'fixed', label: t('quoteRates.extraFixed') },
-                      { value: 'percent', label: t('quoteRates.extraPercent') },
-                    ]}
-                  />
+                  {/* Dua posisi "Rp | %" setinggi input. Select dengan label penuh
+                      terpotong di kolom ponsel ("Nominal te…"). */}
+                  <div className={styles.kindField}>
+                    <span className={styles.fieldLabel} id={`extra-kind-${extra.id}`}>
+                      {t('quoteRates.extraKind')}
+                    </span>
+                    <div
+                      className={styles.unit}
+                      role="group"
+                      aria-labelledby={`extra-kind-${extra.id}`}
+                    >
+                      {(
+                        [
+                          ['fixed', 'Rp', t('quoteRates.extraFixed')],
+                          ['percent', '%', t('quoteRates.extraPercent')],
+                        ] as const
+                      ).map(([kind, mark, name]) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          className={styles.unitBtn}
+                          aria-pressed={extra.kind === kind}
+                          aria-label={name}
+                          title={name}
+                          onClick={() =>
+                            extra.kind !== kind && patchExtra(index, { kind, amount: '' })
+                          }
+                        >
+                          {mark}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <Input
                     label={extra.kind === 'percent' ? t('quoteRates.extraPct') : t('quoteRates.extraRp')}
                     inputMode={extra.kind === 'percent' ? 'decimal' : 'numeric'}

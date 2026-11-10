@@ -4,7 +4,22 @@
    terlebar yang harus muat di kolom isian (lihat blok @container di bawah). */
 
 .page {
-  container-type: inline-size;
+  container: calc / inline-size;
+}
+
+/* Fokus dari Tab tak boleh mendarat di balik register yang menempel (WCAG
+   2.4.11). Yang menggulir adalah dokumen, jadi padding dipasang di html selama
+   halaman ini terbuka. 8.5rem ≈ tinggi register terukur (115px) + celah. */
+:global(html):has(.page) {
+  scroll-padding-top: calc(var(--topbar-height) + var(--space-3));
+  scroll-padding-bottom: calc(var(--space-3) + 8.5rem);
+}
+@media (max-width: 720px) {
+  :global(html):has(.page) {
+    scroll-padding-bottom: calc(
+      var(--mobile-nav-height) + var(--space-2) + env(safe-area-inset-bottom) + 8.5rem
+    );
+  }
 }
 
 /* Sempit dulu: satu kolom flex (bukan grid) supaya LCD yang menempel bisa
@@ -265,14 +280,34 @@
    tiga celah. Di bawahnya nama naik ke baris sendiri. Baris part luar stok
    butuh ±30rem (nama 10rem, harga 8rem, qty 5rem, hapus). */
 @container parts (max-width: 30rem) {
+  /* Nama + harga di baris 1, stepper + hapus di baris 2. Harga di kolom
+     tengah menimpa tombol hapus di 320px (kolomnya tinggal ±66px). */
   .stockRow {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
   .stockRow > .partName {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
+    grid-row: 1;
   }
+  .stockRow > .partAmount {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .stockRow > .stepper {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .stockRow > .remove {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+  /* Label "Modal per unit (Rp)" patah dua baris di kolomnya: kotak isian
+     disejajarkan dari bawah, bukan dari label. */
   .customRow {
     grid-template-columns: minmax(0, 1fr) 5rem auto;
+    align-items: end;
   }
   .customRow > :first-child {
     grid-column: 1 / 3;
@@ -346,7 +381,9 @@
 .register {
   position: sticky;
   bottom: var(--space-3);
-  z-index: var(--z-sticky);
+  /* Satu di bawah topbar (juga --z-sticky): register yang tergulir ke atas
+     lewat di BAWAH topbar, bukan menimpanya. */
+  z-index: calc(var(--z-sticky) - 1);
   container-type: inline-size;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-strong);
@@ -371,6 +408,30 @@
     transparent 1px 3px
   );
   pointer-events: none;
+}
+.jump {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.jump:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--focus-ring);
+}
+.registerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.jumpCue {
+  font-size: 0.9em;
+  color: var(--readout-soft);
 }
 .registerTop {
   position: relative;
@@ -621,5 +682,13 @@
     border: 0;
     border-radius: 0;
     background: transparent;
+  }
+}
+/* Bernama: di dalam register, kueri tanpa nama akan menakar register itu
+   sendiri (ia juga wadah), bukan halaman. */
+@container calc (min-width: 49rem) {
+  .jump,
+  .jumpCue {
+    display: none;
   }
 }

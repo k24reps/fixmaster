@@ -21,7 +21,7 @@ const WIDTHS = (process.env.WIDTHS || '320,360,375,390,414').split(',').map(Numb
 // Tablet bukan ponsel: sidebar muncul di >=1025px sehingga ruang konten
 // justru MENYUSUT saat viewport melebar. isMobile dimatikan di >=768px.
 const MOBILE = Number(process.env.MOBILE ?? 1) === 1;
-const PAGES = ['/', '/services', '/pos', '/customers', '/inventory', '/suppliers',
+const PAGES = ['/', '/services', '/calculator', '/pos', '/customers', '/inventory', '/suppliers',
   '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
 
 /** Navigasi in-app ke `path`, memilih klik yang benar untuk lebar saat ini. */
@@ -41,7 +41,8 @@ async function gotoInApp(page, path, w) {
     await primary.click();
     return;
   }
-  await page.getByRole('button', { name: /Lainnya/i }).click();
+  // Bukan nama tombol: di /services ada juga "Filter lainnya" (strict mode gagal).
+  await page.locator('button[aria-controls="mobile-more-sheet"]').click();
   await page.waitForTimeout(250);
   await page.locator(`#mobile-more-sheet a[href="${path}"]`).first().click();
 }

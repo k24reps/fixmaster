@@ -189,7 +189,7 @@ for (const theme of ['dark', 'light']) {
 // jadi sidebar diklik. Sebelum ini hanya dashboard + landing yang diperiksa, dan
 // 58 teks tema terang di bawah ambang (primitif terang tema gelap dipakai sebagai
 // warna teks) tersembunyi di 9 halaman lain sampai 24 Sep 2026.
-const MENUS = ['Servis', 'Kasir', 'Pelanggan', 'Inventori', 'Supplier', 'Keuangan',
+const MENUS = ['Servis', 'Kalkulator Biaya', 'Kasir', 'Pelanggan', 'Inventori', 'Supplier', 'Keuangan',
   'Tugas', 'Absensi', 'Laporan', 'Log Aktivitas', 'Pengaturan'];
 for (const theme of ['dark', 'light']) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });

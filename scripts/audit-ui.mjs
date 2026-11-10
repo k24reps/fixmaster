@@ -19,6 +19,7 @@ const THEME = process.env.THEME || 'dark';
 const pages = [
   { path: '/', name: 'dashboard' },
   { path: '/services', name: 'services' },
+  { path: '/calculator', name: 'calculator' },
   { path: '/pos', name: 'pos' },
   { path: '/customers', name: 'customers' },
   { path: '/inventory', name: 'inventory' },
