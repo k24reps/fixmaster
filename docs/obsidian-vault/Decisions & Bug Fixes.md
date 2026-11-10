@@ -5156,7 +5156,8 @@ lahir dari temuan yang sama.
      alasan: keputusan pemilik R-37 dan Named Rule "The Spine, Not the Fill" di `DESIGN.md`.
    - `ServiceDetailPage` `.costNotice`: BUKAN spine (tak memetakan status). Tepi kiri 3px dibuang;
      bingkai 1px di empat sisi, sinyalnya LED + teks. Temuan hilang tanpa pengecualian.
-   - Tindak lanjut yang tidak dikerjakan di sini: temuan serupa di `FormError` dan `Toast`.
+   - Temuan serupa di `FormError`, `Toast`, dan `.tapeRow` dikerjakan sesudahnya, lihat
+     [[#Fokus laci dan temuan side-tab: dua tindak lanjut tujuh butir (10 Nov 2026)]].
 3. **`3rem` hardcode di `.nfCode`** (nomor tiket di halaman detail) → `var(--text-3xl)`.
 4. **Label kolom Daftar lewat i18n.** `SERVICE_COLUMNS` (`lib/business/serviceColumns.ts`) menyimpan
    teks Indonesia langsung padahal lib/business tak punya hook. Kini tiap kolom membawa `labelKey`
@@ -5169,7 +5170,7 @@ lahir dari temuan yang sama.
    tetap di urutan Tab dan pohon pembaca layar. `<aside inert={drawerClosed}>`; kueri laci dipakai
    bersama TSX dan CSS dan dikunci `sidebarInert.test.ts`. Terukur: 390/744/1024px tertutup = inert,
    0 dari 14 terjangkau Tab; terbuka = tak inert; 1025/1440px termasuk rail diciutkan = tak inert.
-   **Belum:** jebakan fokus saat laci terbuka dan fokus kembali ke tombol saat ditutup.
+   Jebakan fokus dan fokus kembali dikerjakan sesudahnya (lihat bagian setelah ini).
 6. **Urut per kolom** (satu-satunya butir yang meminta keputusan pemilik; dijawab: kolom No. Servis,
    Pelanggan, Status, Biaya; kendali = judul kolom jadi tombol, dropdown tetap dan sinkron).
    - `ServiceSort` jadi nilai datar: `newest`/`oldest` + `customer|status|cost` × `Asc|Desc`. Satu nilai
@@ -5224,10 +5225,64 @@ di landing) tetap dinilai manual.
 > dulu, baru jalankan audit (`audit-zoom.mjs` juga menulis laporannya ke sana; `audit-tokens` dan
 > `audit-contrast` hanya menulis ke stdout).
 
-**Tindak lanjut yang sengaja tidak dikerjakan (di luar tujuh butir):** (a) pengelolaan fokus laci
-sidebar; (b) temuan `side-tab` di `FormError`, `Toast`, dan `SettingsPage.module.css` `.tapeRow` (spine
-status riwayat tagihan: perlu keputusan pemilik apakah termasuk spine R-37 atau dibuang).
+**Tindak lanjut di luar tujuh butir** (pengelolaan fokus laci; temuan `side-tab` di `FormError`,
+`Toast`, `.tapeRow`) dikerjakan sesudahnya: bagian berikut.
 
 ![[servis-urut-kolom-1440-dark.png]]
 
 #decision #ui #services #a11y #i18n #sort
+
+
+## Fokus laci dan temuan side-tab: dua tindak lanjut tujuh butir (10 Nov 2026)
+
+Dua hal yang dicatat "sengaja tidak dikerjakan" di akhir bagian sebelumnya, dikerjakan setelah pemilik
+meminta ("perbaiki"). Satu komit per butir.
+
+**1. Fokus laci sidebar.** `inert` menutup laci yang tertutup, tetapi laci yang TERBUKA tak punya
+perangkap fokus dan tak mengembalikan fokus ke tombol menu. `useDrawerFocus` + `lib/focusTrap.ts`
+menutupnya (fokus masuk ke halaman aktif, Tab berputar, Esc, fokus kembali ke tombol; tombol menu
+`aria-expanded`/`aria-controls`; Esc di menu cabang menutup menunya dulu). Rincian, batas, dan angka
+ukur di [[Sidebar - Live Diagnostic Rail#Fokus laci (10 Nov 2026)]].
+
+**2. Tiga temuan detektor `side-tab`, dipilah satu per satu** (spine status vs dekorasi, aturan yang sama
+dengan butir 2 sebelumnya):
+
+| Berkas | Putusan | Alasan |
+|---|---|---|
+| `Form.module.css` `.error` (`FormError`) | **Dibuang** | Bukan spine: tak memetakan status ke tepi kartu. Bingkai `--danger` 1px di empat sisi, LED, dan teks sudah membawa sinyal; tepi kiri 3px hanya menggandakan. Terukur 1px di empat sisi. Temuan hilang tanpa pengecualian. |
+| `Toast.module.css` `.toast` | **Dipertahankan, didaftarkan** | Tonenya (success/error/warning/info) dibawa spine 3px berwarna token, motif yang sama dengan baris Daftar. R-37 mempertahankan spine karena ia membawa status. |
+| `SettingsPage.module.css` `.tapeRow` | **Dipertahankan, didaftarkan** | Pita kuitansi riwayat tagihan: spine 3px token = status tagihan (paid/pending/void), badge teks di kanan tetap ada. |
+
+- Dua yang didaftarkan masuk `.impeccable/config.json` (`ignoreValues`, `side-tab` `*`, per berkas,
+  alasan tertulis). **Detektor hanya menerima `*` untuk `side-tab`**, jadi cakupannya satu berkas: untuk
+  `Toast.module.css` itu berkas kecil; untuk `SettingsPage.module.css` (±2000 baris) temuan lain di
+  berkas itu kelak ikut diam. Saat didaftarkan, `.tapeRow` adalah satu-satunya temuan `side-tab` di sana.
+- **Putusan ini dibuat agent, bukan dikonfirmasi pemilik** (alasannya tertulis begitu di config). Untuk
+  membaliknya: hapus entrinya dari config dan buang spine-nya.
+- `FinancePage.module.css` menggambar pita yang sama lewat `.tapeRow::before` 3px dan tidak ditandai.
+  `.tapeRow` Settings TIDAK dipindah ke `::before` agar lolos: itu hanya mengganti cara menggambar spine
+  yang sama demi detektor, bukan keputusan desain.
+
+![[formerror-1px-1440-dark.png]]
+
+**Temuan `side-tab` lain yang belum disentuh** (sisa pindai `src`, perlu dipilah spine vs dekorasi satu
+per satu): `Modal.module.css` `.modal::before` (strip atas), `GlossaryPage.module.css:140`,
+`LegalLayout.module.css:252`, `printReport.ts:105` (HTML cetak), `StatusModal.module.css`
+`.expressRow::before`, `SuppliersPage.module.css` `.docket::before`, `TasksPage.module.css`
+`.taskItem::before`. `servicesTableWidth.test.ts:199` juga ditandai, tetapi itu regex di dalam tes
+(positif palsu).
+
+**Verifikasi:** build dan lint bersih; tes 797/70 berkas → **819 / 72 berkas** (`focusTrap.test.ts` 7,
+`useDrawerFocus.test.tsx` 12, `sidebarInert.test.ts` +3). Lint sempat memberi satu peringatan
+(`returnRef.current` dibaca di cleanup efek); sekarang dibaca sekali di awal efek. `audit-tokens` LULUS,
+0 pelanggaran. `audit-zoom` pada kerapatan bawaan, `ZOOM=1.25`, dan `DENSITY=padat`: nol luberan
+dokumen, nol overlap, nol tabel meluap, nol pelanggar; teks ter-clip hanya positif palsu yang dikenal.
+`audit-mobile` pada 320/360/375/390/414 dan pita tablet 744–1152: nol luberan dokumen, nol pelanggar,
+nol target sentuh kecil di `/services` dan nol di header/aside/nav. Target kecil yang muncul hanya
+tautan istilah sebaris (`a._term`) dan tautan kecil lain di `/`, `/finance`, `/reports`, halaman yang
+tak disentuh di sini; tak dibandingkan dengan dasar sebelumnya karena laporan lamanya tertimpa.
+Satu-satunya wadah geser di `/services` tetap rail chip status bersama. `audit-contrast`: 0 elemen di
+bawah ambang. Probe Playwright perilaku fokus (744/1024/1025/1440px) di
+[[Sidebar - Live Diagnostic Rail#Fokus laci (10 Nov 2026)]].
+
+#decision #a11y #sidebar #design-system

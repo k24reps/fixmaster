@@ -44,8 +44,9 @@ Satu pelat 44 px (60 px bila nama toko perlu dua baris, mis. di kerapatan Padat 
   `inert` selama lebar laci (`DRAWER_QUERY`, ≤1024 px, sama persis dengan kueri CSS dan
   dikunci `sidebarInert.test.ts`) DAN laci tak terbuka. Terukur: 14 tautan yang dulu
   tetap ada di urutan Tab dan pohon pembaca layar kini 0 yang terjangkau. Di ≥1025 px
-  (termasuk rail diciutkan) sidebar tak pernah `inert`. Belum ada pengelolaan fokus laci
-  (jebakan fokus saat terbuka, fokus kembali ke tombol saat ditutup): tindak lanjut terpisah.
+  (termasuk rail diciutkan) sidebar tak pernah `inert`. Sisi terbukanya (fokus masuk, Tab
+  berputar, Esc, fokus kembali ke tombol menu) diurus `useDrawerFocus`: lihat
+  [[#Fokus laci (10 Nov 2026)]].
 - **Ponsel (≤720 px)** — drawer/hamburger diganti bottom navigation lima slot:
   **Beranda · Servis · Kasir · Inventori · Lainnya** secara default. Empat slot utama
   mengikuti konfigurasi owner; `Lainnya` membuka control deck berisi menu tersisa,
@@ -108,6 +109,41 @@ Hasil ukur DOM (demo kecuali disebut lain):
 
 ![[rail-short-before-dark.png]]
 ![[rail-short-after-dark.png]]
+
+### Fokus laci (10 Nov 2026)
+
+`inert` hanya menutup laci yang TERTUTUP. Sisanya diurus `useDrawerFocus`
+(`src/hooks/useDrawerFocus.ts`), yang hanya aktif saat `isDrawer && mobileOpen` (lebar ≤1024px DAN
+terbuka): rail desktop tak punya perangkap fokus. Dikunci di `sidebarInert.test.ts` (kabel) dan
+`useDrawerFocus.test.tsx` (perilaku, 12 tes jsdom).
+
+- **Terbuka:** fokus masuk ke tautan halaman yang sedang dibuka (`[aria-current="page"]`, bila tak ada,
+  elemen pertama). Tab dan Shift+Tab berputar di dalam laci; fokus yang bocor ke halaman ditarik masuk ke
+  ujung yang searah. Esc menutup. Putarannya dihitung `trapTarget` (`src/lib/focusTrap.ts`, murni),
+  dan `FOCUSABLE_SELECTOR` kini dipakai bersama `Modal`.
+- **Tertutup:** fokus kembali ke tombol menu (`toggleRef` dari `AppLayout`, bukan `activeElement` saat
+  dibuka: Safari tak memfokus tombol yang diklik). Fokus yang sudah di luar laci tak direbut (layar
+  melebar, laci jadi rail). Bila tombolnya tak bisa difokus (di ≤720px tombolnya disembunyikan) fokus ke
+  `#konten`, bukan hilang ke `<body>`.
+- **Tombol menu** kini `aria-expanded` dan `aria-controls` ke laci; id dari satu `useId` di `AppLayout`
+  untuk Sidebar dan Topbar sekaligus.
+- **Esc di sakelar cabang** menutup menunya dulu lalu memfokus tombol cabang, dan `preventDefault`-nya
+  membuat laci tak ikut menutup pada Esc yang sama; Esc kedua menutup laci. Dulu menu cabang tak
+  menanggapi Esc sama sekali.
+- **Sengaja bukan `role="dialog"`/`aria-modal`:** di ≥1025px elemen yang sama adalah rail navigasi tetap.
+
+Terukur di Playwright (744 dan 1024px, demo): buka via Enter → fokus di "Dashboard" (halaman aktif),
+`aria-expanded` true. Tab 40× dan Shift+Tab 40×: 0 kebocoran, 14 perhentian berbeda (tombol lipat + 12
+kanal + sakelar cabang). Esc, klik overlay, dan memilih tautan → laci tertutup, inert, fokus di tombol
+menu, `aria-expanded` false; memilih tautan benar-benar pindah halaman (judul Dashboard → Inventori).
+Esc #1 di menu cabang menutup menunya dengan laci tetap terbuka, Esc #2 menutup laci. Di 1025 dan 1440px
+Tab masuk DAN keluar dari rail, Esc tak mengubah apa pun, tombol menu tak tampak.
+
+**Belum:** halaman di belakang laci tak `inert` (perangkapnya hanya untuk keyboard; pointer sudah
+tertahan overlay). Memilih tautan mengembalikan fokus ke tombol menu, bukan ke isi halaman baru, sebab
+`AppLayout` memang belum memindahkan fokus saat rute berganti (berlaku juga di rail desktop).
+
+![[servis-fokus-laci-744-dark.png]]
 
 ## Revisi dari feedback (sudah diperbaiki & diverifikasi)
 
