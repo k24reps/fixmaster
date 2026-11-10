@@ -39,7 +39,12 @@ Yang membuat 9 halaman terasa "satu produk" meski beda metafora:
   `--text-secondary`; kas bersih negatif = warn (spine + LED + angka), bukan crit. Merah hanya
   untuk yang memang salah (telat, stok di bawah minimum, kas kurang, batal, rugi break-even).
   Detail: [[Decisions & Bug Fixes]] → Tahap 4.
-- **Spine** tepi berwarna pada kartu/baris
+- **Spine** tepi berwarna pada kartu/baris, **hanya bila warnanya BERUBAH menurut status atau
+  kategori** (baris Daftar Servis, strip tiket di pemilih sparepart, docket PO, tugas, Toast, pita
+  tagihan). Tepi 3px satu warna yang tak memetakan apa pun adalah hiasan, dan dibuang: sinyalnya
+  dibawa bingkai 1px, LED, dan teks (`FormError`, `.costNotice`, Modal, kartu Glosarium, callout
+  legal, vonis cetak, baris "Servis ditunggu").
+  Aturan pilah dan daftarnya di [[Decisions & Bug Fixes#Tujuh temuan side-tab sisa, dipilah (10 Nov 2026)]].
 - **Divider titik-titik** (dotted/perforasi)
 - **Tick-gauge** untuk meter & proporsi
 - **Fitur terkunci** (plan-gated): channel redup + badge **LED brand + "PRO" mono** — **bukan ikon gembok** generik. Lihat [[Sidebar - Live Diagnostic Rail]].
@@ -319,7 +324,7 @@ dinamai antislop:
 
 | Motif | Keputusan | Alasan |
 |---|---|---|
-| Spine tepi kartu/baris | Pertahankan | Membawa warna status servis |
+| Spine tepi kartu/baris | Pertahankan bila memetakan status/kategori | Membawa warna status servis; yang satu warna tetap dibuang (10 Nov 2026) |
 | Grid blueprint `body::before` | Pertahankan | Satu-satunya kedalaman ambient (meja kerja) |
 | Label mono huruf besar | Pertahankan, kurangi di landing | Readout alat di aplikasi; di landing membuat tiap bagian terdengar sama |
 | Badge kapsul status | Pertahankan, tanpa glow | Labelnya fungsional |
