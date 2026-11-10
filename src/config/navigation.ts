@@ -27,6 +27,7 @@ export type NavGroup = 'ops' | 'office' | 'system';
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.dashboard', icon: 'fa-chart-pie', group: 'ops' },
   { to: '/services', labelKey: 'nav.services', icon: 'fa-screwdriver-wrench', feature: 'services', group: 'ops' },
+  { to: '/calculator', labelKey: 'nav.calculator', icon: 'fa-calculator', feature: 'services', group: 'ops' },
   { to: '/pos', labelKey: 'nav.pos', icon: 'fa-cash-register', feature: 'pos', group: 'ops' },
   { to: '/customers', labelKey: 'nav.customers', icon: 'fa-users', feature: 'customers', group: 'ops' },
   { to: '/inventory', labelKey: 'nav.inventory', icon: 'fa-boxes-stacked', feature: 'inventory', group: 'ops' },

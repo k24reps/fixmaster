@@ -17,6 +17,9 @@ const ServicesPage = lazy(() =>
 const ServiceDetailPage = lazy(() =>
   import('@/features/services/ServiceDetailPage').then((m) => ({ default: m.ServiceDetailPage })),
 );
+const CalculatorPage = lazy(() =>
+  import('@/features/calculator/CalculatorPage').then((m) => ({ default: m.CalculatorPage })),
+);
 const CustomersPage = lazy(() =>
   import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
 );
@@ -56,6 +59,7 @@ export const appChildRoutes: RouteObject[] = [
   { index: true, element: <DashboardPage /> },
   { path: 'services', element: <ServicesPage /> },
   { path: 'services/:id', element: <ServiceDetailPage /> },
+  { path: 'calculator', element: <CalculatorPage /> },
   { path: 'pos', element: <PosPage /> },
   { path: 'customers', element: <CustomersPage /> },
   { path: 'inventory', element: <InventoryPage /> },

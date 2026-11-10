@@ -11,6 +11,7 @@
     { "source": "/demo", "destination": "/index.html" },
     { "source": "/services", "destination": "/index.html" },
     { "source": "/services/:id", "destination": "/index.html" },
+    { "source": "/calculator", "destination": "/index.html" },
     { "source": "/pos", "destination": "/index.html" },
     { "source": "/customers", "destination": "/index.html" },
     { "source": "/inventory", "destination": "/index.html" },

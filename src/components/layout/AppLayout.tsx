@@ -64,6 +64,7 @@ function useBackupReminder() {
 const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {
   '/': 'subtitle.dashboard',
   '/services': 'subtitle.services',
+  '/calculator': 'subtitle.calculator',
   '/pos': 'subtitle.pos',
   '/customers': 'subtitle.customers',
   '/inventory': 'subtitle.inventory',

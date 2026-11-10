@@ -17,6 +17,7 @@ const spaRoutes = [
   '/demo',
   '/services',
   '/services/:id',
+  '/calculator',
   '/pos',
   '/customers',
   '/inventory',
