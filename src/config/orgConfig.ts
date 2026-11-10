@@ -1,7 +1,8 @@
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
-import type { ID, MonthlyTarget, OrgSettings, OutletRent } from '@/data/types';
+import type { ID, MonthlyTarget, OrgSettings, OutletRent, QuoteRates } from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
+import { sanitizeQuoteRates } from '@/lib/business/quote';
 import { resolveServiceColumns, type ServiceColumnId } from '@/lib/business/serviceColumns';
 
 /**
@@ -298,6 +299,18 @@ export function getTarget(): MonthlyTarget {
   } catch {
     return NO_TARGET;
   }
+}
+
+/**
+ * Tarif Kalkulator Biaya. Hanya di baris organisasi, tanpa salinan
+ * localStorage: tarif adalah standar harga toko, jadi dua perangkat yang
+ * melihat dua tarif berbeda justru menggagalkan tujuannya.
+ */
+export function getQuoteRates(): QuoteRates {
+  return sanitizeQuoteRates(settings().quoteRates);
+}
+export async function setQuoteRates(rates: QuoteRates): Promise<void> {
+  await patchSettings({ quoteRates: sanitizeQuoteRates(rates) });
 }
 
 /** Sewa per cabang (bulanan/tahunan) untuk overhead Laporan. */

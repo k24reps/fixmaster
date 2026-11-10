@@ -114,6 +114,63 @@ export interface OrgSettings {
    * terlindungi tanpa harus menyalakannya dulu.
    */
   backupEmail?: boolean;
+  /**
+   * Tarif Kalkulator Biaya (Pengaturan → Tarif). Selalu dibaca lewat
+   * `sanitizeQuoteRates`: isinya jsonb yang ditulis tangan pemilik, jadi
+   * bisa kosong, usang, atau sebagian.
+   */
+  quoteRates?: QuoteRates;
+}
+
+/**
+ * Satu tingkat pekerjaan di Kalkulator Biaya. Tingkatlah yang membawa harga
+ * jasa dan risikonya; staf hanya memilih, tak pernah mengetik harga akhir.
+ */
+export interface QuoteTier {
+  id: string;
+  name: string;
+  /** Pekerjaan apa saja yang masuk tingkat ini, sebagai pegangan staf. */
+  note: string;
+  /** Tarif jasa (Rp). */
+  labor: number;
+  /** Tarif jasa khusus per kategori perangkat (nama kategori → Rp). */
+  laborByCategory: Record<string, number>;
+  /** Cadangan klaim garansi: % dari modal part luar stok + biaya titipan tetap. */
+  warrantyPct: number;
+  highRisk: boolean;
+  /** DP % khusus tingkat berisiko; null = ikut DP default. */
+  riskDpPct: number | null;
+  /** Catatan risiko yang wajib disampaikan ke pelanggan (tingkat berisiko). */
+  riskNote: string;
+}
+
+/**
+ * Biaya titipan yang diteruskan ke pihak lain (ongkir, admin QRIS), bukan
+ * laba toko. Laba yang disamarkan sebagai "biaya" seharusnya masuk tarif jasa.
+ */
+export interface QuoteExtra {
+  id: string;
+  name: string;
+  kind: 'fixed' | 'percent';
+  /** Rp untuk `fixed`, persen untuk `percent`. */
+  amount: number;
+  /** Sudah tercentang saat kalkulator dibuka. */
+  defaultOn: boolean;
+}
+
+export type QuoteRounding = 0 | 1000 | 5000 | 10000;
+
+export interface QuoteRates {
+  tiers: QuoteTier[];
+  /** Markup % atas modal part luar stok. */
+  partMarkupPct: number;
+  /** Laba minimum per pekerjaan dari part luar stok (Rp). */
+  minPartProfit: number;
+  extras: QuoteExtra[];
+  /** Langkah pembulatan ke atas; 0 = tanpa pembulatan. */
+  rounding: QuoteRounding;
+  /** DP default, % dari total. */
+  dpPct: number;
 }
 
 export interface Employee extends BaseEntity {
