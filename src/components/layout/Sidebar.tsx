@@ -8,8 +8,20 @@ import { useSessionStore } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { useNavSignals } from '@/hooks/useNavSignals';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
+
+/**
+ * Di bawah lebar ini sidebar jadi laci yang digeser keluar layar (transform),
+ * bukan disembunyikan: tautannya tetap ada di urutan Tab dan di pohon pembaca
+ * layar. Harus SAMA PERSIS dengan `@media` di Sidebar.module.css; kalau salah
+ * satunya bergeser, laci yang tampil ikut inert atau laci tersembunyi tetap
+ * terjangkau (dikunci sidebarInert.test.ts). Media query, bukan @container:
+ * ini menyangkut perangkat, dan CSS-nya pun media query, jadi keduanya
+ * bergeser (atau tidak) bersama zoom aplikasi.
+ */
+const DRAWER_QUERY = '(max-width: 1024px)';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -32,6 +44,11 @@ export function Sidebar({
   const { data: outlets } = useCollection('outlets');
   const t = useT();
   const signals = useNavSignals();
+  // Laci tertutup di ponsel/tablet: inert (tak bisa difokus, tak dibacakan).
+  // Di desktop (>=1025px) sidebar adalah rail tetap, termasuk saat diciutkan
+  // (collapsed), jadi TIDAK pernah inert.
+  const isDrawer = useMediaQuery(DRAWER_QUERY);
+  const drawerClosed = isDrawer && !mobileOpen;
   // Nama, peran, dan Keluar kini di menu akun Topbar (AccountMenu), bukan kartu
   // di dasar rail: sidebar hanya navigasi dan unit usaha.
 
@@ -87,6 +104,7 @@ export function Sidebar({
         onClick={onCloseMobile}
       />
       <aside
+        inert={drawerClosed}
         className={[
           styles.sidebar,
           collapsed ? styles.collapsed : '',
