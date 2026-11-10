@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { fmtRp, fmtRpCompact, fmtNumber, fmtRpInput, parseRpInput, fmtPercent } from './format';
+import {
+  fmtRp,
+  fmtRpCompact,
+  fmtNumber,
+  fmtRpInput,
+  parseRpInput,
+  fmtPctInput,
+  parsePctInput,
+  fmtPercent,
+} from './format';
 
 describe('fmtRp', () => {
   it('formats positive amounts with thousand separators', () => {
@@ -34,6 +43,22 @@ describe('fmtRpInput / parseRpInput', () => {
     expect(parseRpInput('1.500.000')).toBe(1500000);
     expect(parseRpInput('Rp 250.000')).toBe(250000);
     expect(parseRpInput('')).toBe(0);
+  });
+});
+
+describe('fmtPctInput / parsePctInput', () => {
+  it('keeps one decimal comma and turns a dot into it', () => {
+    expect(fmtPctInput('12.55')).toBe('12,5');
+    expect(fmtPctInput('12,')).toBe('12,');
+    expect(fmtPctInput('1,2,3')).toBe('1,2');
+    expect(fmtPctInput('a10%')).toBe('10');
+    expect(fmtPctInput('0,75', 2)).toBe('0,75');
+    expect(fmtPctInput('7,5', 0)).toBe('7');
+  });
+  it('parses back to a number', () => {
+    expect(parsePctInput('12,5')).toBe(12.5);
+    expect(parsePctInput('12,')).toBe(12);
+    expect(parsePctInput('')).toBe(0);
   });
 });
 

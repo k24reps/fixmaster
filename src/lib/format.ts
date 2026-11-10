@@ -59,6 +59,24 @@ export function parseRpInput(formatted: string): number {
   return digits ? Number(digits) : 0;
 }
 
+/**
+ * Clean a typed percentage: digits and one decimal comma (a dot becomes a
+ * comma), at most `decimals` digits after it. Kept as text while editing so
+ * "12," does not jump back to "12".
+ */
+export function fmtPctInput(raw: string, decimals = 1): string {
+  const s = raw.replace(/\./g, ',').replace(/[^\d,]/g, '');
+  const i = s.indexOf(',');
+  if (i < 0) return s;
+  return decimals > 0 ? s.slice(0, i + 1) + s.slice(i + 1).replace(/,/g, '').slice(0, decimals) : s.slice(0, i);
+}
+
+/** Parse a typed percentage ("12,5") back into a number (12.5). */
+export function parsePctInput(text: string): number {
+  const n = Number(text.replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
 /** Format a percentage, e.g. 0.1234 → "12,3%". */
 export function fmtPercent(ratio: number, decimals = 1): string {
   if (!Number.isFinite(ratio)) return '0%';

@@ -115,63 +115,41 @@ export interface OrgSettings {
    */
   backupEmail?: boolean;
   /**
-   * Tarif Kalkulator Biaya (Pengaturan → Tarif). Selalu dibaca lewat
+   * Template Kalkulator Biaya (Pengaturan → Tarif). Selalu dibaca lewat
    * `sanitizeQuoteRates`: isinya jsonb yang ditulis tangan pemilik, jadi
-   * bisa kosong, usang, atau sebagian.
+   * bisa kosong, usang (bentuk tingkat pekerjaan sebelum 10 Nov 2026), atau
+   * sebagian.
    */
   quoteRates?: QuoteRates;
 }
 
-/**
- * Satu tingkat pekerjaan di Kalkulator Biaya. Tingkatlah yang membawa harga
- * jasa dan risikonya; staf hanya memilih, tak pernah mengetik harga akhir.
- */
-export interface QuoteTier {
+/** Satu template di kalkulator: tombol pintas yang mengisi satu kolom sekali ketuk. */
+export interface QuoteChip {
   id: string;
-  name: string;
-  /** Pekerjaan apa saja yang masuk tingkat ini, sebagai pegangan staf. */
-  note: string;
-  /** Tarif jasa (Rp). */
-  labor: number;
-  /** Tarif jasa khusus per kategori perangkat (nama kategori → Rp). */
-  laborByCategory: Record<string, number>;
-  /** Cadangan klaim garansi: % dari modal part luar stok + biaya titipan tetap. */
-  warrantyPct: number;
-  highRisk: boolean;
-  /** DP % khusus tingkat berisiko; null = ikut DP default. */
-  riskDpPct: number | null;
-  /** Catatan risiko yang wajib disampaikan ke pelanggan (tingkat berisiko). */
-  riskNote: string;
+  /** Nama pendek; boleh kosong, chip lalu tampil sebagai nilainya saja. */
+  label: string;
+  /** Rp, atau persen untuk Cover Garansi. */
+  value: number;
+}
+
+export interface QuoteFieldPreset {
+  chips: QuoteChip[];
+  /** Chip yang langsung terpilih saat kalkulator dibuka; null = kolom mulai dari 0. */
+  defaultId: string | null;
 }
 
 /**
- * Biaya titipan yang diteruskan ke pihak lain (ongkir, admin QRIS), bukan
- * laba toko. Laba yang disamarkan sebagai "biaya" seharusnya masuk tarif jasa.
+ * Empat kolom kalkulator yang punya template. Modal tidak: modal part berbeda
+ * di tiap pekerjaan dan selalu diketik.
  */
-export interface QuoteExtra {
-  id: string;
-  name: string;
-  kind: 'fixed' | 'percent';
-  /** Rp untuk `fixed`, persen untuk `percent`. */
-  amount: number;
-  /** Sudah tercentang saat kalkulator dibuka. */
-  defaultOn: boolean;
-}
-
-export type QuoteRounding = 0 | 1000 | 5000 | 10000;
-
 export interface QuoteRates {
-  tiers: QuoteTier[];
-  /** Markup % atas modal part luar stok. */
-  partMarkupPct: number;
-  /** Laba minimum per pekerjaan dari part luar stok (Rp). */
-  minPartProfit: number;
-  extras: QuoteExtra[];
-  /** Langkah pembulatan ke atas; 0 = tanpa pembulatan. */
-  rounding: QuoteRounding;
-  /** DP default, % dari total. */
-  dpPct: number;
+  ongkir: QuoteFieldPreset;
+  jasa: QuoteFieldPreset;
+  coverPct: QuoteFieldPreset;
+  targetProfit: QuoteFieldPreset;
 }
+
+export type QuoteField = keyof QuoteRates;
 
 export interface Employee extends BaseEntity {
   name: string;

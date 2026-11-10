@@ -91,29 +91,35 @@ servis, tidak mengurangi stok, tidak menulis apa pun selain tarifnya sendiri.
 - **Penyimpanan**: `Organization.settings.quoteRates` (kolom jsonb `0032`, **tanpa migrasi baru**).
   Ditulis owner lewat `setQuoteRates` (`config/orgConfig.ts`) → `setSingleton('organization')`.
   Dibaca semua peran lewat `useSessionStore(s => s.org?.settings?.quoteRates)` lalu
-  `sanitizeQuoteRates` (menerima `unknown`, membuang tingkat tanpa nama, menjepit persen dan angka).
-  Tanpa harga bawaan (`EMPTY_QUOTE_RATES`): tarif jasa keputusan bisnis pemilik.
-- **Tipe** (`data/types.ts`): `QuoteRates { tiers, partMarkupPct, minPartProfit, extras, rounding,
-  dpPct }`; `QuoteTier { id, name, note, labor, laborByCategory, warrantyPct, highRisk, riskDpPct |
-  null, riskNote }`; `QuoteExtra { id, name, kind: 'fixed' | 'percent', amount, defaultOn }`;
-  `QuoteRounding = 0 | 1000 | 5000 | 10000`.
-- **Rumus** `computeQuote` (`lib/business/quote.ts`), diadopsi dari price list toko pemilik:
-  1. jasa = `laborByCategory[kategori]` bila ada, selain itu `labor` dasar tingkat;
-  2. part stok dijual seharga `sellPrice` Inventori (margin sudah di sana);
-  3. part luar stok: cover garansi = (modal + biaya tetap) × `warrantyPct`, laba part =
-     maks(modal × markup %, laba minimum). Keduanya hanya berlaku bila ada part luar stok, lalu
-     dibagi ke baris part itu sebanding modalnya;
-  4. biaya tetap jadi baris sendiri; biaya persen dihitung dari subtotal;
-  5. total dibulatkan **ke atas**, selisihnya masuk baris jasa;
-  6. DP = min(total, bulatkan(maks(total × DP %, modal part luar stok))). DP % memakai
-     `riskDpPct` tingkat berisiko bila diisi, selain itu `dpPct` umum;
-  7. laba = total − modal − cadangan garansi (cadangan disisihkan untuk klaim, bukan laba).
-- `quoteRatesIssues` menahan simpan tab Tarif: nama tingkat kosong atau kembar, tingkat berisiko
-  tinggi tanpa catatan risiko (catatan itulah yang membuat staf menyampaikan risikonya), nama biaya
-  kosong. `sellsPartsAtCost` memicu peringatan bila markup dan laba minimum sama-sama 0.
-- **Teks salin** `features/calculator/quoteText.ts`: judul, total, dan DP saja yang `*tebal*`
-  (WhatsApp), catatan risiko di akhir.
-- Teruji: `quote.test.ts` dan `quoteText.test.ts`. UI di [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)]].
+  `sanitizeQuoteRates` (menerima `unknown`, menjepit angka, memangkas nama ke 24 karakter, paling
+  banyak 12 chip per kolom, menjaga id unik, membuang `defaultId` yang tak menunjuk chip mana pun).
+  Tanpa template bawaan (`emptyQuoteRates()`): angka contoh yang tak sengaja terpakai akan diajukan
+  ke pelanggan sungguhan.
+- **Tipe** (`data/types.ts`, bentuk sejak 10 Nov 2026 sore): `QuoteRates { ongkir, jasa, coverPct,
+  targetProfit }`, masing-masing `QuoteFieldPreset { chips: QuoteChip[], defaultId: string | null }`;
+  `QuoteChip { id, label, value }`. `value` rupiah bulat 0–1e10, kecuali `coverPct` persen satu
+  desimal 0–100 (`quoteValue(field, v)`). `QuoteField = keyof QuoteRates`, urutannya `QUOTE_FIELDS`.
+- **Rumus** `computeQuote` (`lib/business/quote.ts`) = sheet price list pemilik, kolom demi kolom:
+  1. subtotal = modal + ongkir/waste;
+  2. cover garansi = subtotal × cover % (dibulatkan ke rupiah);
+  3. harga rekomendasi = subtotal + cover + jasa pasang + target profit;
+  4. profit estimasi = harga − subtotal (cover ikut dihitung profit, seperti di sheet);
+  5. markup = profit ÷ subtotal, `null` bila subtotal 0 (jasa tanpa part dan ongkir).
+  Hasilnya ikut membawa masukan yang sudah dibersihkan (`coverPct`, `jasa`, `targetProfit`), supaya
+  baris struk selalu berjumlah `price` walau masukan dijepit.
+- **Modal tidak punya template**: harga part selalu diketik.
+- **Bentuk lama** (tingkat pekerjaan, biaya tambahan, pembulatan, DP; 10 Nov 2026 pagi) dipetakan
+  `fromLegacy` bila tak ada satu pun kunci baru dan `tiers` berupa array: jasa tiap tingkat → chip
+  Jasa Pasang, `warrantyPct` yang berbeda-beda → chip Cover Garansi, biaya tambahan nominal → chip
+  Ongkir/Waste, `minPartProfit` > 0 → chip Target Profit. Tanpa default. Pembulatan, DP, biaya
+  persen, tarif per kategori, dan tanda risiko tinggi dibuang karena tak punya kolom di sheet.
+- `quoteRatesIssues` menahan simpan tab Tarif bila satu kolom punya dua chip bernama sama (tanpa
+  beda huruf besar), atau dua chip tanpa nama bernilai sama. Kotak nilai yang kosong ditahan di
+  draf ("Ketik 0 bila memang nol").
+- `quoteDefaults(rates)` memberi nilai awal tiap kolom: chip default bila ada, selain itu 0.
+- Teruji: `quote.test.ts` (termasuk angka persis sheet: 1.081.000 / 371.000 / 52,3%) dan
+  `fmtPctInput`/`parsePctInput` di `format.test.ts`. UI di
+  [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)]].
 
 ### Absensi geofence (Fase 0E)
 `attendance.ts` berisi `distanceMeters()` (haversine), `hasGeofence()`, dan `checkWithinGeofence()` — validasi posisi clock-in terhadap koordinat outlet. Entity `Outlet` punya field **opsional** `lat`/`lng`/`geofenceRadiusM`; bila tak diisi = tanpa geofence (clock-in di mana saja, perilaku lama). Anti-"absen nakal" pakai **GPS geofence saja** (selfie sengaja ditolak — lihat [[Decisions & Bug Fixes]]). Logika klien ini **dicerminkan** di RPC `clock_in` (migration `0004_outlet_geofence.sql`) yang jadi batas keamanan sebenarnya (server-side).

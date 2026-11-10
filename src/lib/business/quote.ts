@@ -1,357 +1,179 @@
-import type { QuoteExtra, QuoteRates, QuoteRounding, QuoteTier } from '@/data/types';
+import type { QuoteChip, QuoteField, QuoteFieldPreset, QuoteRates } from '@/data/types';
 
 /**
- * Kalkulator Biaya: harga yang DIAJUKAN ke pelanggan, dihitung dari tarif yang
- * diatur pemilik (Pengaturan → Tarif). Tujuannya standarisasi: dua staf yang
- * menaksir pekerjaan yang sama harus sampai ke angka yang sama.
+ * Kalkulator Biaya: harga yang DIAJUKAN ke pelanggan. Rumusnya persis sheet
+ * price list Nuara, supaya angka di aplikasi dan di sheet tidak pernah beda:
  *
- * Rumus untuk part luar stok diambil dari price list Nuara:
- *   harga = (modal + ongkir) + cover garansi + jasa + target laba
- * dengan dua tambahan: target laba adalah batas BAWAH (markup % boleh lebih
- * besar), dan cover garansi dicatat terpisah dari laba karena uang itu
- * disisihkan untuk klaim, bukan diambil.
+ *   subtotal  = modal + ongkir/waste
+ *   cover     = cover garansi % × subtotal
+ *   harga     = subtotal + cover + jasa pasang + target profit
+ *   profit    = harga − subtotal
+ *   markup    = profit ÷ subtotal
+ *
+ * Cover garansi ikut dihitung sebagai profit, seperti di sheet: uang itu milik
+ * toko selama tidak ada klaim.
  */
 
-export const QUOTE_ROUNDING_STEPS: readonly QuoteRounding[] = [0, 1000, 5000, 10000];
+export const QUOTE_FIELDS: readonly QuoteField[] = ['ongkir', 'jasa', 'coverPct', 'targetProfit'];
 
 export const QUOTE_LIMITS = {
-  tiers: 30,
-  extras: 20,
-  name: 60,
-  note: 160,
-  riskNote: 280,
+  chips: 12,
+  label: 24,
 } as const;
 
+const emptyPreset = (): QuoteFieldPreset => ({ chips: [], defaultId: null });
+
 /**
- * Tanpa harga bawaan: tarif jasa adalah keputusan bisnis pemilik, dan angka
+ * Tanpa angka bawaan: template adalah keputusan bisnis pemilik, dan angka
  * contoh yang tak sengaja dipakai akan diajukan ke pelanggan sungguhan.
  */
-export const EMPTY_QUOTE_RATES: QuoteRates = {
-  tiers: [],
-  partMarkupPct: 0,
-  minPartProfit: 0,
-  extras: [],
-  rounding: 1000,
-  dpPct: 50,
-};
+export function emptyQuoteRates(): QuoteRates {
+  return { ongkir: emptyPreset(), jasa: emptyPreset(), coverPct: emptyPreset(), targetProfit: emptyPreset() };
+}
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-const rupiah = (v: unknown, fallback = 0): number =>
-  finite(v) ? Math.min(1e10, Math.max(0, Math.round(v))) : fallback;
+const rupiah = (v: unknown): number => (finite(v) ? Math.min(1e10, Math.max(0, Math.round(v))) : 0);
 
-// Dua desimal cukup untuk biaya admin seperti 0,7%.
-const percent = (v: unknown, max: number, fallback = 0): number =>
-  finite(v) ? Math.round(Math.min(max, Math.max(0, v)) * 100) / 100 : fallback;
+// Satu desimal, seperti sheet (10,0%).
+const percent = (v: unknown): number => (finite(v) ? Math.round(Math.min(100, Math.max(0, v)) * 10) / 10 : 0);
 
-const text = (v: unknown, max: number): string =>
-  typeof v === 'string' ? v.trim().slice(0, max) : '';
+/** Pembersih nilai sesuai kolomnya: persen untuk cover, rupiah untuk sisanya. */
+export const quoteValue = (field: QuoteField, v: unknown): number =>
+  field === 'coverPct' ? percent(v) : rupiah(v);
 
-function uniqueId(raw: unknown, prefix: string, index: number, taken: Set<string>): string {
-  const id = typeof raw === 'string' && raw.trim() ? raw.trim() : `${prefix}-${index + 1}`;
-  const out = taken.has(id) ? `${prefix}-${index + 1}-${taken.size}` : id;
-  taken.add(out);
-  return out;
-}
+const text = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-function sanitizeTier(raw: Record<string, unknown>, index: number, taken: Set<string>): QuoteTier {
-  const byCategory: Record<string, number> = {};
-  if (isRecord(raw.laborByCategory)) {
-    for (const [category, value] of Object.entries(raw.laborByCategory)) {
-      if (category.trim() && finite(value) && value >= 0) byCategory[category.trim()] = rupiah(value);
-    }
-  }
-  const highRisk = raw.highRisk === true;
-  return {
-    id: uniqueId(raw.id, 'tier', index, taken),
-    name: text(raw.name, QUOTE_LIMITS.name),
-    note: text(raw.note, QUOTE_LIMITS.note),
-    labor: rupiah(raw.labor),
-    laborByCategory: byCategory,
-    warrantyPct: percent(raw.warrantyPct, 100),
-    highRisk,
-    riskDpPct: finite(raw.riskDpPct) ? percent(raw.riskDpPct, 100) : null,
-    riskNote: text(raw.riskNote, QUOTE_LIMITS.riskNote),
-  };
-}
-
-function sanitizeExtra(raw: Record<string, unknown>, index: number, taken: Set<string>): QuoteExtra {
-  const kind = raw.kind === 'percent' ? 'percent' : 'fixed';
-  return {
-    id: uniqueId(raw.id, 'extra', index, taken),
-    name: text(raw.name, QUOTE_LIMITS.name),
-    kind,
-    amount: kind === 'percent' ? percent(raw.amount, 100) : rupiah(raw.amount),
-    defaultOn: raw.defaultOn === true,
-  };
+function sanitizePreset(field: QuoteField, raw: unknown): QuoteFieldPreset {
+  if (!isRecord(raw)) return emptyPreset();
+  const taken = new Set<string>();
+  const chips = (Array.isArray(raw.chips) ? raw.chips : [])
+    .filter(isRecord)
+    .slice(0, QUOTE_LIMITS.chips)
+    .map<QuoteChip>((c, i) => {
+      const rawId = typeof c.id === 'string' && c.id.trim() ? c.id.trim() : `${field}-${i + 1}`;
+      const id = taken.has(rawId) ? `${field}-${i + 1}-${taken.size}` : rawId;
+      taken.add(id);
+      return { id, label: text(c.label, QUOTE_LIMITS.label), value: quoteValue(field, c.value) };
+    });
+  const defaultId = chips.some((c) => c.id === raw.defaultId) ? (raw.defaultId as string) : null;
+  return { chips, defaultId };
 }
 
 /**
- * Nilai tersimpan (bisa kosong, usang, atau rusak) → tarif yang aman dihitung.
- * Tingkat dan biaya tanpa nama dibuang: form Pengaturan menolak menyimpannya
- * (lihat `quoteRatesIssues`), jadi yang sampai ke sini tanpa nama memang rusak.
+ * Bentuk sebelum 10 Nov 2026 (tingkat pekerjaan + biaya tambahan) dipetakan ke
+ * template, supaya yang sudah diisi pemilik tidak hilang saat Tarif disimpan
+ * ulang: tarif jasa tiap tingkat → template Jasa Pasang, % garansinya →
+ * Cover Garansi, biaya tambahan nominal → Ongkir/Waste, target laba minimum →
+ * Target Profit.
  */
+function fromLegacy(raw: Record<string, unknown>): QuoteRates {
+  const records = (v: unknown) => (Array.isArray(v) ? v.filter(isRecord) : []);
+  const named = (list: Record<string, unknown>[], value: (r: Record<string, unknown>) => unknown) =>
+    list.filter((r) => text(r.name, QUOTE_LIMITS.label)).map((r) => ({ label: r.name, value: value(r) }));
+  const tiers = records(raw.tiers);
+  const covers = [...new Set(tiers.map((t) => percent(t.warrantyPct)))];
+  const withIds = (chips: { label?: unknown; value: unknown }[]) => ({
+    chips: chips.map((c, i) => ({ ...c, id: `legacy-${i + 1}` })),
+  });
+  return sanitizeQuoteRates({
+    ongkir: withIds(named(records(raw.extras).filter((e) => e.kind !== 'percent'), (e) => e.amount)),
+    jasa: withIds(named(tiers, (t) => t.labor)),
+    coverPct: withIds(covers.map((value) => ({ value }))),
+    targetProfit: withIds(rupiah(raw.minPartProfit) > 0 ? [{ value: raw.minPartProfit }] : []),
+  });
+}
+
+/** Nilai tersimpan (bisa kosong, usang, atau rusak) → template yang aman dipakai. */
 export function sanitizeQuoteRates(raw: unknown): QuoteRates {
-  if (!isRecord(raw)) return { ...EMPTY_QUOTE_RATES, tiers: [], extras: [] };
-  const tierIds = new Set<string>();
-  const extraIds = new Set<string>();
-  const tiers = (Array.isArray(raw.tiers) ? raw.tiers : [])
-    .filter(isRecord)
-    .map((t, i) => sanitizeTier(t, i, tierIds))
-    .filter((t) => t.name)
-    .slice(0, QUOTE_LIMITS.tiers);
-  const extras = (Array.isArray(raw.extras) ? raw.extras : [])
-    .filter(isRecord)
-    .map((e, i) => sanitizeExtra(e, i, extraIds))
-    .filter((e) => e.name)
-    .slice(0, QUOTE_LIMITS.extras);
-  const rounding = QUOTE_ROUNDING_STEPS.includes(raw.rounding as QuoteRounding)
-    ? (raw.rounding as QuoteRounding)
-    : EMPTY_QUOTE_RATES.rounding;
+  if (!isRecord(raw)) return emptyQuoteRates();
+  if (!QUOTE_FIELDS.some((f) => f in raw) && Array.isArray(raw.tiers)) return fromLegacy(raw);
   return {
-    tiers,
-    partMarkupPct: percent(raw.partMarkupPct, 1000),
-    minPartProfit: rupiah(raw.minPartProfit),
-    extras,
-    rounding,
-    dpPct: percent(raw.dpPct, 100, EMPTY_QUOTE_RATES.dpPct),
+    ongkir: sanitizePreset('ongkir', raw.ongkir),
+    jasa: sanitizePreset('jasa', raw.jasa),
+    coverPct: sanitizePreset('coverPct', raw.coverPct),
+    targetProfit: sanitizePreset('targetProfit', raw.targetProfit),
   };
 }
 
-export type QuoteRatesIssue =
-  | { code: 'tierName'; index: number }
-  | { code: 'tierDuplicate'; index: number }
-  | { code: 'riskNote'; index: number }
-  | { code: 'extraName'; index: number };
+export interface QuoteRatesIssue {
+  field: QuoteField;
+  index: number;
+}
 
 /**
- * Masalah yang membuat form Tarif tak boleh disimpan. Tingkat berisiko tanpa
- * catatan ditolak karena catatan itulah yang membuat staf menyampaikan risikonya
- * ke pelanggan; tanpa itu tandanya hanya mengubah DP.
+ * Template kembar di satu kolom: dua chip bernama sama, atau dua chip tanpa
+ * nama bernilai sama. Staf tak bisa membedakannya di kalkulator.
  */
 export function quoteRatesIssues(rates: QuoteRates): QuoteRatesIssue[] {
   const issues: QuoteRatesIssue[] = [];
-  const seen = new Set<string>();
-  rates.tiers.forEach((tier, index) => {
-    const name = tier.name.trim();
-    if (!name) issues.push({ code: 'tierName', index });
-    else if (seen.has(name.toLowerCase())) issues.push({ code: 'tierDuplicate', index });
-    seen.add(name.toLowerCase());
-    if (tier.highRisk && !tier.riskNote.trim()) issues.push({ code: 'riskNote', index });
-  });
-  rates.extras.forEach((extra, index) => {
-    if (!extra.name.trim()) issues.push({ code: 'extraName', index });
-  });
+  for (const field of QUOTE_FIELDS) {
+    const seen = new Set<string>();
+    rates[field].chips.forEach((chip, index) => {
+      const label = chip.label.trim().toLowerCase();
+      const key = label ? `l:${label}` : `v:${chip.value}`;
+      if (seen.has(key)) issues.push({ field, index });
+      seen.add(key);
+    });
+  }
   return issues;
 }
 
-/** Markup 0% dan target 0: part luar stok akan diajukan seharga modalnya. */
-export function sellsPartsAtCost(rates: QuoteRates): boolean {
-  return rates.partMarkupPct === 0 && rates.minPartProfit === 0;
-}
-
-/** Tarif jasa tingkat ini untuk kategori perangkat tertentu. */
-export function laborFor(tier: QuoteTier, category: string): number {
-  const special = tier.laborByCategory[category];
-  return finite(special) ? special : tier.labor;
-}
-
-/** Bulatkan ke atas ke kelipatan `step`; 0 = tanpa pembulatan. */
-export function roundUp(value: number, step: number): number {
-  const v = Math.round(value);
-  return step > 0 ? Math.ceil(v / step) * step : v;
-}
-
-/**
- * Bagi `amount` mengikuti bobot, dibulatkan ke rupiah, sisa pembulatan ke
- * bobot terbesar supaya jumlah bagiannya tetap sama persis dengan `amount`.
- */
-function allocate(amount: number, weights: number[]): number[] {
-  const sum = weights.reduce((a, b) => a + b, 0);
-  if (sum <= 0) return weights.map(() => 0);
-  const shares = weights.map((w) => Math.floor((amount * w) / sum));
-  const rest = amount - shares.reduce((a, b) => a + b, 0);
-  const biggest = weights.indexOf(Math.max(...weights));
-  shares[biggest] += rest;
-  return shares;
-}
-
-export interface QuoteStockPart {
-  itemId: string;
-  name: string;
-  qty: number;
-  sellPrice: number;
-  costPrice: number;
-}
-
-/** Part luar stok: staf hanya mengetik modalnya (per unit). */
-export interface QuoteCustomPart {
-  id: string;
-  name: string;
-  qty: number;
-  cost: number;
+/** Nilai awal tiap kolom: chip default bila ada, selain itu 0. */
+export function quoteDefaults(rates: QuoteRates): Record<QuoteField, { chipId: string | null; value: number }> {
+  const pick = (field: QuoteField) => {
+    const { chips, defaultId } = rates[field];
+    const chip = chips.find((c) => c.id === defaultId);
+    return chip ? { chipId: chip.id, value: chip.value } : { chipId: null, value: 0 };
+  };
+  return { ongkir: pick('ongkir'), jasa: pick('jasa'), coverPct: pick('coverPct'), targetProfit: pick('targetProfit') };
 }
 
 export interface QuoteInput {
-  rates: QuoteRates;
-  tierId: string;
-  category: string;
-  stockParts: QuoteStockPart[];
-  customParts: QuoteCustomPart[];
-  /** Biaya tambahan yang dicentang. */
-  extraIds: string[];
+  modal: number;
+  ongkir: number;
+  jasa: number;
+  /** Persen, mis. 10 untuk 10%. */
+  coverPct: number;
+  targetProfit: number;
 }
 
-export interface QuoteLine {
-  kind: 'stockPart' | 'customPart' | 'labor' | 'extra';
-  ref: string;
-  name: string;
-  qty: number;
-  /** Persen biaya tambahan jenis `percent` (untuk label). */
-  pct?: number;
-  amount: number;
-}
-
+/** Masukan yang sudah dibersihkan ikut dikembalikan supaya baris struk selalu berjumlah `price`. */
 export interface QuoteResult {
-  tier: QuoteTier;
-  /** Rincian untuk pelanggan; jumlahnya selalu sama dengan `total`. */
-  lines: QuoteLine[];
-  /** Sebelum pembulatan. */
-  rawTotal: number;
-  total: number;
-  /** Selisih pembulatan; sudah dimasukkan ke baris jasa. */
-  roundingAdded: number;
-  dpPct: number;
-  dp: number;
-  /** DP dinaikkan supaya menutup modal part luar stok. */
-  dpRaised: boolean;
-  highRisk: boolean;
-  riskNote: string;
-  // Hanya untuk pemilik/admin.
-  /** Modal semua part + biaya titipan. */
-  cost: number;
-  /** Modal part luar stok: batas bawah DP. */
-  customCost: number;
-  warrantyReserve: number;
-  partProfit: number;
-  /** total − modal − cadangan garansi. */
+  /** Modal + ongkir/waste. */
+  subtotal: number;
+  coverPct: number;
+  /** Cover garansi dalam rupiah. */
+  cover: number;
+  jasa: number;
+  targetProfit: number;
+  /** Harga rekomendasi untuk pelanggan. */
+  price: number;
+  /** Harga − subtotal: cover + jasa + target profit. */
   profit: number;
-  /** Laba ÷ modal; null bila modal 0. */
-  profitRatio: number | null;
+  /** Profit ÷ subtotal; null bila subtotal 0 (pekerjaan tanpa part dan ongkir). */
+  markup: number | null;
 }
 
-const qtyOf = (q: number) => (finite(q) && q >= 1 ? Math.floor(q) : 1);
-const money = (v: number) => (finite(v) && v > 0 ? Math.round(v) : 0);
-
-/**
- * Urutan hitung:
- *  1. modal part luar stok + biaya titipan tetap = dasar cover garansi;
- *  2. cover garansi = % tingkat × dasar itu;
- *  3. laba part = yang lebih besar antara markup % × modal part dan target laba;
- *  4. + harga jual part stok + jasa + biaya titipan tetap;
- *  5. biaya titipan persen dihitung dari jumlah itu;
- *  6. total dibulatkan ke atas, selisihnya masuk baris jasa;
- *  7. DP = yang lebih besar antara DP % × total dan modal part luar stok.
- * Cover garansi dan target laba hanya berlaku bila ada part luar stok: part stok
- * sudah membawa marginnya sendiri di harga jual Inventori.
- */
-export function computeQuote(input: QuoteInput): QuoteResult | null {
-  const { rates } = input;
-  const tier = rates.tiers.find((t) => t.id === input.tierId);
-  if (!tier) return null;
-
-  const stock = input.stockParts.map((p) => ({
-    ...p,
-    qty: qtyOf(p.qty),
-    sellPrice: money(p.sellPrice),
-    costPrice: money(p.costPrice),
-  }));
-  const custom = input.customParts.map((p) => ({ ...p, qty: qtyOf(p.qty), cost: money(p.cost) }));
-  const checked = rates.extras.filter((e) => input.extraIds.includes(e.id));
-  const fixed = checked.filter((e) => e.kind === 'fixed');
-  const percentExtras = checked.filter((e) => e.kind === 'percent');
-
-  const customModals = custom.map((p) => p.qty * p.cost);
-  const customCost = customModals.reduce((a, b) => a + b, 0);
-  const fixedTotal = fixed.reduce((a, e) => a + e.amount, 0);
-  const hasCustom = customCost > 0;
-
-  const warrantyReserve = hasCustom
-    ? Math.round(((customCost + fixedTotal) * tier.warrantyPct) / 100)
-    : 0;
-  const partProfit = hasCustom
-    ? Math.max(Math.round((customCost * rates.partMarkupPct) / 100), rates.minPartProfit)
-    : 0;
-  const customShares = allocate(warrantyReserve + partProfit, customModals);
-
-  const labor = laborFor(tier, input.category);
-  const lines: QuoteLine[] = [
-    ...stock.map<QuoteLine>((p) => ({
-      kind: 'stockPart',
-      ref: p.itemId,
-      name: p.name,
-      qty: p.qty,
-      amount: p.qty * p.sellPrice,
-    })),
-    ...custom.map<QuoteLine>((p, i) => ({
-      kind: 'customPart',
-      ref: p.id,
-      name: p.name,
-      qty: p.qty,
-      amount: customModals[i] + customShares[i],
-    })),
-    ...fixed.map<QuoteLine>((e) => ({ kind: 'extra', ref: e.id, name: e.name, qty: 1, amount: e.amount })),
-  ];
-  const subtotal = labor + lines.reduce((a, l) => a + l.amount, 0);
-  const percentLines = percentExtras.map<QuoteLine>((e) => ({
-    kind: 'extra',
-    ref: e.id,
-    name: e.name,
-    qty: 1,
-    pct: e.amount,
-    amount: Math.round((subtotal * e.amount) / 100),
-  }));
-  const percentTotal = percentLines.reduce((a, l) => a + l.amount, 0);
-
-  const rawTotal = subtotal + percentTotal;
-  const total = roundUp(rawTotal, rates.rounding);
-  const roundingAdded = total - rawTotal;
-  const laborLine: QuoteLine = {
-    kind: 'labor',
-    ref: tier.id,
-    name: tier.name,
-    qty: 1,
-    amount: labor + roundingAdded,
-  };
-
-  const dpPct = tier.highRisk && tier.riskDpPct !== null ? tier.riskDpPct : rates.dpPct;
-  const dpByPct = (total * dpPct) / 100;
-  const dpRaised = customCost > dpByPct;
-  const dp = Math.min(total, roundUp(Math.max(dpByPct, customCost), rates.rounding));
-
-  const stockCost = stock.reduce((a, p) => a + p.qty * p.costPrice, 0);
-  const cost = stockCost + customCost + fixedTotal + percentTotal;
-  const profit = total - cost - warrantyReserve;
-
+export function computeQuote(input: QuoteInput): QuoteResult {
+  const subtotal = rupiah(input.modal) + rupiah(input.ongkir);
+  const coverPct = percent(input.coverPct);
+  const cover = Math.round((subtotal * coverPct) / 100);
+  const jasa = rupiah(input.jasa);
+  const targetProfit = rupiah(input.targetProfit);
+  const price = subtotal + cover + jasa + targetProfit;
+  const profit = price - subtotal;
   return {
-    tier,
-    lines: [...lines.filter((l) => l.kind !== 'extra'), laborLine, ...lines.filter((l) => l.kind === 'extra'), ...percentLines],
-    rawTotal,
-    total,
-    roundingAdded,
-    dpPct,
-    dp,
-    dpRaised,
-    highRisk: tier.highRisk,
-    riskNote: tier.riskNote,
-    cost,
-    customCost,
-    warrantyReserve,
-    partProfit,
+    subtotal,
+    coverPct,
+    cover,
+    jasa,
+    targetProfit,
+    price,
     profit,
-    profitRatio: cost > 0 ? profit / cost : null,
+    markup: subtotal > 0 ? profit / subtotal : null,
   };
 }

@@ -5363,4 +5363,63 @@ memuat teks contoh 47–59 karakter yang lebih panjang dari kotaknya (322px); is
 input, bukan luberan tata letak. Di 1440px muat. Bila pemilik sering menulis keterangan panjang dari
 ponsel, kandidatnya `Textarea` dua baris.
 
+> [!note] Diganti di hari yang sama
+> Rumus, tingkat pekerjaan, part stok, biaya tambahan, pembulatan, DP, dan teks salin di entri ini
+> diganti versi sheet di entri berikutnya. Pelajaran probe dan pola fokusnya tetap berlaku.
+
 #decision #bugfix #a11y #calculator #settings
+
+## Kalkulator Biaya ditulis ulang mengikuti sheet price list (10 Nov 2026, sore)
+
+Pemilik mengirim foto sheet price list yang dipakai toko (Modal 680.000, Ongkir/Waste 30.000, Jasa
+Pasang 150.000, Cover Garansi 10%, Target Profit 150.000 → Harga Rekomendasi 1.081.000, Profit
+371.000, Markup 52,3%) dan minta kalkulatornya "seperti ini". Tiga jawaban pemilik menentukan bentuknya:
+**ganti total** (bukan menambah mode kedua), **semua kolom kecuali Modal punya template chip yang
+diatur di Pengaturan**, dan **profit + markup hanya untuk owner dan admin**. Tampilan di
+[[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)]] dan
+[[Signature Pages#Pengaturan — Tarif (10 Nov 2026)]], rumus dan bentuk data di
+[[Data Layer#Kalkulator Biaya: `settings.quoteRates` (10 Nov 2026)]].
+
+**Keputusan**
+- **Rumus persis sheet**, termasuk yang bisa diperdebatkan: cover garansi dihitung sebagai profit
+  (uang itu milik toko selama tidak ada klaim) dan markup dibagi subtotal modal + ongkir, bukan modal
+  saja. Angka di aplikasi dan di sheet tidak boleh beda; tes `quote.test.ts` memegang angka sheet.
+- **Yang hilang**: tingkat pekerjaan, tarif per kategori, tanda risiko tinggi, part dari stok,
+  biaya tambahan, pembulatan, DP, dan "Salin rincian" (`quoteText.ts` dihapus). Tak ada kolomnya di
+  sheet. Kalkulator tetap tidak membuat tiket dan tidak mengurangi stok.
+- **Bentuk lama tidak dibuang diam-diam.** `sanitizeQuoteRates` memetakan tingkat → chip Jasa Pasang,
+  % garansi → chip Cover, biaya nominal → chip Ongkir/Waste, laba minimum → chip Target Profit.
+  Tanpa itu, tarif yang sudah diketik pemilik pagi ini lenyap begitu tab Tarif disimpan.
+- **Chip menyala hanya selama nilainya persis template.** Mengubah angka dengan tangan memadamkan
+  chip, supaya staf tidak mengira harga masih standar padahal sudah disunting. Mengetuk chip yang
+  menyala mengosongkan kolom.
+- **Default per kolom lewat saklar "Otomatis"**, eksklusif per kartu. Saklarnya hijau (`--success`),
+  bukan amber: di tab Tarif amber milik tombol Simpan (One Amber Rule).
+- **Kotak nilai kosong menahan simpan** ("Ketik 0 bila memang nol"): kosong tersimpan sebagai 0
+  tanpa disadari, dan 0 di template akan diajukan ke pelanggan.
+- **Tanpa key remount** di kalkulator: bila template berubah dari perangkat lain saat halaman
+  terbuka, angka yang sedang diketik tidak terhapus; chip yang hilang cukup padam.
+- **Dua masalah yang ketahuan sebelum rilis:** (1) baris struk memakai nilai mentah sementara
+  `computeQuote` menjepitnya, jadi struk bisa tidak berjumlah harga. `QuoteResult` kini membawa
+  `coverPct`, `jasa`, `targetProfit` yang sudah dibersihkan, dan ada tes "baris struk selalu berjumlah
+  harga". (2) Saklar YA lebih sempit dari TIDAK, jadi kotak isian di baris-baris Tarif tidak lurus
+  (±4px di 1440px); `.switchState { min-width: 6ch }`.
+- **DESIGN.md**: komponen "Unit toggle (Rp | %)" pensiun (satu-satunya pemakainya hilang), diganti
+  "Preset keys". Register membaca HARGA REKOMENDASI tanpa baris DP, jadi `scroll-padding` turun dari
+  8.5rem ke 6.5rem (register terukur 90px).
+
+**Verifikasi:** build dan lint bersih; tes **841 / 73 berkas** (−1 berkas `quoteText.test.ts`).
+`impeccable detect` keluar 0 tanpa temuan. Diisi di browser dengan angka sheet: 710.000 / 71.000 /
+1.081.000 / 371.000 / 52,3%; mengetuk chip 5% → 1.045.500. Foto + ukur DOM (390, 768, 1024, 1440 × dua
+tema, kalkulator dan Tarif): nol luberan, nol teks ter-clip, nol target < 40px, nol tumpang tindih
+antar-saudara di baris kolom, wadah chip, dan baris template; kotak nilai tersempit 168px (Tarif 768).
+Sebagai Rizal (karyawan): blok angka pemilik tidak ada di DOM (selektornya terbukti menemukan blok itu
+untuk pemilik). `audit-mobile` ponsel 320–414 × 13 halaman (65 baris) dan pita tablet 744–1152
+(65 baris): nol luberan dokumen dan nol pelanggar; kalkulator nol target kecil dan nol wadah geser.
+Target kecil hanya di `/`, `/reports` (dan `/finance` di tablet), wadah geser identik dengan run
+sebelumnya (servis/pelanggan/stok). `audit-zoom` bawaan, `ZOOM=1.25`, dan `DENSITY=padat`: 143 baris
+masing-masing, nol luberan/overlap/clip, nol pelanggaran lantai 12px. `audit-tokens` LULUS.
+`audit-contrast` BERSIH, 0 di bawah ambang (Kalkulator Biaya 87 elemen × dua tema); dua kasus gradien
+adalah petunjuk dev di landing, di luar pekerjaan ini.
+
+#decision #calculator #settings

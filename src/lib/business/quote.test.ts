@@ -1,294 +1,199 @@
 import { describe, it, expect } from 'vitest';
-import type { QuoteRates, QuoteTier } from '@/data/types';
+import type { QuoteRates } from '@/data/types';
 import {
   computeQuote,
-  laborFor,
+  emptyQuoteRates,
+  quoteDefaults,
   quoteRatesIssues,
-  roundUp,
+  quoteValue,
   sanitizeQuoteRates,
-  sellsPartsAtCost,
-  EMPTY_QUOTE_RATES,
-  type QuoteInput,
+  QUOTE_LIMITS,
 } from './quote';
 
-const tier = (over: Partial<QuoteTier> = {}): QuoteTier => ({
-  id: 't1',
-  name: 'Ganti LCD',
-  note: '',
-  labor: 150_000,
-  laborByCategory: {},
-  warrantyPct: 10,
-  highRisk: false,
-  riskDpPct: null,
-  riskNote: '',
-  ...over,
-});
+describe('computeQuote: rumus sheet price list', () => {
+  // Angka persis dari sheet pemilik.
+  const sheet = computeQuote({ modal: 680_000, ongkir: 30_000, jasa: 150_000, coverPct: 10, targetProfit: 150_000 });
 
-const rates = (over: Partial<QuoteRates> = {}): QuoteRates => ({
-  ...EMPTY_QUOTE_RATES,
-  tiers: [tier()],
-  partMarkupPct: 0,
-  minPartProfit: 150_000,
-  extras: [
-    { id: 'ongkir', name: 'Ongkir part', kind: 'fixed', amount: 30_000, defaultOn: true },
-    { id: 'qris', name: 'Admin QRIS', kind: 'percent', amount: 0.7, defaultOn: false },
-  ],
-  rounding: 0,
-  dpPct: 50,
-  ...over,
-});
-
-const input = (over: Partial<QuoteInput> = {}): QuoteInput => ({
-  rates: rates(),
-  tierId: 't1',
-  category: 'HP / Smartphone',
-  stockParts: [],
-  customParts: [{ id: 'c1', name: 'LCD iPhone 11', qty: 1, cost: 450_000 }],
-  extraIds: ['ongkir'],
-  ...over,
-});
-
-const sum = (r: { lines: { amount: number }[] }) => r.lines.reduce((a, l) => a + l.amount, 0);
-
-describe('computeQuote: contoh price list Nuara', () => {
-  // Sheet: (modal + ongkir) 480.000 + cover 10% 48.000 + jasa 150.000 + target 150.000.
-  it('tanpa pembulatan = 828.000, sama persis dengan sheet', () => {
-    const r = computeQuote(input())!;
-    expect(r.total).toBe(828_000);
-    expect(r.warrantyReserve).toBe(48_000);
-    expect(r.partProfit).toBe(150_000);
-    expect(sum(r)).toBe(r.total);
+  it('subtotal modal + ongkir = 710.000', () => {
+    expect(sheet.subtotal).toBe(710_000);
   });
 
-  it('pembulatan 5.000 → 830.000; selisihnya masuk baris jasa', () => {
-    const r = computeQuote(input({ rates: rates({ rounding: 5000 }) }))!;
-    expect(r.rawTotal).toBe(828_000);
-    expect(r.total).toBe(830_000);
-    expect(r.roundingAdded).toBe(2_000);
-    expect(r.lines.find((l) => l.kind === 'labor')!.amount).toBe(152_000);
-    expect(sum(r)).toBe(830_000);
+  it('cover garansi 10% = 71.000', () => {
+    expect(sheet.cover).toBe(71_000);
   });
 
-  it('cover garansi dan target dilipat ke harga part; ongkir tampil di barisnya sendiri', () => {
-    const r = computeQuote(input())!;
-    expect(r.lines.map((l) => [l.kind, l.amount])).toEqual([
-      ['customPart', 648_000],
-      ['labor', 150_000],
-      ['extra', 30_000],
-    ]);
+  it('harga rekomendasi = 1.081.000', () => {
+    expect(sheet.price).toBe(1_081_000);
   });
 
-  it('laba dipisah dari cadangan garansi', () => {
-    const r = computeQuote(input())!;
-    expect(r.cost).toBe(480_000);
-    expect(r.profit).toBe(828_000 - 480_000 - 48_000);
-    expect(r.profitRatio).toBeCloseTo(300_000 / 480_000);
-  });
-});
-
-describe('computeQuote: laba part = markup % atau target per pekerjaan, mana yang lebih besar', () => {
-  it('markup kecil kalah oleh target', () => {
-    const r = computeQuote(input({ rates: rates({ partMarkupPct: 20 }) }))!;
-    expect(r.partProfit).toBe(150_000); // 20% × 450.000 = 90.000 < 150.000
+  it('profit estimasi = harga − subtotal = 371.000 (cover ikut dihitung)', () => {
+    expect(sheet.profit).toBe(371_000);
+    expect(sheet.profit).toBe(sheet.cover + 150_000 + 150_000);
   });
 
-  it('markup besar mengalahkan target', () => {
-    const r = computeQuote(input({ rates: rates({ partMarkupPct: 50 }) }))!;
-    expect(r.partProfit).toBe(225_000);
+  it('markup = profit ÷ subtotal ≈ 52,3%', () => {
+    expect(sheet.markup).toBeCloseTo(0.5225, 4);
   });
 
-  it('target berlaku SEKALI per pekerjaan, bukan per part', () => {
-    const r = computeQuote(
-      input({
-        customParts: [
-          { id: 'a', name: 'LCD', qty: 1, cost: 300_000 },
-          { id: 'b', name: 'Baterai', qty: 1, cost: 150_000 },
-        ],
-      }),
-    )!;
-    expect(r.partProfit).toBe(150_000);
-    expect(r.total).toBe(828_000);
-    // Cover + laba dibagi menurut modal: 2/3 dan 1/3 dari 198.000.
-    const parts = r.lines.filter((l) => l.kind === 'customPart').map((l) => l.amount);
-    expect(parts).toEqual([300_000 + 132_000, 150_000 + 66_000]);
+  it('cover dibulatkan ke rupiah', () => {
+    const r = computeQuote({ modal: 333_333, ongkir: 0, jasa: 0, coverPct: 10, targetProfit: 0 });
+    expect(r.cover).toBe(33_333);
+    expect(r.price).toBe(366_666);
   });
 
-  it('jumlah unit dihitung', () => {
-    const r = computeQuote(input({ customParts: [{ id: 'a', name: 'Sekrup', qty: 4, cost: 5_000 }], extraIds: [] }))!;
-    expect(r.customCost).toBe(20_000);
+  it('pekerjaan tanpa part dan ongkir: markup null, harga = jasa + target', () => {
+    const r = computeQuote({ modal: 0, ongkir: 0, jasa: 75_000, coverPct: 10, targetProfit: 25_000 });
+    expect(r).toEqual({
+      subtotal: 0,
+      coverPct: 10,
+      cover: 0,
+      jasa: 75_000,
+      targetProfit: 25_000,
+      price: 100_000,
+      profit: 100_000,
+      markup: null,
+    });
   });
 
-  it('tanpa part luar stok: tak ada cover garansi atau target laba', () => {
-    const r = computeQuote(input({ customParts: [], extraIds: [] }))!;
-    expect(r.warrantyReserve).toBe(0);
-    expect(r.partProfit).toBe(0);
-    expect(r.total).toBe(150_000);
+  it('nilai negatif, NaN, dan persen di atas 100 dijinakkan', () => {
+    const r = computeQuote({ modal: -5, ongkir: Number.NaN, jasa: 10_000, coverPct: 250, targetProfit: Infinity });
+    expect(r).toMatchObject({ subtotal: 0, coverPct: 100, cover: 0, targetProfit: 0, price: 10_000, markup: null });
+    const full = computeQuote({ modal: 100_000, ongkir: 0, jasa: 0, coverPct: 250, targetProfit: 0 });
+    expect(full.cover).toBe(100_000);
   });
 
-  it('part stok memakai harga jual Inventori apa adanya; modalnya ikut biaya', () => {
-    const r = computeQuote(
-      input({
-        customParts: [],
-        extraIds: [],
-        stockParts: [{ itemId: 'i1', name: 'Baterai', qty: 2, sellPrice: 200_000, costPrice: 120_000 }],
-      }),
-    )!;
-    expect(r.total).toBe(150_000 + 400_000);
-    expect(r.cost).toBe(240_000);
-    expect(r.profit).toBe(550_000 - 240_000);
+  it('baris struk selalu berjumlah harga', () => {
+    for (const input of [
+      { modal: 680_000, ongkir: 30_000, jasa: 150_000, coverPct: 10, targetProfit: 150_000 },
+      { modal: 123_457, ongkir: 9_999, jasa: 1, coverPct: 12.5, targetProfit: 77_777 },
+    ]) {
+      const r = computeQuote(input);
+      expect(r.subtotal + r.cover + r.jasa + r.targetProfit).toBe(r.price);
+    }
   });
-});
-
-describe('computeQuote: biaya titipan', () => {
-  it('biaya persen dihitung dari subtotal dan masuk biaya, bukan laba', () => {
-    const r = computeQuote(input({ extraIds: ['ongkir', 'qris'] }))!;
-    expect(r.lines.at(-1)).toMatchObject({ kind: 'extra', pct: 0.7, amount: 5_796 }); // 0,7% × 828.000
-    expect(r.total).toBe(833_796);
-    expect(r.cost).toBe(480_000 + 5_796);
-  });
-
-  it('biaya yang tak dicentang tak dihitung', () => {
-    const r = computeQuote(input({ extraIds: [] }))!;
-    expect(r.warrantyReserve).toBe(45_000);
-    expect(r.lines.some((l) => l.kind === 'extra')).toBe(false);
-  });
-});
-
-describe('computeQuote: DP', () => {
-  it('DP % dari total, dibulatkan ke atas', () => {
-    const r = computeQuote(input({ rates: rates({ rounding: 5000, dpPct: 70 }) }))!;
-    expect(r.dp).toBe(585_000); // 70% × 830.000 = 581.000
-    expect(r.dpRaised).toBe(false);
-  });
-
-  it('DP tak pernah di bawah modal part luar stok', () => {
-    const r = computeQuote(input({ rates: rates({ rounding: 5000, dpPct: 30 }) }))!;
-    expect(r.dp).toBe(450_000); // 30% × 830.000 = 249.000 < modal 450.000
-    expect(r.dpRaised).toBe(true);
-  });
-
-  it('DP tak melebihi total', () => {
-    const r = computeQuote(input({ rates: rates({ dpPct: 100, rounding: 10000 }) }))!;
-    expect(r.dp).toBe(r.total);
-  });
-
-  it('tingkat berisiko memakai DP % sendiri dan membawa catatannya', () => {
-    const risky = tier({ highRisk: true, riskDpPct: 80, riskNote: 'Data bisa hilang.' });
-    const r = computeQuote(input({ rates: rates({ tiers: [risky], rounding: 5000 }) }))!;
-    expect(r.highRisk).toBe(true);
-    expect(r.riskNote).toBe('Data bisa hilang.');
-    expect(r.dpPct).toBe(80);
-    expect(r.dp).toBe(665_000); // 80% × 830.000 = 664.000
-  });
-
-  it('DP khusus diabaikan bila tanda risikonya mati', () => {
-    const r = computeQuote(input({ rates: rates({ tiers: [tier({ riskDpPct: 80 })] }) }))!;
-    expect(r.dpPct).toBe(50);
-  });
-});
-
-describe('computeQuote: lain-lain', () => {
-  it('tingkat tak dikenal → null', () => {
-    expect(computeQuote(input({ tierId: 'x' }))).toBeNull();
-  });
-
-  it('angka rusak dari input staf tak merusak hitungan', () => {
-    const r = computeQuote(
-      input({ customParts: [{ id: 'a', name: 'LCD', qty: 0, cost: Number.NaN }], extraIds: [] }),
-    )!;
-    expect(r.customCost).toBe(0);
-    expect(r.total).toBe(150_000);
-  });
-});
-
-describe('laborFor', () => {
-  const t = tier({ labor: 150_000, laborByCategory: { Laptop: 250_000 } });
-  it('memakai tarif kategori bila ada', () => expect(laborFor(t, 'Laptop')).toBe(250_000));
-  it('jatuh ke tarif tingkat', () => expect(laborFor(t, 'Printer')).toBe(150_000));
-});
-
-describe('roundUp', () => {
-  it('ke atas ke kelipatan', () => {
-    expect(roundUp(828_000, 5000)).toBe(830_000);
-    expect(roundUp(830_000, 5000)).toBe(830_000);
-    expect(roundUp(830_001, 10000)).toBe(840_000);
-  });
-  it('0 = tanpa pembulatan', () => expect(roundUp(828_123, 0)).toBe(828_123));
 });
 
 describe('sanitizeQuoteRates', () => {
-  it('kosong/rusak → tarif kosong, tanpa harga bawaan', () => {
-    for (const raw of [undefined, null, 'x', [], 42]) {
-      expect(sanitizeQuoteRates(raw)).toEqual(EMPTY_QUOTE_RATES);
+  it('kosong / rusak → empat kolom tanpa template', () => {
+    for (const raw of [undefined, null, 'x', 42, [], {}]) {
+      expect(sanitizeQuoteRates(raw)).toEqual(emptyQuoteRates());
     }
   });
 
-  it('membersihkan angka, teks, dan pilihan yang tak sah', () => {
+  it('membersihkan nilai, memangkas nama, dan menjaga id unik', () => {
+    const r = sanitizeQuoteRates({
+      jasa: {
+        chips: [
+          { id: 'a', label: '  LCD  ', value: 150_000.4 },
+          { id: 'a', label: 'X'.repeat(40), value: -10 },
+          { label: 'Tanpa id', value: '5000' },
+          'bukan objek',
+        ],
+        defaultId: 'a',
+      },
+      coverPct: { chips: [{ id: 'c', label: '', value: 12.345 }, { id: 'd', value: 180 }] },
+    });
+    expect(r.jasa.chips).toEqual([
+      { id: 'a', label: 'LCD', value: 150_000 },
+      { id: 'jasa-2-1', label: 'X'.repeat(QUOTE_LIMITS.label), value: 0 },
+      { id: 'jasa-3', label: 'Tanpa id', value: 0 },
+    ]);
+    expect(r.jasa.defaultId).toBe('a');
+    expect(r.coverPct.chips.map((c) => c.value)).toEqual([12.3, 100]);
+    expect(r.ongkir).toEqual({ chips: [], defaultId: null });
+  });
+
+  it('default yang tak menunjuk chip mana pun jadi null', () => {
+    const r = sanitizeQuoteRates({ ongkir: { chips: [{ id: 'a', label: 'Lokal', value: 15_000 }], defaultId: 'hilang' } });
+    expect(r.ongkir.defaultId).toBeNull();
+  });
+
+  it(`paling banyak ${QUOTE_LIMITS.chips} template per kolom`, () => {
+    const chips = Array.from({ length: 20 }, (_, i) => ({ id: `c${i}`, label: `T${i}`, value: i * 1000 }));
+    expect(sanitizeQuoteRates({ ongkir: { chips } }).ongkir.chips).toHaveLength(QUOTE_LIMITS.chips);
+  });
+
+  it('idempoten', () => {
+    const once = sanitizeQuoteRates({ jasa: { chips: [{ label: 'LCD', value: 150_000 }], defaultId: 'jasa-1' } });
+    expect(sanitizeQuoteRates(once)).toEqual(once);
+  });
+
+  it('bentuk lama (tingkat pekerjaan) dipetakan ke template', () => {
     const r = sanitizeQuoteRates({
       tiers: [
-        { id: 'a', name: '  Ringan ', labor: 50_000.4, warrantyPct: 250, laborByCategory: { Laptop: 90_000, '': 1, HP: -5 } },
-        { name: '' },
-        'bukan objek',
-        { id: 'a', name: 'Berat', labor: -1, highRisk: true, riskDpPct: 70, riskNote: 'x'.repeat(400) },
+        { id: 't1', name: 'Ringan', labor: 50_000, warrantyPct: 0 },
+        { id: 't2', name: 'Ganti LCD', labor: 150_000, warrantyPct: 10 },
+        { id: 't3', name: 'Mesin', labor: 250_000, warrantyPct: 10 },
       ],
-      extras: [{ name: 'Ongkir', kind: 'aneh', amount: 20_000 }, { name: 'QRIS', kind: 'percent', amount: 0.705 }],
-      rounding: 2500,
-      dpPct: 150,
-      partMarkupPct: -10,
-      minPartProfit: '100000',
+      extras: [
+        { name: 'Ongkir part', kind: 'fixed', amount: 30_000 },
+        { name: 'Admin QRIS', kind: 'percent', amount: 0.7 },
+      ],
+      partMarkupPct: 0,
+      minPartProfit: 150_000,
+      rounding: 1000,
+      dpPct: 50,
     });
-    expect(r.tiers).toHaveLength(2);
-    expect(r.tiers[0]).toMatchObject({ id: 'a', name: 'Ringan', labor: 50_000, warrantyPct: 100, laborByCategory: { Laptop: 90_000 } });
-    expect(r.tiers[1].id).not.toBe('a'); // id kembar diganti
-    expect(r.tiers[1]).toMatchObject({ labor: 0, highRisk: true, riskDpPct: 70 });
-    expect(r.tiers[1].riskNote).toHaveLength(280);
-    expect(r.extras[0]).toMatchObject({ kind: 'fixed', amount: 20_000, defaultOn: false });
-    expect(r.extras[1]).toMatchObject({ kind: 'percent', amount: 0.71 });
-    expect(r.rounding).toBe(1000);
-    expect(r.dpPct).toBe(100);
-    expect(r.partMarkupPct).toBe(0);
-    expect(r.minPartProfit).toBe(0);
+    expect(r.jasa.chips.map((c) => [c.label, c.value])).toEqual([
+      ['Ringan', 50_000],
+      ['Ganti LCD', 150_000],
+      ['Mesin', 250_000],
+    ]);
+    expect(r.coverPct.chips.map((c) => c.value)).toEqual([0, 10]);
+    expect(r.ongkir.chips.map((c) => [c.label, c.value])).toEqual([['Ongkir part', 30_000]]);
+    expect(r.targetProfit.chips.map((c) => c.value)).toEqual([150_000]);
+    expect(Object.values(r).every((p) => p.defaultId === null)).toBe(true);
   });
 
-  it('DP 0 yang disengaja tetap 0', () => {
-    expect(sanitizeQuoteRates({ dpPct: 0 }).dpPct).toBe(0);
+  it('bentuk baru tidak dianggap bentuk lama walau sisa field lama masih ada', () => {
+    const r = sanitizeQuoteRates({ tiers: [{ name: 'Lama', labor: 1 }], jasa: { chips: [] } });
+    expect(r.jasa.chips).toEqual([]);
   });
+});
 
-  it('tarif yang sudah bersih tidak berubah', () => {
-    const clean = rates({ rounding: 5000 });
-    expect(sanitizeQuoteRates(clean)).toEqual(clean);
+describe('quoteValue', () => {
+  it('cover persen satu desimal 0–100, kolom lain rupiah bulat', () => {
+    expect(quoteValue('coverPct', 10.06)).toBe(10.1);
+    expect(quoteValue('coverPct', 101)).toBe(100);
+    expect(quoteValue('jasa', 1500.6)).toBe(1501);
+    expect(quoteValue('ongkir', -1)).toBe(0);
   });
 });
 
 describe('quoteRatesIssues', () => {
-  it('menolak nama kosong, nama kembar, dan tingkat berisiko tanpa catatan', () => {
-    const issues = quoteRatesIssues(
-      rates({
-        tiers: [
-          tier({ id: 'a', name: 'Ringan' }),
-          tier({ id: 'b', name: ' ringan ' }),
-          tier({ id: 'c', name: '' }),
-          tier({ id: 'd', name: 'Board', highRisk: true, riskNote: '  ' }),
-        ],
-        extras: [{ id: 'e', name: '', kind: 'fixed', amount: 0, defaultOn: false }],
-      }),
-    );
-    expect(issues).toEqual([
-      { code: 'tierDuplicate', index: 1 },
-      { code: 'tierName', index: 2 },
-      { code: 'riskNote', index: 3 },
-      { code: 'extraName', index: 0 },
-    ]);
+  const rates = (jasa: QuoteRates['jasa']['chips']): QuoteRates => ({ ...emptyQuoteRates(), jasa: { chips: jasa, defaultId: null } });
+
+  it('nama kembar (beda huruf besar) ditolak', () => {
+    const issues = quoteRatesIssues(rates([
+      { id: 'a', label: 'LCD', value: 150_000 },
+      { id: 'b', label: 'lcd ', value: 200_000 },
+    ]));
+    expect(issues).toEqual([{ field: 'jasa', index: 1 }]);
   });
 
-  it('tarif yang sah tak punya masalah', () => {
-    expect(quoteRatesIssues(rates())).toEqual([]);
+  it('dua chip tanpa nama bernilai sama ditolak; nilai sama dengan nama beda boleh', () => {
+    expect(quoteRatesIssues(rates([
+      { id: 'a', label: '', value: 50_000 },
+      { id: 'b', label: '', value: 50_000 },
+    ]))).toEqual([{ field: 'jasa', index: 1 }]);
+    expect(quoteRatesIssues(rates([
+      { id: 'a', label: 'LCD', value: 150_000 },
+      { id: 'b', label: 'Mesin', value: 150_000 },
+    ]))).toEqual([]);
   });
 });
 
-describe('sellsPartsAtCost', () => {
-  it('markup 0 dan target 0 → part dijual seharga modal', () => {
-    expect(sellsPartsAtCost(rates({ minPartProfit: 0 }))).toBe(true);
-    expect(sellsPartsAtCost(rates())).toBe(false);
+describe('quoteDefaults', () => {
+  it('chip default mengisi kolomnya; tanpa default kolom mulai dari 0', () => {
+    const r = sanitizeQuoteRates({
+      coverPct: { chips: [{ id: 's', label: 'Standar', value: 10 }], defaultId: 's' },
+      jasa: { chips: [{ id: 'l', label: 'LCD', value: 150_000 }] },
+    });
+    expect(quoteDefaults(r)).toEqual({
+      ongkir: { chipId: null, value: 0 },
+      jasa: { chipId: null, value: 0 },
+      coverPct: { chipId: 's', value: 10 },
+      targetProfit: { chipId: null, value: 0 },
+    });
   });
 });

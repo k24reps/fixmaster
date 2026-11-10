@@ -2,6 +2,14 @@
    Wadah container query = .wrap SettingsPage (container-type: inline-size).
    Ambang baris diturunkan dari isi terlebar yang harus muat sebaris. */
 
+.intro {
+  max-width: 70ch;
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
 .hint {
   max-width: 70ch;
   margin: 0 0 var(--space-4);
@@ -10,12 +18,13 @@
   color: var(--text-muted);
 }
 
-.emptyTiers {
+.empty {
   margin: 0 0 var(--space-4);
   padding: var(--space-4);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+  line-height: 1.5;
   color: var(--text-muted);
   text-align: center;
 }
@@ -33,6 +42,70 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
+}
+
+/* ---------- Baris template ---------- */
+.chipList {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+.chipRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4) 0;
+  border-top: 1px dotted var(--border-strong);
+}
+.chipRow:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Angka uang/persen di kotak isian mono (Mono Numbers Rule). */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empat kolom butuh ±36rem isi kartu (nama 11rem, nilai 8rem, saklar
+   "Otomatis TIDAK" ±10rem, hapus 46px, tiga celah). Di bawahnya: nama + hapus
+   sebaris, lalu nilai + saklar. */
+@container (max-width: 640px) {
+  .chipRow {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .chipRow > :nth-child(1) {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+  .chipRow > .removeCell {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .chipRow > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .chipRow > .autoCell {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+}
+/* Ponsel sempit: kotak nilai di samping saklar tinggal ±5rem, "150.000"
+   terpotong. Saklar turun ke barisnya sendiri. */
+@container (max-width: 420px) {
+  .chipRow > :nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .chipRow > .autoCell {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .chipRow > .autoCell::before {
+    display: none;
+  }
 }
 
 .remove {
@@ -61,133 +134,9 @@
   box-shadow: var(--ring);
 }
 
-/* ---------- Tingkat pekerjaan ---------- */
-.tierList {
-  list-style: none;
-  margin: 0 0 var(--space-4);
-  padding: 0;
-}
-.tier {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5) 0;
-  border-top: 1px dotted var(--border-strong);
-}
-.tier:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.tierHead {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.7fr) auto;
-  gap: var(--space-3);
-  align-items: start;
-}
-
-/* Empat kolom butuh ±560px isi kartu (nama 12rem, jasa 9rem, garansi 7rem,
-   hapus 46px, tiga celah). Di bawahnya nama + hapus sebaris, angka di bawah. */
-@container (max-width: 640px) {
-  .tierHead {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  }
-  .tierHead > :nth-child(1) {
-    grid-column: 1 / 3;
-    grid-row: 1;
-  }
-  .tierHead > :nth-child(2) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  /* Garansi ikut makan kolom hapus: di kolom setengah, label "Cover garansi (%)"
-     patah dua baris dan kotaknya turun dari sejajar jasa. */
-  .tierHead > :nth-child(3) {
-    grid-column: 2 / -1;
-    grid-row: 2;
-  }
-  .tierHead > .removeCell {
-    grid-column: 3;
-    grid-row: 1;
-  }
-}
-
-.override > summary {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  min-height: 44px;
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  cursor: pointer;
-  list-style: none;
-  border-radius: var(--radius-sm);
-}
-.override > summary::-webkit-details-marker {
-  display: none;
-}
-.override > summary:hover {
-  color: var(--text-primary);
-}
-.override > summary:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-}
-.caret {
-  color: var(--text-muted);
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.override[open] .caret {
-  transform: rotate(90deg);
-}
-.overrideCount {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-medium);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-}
-.override[open] > .hint {
-  margin-top: var(--space-1);
-  margin-bottom: var(--space-3);
-}
-.catGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: var(--space-3);
-  padding-bottom: var(--space-2);
-}
-
-.riskRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-.riskHint {
-  flex: 1 1 16rem;
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-.riskFields {
-  display: grid;
-  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-  border-radius: var(--radius-md);
-  background: var(--danger-soft);
-}
-@container (max-width: 560px) {
-  .riskFields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* ---------- Saklar LED ---------- */
+/* Hijau, bukan amber: di halaman ini amber milik tombol Simpan (One Amber
+   Rule), dan "menyala saat dibuka" dibaca sebagai lampu daya, bukan pilihan. */
 .switch {
   display: inline-flex;
   align-items: center;
@@ -222,7 +171,10 @@
   background: var(--text-muted);
   opacity: 0.55;
 }
+/* Selebar "TIDAK" plus jarak hurufnya, supaya saklar YA dan TIDAK sama lebar
+   dan kotak isian di baris-baris template tetap lurus. */
 .switchState {
+  min-width: 6ch;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: var(--fw-bold);
@@ -230,211 +182,16 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
-.switch[data-on='true'][data-tone='danger'] {
-  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
-}
-.switch[data-on='true'][data-tone='danger'] .switchLed {
-  background: var(--danger);
-  box-shadow: 0 0 7px var(--danger);
-  opacity: 1;
-}
-.switch[data-on='true'][data-tone='danger'] .switchState {
-  color: var(--danger-text);
-}
-.switch[data-on='true'][data-tone='success'] {
+.switch[data-on='true'] {
   border-color: color-mix(in srgb, var(--success) 45%, transparent);
 }
-.switch[data-on='true'][data-tone='success'] .switchLed {
+.switch[data-on='true'] .switchLed {
   background: var(--success);
   box-shadow: 0 0 7px var(--success);
   opacity: 1;
 }
-.switch[data-on='true'][data-tone='success'] .switchState {
+.switch[data-on='true'] .switchState {
   color: var(--success-text);
-}
-
-/* ---------- Sparepart luar stok ---------- */
-.pair {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: var(--space-3);
-  max-width: 40rem;
-}
-.warn {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  max-width: 70ch;
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
-  border-radius: var(--radius-md);
-  background: var(--warning-soft);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--warning-text);
-}
-.warnLed {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 0.45em;
-  border-radius: var(--radius-full);
-  background: var(--warning);
-  box-shadow: 0 0 7px var(--warning);
-}
-
-/* ---------- Biaya tambahan ---------- */
-.extraList {
-  list-style: none;
-  margin: 0 0 var(--space-4);
-  padding: 0;
-}
-.extra {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) auto minmax(0, 1fr) auto auto;
-  gap: var(--space-3);
-  align-items: start;
-  padding: var(--space-4) 0;
-  border-top: 1px dotted var(--border-strong);
-}
-.extra:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-/* Lima kolom butuh ±700px isi kartu: saklar "Tercentang otomatis" sendiri
-   ±15rem. Di bawahnya: nama + hapus, lalu jenis + jumlah, lalu saklar. */
-@container (max-width: 820px) {
-  .extra {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .extra > :nth-child(1) {
-    grid-column: 1 / 3;
-    grid-row: 1;
-  }
-  .extra > .removeCell {
-    grid-column: 3;
-    grid-row: 1;
-  }
-  .extra > :nth-child(2) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .extra > :nth-child(3) {
-    grid-column: 2 / -1;
-    grid-row: 2;
-  }
-  .extra > .defaultCell {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-  .extra > .defaultCell::before {
-    display: none;
-  }
-}
-
-/* Saklar satuan "Rp | %": satu bodi setinggi input (border 1 + tombol 44),
-   dipisah sambungan titik, bukan kanal cekung .seg yang 52px. */
-.kindField {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.unit {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(3.25rem, 1fr));
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-md);
-  background: var(--bg-input);
-  overflow: hidden;
-}
-.unitBtn {
-  min-height: var(--control-h);
-  padding: 0 var(--space-3);
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-bold);
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-.unitBtn + .unitBtn {
-  border-left: 1px dotted var(--border-strong);
-}
-.unitBtn:hover:not([aria-pressed='true']) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.unitBtn:focus-visible {
-  outline: none;
-  box-shadow: inset var(--ring);
-}
-.unitBtn[aria-pressed='true'] {
-  background: var(--brand-soft);
-  color: var(--brand-text);
-}
-
-/* ---------- Pembulatan & DP ---------- */
-/* Saklar empat posisi, kanal cekung yang sama dengan pemilih termin Langganan. */
-.seg {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 3px;
-  max-width: 34rem;
-  padding: 3px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-}
-.segBtn {
-  min-height: var(--control-h);
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-.segBtn:hover:not([aria-pressed='true']) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.segBtn:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-}
-.segBtn[aria-pressed='true'] {
-  background: var(--brand-soft);
-  border-color: var(--border-brand);
-  color: var(--brand-text);
-}
-@container (max-width: 460px) {
-  .seg {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.dpField {
-  max-width: 16rem;
-  margin-top: var(--space-4);
 }
 
 /* ---------- Kaki simpan ---------- */
