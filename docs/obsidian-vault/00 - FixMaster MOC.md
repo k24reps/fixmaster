@@ -33,8 +33,7 @@ Tiap halaman punya metafora "alat" sendiri tapi berbagi satu bahasa visual. Liha
 
 | Halaman | Konsep | Catatan |
 |---|---|---|
-| Kasir (POS) | Register Readout | [[Signature Pages#Kasir POS — Register Readout\|↗]] |
-| Inventori | Parts Bin / Component Drawer | [[Signature Pages#Inventori — Parts Bin\|↗]] |
+| Kasir & Stok (dulu Kasir + Inventori) | Register Readout + kartu stok | [[Signature Pages#Kasir & Stok — Register Readout\|↗]] |
 | Dashboard | Diagnostic Panel | [[Signature Pages#Dashboard — Diagnostic Panel\|↗]] |
 | Pelanggan | Contact Registry | [[Signature Pages#Pelanggan — Contact Registry\|↗]] |
 | Supplier | Vendor Ledger / Purchase Docket | [[Signature Pages#Supplier — Vendor Ledger\|↗]] |

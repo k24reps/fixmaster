@@ -70,13 +70,14 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 ## Hasil testing (22 Sep 2026)
 
-- **Unit (offline)**: **616 lolos / 60 berkas**. `npm run test`.
+- **Unit (offline)**: **854 lolos / 74 berkas** (10 Nov 2026). `npm run test`.
 - **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. `npm run test:integration`.
 - **Probe regresi UI**: `audit-zoom` 11 lebar × 12 halaman dan `audit-mobile` 5 lebar ponsel +
   5 lebar tablet × 12 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
   regresi yang sebenarnya. Temuan tersisa semuanya disengaja: teks ter-ellipsis di `/services`,
   carousel scroll-snap di landing, dan rail chip horizontal (`overflow-x:auto`) di
-  `/services`, `/customers`, `/inventory`.
+  `/services`, `/customers`, `/pos`. (12 halaman: Kalkulator masuk 10 Nov 2026, Inventori
+  dilebur ke Kasir & Stok di hari yang sama; `/inventory` kini hanya pengalihan.)
 - **Build + Lint**: bersih.
 
 > [!note] Positif palsu yang berulang di laporan probe
@@ -86,6 +87,9 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 > pembaca layar, memang disembunyikan dengan clip) dan elemen `text.` di dalam SVG (label sumbu
 > grafik — `scrollWidth` pada SVG text tidak berarti apa-apa). Saring keduanya sebelum membaca
 > hasil, kalau tidak tiap laporan terlihat merah total.
+> Di `audit-contrast`, jumlah "ADA TEMUAN" juga menghitung langkah yang gagal ("langkah gagal",
+> "navigasi gagal"). Setelah halaman atau selektor berubah, cek baris itu dulu: pada 10 Nov 2026
+> kesepuluh temuannya ternyata langkah Kasir/Inventori yang usang, bukan warna.
 
 ### Nilai historis — hasil 11 Jun 2026
 

@@ -8,14 +8,13 @@ SaaS multi-tenant untuk manajemen bisnis jasa reparasi **gadget & elektronik** (
 - **Vite + React 19 + TypeScript** — komponen kecil, type-safe.
 - **Vanilla CSS + CSS Modules** — sistem desain premium, tanpa Tailwind.
 - **Repository Pattern** — local-first (IndexedDB) untuk dev, Supabase untuk produksi.
-- **Vitest** — 470 unit/komponen + integration test staging terpisah.
+- **Vitest** — 854 unit/komponen + integration test staging terpisah.
 
 ## Fitur
 - Dashboard KPI, target bulanan, notifikasi, leaderboard teknisi
 - Manajemen Servis (state machine status, audit trail, deduksi stok tertunda, per-peran)
 - Pelanggan (dedup HP, sinkron balik)
-- Inventori (status stok, peringatan dependensi)
-- Kasir POS (multi-wallet, re-validasi stok, diskon)
+- Kasir & Stok: jual dan inventori dalam satu katalog (multi-wallet, re-validasi stok, diskon, tambah stok dari kartu, peringatan dependensi)
 - Keuangan (wallet cascade, reverse-cascade saldo)
 - **Tugas Internal** (template berulang harian/mingguan/bulanan/tanggal) — fitur baru
 - Absensi (check-in/out, shift lintas-tengah-malam)

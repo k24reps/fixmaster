@@ -4339,7 +4339,7 @@ daftar barang dapat ±132px tanpa panel menggulir. Demo (topbar demo lebih tingg
 beberapa pembayaran tetap jatuh ke panel yang menggulir, dengan bibir pudar dan input yang
 tetap terlihat.
 
-Lihat [[Signature Pages#Kasir POS — Register Readout]].
+Lihat [[Signature Pages#Kasir & Stok — Register Readout]].
 
 #decision #ui #layout #pos
 
@@ -4981,7 +4981,7 @@ Bar Proses di 320px (pilih cara bayar, uang kurang, kembalian, uang pas); nomina
 ![[kasir-ponsel-lcd.png]]
 ![[kasir-ponsel-riwayat.png]]
 
-Lihat [[Signature Pages#Kasir POS — Register Readout]].
+Lihat [[Signature Pages#Kasir & Stok — Register Readout]].
 
 #decision #ui #layout #pos #critique #a11y
 
@@ -5423,3 +5423,80 @@ masing-masing, nol luberan/overlap/clip, nol pelanggaran lantai 12px. `audit-tok
 adalah petunjuk dev di landing, di luar pekerjaan ini.
 
 #decision #calculator #settings
+
+## Kasir dan Inventori dilebur jadi satu menu Kasir & Stok (10 Nov 2026, malam)
+
+Pemilik bertanya apakah Kasir dan Inventori bisa jadi satu menu. Usulan pertama (dua tab dalam satu
+halaman) ditolak dengan alasan "datanya sebenarnya sama". Memang begitu: keduanya membaca koleksi
+`inventory` yang sama, dan Kasir hanya memakai stok untuk menolak penjualan. Hasilnya satu katalog
+untuk jual dan kelola stok. Tampilan di [[Signature Pages#Kasir & Stok — Register Readout]].
+
+**Keputusan**
+- **Satu kartu, dua peran.** Badan kartu adalah tombol jual. Owner/admin mendapat baris tuts di
+  bawahnya: Ubah, dan + Stok bila barang menipis atau habis. Tuts itu saudara tombol jual, bukan
+  anaknya. Tombol bersarang tidak sah di HTML dan dibaca pembaca layar sebagai satu tombol.
+- **Hak kelola mengikuti RLS**: `roleAllows(role, 'inventory.write')`, yaitu owner dan admin.
+  Karyawan melihat kartu yang sama tanpa tuts, tanpa Nilai Stok, dan tanpa "+ Barang". Nilai Stok
+  mengikuti `isManager`.
+- **+ Stok tidak menyentuh keranjang.** Barang sering datang saat pelanggan masih menunggu di
+  kasir. Bila keranjang dikosongkan, kasir harus mengetik ulang transaksinya.
+- **Strip ringkasan menjadi saringan** (Semua / Menipis / Habis), bukan baris chip kedua di bawah
+  chip kategori. `PageSummary` mendapat varian `onSelect`/`pressed` (grup tombol `aria-pressed`);
+  pemakai lain tidak berubah.
+- **Barang habis selalu tampil, redup, di urutan akhir.** Dulu Kasir menyembunyikannya kecuali saat
+  dicari. Di menu gabungan, barang habis justru yang paling perlu diisi ulang. Redupnya hanya pada
+  area jual (opacity 0.55, aturan disabled); + Stok tetap terang.
+- **Semua Outlet boleh dijelajah.** Panel "Pilih cabang kasir" yang menggantikan seluruh katalog
+  dihapus. Cabang baru ditanya saat barang pertama masuk keranjang, lalu barang itu langsung
+  ditambahkan bila memang milik cabang yang dipilih. Pemilik yang sekadar mengecek stok semua
+  cabang tidak lagi dipaksa memilih cabang.
+- **Batas 50 kartu diganti "Tampilkan N lagi"** per 60 kartu. Batas lama diam-diam menyembunyikan
+  barang di toko berkatalog besar.
+- **`/inventory` tetap hidup sebagai pengalihan** ke `/pos`, query ikut terbawa. Peringatan
+  Dashboard (`?stock=low|out`) dan markah lama tetap bekerja. `vercel.json` dan
+  `deploymentRoutes.test` sengaja tidak diubah.
+- **Slot nav bawah yang kosong diisi Pelanggan.** Label pendek lewat `NavItem.shortLabelKey`:
+  "Kasir" muat di slot ponsel 73px, "Kasir & Stok" tidak. Tata letak tersimpan yang masih memuat
+  `/inventory` disaring lalu diisi dari default.
+- **Aturan stok di satu modul**, `lib/business/stock.ts` (`stockState`, `stockSummary`,
+  `filterCatalog`). Kartu, badge sidebar, dan Dashboard memakainya. Sebelumnya Kasir dan Inventori
+  menghitung "menipis" masing-masing.
+- **Yang dihapus**: `InventoryPage.tsx` beserta CSS-nya, dan 22 key i18n yang tak terpakai lagi
+  (`pos.outOfStock`, `pos.stockLeft`, 20 key `inventory.*`). `nav.inventory` tetap karena dipakai
+  `SparepartPickerModal`. Screenshot `public/screenshots/menu-inventory-*.png` dibiarkan; Landing V2
+  tidak merujuknya.
+
+Empat commit bertahap: `6bd223c` (katalog dan riwayat keluar dari `PosPage`), `29f137f`
+(`stock.ts`), `06234fb` (kartu jual + stok), `d1dfdc9` (menu, rute, nav, i18n).
+
+![[kasir-stok-dark.png]]
+
+**Pelajaran: jangan mengganti teks berkas sumber dengan `Get-Content`/`Set-Content` PowerShell 5.1.**
+Ia membaca UTF-8 tanpa BOM sebagai ANSI lalu menulis balik dengan BOM, sehingga `→ − — ÷` di
+`dashboard.ts` dan tesnya rusak. Dipulihkan dengan `git checkout --` dan diulang lewat tool Edit.
+Pesan commit yang memuat tanda kutip ganda juga pecah di here-string PowerShell (`error: pathspec`);
+tulis pesannya ke berkas lalu `git commit -F`.
+
+**Pelajaran: angka "ADA TEMUAN" di `audit-contrast` ikut menghitung langkah yang gagal.** Run pertama
+melaporkan 10 temuan, padahal tak satu pun warna. Semuanya langkah yang tak menemukan elemennya:
+menu Inventori yang sudah tidak ada (×2 tema) dan empat langkah Kasir yang masih mengklik kartu lama
+(×2 tema). Baca baris "langkah gagal"/"navigasi gagal" sebelum mencari warna. Langkah Kasir kini
+mengklik area tambah di dalam `<article>` lalu memilih cabang di dialog bila muncul.
+
+**Verifikasi:** build dan lint bersih; tes **854 / 74 berkas** (dari 841/73: `stock.test.ts` baru,
+tambahan di `navigation`, `posLayout`, `dashboard`). Di browser sebagai owner: `/inventory?stock=low`
+mendarat di `/pos?stock=low` dengan Menipis tertekan; sidebar 12 tautan tanpa Inventori, badge 2 di
+Kasir & Stok; peringatan Dashboard menuju `/pos?stock=low`; nav bawah Beranda / Servis / Kasir /
+Pelanggan / Lainnya, tiap slot 73px tanpa luapan; Semua Outlet → tambah → dialog cabang → barang masuk
+keranjang; + Stok tidak mengosongkan keranjang. Sebagai karyawan: nol tuts, tanpa Nilai Stok, tanpa
+"+ Barang". Nol galat konsol. `audit-mobile` ponsel 320–414 × 12 halaman (60 baris) dan pita tablet
+744–1152 (60 baris): nol luberan dokumen, nol pelanggar, `/pos` nol target kecil. Wadah geser baru di
+`/pos` adalah rail chip kategori (`CatalogControls`, tepi memudar): +51px di 320, +11px di 360, +88px
+di 1025. Dulu tak terlihat karena di Semua Outlet katalognya diganti panel pilih cabang. `audit-zoom`
+bawaan, `ZOOM=1.25`, dan `DENSITY=padat`: 132 baris masing-masing, nol luberan/overlap/clip, nol
+pelanggaran lantai 12px; satu-satunya bendera `tbl+16` (`tbl+34` di 1.25) adalah rail chip yang sama
+di kolom katalog 323px pada 1097px. `audit-tokens` LULUS. `audit-contrast` BERSIH, 0 di bawah ambang
+(Kasir & Stok 92 elemen, plus keranjang, kurang bayar, kembalian, lunas × dua tema); dua kasus gradien
+adalah petunjuk dev di landing.
+
+#decision #pos #inventory #navigation

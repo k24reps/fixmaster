@@ -26,7 +26,7 @@ Satu pelat 44 px (60 px bila nama toko perlu dua baris, mis. di kerapatan Padat 
 | Menu | Sinyal | Tone |
 |---|---|---|
 | Servis | unit aktif (amber bila ada menunggu konfirmasi) | info/warn |
-| Inventori | stok habis (merah berkedip) / menipis (amber) | crit/warn |
+| Kasir & Stok | stok habis (merah berkedip) / menipis (amber) — dulu di Inventori, pindah 10 Nov 2026 | crit/warn |
 | Supplier | PO terbuka | info (cyan) |
 | Tugas | telat (merah berkedip) / jatuh tempo hari ini (amber) | crit/warn |
 | Absensi | karyawan sedang bekerja | good (hijau) |
@@ -48,7 +48,9 @@ Satu pelat 44 px (60 px bila nama toko perlu dua baris, mis. di kerapatan Padat 
   berputar, Esc, fokus kembali ke tombol menu) diurus `useDrawerFocus`: lihat
   [[#Fokus laci (10 Nov 2026)]].
 - **Ponsel (≤720 px)** — drawer/hamburger diganti bottom navigation lima slot:
-  **Beranda · Servis · Kasir · Inventori · Lainnya** secara default. Empat slot utama
+  **Beranda · Servis · Kasir · Pelanggan · Lainnya** secara default. Label slot memakai
+  `shortLabelKey` bila ada (Dashboard → Beranda, Kasir & Stok → Kasir) karena slot ±73 px
+  tak memuat label penuh. Empat slot utama
   mengikuti konfigurasi owner; `Lainnya` membuka control deck berisi menu tersisa,
   selector cabang, unit usaha, dan operator/keluar. Bar memakai safe-area dan
   diagnostic channel aktif (spine + glow + sinyal angka), bukan pola app generik.
@@ -86,7 +88,7 @@ Critique layout menemukan bahwa di laptop pendek, halaman yang sedang dibuka bis
 
   | Grup | Kanal |
   |---|---|
-  | `ops` | Dashboard, Servis, Kalkulator Biaya, Kasir, Pelanggan, Inventori, Supplier |
+  | `ops` | Dashboard, Servis, Kalkulator Biaya, Kasir & Stok, Pelanggan, Supplier |
   | `office` | Keuangan, Tugas, Absensi, Laporan |
   | `system` | Log Aktivitas, Pengaturan |
 

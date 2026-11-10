@@ -208,7 +208,35 @@ Dua route publik standalone (`/privacy`, `/terms`, di luar `AuthGate`) agar bisa
 
 ---
 
-## Kasir POS — Register Readout
+## Kasir & Stok — Register Readout
+
+**Satu menu untuk jual dan stok (10 Nov 2026).** Kasir dan Inventori membaca koleksi yang sama
+(`inventory`), jadi keduanya dilebur. Menu bernama **Kasir & Stok** (`/pos`; label pendek "Kasir"
+di nav bawah ponsel lewat `shortLabelKey`). `/inventory` dialihkan ke `/pos` dengan query tetap
+ikut, sehingga markah lama dan `?stock=low|out` dari peringatan Dashboard tetap bekerja.
+- **Satu kartu per barang** (`PosCatalog`): nama, cabang (di Semua Outlet), readout mono
+  `LED N · min M`, harga jual. Area tambah adalah `<button>`; tuts kelola duduk di bawahnya
+  sebagai saudara, bukan di dalamnya (tak ada tombol bersarang). Spine kiri 3px menyala amber
+  saat menipis dan merah saat habis; kartu aman tanpa spine.
+- **Tuts kelola hanya untuk owner/admin** (`roleAllows(role, 'inventory.write')`, sama dengan
+  RLS): **Ubah** membuka `InventoryModal`; **+ Stok** muncul pada kartu menipis/habis dan membuka
+  modal yang sama berjudul "Tambah Stok" dengan fokus di kolom stok (isinya terpilih). Keranjang
+  tidak tersentuh. Hapus barang pindah ke kaki modal Ubah, dengan peringatan bila barang masih
+  dipakai servis aktif.
+- **Strip ringkasan = saringan.** `PageSummary` menerima `onSelect`/`pressed`: Semua / Menipis /
+  Habis jadi tombol `aria-pressed` (ketuk lagi = kembali ke Semua), Nilai Stok tetap readout dan
+  hanya untuk manajer. Tombol "+ Barang" di sebelah kolom cari.
+- **Barang habis tetap tampil**, redup (opacity 0.55 hanya pada area tambah, tuts + Stok tetap
+  terang) dan diurutkan ke akhir. Saringan Menipis mengurutkan stok terendah dulu. Batas mati 50
+  diganti "Tampilkan N lagi" per 60 kartu. Aturan keadaan dan urutan ada di
+  `lib/business/stock.ts` (`stockState`, `stockSummary`, `filterCatalog`), dipakai juga badge
+  sidebar dan Dashboard.
+- **Karyawan** melihat kartu yang sama tanpa tuts, tanpa Nilai Stok, tanpa "+ Barang".
+- **Semua Outlet boleh dijelajah.** Panel "Pilih cabang kasir" yang menggantikan katalog dihapus.
+  Cabang baru ditanya saat barang pertama masuk keranjang; barang itu langsung ditambahkan
+  setelah cabangnya dipilih (bila memang milik cabang itu).
+
+![[kasir-stok-dark.png]]
 
 - **Bayar via & kembalian tunai (0095, 28 Sep 2026).** Pad tender berlabel **Bayar via** (bukan "wallet"/"baris") dan hanya menawarkan wallet bersama + wallet cabang aktif. Kembalian selalu dipotong dari pembayaran **tunai** (`changeRowIndex`), berapa pun urutan ketukannya — aturan tertulis "Kembalian selalu diambil dari Tunai (uang tunai)."; chip nominal cepat mengisi baris tunai. Tanpa wallet bertanda tunai: perilaku lama (baris terakhir). LCD menulis "{n} jenis barang".
 
@@ -225,7 +253,8 @@ Sejak 27 Sep dock **disembunyikan selama register terlihat** (IntersectionObserv
 dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
 
 **Critique tahap 2 (27 Sep 2026)** — alur uang dibentuk ulang seperti laci kasir:
-- **Cabang dulu.** Di "Semua Outlet" dengan >1 cabang, kolom katalog diganti panel
+- **Cabang dulu** (diganti 10 Nov 2026: katalog kini boleh dijelajah, cabang ditanya saat barang
+  pertama). Di "Semua Outlet" dengan >1 cabang, kolom katalog diganti panel
   **Pilih cabang kasir** (kanal ber-LED) — memanggil `setActiveOutlet`, sama dengan
   selektor sidebar. Pita LCD memuat **chip cabang** (ketuk → jendela ganti cabang).
   Cabang berganti dari mana pun → keranjang dikosongkan dengan pemberitahuan (stoknya
@@ -241,7 +270,7 @@ dan `#pos-cart` punya `scroll-margin-top` agar LCD tak mendarat di bawah header.
   desktop kini setinggi layar (lihat "Area bayar muat satu layar" di bawah).
 - **Cepat.** Cari mencakup SKU; Enter menambah SKU persis atau satu-satunya hasil
   (`pickOnEnter`, pemindai barcode); "/" memfokuskan cari; fokus otomatis hanya untuk
-  mouse. Barang habis tampil redup "Habis" saat dicari.
+  mouse. Barang habis tampil redup "Habis" saat dicari (sejak 10 Nov selalu tampil, di akhir).
 - **Riwayat (28 Sep):** dikelompokkan per hari (total tanpa yang batal), tiap baris jam ·
   wallet · kasir · pelanggan, tombol kirim ulang WA untuk penjualan berpelanggan; kepala
   menyebut cabang aktif. Keranjang: qty bisa diketik, Kosongkan bisa dikembalikan.
@@ -299,13 +328,18 @@ Detail dan angka ukurnya: [[Decisions & Bug Fixes#Kasir di ponsel: critique 23/4
 
 ![[pos-dark.png]]
 
-## Inventori — Parts Bin
+## Inventori — Parts Bin (dilebur ke Kasir & Stok, 10 Nov 2026)
 
-Tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, dengan **LED status** (cyan aman / amber menipis / merah habis), angka stok mono besar, dan **fuel-gauge** ber-tick relatif terhadap stok minimum.
+> [!note] Halaman ini tidak ada lagi
+> `InventoryPage` dihapus; daftar stok kini katalog [[#Kasir & Stok — Register Readout]].
+> Yang tetap hidup: `InventoryModal` (tambah/ubah/hapus barang dan panel Stok masuk di bawah),
+> dibuka dari tuts Ubah, + Stok, dan "+ Barang". Catatan di bawah adalah riwayat desainnya.
 
-- **Ringkasan stok (7 Nov 2026).** Baris teks "5 item · 2 menipis · Rp …" diganti `PageSummary`: Item, Menipis (LED amber), Habis (LED merah), dan Nilai Stok untuk manajer. Nilai rupiahnya kini mono. Di ponsel tiga hitungan berbagi satu baris dan Nilai Stok turun ke baris sendiri. Sel ini tetap tampil di ponsel karena nilai stok hanya ada di Inventori.
+Dulu tabel jadi **grid laci komponen**. Tiap sparepart = bin berlabel kategori, dengan **LED status** (cyan aman / amber menipis / merah habis), angka stok mono besar, dan **fuel-gauge** ber-tick relatif terhadap stok minimum.
 
-- **Stok masuk: dari mana? (29 Sep 2026).** Menaikkan stok (edit) atau mengisi stok awal (barang baru) memunculkan panel ber-garis-titik yang WAJIB dijawab: **Dibeli sekarang** (harga beli/unit termasuk ongkir + Bayar dari wallet cabang, atau "Sudah dicatat di Keuangan") atau **Koreksi stok** / **Stok yang sudah ada** (tanpa uang keluar, alasan opsional). Pilihan = kartu radio dengan LED brand + spine. Readout: "Stok jadi N · modal rata-rata Rp X · kas −Rp Y". Harga modal dikunci & dihitung otomatis saat membeli. Satu langkah menggantikan dua (koreksi stok + catat Sparepart di Keuangan) — lihat 0096 di [[Data Layer]].
+- **Ringkasan stok (7 Nov 2026).** Baris teks "5 item · 2 menipis · Rp …" diganti `PageSummary`: Item, Menipis (LED amber), Habis (LED merah), dan Nilai Stok untuk manajer. Nilai rupiahnya kini mono. Di ponsel tiga hitungan berbagi satu baris dan Nilai Stok turun ke baris sendiri. Strip ini kini ada di Kasir & Stok sebagai saringan.
+
+- **Stok masuk: dari mana? (29 Sep 2026, masih berlaku di `InventoryModal`).** Menaikkan stok (edit) atau mengisi stok awal (barang baru) memunculkan panel ber-garis-titik yang WAJIB dijawab: **Dibeli sekarang** (harga beli/unit termasuk ongkir + Bayar dari wallet cabang, atau "Sudah dicatat di Keuangan") atau **Koreksi stok** / **Stok yang sudah ada** (tanpa uang keluar, alasan opsional). Pilihan = kartu radio dengan LED brand + spine. Readout: "Stok jadi N · modal rata-rata Rp X · kas −Rp Y". Harga modal dikunci & dihitung otomatis saat membeli. Satu langkah menggantikan dua (koreksi stok + catat Sparepart di Keuangan) — lihat 0096 di [[Data Layer]].
 
 ![[inv-dark.png]]
 
@@ -863,7 +897,9 @@ posisi agar tak menghasilkan duplikat. Preview lima slot selalu memperlihatkan
 Konfigurasi disimpan di `Organization.settings.mobileNavigation` melalui `orgConfig`,
 sehingga sinkron realtime ke seluruh perangkat. Saat konfigurasi owner memuat route
 yang tidak boleh dibuka suatu peran, resolver membuangnya dan mengisi fallback aman.
-Default: **Beranda · Servis · Kasir · Inventori · Lainnya**. Bottom bar hanya tampil
+Default: **Beranda · Servis · Kasir · Pelanggan · Lainnya** (sejak 10 Nov 2026; dulu slot
+keempat Inventori, kini dilebur ke Kasir & Stok — tata letak tersimpan yang masih memuat
+`/inventory` terisi ulang dari default). Bottom bar hanya tampil
 ≤720 px; tablet memakai drawer dan desktop mempertahankan rail. Detail servis sengaja
 menyembunyikan bottom bar karena memiliki action bar kritis sendiri.
 

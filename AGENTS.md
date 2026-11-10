@@ -64,7 +64,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest unit (841 test / 73 berkas, offline)
+npm run test    # vitest unit (854 test / 74 berkas, offline)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
@@ -81,9 +81,9 @@ Dua probe regresi siap pakai (butuh dev server jalan):
 ```bash
 # Keduanya default ke BASE_URL=http://localhost:5183 — SET sesuai port dev server
 # yang benar-benar jalan (vite biasanya 5173, dan bisa bergeser bila port terpakai).
-BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 13 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 12 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 13 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman
 BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # pembesaran aplikasi
 BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kerapatan Padat
 ```
@@ -93,7 +93,7 @@ agar warna sinyal tidak saling mirip (`STATUS_TONE` memetakan 8 status ke 6 nada
 
 ```bash
 node scripts/audit-tokens.mjs                                     # tanpa dev server
-BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan: landing + 13 menu demo x 2 tema
+BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguhan: landing + menu demo x 2 tema
 ```
 
 Gerbang token saja TIDAK cukup: komponen meracik warna lewat `color-mix` dan lapisan

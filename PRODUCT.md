@@ -59,7 +59,7 @@ perlu login ulang.
 
 ## Capabilities and Constraints
 
-**Modul:** Dashboard, Servis, Kasir (POS), Pelanggan, Inventori, Supplier, Keuangan, Tugas Internal, Absensi, Laporan, Log Aktivitas, Pengaturan.
+**Modul:** Dashboard, Servis, Kalkulator Biaya, Kasir & Stok (jual + inventori dalam satu katalog), Pelanggan, Supplier, Keuangan, Tugas Internal, Absensi, Laporan, Log Aktivitas, Pengaturan.
 
 **Model langganan:** uji coba 14 hari → berbayar. Dua tingkat, dibedakan oleh **fitur + kuota**, bukan sekadar batas pemakaian.
 
@@ -99,7 +99,7 @@ nyata untuk naik paket.
 - **Warna selalu `var(--token)`** dari `src/styles/tokens.css`. Hardcode hex dilarang — token yang menjamin benar di dark & light.
 - **Tema:** dark (default) + light. Keduanya kelas satu; tidak ada yang boleh diperlakukan sebagai turunan.
 - **Ikon:** hanya lewat komponen `Icon` (Phosphor). Tidak ada emoji atau glyph sebagai pengganti ikon.
-- **Tiap halaman punya metafora alatnya sendiri** dalam satu bahasa visual — Kasir = Register Readout, Inventori = Parts Bin, Dashboard = Diagnostic Panel, dst. Daftar lengkap: `docs/obsidian-vault/Signature Pages.md`.
+- **Tiap halaman punya metafora alatnya sendiri** dalam satu bahasa visual — Kasir & Stok = Register Readout, Dashboard = Diagnostic Panel, Kalkulator = Register Tape, dst. Daftar lengkap: `docs/obsidian-vault/Signature Pages.md`.
 - Kontak publik: `fixmaster.cs@gmail.com`, WhatsApp `628995318638`. Jejak lokasi di footer: CIMAHI.
 
 ## Evidence on Hand
