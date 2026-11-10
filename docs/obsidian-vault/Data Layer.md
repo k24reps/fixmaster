@@ -82,6 +82,39 @@ Memperluas scoping menjadi **penguncian per-karyawan** + laporan per-cabang akur
 
 Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/repository, jadi 100% unit-testable. Contoh: `isActive()` (servis), `isOverdue()` (tugas), `computeKpis()` (dashboard). Hook UI memanggilnya lalu mem-persist hasil.
 
+### Kalkulator Biaya: `settings.quoteRates` (10 Nov 2026)
+
+Harga yang **diajukan** ke pelanggan, dihitung dari tarif pemilik supaya dua staf yang menaksir
+pekerjaan yang sama sampai ke angka yang sama. Kalkulator **tidak menyentuh tiket**: tidak membuat
+servis, tidak mengurangi stok, tidak menulis apa pun selain tarifnya sendiri.
+
+- **Penyimpanan**: `Organization.settings.quoteRates` (kolom jsonb `0032`, **tanpa migrasi baru**).
+  Ditulis owner lewat `setQuoteRates` (`config/orgConfig.ts`) → `setSingleton('organization')`.
+  Dibaca semua peran lewat `useSessionStore(s => s.org?.settings?.quoteRates)` lalu
+  `sanitizeQuoteRates` (menerima `unknown`, membuang tingkat tanpa nama, menjepit persen dan angka).
+  Tanpa harga bawaan (`EMPTY_QUOTE_RATES`): tarif jasa keputusan bisnis pemilik.
+- **Tipe** (`data/types.ts`): `QuoteRates { tiers, partMarkupPct, minPartProfit, extras, rounding,
+  dpPct }`; `QuoteTier { id, name, note, labor, laborByCategory, warrantyPct, highRisk, riskDpPct |
+  null, riskNote }`; `QuoteExtra { id, name, kind: 'fixed' | 'percent', amount, defaultOn }`;
+  `QuoteRounding = 0 | 1000 | 5000 | 10000`.
+- **Rumus** `computeQuote` (`lib/business/quote.ts`), diadopsi dari price list toko pemilik:
+  1. jasa = `laborByCategory[kategori]` bila ada, selain itu `labor` dasar tingkat;
+  2. part stok dijual seharga `sellPrice` Inventori (margin sudah di sana);
+  3. part luar stok: cover garansi = (modal + biaya tetap) × `warrantyPct`, laba part =
+     maks(modal × markup %, laba minimum). Keduanya hanya berlaku bila ada part luar stok, lalu
+     dibagi ke baris part itu sebanding modalnya;
+  4. biaya tetap jadi baris sendiri; biaya persen dihitung dari subtotal;
+  5. total dibulatkan **ke atas**, selisihnya masuk baris jasa;
+  6. DP = min(total, bulatkan(maks(total × DP %, modal part luar stok))). DP % memakai
+     `riskDpPct` tingkat berisiko bila diisi, selain itu `dpPct` umum;
+  7. laba = total − modal − cadangan garansi (cadangan disisihkan untuk klaim, bukan laba).
+- `quoteRatesIssues` menahan simpan tab Tarif: nama tingkat kosong atau kembar, tingkat berisiko
+  tinggi tanpa catatan risiko (catatan itulah yang membuat staf menyampaikan risikonya), nama biaya
+  kosong. `sellsPartsAtCost` memicu peringatan bila markup dan laba minimum sama-sama 0.
+- **Teks salin** `features/calculator/quoteText.ts`: judul, total, dan DP saja yang `*tebal*`
+  (WhatsApp), catatan risiko di akhir.
+- Teruji: `quote.test.ts` dan `quoteText.test.ts`. UI di [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)]].
+
 ### Absensi geofence (Fase 0E)
 `attendance.ts` berisi `distanceMeters()` (haversine), `hasGeofence()`, dan `checkWithinGeofence()` — validasi posisi clock-in terhadap koordinat outlet. Entity `Outlet` punya field **opsional** `lat`/`lng`/`geofenceRadiusM`; bila tak diisi = tanpa geofence (clock-in di mana saja, perilaku lama). Anti-"absen nakal" pakai **GPS geofence saja** (selfie sengaja ditolak — lihat [[Decisions & Bug Fixes]]). Logika klien ini **dicerminkan** di RPC `clock_in` (migration `0004_outlet_geofence.sql`) yang jadi batas keamanan sebenarnya (server-side).
 

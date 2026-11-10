@@ -758,9 +758,84 @@ Fitur tambahan (profit per unit — revisi 11 Jun 2026):
   bersaing dengan Ubah Status. Tahap stepper tanpa `min-width: 92px`; di 1025px stepper tidak
   lagi menggulir.
 
+## Kalkulator Biaya — Register Tape (10 Nov 2026)
+
+Route `/calculator`, kanal grup `ops` tepat setelah Servis, terbuka untuk **semua peran** (fitur
+`services`). Gunanya menyeragamkan harga yang diajukan ke pelanggan: staf memilih kategori
+perangkat dan tingkat pekerjaan, menambah part dari stok (cari nama atau SKU, paling banyak 6
+hasil) atau part luar stok (nama, modal per unit, jumlah), mencentang biaya tambahan, lalu
+membacakan TOTAL dan DP. Kalkulator **tidak membuat tiket dan tidak mengurangi stok**. Rumus dan
+penyimpanan tarif: [[Data Layer#Kalkulator Biaya: `settings.quoteRates` (10 Nov 2026)]].
+
+- **Satu instrumen.** Register berisi LCD total (palet readout, scanline, digit mono amber,
+  ukuran huruf menyusut lewat `--lcd-chars` agar selalu sebaris) dan baris DP. Di bawahnya pita
+  kuitansi: baris ke pelanggan dengan sambungan titik, garis total ganda 3px. LCD itu
+  satu-satunya sumur instrumen di layar; kartu isian tetap datar.
+- **Tingkat berisiko tinggi**: tag LED merah di kepala register, catatan risiko `role="note"` di
+  atas pita, DP memakai DP risiko. Bila modal part luar stok melebihi DP %, DP dinaikkan ke modal
+  itu dan pita memberi tahu.
+- **Angka pemilik** (`isManager`: owner dan admin): modal, cover garansi (disisihkan), laba, dan
+  rasio laba terhadap modal, sebagai readout mono redup di bawah pita, tidak pernah di dalam LCD.
+  Karyawan tidak melihatnya (diperiksa sebagai Rizal, PIN demo).
+- **Salin rincian** menyalin teks siap WhatsApp; **Mulai ulang** mengosongkan isian. Part stok
+  yang jumlahnya melebihi stok diberi LED kuning "stok tinggal n".
+- **Tata letak** (`.page` = wadah bernama `calc`): di bawah 49rem satu kolom dan register
+  `position: sticky` di bawah layar (di ≤720px di atas bottom nav), jadi total terlihat selama
+  mengisi. Seluruh pita register adalah tombol "Lihat rincian biaya" yang menggulir ke struk (pola
+  dok keranjang Kasir); panah kecil di samping label TOTAL jadi tandanya. Mulai 49rem dua kolom
+  `minmax(0,1fr) minmax(20rem,24rem)`, panel kanan sticky di bawah topbar, dan tombol lompatnya
+  hilang. Di 1112px sidebar menyusutkan wadah di bawah 49rem, jadi satu kolom memang benar di sana.
+- **Fokus tak tertutup** (WCAG 2.4.11): selama halaman ini terbuka `html` diberi
+  `scroll-padding-bottom` setinggi register + bottom nav, dan `scroll-padding-top` setinggi
+  topbar. Register memakai `z-index: calc(var(--z-sticky) - 1)` supaya saat tergulir ke atas ia
+  lewat di bawah topbar, bukan menimpanya.
+- **Baris part di ≤30rem** (wadah `parts`): nama dan harga di baris 1, stepper dan hapus di baris
+  2. Sebelumnya harga menimpa tombol hapus di 320px. Baris part luar stok disejajarkan dari bawah
+  karena label "Modal per unit (Rp)" patah dua baris.
+- **Tarif belum diisi**: EmptyState; owner mendapat tombol ke `/settings?tab=tarif`.
+
+Penyimpangan dari price list pemilik: ongkir dan biaya tambahan tampil sebagai baris sendiri ke
+pelanggan, sedangkan cover garansi dan laba dilebur ke harga part luar stok.
+
+![[calc-dark-1440.png]]
+![[calc-dark-390-viewport.png]]
+
+---
+
+## Pengaturan — Tarif (10 Nov 2026)
+
+Tab owner-only **Tarif** (`QuoteRatesTab.tsx`) mengisi tarif kalkulator. Empat kartu, satu bar
+simpan yang menempel di bawah layar begitu draf berubah:
+- **Tingkat pekerjaan**: nama, jasa (Rp), cover garansi (%), keterangan. "Tarif per kategori"
+  (`<details>`) membuka grid tarif khusus per kategori perangkat. Saklar LED **Risiko tinggi**
+  membuka panel `--danger-soft` berisi DP risiko (%, kosong = DP umum) dan catatan risiko untuk
+  pelanggan yang **wajib** diisi.
+- **Sparepart luar stok**: markup (%) dan laba minimum per pekerjaan (Rp). Peringatan kuning bila
+  keduanya 0 (part dijual seharga modal).
+- **Biaya tambahan**: nama, saklar satuan **Rp | %**, besaran, saklar LED "Tercentang otomatis".
+  Petunjuknya membatasi isinya ke uang yang diteruskan ke pihak lain (ongkir part, biaya QRIS),
+  karena biaya dihitung sebagai modal. Biaya cek atau admin yang masuk ke toko masuk ke jasa
+  tingkat pekerjaan; kalau tidak, laba di kalkulator terbaca terlalu kecil.
+- **Pembulatan & DP**: saklar empat posisi (Tanpa, Rp 1.000, Rp 5.000, Rp 10.000) dan DP default.
+
+Saklar satuan menggantikan Select "Jenis" yang terpotong jadi "Nominal te…" di ponsel. Ia satu
+bodi setinggi input (border 1 + tombol 44 = 46px) dengan sambungan titik di tengah, bukan kanal
+cekung `.seg` yang 52px. Label aksesibelnya penuh ("Nominal tetap", "Persen dari subtotal"),
+dan mengganti satuan mengosongkan besaran. Label besaran persen berbunyi "% dari subtotal".
+
+Ambang container: kepala tingkat empat kolom, di ≤640px nama + hapus sebaris lalu jasa + garansi
+(garansi ikut memakai kolom hapus supaya labelnya tidak patah). Baris biaya lima kolom, di ≤820px
+nama + hapus, lalu satuan + besaran, lalu saklar. Bar simpan memakai pola fokus yang sama dengan
+kalkulator: `scroll-padding-bottom` di `html` hanya selama bar menempel, dan z-index satu di
+bawah topbar.
+
+![[tarif-dark-390.png]]
+
+---
+
 ## Pengaturan — Operasional
 
-Halaman `/settings` punya delapan tab untuk owner cloud (tab yang tak relevan tetap
+Halaman `/settings` punya sembilan tab untuk owner cloud (tab yang tak relevan tetap
 difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alur kerja:
 - **Layout profil** — dua kolom sampai 960 px agar ruang desktop terpakai, lalu satu
   kolom di mobile. Tab mobile membungkus ke beberapa baris (strip geser lama menyembunyikan tab terakhir di 320px).

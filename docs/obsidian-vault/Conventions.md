@@ -59,7 +59,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (819 test / 72 berkas) |
+| `npm run test` | Vitest (852 test / 74 berkas) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 | `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |
@@ -71,10 +71,10 @@ Dua probe regresi wajib untuk perubahan UI (butuh dev server; keduanya menulis J
 `scripts/shots/`):
 
 ```bash
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 13 halaman
 BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs   # pembesaran (90/110/125/150)
 BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kerapatan Padat
-BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 13 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs
 ```
 

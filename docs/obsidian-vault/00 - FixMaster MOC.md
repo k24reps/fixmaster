@@ -43,6 +43,8 @@ Tiap halaman punya metafora "alat" sendiri tapi berbagi satu bahasa visual. Liha
 | Tugas | Job Board / Work Order | [[Signature Pages#Tugas — Job Board\|↗]] |
 | Absensi | Punch Clock | [[Signature Pages#Absensi — Punch Clock\|↗]] |
 | Detail Servis | Repair Ticket | [[Signature Pages#Detail Servis — Repair Ticket\|↗]] |
+| Kalkulator Biaya | Register Tape | [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)\|↗]] |
+| Pengaturan → Tarif | Tarif kalkulator | [[Signature Pages#Pengaturan — Tarif (10 Nov 2026)\|↗]] |
 
 ## 🧠 Keputusan & Pelajaran
 

@@ -86,7 +86,7 @@ Critique layout menemukan bahwa di laptop pendek, halaman yang sedang dibuka bis
 
   | Grup | Kanal |
   |---|---|
-  | `ops` | Dashboard, Servis, Kasir, Pelanggan, Inventori, Supplier |
+  | `ops` | Dashboard, Servis, Kalkulator Biaya, Kasir, Pelanggan, Inventori, Supplier |
   | `office` | Keuangan, Tugas, Absensi, Laporan |
   | `system` | Log Aktivitas, Pengaturan |
 
@@ -106,6 +106,11 @@ Hasil ukur DOM (demo kecuali disebut lain):
 | App asli 1366×768 (= demo 1366×842) | 42,7 px | muat |
 | App asli 1280×720 (= demo 1280×794) | 40 px | kurang 16 px, digulir dengan pudar |
 | Demo 1366×768 | 40 px | digulir 42 px, kanal aktif tetap terlihat |
+
+**Kanal ke-13, Kalkulator Biaya (10 Nov 2026)**, masuk grup `ops` tepat setelah Servis (fitur
+`services`, semua peran). Diukur ulang di demo pada `/calculator`: 1920×1080 dan 1440×900 48 px,
+1536×864 46,5 px, 1366×842 44,8 px, 1280×794 41,1 px, semuanya muat tanpa gulir. Demo 1366×768
+40 px, luapan 12 px, kanal aktif tetap terlihat.
 
 ![[rail-short-before-dark.png]]
 ![[rail-short-after-dark.png]]

@@ -5286,3 +5286,81 @@ bawah ambang. Probe Playwright perilaku fokus (744/1024/1025/1440px) di
 [[Sidebar - Live Diagnostic Rail#Fokus laci (10 Nov 2026)]].
 
 #decision #a11y #sidebar #design-system
+
+---
+
+## Kalkulator Biaya dan tab Tarif (10 Nov 2026)
+
+Menu baru **Kalkulator Biaya** (`/calculator`, semua peran) dan tab owner-only **Pengaturan → Tarif**.
+Tujuannya standarisasi: dua staf yang menaksir pekerjaan yang sama harus sampai ke angka yang sama, dan
+toko tidak asal menyebut harga. Tampilan di [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)]]
+dan [[Signature Pages#Pengaturan — Tarif (10 Nov 2026)]], rumus dan penyimpanan di
+[[Data Layer#Kalkulator Biaya: `settings.quoteRates` (10 Nov 2026)]]. Enam tahap, satu komit per tahap
+(`1513115`, `9e38a28`, `76ca3ff`, `e2e764f`, `a00c31d`, lalu komit dok ini).
+
+**Keputusan**
+- **Berdiri sendiri.** Kalkulator tidak membuat tiket dan tidak mengurangi stok. Ia hanya menghasilkan
+  angka dan teks rincian yang disalin ke WhatsApp.
+- **Tanpa harga bawaan** (`EMPTY_QUOTE_RATES`): tarif jasa adalah keputusan bisnis pemilik, dan angka
+  contoh yang tak sengaja dipakai akan diajukan ke pelanggan sungguhan. Workspace baru melihat
+  EmptyState sampai pemilik mengisi Tarif. Hanya workspace demo (`seedDemoWorkspace`, dipakai `/demo`
+  publik dan wizard dev) yang membawa contoh tarif.
+- **Biaya tambahan dihitung sebagai modal**, bukan laba: uang yang diteruskan ke pihak lain (ongkir part,
+  biaya QRIS). Biaya cek atau admin yang masuk ke toko taruh di jasa tingkat pekerjaan. Saklar
+  modal/pendapatan per biaya tidak dibuat: satu tempat untuk uang toko lebih mudah dipahami daripada
+  satu saklar lagi di tiap baris. Konsekuensinya, petunjuk di kartu Biaya tambahan yang menjaga batas itu.
+- **Penyimpangan dari price list pemilik:** ongkir dan biaya tambahan tampil sebagai baris sendiri ke
+  pelanggan, sedangkan cover garansi dan laba dilebur ke harga part luar stok.
+- **Angka pemilik** (modal, cover garansi, laba, rasio laba) hanya untuk `isManager` dan tidak pernah
+  masuk LCD.
+
+**Lima temuan reviewer akhir** (`impeccable-finish-reviewer`, putusan "kirim setelah perbaikan"; ia
+menghitung ulang contoh seed dengan tangan dan semua angka cocok):
+
+| # | Temuan | Perbaikan |
+|---|---|---|
+| 1 | Harga part stok menimpa tombol hapus di 320px: `.partAmount { min-width: 7rem }` di kolom `minmax(0,1fr)` yang cuma ±66px | `@container parts (max-width: 30rem)`: nama + harga di baris 1, stepper + hapus di baris 2, `min-width: 0` |
+| 2 | Fokus Tab bisa tertutup register + bottom nav (±190px) dan bar Tarif yang menempel (WCAG 2.4.11) | `scroll-padding` di `html` lewat `:global(html):has(...)`, mengikuti Kasir |
+| 3 | Kontrak bilang register melompat ke struk, tapi register cuma `div` | Tombol `.jump` transparan selebar register di wadah `calc` < 49rem, pola dok keranjang Kasir |
+| 4 | Laba terbaca terlalu kecil dan cover garansi terlalu besar bila "biaya cek/admin" dimasukkan sebagai biaya tambahan (petunjuk lama menyarankannya) | Petunjuk dibatasi ke uang yang diteruskan; uang toko ke jasa tingkat (lihat Keputusan) |
+| 5 | Isian part luar stok tidak sejajar di 320px karena label "Modal per unit (Rp)" patah dua baris | `.customRow { align-items: end }` |
+
+Temuan 1 lolos dari probe karena probe mengukur luberan **dokumen**, bukan tumpang tindih di dalam satu
+baris. Untuk baris padat seperti ini, bandingkan rect antar-saudara, jangan hanya `scrollWidth`.
+
+**Ditemukan sendiri saat verifikasi**
+- **Register menimpa topbar** saat tergulir ke atas: keduanya `z-index: var(--z-sticky)` (50), dan yang
+  belakangan di DOM menang. Register dan bar simpan Tarif kini `calc(var(--z-sticky) - 1)`. Dicatat
+  sebagai "Under-the-Topbar Rule" di `DESIGN.md`.
+- **Tombol lompat mendaratkan struk di bawah topbar**: perlu `scroll-padding-top` (topbar + jarak), bukan
+  hanya padding bawah.
+- **Tab Tarif di ponsel:** Select "Jenis" terpotong jadi "Nominal te…" dan diganti saklar satuan
+  **Rp | %** setinggi input. Label "Cover garansi (%)" patah dua baris; di ≤640px garansi pindah ke
+  baris kedua.
+- **Gerakan dikurangi:** `scrollIntoView({ behavior: 'smooth' })` dari JS tidak terjangkau aturan CSS
+  `prefers-reduced-motion` global. Tombol lompat kini memeriksa `matchMedia` (pola `PosPage.tsx:391` dan
+  `ReportsPage.tsx:442`). `PosPage.tsx:1282` (dok keranjang) dan `FinancePage.tsx:432` masih gulir halus
+  tanpa pemeriksaan itu, belum disentuh.
+- **Probe `audit-mobile` crash di ponsel**: `getByRole('button', { name: /Lainnya/i })` di `/services`
+  cocok dengan dua tombol (bottom nav "Lainnya" dan "Filter lainnya"), jadi strict mode gagal. Bug ini
+  laten: baru terpicu karena `/calculator` (yang ada di sheet Lainnya) kini persis setelah `/services`.
+  Sekarang tombolnya dicari lewat `aria-controls="mobile-more-sheet"`. Laporan ponsel yang dibaca
+  sebelum ini ternyata sisa run lama (60 baris, 12 halaman). **Cek jumlah baris laporan sebelum
+  menyimpulkan.**
+
+**Verifikasi:** build dan lint bersih; tes **852 / 74 berkas** (`quote.test.ts`, `quoteText.test.ts`).
+`audit-mobile` ponsel 320–414 × 13 halaman (65 baris): nol luberan dokumen, nol pelanggar;
+`/calculator` nol target kecil dan nol wadah geser; 40 target kecil hanya di `/` dan `/reports`. Pita
+tablet 744–1152: kalkulator bersih; target kecil hanya di `/`, `/finance`, `/reports`. `audit-zoom`
+bawaan, `ZOOM=1.25`, `DENSITY=padat`: nol luberan, nol overlap, nol pelanggar; teks ter-clip hanya
+positif palsu teks pembaca layar. `audit-tokens` LULUS. `audit-contrast` 0 di bawah ambang; dua
+"di atas gradien" adalah petunjuk dev landing ("Mode dev · login sebagai Owner"), di luar pekerjaan ini.
+`impeccable detect` `[]`. Dilihat sebagai karyawan (Rizal): angka pemilik hilang, luberan 0. Ukuran rail
+dengan kanal ke-13 di [[Sidebar - Live Diagnostic Rail]].
+
+**Batas yang diterima:** di 390px lima kotak "Keterangan" tingkat (satu baris, maks. 160 karakter)
+memuat teks contoh 47–59 karakter yang lebih panjang dari kotaknya (322px); isinya bergulir di dalam
+input, bukan luberan tata letak. Di 1440px muat. Bila pemilik sering menulis keterangan panjang dari
+ponsel, kandidatnya `Textarea` dua baris.
+
+#decision #bugfix #a11y #calculator #settings

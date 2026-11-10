@@ -260,6 +260,8 @@ Responsive behavior is task-driven rather than width-driven. At ≤720px the fou
 
 **The Zoom-Aware Viewport Rule.** Any element sized to the screen uses `--app-vh`, never bare `100vh`/`100dvh`. The CSS `zoom` property scales viewport units, so a raw `100dvh` shell leaves dead space below 100% zoom and overflows above it.
 
+**The Under-the-Topbar Rule.** Anything stuck to the bottom of the page (the Kalkulator Biaya register, the Pengaturan › Tarif save bar once the draft is dirty) sits at `z-index: calc(var(--z-sticky) - 1)`, one below the topbar, so when it scrolls up it slides *under* the chassis instead of over it. At ≤720px its `bottom` clears the bottom navigation (`--mobile-nav-height` + `--space-2` + `env(safe-area-inset-bottom)`); that is a media query because it is tied to the bottom nav being present, not to container width. While the bar is on screen the page pads the document scroller through `:global(html):has(...)`: `scroll-padding-bottom` of the bar's measured height plus a gap (the same mobile-nav sum added under 720px), and, on the calculator, `scroll-padding-top` of `--topbar-height` + `--space-3`. A focused field or a scroll target is never hidden behind sticky chrome (WCAG 2.4.11).
+
 ## Elevation & Depth
 
 Depth is carried primarily by **tonal layering**, not by shadow. The four-step graphite ladder plus the separate rail and readout families do the work that shadows do in flatter systems — a surface is "above" because it is lighter (dark theme) or brighter and less blue (light theme), not because it casts.
@@ -329,6 +331,7 @@ Three recurring silhouettes define the form language:
 - **Label:** Mono uppercase 12px at 0.07em in `--text-muted`, sitting 7px above the field.
 - **Focus:** Border becomes `--brand`, background lifts to `--bg-surface`, and a 3px `--ring` appears. The field brightens as it activates, like a powered channel.
 - **Error:** `--danger` border with a 22% danger-tinted ring; message in `--danger-text` at 12px. When the message lives in the form-top `FormError`, the field still turns `--danger` through the `invalid` prop, so a long form shows which field failed.
+- **Unit toggle (`Rp | %`):** A two-option kind choice is two buttons in one field body, not a Select. The body is the input's own: `--bg-input`, `--border-control`, `--radius-md`, segments at `--control-h`, so it lines up with the fields beside it. Glyphs are mono bold at `--text-sm` in `--text-muted`; a `1px dotted` seam divides the segments; pressed is `--brand-soft` fill with `--brand-text`, hover `--bg-hover`, focus an inset `--ring`. It is a `role="group"` labelled (`aria-labelledby`) by a span that copies the Input label (mono uppercase 12px, 0.07em, `--text-muted`, 7px above). Each button carries `aria-pressed` plus an `aria-label` and `title` with the full name, because the glyph alone is not a name. This is not the recessed `.seg` channel (3px inset pads, 52px tall) that holds selectors with four or more options.
 
 ### Navigation
 - **Style:** Sidebar items are instrument channels — a 32px icon cell, a sans label, and a right-aligned live readout (LED plus mono count). Minimum height 48px, `--radius-sm`.
@@ -343,6 +346,8 @@ Three recurring silhouettes define the form language:
 - **Texture:** A 3px-pitch `repeating-linear-gradient` scanline at 3% `--readout-text` — the CRT tell that makes it read as a screen rather than a dark card.
 - **Type:** Mono throughout. Value in `--readout-text`, labels in `--readout-muted`, both fixed across themes.
 - **Where it appears today:** the dashboard net-profit panel, the landing workflow band, the featured Pro plate. Any fourth use is a design decision, not a default.
+- **Kalkulator Biaya register:** that page's one well, the sticky register showing TOTAL above the printed tape breakdown. It floats over the content, so it takes `--shadow-lg` (an overlay, not a resting card) and follows the Under-the-Topbar Rule.
+- **Register jump:** While the `calc` container is narrower than 49rem, the register is stacked above the tape and the whole sticky panel is one transparent full-bleed button (`.jump`, inset `--focus-ring` on focus) that smooth-scrolls to the tape (instantly under `prefers-reduced-motion`, checked in JS because the global CSS rule does not reach `scrollIntoView`), like the Kasir cart dock. The cue is an `arrow-down` icon in `--readout-soft` beside the TOTAL label. At ≥49rem register and tape sit side by side, and both button and cue are hidden. The query is a named `@container calc`, because the register is a container itself and an unnamed query would measure the register instead of the page (the Container Query Rule).
 
 ### Browser Surfaces
 Themed rather than left to the browser: a 9px scrollbar with a `--border-strong` thumb on a transparent track, `--brand-soft` text selection with primary ink, and a 3px `--focus-ring` outline at 3px offset with a 5px radius. `prefers-reduced-motion` collapses every animation and transition to 0.01ms.
