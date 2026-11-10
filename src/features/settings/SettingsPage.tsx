@@ -758,8 +758,8 @@ function ServiceColumnsCard() {
                 disabled={busy}
               />
               <span className={styles.columnText}>
-                <strong>{c.label}</strong>
-                <small>{c.hint}</small>
+                <strong>{t(c.labelKey)}</strong>
+                <small>{t(c.hintKey)}</small>
               </span>
             </label>
           ))}

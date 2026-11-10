@@ -1,16 +1,23 @@
+import type { TranslationKey } from '@/i18n';
+
 /**
  * Kolom opsional tabel Servis, dalam urutan tampil. No. Servis, Status, dan Aksi
  * selalu ada: tanpa ketiganya sebuah baris tak bisa dikenali atau ditindaklanjuti.
+ *
+ * Teks tak ditulis di sini (lib/business tak punya hook): tiap kolom membawa KUNCI
+ * i18n, UI menerjemahkannya lewat useT(). Label memakai kunci yang sama dengan judul
+ * kolom di Daftar (`services.col*`), jadi pengaturan dan daftar tak bisa menyebut
+ * kolom yang sama dengan dua kata berbeda.
  */
 export const SERVICE_COLUMNS = [
-  { id: 'customer', label: 'Pelanggan', hint: 'Nama dan nomor HP' },
-  { id: 'device', label: 'Perangkat', hint: 'Perangkat, kategori, dan status ambil' },
-  { id: 'complaint', label: 'Keluhan', hint: 'Keluhan saat unit diterima' },
+  { id: 'customer', labelKey: 'services.colCustomer', hintKey: 'services.colHintCustomer' },
+  { id: 'device', labelKey: 'services.colDevice', hintKey: 'services.colHintDevice' },
+  { id: 'complaint', labelKey: 'services.colComplaint', hintKey: 'services.colHintComplaint' },
   // Id lama dipertahankan supaya pengaturan kolom yang sudah tersimpan tetap berlaku.
-  { id: 'completionNote', label: 'Penanganan', hint: 'Tindakan perbaikan, wajib saat status Selesai' },
-  { id: 'technician', label: 'Teknisi', hint: 'Teknisi yang menangani' },
-  { id: 'cost', label: 'Biaya', hint: 'Biaya final, plus modal dan profit untuk pemilik' },
-] as const;
+  { id: 'completionNote', labelKey: 'services.colFix', hintKey: 'services.colHintFix' },
+  { id: 'technician', labelKey: 'services.colTech', hintKey: 'services.colHintTech' },
+  { id: 'cost', labelKey: 'services.colCost', hintKey: 'services.colHintCost' },
+] as const satisfies readonly { id: string; labelKey: TranslationKey; hintKey: TranslationKey }[];
 
 export type ServiceColumnId = (typeof SERVICE_COLUMNS)[number]['id'];
 
