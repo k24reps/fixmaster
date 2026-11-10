@@ -4,6 +4,7 @@ import { repository } from '@/data';
 import { useCollection, useDerivedQuery } from './useCollection';
 import { useCollectionRange } from './useCollectionRange';
 import { isActive } from '@/lib/business/services';
+import { stockSummary } from '@/lib/business/stock';
 import { groupTaskCounts, visibleTaskCounts } from '@/lib/business/tasks';
 import type { TaskCountGroup } from '@/data/types';
 import { localDateStr } from '@/lib/time';
@@ -102,11 +103,11 @@ export function useNavSignals(): Record<string, NavSignal> {
       ? counts.servicesAwaitingConfirm
       : services.some((s) => s.status === 'konfirmasi');
 
-    // Inventory: out-of-stock is critical, low-stock is a warning.
-    const out = counts ? counts.inventoryOut : inventory.filter((i) => i.stock <= 0).length;
-    const low = counts
-      ? counts.inventoryLow
-      : inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
+    // Stok: habis kritis, menipis peringatan. Lokal memakai stockSummary yang
+    // sama dengan ringkasan di halaman Kasir & Stok.
+    const { out, low } = counts
+      ? { out: counts.inventoryOut, low: counts.inventoryLow }
+      : stockSummary(inventory);
 
     // Suppliers: open purchase orders still awaiting receipt.
     const openPo = counts

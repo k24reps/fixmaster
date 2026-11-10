@@ -7,6 +7,7 @@ import type { Service, Income, Expense, Wallet, InventoryItem } from '@/data/typ
 import { isInRange, localDateStr } from '@/lib/time';
 import { isUnfinished, isAwaitingPickup, visibleServices } from './services';
 import { operatingIncomes, operatingExpenses } from './finance';
+import { stockSummary } from './stock';
 
 export interface DashboardKpis {
   revenue: number;
@@ -150,7 +151,7 @@ export function computeAlerts(
     });
   }
 
-  const outOfStock = inventory.filter((i) => i.stock <= 0).length;
+  const { out: outOfStock, low: lowStock } = stockSummary(inventory);
   if (outOfStock > 0) {
     alerts.push({
       kind: 'out-of-stock',
@@ -160,7 +161,6 @@ export function computeAlerts(
       href: '/inventory?stock=out',
     });
   }
-  const lowStock = inventory.filter((i) => i.stock > 0 && i.stock <= i.minStock).length;
   if (lowStock > 0) {
     alerts.push({
       kind: 'low-stock',
