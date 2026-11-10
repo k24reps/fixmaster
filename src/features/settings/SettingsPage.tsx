@@ -110,6 +110,7 @@ import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
 import { createBackup, downloadBackup, restoreBackup } from './backupRestore';
 import { DisplayCard } from './DisplayCard';
+import { QuoteRatesTab } from './QuoteRatesTab';
 import { useBackupStore } from '@/stores/backup';
 import {
   listCloudBackups,
@@ -192,6 +193,7 @@ async function fileToLogoBlob(file: File): Promise<Blob> {
 type Tab =
   | 'usaha'
   | 'operasional'
+  | 'tarif'
   | 'tim'
   | 'keuangan'
   | 'outlet'
@@ -208,6 +210,7 @@ const MAX_GEOFENCE_M = 5000;
 const TAB_IDS: Tab[] = [
   'usaha',
   'operasional',
+  'tarif',
   'tim',
   'keuangan',
   'outlet',
@@ -245,6 +248,7 @@ export function SettingsPage() {
   }[] = [
     { id: 'usaha', label: t('settingsPage.tabBusiness'), icon: 'fa-store' },
     { id: 'operasional', label: t('settingsPage.tabOps'), icon: 'fa-sliders' },
+    { id: 'tarif', label: t('quoteRates.tab'), icon: 'fa-calculator', ownerOnly: true },
     { id: 'tim', label: t('settingsPage.tabTeam'), icon: 'fa-users', ownerOnly: true },
     { id: 'keuangan', label: t('settingsPage.tabWallet'), icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: t('settingsPage.tabOutlet'), icon: 'fa-shop', ownerOnly: true },
@@ -300,6 +304,7 @@ export function SettingsPage() {
           <PublicNoteCard />
         </>
       )}
+      {tab === 'tarif' && isOwner && <QuoteRatesTab />}
       {tab === 'tim' && isOwner && <TeamTab employees={employees} outlets={outlets} />}
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} outlets={outlets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}

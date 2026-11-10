@@ -115,6 +115,8 @@ import {
   UserPlus,
   DotsThree,
   Note,
+  Calculator,
+  Copy,
   type IconProps as PhosphorIconProps,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react';
@@ -225,7 +227,9 @@ export type IconName =
   | 'x'
   | 'xmark'
   | 'dots-three'
-  | 'note';
+  | 'note'
+  | 'calculator'
+  | 'copy';
 
 /** Name → Phosphor component. Aliases collapse onto shared glyphs. */
 const REGISTRY: Record<IconName, PhosphorIcon> = {
@@ -337,6 +341,8 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   xmark: X,
   'dots-three': DotsThree,
   note: Note,
+  calculator: Calculator,
+  copy: Copy,
 };
 
 // Reference rarely-used imports so tree-shaking keeps them and lint stays happy.
