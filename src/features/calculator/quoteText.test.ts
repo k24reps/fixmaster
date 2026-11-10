@@ -5,13 +5,13 @@ import { quoteText, type QuoteTextOptions } from './quoteText';
 
 const rates = sanitizeQuoteRates({
   tiers: [
-    { id: 'lcd', name: 'Ganti LCD', note: '', labor: 150000, byCategory: {}, warrantyPct: 0, highRisk: false, riskDpPct: null, riskNote: '' },
+    { id: 'lcd', name: 'Ganti LCD', note: '', labor: 150000, laborByCategory: {}, warrantyPct: 0, highRisk: false, riskDpPct: null, riskNote: '' },
     {
       id: 'ic',
       name: 'Reballing IC',
       note: '',
       labor: 350000,
-      byCategory: {},
+      laborByCategory: {},
       warrantyPct: 0,
       highRisk: true,
       riskDpPct: 60,

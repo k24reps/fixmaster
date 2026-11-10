@@ -32,6 +32,7 @@ import type {
   TaskInstance,
   Outlet,
   ActivityLog,
+  QuoteRates,
 } from '@/data/types';
 
 export async function seedDemoWorkspace(): Promise<void> {
@@ -452,10 +453,86 @@ export async function seedDemoWorkspace(): Promise<void> {
   ];
   await repository.putMany('activity', activity);
 
-  // 11) Land on the authenticated app as the owner, scoped to all outlets
+  // 11) Tarif Kalkulator Biaya. Wizard tidak mengisinya (pemilik baru mulai
+  // dari halaman kosong), tapi /demo perlu contoh supaya kalkulator bisa dicoba.
+  const quoteRates: QuoteRates = {
+    tiers: [
+      {
+        id: 'demo-cek',
+        name: 'Pengecekan & diagnosa',
+        note: 'Cari sumber kerusakan, termasuk bongkar ringan.',
+        labor: 50_000,
+        laborByCategory: {},
+        warrantyPct: 0,
+        highRisk: false,
+        riskDpPct: null,
+        riskNote: '',
+      },
+      {
+        id: 'demo-ringan',
+        name: 'Ganti part ringan',
+        note: 'Baterai, konektor cas, tombol, speaker, keyboard.',
+        labor: 100_000,
+        laborByCategory: { Laptop: 150_000, 'PC / Komputer': 125_000 },
+        warrantyPct: 5,
+        highRisk: false,
+        riskDpPct: null,
+        riskNote: '',
+      },
+      {
+        id: 'demo-layar',
+        name: 'Ganti LCD / layar',
+        note: 'Termasuk lem, bongkar pasang bezel, dan tes sentuh.',
+        labor: 150_000,
+        laborByCategory: { Laptop: 250_000 },
+        warrantyPct: 10,
+        highRisk: false,
+        riskDpPct: null,
+        riskNote: '',
+      },
+      {
+        id: 'demo-ic',
+        name: 'Perbaikan mesin / IC',
+        note: 'Reballing, ganti IC power atau IC cas, jumper jalur.',
+        labor: 350_000,
+        laborByCategory: { Laptop: 500_000 },
+        warrantyPct: 10,
+        highRisk: true,
+        riskDpPct: 60,
+        riskNote:
+          'Pekerjaan level IC bisa membuat perangkat mati total. Bila gagal, biaya cek dan part yang sudah dipesan tetap dibayar.',
+      },
+      {
+        id: 'demo-air',
+        name: 'Servis kena air',
+        note: 'Bongkar total, bersihkan korosi, ganti komponen yang rusak.',
+        labor: 250_000,
+        laborByCategory: {},
+        warrantyPct: 0,
+        highRisk: true,
+        riskDpPct: null,
+        riskNote:
+          'Kerusakan karena air bisa merembet setelah dibersihkan. Toko tidak menjamin semua fungsi kembali normal.',
+      },
+    ],
+    partMarkupPct: 25,
+    minPartProfit: 50_000,
+    extras: [
+      { id: 'demo-ongkir', name: 'Ongkir part', kind: 'fixed', amount: 25_000, defaultOn: false },
+      { id: 'demo-qris', name: 'Biaya QRIS', kind: 'percent', amount: 0.7, defaultOn: false },
+    ],
+    rounding: 5000,
+    dpPct: 50,
+  };
+  const seededOrg = await repository.setSingleton('organization', {
+    ...org,
+    settings: { ...(org.settings ?? {}), quoteRates },
+  });
+
+  // 12) Land on the authenticated app as the owner, scoped to all outlets
   // (reset any branch scope persisted by a previous seed).
   const store = useSessionStore.getState();
-  store.setOrg(org);
+  store.setOrg(seededOrg);
   store.setActiveOutlet(null);
   await store.loadEmployees();
   store.signInEmployee(owner);
