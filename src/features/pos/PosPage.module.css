@@ -91,22 +91,7 @@
   min-width: 0;
 }
 
-/* ---------- Pilih cabang kasir (sebelum katalog) ---------- */
-.outletPick {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.outletPickTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
+/* ---------- Pilih cabang kasir (modal, sebelum barang pertama) ---------- */
 .outletPickBody {
   max-width: 60ch;
   font-size: var(--text-sm);

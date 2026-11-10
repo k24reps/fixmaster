@@ -41,6 +41,26 @@ describe('tata letak Kasir', () => {
     expect(tsx).toContain('className={styles.productGrid}');
   });
 
+  it('satu kartu untuk jual dan stok: tanpa tombol bersarang, barang habis tetap tampil', () => {
+    // Kartu = <article>; tombol tambah dan tuts kelola bersaudara.
+    expect(catalogTsx).toContain('<article');
+    expect(catalogTsx).toContain('className={styles.addArea}');
+    expect(catalogTsx).toContain('className={styles.keys}');
+    // Tuts kelola hanya untuk yang boleh menulis stok; karyawan tidak.
+    expect(catalogTsx).toContain("roleAllows(me.role, 'inventory.write')");
+    // Dulu dipotong mati di 50 dan barang habis disembunyikan kecuali dicari.
+    expect(catalogTsx).not.toContain('.slice(0, 50)');
+    expect(catalogTsx).toContain('filterCatalog(');
+    // Redup hanya area tambah, tuts + Stok tetap terang.
+    expect(catalogCss).toContain('.addArea:disabled > *');
+  });
+
+  it('Semua Outlet: katalog boleh dijelajah, cabang dipilih saat barang pertama', () => {
+    expect(pageTsx).not.toContain('styles.outletPickTitle');
+    expect(pageTsx).toContain('onAdd={requestAdd}');
+    expect(pageTsx).toContain('setCartOutlet(id)');
+  });
+
   it('bar Proses yang belum siap tetap bisa diketuk dan menuntun', () => {
     // disabled menelan ketukan tanpa penjelasan; kasir di ponsel tak tahu
     // kolom mana yang kurang karena status ada di balik bar.

@@ -30,10 +30,10 @@ describe('stockState', () => {
 });
 
 describe('parseStockFilter', () => {
-  it('menerima low/out/ok, sisanya Semua', () => {
+  it('menerima low/out, sisanya Semua (strip tak punya sel "aman")', () => {
     expect(parseStockFilter('low')).toBe('low');
     expect(parseStockFilter('out')).toBe('out');
-    expect(parseStockFilter('ok')).toBe('ok');
+    expect(parseStockFilter('ok')).toBe('all');
     expect(parseStockFilter(null)).toBe('all');
     expect(parseStockFilter('habis')).toBe('all');
   });

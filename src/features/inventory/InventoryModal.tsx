@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Input, Button, Select, FormFields, FormRow, FormError } from '@/components/ui';
+import { Modal, Input, Button, Select, FormFields, FormRow, FormError, Icon } from '@/components/ui';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useFormFault } from '@/hooks/useFormFault';
 import { repository } from '@/data';
 import { useCollection } from '@/hooks/useCollection';
@@ -17,17 +18,26 @@ import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import type { InventoryItem } from '@/data/types';
 import { useT } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
-import styles from './InventoryPage.module.css';
+import styles from './InventoryModal.module.css';
 
 interface InventoryModalProps {
   open: boolean;
   onClose: () => void;
   editing: InventoryItem | null;
   categories: string[];
+  /** Dibuka dari tombol "+ Stok" di kartu: fokus langsung ke kolom stok. */
+  restock?: boolean;
+  /** Tombol Hapus di footer (mode ubah). Dulu ikon tong sampah di tiap baris. */
+  canDelete?: boolean;
 }
 
-export function InventoryModal({ open, onClose, editing, categories }: InventoryModalProps) {
+export function InventoryModal({ open, onClose, editing, categories, restock = false, canDelete = false }: InventoryModalProps) {
   const t = useT();
+  // Peringatan "masih dipakai di N servis aktif". Cloud menghitungnya di server
+  // saat Hapus diketuk; adapter lokal memakai daftar di memori.
+  const serverCount = !!repository.countActiveServicesUsingItem;
+  const { data: services } = useCollection('services', { enabled: open && canDelete && !serverCount });
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const { data: outlets } = useCollection('outlets');
   const { data: allWallets } = useCollection('wallets');
@@ -184,13 +194,64 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     }
   };
 
+  // Peringatan ini SARAN: dialog konfirmasi tetap dibuka apa pun hasilnya,
+  // termasuk bila penghitungan gagal.
+  const requestDelete = async () => {
+    if (!editing) return;
+    let usedIn: number;
+    try {
+      usedIn = repository.countActiveServicesUsingItem
+        ? await repository.countActiveServicesUsingItem(editing.id)
+        : services.filter(
+            (s) => !['lunas', 'batal'].includes(s.status) && s.spareparts.some((sp) => sp.itemId === editing.id),
+          ).length;
+    } catch {
+      usedIn = 0;
+    }
+    if (usedIn > 0) {
+      toast.warning(interpolate(t('inventory.usedInServices'), { name: editing.name, n: String(usedIn) }));
+    }
+    setConfirmingDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!editing) return;
+    try {
+      await repository.remove('inventory', editing.id);
+      toast.success(t('inventory.sparepartDihapus'));
+      logActivity({
+        action: 'inventory.delete',
+        entityType: 'inventory',
+        entityId: editing.id,
+        entityLabel: editing.name,
+      });
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('inventory.deleteFailed'));
+    } finally {
+      setConfirmingDelete(false);
+    }
+  };
+
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? t('inventory.editTitle') : t('inventory.newTitle')}
+      title={editing ? t(restock ? 'inventory.restockTitle' : 'inventory.editTitle') : t('inventory.newTitle')}
       footer={
         <>
+          {editing && canDelete && (
+            <Button
+              variant="ghost"
+              className={styles.deleteBtn}
+              iconLeft={<Icon name="trash" aria-hidden />}
+              onClick={requestDelete}
+              disabled={busy}
+            >
+              {t('inventory.hapus')}
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             {t('inventory.batal')}
           </Button>
@@ -202,7 +263,7 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
     >
       <FormFields>
         <FormError>{error}</FormError>
-        <Input invalid={invalid('name')} label={t('inventory.namaSparepartProduk')} value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input invalid={invalid('name')} label={t('inventory.namaSparepartProduk')} value={name} autoCapWords onChange={(e) => setName(e.target.value)} autoFocus={!restock} />
         <Input
           label={t('inventory.kategori')}
           value={category}
@@ -236,6 +297,9 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
             value={stock}
             onChange={(e) => setStock(e.target.value)}
             hint={editing ? t('inventory.deltaHint') : undefined}
+            autoFocus={restock}
+            // Angka lama terpilih: ketik stok baru langsung menimpanya.
+            onFocus={restock ? (e) => e.currentTarget.select() : undefined}
           />
           <Input
             label={t('inventory.stokMinimum')}
@@ -341,5 +405,15 @@ export function InventoryModal({ open, onClose, editing, categories }: Inventory
         />
       </FormFields>
     </Modal>
+    <ConfirmDialog
+      open={confirmingDelete}
+      title={t('inventory.hapusSparepart')}
+      message={interpolate(t('inventory.deleteConfirm'), { name: editing?.name ?? '' })}
+      confirmLabel={t('inventory.hapus')}
+      danger
+      onConfirm={confirmDelete}
+      onCancel={() => setConfirmingDelete(false)}
+    />
+    </>
   );
 }

@@ -63,9 +63,11 @@ export function PosPage() {
     ? outlets.filter((o) => allowedOutletIds.includes(o.id))
     : outlets;
   // Mesin kasir milik satu meja: di "Semua Outlet" katalognya campuran stok
-  // beberapa cabang, jadi cabang dipilih SEBELUM katalog tampil — bukan
-  // ditolak setelah keranjang dan pembayaran terisi (critique 27 Sep 2026).
-  // activeOutletId dibaca di atas supaya komponen ini ikut render ulang.
+  // beberapa cabang. Katalog boleh dijelajah (owner memeriksa stok semua
+  // cabang di sini), tapi cabang dipilih SEBELUM barang pertama masuk
+  // keranjang — bukan ditolak setelah keranjang dan pembayaran terisi
+  // (critique 27 Sep 2026). activeOutletId dibaca di atas supaya komponen
+  // ini ikut render ulang.
   const needOutlet = mustPickOutlet(outlets.length);
   const activeOutlet = outlets.find((o) => o.id === activeOutletId) ?? null;
   const orgId = org?.id ?? '';
@@ -84,6 +86,8 @@ export function PosPage() {
   // struk tersedia tepat saat pelanggan masih di depan meja.
   const [done, setDone] = useState<{ sale: Sale; change: number; phone: string } | null>(null);
   const [outletModal, setOutletModal] = useState(false);
+  // Barang yang diketuk di "Semua Outlet": masuk keranjang setelah cabang dipilih.
+  const [pendingItem, setPendingItem] = useState<InventoryItem | null>(null);
   // Isi keranjang terakhir yang dikosongkan — "Kosongkan" dulu tanpa jalan kembali.
   const [cleared, setCleared] = useState<{
     cart: CartItem[];
@@ -275,6 +279,15 @@ export function PosPage() {
     });
   };
 
+  const requestAdd = (item: InventoryItem) => {
+    if (needOutlet && item.stock > 0) {
+      setPendingItem(item);
+      setOutletModal(true);
+      return;
+    }
+    addToCart(item);
+  };
+
   const setQty = (itemId: string, qty: number) => {
     const item = cart.find((c) => c.itemId === itemId);
     if (item && qty > item.stock) {
@@ -348,6 +361,18 @@ export function PosPage() {
     setOutletModal(false);
     setOutletNotice(false);
     setDone(null);
+    const item = pendingItem;
+    setPendingItem(null);
+    if (item && cart.length === 0) {
+      // Keranjang dimulai di cabang ini. Tanpa ini, cek pergantian cabang di
+      // render berikutnya mengosongkannya lagi.
+      setCartOutlet(id);
+      if (item.outletId && item.outletId !== id) {
+        toast.warning(t('pos.notInOutlet').replace('{name}', item.name));
+      } else {
+        addToCart(item);
+      }
+    }
     setActiveOutlet(id);
   };
 
@@ -608,27 +633,16 @@ export function PosPage() {
       {tab === 'pos' && (
       <div className={styles.layout} id="pos-panel" role="tabpanel" aria-labelledby="pos-tab-register">
         <div className={styles.products}>
-        {needOutlet ? (
-          <Card padding className={styles.outletPick}>
-            <h2 className={styles.outletPickTitle}>
-              <span className={styles.outletLed} aria-hidden /> {t('pos.outletPickTitle')}
-            </h2>
-            <p className={styles.outletPickBody}>{t('pos.outletPickBody')}</p>
-            {outletButtons}
-          </Card>
-        ) : (
-        <>
-        <PosCatalog
-          inventory={inventory}
-          inventoryLoad={inventoryLoad}
-          searchRef={searchRef}
-          finePointer={finePointer}
-          onAdd={addToCart}
-          onEmptyEnter={done ? newSale : undefined}
-        />
-        </>
-        )}
-      </div>
+          <PosCatalog
+            inventory={inventory}
+            inventoryLoad={inventoryLoad}
+            searchRef={searchRef}
+            finePointer={finePointer}
+            onAdd={requestAdd}
+            onEmptyEnter={done ? newSale : undefined}
+            branchOf={needOutlet ? (i) => outlets.find((o) => o.id === i.outletId)?.name ?? null : undefined}
+          />
+        </div>
 
       <Card id="pos-cart" className={styles.cartPanel}>
         {/* Pembaca layar hanya mendengar angka uangnya. Dulu aria-live
@@ -1108,11 +1122,18 @@ export function PosPage() {
 
       <Modal
         open={outletModal}
-        onClose={() => setOutletModal(false)}
-        title={t('pos.outletSwitchTitle')}
+        onClose={() => {
+          setOutletModal(false);
+          setPendingItem(null);
+        }}
+        title={t(pendingItem ? 'pos.outletPickTitle' : 'pos.outletSwitchTitle')}
         size="sm"
       >
-        {cart.length > 0 && <p className={styles.outletPickBody}>{t('pos.outletSwitchCartNote')}</p>}
+        {pendingItem ? (
+          <p className={styles.outletPickBody}>{t('pos.outletPickBody')}</p>
+        ) : (
+          cart.length > 0 && <p className={styles.outletPickBody}>{t('pos.outletSwitchCartNote')}</p>
+        )}
         {outletButtons}
       </Modal>
     </div>

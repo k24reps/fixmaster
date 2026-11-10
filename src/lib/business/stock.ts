@@ -11,7 +11,8 @@ interface Stocked {
 }
 
 export type StockState = 'out' | 'low' | 'ok';
-export type StockFilter = 'all' | StockState;
+/** Saringan di strip ringkasan: Semua, Menipis, Habis. */
+export type StockFilter = 'all' | 'low' | 'out';
 
 export function stockState(item: Stocked): StockState {
   if (item.stock <= 0) return 'out';
@@ -21,7 +22,7 @@ export function stockState(item: Stocked): StockState {
 
 /** Nilai `?stock=` dari tautan Dashboard / alamat lama /inventory. */
 export function parseStockFilter(value: string | null): StockFilter {
-  return value === 'low' || value === 'out' || value === 'ok' ? value : 'all';
+  return value === 'low' || value === 'out' ? value : 'all';
 }
 
 export interface StockSummary {
