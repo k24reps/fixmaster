@@ -7,6 +7,7 @@ import {
   viewFromParams,
   type ServiceListSnapshot,
 } from './serviceListView';
+import { SERVICE_SORTS } from './serviceFilters';
 
 const NOW = 1_800_000_000_000;
 const params = (q: string) => new URLSearchParams(q);
@@ -93,6 +94,20 @@ describe('parseListSnapshot', () => {
       stalledOnly: false,
     });
     expect(parsed?.view.query).toHaveLength(200);
+  });
+
+  it('urutan per kolom: tiap nilai sah dipulihkan apa adanya (termasuk "newest"/"oldest" lama)', () => {
+    for (const sort of SERVICE_SORTS) {
+      const raw = JSON.stringify(snap({ view: { ...EMPTY_LIST_VIEW, sort } }));
+      expect(parseListSnapshot(raw)?.view.sort, sort).toBe(sort);
+    }
+  });
+
+  it('urutan asing, bertipe salah, atau dari versi lain jatuh ke Terbaru', () => {
+    for (const sort of ['customer', 'COSTASC', 'cost-asc', 42, null, ['costAsc'], { sort: 'costAsc' }]) {
+      const raw = JSON.stringify({ ...snap(), view: { ...EMPTY_LIST_VIEW, sort } });
+      expect(parseListSnapshot(raw)?.view.sort, JSON.stringify(sort)).toBe('newest');
+    }
   });
 });
 

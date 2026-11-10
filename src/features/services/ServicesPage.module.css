@@ -429,6 +429,62 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Judul yang bisa diurutkan: tombol yang meniru label sistem di sekitarnya (mono,
+   kapital, redup). Hanya panah dan warna yang memberi tahu bahwa ia bisa diklik,
+   jadi judul tak terlihat seperti tabel penuh panah. Padding 4px memberi target
+   >=24px (WCAG 2.5.8); margin negatif mengembalikan huruf pertamanya ke garis
+   sel di bawahnya. Tombol ini anak langsung grid (bukan di dalam span ber-
+   overflow:hidden) supaya cincin fokusnya tak terpotong. */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  min-width: 0;
+  max-width: calc(100% + 8px);
+  margin: -4px;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.sortLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sortMark {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.sortBtn:hover {
+  color: var(--text-primary);
+}
+.sortBtn:hover .sortMark,
+.sortBtn:focus-visible .sortMark {
+  opacity: 0.6;
+}
+.sortBtn[data-dir='ascending'],
+.sortBtn[data-dir='descending'] {
+  color: var(--text-primary);
+}
+.sortBtn[data-dir='ascending'] .sortMark,
+.sortBtn[data-dir='descending'] .sortMark {
+  opacity: 1;
+  color: var(--brand-text);
+}
+/* Biaya rata kanan: panah di depan label, supaya huruf terakhirnya sejajar angka. */
+.rowCost .sortBtn .sortMark {
+  order: -1;
+}
 /* "AKSI" rata dengan glyph ikon terakhir, bukan tepi kotak 40px-nya. */
 .rowHead .rowActions {
   padding-right: 12px;

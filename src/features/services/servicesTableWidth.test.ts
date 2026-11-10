@@ -254,8 +254,15 @@ describe('tampilan Daftar servis', () => {
     expect(tsx.match(/className="fm-visually-hidden"/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('judul kolom disembunyikan dari pembaca layar; tiap sel membawa labelnya sendiri', () => {
-    expect(tsx).toMatch(/styles\.rowHead[\s\S]{0,120}aria-hidden="true"/);
+  it('judul kolom yang hanya label disembunyikan dari pembaca layar; tiap sel membawa labelnya sendiri', () => {
+    // Wadah judul TIDAK aria-hidden (isinya tombol urut yang bisa difokus): ia grup berlabel,
+    // dan hanya label murni (Perangkat, Keluhan/Penanganan, Teknisi, Aksi) yang aria-hidden.
+    const head = tsx.slice(tsx.indexOf('styles.rowHead'), tsx.indexOf('<ul className={styles.rows}>'));
+    expect(head).toContain('role="group"');
+    expect(head).toContain("aria-label={t('services.sortAria')}");
+    expect(head).not.toMatch(/styles\.rowHead[^>]*aria-hidden/);
+    expect(head).toContain('<span aria-hidden="true">{t(\'services.colDevice\')}</span>');
+    expect(head).toContain('<span aria-hidden="true">{t(\'services.colTech\')}</span>');
     for (const key of ['colCustomer', 'colDevice', 'colTech', 'colCost']) {
       expect(tsx).toContain(`{srLabel('services.${key}')}`);
     }
@@ -263,6 +270,34 @@ describe('tampilan Daftar servis', () => {
     // bukan display: none (yang menghapusnya dari pohon aksesibilitas).
     expect(css).not.toMatch(/\.clamp b\s*\{\s*display: none/);
     expect(css.match(/\[data-single\] \.clamp b \{\s*position: absolute;/g)).toHaveLength(2);
+  });
+
+  it('urut per kolom: empat judul adalah tombol, dropdown memuat nilai yang sama dan keduanya satu state', () => {
+    const head = tsx.slice(tsx.indexOf('styles.rowHead'), tsx.indexOf('<ul className={styles.rows}>'));
+    for (const [column, label] of [
+      ['date', "t('services.colNo')"],
+      ['customer', "t('services.colCustomer')"],
+      ['status', "t('common.status')"],
+      ['cost', "t('services.colCost')"],
+    ]) {
+      expect(head).toContain(`sortHead('${column}', ${label})`);
+    }
+    // Tombol sungguhan, bukan div ber-onClick; tanpa aria-sort (tak sah di luar columnheader).
+    expect(tsx).toMatch(/<button\s+type="button"\s+className=\{styles\.sortBtn\}/);
+    expect(tsx).not.toContain('aria-sort=');
+    // Klik lewat state yang sama dengan dropdown, lewat change() (balik ke halaman pertama).
+    expect(tsx).toContain('change(() => setSort(nextSort(sort, column)))');
+    expect(tsx).toContain('change(() => setSort(e.target.value as ServiceSort))');
+    expect(tsx).toContain('{SERVICE_SORTS.map((value) => (');
+    // Urutan aktif dibacakan; panah hanya hiasan.
+    expect(tsx).toContain("interpolate(t('services.sortCurrent')");
+    expect(tsx).toMatch(/<Icon name=\{dir === 'descending' \? 'arrow-down' : 'arrow-up'\}[^>]*aria-hidden/);
+    // Panah tak aktif tersembunyi, aktif penuh; fokus keyboard menampakkannya.
+    expect(css).toMatch(/\.sortMark \{[^}]*opacity: 0;/);
+    expect(css).toMatch(/\.sortBtn:hover \.sortMark,\s*\.sortBtn:focus-visible \.sortMark \{[^}]*opacity: 0\.6;/);
+    expect(css).toMatch(/\.sortBtn\[data-dir='descending'\] \.sortMark \{[^}]*opacity: 1;/);
+    // Target >=24px: padding 4px di sekeliling baris teks.
+    expect(css).toMatch(/\.sortBtn \{[^}]*padding: 4px;/);
   });
 
   it('konteks daftar bertahan saat tiket dibuka: ingatan sesi, bukan state yang lenyap', () => {

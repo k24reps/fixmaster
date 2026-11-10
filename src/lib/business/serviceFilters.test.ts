@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SERVICE_SORTS,
+  SORT_LABEL_KEY,
+  STATUS_FLOW,
   compareServices,
   createdRange,
+  listedCost,
   matchesPayment,
   matchesQuery,
   matchesTechnician,
+  nextSort,
   serviceSearchFilter,
+  sortDirectionOn,
   stalledDays,
+  type ServiceSort,
 } from './serviceFilters';
+import { STATUS_LABELS } from './services';
+import { id as idDict } from '@/i18n/id';
+import { en as enDict } from '@/i18n/en';
 
 describe('serviceSearchFilter', () => {
   it('kosong → null; karakter sintaks filter dibuang; nomor HP juga dicocokkan per digit', () => {
@@ -82,12 +92,130 @@ describe('stalledDays', () => {
   });
 });
 
+type SortRow = Parameters<typeof compareServices>[0] & { tag: string };
+const row = (tag: string, o: Partial<SortRow> = {}): SortRow => ({
+  tag,
+  createdAt: '2026-09-05',
+  customerName: 'Budi',
+  status: 'diterima',
+  finalCost: 0,
+  estimateCost: 0,
+  ...o,
+});
+const order = (rows: SortRow[], sort: ServiceSort) =>
+  [...rows].sort((a, b) => compareServices(a, b, sort)).map((r) => r.tag);
+
 describe('compareServices', () => {
   it('tiket tuntas yang ditampilkan ikut urutan tanggal, tidak dipaksa ke bawah', () => {
-    const closed = { status: 'lunas' as const, pickedUp: true, createdAt: '2026-09-13', finalCost: 9 };
-    const old = { status: 'pengerjaan' as const, pickedUp: false, createdAt: '2026-09-01', finalCost: 100 };
-    const recent = { status: 'pengerjaan' as const, pickedUp: false, createdAt: '2026-09-12', finalCost: 500 };
-    expect([old, closed, recent].sort((a, b) => compareServices(a, b, 'newest'))).toEqual([closed, recent, old]);
-    expect([closed, old, recent].sort((a, b) => compareServices(a, b, 'oldest'))).toEqual([old, recent, closed]);
+    const closed = row('closed', { status: 'lunas', createdAt: '2026-09-13', finalCost: 9 });
+    const old = row('old', { status: 'pengerjaan', createdAt: '2026-09-01', finalCost: 100 });
+    const recent = row('recent', { status: 'pengerjaan', createdAt: '2026-09-12', finalCost: 500 });
+    expect(order([old, closed, recent], 'newest')).toEqual(['closed', 'recent', 'old']);
+    expect(order([closed, old, recent], 'oldest')).toEqual(['old', 'recent', 'closed']);
+  });
+
+  it('pelanggan: A-Z tak peduli huruf besar/aksen dan angka dibaca sebagai angka; Z-A membaliknya', () => {
+    const rows = [
+      row('budi', { customerName: 'budi' }),
+      row('Andi', { customerName: 'Andi' }),
+      row('Toko 10', { customerName: 'Toko 10' }),
+      row('Toko 9', { customerName: 'Toko 9' }),
+      row('Édo', { customerName: 'Édo' }),
+    ];
+    expect(order(rows, 'customerAsc')).toEqual(['Andi', 'budi', 'Édo', 'Toko 9', 'Toko 10']);
+    expect(order(rows, 'customerDesc')).toEqual(['Toko 10', 'Toko 9', 'Édo', 'budi', 'Andi']);
+  });
+
+  it('nama pelanggan kosong selalu di dasar, apa pun arahnya', () => {
+    const rows = [row('kosong', { customerName: '  ' }), row('Zed', { customerName: 'Zed' }), row('Ani', { customerName: 'Ani' })];
+    expect(order(rows, 'customerAsc')).toEqual(['Ani', 'Zed', 'kosong']);
+    expect(order(rows, 'customerDesc')).toEqual(['Zed', 'Ani', 'kosong']);
+  });
+
+  it('status: mengikuti alur kerja, bukan abjad; Batal di ujung akhir', () => {
+    const rows = STATUS_FLOW.map((status) => row(status, { status })).reverse();
+    expect(order(rows, 'statusAsc')).toEqual([...STATUS_FLOW]);
+    expect(order(rows, 'statusDesc')).toEqual([...STATUS_FLOW].reverse());
+  });
+
+  it('STATUS_FLOW memuat setiap status tepat sekali (status baru tak bisa terlewat)', () => {
+    expect([...STATUS_FLOW].sort()).toEqual(Object.keys(STATUS_LABELS).sort());
+    expect(new Set(STATUS_FLOW).size).toBe(STATUS_FLOW.length);
+  });
+
+  it('biaya: yang diurutkan adalah nominal yang tampil (final, atau estimasi bila final belum ada)', () => {
+    const rows = [
+      row('final 500', { finalCost: 500, estimateCost: 100 }),
+      row('estimasi 300', { finalCost: 0, estimateCost: 300 }),
+      row('final 50', { finalCost: 50 }),
+    ];
+    expect(listedCost(rows[0])).toBe(500);
+    expect(listedCost(rows[1])).toBe(300);
+    expect(order(rows, 'costAsc')).toEqual(['final 50', 'estimasi 300', 'final 500']);
+    expect(order(rows, 'costDesc')).toEqual(['final 500', 'estimasi 300', 'final 50']);
+  });
+
+  it('biaya kosong (0) selalu di dasar: "tanpa biaya" bukan yang termurah', () => {
+    const rows = [row('kosong'), row('100', { finalCost: 100 }), row('900', { finalCost: 900 })];
+    expect(order(rows, 'costAsc')).toEqual(['100', '900', 'kosong']);
+    expect(order(rows, 'costDesc')).toEqual(['900', '100', 'kosong']);
+  });
+
+  it('seri jatuh ke Terbaru, apa pun urutan masuknya', () => {
+    const a = row('lama', { customerName: 'Sama', status: 'diagnosa', finalCost: 10, createdAt: '2026-09-01' });
+    const b = row('baru', { customerName: 'Sama', status: 'diagnosa', finalCost: 10, createdAt: '2026-09-09' });
+    for (const sort of ['customerAsc', 'customerDesc', 'statusAsc', 'statusDesc', 'costAsc', 'costDesc'] as const) {
+      expect(order([a, b], sort), sort).toEqual(['baru', 'lama']);
+      expect(order([b, a], sort), sort).toEqual(['baru', 'lama']);
+    }
+  });
+
+  it('nilai urutan asing jatuh ke Terbaru, tak melempar', () => {
+    const rows = [row('lama', { createdAt: '2026-09-01' }), row('baru', { createdAt: '2026-09-09' })];
+    expect(order(rows, 'acak' as ServiceSort)).toEqual(['baru', 'lama']);
+  });
+});
+
+describe('judul kolom: nextSort dan sortDirectionOn', () => {
+  it('Pelanggan/Status/Biaya: naik → turun → kembali ke Terbaru', () => {
+    expect(nextSort('newest', 'customer')).toBe('customerAsc');
+    expect(nextSort('customerAsc', 'customer')).toBe('customerDesc');
+    expect(nextSort('customerDesc', 'customer')).toBe('newest');
+    expect(nextSort('oldest', 'status')).toBe('statusAsc');
+    expect(nextSort('statusDesc', 'status')).toBe('newest');
+    expect(nextSort('costAsc', 'cost')).toBe('costDesc');
+  });
+
+  it('klik kolom lain selalu mulai dari klik pertama kolom itu, bukan melanjutkan siklus lama', () => {
+    expect(nextSort('customerDesc', 'cost')).toBe('costAsc');
+    expect(nextSort('statusAsc', 'customer')).toBe('customerAsc');
+    expect(nextSort('costAsc', 'date')).toBe('newest');
+  });
+
+  it('No. Servis hanya Terbaru ⇄ Terlama (tanggal tak punya "tanpa urutan")', () => {
+    expect(nextSort('newest', 'date')).toBe('oldest');
+    expect(nextSort('oldest', 'date')).toBe('newest');
+  });
+
+  it('arah per kolom: tanggal Terbaru = menurun; kolom lain klik pertama = menaik; selain itu none', () => {
+    expect(sortDirectionOn('newest', 'date')).toBe('descending');
+    expect(sortDirectionOn('oldest', 'date')).toBe('ascending');
+    expect(sortDirectionOn('customerAsc', 'customer')).toBe('ascending');
+    expect(sortDirectionOn('costDesc', 'cost')).toBe('descending');
+    expect(sortDirectionOn('customerAsc', 'cost')).toBe('none');
+    expect(sortDirectionOn('newest', 'status')).toBe('none');
+  });
+
+  it('SERVICE_SORTS = tepat nilai yang dikenal nextSort + teksnya; tiap nilai punya label', () => {
+    const reachable = new Set<ServiceSort>(['newest']);
+    for (const column of ['date', 'customer', 'status', 'cost'] as const) {
+      for (const from of SERVICE_SORTS) reachable.add(nextSort(from, column));
+    }
+    expect([...reachable].sort()).toEqual([...SERVICE_SORTS].sort());
+    expect(Object.keys(SORT_LABEL_KEY).sort()).toEqual([...SERVICE_SORTS].sort());
+    for (const sort of SERVICE_SORTS) {
+      expect(idDict[SORT_LABEL_KEY[sort]], `id: ${sort}`).toBeTruthy();
+      expect(enDict[SORT_LABEL_KEY[sort]], `en: ${sort}`).toBeTruthy();
+    }
   });
 });

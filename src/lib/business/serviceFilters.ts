@@ -1,11 +1,100 @@
-import type { Service } from '@/data/types';
+import type { Service, ServiceStatus } from '@/data/types';
 import { addDays, daysBetween, localDateOf } from '@/lib/time';
 import { AWAITING_PICKUP_STATUSES } from './services';
+import type { TranslationKey } from '@/i18n';
 
 // "Lunas" sengaja tidak ada: chip status Lunas sudah menyaring hal yang sama.
 export type PaymentFilter = 'all' | 'unpaid' | 'dp';
 export type DateFilter = 'all' | 'last7' | 'thisMonth' | 'custom';
-export type ServiceSort = 'newest' | 'oldest';
+/**
+ * Satu nilai datar per (kolom, arah), bukan {kolom, arah}: ia dipakai apa adanya
+ * oleh dropdown, ingatan daftar (sessionStorage), dan judul kolom. 'newest' dan
+ * 'oldest' tetap bernama lama supaya ingatan yang sudah tersimpan tetap sah.
+ */
+export type ServiceSort =
+  | 'newest'
+  | 'oldest'
+  | 'customerAsc'
+  | 'customerDesc'
+  | 'statusAsc'
+  | 'statusDesc'
+  | 'costAsc'
+  | 'costDesc';
+
+/** Kolom Daftar yang bisa diurutkan lewat judulnya. 'date' = judul "No. Servis" (tanggal masuk). */
+export type ServiceSortColumn = 'date' | 'customer' | 'status' | 'cost';
+
+/** Semua nilai sah, urut seperti di dropdown. Sumber tunggal bagi koersi ingatan daftar. */
+export const SERVICE_SORTS: readonly ServiceSort[] = [
+  'newest',
+  'oldest',
+  'customerAsc',
+  'customerDesc',
+  'statusAsc',
+  'statusDesc',
+  'costAsc',
+  'costDesc',
+];
+
+/** Kunci teks tiap urutan, untuk dropdown dan pembaca layar. */
+export const SORT_LABEL_KEY: Record<ServiceSort, TranslationKey> = {
+  newest: 'services.sortNewest',
+  oldest: 'services.sortOldest',
+  customerAsc: 'services.sortCustomerAsc',
+  customerDesc: 'services.sortCustomerDesc',
+  statusAsc: 'services.sortStatusAsc',
+  statusDesc: 'services.sortStatusDesc',
+  costAsc: 'services.sortCostAsc',
+  costDesc: 'services.sortCostDesc',
+};
+
+/** [klik pertama, klik kedua] tiap kolom. */
+const COLUMN_SORTS: Record<ServiceSortColumn, readonly [ServiceSort, ServiceSort]> = {
+  date: ['newest', 'oldest'],
+  customer: ['customerAsc', 'customerDesc'],
+  status: ['statusAsc', 'statusDesc'],
+  cost: ['costAsc', 'costDesc'],
+};
+
+/**
+ * Urutan berikutnya saat judul kolom diklik. Kolom lain → urutan pertamanya;
+ * pertama → kedua; kedua → kembali ke 'newest' (bawaan), kecuali tanggal yang
+ * memang hanya dua keadaan (Terbaru ⇄ Terlama) dan tak punya "tanpa urutan".
+ */
+export function nextSort(current: ServiceSort, column: ServiceSortColumn): ServiceSort {
+  const [first, second] = COLUMN_SORTS[column];
+  if (current === first) return second;
+  if (current === second) return column === 'date' ? first : 'newest';
+  return first;
+}
+
+/** Arah urutan pada kolom itu, bagi penanda di judul. 'none' = urutan sekarang bukan milik kolom ini. */
+export function sortDirectionOn(
+  current: ServiceSort,
+  column: ServiceSortColumn,
+): 'ascending' | 'descending' | 'none' {
+  const [first, second] = COLUMN_SORTS[column];
+  if (current !== first && current !== second) return 'none';
+  // Tanggal: Terbaru = menurun (tanggal terbesar di atas). Kolom lain: klik pertama = menaik.
+  const ascendingFirst = column !== 'date';
+  return (current === first) === ascendingFirst ? 'ascending' : 'descending';
+}
+
+/**
+ * Urutan alur kerja, dari unit baru masuk sampai tutup buku. Batal di dasar:
+ * ia bukan tahap yang dilalui, melainkan jalan keluar. Tes memastikan tak ada
+ * status yang terlewat bila yang baru ditambahkan.
+ */
+export const STATUS_FLOW: readonly ServiceStatus[] = [
+  'diterima',
+  'diagnosa',
+  'konfirmasi',
+  'tunggu',
+  'pengerjaan',
+  'selesai',
+  'lunas',
+  'batal',
+];
 
 type Person = { id: string; name: string };
 
@@ -116,15 +205,60 @@ export function stalledDays(
 }
 
 /**
+ * Nominal yang tampil di kolom Biaya: biaya final, atau estimasi selama biaya
+ * final belum ditetapkan (aturan yang sama dengan `renderCost` di Daftar). 0 =
+ * kolomnya kosong.
+ */
+export function listedCost(s: Pick<Service, 'finalCost' | 'estimateCost'>): number {
+  if (s.finalCost > 0) return s.finalCost;
+  return s.estimateCost > 0 ? s.estimateCost : 0;
+}
+
+type SortFields = Pick<Service, 'createdAt' | 'customerName' | 'status' | 'finalCost' | 'estimateCost'>;
+
+const flowRank = (status: ServiceStatus): number => {
+  const i = STATUS_FLOW.indexOf(status);
+  return i === -1 ? STATUS_FLOW.length : i;
+};
+
+/**
  * Urutan daftar. Tiket tuntas TIDAK dipaksa ke dasar: ia sudah tersembunyi
  * secara default, jadi saat sengaja ditampilkan ia ikut urutan yang dipilih —
  * "Terbaru" berarti murni menurut tanggal masuk, tuntas maupun belum.
+ *
+ * Kolom lain: seri selalu jatuh ke Terbaru, sehingga urutannya tetap sama tiap
+ * render (Array.sort stabil, tapi seri antar sumber data tak boleh bergantung
+ * pada urutan muatnya). Nilai KOSONG (nama pelanggan kosong, biaya 0) selalu di
+ * dasar, apa pun arahnya: "tanpa biaya" bukan yang termurah dan nama kosong
+ * bukan "A", jadi membalik arah tak menaikkan baris kosong ke puncak.
  */
-export function compareServices(
-  a: Pick<Service, 'createdAt'>,
-  b: Pick<Service, 'createdAt'>,
-  sort: ServiceSort,
-): number {
-  if (sort === 'oldest') return a.createdAt.localeCompare(b.createdAt);
-  return b.createdAt.localeCompare(a.createdAt);
+export function compareServices(a: SortFields, b: SortFields, sort: ServiceSort): number {
+  const newestFirst = b.createdAt.localeCompare(a.createdAt);
+  switch (sort) {
+    case 'oldest':
+      return a.createdAt.localeCompare(b.createdAt);
+    case 'customerAsc':
+    case 'customerDesc': {
+      const an = a.customerName.trim();
+      const bn = b.customerName.trim();
+      if (!an !== !bn) return an ? -1 : 1;
+      const order = an.localeCompare(bn, 'id', { sensitivity: 'base', numeric: true });
+      return (sort === 'customerAsc' ? order : -order) || newestFirst;
+    }
+    case 'statusAsc':
+    case 'statusDesc': {
+      const order = flowRank(a.status) - flowRank(b.status);
+      return (sort === 'statusAsc' ? order : -order) || newestFirst;
+    }
+    case 'costAsc':
+    case 'costDesc': {
+      const ac = listedCost(a);
+      const bc = listedCost(b);
+      if (!ac !== !bc) return ac ? -1 : 1;
+      const order = ac - bc;
+      return (sort === 'costAsc' ? order : -order) || newestFirst;
+    }
+    default:
+      return newestFirst;
+  }
 }

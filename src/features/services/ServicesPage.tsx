@@ -42,15 +42,20 @@ import { resolveServiceColumns } from '@/lib/business/serviceColumns';
 import { resolveListView } from '@/lib/business/serviceListView';
 import { readListSnapshot, readScroll, saveListScroll, saveListView, writeScroll } from './listMemory';
 import {
+  SERVICE_SORTS,
+  SORT_LABEL_KEY,
   compareServices,
   createdRange,
   matchesPayment,
   matchesQuery,
   matchesTechnician,
+  nextSort,
+  sortDirectionOn,
   stalledDays,
   type DateFilter,
   type PaymentFilter,
   type ServiceSort,
+  type ServiceSortColumn,
 } from '@/lib/business/serviceFilters';
 import { getCategories, getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
 import { ServiceModal } from './ServiceModal';
@@ -638,6 +643,32 @@ export function ServicesPage() {
     </button>
   );
 
+  // Judul kolom yang bisa diurutkan (hanya tampil di tata letak lebar). Klik: naik,
+  // turun, lalu kembali ke Terbaru (nextSort). Panah mono menandai arah; di kolom
+  // yang tak aktif ia tersembunyi sampai disorot, supaya judul tak terlihat seperti
+  // tabel penuh panah. Tak memakai aria-sort (hanya sah di columnheader, dan daftar
+  // ini bukan tabel): urutan aktif dibacakan lewat teks tersembunyi.
+  const sortHead = (column: ServiceSortColumn, label: string) => {
+    const dir = sortDirectionOn(sort, column);
+    return (
+      <button
+        type="button"
+        className={styles.sortBtn}
+        data-dir={dir}
+        onClick={() => change(() => setSort(nextSort(sort, column)))}
+        title={interpolate(t('services.sortBy'), { column: label })}
+      >
+        <span className={styles.sortLabel}>{label}</span>
+        <Icon name={dir === 'descending' ? 'arrow-down' : 'arrow-up'} className={styles.sortMark} aria-hidden />
+        {dir !== 'none' && (
+          <span className="fm-visually-hidden">
+            {interpolate(t('services.sortCurrent'), { order: t(SORT_LABEL_KEY[sort]) })}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   // Biaya, sama di ketiga tampilan: biaya final (plus modal/profit untuk pemilik
   // bila ada modal), atau estimasi berlabel selama biaya final belum ditetapkan.
   const renderCost = (s: Service) => {
@@ -842,8 +873,11 @@ export function ServicesPage() {
           onChange={(e) => change(() => setSort(e.target.value as ServiceSort))}
           aria-label={t('services.sortAria')}
         >
-          <option value="newest">{t('services.sortNewest')}</option>
-          <option value="oldest">{t('services.sortOldest')}</option>
+          {SERVICE_SORTS.map((value) => (
+            <option key={value} value={value}>
+              {t(SORT_LABEL_KEY[value])}
+            </option>
+          ))}
         </select>
         <button
           type="button"
@@ -1009,29 +1043,34 @@ export function ServicesPage() {
                 style={{ '--row-cols': rowTracks } as CSSProperties}
               >
               {/* Judul kolom: hanya di tata letak lebar, saat segmen berbaris dalam lajur.
-                  aria-hidden: ia div biasa tanpa hubungan ke sel di bawahnya, dan baris di
-                  bawah (ul) tak pernah jadi tabel bagi pembaca layar. Sebagai gantinya tiap
-                  sel membawa labelnya sendiri sebagai teks tersembunyi (srLabel). */}
+                  Baris di bawah (ul) tak pernah jadi tabel bagi pembaca layar, jadi judul
+                  yang hanya label disembunyikan (aria-hidden): tiap sel membawa labelnya
+                  sendiri sebagai teks tersembunyi (srLabel). Judul yang bisa diurutkan
+                  (No. Servis, Pelanggan, Status, Biaya) adalah tombol sungguhan di dalam
+                  grup berlabel, jadi wadahnya TIDAK aria-hidden. */}
               <div
                 className={[styles.row, styles.rowHead, cols.has('cost') ? '' : styles.rowNoCost].join(' ')}
-                aria-hidden="true"
+                role="group"
+                aria-label={t('services.sortAria')}
               >
                 <div className={styles.rowMain}>
-                  <span>{t('services.colNo')}</span>
-                  {cols.has('customer') && <span>{t('services.colCustomer')}</span>}
-                  {cols.has('device') && <span>{t('services.colDevice')}</span>}
+                  {sortHead('date', t('services.colNo'))}
+                  {cols.has('customer') && sortHead('customer', t('services.colCustomer'))}
+                  {cols.has('device') && <span aria-hidden="true">{t('services.colDevice')}</span>}
                   {showNotes && (
-                    <span>
+                    <span aria-hidden="true">
                       {showComplaint && showFix
                         ? t('services.colNotes')
                         : t(showFix ? 'services.colFix' : 'services.colComplaint')}
                     </span>
                   )}
-                  {showTech && <span>{t('services.colTech')}</span>}
+                  {showTech && <span aria-hidden="true">{t('services.colTech')}</span>}
                 </div>
-                <span className={styles.rowStatus}>{t('common.status')}</span>
-                {cols.has('cost') && <span className={styles.rowCost}>{t('services.colCost')}</span>}
-                <span className={styles.rowActions}>{t('common.actions')}</span>
+                <span className={styles.rowStatus}>{sortHead('status', t('common.status'))}</span>
+                {cols.has('cost') && <span className={styles.rowCost}>{sortHead('cost', t('services.colCost'))}</span>}
+                <span className={styles.rowActions} aria-hidden="true">
+                  {t('common.actions')}
+                </span>
               </div>
               <ul className={styles.rows}>
                 {shownRows.map((s) => (

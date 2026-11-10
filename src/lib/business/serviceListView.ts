@@ -1,5 +1,5 @@
 import type { ServiceStatus } from '@/data/types';
-import type { DateFilter, PaymentFilter, ServiceSort } from './serviceFilters';
+import { SERVICE_SORTS, type DateFilter, type PaymentFilter, type ServiceSort } from './serviceFilters';
 import { STATUS_LABELS } from './services';
 
 /**
@@ -62,7 +62,6 @@ const FILTER_PARAMS = ['status', 'pickup', 'tech', 'date', 'open'] as const;
 const STATUSES = Object.keys(STATUS_LABELS) as ServiceStatus[];
 const PAYMENTS: PaymentFilter[] = ['all', 'unpaid', 'dp'];
 const DATES: DateFilter[] = ['all', 'last7', 'thisMonth', 'custom'];
-const SORTS: ServiceSort[] = ['newest', 'oldest'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_QUERY = 200;
 
@@ -127,7 +126,8 @@ export function parseListSnapshot(raw: string | null): ServiceListSnapshot | nul
       from: typeof v.from === 'string' && DAY.test(v.from) ? v.from : '',
       to: typeof v.to === 'string' && DAY.test(v.to) ? v.to : '',
       stalledOnly: v.stalledOnly === true,
-      sort: pick(v.sort, SORTS, 'newest'),
+      // Nilai lama ('newest'/'oldest') tetap sah; nilai asing/usang jatuh ke Terbaru.
+      sort: pick(v.sort, SERVICE_SORTS, 'newest'),
       hideClosed: v.hideClosed === true,
     },
   };
