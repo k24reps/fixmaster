@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import tsx from './PosPage.tsx?raw';
-import css from './PosPage.module.css?raw';
+import pageTsx from './PosPage.tsx?raw';
+import catalogTsx from './PosCatalog.tsx?raw';
+import historyTsx from './PosHistory.tsx?raw';
+import pageCss from './PosPage.module.css?raw';
+import catalogCss from './PosCatalog.module.css?raw';
+import historyCss from './PosHistory.module.css?raw';
+
+// Halaman Kasir dipecah per bagian; aturannya berlaku untuk semuanya.
+const tsx = [pageTsx, catalogTsx, historyTsx].join('\n');
+const css = [pageCss, catalogCss, historyCss].join('\n');
 
 /**
  * Mekanisme tata letak Kasir yang pernah rusak di ponsel. Piksel tak bisa

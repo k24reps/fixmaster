@@ -1,0 +1,179 @@
+/* ---------- Transaksi terakhir / pembatalan ---------- */
+.history {
+  grid-column: 1 / -1;
+  padding: var(--space-4) var(--space-5) !important;
+}
+.historyHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+.historyHead h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-3);
+}
+.historyHead h2 svg {
+  color: var(--text-muted);
+}
+.empty {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: var(--space-6) 0;
+}
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  container-type: inline-size;
+}
+.historyScope {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.historyDay + .historyDay {
+  margin-top: var(--space-4);
+}
+/* Kepala hari: tanggal + jumlah transaksi + total (tanpa yang batal). */
+.historyDayHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  /* Di 320px tanggal & ringkasan tak muat sebaris: ringkasan turun utuh,
+     bukan dua kolom yang masing-masing patah. */
+  gap: 2px var(--space-3);
+  padding: 6px var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px dotted var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.historyTime {
+  margin-left: var(--space-2);
+  font-weight: var(--fw-normal);
+  color: var(--text-muted);
+}
+/* Satu transaksi = dua baris struk: nomor + jam ... total, lalu rincian.
+   Tuts aksi di kanan selama muat. Dulu satu baris flex: di 320px info
+   tergencet di samping total + tiga tuts 40px, nomor faktur terpotong. */
+.historyRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'no total actions'
+    'meta meta actions';
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.historyRow.voided {
+  opacity: 0.55;
+}
+.historyRow.voided .historyTotal {
+  text-decoration: line-through;
+}
+.historyNo {
+  grid-area: no;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.historyTotal {
+  grid-area: total;
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.historyMeta {
+  grid-area: meta;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.historyActions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.historyActions:empty {
+  display: none;
+}
+/* Wadah sempit: tuts turun ke baris sendiri di bawah divider titik, rata
+   kanan di bawah totalnya. Ambang diukur dari baris terburuk di layar
+   sentuh: 26 bingkai + 117 nomor & jam + 118 "Rp 999.999.999" + 148 tiga
+   tuts 44px + 24 jeda = 433px. */
+@container (max-width: 432px) {
+  .historyRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'no total'
+      'meta meta'
+      'actions actions';
+  }
+  .historyActions {
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px dotted var(--border-strong);
+  }
+}
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+.iconBtn:hover {
+  color: var(--brand-hover);
+  border-color: var(--border-brand);
+  background: var(--bg-hover);
+}
+
+.voidBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+.voidBtn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--warning-soft);
+}

@@ -1,27 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import {
-  Card,
-  Input,
-  Button,
-  Badge,
-  EmptyState,
-  Icon,
-  Modal,
-  LoadState,
-  loadPending,
-  CategoryChips,
-  countCategories,
-  categoryOf,
-} from '@/components/ui';
+import { Card, Input, Button, Icon, Modal } from '@/components/ui';
 import { useCollection } from '@/hooks/useCollection';
 import { repository } from '@/data';
-import { voidSale, processSale } from '@/data/supabase-client';
+import { processSale } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { isManager } from '@/config/plans';
 import { logActivity } from '@/lib/activity';
 import { newId, nextDocNumber } from '@/lib/id';
-import { fmtRp, fmtRpInput, parseRpInput, EMPTY_VALUE } from '@/lib/format';
-import { localDateStr, fmtDate, monthRange } from '@/lib/time';
+import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
+import { localDateStr, monthRange } from '@/lib/time';
 import {
   cartSubtotal,
   resolveDiscount,
@@ -34,8 +21,6 @@ import {
   cashSuggestions,
   payBarState,
   payBarReady,
-  pickOnEnter,
-  groupSalesByDay,
   toSaleLines,
   type CartItem,
   type DiscountType,
@@ -46,6 +31,9 @@ import { useT } from '@/i18n';
 import { walletsForOutlet } from '@/lib/business/finance';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { printSaleReceipt } from './printSaleReceipt';
+import { saleWaMessage } from './saleWaMessage';
+import { PosCatalog } from './PosCatalog';
+import { PosHistory } from './PosHistory';
 import { CustomerModal } from '@/features/customers/CustomerModal';
 import { toast } from '@/stores/toast';
 import { useSessionStore, resolveCreateOutlet, mustPickOutlet } from '@/stores/session';
@@ -85,8 +73,6 @@ export function PosPage() {
   // Penjualan bulan lalu tidak bisa dibatalkan (0069): laporan bulan itu sudah berjalan.
   const monthStart = monthRange().from;
 
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState('');
   const [discountType, setDiscountType] = useState<DiscountType>('amount');
@@ -112,9 +98,6 @@ export function PosPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   // Fokus otomatis hanya untuk mouse: di ponsel ia memunculkan keyboard.
   const [finePointer] = useState(() => !!window.matchMedia?.('(pointer: fine)').matches);
-  const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
-  const [voidReason, setVoidReason] = useState('');
-  const [voidBusy, setVoidBusy] = useState(false);
   const [tab, setTab] = useState<'pos' | 'history'>('pos');
   // Pelanggan transaksi (opsional): belanja sparepart pun jadi bagian riwayat
   // orangnya, bukan penjualan anonim yang tak bisa ditelusuri lagi.
@@ -177,88 +160,6 @@ export function PosPage() {
       setCustQuery('');
     } else setCustModal(true);
   });
-
-  // Void a sale (manager-only). Cloud → atomic RPC; local → mirror the
-  // reversal (restore stock, reverse wallet, delete linked income, mark void).
-  const confirmVoid = async () => {
-    if (!voidTarget) return;
-    if (voidTarget.date < monthStart) {
-      toast.error(t('pos.voidLastMonth'));
-      return;
-    }
-    setVoidBusy(true);
-    try {
-      if (isCloudMode()) {
-        await voidSale(voidTarget.id, voidReason.trim());
-      } else {
-        const inv = await repository.list('inventory');
-        const restocked = voidTarget.lines
-          .map((l) => {
-            const item = inv.find((i) => i.id === l.itemId);
-            return item ? { ...item, stock: item.stock + l.qty } : null;
-          })
-          .filter((x): x is InventoryItem => x !== null);
-        if (restocked.length) await repository.putMany('inventory', restocked);
-
-        const allIncomes = await repository.list('incomes');
-        const allWallets = await repository.list('wallets');
-        for (const inc of allIncomes.filter((i) => i.saleId === voidTarget.id)) {
-          const w = allWallets.find((x) => x.id === inc.walletId);
-          if (w) await repository.put('wallets', { ...w, balance: w.balance - inc.amount });
-          await repository.remove('incomes', inc.id);
-        }
-        await repository.put('sales', {
-          ...voidTarget,
-          voided: true,
-          voidedReason: voidReason.trim(),
-        });
-      }
-      toast.success(interpolate(t('pos.voided'), { no: voidTarget.saleNo }));
-      // Di cloud ini dilewati: database yang mencatatnya sendiri (0073, lihat
-      // SERVER_LOGGED di lib/activity).
-      logActivity({
-        action: 'sale.void',
-        entityType: 'sale',
-        entityId: voidTarget.id,
-        entityLabel: voidTarget.saleNo,
-        meta: { total: voidTarget.total, reason: voidReason.trim() },
-      });
-      setVoidTarget(null);
-      setVoidReason('');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('pos.voidFailed'));
-    } finally {
-      setVoidBusy(false);
-    }
-  };
-
-  // Kategori dari barang yang BISA dijual (stok > 0), dengan jumlahnya.
-  const categoryCounts = useMemo(
-    () => countCategories(inventory.filter((i) => i.stock > 0)),
-    [inventory],
-  );
-  const inStockCount = categoryCounts.reduce((n, [, count]) => n + count, 0);
-  // Kategori yang stoknya habis semua tak lagi punya chip; pilihan lama jangan
-  // sampai mengunci katalog di daftar kosong.
-  const activeCategory = categoryCounts.some(([c]) => c === category) ? category : 'all';
-
-  // Barang habis tetap muncul saat DICARI (redup, "Habis") — kalau disembunyikan,
-  // kasir membaca "tidak ada yang cocok" dan mengira barangnya tak terdaftar.
-  const available = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return inventory
-      .filter((i) => i.stock > 0 || !!q)
-      .filter((i) => activeCategory === 'all' || categoryOf(i.category) === activeCategory)
-      .filter(
-        (i) =>
-          !q ||
-          i.name.toLowerCase().includes(q) ||
-          i.category.toLowerCase().includes(q) ||
-          (i.sku ?? '').toLowerCase().includes(q),
-      )
-      .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0))
-      .slice(0, 50);
-  }, [inventory, query, activeCategory]);
 
   const subtotal = cartSubtotal(cart);
   const discountValue = resolveDiscount(subtotal, parseRpInput(discount), discountType);
@@ -438,26 +339,6 @@ export function PosPage() {
     setCleared(null);
   };
 
-  // Kirim ulang struk WA dari riwayat. Nomor diambil dari data pelanggan saat
-  // diklik; jendela dibuka lebih dulu (sinkron) supaya tak diblokir peramban.
-  const resendWa = async (s: Sale) => {
-    const win = window.open('', '_blank');
-    try {
-      const c = s.customerId ? await repository.get('customers', s.customerId) : null;
-      if (!c?.phone) {
-        win?.close();
-        toast.warning(t('pos.noPhone'));
-        return;
-      }
-      const url = waLink(c.phone, waMessage(s));
-      if (win) win.location.href = url;
-      else window.open(url, '_blank');
-    } catch (e) {
-      win?.close();
-      toast.error(e instanceof Error ? e.message : t('pos.waFailed'));
-    }
-  };
-
   const newSale = () => {
     setDone(null);
     searchRef.current?.focus();
@@ -468,17 +349,6 @@ export function PosPage() {
     setOutletNotice(false);
     setDone(null);
     setActiveOutlet(id);
-  };
-
-  const onSearchEnter = () => {
-    if (done && !query.trim()) {
-      newSale();
-      return;
-    }
-    const hit = pickOnEnter(inventory, available, query);
-    if (!hit) return;
-    addToCart(hit);
-    setQuery('');
   };
 
   const statusText = settle.ok
@@ -690,15 +560,6 @@ export function PosPage() {
     </div>
   );
 
-  const stockBadge = (item: InventoryItem) =>
-    item.stock <= 0 ? (
-      <Badge tone="danger">{t('pos.outOfStock')}</Badge>
-    ) : (
-      <Badge tone={item.stock <= item.minStock ? 'warning' : 'neutral'}>
-        {interpolate(t('pos.stockLeft'), { n: String(item.stock) })}
-      </Badge>
-    );
-
   // Baris kedua LCD: yang harus dilihat kasir berikutnya — sisa, kembalian, pas.
   const lcdSub: { label: string; value: string; tone: 'due' | 'change' | 'exact' } | null = done
     ? done.change > 0
@@ -713,14 +574,6 @@ export function PosPage() {
         : settle.due > 0
           ? { label: t('pos.lcdDue'), value: fmtRp(settle.due), tone: 'due' }
           : { label: t('pos.lcdExact'), value: '', tone: 'exact' };
-
-  const waMessage = (sale: Sale) =>
-    interpolate(t('pos.waMessage'), {
-      shop: org?.name ?? '',
-      no: sale.saleNo,
-      items: sale.lines.map((l) => `${l.qty}× ${l.name}`).join('\n'),
-      total: fmtRp(sale.total),
-    });
 
   return (
     <div className={[styles.page, tab === 'pos' ? styles.pagePos : ''].join(' ')}>
@@ -765,75 +618,14 @@ export function PosPage() {
           </Card>
         ) : (
         <>
-        <div className={styles.toolbar}>
-          <Input
-            ref={searchRef}
-            placeholder={t('pos.searchPlaceholder')}
-            aria-label={t('pos.searchPlaceholder')}
-            value={query}
-            autoFocus={finePointer}
-            noAutoCap
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                // Enter yang ditahan tidak boleh ikut menutup LUNAS.
-                if (!e.repeat) onSearchEnter();
-              }
-            }}
-            iconLeft={<Icon name="magnifying-glass" aria-hidden />}
-          />
-          {finePointer && <kbd className={styles.kbd} aria-hidden>/</kbd>}
-        </div>
-        <CategoryChips
-          categories={categoryCounts}
-          total={inStockCount}
-          value={activeCategory}
-          onChange={setCategory}
-          label={t('pos.categoryLabel')}
+        <PosCatalog
+          inventory={inventory}
+          inventoryLoad={inventoryLoad}
+          searchRef={searchRef}
+          finePointer={finePointer}
+          onAdd={addToCart}
+          onEmptyEnter={done ? newSale : undefined}
         />
-        {loadPending(inventoryLoad) ? (
-          <Card>
-            <LoadState queries={[inventoryLoad]} />
-          </Card>
-        ) : available.length === 0 ? (
-          <Card>
-            {inStockCount > 0 || query.trim() ? (
-              <EmptyState
-                icon={<Icon name="magnifying-glass" aria-hidden />}
-                title={t('pos.noMatchTitle')}
-                description={t('pos.noMatchBody')}
-              />
-            ) : (
-              <EmptyState
-                icon={<Icon name="boxes-stacked" aria-hidden />}
-                title={t('pos.noStockTitle')}
-                description={t('pos.noStockBody')}
-              />
-            )}
-          </Card>
-        ) : (
-          /* Satu tampilan saja: kartu. Nama turun baris utuh, jadi nomor model
-             di ujungnya (A1989, Pro Max) tetap terbaca; Daftar dan Ringkas dulu
-             memotongnya, dan tombol pilihannya memakan lebar kolom cari. */
-          <div className={styles.productGrid}>
-            {available.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.productCard}
-                onClick={() => addToCart(item)}
-                disabled={item.stock <= 0}
-              >
-                <span className={styles.productName}>{item.name}</span>
-                <span className={styles.productMeta}>
-                  {stockBadge(item)}
-                  <strong>{fmtRp(item.sellPrice)}</strong>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
         </>
         )}
       </div>
@@ -917,7 +709,7 @@ export function PosPage() {
               {done.phone && (
                 <a
                   className={styles.waBtn}
-                  href={waLink(done.phone, waMessage(done.sale))}
+                  href={waLink(done.phone, saleWaMessage(t('pos.waMessage'), org?.name ?? '', done.sale))}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -1291,121 +1083,16 @@ export function PosPage() {
       )}
 
       {tab === 'history' && (
-        <Card className={styles.history} id="pos-panel" role="tabpanel" aria-labelledby="pos-tab-history">
-          <div className={styles.historyHead}>
-            <h2>
-              <Icon name="clock-rotate-left" aria-hidden /> {t('pos.tabHistory')}
-            </h2>
-            {/* Riwayat mengikuti cabang aktif — dulu tanpa tanda, sehingga cabang
-                tanpa penjualan tampak seperti data hilang. */}
-            {activeOutlet && reachableOutlets.length > 1 && (
-              <span className={styles.historyScope}>
-                {t('pos.historyBranch').replace('{name}', activeOutlet.name)}
-              </span>
-            )}
-          </div>
-          {loadPending(salesLoad) ? (
-            <LoadState queries={[salesLoad]} />
-          ) : recentSales.length === 0 ? (
-            <p className={styles.emptyCart}>{t('pos.noSales')}</p>
-          ) : (
-            groupSalesByDay(recentSales).map((day) => (
-              <section key={day.date} className={styles.historyDay} aria-label={fmtDate(day.date)}>
-                <div className={styles.historyDayHead}>
-                  <span>{fmtDate(day.date)}</span>
-                  <span>
-                    {interpolate(t('pos.dayCount'), { n: String(day.count) })} · {fmtRp(day.total)}
-                  </span>
-                </div>
-                <ul className={styles.historyList}>
-                  {day.rows.map((s) => (
-                    <li key={s.id} className={[styles.historyRow, s.voided ? styles.voided : ''].join(' ')}>
-                      <strong className={styles.historyNo}>
-                        {s.saleNo}
-                        <span className={styles.historyTime}>
-                          {s.createdAt
-                            ? new Date(s.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                            : ''}
-                        </span>
-                      </strong>
-                      <span className={styles.historyTotal}>{fmtRp(s.total)}</span>
-                      <small className={styles.historyMeta}>
-                        {interpolate(t('pos.itemCount'), { n: String(s.lines.length) })}
-                        {s.payments.length > 0 && ` · ${s.payments.map((p) => walletName(p.walletId) || EMPTY_VALUE).join(' + ')}`}
-                        {s.cashierName ? ` · ${s.cashierName}` : ''}
-                        {s.customerName ? ` · ${s.customerName}` : ''}
-                      </small>
-                      <div className={styles.historyActions}>
-                        {s.customerId && !s.voided && (
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => void resendWa(s)}
-                            aria-label={t('pos.resendWa').replace('{no}', s.saleNo)}
-                            title={t('pos.resendWa').replace('{no}', s.saleNo)}
-                          >
-                            <Icon name="whatsapp" aria-hidden />
-                          </button>
-                        )}
-                        {org && (
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => printSaleReceipt(s, org)}
-                            aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
-                            title={t('pos.printTitle')}
-                          >
-                            <Icon name="receipt" aria-hidden />
-                          </button>
-                        )}
-                        {s.voided ? (
-                          <Badge tone="danger">{t('pos.voidedBadge')}</Badge>
-                        ) : !isMgr || s.date < monthStart ? null : (
-                          <button
-                            type="button"
-                            className={styles.voidBtn}
-                            onClick={() => { setVoidTarget(s); setVoidReason(''); }}
-                            aria-label={interpolate(t('pos.voidAria'), { no: s.saleNo })}
-                            title={t('pos.voidTitle')}
-                          >
-                            <Icon name="circle-xmark" aria-hidden />
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))
-          )}
-        </Card>
-      )}
-
-      <Modal
-        open={voidTarget !== null}
-        onClose={() => setVoidTarget(null)}
-        title={interpolate(t('pos.voidModalTitle'), { no: voidTarget?.saleNo ?? '' })}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setVoidTarget(null)}>
-              {t('common.back')}
-            </Button>
-            <Button variant="danger" onClick={confirmVoid} loading={voidBusy}>
-              {t('pos.voidConfirm').replace('{no}', voidTarget?.saleNo ?? '')}
-            </Button>
-          </>
-        }
-      >
-        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-3)' }}>
-          {t('pos.voidBody')} <strong>{t('pos.voidedBadge')}</strong> {t('pos.voidBodyTail')}
-        </p>
-        <Input
-          placeholder={t('pos.voidReason')}
-          value={voidReason}
-          onChange={(e) => setVoidReason(e.target.value)}
+        <PosHistory
+          recentSales={recentSales}
+          salesLoad={salesLoad}
+          walletName={walletName}
+          org={org}
+          isMgr={isMgr}
+          monthStart={monthStart}
+          branchName={activeOutlet && reachableOutlets.length > 1 ? activeOutlet.name : null}
         />
-      </Modal>
+      )}
 
       <CustomerModal
         open={custModal}
