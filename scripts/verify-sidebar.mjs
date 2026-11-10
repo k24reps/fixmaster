@@ -88,11 +88,11 @@ for (const theme of ['dark', 'light']) {
   if (theme === 'dark') {
     await page.screenshot({ path: join(OUT, 'fix-mobile-open-dark.png') });
   }
-  // Tap the Inventory menu item inside the drawer.
-  await page.click('aside a[href="/inventory"]');
+  // Tap the Customers menu item inside the drawer.
+  await page.click('aside a[href="/customers"]');
   await page.waitForTimeout(700);
   const url = page.url();
-  if (!url.endsWith('/inventory')) fail(`mobile menu tap did not navigate (url=${url})`);
+  if (!url.endsWith('/customers')) fail(`mobile menu tap did not navigate (url=${url})`);
   else console.log(`mobile (${theme}) nav ok -> ${url}`);
   await ctx.close();
 }

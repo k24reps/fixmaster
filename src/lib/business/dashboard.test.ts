@@ -225,12 +225,12 @@ describe('computeAlerts', () => {
       expect.objectContaining({
         kind: 'out-of-stock',
         count: 1,
-        href: '/inventory?stock=out',
+        href: '/pos?stock=out',
       }),
       expect.objectContaining({
         kind: 'low-stock',
         count: 1,
-        href: '/inventory?stock=low',
+        href: '/pos?stock=low',
       }),
       expect.objectContaining({
         kind: 'awaiting-pickup',

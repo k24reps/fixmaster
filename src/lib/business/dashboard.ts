@@ -158,7 +158,7 @@ export function computeAlerts(
       tone: 'danger',
       icon: 'box-open',
       count: outOfStock,
-      href: '/inventory?stock=out',
+      href: '/pos?stock=out',
     });
   }
   if (lowStock > 0) {
@@ -167,7 +167,7 @@ export function computeAlerts(
       tone: 'warning',
       icon: 'triangle-exclamation',
       count: lowStock,
-      href: '/inventory?stock=low',
+      href: '/pos?stock=low',
     });
   }
 

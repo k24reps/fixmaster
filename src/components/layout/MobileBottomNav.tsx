@@ -91,8 +91,7 @@ export function MobileBottomNav() {
   };
 
   const destinationFor = ({ item, locked }: ResolvedNavItem) => locked ? '/settings' : item.to;
-  const mobileLabelFor = (item: ResolvedNavItem['item']) =>
-    item.to === '/' ? t('nav.home') : t(item.labelKey);
+  const mobileLabelFor = (item: ResolvedNavItem['item']) => t(item.shortLabelKey ?? item.labelKey);
 
   return (
     <>

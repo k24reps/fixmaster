@@ -128,11 +128,11 @@ describe('orgConfig device categories (cloud-backed, 0032)', () => {
 
     it('persists a clean layout without replacing other org settings', async () => {
       state.org = makeOrg({ settings: { deviceCategories: ['Laptop'] } });
-      await setMobileNavigation(['/services', '/services', '/pos', '/inventory']);
+      await setMobileNavigation(['/services', '/services', '/pos', '/suppliers']);
 
       const [, value] = setSingletonMock.mock.calls[0];
       expect(value.settings?.deviceCategories).toEqual(['Laptop']);
-      expect(value.settings?.mobileNavigation).toEqual(['/services', '/pos', '/inventory', '/']);
+      expect(value.settings?.mobileNavigation).toEqual(['/services', '/pos', '/suppliers', '/']);
       expect(setStateMock).toHaveBeenCalledTimes(1);
     });
   });

@@ -67,7 +67,6 @@ const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {
   '/calculator': 'subtitle.calculator',
   '/pos': 'subtitle.pos',
   '/customers': 'subtitle.customers',
-  '/inventory': 'subtitle.inventory',
   '/suppliers': 'subtitle.suppliers',
   '/finance': 'subtitle.finance',
   '/tasks': 'subtitle.tasks',

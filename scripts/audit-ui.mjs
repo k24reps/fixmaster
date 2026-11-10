@@ -22,7 +22,6 @@ const pages = [
   { path: '/calculator', name: 'calculator' },
   { path: '/pos', name: 'pos' },
   { path: '/customers', name: 'customers' },
-  { path: '/inventory', name: 'inventory' },
   { path: '/suppliers', name: 'suppliers' },
   { path: '/finance', name: 'finance' },
   { path: '/tasks', name: 'tasks' },

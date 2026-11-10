@@ -34,7 +34,7 @@ async function ready(page, theme) {
 const MODALS = [
   { name: 'modal-service', route: '/services', btn: /Servis Baru|Tambah/i },
   { name: 'modal-customer', route: '/customers', btn: /Pelanggan Baru|Tambah/i },
-  { name: 'modal-inventory', route: '/inventory', btn: /Sparepart Baru|Tambah|Baru/i },
+  { name: 'modal-inventory', route: '/pos', btn: /Tambah barang baru/i },
   { name: 'modal-supplier', route: '/suppliers', btn: /Supplier Baru|Tambah|Baru/i },
   { name: 'modal-finance', route: '/finance', btn: /Pemasukan|Tambah/i },
 ];

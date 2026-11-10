@@ -5,6 +5,8 @@ export interface NavItem {
   to: string;
   /** i18n key for the label. */
   labelKey: TranslationKey;
+  /** Label pendek untuk slot nav bawah ponsel (±70px) bila label penuh tak muat. */
+  shortLabelKey?: TranslationKey;
   icon: string;
   /** Plan feature required to see this item (undefined = always shown). */
   feature?: Feature;
@@ -25,12 +27,13 @@ export type NavGroup = 'ops' | 'office' | 'system';
  * "Tugas Internal" (internal tasks) section, and groups items logically.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', labelKey: 'nav.dashboard', icon: 'fa-chart-pie', group: 'ops' },
+  { to: '/', labelKey: 'nav.dashboard', shortLabelKey: 'nav.home', icon: 'fa-chart-pie', group: 'ops' },
   { to: '/services', labelKey: 'nav.services', icon: 'fa-screwdriver-wrench', feature: 'services', group: 'ops' },
   { to: '/calculator', labelKey: 'nav.calculator', icon: 'fa-calculator', feature: 'services', group: 'ops' },
-  { to: '/pos', labelKey: 'nav.pos', icon: 'fa-cash-register', feature: 'pos', group: 'ops' },
+  // Kasir dan Inventori satu layar: datanya sama (inventory). /inventory
+  // dialihkan ke sini (appChildRoutes) agar tautan lama tetap hidup.
+  { to: '/pos', labelKey: 'nav.pos', shortLabelKey: 'nav.posShort', icon: 'fa-cash-register', feature: 'pos', group: 'ops' },
   { to: '/customers', labelKey: 'nav.customers', icon: 'fa-users', feature: 'customers', group: 'ops' },
-  { to: '/inventory', labelKey: 'nav.inventory', icon: 'fa-boxes-stacked', feature: 'inventory', group: 'ops' },
   { to: '/suppliers', labelKey: 'nav.suppliers', icon: 'fa-truck-field', feature: 'suppliers', group: 'ops' },
   { to: '/finance', labelKey: 'nav.finance', icon: 'fa-wallet', feature: 'finance', managerOnly: true, group: 'office' },
   { to: '/tasks', labelKey: 'nav.tasks', icon: 'fa-list-check', feature: 'tasks', group: 'office' },

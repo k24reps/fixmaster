@@ -25,7 +25,6 @@ const navTargets = [
   { label: /Dashboard|Beranda/i, name: 'dashboard' },
   { label: /Servis/i, name: 'services' },
   { label: /Kasir|POS/i, name: 'pos' },
-  { label: /Inventori/i, name: 'inventory' },
   { label: /Pelanggan/i, name: 'customers' },
   { label: /Keuangan/i, name: 'finance' },
   { label: /Laporan/i, name: 'reports' },

@@ -18,8 +18,7 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const PAGES = [
   { path: '/', name: 'mobile-dash', ready: "div[class*='kpisGrid']" },
   { path: '/services', name: 'mobile-services', ready: "div[class*='mobileCard']" },
-  { path: '/pos', name: 'mobile-pos', ready: "button[class*='catBtn']" },
-  { path: '/inventory', name: 'mobile-inventory', ready: "div[class*='invGrid']" },
+  { path: '/pos', name: 'mobile-pos', ready: "article[class*='productCard']" },
   { path: '/customers', name: 'mobile-cust', ready: "div[class*='custGrid']" },
   { path: '/suppliers', name: 'mobile-sup', ready: "div[class*='docket'], div[class*='vendor']" },
   { path: '/finance', name: 'mobile-fin', ready: "div[class*='tape']" },

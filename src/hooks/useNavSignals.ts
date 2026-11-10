@@ -135,7 +135,7 @@ export function useNavSignals(): Record<string, NavSignal> {
         pending > 0
           ? { count: pending, tone: awaitingConfirm ? 'warn' : 'info', pulse: false }
           : IDLE,
-      '/inventory':
+      '/pos':
         out > 0
           ? { count: out, tone: 'crit', pulse: true }
           : low > 0

@@ -103,7 +103,7 @@
 
 /* Ponsel: hitungan berbagi satu baris dengan label pendek. Strip ini membuka
    halaman, dan tiap baris yang ia makan menurunkan isi utama ke balik menu
-   bawah. Sel rupiah yang tetap tampil (nilai stok hanya ada di Inventori)
+   bawah. Sel rupiah yang tetap tampil (nilai stok di Kasir & Stok)
    turun ke baris sendiri. Flex, bukan grid auto-fit: sel selebar penuh
    (1 / -1) menahan trek kosong agar tak runtuh, sehingga hitungan di atasnya
    tidak meregang. Ambangnya ikut menu bawah (≤720px), bukan lebar wadah. */

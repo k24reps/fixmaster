@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- route config module: lazy() route components live here by design. */
 import { lazy } from 'react';
-import type { RouteObject } from 'react-router-dom';
+import { Navigate, useLocation, type RouteObject } from 'react-router-dom';
 import { ManagerRoute } from './ManagerRoute';
 import { OwnerRoute } from './OwnerRoute';
 import { NotFoundPage } from '@/components/NotFoundPage';
@@ -22,9 +22,6 @@ const CalculatorPage = lazy(() =>
 );
 const CustomersPage = lazy(() =>
   import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
-);
-const InventoryPage = lazy(() =>
-  import('@/features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })),
 );
 const PosPage = lazy(() =>
   import('@/features/pos/PosPage').then((m) => ({ default: m.PosPage })),
@@ -54,6 +51,13 @@ const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
 
+/** Inventori dilebur ke Kasir & Stok. Tautan lama dan markah tetap hidup,
+ *  termasuk ?stock=low|out yang dibaca saringan katalog. */
+function InventoryRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/pos', search }} replace />;
+}
+
 /** The authenticated app's child routes (rendered inside AppLayout's Outlet). */
 export const appChildRoutes: RouteObject[] = [
   { index: true, element: <DashboardPage /> },
@@ -62,7 +66,7 @@ export const appChildRoutes: RouteObject[] = [
   { path: 'calculator', element: <CalculatorPage /> },
   { path: 'pos', element: <PosPage /> },
   { path: 'customers', element: <CustomersPage /> },
-  { path: 'inventory', element: <InventoryPage /> },
+  { path: 'inventory', element: <InventoryRedirect /> },
   { path: 'suppliers', element: <SuppliersPage /> },
   { path: 'finance', element: <ManagerRoute><FinancePage /></ManagerRoute> },
   { path: 'tasks', element: <TasksPage /> },

@@ -21,7 +21,7 @@ const WIDTHS = (process.env.WIDTHS || '320,360,375,390,414').split(',').map(Numb
 // Tablet bukan ponsel: sidebar muncul di >=1025px sehingga ruang konten
 // justru MENYUSUT saat viewport melebar. isMobile dimatikan di >=768px.
 const MOBILE = Number(process.env.MOBILE ?? 1) === 1;
-const PAGES = ['/', '/services', '/calculator', '/pos', '/customers', '/inventory', '/suppliers',
+const PAGES = ['/', '/services', '/calculator', '/pos', '/customers', '/suppliers',
   '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
 
 /** Navigasi in-app ke `path`, memilih klik yang benar untuk lebar saat ini. */

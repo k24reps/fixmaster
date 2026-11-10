@@ -28,7 +28,23 @@ describe('mobile navigation', () => {
       staffNavigation,
     );
 
-    expect(resolved.map(({ item }) => item.to)).toEqual(['/services', '/pos', '/', '/inventory']);
+    expect(resolved.map(({ item }) => item.to)).toEqual(['/services', '/pos', '/', '/customers']);
+  });
+
+  it('tata letak lama berisi /inventory terisi ulang tanpa slot kosong', () => {
+    // Inventori dilebur ke Kasir & Stok; slot yang menunjuknya jatuh ke default.
+    expect(sanitizeMobileNavPaths(['/', '/services', '/pos', '/inventory'])).toEqual([
+      '/',
+      '/services',
+      '/pos',
+      '/customers',
+    ]);
+  });
+
+  it('Kasir & Stok memakai label pendek di nav bawah', () => {
+    const pos = NAV_ITEMS.find((item) => item.to === '/pos');
+    expect(pos?.shortLabelKey).toBe('nav.posShort');
+    expect(NAV_ITEMS.some((item) => item.to === '/inventory')).toBe(false);
   });
 
   it('keeps plan-locked entries visible for the owner', () => {

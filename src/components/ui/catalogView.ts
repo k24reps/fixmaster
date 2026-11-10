@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-/** Pilihan tampilan — dipakai Inventori dan Pelanggan. Servis dan Kasir tidak:
- * tampilan Servis ditentukan perangkat (ServicesPage), Kasir hanya punya kartu
- * (PosPage). */
+/** Pilihan tampilan — kini hanya Pelanggan. Servis dan Kasir & Stok tidak:
+ * tampilan Servis ditentukan perangkat (ServicesPage), Kasir & Stok hanya
+ * punya kartu karena tuts kelola stok menempel di kartu (PosCatalog). */
 export const CATALOG_VIEWS = [
   { id: 'cards', icon: 'view-cards', label: 'Tampilan kartu' },
   { id: 'list', icon: 'view-list', label: 'Tampilan daftar' },

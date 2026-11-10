@@ -135,7 +135,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     formula: '(Stok lama × HPP lama + Qty beli × Harga beli) ÷ Stok baru',
     example: '2 unit @ Rp 1,2 jt + beli 3 @ Rp 1,35 jt → HPP Rp 1,29 jt.',
     seenIn: [
-      { label: 'Inventori', to: '/inventory' },
+      { label: 'Kasir & Stok', to: '/pos' },
       { label: 'Laporan', to: '/reports' },
     ],
   },
@@ -147,7 +147,7 @@ export const GLOSSARY: GlossaryTerm[] = [
       'Membeli persediaan mengurangi kas, tapi belum menjadi beban. Biayanya baru dihitung (sebagai HPP) saat part dipakai di tiket atau barang terjual. Karena itu belanja stok besar bisa membuat kas turun padahal toko untung.',
     example: 'Beli 10 baterai Rp 7 jt: kas −Rp 7 jt, laba tidak berubah sampai baterai terpakai.',
     seenIn: [
-      { label: 'Inventori', to: '/inventory' },
+      { label: 'Kasir & Stok', to: '/pos' },
       { label: 'Keuangan', to: '/finance' },
     ],
   },

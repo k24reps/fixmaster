@@ -2,7 +2,7 @@
  * Generic page verification shots — opens the self-seeded demo and navigates via the
  * sidebar (client-side, keeps the session + cache), captures dark/light/mobile.
  *
- * Run:  ROUTE=/inventory NAME=inv node scripts/shoot-page.mjs
+ * Run:  ROUTE=/pos NAME=pos node scripts/shoot-page.mjs
  *       ROUTE=/ NAME=dashboard node scripts/shoot-page.mjs   (index route)
  */
 import { chromium } from '@playwright/test';

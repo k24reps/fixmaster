@@ -3,7 +3,7 @@ import { isManager, isOwner, planAllows } from '@/config/plans';
 import type { PlanType, Role } from '@/data/types';
 
 export const MOBILE_NAV_SLOT_COUNT = 4;
-export const DEFAULT_MOBILE_NAV_PATHS = ['/', '/services', '/pos', '/inventory'];
+export const DEFAULT_MOBILE_NAV_PATHS = ['/', '/services', '/pos', '/customers'];
 
 export interface ResolvedNavItem {
   item: NavItem;

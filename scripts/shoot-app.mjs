@@ -18,7 +18,6 @@ const pages = [
   { path: '/', name: 'dashboard' },
   { path: '/services', name: 'services' },
   { path: '/pos', name: 'pos' },
-  { path: '/inventory', name: 'inventory' },
 ];
 
 const browser = await chromium.launch();
