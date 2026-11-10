@@ -71,6 +71,15 @@
         ],
         "createdAt": "2026-11-10T01:31:44.369Z",
         "reason": "Agent: .tapeRow (invoice history receipt tape) carries invoice status (paid/pending/void) as a 3px token-colour spine, the same motif as the Finance tape; owner R-37 kept the spine because it carries status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine Not the Fill Rule. File-scoped because the detector only accepts * for side-tab; the only side-tab finding in this file. Decided by the agent, not confirmed by the user"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/suppliers/SuppliersPage.module.css"
+        ],
+        "createdAt": "2026-11-10T06:14:39.890Z",
+        "reason": "Agent: .docket carries purchase-order status (draft/ordered/partial/received/cancelled) as a 3px token-colour spine, the same tones as the PO_STATUS_TONE badge beside it; owner R-37 kept the spine because it maps status; AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine Not the Fill. File-scoped because the detector only accepts * for side-tab; the only side-tab finding in this file. Decided by the agent, not confirmed by the user"
       }
     ]
   }
