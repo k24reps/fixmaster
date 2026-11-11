@@ -1,5 +1,6 @@
 import { serviceReceiptLines, trackingUrl, type ReceiptLine } from '@/lib/business/notify';
 import { qrSvg } from '@/lib/qr';
+import { fmtDate } from '@/lib/time';
 import { openPrintWindow, buildPrintDocument, escapeHtml } from '@/lib/print';
 import {
   dotsToPx,
@@ -7,7 +8,10 @@ import {
   paperSpec,
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
+import { useSettingsStore } from '@/stores/settings';
+import type { TranslationKey } from '@/i18n';
 import { receiptStyle, LOGO_MAX_MM } from './receiptStyle';
+import { receiptText } from './receiptText';
 import type { Service, Organization } from '@/data/types';
 
 export { escapeHtml };
@@ -25,10 +29,57 @@ export function receiptRow(label: string, value: string, cls = ''): string {
   return `<tr class="${cls}"><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`;
 }
 
-function rowsFor(lines: ReceiptLine[], group: ReceiptLine['group'], extraClass = ''): string {
+/**
+ * Label baris nota servis menurut kuncinya. Kunci `warrantyPart` tak ada di
+ * sini: labelnya nama sparepart, yaitu data milik toko, bukan teks aplikasi.
+ */
+const LINE_LABEL: Partial<Record<ReceiptLine['key'], TranslationKey>> = {
+  date: 'receipt.line.date',
+  serviceNo: 'receipt.line.serviceNo',
+  customer: 'receipt.line.customer',
+  device: 'receipt.line.device',
+  imei: 'receipt.line.imei',
+  condition: 'receipt.line.condition',
+  complaint: 'receipt.line.complaint',
+  accessories: 'receipt.line.accessories',
+  status: 'receipt.line.status',
+  estimate: 'receipt.line.estimate',
+  cost: 'receipt.line.cost',
+  dp: 'receipt.line.dp',
+  remaining: 'receipt.line.remaining',
+  paidDp: 'receipt.line.paidDp',
+  dpReceived: 'receipt.line.dpReceived',
+  dpRetained: 'receipt.line.dpRetained',
+  dpRefunded: 'receipt.line.dpRefunded',
+  warrantyService: 'receipt.line.warrantyService',
+  warrantyParts: 'receipt.line.warrantyParts',
+};
+
+function lineLabel(l: ReceiptLine): string {
+  const key = LINE_LABEL[l.key];
+  return key ? receiptText(key) : l.label;
+}
+
+function lineValue(l: ReceiptLine, service: Service): string {
+  if (l.until !== undefined)
+    return l.until
+      ? `${receiptText('receipt.warranty.until')} ${fmtDate(l.until)}`
+      : receiptText('receipt.warranty.none');
+  // STATUS_LABELS hanya berbahasa Indonesia; bahasa lain memakai kamus status aplikasi.
+  if (l.key === 'status' && useSettingsStore.getState().language !== 'id')
+    return receiptText(`status.${service.status}` as TranslationKey);
+  return l.value;
+}
+
+function rowsFor(
+  lines: ReceiptLine[],
+  group: ReceiptLine['group'],
+  service: Service,
+  extraClass = '',
+): string {
   const rows = lines
     .filter((l) => l.group === group)
-    .map((l) => receiptRow(l.label, l.value, l.emphasis ? 'strong' : ''))
+    .map((l) => receiptRow(lineLabel(l), lineValue(l, service), l.emphasis ? 'strong' : ''))
     .join('');
   return rows ? `<table class="${extraClass}">${rows}</table>` : '';
 }
@@ -40,6 +91,14 @@ export interface ReceiptDoc {
   no: string;
   date: string;
   body: string;
+}
+
+/** Bagian-bagian isi dipisah jahitan titik; bagian kosong tidak meninggalkan jahitan ganda. */
+export function joinSections(sections: string[]): string {
+  return sections
+    .filter(Boolean)
+    .map((s) => `<hr class="seam"/>${s}`)
+    .join('\n  ');
 }
 
 /**
@@ -79,10 +138,10 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   ${o.body}
   <hr class="seam"/>
   <div class="foot">
-    Terima kasih atas kepercayaan Anda.<br/>
-    Senang bisa membantu, sampai jumpa kembali!
+    ${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
+    ${escapeHtml(receiptText('receipt.foot.again'))}
   </div>
-  <div class="by">DICETAK DENGAN FIXMASTER</div>`,
+  <div class="by">${escapeHtml(receiptText('receipt.by'))}</div>`,
   };
 }
 
@@ -104,45 +163,54 @@ export function receiptPreviewHtml(org: Organization, o: ReceiptDoc): string {
 }
 
 /**
+ * Dokumen nota servis. Tiket batal tidak mencetak garansi, kode QR pelacakan,
+ * maupun "simpan sebagai bukti pengambilan": unitnya tak akan diambil dan tak
+ * ada garansi yang bisa diklaim, jadi kertasnya hanya mencatat nasib DP.
+ */
+export function serviceReceiptDoc(service: Service, org: Organization, origin: string): ReceiptDoc {
+  const lines = serviceReceiptLines(service);
+  const cancelled = service.status === 'batal';
+  const date = lines.find((l) => l.key === 'date');
+  const track = trackingUrl(origin, org.id, service.serviceNo);
+  const note = (org.settings?.publicNote ?? '').trim();
+  const garansi = rowsFor(lines, 'garansi', service);
+
+  return {
+    demoMessage: receiptText('receipt.demo.service'),
+    title: receiptText('receipt.title.service'),
+    kind: receiptText('receipt.doc.service'),
+    no: service.serviceNo,
+    date: date ? lineValue(date, service) : '',
+    body: `
+  ${joinSections([
+    rowsFor(lines, 'unit', service),
+    rowsFor(lines, 'uang', service, 'money'),
+    garansi
+      ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
+      : '',
+    cancelled
+      ? ''
+      : `<div class="block">
+  <p class="block-label">${escapeHtml(receiptText('receipt.block.track'))}</p>
+  <div class="track">
+    ${qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 })}
+    <div class="track-copy">
+      <div>${escapeHtml(receiptText('receipt.track.copy'))}</div>
+      <p class="track-url">${escapeHtml(track)}</p>
+    </div>
+  </div>
+  </div>`,
+    note ? `<div class="note">${escapeHtml(note)}</div>` : '',
+    cancelled ? '' : `<div class="fine">${escapeHtml(receiptText('receipt.service.fine'))}</div>`,
+  ])}`,
+  };
+}
+
+/**
  * Open a thermal-style receipt for a service ticket in a new window and trigger
  * the browser print dialog. Shared by NotifyModal and the ticket detail action
  * bar so both produce an identical nota. Guarded in demo mode.
  */
 export function printServiceReceipt(service: Service, org: Organization): void {
-  const lines = serviceReceiptLines(service);
-  const pick = (label: string) => lines.find((l) => l.label === label)?.value ?? '';
-  const track = trackingUrl(window.location.origin, org.id, service.serviceNo);
-  const note = (org.settings?.publicNote ?? '').trim();
-  const garansi = rowsFor(lines, 'garansi');
-
-  openReceiptWindow(org, {
-    demoMessage: 'Cetak nota tersedia di FixMaster versi penuh. Daftar gratis.',
-    title: 'Nota',
-    kind: 'NOTA SERVIS',
-    no: service.serviceNo,
-    date: pick('Tanggal'),
-    body: `
-  <hr class="seam"/>
-  ${rowsFor(lines, 'unit')}
-  <hr class="seam"/>
-  ${rowsFor(lines, 'uang', 'money')}
-  ${garansi ? `<hr class="seam"/><div class="block"><p class="block-label">GARANSI</p>${garansi}</div>` : ''}
-  <hr class="seam"/>
-  <div class="block">
-  <p class="block-label">LACAK STATUS</p>
-  <div class="track">
-    ${qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 })}
-    <div class="track-copy">
-      <div>Pindai untuk melihat status,<br/>riwayat, dan masa garansi.</div>
-      <p class="track-url">${escapeHtml(track)}</p>
-    </div>
-  </div>
-  </div>
-  ${note ? `<hr class="seam"/><div class="note">${escapeHtml(note)}</div>` : ''}
-  <hr class="seam"/>
-  <div class="fine">
-    Simpan nota ini sebagai bukti pengambilan unit dan klaim garansi.
-    Pengambilan di luar jam operasional harap dikonfirmasi lebih dulu.
-  </div>`,
-  });
+  openReceiptWindow(org, serviceReceiptDoc(service, org, window.location.origin));
 }

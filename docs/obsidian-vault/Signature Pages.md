@@ -906,6 +906,8 @@ satu halaman, tinta 5,51–52,68 mm di dalam jendela head 4,91–52,91 mm (58 mm
 **Hitam-putih** (tahap 2): seluruh tinta nota `#000`; jahitan pemisah `2px dotted #000`. Di Profil Bisnis, kolom
 Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.logoPrintBw`).
 
+**Isi yang benar** (tahap 3): nota servis berbiaya akhir 0 + DP mencetak "Sudah dibayar (DP)" (tanpa "Sisa Rp 0"); tiket batal hanya mencetak nasib DP, tanpa garansi dan QR. Struk batal berkotak **BATAL** dan TOTAL dicoret, cetak ulang bertanda "CETAK ULANG" + tanggal-jam, metode bayar dari `sale.payments`. Aturannya di `lib/business/receiptContent.ts`.
+
 ---
 
 ## Pengaturan — Navigasi Mobile

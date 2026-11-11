@@ -5569,3 +5569,46 @@ pratinjau dan PDF berwarna, tetapi hilang di kertas. Satu-satunya bukti adalah r
 `verify1bit.py` menghitung tinta (<250) yang selamat jadi hitam (<128) per kelompok elemen.
 
 #decision #print #receipt #contrast
+
+### Tahap 3 — isi kertas yang benar (harden)
+
+Kertas ini dibawa pulang dan dipakai sebagai bukti, jadi angka yang menyesatkan atau diterka lebih
+berbahaya daripada baris yang kosong. Aturannya pindah dari perender ke data murni di
+`lib/business/receiptContent.ts` (`serviceMoney`, `saleReceiptModel`; 21 tes), perender hanya memilih
+label dan memformat.
+
+**Nota servis**
+- **Biaya akhir 0 + DP** (mis. estimasi 1.250.000, DP 150.000): dulu `Sisa Rp 0`, terbaca lunas.
+  Kini satu baris tebal "Sudah dibayar (DP)", sama dengan `paymentBlock` pesan WhatsApp.
+- **Tiket batal**: tanpa garansi, tanpa kode QR pelacakan, tanpa teks "bukti pengambilan dan klaim
+  garansi". Blok uang hanya nasib DP lewat `retainedDownPayment`: DP diterima → ditahan →
+  dikembalikan (baris terakhir ditebalkan). **`null` (batal sebelum refund dicatat) = hanya "DP
+  diterima"**, tidak menebak dikembalikan atau ditahan di atas kertas bukti.
+- `ReceiptLine` kini punya `key` stabil; perender memilih label dari kunci (kamus `receipt.line.*`),
+  bukan dari teks Indonesia di `label`. Garansi membawa tanggal mentah di `until` (`null` = tanpa
+  garansi); "s/d" dan "Tanpa garansi" dirakit perender sesuai bahasa.
+
+**Struk penjualan**
+- **Batal**: kotak **BATAL** berbingkai hitam 4 titik di bawah tanggal, baris TOTAL dicoret, alasan
+  tercetak di blok sendiri, dan keterangan "bukan bukti pembelian" menggantikan teks "simpan sebagai
+  bukti pembelian dan syarat penukaran" (dulu keduanya tercetak bersamaan, saling bertentangan).
+  Struk batal tak mencetak baris bayar atau kembalian. Penanda memakai garis tepi, bukan latar:
+  latar tidak tercetak bila "background graphics" mati.
+- **Cetak ulang**: "CETAK ULANG" + tanggal dan jam cetak. Kembalian tidak tersimpan di data, jadi
+  cetak ulang tak mengarangnya (`change` 0 = tidak diketahui, bukan "pas").
+- **Metode bayar** dari `sale.payments` + nama wallet; baris tunai = uang diterima (total + kembalian),
+  lalu Kembalian, hanya bila datanya ada.
+- Tanda tangan baru `printSaleReceipt(sale, org, { change, reprint, walletName })`. PosPage mengirim
+  `change`; PosHistory mengirim `reprint: true`.
+
+**Teks lewat kamus.** `receiptText(key)` (`features/services/receiptText.ts`) menerjemahkan di luar
+React dengan bahasa aplikasi aktif; 46 kunci `receipt.*` baru di `id.ts` dan `en.ts`. Nilai domain
+(tanggal, status Indonesia) tetap seperti formatnya; status berbahasa lain memakai kamus `status.*`.
+
+**Verifikasi tahap 3:** 920 tes / 80 berkas (`printReceipt.test`, `printSaleReceipt.test`, kunci di
+`notify.test`, CSS BATAL di `receiptStyle.test`). 26 PDF (13 kasus × 58/80 mm) satu halaman, tinta di
+dalam jendela head; setelah ambang 50%: kotak BATAL 77–89%, baris dicoret 77–86%, "CETAK ULANG"
+71%. Label panjang ("DP dikembalikan") dan nama barang yang membungkus ke empat baris di kolom
+38% menjadi pekerjaan tahap 5.
+
+#decision #print #receipt #pos #services

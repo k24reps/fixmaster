@@ -105,6 +105,22 @@ export function receiptStyle(paper: PaperSpec): string {
   .strong td:first-child { letter-spacing: 0.04em; }
   .block-label { letter-spacing: 0.18em; font-weight: 700; margin: 0 0 ${px(8)}; }
   .block { break-inside: avoid; }
+  /* Penanda status dokumen: bingkai hitam 4 titik, bukan latar. Latar tidak ikut
+     tercetak bila "background graphics" mati; garis tepi selalu tercetak. */
+  .void-mark {
+    margin: ${px(12)} 0 0;
+    padding: ${px(6)} 0;
+    border: 2px solid #000;
+    text-align: center;
+    font-size: ${px(30)};
+    line-height: ${px(36)};
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+  }
+  .reprint { margin: ${px(12)} 0 0; text-align: center; letter-spacing: 0.14em; }
+  .reprint strong { letter-spacing: 0.18em; }
+  tr.strike td { text-decoration: line-through; text-decoration-thickness: 2px; }
   .track { display: flex; gap: ${px(20)}; align-items: center; break-inside: avoid; }
   .track svg { flex: 0 0 auto; }
   .track-copy { min-width: 0; }

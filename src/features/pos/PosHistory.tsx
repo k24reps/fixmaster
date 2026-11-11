@@ -169,7 +169,7 @@ export function PosHistory({ recentSales, salesLoad, walletName, org, isMgr, mon
                         <button
                           type="button"
                           className={styles.iconBtn}
-                          onClick={() => printSaleReceipt(s, org)}
+                          onClick={() => printSaleReceipt(s, org, { reprint: true, walletName })}
                           aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
                           title={t('pos.printTitle')}
                         >

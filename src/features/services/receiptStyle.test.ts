@@ -58,4 +58,13 @@ describe('receiptStyle', () => {
     const sizes = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
     for (const px of sizes) expect(px, `${px}px`).toBeGreaterThanOrEqual(dotsToPx(BASE_FONT_DOTS) - 0.001);
   });
+
+  // Penanda BATAL memakai garis tepi: latar hitam bisa tidak tercetak bila
+  // "background graphics" mati, garis tepi selalu tercetak.
+  it('penanda BATAL berbingkai hitam, bukan berlatar; baris batal dicoret 4 titik', () => {
+    const css = receiptStyle(paperSpec(58));
+    expect(css).toMatch(/\.void-mark \{[^}]*border: 2px solid #000/);
+    expect(css).not.toMatch(/\.void-mark \{[^}]*background/);
+    expect(css).toMatch(/tr\.strike td \{[^}]*line-through[^}]*text-decoration-thickness: 2px/);
+  });
 });

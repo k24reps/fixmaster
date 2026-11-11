@@ -98,6 +98,34 @@ describe('serviceReceiptLines', () => {
     const remaining = lines.find((l) => l.label === 'Sisa');
     expect(remaining?.value).toContain('300.000');
   });
+
+  // Perender memilih label dari `key`, bukan dari teks Indonesia di `label`.
+  it('setiap baris punya kunci stabil, tanpa kunci ganda selain garansi per-part', () => {
+    const lines = serviceReceiptLines(svc({ createdAt: '2026-09-02T09:12:00.000Z', deviceSerial: '1', finalCost: 500000, downPayment: 200000 }));
+    expect(lines.every((l) => typeof l.key === 'string' && l.key.length > 0)).toBe(true);
+    const keys = lines.map((l) => l.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toEqual(expect.arrayContaining(['date', 'serviceNo', 'imei', 'status', 'cost', 'dp', 'remaining']));
+  });
+
+  it('biaya akhir 0 + DP: baris "Sudah dibayar (DP)", tanpa baris Sisa', () => {
+    const lines = serviceReceiptLines(svc({ status: 'pengerjaan', finalCost: 0, downPayment: 200000 }));
+    expect(lines.find((l) => l.key === 'paidDp')?.value).toContain('200.000');
+    expect(lines.some((l) => l.key === 'remaining')).toBe(false);
+  });
+
+  it('tiket batal tidak memuat garansi walau datanya masih ada', () => {
+    const lines = serviceReceiptLines(
+      svc({ status: 'batal', downPayment: 100000, warrantyServiceUntil: '2099-01-01', warrantyPartsUntil: '2099-01-01' }),
+    );
+    expect(lines.some((l) => l.group === 'garansi')).toBe(false);
+    expect(lines.find((l) => l.key === 'dpReceived')?.value).toContain('100.000');
+  });
+
+  it('garansi membawa tanggal mentah di `until` (null = tanpa garansi) untuk dirakit perender', () => {
+    const lines = serviceReceiptLines(svc({ status: 'selesai', warrantyServiceUntil: '2026-12-10T00:00:00.000Z' }));
+    expect(lines.find((l) => l.key === 'warrantyService')?.until).toBe('2026-12-10');
+  });
 });
 
 describe('serviceVars', () => {

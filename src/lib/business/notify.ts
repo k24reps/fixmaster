@@ -7,6 +7,7 @@ import type { Service, Organization } from '@/data/types';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { STATUS_LABELS, partWarranties, warrantyDecided } from './services';
+import { serviceMoney, type ServiceMoneyKey } from './receiptContent';
 
 /** Normalize an Indonesian phone to wa.me format (62xxxxxxxxxx, digits only). */
 export function toWaNumber(phone: string): string {
@@ -255,13 +256,44 @@ export function trackingUrl(origin: string, orgId: string, serviceNo: string): s
  * pengelompokan ini milik ISI nota, bukan milik perendernya, jadi ia tinggal
  * di sini bersama datanya alih-alih diterka ulang dari label di printReceipt.
  */
+export type ReceiptLineKey =
+  | 'date'
+  | 'serviceNo'
+  | 'customer'
+  | 'device'
+  | 'imei'
+  | 'condition'
+  | 'complaint'
+  | 'accessories'
+  | 'status'
+  | ServiceMoneyKey
+  | 'warrantyService'
+  | 'warrantyPart'
+  | 'warrantyParts';
+
 export interface ReceiptLine {
+  /** Identitas baris yang stabil; perender memilih label dari sini, bukan dari `label`. */
+  key: ReceiptLineKey;
+  /** Label bawaan (Indonesia). Nama sparepart pada garansi per-part juga lewat sini. */
   label: string;
   value: string;
   group: 'identitas' | 'unit' | 'uang' | 'garansi';
   /** Angka yang benar-benar dibawa pelanggan saat mengambil unit. */
   emphasis?: boolean;
+  /** Garansi: tanggal berakhir (YYYY-MM-DD), null = tanpa garansi. Teks "s/d" dirakit perender. */
+  until?: string | null;
 }
+
+const MONEY_LABELS: Record<ServiceMoneyKey, string> = {
+  estimate: 'Estimasi',
+  cost: 'Biaya',
+  dp: 'DP',
+  remaining: 'Sisa',
+  paidDp: 'Sudah dibayar (DP)',
+  dpReceived: 'DP diterima',
+  dpRetained: 'DP ditahan',
+  dpRefunded: 'DP dikembalikan',
+};
 
 /** Build structured receipt lines for a service (used by the print view). */
 export function serviceReceiptLines(service: Service): ReceiptLine[] {
@@ -272,69 +304,83 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
     // mengembalikan masukannya apa adanya kalau tidak cocok — tanpa localDateOf
     // nota mencetak "2026-09-02T09:12:00.000Z" ke tangan pelanggan.
     lines.push({
+      key: 'date',
       label: 'Tanggal',
       value: fmtDate(localDateOf(service.createdAt)),
       group: 'identitas',
     });
   lines.push(
-    { label: 'No. Servis', value: service.serviceNo, group: 'identitas' },
-    { label: 'Pelanggan', value: service.customerName, group: 'unit' },
-    { label: 'Perangkat', value: service.device, group: 'unit' },
+    { key: 'serviceNo', label: 'No. Servis', value: service.serviceNo, group: 'identitas' },
+    { key: 'customer', label: 'Pelanggan', value: service.customerName, group: 'unit' },
+    { key: 'device', label: 'Perangkat', value: service.device, group: 'unit' },
   );
   // Bukti "unit seperti apa yang saya titipkan" — nomor seri & kondisi fisik.
   if (service.deviceSerial)
-    lines.push({ label: 'IMEI/SN', value: service.deviceSerial, group: 'unit' });
+    lines.push({ key: 'imei', label: 'IMEI/SN', value: service.deviceSerial, group: 'unit' });
   if (service.deviceCondition)
-    lines.push({ label: 'Kondisi', value: service.deviceCondition, group: 'unit' });
+    lines.push({ key: 'condition', label: 'Kondisi', value: service.deviceCondition, group: 'unit' });
   if (service.complaint)
-    lines.push({ label: 'Keluhan', value: service.complaint, group: 'unit' });
+    lines.push({ key: 'complaint', label: 'Keluhan', value: service.complaint, group: 'unit' });
   if (service.accessories)
-    lines.push({ label: 'Kelengkapan', value: service.accessories, group: 'unit' });
-  lines.push({ label: 'Status', value: STATUS_LABELS[service.status], group: 'unit' });
-  if (service.estimateCost > 0)
-    lines.push({ label: 'Estimasi', value: fmtRp(service.estimateCost), group: 'uang' });
-  if (service.finalCost > 0)
-    lines.push({ label: 'Biaya', value: fmtRp(service.finalCost), group: 'uang' });
-  if (service.downPayment > 0) {
-    lines.push({ label: 'DP', value: fmtRp(service.downPayment), group: 'uang' });
+    lines.push({ key: 'accessories', label: 'Kelengkapan', value: service.accessories, group: 'unit' });
+  lines.push({ key: 'status', label: 'Status', value: STATUS_LABELS[service.status], group: 'unit' });
+
+  // Aturan "apa yang boleh tercetak" tinggal di receiptContent (data + tes).
+  for (const m of serviceMoney(service))
     lines.push({
-      label: 'Sisa',
-      value: fmtRp(Math.max(0, service.finalCost - service.downPayment)),
+      key: m.key,
+      label: MONEY_LABELS[m.key],
+      value: fmtRp(m.amount),
       group: 'uang',
-      emphasis: true,
+      ...(m.emphasis ? { emphasis: true } : {}),
     });
-  } else if (service.finalCost > 0) {
-    // Tanpa DP, total itu sendirilah yang harus dibayar — tegaskan barisnya
-    // supaya mata jatuh ke angka yang sama di kedua kasus.
-    lines[lines.length - 1].emphasis = true;
-  }
+
+  // Tiket batal tidak memberi garansi apa pun; mencetaknya di kertas bukti
+  // membuat pelanggan datang menagih sesuatu yang tak pernah ada.
+  if (service.status === 'batal') return lines;
+
   // Warranty (auto-filled from the shop's default when a service is marked
   // 'selesai'). Printed so the customer has proof of coverage on the nota.
   // Garansi jasa + per sparepart. Setelah Selesai, 0 hari tercetak "Tanpa
   // garansi" supaya pelanggan tahu itu disengaja, bukan lupa diisi.
   if (service.warrantyServiceUntil) {
+    const until = service.warrantyServiceUntil.slice(0, 10);
     lines.push({
+      key: 'warrantyService',
       label: 'Jasa',
-      value: 's/d ' + fmtDate(service.warrantyServiceUntil.slice(0, 10)),
+      value: 's/d ' + fmtDate(until),
       group: 'garansi',
+      until,
     });
   } else if (warrantyDecided(service)) {
-    lines.push({ label: 'Jasa', value: 'Tanpa garansi', group: 'garansi' });
+    lines.push({
+      key: 'warrantyService',
+      label: 'Jasa',
+      value: 'Tanpa garansi',
+      group: 'garansi',
+      until: null,
+    });
   }
   const parts = partWarranties(service.spareparts ?? []);
   if (parts.length) {
     for (const p of parts) {
+      const until = p.until ? p.until.slice(0, 10) : null;
       lines.push({
+        key: 'warrantyPart',
         label: p.name,
-        value: p.until ? 's/d ' + fmtDate(p.until.slice(0, 10)) : 'Tanpa garansi',
+        value: until ? 's/d ' + fmtDate(until) : 'Tanpa garansi',
         group: 'garansi',
+        until,
       });
     }
   } else if (service.warrantyPartsUntil) {
+    const until = service.warrantyPartsUntil.slice(0, 10);
     lines.push({
+      key: 'warrantyParts',
       label: 'Sparepart',
-      value: 's/d ' + fmtDate(service.warrantyPartsUntil.slice(0, 10)),
+      value: 's/d ' + fmtDate(until),
       group: 'garansi',
+      until,
     });
   }
   return lines;

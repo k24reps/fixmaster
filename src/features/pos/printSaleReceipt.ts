@@ -1,51 +1,88 @@
-import { openReceiptWindow, receiptRow, escapeHtml } from '@/features/services/printReceipt';
+import {
+  openReceiptWindow,
+  receiptRow,
+  escapeHtml,
+  joinSections,
+  type ReceiptDoc,
+} from '@/features/services/printReceipt';
+import { receiptText } from '@/features/services/receiptText';
+import { saleReceiptModel, type SaleReceiptOptions } from '@/lib/business/receiptContent';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import type { Sale, Organization } from '@/data/types';
 
 /**
- * Struk penjualan kasir — dokumen kedua yang dibawa pulang pelanggan, jadi ia
- * memakai kertas, gaya, dan identitas toko yang sama persis dengan nota servis:
- * kepala dan kaki datang dari `openReceiptWindow`, yang berbeda hanya isinya.
+ * Dokumen struk penjualan kasir — dokumen kedua yang dibawa pulang pelanggan,
+ * jadi ia memakai kertas, gaya, dan identitas toko yang sama persis dengan nota
+ * servis: kepala dan kaki datang dari `openReceiptWindow`, yang berbeda hanya
+ * isinya.
+ *
+ * Struk batal harus terbaca batal dalam sekali lirik, dari jarak lengan, tanpa
+ * membaca: kotak BATAL hitam di atas dan TOTAL yang dicoret. Teks kecil "dibatalkan"
+ * di dasar kertas, yang dulu satu-satunya tanda, tak terlihat dari ujung struk
+ * yang menggantung di mesin.
  */
-/** `change` hanya diketahui saat transaksi baru selesai — cetak ulang tak memuatnya. */
-export function printSaleReceipt(sale: Sale, org: Organization, change = 0): void {
+export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleReceiptOptions = {}): ReceiptDoc {
+  const m = saleReceiptModel(sale, opts);
   const note = (org.settings?.publicNote ?? '').trim();
 
-  const itemRows = sale.lines
-    .map((l) => receiptRow(`${l.qty}× ${l.name}`, fmtRp(l.sellPrice * l.qty)))
+  const itemRows = m.items
+    .map((i) => receiptRow(`${i.qty}× ${i.name}`, fmtRp(i.amount)))
+    .join('');
+
+  // Baris bayar memakai nama metode (Tunai, QRIS) sebagai label, seperti struk
+  // kasir pada umumnya; tanpa nama, jatuh ke "Dibayar".
+  const payRows = m.pay
+    .map((p) =>
+      p.key === 'change'
+        ? receiptRow(receiptText('receipt.sale.change'), fmtRp(p.amount))
+        : receiptRow(p.method ?? receiptText('receipt.sale.paid'), fmtRp(p.amount)),
+    )
     .join('');
 
   const moneyRows = [
-    receiptRow('Subtotal', fmtRp(sale.subtotal)),
-    sale.discount > 0 ? receiptRow('Diskon', `−${fmtRp(sale.discount)}`) : '',
-    receiptRow('TOTAL', fmtRp(sale.total), 'strong'),
-    change > 0 ? receiptRow('Dibayar', fmtRp(sale.total + change)) : '',
-    change > 0 ? receiptRow('Kembalian', fmtRp(change)) : '',
+    receiptRow(receiptText('receipt.sale.subtotal'), fmtRp(m.subtotal)),
+    m.discount > 0 ? receiptRow(receiptText('receipt.sale.discount'), `−${fmtRp(m.discount)}`) : '',
+    receiptRow(receiptText('receipt.sale.total'), fmtRp(m.total), m.voided ? 'strong strike' : 'strong'),
+    payRows,
   ].join('');
 
   const metaRows = [
-    sale.customerName ? receiptRow('Pelanggan', sale.customerName) : '',
-    sale.cashierName ? receiptRow('Kasir', sale.cashierName) : '',
+    sale.customerName ? receiptRow(receiptText('receipt.sale.customer'), sale.customerName) : '',
+    sale.cashierName ? receiptRow(receiptText('receipt.sale.cashier'), sale.cashierName) : '',
   ].join('');
 
-  openReceiptWindow(org, {
-    demoMessage: 'Cetak struk tersedia di FixMaster versi penuh. Daftar gratis.',
-    title: 'Struk',
-    kind: 'STRUK PENJUALAN',
+  const voidMark = m.voided ? `<div class="void-mark">${escapeHtml(receiptText('receipt.void'))}</div>` : '';
+  const reprint = m.reprintAt
+    ? `<div class="reprint"><strong>${escapeHtml(receiptText('receipt.reprint'))}</strong><br/>${escapeHtml(m.reprintAt)}</div>`
+    : '';
+
+  return {
+    demoMessage: receiptText('receipt.demo.sale'),
+    title: receiptText('receipt.title.sale'),
+    kind: receiptText('receipt.doc.sale'),
     no: sale.saleNo,
     date: fmtDate(sale.date),
     body: `
-  <hr class="seam"/>
-  <table>${itemRows}</table>
-  <hr class="seam"/>
-  <table class="money">${moneyRows}</table>
-  ${metaRows ? `<hr class="seam"/><table>${metaRows}</table>` : ''}
-  ${sale.voided ? '<hr class="seam"/><div class="fine">TRANSAKSI INI DIBATALKAN.</div>' : ''}
-  ${note ? `<hr class="seam"/><div class="note">${escapeHtml(note)}</div>` : ''}
-  <hr class="seam"/>
-  <div class="fine">
-    Simpan struk ini sebagai bukti pembelian dan syarat penukaran barang.
-  </div>`,
-  });
+  ${voidMark}${reprint}
+  ${joinSections([
+    `<table>${itemRows}</table>`,
+    `<table class="money">${moneyRows}</table>`,
+    metaRows ? `<table>${metaRows}</table>` : '',
+    m.voided && m.voidedReason
+      ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.sale.voidReason'))}</p><div class="note">${escapeHtml(m.voidedReason)}</div></div>`
+      : '',
+    note ? `<div class="note">${escapeHtml(note)}</div>` : '',
+    `<div class="fine">${escapeHtml(receiptText(m.voided ? 'receipt.sale.voidedNote' : 'receipt.sale.fine'))}</div>`,
+  ])}`,
+  };
+}
+
+/**
+ * `change` hanya diketahui saat transaksi baru selesai; cetak ulang tak
+ * memuatnya. `walletName` mengubah id wallet di `sale.payments` jadi nama
+ * metode bayar.
+ */
+export function printSaleReceipt(sale: Sale, org: Organization, opts: SaleReceiptOptions = {}): void {
+  openReceiptWindow(org, saleReceiptDoc(sale, org, opts));
 }
