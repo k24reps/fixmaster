@@ -81,9 +81,9 @@ Dua probe regresi siap pakai (butuh dev server jalan):
 ```bash
 # Keduanya default ke BASE_URL=http://localhost:5183 — SET sesuai port dev server
 # yang benar-benar jalan (vite biasanya 5173, dan bisa bergeser bila port terpakai).
-BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 13 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 13 halaman
 BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # pembesaran aplikasi
 BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kerapatan Padat
 ```

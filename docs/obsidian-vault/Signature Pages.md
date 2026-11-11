@@ -915,7 +915,7 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 **Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),
 **Isi kertas** (lima kolom teks: kepala 120, ucapan kaki 160, syarat servis 280, syarat struk 280,
 Catatan Toko 280 karakter; penghitung "n karakter tersisa", LED "belum tersimpan", satu tombol
-Simpan), dan **Tampilkan** (lima saklar LED: kode QR lacak, alamat lacak berupa huruf, IMEI/SN,
+Simpan), dan **Yang dicetak** (lima saklar LED: kode QR lacak, alamat lacak berupa huruf, IMEI/SN,
 nama teknisi, jam transaksi; tersimpan seketika). Di kolom kanan **Pratinjau** menempel (sticky)
 dan memuat HTML cetak yang sama persis di iframe: pilih Nota servis atau Struk penjualan, bacaan
 mono "58 mm · 31 huruf per baris", saklar **Simulasi 1-bit** (abu-abu hilang di ambang 50%), dan
@@ -927,11 +927,42 @@ Operasional; ia pindah ke sini. Semua teks lewat `useT()` (`receipt.content.*`, 
 
 ![[settings-nota-dark.png]]
 
-Struk penjualan 80 mm dengan simulasi 1-bit menyala, dan tampilan ponsel (satu kolom):
+Struk penjualan 80 mm dengan simulasi 1-bit menyala, dan tampilan ponsel utuh (satu kolom, pratinjau
+sebagai dok di dasar; tangkapan halaman penuh jadi dok terlihat di tengah, bukan di dasar):
 
 ![[settings-nota-sale-1bit-dark.png]]
 
 ![[settings-nota-mobile-dark.png]]
+
+**Di ponsel: dok monitor** (tahap 7). Di wadah < 720px (container query, bukan lebar viewport: di 1025px
+dengan sidebar wadahnya 667px, jadi masuk sini juga) halaman bukan lagi tumpukan satu kolom dengan
+pratinjau di dasar. Tiga hal berubah:
+
+- **Urutan visual**: Kertas termal, **Yang dicetak**, **Isi kertas** (`order` pada kartu; DOM tak
+  berubah). Saklar naik di atas kolom teks, tak lagi terkubur di bawahnya.
+- **Pratinjau jadi dok** (`.previewCol`, `position: sticky` di dasar layar, tepat di atas menu bawah).
+  Bar-nya satu baris: LED + "Pratinjau" + caret di kiri (tombol `aria-expanded` / `aria-controls`),
+  "Cetak percobaan" di kanan, spine brand 3px di tepi kiri. Panel (pilihan nota/struk, bacaan mono,
+  Simulasi 1-bit, kertas) melayang **ke atas** dari bar (`position: absolute; bottom: 100%`), tinggi
+  maks 60% layar, `Esc` atau fokus yang keluar dari dok menutupnya. Tertutup = `visibility: hidden` +
+  `max-height: 0`, bukan `display: none`, supaya iframe tetap terukur dan `measure()` benar. Satu `h2`
+  memuat dua isi (`.dockStatic` teks di lebar lapang, `.peek` tombol di lebar sempit; yang tak dipakai
+  `display: none`, jadi tak ada tombol mati di desktop).
+- **Petunjuk dialog cetak dilipat** ("Lihat" / "Tutup") hanya di lebar sempit; di lebar lapang daftar
+  selalu terbuka dan tombolnya tak ada.
+
+Label saklar kini **status**, bukan aksi: "Dicetak" / "Tidak dicetak" (dulu "CETAK" / "TIDAK" yang
+dibaca sebagai tombol "cetak sekarang"). Lebarnya dikunci ke yang terpanjang (`10.5em` + padding) agar
+tombol tak melompat. Di wadah < 920px baris saklar jadi grid: label dan saklar sebaris, petunjuk
+selebar baris di bawahnya (dulu petunjuk terjepit tiga empat baris di samping saklar).
+
+Terukur di 390×844 (dari 4061 ke 2640 px tinggi dokumen): saklar pertama di y 2081 → 833; bar dok selalu
+di y 706–767 dengan menu bawah mulai 768 di 320, 360, 390, 430px; di 744px (tanpa menu bawah) bar
+826–887 dari layar 900. Panel terbuka di 844px menempati y 200–706. Nol luberan dokumen di semua lebar.
+
+![[settings-nota-mobile-switches-dark.png]]
+
+![[settings-nota-mobile-dock-dark.png]]
 
 ---
 
