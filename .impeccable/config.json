@@ -71,6 +71,15 @@
         ],
         "createdAt": "2026-11-10T01:31:44.369Z",
         "reason": "Agent: .tapeRow (invoice history receipt tape) carries invoice status (paid/pending/void) as a 3px token-colour spine, the same motif as the Finance tape; owner R-37 kept the spine because it carries status (anti-slop/audit-001-2026-11-06-followup.md #17); AGENTS.md section 3 spine tepi kartu, DESIGN.md Spine Not the Fill Rule. File-scoped because the detector only accepts * for side-tab; the only side-tab finding in this file. Decided by the agent, not confirmed by the user"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/features/settings/ReceiptTab.module.css"
+        ],
+        "createdAt": "2026-11-11T06:46:27.309Z",
+        "reason": "Agent triage: spine tepi kartu adalah motif Precision Electronics Bench yang tertulis di AGENTS.md §3 dan Design System.md (spine Card); ini pil 3px inset (top/bottom 12px), bukan border-left kartu. Preseden sama untuk SettingsPage.module.css."
       }
     ]
   }
