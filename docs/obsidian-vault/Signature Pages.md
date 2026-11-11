@@ -910,9 +910,9 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Dokumen batal** (tahap 6b): tiket batal dan struk batal sama-sama berkotak **BATAL** (`voidMarkHtml`, bingkai 2px) tepat di bawah tanggal, dan tak berpamitan: `ReceiptDoc.voided` membuang ucapan kaki, bawaan maupun buatan toko. Jahitan dan atribusi tetap tercetak.
 
-**Bilah jendela cetak** (tahap 7): jendela nota dan laporan punya bilah layar-saja di dasar, pita `#111` bertick-gauge dengan dua tombol, **Cetak lagi** (amber) dan **Tutup**, supaya pengguna yang membatalkan dialog cetak tak terjebak. Bilah `position: fixed` dan disembunyikan di `@media print`, jadi tinggi gulungan yang diukur `fit()` tak berubah (terbukti 38 PDF sebelum/sesudah). Jendela tak menutup sendiri; hanya klik "Tutup" yang memanggil `window.close()`, dengan pesan bila browser menolak. Pratinjau Pengaturan (`roll: null`) tak berbilah. Alasan `afterprint` dan iframe tersembunyi ditolak: [[Decisions & Bug Fixes]].
+**Bilah jendela cetak** (tahap 7a): jendela nota dan laporan punya bilah layar-saja di dasar, pita `#111` bertick-gauge dengan dua tombol, **Cetak lagi** (amber) dan **Tutup**, supaya pengguna yang membatalkan dialog cetak tak terjebak. Bilah `position: fixed` dan disembunyikan di `@media print`, jadi tinggi gulungan yang diukur `fit()` tak berubah (terbukti 38 PDF sebelum/sesudah). Jendela tak menutup sendiri; hanya klik "Tutup" yang memanggil `window.close()`, dengan pesan bila browser menolak. Pratinjau Pengaturan (`roll: null`) tak berbilah. Alasan `afterprint` dan iframe tersembunyi ditolak: [[Decisions & Bug Fixes]].
 
-**Nota mengikuti tahap tiket** (tahap 7): nota servis bukan lagi satu dokumen untuk semua tahap. `serviceDocPlan(service)` di `lib/business/receiptContent.ts` memetakan 8 status plus `pickedUp` ke lima tahap (`received`, `working`, `ready`, `pickedUp`, `cancelled`) dan dari situ ke tiga jenis kertas:
+**Nota mengikuti tahap tiket** (tahap 7b): nota servis bukan lagi satu dokumen untuk semua tahap. `serviceDocPlan(service)` di `lib/business/receiptContent.ts` memetakan 8 status plus `pickedUp` ke lima tahap (`received`, `working`, `ready`, `pickedUp`, `cancelled`) dan dari situ ke tiga jenis kertas:
 
 | Tahap | Judul kertas | Penanda tahap | Kotak tanda tangan |
 |---|---|---|---|
@@ -951,7 +951,7 @@ sebagai dok di dasar; tangkapan halaman penuh jadi dok terlihat di tengah, bukan
 
 ![[settings-nota-mobile-dark.png]]
 
-**Di ponsel: dok monitor** (tahap 7). Di wadah < 720px (container query, bukan lebar viewport: di 1025px
+**Di ponsel: dok monitor** (tahap 7c). Di wadah < 720px (container query, bukan lebar viewport: di 1025px
 dengan sidebar wadahnya 667px, jadi masuk sini juga) halaman bukan lagi tumpukan satu kolom dengan
 pratinjau di dasar. Tiga hal berubah:
 

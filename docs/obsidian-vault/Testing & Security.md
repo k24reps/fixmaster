@@ -70,7 +70,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 ## Hasil testing (22 Sep 2026)
 
-- **Unit (offline)**: **1013 lolos / 81 berkas** (11 Nov 2026). `npm run test`.
+- **Unit (offline)**: **1033 lolos / 81 berkas** (11 Nov 2026). `npm run test`.
 - **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. `npm run test:integration`.
 - **Probe regresi UI**: `audit-zoom` 11 lebar × 13 halaman dan `audit-mobile` 5 lebar ponsel +
   5 lebar tablet × 13 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
@@ -81,7 +81,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
   `/settings?tab=nota` masuk 11 Nov 2026; `gotoInApp` menangani path ber-`?` lewat
   `pushState` + `popstate`, karena muat ulang mengunci kembali ke layar PIN.)
   **Sisa lama yang tercatat:** tabel `/pos` di lebar 1097 (1920 @ 175%) meluap 16px, identik di
-  HEAD sebelum tahap 7 Nota.
+  HEAD sebelum tahap 7c Nota.
 - **Build + Lint**: bersih.
 
 > [!note] Positif palsu yang berulang di laporan probe

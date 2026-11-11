@@ -5761,13 +5761,13 @@ temuan yang lebih ke tepi alur. Laporan: `.impeccable/critique/2026-11-11T04-41-
 - **Sengaja belum: penanda CETAK ULANG di nota servis.** Struk POS bisa menandainya karena cetak ulang
   adalah aksi tersendiri di riwayat. Nota servis tak punya jejak "sudah pernah dicetak"; menandainya butuh
   status cetak yang tersimpan, yaitu keputusan data dan kemungkinan migrasi. Itu hak pemilik produk, bukan
-  efek samping perbaikan kertas.
-- **Dikerjakan di tahap 7 (di bawah): bilah "Cetak lagi / Tutup" di jendela cetak.** Dulu sengaja belum
+  efek samping perbaikan kertas. Opsi datanya dikaji di bawah tahap 7b.
+- **Dikerjakan di tahap 7a (di bawah): bilah "Cetak lagi / Tutup" di jendela cetak.** Dulu sengaja belum
   karena bilah harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak.
 - **Sengaja belum: URL lacak pendek.** URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
-  tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak.
-- **Sengaja belum: judul per tahap siklus hidup, tick-gauge, lebar kertas per cabang.** Tercatat sebagai
-  tindak lanjut. (Pengaturan di ponsel, yang dulu ikut daftar ini, dikerjakan di tahap 7.)
+  tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak. Dikaji di bawah tahap 7b.
+- **Sengaja belum: lebar kertas per cabang.** Tercatat sebagai tindak lanjut. Judul per tahap siklus hidup
+  dan tick-gauge dikerjakan di tahap 7b; Pengaturan di ponsel di tahap 7c.
 
 **Verifikasi tahap 6b:** 985 tes / 81 berkas (lima tes baru: BATAL di nota servis dan struk, tanpa ucapan
 kaki walau toko menulis sendiri, tiket berjalan tak berubah), build dan lint bersih. Simulasi 38 PDF
@@ -5779,7 +5779,7 @@ sungguhan, logo toko berwarna asli.
 
 #decision #print #receipt #critique
 
-### Tahap 7: jalur cetak punya penutup (harden, temuan P1 kritik ulang)
+### Tahap 7a: jalur cetak punya penutup (harden, temuan P1 kritik ulang)
 
 Temuan P1 "jalur cetak tanpa penutup": `openPrintWindow` membuka jendela baru yang tak pernah menutup sendiri,
 sehingga pengguna yang membatalkan dialog cetak terjebak di tab nota tanpa kontrol apa pun.
@@ -5830,7 +5830,7 @@ viewport): 38/38 `@page` sama dengan garis dasar 980px.
 `print` lagi tanpa menumpuk `<style>`; "Tutup" menutup popup hasil `window.open` skrip; di halaman yang
 bukan hasil skrip `close()` ditolak dan pesan muncul; teks bilah mengikuti bahasa.
 
-**Verifikasi tahap 7:** 1005 tes / 81 berkas (dua puluh tes baru: markup dan escape bilah, urutan bilah dan
+**Verifikasi tahap 7a:** 1005 tes / 81 berkas (dua puluh tes baru: markup dan escape bilah, urutan bilah dan
 gaya, viewport, HTML tanpa `controls` identik dengan dokumen lama, `roll: null` tanpa bilah, A4 tetap
 berbilah, CSS bilah menyembunyikan diri di cetak, `printScript` idempoten dan tombolnya, teks mengikuti
 bahasa, tak ada `afterprint` maupun `close()` otomatis), build dan lint bersih.
@@ -5842,11 +5842,11 @@ berwarna asli.
 
 #decision #print #receipt #harden
 
-### Tahap 7: nota servis mengikuti tahap tiket (11 Nov 2026)
+### Tahap 7b: nota servis mengikuti tahap tiket (11 Nov 2026)
 
 Kritik ulang 25/40 menyisakan satu keluhan terbesar di nota servis: **satu dokumen untuk semua tahap**. Tanda
 terima yang dicetak saat unit masuk berjudul sama dengan nota lunas, dan baris "Status" membeku di kertas yang
-disimpan pelanggan berminggu-minggu. Tahap 7 menyelesaikan bagian yang **tak butuh data baru**; dua bagian yang
+disimpan pelanggan berminggu-minggu. Tahap 7b menyelesaikan bagian yang **tak butuh data baru**; dua bagian yang
 butuh keputusan data hanya dikaji (di bawah).
 
 **Keputusan:**
@@ -5884,7 +5884,7 @@ tertutup dan bagian dalamnya kosong.
 > Dua pemeriksaan 1-bit juga awalnya gagal oleh pembulatan setengah titik di tepi (kepadatan bar 0,82; tepi bingkai
 > "terbuka"). Itu bukan cacat produk; ukur ketebalan dari larik hitam terpanjang dan cari tepi dalam pita ±3 titik.
 
-**Verifikasi tahap 7:** 1013 tes / 81 berkas (28 tes baru: judul per tahap, penanda tahap, kotak tanda tangan dan
+**Verifikasi tahap 7b:** 1013 tes / 81 berkas (28 tes baru: judul per tahap, penanda tahap, kotak tanda tangan dan
 baris Diambil, kalimat kaki serah terima, syarat toko tetap menang, tiket batal tanpa penanda dan tanda tangan,
 label en, tak ada gaya inline, judul dan label muat di 58 mm, Estimasi), build dan lint bersih.
 
@@ -5965,7 +5965,7 @@ enumerasi, tidak menyelesaikannya.
 
 #decision #tracking #security #study
 
-### Tahap 7: Pengaturan Nota di ponsel, pratinjau jadi dok (adapt)
+### Tahap 7c: Pengaturan Nota di ponsel, pratinjau jadi dok (adapt)
 
 Temuan P2 "Pengaturan di ponsel" dari kritik ulang 6b. Diukur di 390×844 sebelum diubah: dokumen 4061 px,
 pratinjau di dasar halaman, saklar pertama di y 2081 (di bawah lima kolom teks), "Cetak percobaan" di
@@ -6018,7 +6018,7 @@ tombol cetak, dan lembar kertas: DOM rect identik di 1112 sampai 1440.
 - Satu `h2` memuat dua isi (`.dockStatic` dan `.peek`); pembaca layar hanya melihat satu karena yang
   lain `display: none`.
 
-**Verifikasi tahap 7:** build dan lint bersih; tes **985 / 81 berkas** (tak ada tes baru: perubahannya
+**Verifikasi tahap 7c:** build dan lint bersih; tes **985 / 81 berkas** (tak ada tes baru: perubahannya
 tata letak dan label, dan tes paritas kunci i18n lulus). `audit-tokens` 0 pelanggaran; `audit-contrast`
 0 elemen di bawah ambang, tetapi ia tidak menyapu Pengaturan, jadi kontras tab Nota diukur terpisah di DOM
 (dok, saklar, petunjuk, dua tema): terendah **5,6:1**. `audit-mobile` ponsel 5 lebar × 13 halaman (65 baris)
@@ -6042,3 +6042,22 @@ di kartu Kertas termal untuk outlet aktif. Browser tak mengenal nama printer, ja
 sebenarnya berarti **per perangkat** (localStorage), bukan per cabang; itu keputusan produk tersendiri.
 
 #decision #print #receipt #mobile #layout
+
+### Tahap 7a + 7b + 7c digabung ke main (11 Nov 2026)
+
+Ketiga tahap dikerjakan paralel di cabang terpisah dari `main` yang sama, lalu di-cherry-pick berurutan
+(7a, 7b, 7c) supaya riwayat tetap lurus. Kode tak bertabrakan: 7a di `lib/print.ts`, 7b di
+`printReceipt.ts`/`receiptContent.ts`, 7c di `ReceiptTab` dan `Card`. Bentrok hanya di angka tes,
+baris impor `printReceipt.test.ts` (disatukan), dan bagian vault yang sama-sama berjudul "Tahap 7"
+(kini 7a/7b/7c, isinya utuh). Interaksi yang dicek di hasil gabungan: pratinjau Pengaturan (`roll: null`,
+7c) memuat penanda tahap 7b dan tetap tanpa bilah cetak 7a.
+
+**Verifikasi gabungan:** build dan lint bersih; **1033 tes / 81 berkas** (985 + 20 dari 7a + 28 dari 7b).
+`audit-mobile` 5 lebar ponsel dan pita tablet 744 sampai 1152, `audit-zoom` 11 lebar, masing-masing ×
+13 halaman: nol luberan dokumen; `/settings` dan `/settings?tab=nota` bersih di semua lebar. Sisa yang
+dilaporkan sudah ada sebelumnya di halaman yang tak disentuh: rail chip kategori bersama dan tabel `/pos`
++16px di 1097.
+
+**Belum terverifikasi:** printer termal fisik, dialog cetak serta `close()` di Android dan iOS sungguhan.
+
+#decision #print #receipt #merge
