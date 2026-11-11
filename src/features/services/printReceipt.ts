@@ -3,9 +3,14 @@ import { qrSvg } from '@/lib/qr';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { openPrintWindow, buildPrintDocument, escapeHtml } from '@/lib/print';
 import {
+  BASE_FONT_DOTS,
+  STRONG_FONT_DOTS,
+  STRONG_TRACKING_EM,
   dotsToPx,
+  fitsBeside,
   normalizePaperWidth,
   paperSpec,
+  type PaperSpec,
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
 import { resolveReceiptSettings, receiptLines } from '@/lib/business/receiptTemplate';
@@ -36,9 +41,31 @@ export function multiline(text: string): string {
 /** Modul QR 4 titik (0,5mm): cukup besar untuk head 203 dpi, kecil cukup untuk 58mm. */
 const QR_MODULE_DOTS = 4;
 
-/** Satu baris label→nilai pada nota. `cls` = 'strong' untuk baris total. */
-export function receiptRow(label: string, value: string, cls = ''): string {
-  return `<tr class="${cls}"><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`;
+/**
+ * Satu baris label→nilai pada nota. `cls` = 'strong' untuk baris total.
+ *
+ * Label dan nilai berdampingan (nilai rata kanan) selama keduanya muat di satu
+ * baris kertas. Bila tidak, baris ditumpuk: label di atas, nilai utuh di
+ * bawahnya (rata kiri, kecuali nominal yang tetap rata kanan). Kolom yang
+ * dipatok persentase memaksa nilai panjang membungkus di ruang sempit dan
+ * kadang memotong label di tengah kata ("Kelengkapa/n"). Tanpa `paper`, selalu
+ * berdampingan.
+ */
+export function receiptRow(label: string, value: string, cls = '', paper?: PaperSpec): string {
+  const strong = cls.split(' ').includes('strong');
+  const side =
+    !paper ||
+    fitsBeside(
+      label,
+      value,
+      paper,
+      strong ? STRONG_FONT_DOTS : BASE_FONT_DOTS,
+      strong ? STRONG_TRACKING_EM : 0,
+    );
+  if (side) {
+    return `<tr class="${cls}"><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`;
+  }
+  return `<tr class="${`${cls} stack`.trim()}"><td colspan="2"><span class="k">${escapeHtml(label)}</span><span class="v">${escapeHtml(value)}</span></td></tr>`;
 }
 
 /**
@@ -88,11 +115,14 @@ function rowsFor(
   lines: ReceiptLine[],
   group: ReceiptLine['group'],
   service: Service,
+  paper: PaperSpec,
   extraClass = '',
 ): string {
   const rows = lines
     .filter((l) => l.group === group)
-    .map((l) => receiptRow(lineLabel(l), lineValue(l, service), l.emphasis ? 'strong' : ''))
+    .map((l) =>
+      receiptRow(lineLabel(l), lineValue(l, service), l.emphasis ? 'strong' : '', paper),
+    )
     .join('');
   return rows ? `<table class="${extraClass}">${rows}</table>` : '';
 }
@@ -202,7 +232,8 @@ export function serviceReceiptDoc(
   const cancelled = service.status === 'batal';
   const track = trackingUrl(origin, org.id, service.serviceNo);
   const note = (org.settings?.publicNote ?? '').trim();
-  const garansi = rowsFor(lines, 'garansi', service);
+  const paper = paperSpec(paperWidthOf(org));
+  const garansi = rowsFor(lines, 'garansi', service, paper);
   const showTrack = !cancelled && (cfg.showQr || cfg.showTrackUrl);
 
   return {
@@ -216,8 +247,8 @@ export function serviceReceiptDoc(
     address: receiptAddress(org.address, service.outletId, outlets),
     body: `
   ${joinSections([
-    rowsFor(lines, 'unit', service),
-    rowsFor(lines, 'uang', service, 'money'),
+    rowsFor(lines, 'unit', service, paper),
+    rowsFor(lines, 'uang', service, paper, 'money'),
     garansi
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
       : '',

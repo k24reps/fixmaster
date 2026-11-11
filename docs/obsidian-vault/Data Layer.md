@@ -103,7 +103,7 @@ diizinkan, dan kebijakan `org_update` sudah manager-only (diperiksa langsung, bu
   `normalizePaperWidth`, yang menjatuhkan nilai asing ke 58. Toko lama tanpa `receipt` tetap
   tercetak 58 mm.
 - **Logika murni**: `lib/business/receiptPaper.ts` (geometri kertas dalam TITIK head 203 dpi,
-  `charsPerLine`, `pageHeightMm`), teruji di `receiptPaper.test.ts`.
+  `charsPerLine`, `pageHeightMm`, `fitsBeside` + `ROW_GAP_DOTS`/`STRONG_*` untuk memilih baris berdampingan atau bertumpuk), teruji di `receiptPaper.test.ts`.
 
 
 Harga yang **diajukan** ke pelanggan, dihitung dari tarif pemilik supaya dua staf yang menaksir

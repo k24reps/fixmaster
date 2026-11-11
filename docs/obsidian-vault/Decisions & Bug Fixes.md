@@ -757,7 +757,7 @@ Nomor `service_no`/`po_number` anti-tabrakan server-side (pola `process_sale` 00
 Lima permintaan user dalam satu batch, dikerjakan dari yang paling ringan. (Dua item lain — **forgot password** & **weekly backup** — sengaja **di-skip user**, belum dikerjakan.)
 
 **1. Default template WhatsApp & nota dirapikan.** Default lama satu paragraf datar ("Halo {nama}, unit {perangkat} Anda telah kami terima…") — terbaca seperti notifikasi robot. Sekarang **multi-baris berstruktur**: sapaan → blok data (`*bold*` WhatsApp untuk no servis/nominal/status) → satu ajakan aksi → penutup. Perbaikan substansi: template `konfirmasi` dulu menyebut "estimasi biaya adalah **{biaya}**" padahal `{biaya}` = `finalCost` (0 saat tiket belum selesai) → diganti `{estimasi}`. Template `diterima` menambahkan estimasi + link tracking di baris sendiri.
-- **Nota** (`serviceReceiptLines` + `printReceipt.ts`): tambah baris **Tanggal** (tanggal masuk = pertanyaan nomor satu saat klaim), **Keluhan**, dan **Kelengkapan** (kondisional). Kepala nota dapat label `NOTA SERVIS`, kaki dapat catatan simpan-nota-untuk-klaim-garansi + penutup ramah. Kolom label dibatasi 38% agar nilai panjang tak mendorong layout thermal.
+- **Nota** (`serviceReceiptLines` + `printReceipt.ts`): tambah baris **Tanggal** (tanggal masuk = pertanyaan nomor satu saat klaim), **Keluhan**, dan **Kelengkapan** (kondisional). Kepala nota dapat label `NOTA SERVIS`, kaki dapat catatan simpan-nota-untuk-klaim-garansi + penutup ramah. Kolom label dibatasi 38% agar nilai panjang tak mendorong layout thermal. **Digantikan di tahap 5 nota termal (11 Nov 2026):** patokan 38% dihapus; baris yang tak muat berdampingan ditumpuk (`fitsBeside`), lihat [[#Tahap 5: baris nota ditumpuk, barang struk dua baris (layout)]].
 - Textarea editor Settings `rows=3 → 10`, preview NotifyModal `rows=6 → 12` (default multi-baris jadi tak terpotong).
 - **Unit test penjaga**: tiap placeholder di `DEFAULT_WA_TEMPLATES` wajib ada di `WA_TEMPLATE_VARS` — typo seperti `{no_service}` akan terkirim **mentah** ke pelanggan.
 
@@ -5536,7 +5536,7 @@ PDF: 1 halaman tiap berkas, nol elemen melewati badan nota, tinta seluruhnya di 
 (58 mm: 5,51–52,68 dari jendela 4,91–52,91; 80 mm: 4,38–75,57 dari 4,05–76,05). Nilai IMEI
 membungkus di tengah token, bukan terpotong; sisa satu digit di baris sendiri di 80 mm akan dirapikan
 tahap 5 (nilai panjang ditumpuk rata kiri). Label "Kelengkapan" patah jadi "Kelengkapa/n" di
-kolom label 38% pada 58 mm: juga tahap 5.
+kolom label 38% pada 58 mm: juga tahap 5 (selesai, lihat Tahap 5 di bawah).
 
 **Pelajaran: ukur DOM dan PDF, bukan layar.** Pratinjau layar nota 58 mm di jendela 1440px tidak
 menunjukkan bahwa kertas dipotong ke Letter. Baru PDF dengan `preferCSSPageSize` yang membuktikan
@@ -5609,7 +5609,7 @@ React dengan bahasa aplikasi aktif; 46 kunci `receipt.*` baru di `id.ts` dan `en
 `notify.test`, CSS BATAL di `receiptStyle.test`). 26 PDF (13 kasus × 58/80 mm) satu halaman, tinta di
 dalam jendela head; setelah ambang 50%: kotak BATAL 77–89%, baris dicoret 77–86%, "CETAK ULANG"
 71%. Label panjang ("DP dikembalikan") dan nama barang yang membungkus ke empat baris di kolom
-38% menjadi pekerjaan tahap 5.
+38% menjadi pekerjaan tahap 5 (selesai, lihat Tahap 5 di bawah).
 
 #decision #print #receipt #pos #services
 
@@ -5676,3 +5676,45 @@ lewat Playwright, yang halamannya tak pernah tersembunyi.
 zoom aplikasi 1,25): nol luberan dokumen, nol penggeser, nol kesalahan konsol.
 
 #decision #print #receipt #settings #i18n
+
+### Tahap 5: baris nota ditumpuk, barang struk dua baris (layout)
+
+Satu akar, lima gejala. Kolom label `width: 38%` membuat nilai panjang membungkus di ruang sempit
+dan label panjang patah di tengah kata. Diukur pada render PDF nyata sebelum perubahan (58 mm):
+"Kelengkapa/n", "Sudah dibayar (DP)" tiga baris di kolom label, "99× Charger" terbelah, nama
+pelanggan empat baris rata kanan, dan harga satuan barang tak tercetak sama sekali.
+
+- **`fitsBeside(label, value, spec, fontDots, labelTrackingEm)`** (`lib/business/receiptPaper.ts`,
+  murni): berdampingan hanya bila huruf label + sela `ROW_GAP_DOTS` (16 titik) + huruf nilai + satu
+  huruf cadangan muat di `contentDots`. Menghitung huruf mono (`MONO_ADVANCE_EM` 0,6), bukan
+  mengukur DOM, karena dokumen cetak disusun sinkron sebelum jendela dibuka. `[...teks].length`,
+  bukan `.length`: emoji satu huruf. Baris TOTAL memakai `STRONG_FONT_DOTS` (26) dan
+  `STRONG_TRACKING_EM` (0,04), konstanta yang sama dipakai CSS.
+- **Baris tumpuk**: `receiptRow(label, value, cls, paper?)` memancarkan
+  `<tr class="… stack"><td colspan="2"><span class="k">…</span><span class="v">…</span></td></tr>`
+  bila tak muat; tanpa `paper` selalu berdampingan (tes lama tak berubah). Teks bebas rata kiri
+  dan boleh membungkus; nominal (`.money`) tetap rata kanan dan tebal supaya angka sejajar.
+  Hasil di 58 mm: IMEI ganda 31 huruf utuh di baris sendiri, "Kelengkapan" tak lagi patah.
+- **Barang struk dua baris** (`saleItemRow`, `printSaleReceipt.ts`): nama utuh, lalu
+  "`jumlah× harga satuan`" di kiri dan jumlah rupiah di kanan. Harga satuan sekarang tercetak.
+  Bila hitungan tak muat sebaris, rupiah turun dan tetap rata kanan (`margin-left: auto`).
+  Dua baris untuk SEMUA barang, termasuk jumlah 1: kertas yang sama dibaca dengan cara yang sama.
+- **`.no` tidak diberi `nowrap`.** Rencana awal, dibatalkan: `overflow-wrap: anywhere` menjamin nomor
+  panjang tak pernah keluar kertas; `nowrap` akan meluapkan nomor lebih dari 22 huruf.
+
+**Pelajaran: tata letak tabel otomatis menghubungkan semua baris.** Render kasus uji berat
+(`svc-stress-58`) memperlihatkan baris garansi "Jasa → s/d 10 Des 2026" membungkus "2026" ke baris
+kedua, padahal 19 huruf muat 376 titik. Sel tumpuk selebar baris (`colspan=2`, teks panjang)
+menaikkan lebar maksimum kolom gabungan, lalu algoritma tabel menyempitkan kolom nilai baris LAIN.
+Perbaikan: `table, tbody { display: block }` dan `tr { display: flex }`, label `flex: 0 0 auto`,
+nilai `flex: 1 1 0; min-width: 0`. Markup `table/tr/td` tak berubah (tes dan semantik utuh), tapi
+tiap baris dihitung sendiri. Tes unit tak akan menangkap ini; hanya render sungguhan dengan baris
+campuran yang menangkapnya.
+
+**Verifikasi tahap 5:** 978 tes / 81 berkas (`fitsBeside` di `receiptPaper.test`, baris tumpuk di
+`printReceipt.test`, barang dua baris di `printSaleReceipt.test`, CSS di `receiptStyle.test`).
+38 PDF (19 kasus × 58/80 mm, termasuk `svc-long-number` dan `sale-wide-amounts`): satu halaman,
+nol elemen melewati badan, tinta seluruhnya di dalam jendela head, tinta separator dan atribusi
+tetap selamat di ambang 50%.
+
+#decision #print #receipt #pos #services

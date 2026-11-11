@@ -1,6 +1,9 @@
 import {
   BASE_FONT_DOTS,
   BASE_LINE_DOTS,
+  ROW_GAP_DOTS,
+  STRONG_FONT_DOTS,
+  STRONG_TRACKING_EM,
   TAIL_MM,
   dotsToPx,
   type PaperSpec,
@@ -90,20 +93,38 @@ export function receiptStyle(paper: PaperSpec): string {
     column-gap: ${px(16)};
   }
   .kind { letter-spacing: 0.18em; font-weight: 700; }
-  .no { font-size: ${px(26)}; font-weight: 700; letter-spacing: 0.04em; }
-  table { width: 100%; border-collapse: collapse; }
-  tr { break-inside: avoid; }
+  .no { font-size: ${px(STRONG_FONT_DOTS)}; font-weight: 700; letter-spacing: ${STRONG_TRACKING_EM}em; }
+  /* Tabel hanya penanda semantik; tiap baris di-flex sendiri. Tata letak tabel
+     otomatis membagi lebar kolom ke SEMUA baris: satu baris tumpuk yang panjang
+     (sel selebar baris) menyempitkan kolom nilai baris lain sampai "s/d 10 Des
+     2026" patah, padahal muat. Baris flex tak saling memengaruhi. */
+  table, tbody { display: block; width: 100%; }
+  tr { display: flex; break-inside: avoid; }
   td {
     padding: ${px(5)} 0;
     vertical-align: top;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
   }
-  td:first-child { width: 38%; padding-right: ${px(16)}; }
-  td:last-child { text-align: right; }
+  /* Label selebar isinya, tanpa patokan persen: yang muat berdampingan ditentukan
+     di kode (fitsBeside), sisanya ditumpuk. Label tak pernah dipotong di tengah kata. */
+  td:first-child { flex: 0 0 auto; white-space: nowrap; padding-right: ${px(ROW_GAP_DOTS)}; }
+  td:last-child { flex: 1 1 0; min-width: 0; text-align: right; }
   .money td:last-child { font-weight: 700; }
-  .strong td { padding-top: ${px(10)}; font-size: ${px(26)}; font-weight: 700; line-height: ${px(32)}; }
-  .strong td:first-child { letter-spacing: 0.04em; }
+  /* Baris tumpuk: satu sel selebar baris, label di atas nilai. Teks bebas rata kiri
+     dan membungkus; nominal tetap rata kanan supaya angka sejajar dengan baris lain. */
+  .stack td:first-child { white-space: normal; padding-right: 0; text-align: left; padding-top: ${px(8)}; padding-bottom: ${px(8)}; }
+  .stack .k, .stack .v { display: block; }
+  .stack .k { font-weight: 400; }
+  .money .stack .v { text-align: right; font-weight: 700; }
+  /* Barang struk: nama utuh, lalu "jumlah× harga" di kiri dan jumlah rupiah di kanan.
+     Bila keduanya tak muat sebaris, rupiah turun dan tetap rata kanan. */
+  .item td:first-child { white-space: normal; padding-right: 0; text-align: left; }
+  .item .calc { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: ${px(ROW_GAP_DOTS)}; }
+  .item .amt { margin-left: auto; font-weight: 700; }
+  .strong td { padding-top: ${px(10)}; font-size: ${px(STRONG_FONT_DOTS)}; font-weight: 700; line-height: ${px(32)}; }
+  .strong td:first-child { letter-spacing: ${STRONG_TRACKING_EM}em; }
+  .strong .k { font-weight: 700; }
   .block-label { letter-spacing: 0.18em; font-weight: 700; margin: 0 0 ${px(8)}; }
   .block { break-inside: avoid; }
   /* Penanda status dokumen: bingkai hitam 4 titik, bukan latar. Latar tidak ikut

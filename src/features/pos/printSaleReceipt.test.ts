@@ -132,3 +132,63 @@ describe('saleReceiptDoc: setelan toko', () => {
     expect(saleReceiptDoc(sale({ outletId: null }), o, { outlets }).address).toBe('Jl. Pusat 1');
   });
 });
+
+describe('saleReceiptDoc: barang dua baris', () => {
+  const orgOf = (paperWidth: number) =>
+    ({ ...org, settings: { receipt: { paperWidth } } }) as unknown as Organization;
+  const parse = (s: Sale, paperWidth = 58) => {
+    const el = document.createElement('div');
+    el.innerHTML = saleReceiptDoc(s, orgOf(paperWidth), { walletName }).body;
+    return el;
+  };
+
+  it('nama utuh di baris sendiri, lalu jumlah× harga satuan dan jumlah rupiah', () => {
+    const item = parse(sale({})).querySelector('tr.item');
+    expect(item?.querySelector('.nm')?.textContent).toBe('Tempered Glass');
+    expect(item?.querySelector('.calc span')?.textContent).toMatch(/^2×\s*Rp\s*75\.000$/);
+    expect(item?.querySelector('.amt')?.textContent).toMatch(/^Rp\s*150\.000$/);
+  });
+
+  it('jumlah 1 tetap mencetak harga satuan', () => {
+    const s = sale({ lines: [{ itemId: 'a', name: 'Kabel', qty: 1, sellPrice: 25000, costPrice: 1 }] as Sale['lines'] });
+    expect(parse(s).querySelector('tr.item .calc span')?.textContent).toMatch(/^1×\s*Rp\s*25\.000$/);
+  });
+
+  it('nama barang panjang tak terpotong dan tak mengambil kolom harga', () => {
+    const name = 'Kabel Data USB-C to Lightning 1m Braided Premium Quality';
+    const s = sale({ lines: [{ itemId: 'a', name, qty: 3, sellPrice: 55000, costPrice: 1 }] as Sale['lines'] });
+    const item = parse(s).querySelector('tr.item');
+    expect(item?.querySelector('.nm')?.textContent).toBe(name);
+    expect(item?.querySelector('.amt')?.textContent).toMatch(/Rp\s*165\.000/);
+  });
+
+  it('satu baris per barang, urutan keranjang terjaga', () => {
+    const lines = [
+      { itemId: 'a', name: 'Charger', qty: 1, sellPrice: 90000, costPrice: 1 },
+      { itemId: 'b', name: 'Casing', qty: 2, sellPrice: 30000, costPrice: 1 },
+    ] as Sale['lines'];
+    const names = [...parse(sale({ lines })).querySelectorAll('tr.item .nm')].map((e) => e.textContent);
+    expect(names).toEqual(['Charger', 'Casing']);
+  });
+
+  it('nama barang di-escape', () => {
+    const s = sale({ lines: [{ itemId: 'a', name: '<img src=x onerror=alert(1)>', qty: 1, sellPrice: 1000, costPrice: 1 }] as Sale['lines'] });
+    const el = parse(s);
+    expect(el.querySelector('img')).toBeNull();
+    expect(el.querySelector('tr.item .nm')?.textContent).toBe('<img src=x onerror=alert(1)>');
+  });
+
+  it('nama pelanggan panjang ditumpuk di 58 mm tetapi berdampingan di 80 mm', () => {
+    const s = sale({ customerName: 'Muhammad Abdurrahman Kusuma' });
+    const row = (w: number) =>
+      [...parse(s, w).querySelectorAll('tr')].find((tr) => (tr.querySelector('.k') ?? tr.querySelector('td'))?.textContent === 'Pelanggan');
+    expect(row(58)?.classList.contains('stack')).toBe(true);
+    expect(row(80)?.classList.contains('stack')).toBe(false);
+  });
+
+  it('TOTAL tetap berdampingan di 58 mm untuk nominal ratusan juta', () => {
+    const s = sale({ total: 147735000, subtotal: 147735000 });
+    const tr = [...parse(s).querySelectorAll('tr.strong')][0];
+    expect(tr.classList.contains('stack')).toBe(false);
+  });
+});

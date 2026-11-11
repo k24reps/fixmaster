@@ -908,6 +908,8 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Isi yang benar** (tahap 3): nota servis berbiaya akhir 0 + DP mencetak "Sudah dibayar (DP)" (tanpa "Sisa Rp 0"); tiket batal hanya mencetak nasib DP, tanpa garansi dan QR. Struk batal berkotak **BATAL** dan TOTAL dicoret, cetak ulang bertanda "CETAK ULANG" + tanggal-jam, metode bayar dari `sale.payments`. Aturannya di `lib/business/receiptContent.ts`.
 
+**Tata letak baris** (tahap 5): kolom label tak dipatok persen. Label dan nilai berdampingan bila muat; bila tidak, baris ditumpuk, label di atas dan nilai utuh di bawahnya (`fitsBeside` di `receiptPaper.ts`, `receiptRow` di `printReceipt.ts`). Barang struk dua baris: nama, lalu `jumlah× harga satuan` dan jumlah rupiah. Tiap baris di-flex sendiri supaya satu baris tumpuk tak menyempitkan kolom baris lain. Alasan lengkap di [[Decisions & Bug Fixes]].
+
 **Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),
 **Isi kertas** (lima kolom teks: kepala 120, ucapan kaki 160, syarat servis 280, syarat struk 280,
 Catatan Toko 280 karakter; penghitung "n karakter tersisa", LED "belum tersimpan", satu tombol

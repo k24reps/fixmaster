@@ -103,6 +103,47 @@ export function charsPerLine(
   return Math.floor(spec.contentDots / (fontDots * advanceEm));
 }
 
+/** Tinggi huruf baris TOTAL dan nomor dokumen (titik), satu tingkat di atas huruf dasar. */
+export const STRONG_FONT_DOTS = 26;
+
+/** Jarak huruf label baris TOTAL (em); mengurangi jumlah huruf yang muat. */
+export const STRONG_TRACKING_EM = 0.04;
+
+/**
+ * Sela antara kolom label dan kolom nilai pada satu baris (titik). Sama dengan
+ * `padding-right` sel label di `receiptStyle`; kalau salah satunya berubah, ubah
+ * keduanya.
+ */
+export const ROW_GAP_DOTS = 16;
+
+/**
+ * Apakah label dan nilai muat BERDAMPINGAN di satu baris. Bila tidak, baris
+ * ditumpuk: label di atas, nilai utuh di bawahnya. Kolom label tak lagi dipatok
+ * persentase (dulu 38%): nilai pendek tak perlu menunggu kolom yang kosong,
+ * nilai panjang (IMEI ganda 31 huruf, keluhan dua kalimat) tak lagi terdorong
+ * ke kolom sempit yang membelah kata.
+ *
+ * Dihitung dalam huruf mono (`MONO_ADVANCE_EM`), bukan dengan mengukur DOM:
+ * dokumen cetak disusun sebagai string sinkron sebelum jendela dibuka, dan
+ * hanya hitungan murni yang bisa diuji. Satu huruf cadangan menutup font yang
+ * lebih lebar dari 0,6em. `[...teks]` menghitung huruf sungguhan (emoji bukan
+ * dua); `.length` menghitung unit UTF-16.
+ *
+ * `labelTrackingEm` untuk baris yang labelnya diberi jarak huruf (baris TOTAL).
+ */
+export function fitsBeside(
+  label: string,
+  value: string,
+  spec: PaperSpec,
+  fontDots: number = BASE_FONT_DOTS,
+  labelTrackingEm = 0,
+): boolean {
+  const glyph = fontDots * MONO_ADVANCE_EM;
+  const labelDots = [...label].length * (glyph + fontDots * labelTrackingEm);
+  const valueDots = [...value].length * glyph;
+  return labelDots + ROW_GAP_DOTS + valueDots + glyph <= spec.contentDots;
+}
+
 /**
  * Pita kosong di bawah baris terakhir: tempat gulungan disobek atau dipotong
  * tanpa memotong baris terakhir.

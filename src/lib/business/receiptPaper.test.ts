@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   BASE_FONT_DOTS,
   DEFAULT_PAPER_WIDTH,
+  MONO_ADVANCE_EM,
+  ROW_GAP_DOTS,
   charsPerLine,
   dotRemainder,
   dotsToMm,
   dotsToPx,
+  fitsBeside,
   normalizePaperWidth,
   pageHeightMm,
   paperSpec,
@@ -89,5 +92,64 @@ describe('pageHeightMm', () => {
   it('tinggi negatif atau nol tidak menghasilkan halaman bernilai negatif', () => {
     expect(pageHeightMm(-10)).toBe(1);
     expect(pageHeightMm(0)).toBe(1);
+  });
+});
+
+describe('fitsBeside', () => {
+  const p58 = paperSpec(58);
+  const p80 = paperSpec(80);
+
+  it('label dan nilai pendek berdampingan', () => {
+    expect(fitsBeside('Perangkat', 'iPhone 12', p58)).toBe(true);
+  });
+
+  it('IMEI ganda (31 huruf) tak pernah berdampingan di 58 mm, tapi tetap utuh sebaris bila ditumpuk', () => {
+    expect(fitsBeside('IMEI/SN', '352999112345678/352999112345686', p58)).toBe(false);
+    // Ditumpuk, nilainya sendirian di barisnya: 31 huruf = 372 titik dari 376 yang ada.
+    expect(31 * BASE_FONT_DOTS * MONO_ADVANCE_EM).toBeLessThanOrEqual(p58.contentDots);
+  });
+
+  it('batasnya: jumlah huruf + sela 16 titik + 1 huruf cadangan harus muat di isi', () => {
+    // 58 mm: (376 - 16) / 12 = 30 huruf, dikurangi 1 cadangan = 29.
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(19), p58)).toBe(true);
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(20), p58)).toBe(false);
+    // 80 mm: (568 - 16) / 12 = 46 huruf, dikurangi 1 cadangan = 45.
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(35), p80)).toBe(true);
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(36), p80)).toBe(false);
+  });
+
+  it('kertas lebih lebar memuat lebih banyak berdampingan', () => {
+    const label = 'Keluhan';
+    const value = 'Layar bergaris saat dilipat';
+    expect(fitsBeside(label, value, p58)).toBe(false);
+    expect(fitsBeside(label, value, p80)).toBe(true);
+  });
+
+  it('huruf besar (26 titik) memuat lebih sedikit huruf', () => {
+    expect(fitsBeside('Sudah dibayar (DP)', 'Rp 200.000', p58, 26)).toBe(false);
+    expect(fitsBeside('Sisa', 'Rp 200.000', p58, 26)).toBe(true);
+  });
+
+  it('sela kolom ikut dihitung: tepat di batas muat, satu titik lebih sempit tidak', () => {
+    const glyph = BASE_FONT_DOTS * MONO_ADVANCE_EM;
+    // 29 huruf + sela + 1 cadangan = 376 titik di 58 mm: persis penuh.
+    expect(29 * glyph + ROW_GAP_DOTS + glyph).toBe(p58.contentDots);
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(19), p58)).toBe(true);
+    expect(fitsBeside('a'.repeat(10), 'b'.repeat(19), { ...p58, contentDots: p58.contentDots - 1 })).toBe(false);
+  });
+
+  it('jarak huruf label (baris TOTAL) mengurangi jumlah huruf yang muat', () => {
+    const label = 'Sudah dibayar (DP)';
+    // 18 + 4 huruf di 26 titik: 374,8 dari 376 tanpa jarak, 393,5 dengan jarak 0,04em.
+    expect(fitsBeside(label, 'Rp 5', p58, 26)).toBe(true);
+    expect(fitsBeside(label, 'Rp 5', p58, 26, 0.04)).toBe(false);
+    // TOTAL dengan nominal hampir sembilan digit tetap berdampingan di 58 mm.
+    expect(fitsBeside('TOTAL', 'Rp 99.999.999', p58, 26, 0.04)).toBe(true);
+  });
+
+  it('menghitung huruf sungguhan, bukan unit UTF-16 (tanda × dan − satu huruf)', () => {
+    expect(fitsBeside('Diskon', '−Rp 25.000', p58)).toBe(true);
+    // Emoji = dua unit UTF-16 tapi satu huruf.
+    expect(fitsBeside('a'.repeat(14), '😀'.repeat(14), p58)).toBe(true);
   });
 });

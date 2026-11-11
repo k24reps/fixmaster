@@ -187,3 +187,77 @@ describe('serviceReceiptDoc: setelan toko', () => {
     expect(at('tak-dikenal')).toBe('Jl. Merdeka 12');
   });
 });
+
+describe('serviceReceiptDoc: baris label-nilai ditumpuk bila tak muat', () => {
+  const orgOf = (paperWidth: number) =>
+    ({ ...org, settings: { receipt: { paperWidth } } }) as unknown as Organization;
+  interface Row {
+    stacked: boolean;
+    strong: boolean;
+    label: string;
+    value: string;
+  }
+  const rowsOf = (s: Service, paperWidth: number): Row[] => {
+    const el = document.createElement('div');
+    el.innerHTML = serviceReceiptDoc(s, orgOf(paperWidth), 'https://app.test').body;
+    return [...el.querySelectorAll('tr')].map((tr) => ({
+      stacked: tr.classList.contains('stack'),
+      strong: tr.classList.contains('strong'),
+      label: (tr.querySelector('.k') ?? tr.querySelector('td'))?.textContent ?? '',
+      value: (tr.querySelector('.v') ?? tr.querySelector('td:last-child'))?.textContent ?? '',
+    }));
+  };
+  const rowOf = (rows: Row[], label: string) => rows.find((r) => r.label === label);
+
+  it('IMEI ganda (31 huruf) di 58 mm: ditumpuk, label dan nilai utuh', () => {
+    const r = rowOf(rowsOf(svc({}), 58), 'IMEI/SN');
+    expect(r?.stacked).toBe(true);
+    expect(r?.value).toBe('352999112345678/352999112345686');
+  });
+
+  it('IMEI ganda di 80 mm: cukup lebar, tetap berdampingan', () => {
+    expect(rowOf(rowsOf(svc({}), 80), 'IMEI/SN')?.stacked).toBe(false);
+  });
+
+  it('baris pendek tetap berdampingan di 58 mm', () => {
+    const rows = rowsOf(svc({}), 58);
+    expect(rowOf(rows, 'Pelanggan')?.stacked).toBe(false);
+    expect(rowOf(rows, 'Perangkat')?.stacked).toBe(false);
+    expect(rowOf(rows, 'Kelengkapan')?.stacked).toBe(false);
+  });
+
+  it('bawaan tanpa setelan kertas = 58 mm', () => {
+    const el = document.createElement('div');
+    el.innerHTML = serviceReceiptDoc(svc({}), org, 'https://app.test').body;
+    expect(el.querySelector('tr.stack .k')?.textContent).toBe('IMEI/SN');
+  });
+
+  it('keluhan panjang ditumpuk dan tak pernah terpotong', () => {
+    const complaint = 'Layar bergaris saat dilipat, kadang mati sendiri setelah dipakai lama';
+    const r = rowOf(rowsOf(svc({ complaint }), 58), 'Keluhan');
+    expect(r?.stacked).toBe(true);
+    expect(r?.value).toBe(complaint);
+  });
+
+  it('baris TOTAL "Sudah dibayar (DP)" 200.000 ditumpuk di 58 mm, berdampingan di 80 mm', () => {
+    const s = svc({ downPayment: 200000 });
+    const at58 = rowOf(rowsOf(s, 58), 'Sudah dibayar (DP)');
+    expect(at58?.strong).toBe(true);
+    expect(at58?.stacked).toBe(true);
+    expect(rowOf(rowsOf(s, 80), 'Sudah dibayar (DP)')?.stacked).toBe(false);
+  });
+
+  it('teks yang ditumpuk tetap di-escape', () => {
+    const el = document.createElement('div');
+    el.innerHTML = serviceReceiptDoc(
+      svc({ complaint: `${'x'.repeat(40)}<img src=x onerror=alert(1)>` }),
+      orgOf(58),
+      'https://app.test',
+    ).body;
+    expect(el.querySelector('img')).toBeNull();
+    const keluhan = [...el.querySelectorAll('tr.stack')].find(
+      (tr) => tr.querySelector('.k')?.textContent === 'Keluhan',
+    );
+    expect(keluhan?.querySelector('.v')?.textContent).toContain('<img src=x');
+  });
+});
