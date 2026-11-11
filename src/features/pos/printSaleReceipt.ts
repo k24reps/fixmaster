@@ -6,6 +6,7 @@ import {
   multiline,
   escapeHtml,
   joinSections,
+  voidMarkHtml,
   type ReceiptDoc,
 } from '@/features/services/printReceipt';
 import { receiptText } from '@/features/services/receiptText';
@@ -87,7 +88,7 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleDocOptio
       : '',
   ].join('');
 
-  const voidMark = m.voided ? `<div class="void-mark">${escapeHtml(receiptText('receipt.void'))}</div>` : '';
+  const voidMark = m.voided ? voidMarkHtml() : '';
   const reprint = m.reprintAt
     ? `<div class="reprint"><strong>${escapeHtml(receiptText('receipt.reprint'))}</strong><br/>${escapeHtml(m.reprintAt)}</div>`
     : '';
@@ -97,6 +98,7 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleDocOptio
     title: receiptText('receipt.title.sale'),
     kind: receiptText('receipt.doc.sale'),
     no: sale.saleNo,
+    voided: m.voided,
     date: stampWithTime(sale.date, sale.createdAt, cfg.showTime),
     address: receiptAddress(org.address, sale.outletId, opts.outlets ?? []),
     body: `

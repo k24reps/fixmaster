@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { saleReceiptDoc } from './printSaleReceipt';
+import { receiptPreviewHtml } from '@/features/services/printReceipt';
 import { useSettingsStore } from '@/stores/settings';
 import type { Organization, Sale } from '@/data/types';
 
@@ -72,6 +73,22 @@ describe('saleReceiptDoc: struk batal', () => {
     expect(t).toContain('bukan bukti pembelian');
     expect(t).not.toContain('syarat penukaran');
     expect(t).not.toMatch(/Kembalian|Dibayar|Tunai/);
+  });
+
+  it('tak berpamitan: tanpa ucapan kaki, bawaan maupun buatan toko', () => {
+    const own = { ...org, settings: { receipt: { footer: 'Sampai ketemu lagi' } } } as unknown as Organization;
+    const doc = saleReceiptDoc(voided, own, { walletName });
+    expect(doc.voided).toBe(true);
+    const page = receiptPreviewHtml(own, doc);
+    expect(page).not.toContain('class="foot"');
+    expect(text(page)).not.toMatch(/Sampai ketemu lagi|Terima kasih|sampai jumpa/i);
+    expect(page).toContain('class="by"');
+  });
+
+  it('struk biasa tetap berucapan kaki', () => {
+    const doc = saleReceiptDoc(sale({}), org, { walletName });
+    expect(doc.voided).toBe(false);
+    expect(receiptPreviewHtml(org, doc)).toContain('class="foot"');
   });
 
   it('alasan kosong: blok alasan tidak dicetak', () => {

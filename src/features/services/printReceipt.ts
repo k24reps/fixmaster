@@ -136,6 +136,17 @@ export interface ReceiptDoc {
   /** Alamat kepala kertas bila bukan alamat usaha (alamat cabang). */
   address?: string;
   body: string;
+  /**
+   * Dokumen yang dibatalkan tidak menutup dengan ucapan terima kasih (bawaan
+   * maupun buatan toko): kertas yang menyatakan "BATAL" lalu berpamitan
+   * "sampai jumpa kembali!" terbaca seperti pesta. Atribusi tetap tercetak.
+   */
+  voided?: boolean;
+}
+
+/** Kotak BATAL berbingkai: dipakai bersama oleh nota tiket batal dan struk batal. */
+export function voidMarkHtml(): string {
+  return `<div class="void-mark">${escapeHtml(receiptText('receipt.void'))}</div>`;
 }
 
 /** Bagian-bagian isi dipisah jahitan titik; bagian kosong tidak meninggalkan jahitan ganda. */
@@ -161,9 +172,11 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   const paper = paperSpec(paperWidthOf(org));
   const cfg = receiptConfigOf(org);
   const contact = [o.address ?? org.address, org.phone].filter(Boolean).join(' · ');
-  const foot = cfg.footer
-    ? multiline(cfg.footer)
-    : `${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
+  const foot = o.voided
+    ? ''
+    : cfg.footer
+      ? multiline(cfg.footer)
+      : `${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
     ${escapeHtml(receiptText('receipt.foot.again'))}`;
   return {
     title: `${o.title} ${o.no} | ${org.name}`,
@@ -188,9 +201,7 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   ${o.date ? `<div class="date">${escapeHtml(o.date)}</div>` : ''}
   ${o.body}
   <hr class="seam"/>
-  <div class="foot">
-    ${foot}
-  </div>
+  ${foot ? `<div class="foot">${foot}</div>` : ''}
   <div class="by">${escapeHtml(receiptText('receipt.by'))}</div>`,
   };
 }
@@ -215,7 +226,8 @@ export function receiptPreviewHtml(org: Organization, o: ReceiptDoc): string {
 /**
  * Dokumen nota servis. Tiket batal tidak mencetak garansi, kode QR pelacakan,
  * maupun "simpan sebagai bukti pengambilan": unitnya tak akan diambil dan tak
- * ada garansi yang bisa diklaim, jadi kertasnya hanya mencatat nasib DP.
+ * ada garansi yang bisa diklaim, jadi kertasnya hanya mencatat nasib DP. Ia
+ * ditandai kotak BATAL yang sama dengan struk batal dan tanpa ucapan kaki.
  */
 export function serviceReceiptDoc(
   service: Service,
@@ -245,7 +257,9 @@ export function serviceReceiptDoc(
       ? stampWithTime(localDateOf(service.createdAt), service.createdAt, cfg.showTime)
       : '',
     address: receiptAddress(org.address, service.outletId, outlets),
+    voided: cancelled,
     body: `
+  ${cancelled ? voidMarkHtml() : ''}
   ${joinSections([
     rowsFor(lines, 'unit', service, paper),
     rowsFor(lines, 'uang', service, paper, 'money'),

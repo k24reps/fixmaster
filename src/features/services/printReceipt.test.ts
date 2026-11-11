@@ -80,6 +80,31 @@ describe('serviceReceiptDoc: tiket batal', () => {
     expect(t).not.toMatch(/DP dikembalikan|DP ditahan/);
   });
 
+  it('ditandai kotak BATAL yang sama dengan struk, tepat di bawah tanggal', () => {
+    const doc = serviceReceiptDoc(cancelled({ downPayment: 100000 }), org, 'https://app.test');
+    expect(doc.voided).toBe(true);
+    expect(doc.body.trimStart()).toMatch(/^<div class="void-mark">BATAL<\/div>/);
+  });
+
+  it('tanpa ucapan kaki, bawaan maupun buatan toko; atribusi tetap ada', () => {
+    const own = { ...org, settings: { receipt: { footer: 'Sampai ketemu lagi' } } } as unknown as Organization;
+    const gone = svc({ status: 'batal' });
+    const page = receiptPreviewHtml(own, serviceReceiptDoc(gone, own, 'https://app.test'));
+    expect(page).not.toContain('class="foot"');
+    expect(text(page)).not.toContain('Sampai ketemu lagi');
+    expect(receiptPreviewHtml(org, serviceReceiptDoc(gone, org, 'https://app.test'))).not.toMatch(
+      /Terima kasih|sampai jumpa/i,
+    );
+    expect(page).toContain('class="by"');
+  });
+
+  it('tiket berjalan tidak bertanda BATAL dan tetap berucapan kaki', () => {
+    const doc = serviceReceiptDoc(svc({}), org, 'https://app.test');
+    expect(doc.voided).toBeFalsy();
+    expect(doc.body).not.toContain('void-mark');
+    expect(receiptPreviewHtml(org, doc)).toContain('class="foot"');
+  });
+
   it('tiket berjalan tetap membawa QR, blok pelacakan, dan teks bukti', () => {
     const body = html(svc({}));
     expect(body).toContain('LACAK STATUS');
