@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RECEIPT_MONO_STACK, receiptStyle } from './receiptStyle';
-import { dotRemainder, paperSpec } from '@/lib/business/receiptPaper';
+import { BASE_FONT_DOTS, dotRemainder, dotsToPx, paperSpec } from '@/lib/business/receiptPaper';
 
 describe('receiptStyle', () => {
   it('@page tanpa margin dan selebar gulungan; panjangnya diisi skrip cetak', () => {
@@ -36,5 +36,26 @@ describe('receiptStyle', () => {
     expect(css).toContain('overflow-wrap: anywhere');
     expect(css).toMatch(/\.track \{[^}]*break-inside: avoid/);
     expect(css).toMatch(/tr \{ break-inside: avoid; \}/);
+  });
+
+  // Head termal = dua keadaan. Driver berambang 50% menghapus abu-abu: #8a8a8a
+  // dan #9a9a9a pernah menghasilkan 0% titik hitam (garis pemisah dan baris
+  // atribusi hilang dari kertas). Tak ada literal warna selain hitam dan putih.
+  it('semua tinta hitam pekat: tak ada abu-abu yang akan hilang di ambang 50%', () => {
+    const css = receiptStyle(paperSpec(58));
+    const colors = [...css.matchAll(/#[0-9a-fA-F]{3,6}/g)].map((m) => m[0].toLowerCase());
+    expect(colors.length).toBeGreaterThan(2);
+    for (const c of colors) expect(['#000', '#fff'], c).toContain(c);
+    expect(css).not.toMatch(/color-mix|rgba?\(|opacity:/);
+  });
+
+  it('jahitan pemisah hitam pekat setebal 4 titik, bukan garis rambut', () => {
+    expect(receiptStyle(paperSpec(58))).toMatch(/\.seam \{[^}]*border-top: 2px dotted #000/);
+  });
+
+  it('tak ada teks di bawah huruf dasar 20 titik (±9,5px): terbaca di kertas termal', () => {
+    const css = receiptStyle(paperSpec(58));
+    const sizes = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
+    for (const px of sizes) expect(px, `${px}px`).toBeGreaterThanOrEqual(dotsToPx(BASE_FONT_DOTS) - 0.001);
   });
 });

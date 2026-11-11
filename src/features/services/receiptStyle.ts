@@ -15,6 +15,11 @@ import {
  * jatuh di 24,3 titik; head membulatkannya, dan garis tebal-tipis hurufnya
  * ikut bergeser. Pada kelipatan titik, hasilnya sama di setiap mesin.
  *
+ * Semua tinta hitam #000. Head termal hanya punya dua keadaan; driver yang
+ * memakai ambang 50% menghapus abu-abu (#555 hanya selamat lewat tepi
+ * antialias, #8a8a8a lenyap seluruhnya). Hierarki dibangun dari bobot, ukuran,
+ * dan jarak huruf, bukan dari terang-gelap.
+ *
  * Monospace di sini juga bukan kostum "biar terlihat teknis": seluruh isi nota
  * adalah data dan nominal yang dibaca berkolom, persis kasus yang Mono Numbers
  * Rule maksudkan.
@@ -48,7 +53,7 @@ export function receiptStyle(paper: PaperSpec): string {
     margin: 0 auto;
     padding: ${px(8)} ${px(paper.insetDots)} ${TAIL_MM}mm;
     width: ${paper.printablePx}px;
-    color: #111;
+    color: #000;
     background: #fff;
     font-family: ${RECEIPT_MONO_STACK};
     font-size: ${px(base)};
@@ -72,9 +77,10 @@ export function receiptStyle(paper: PaperSpec): string {
     text-transform: uppercase;
     line-height: ${px(36)};
   }
-  .contact { margin: ${px(8)} 0 0; color: #555; }
-  /* Jahitan putus-putus, meneruskan bahasa "tepi terperforasi" dari aplikasi. */
-  .seam { border: none; border-top: 1px dashed #9a9a9a; margin: ${px(20)} 0; }
+  .contact { margin: ${px(8)} 0 0; }
+  /* Jahitan titik-titik, meneruskan bahasa "tepi terperforasi" dari aplikasi. Hitam
+     pekat setebal 4 titik: abu-abu di bawah ambang 50% tidak dicetak sama sekali. */
+  .seam { border: none; border-top: 2px dotted #000; margin: ${px(20)} 0; }
   .docline {
     display: flex;
     flex-wrap: wrap;
@@ -82,9 +88,8 @@ export function receiptStyle(paper: PaperSpec): string {
     align-items: baseline;
     column-gap: ${px(16)};
   }
-  .kind { letter-spacing: 0.18em; color: #555; }
+  .kind { letter-spacing: 0.18em; font-weight: 700; }
   .no { font-size: ${px(26)}; font-weight: 700; letter-spacing: 0.04em; }
-  .date { color: #555; }
   table { width: 100%; border-collapse: collapse; }
   tr { break-inside: avoid; }
   td {
@@ -93,20 +98,19 @@ export function receiptStyle(paper: PaperSpec): string {
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
   }
-  td:first-child { width: 38%; color: #555; padding-right: ${px(16)}; }
+  td:first-child { width: 38%; padding-right: ${px(16)}; }
   td:last-child { text-align: right; }
-  .money td:last-child { font-weight: 600; }
-  .strong td { padding-top: ${px(10)}; font-size: ${px(26)}; font-weight: 700; color: #000; line-height: ${px(32)}; }
-  .strong td:first-child { color: #000; letter-spacing: 0.04em; }
-  .block-label { letter-spacing: 0.18em; color: #555; margin: 0 0 ${px(8)}; }
+  .money td:last-child { font-weight: 700; }
+  .strong td { padding-top: ${px(10)}; font-size: ${px(26)}; font-weight: 700; line-height: ${px(32)}; }
+  .strong td:first-child { letter-spacing: 0.04em; }
+  .block-label { letter-spacing: 0.18em; font-weight: 700; margin: 0 0 ${px(8)}; }
   .block { break-inside: avoid; }
   .track { display: flex; gap: ${px(20)}; align-items: center; break-inside: avoid; }
   .track svg { flex: 0 0 auto; }
   .track-copy { min-width: 0; }
-  .track-url { margin: ${px(6)} 0 0; color: #555; }
-  .note { color: #333; white-space: pre-wrap; }
-  .fine { color: #555; }
+  .track-url { margin: ${px(6)} 0 0; }
+  .note { white-space: pre-wrap; }
   .foot { text-align: center; }
-  .by { text-align: center; letter-spacing: 0.14em; color: #8a8a8a; margin-top: ${px(20)}; }
+  .by { text-align: center; letter-spacing: 0.14em; margin-top: ${px(20)}; }
 `;
 }

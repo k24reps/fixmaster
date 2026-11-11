@@ -599,6 +599,7 @@ function BusinessTab() {
             <div className={styles.logoMeta}>
               <strong>{t('settingsPage.logoToko')}</strong>
               <small>{t('settingsPage.pngJpgMaks500kb')}</small>
+              <small>{t('settingsPage.logoPrintBw')}</small>
               <div className={styles.logoActions}>
                 <Button
                   variant="secondary"

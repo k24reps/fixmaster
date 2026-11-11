@@ -903,6 +903,9 @@ matikan header/footer, skala 100%, printer termal di Android). Kartu menumpuk se
 `@page{size:Wmm Hmm;margin:0}` sebelum `window.print()`. Hasil ukur nota IMEI ganda: nol luberan,
 satu halaman, tinta 5,51–52,68 mm di dalam jendela head 4,91–52,91 mm (58 mm).
 
+**Hitam-putih** (tahap 2): seluruh tinta nota `#000`; jahitan pemisah `2px dotted #000`. Di Profil Bisnis, kolom
+Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.logoPrintBw`).
+
 ---
 
 ## Pengaturan — Navigasi Mobile

@@ -1225,6 +1225,7 @@ export const en: Dictionary = {
   'settingsPage.profilUsaha': 'Business Profile',
   'settingsPage.logoToko': 'Shop Logo',
   'settingsPage.pngJpgMaks500kb': 'PNG/JPG, max 500KB. Shown in the sidebar & receipts.',
+  'settingsPage.logoPrintBw': 'Receipts print the logo in black and white. A solid logo on a white background reads best; light colors and gradients can disappear.',
   'settingsPage.hapus': 'Delete',
   'settingsPage.namaUsaha': 'Business Name',
   'settingsPage.alamat': 'Address',

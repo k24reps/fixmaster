@@ -1245,6 +1245,7 @@ export const id = {
   'settingsPage.profilUsaha': 'Profil Usaha',
   'settingsPage.logoToko': 'Logo Toko',
   'settingsPage.pngJpgMaks500kb': 'PNG/JPG, maks 500KB. Tampil di sidebar & struk.',
+  'settingsPage.logoPrintBw': 'Di nota dan struk logo tercetak hitam-putih. Logo pekat dengan latar putih paling jelas; warna muda dan gradasi bisa hilang.',
   'settingsPage.hapus': 'Hapus',
   'settingsPage.namaUsaha': 'Nama Usaha',
   'settingsPage.alamat': 'Alamat',

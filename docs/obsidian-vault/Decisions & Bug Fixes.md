@@ -5543,3 +5543,29 @@ menunjukkan bahwa kertas dipotong ke Letter. Baru PDF dengan `preferCSSPageSize`
 `size` yang valid.
 
 #decision #print #receipt #settings
+
+### Tahap 2 — tinta hitam pekat (harden)
+
+Head termal hanya punya dua keadaan, dan driver yang memakai ambang 50% menghapus abu-abu. Diukur
+sebelum perbaikan (raster 203 dpi → threshold 50%): garis jahitan `1px dashed #9a9a9a` dan baris
+atribusi `#8a8a8a` menghasilkan **0% titik hitam**, yaitu hilang dari kertas; teks `#555` hanya
+selamat lewat tepi antialias.
+
+- **Semua tinta `#000`.** Hierarki dibangun dari bobot, ukuran, dan jarak huruf: jenis dokumen,
+  label blok, dan nominal uang tebal; judul 30 titik, nomor dan baris TOTAL 26 titik; label jenis
+  berjarak 0,18em. Tak ada `color-mix`, `rgba()`, atau `opacity` di CSS nota.
+- **Jahitan pemisah** `2px dotted #000` (±4 titik): tetap bahasa "tepi terperforasi" Bench, tetapi
+  berupa titik hitam pekat. Setelah threshold: 62–71% dari tinta tetap hitam (dulu 0%), baris
+  terpadat 189 dari 384 titik. Baris atribusi "DICETAK DENGAN FIXMASTER": 72–73% (dulu 0%).
+- **Tak ada teks di bawah huruf dasar 20 titik (±9,46px)**; `minFont` terukur 9,46px di seluruh 16
+  kasus.
+- **Logo ikut hitam-putih.** Petunjuk baru `settingsPage.logoPrintBw` di bawah kolom Logo toko
+  (Profil Bisnis): logo pekat berlatar putih paling jelas; warna muda dan gradasi bisa hilang.
+- **Pengaman:** `receiptStyle.test.ts` menegaskan satu-satunya literal warna di CSS nota adalah
+  `#000` dan `#fff`, jahitan berupa `2px dotted #000`, dan tak ada `font-size` di bawah 20 titik.
+
+**Pelajaran: "kelihatan di layar" bukan bukti "tercetak".** Garis abu-abu tipis tampak rapi di
+pratinjau dan PDF berwarna, tetapi hilang di kertas. Satu-satunya bukti adalah raster 1-bit:
+`verify1bit.py` menghitung tinta (<250) yang selamat jadi hitam (<128) per kelompok elemen.
+
+#decision #print #receipt #contrast
