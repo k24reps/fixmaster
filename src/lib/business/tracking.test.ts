@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextStepFor, relativeSince } from './tracking';
+import { nextStepFor, normalizeTrackCode, relativeSince } from './tracking';
 
 describe('nextStepFor', () => {
   // Cacat aslinya: halaman menyuruh datang ke toko untuk unit yang sudah
@@ -57,5 +57,35 @@ describe('relativeSince', () => {
   // Jam HP pelanggan sering lebih lambat dari server.
   it('waktu di masa depan tetap dibaca sebagai baru', () => {
     expect(relativeSince(new Date(now + 60_000).toISOString(), now)).toBe('baru saja');
+  });
+});
+
+describe('normalizeTrackCode', () => {
+  it('menerima kode baku apa adanya', () => {
+    expect(normalizeTrackCode('7K3M9QXR2D')).toBe('7K3M9QXR2D');
+  });
+
+  // Pelanggan mengetik dari kertas: huruf kecil, spasi, dan tanda hubung
+  // tetap menemukan tiketnya.
+  it('huruf kecil, spasi, dan tanda hubung dirapikan', () => {
+    expect(normalizeTrackCode(' 7k3m9-qxr2d ')).toBe('7K3M9QXR2D');
+    expect(normalizeTrackCode('7K3M 9QXR 2D')).toBe('7K3M9QXR2D');
+  });
+
+  // Di kertas termal yang pudar O/0 dan I/L/1 tertukar; alfabetnya tak memakai
+  // I, L, O, jadi ketiganya dibaca sebagai angka.
+  it('O dibaca 0, I dan L dibaca 1', () => {
+    expect(normalizeTrackCode('OK3M9QXR2D')).toBe('0K3M9QXR2D');
+    expect(normalizeTrackCode('IK3M9QXRLD')).toBe('1K3M9QXR1D');
+  });
+
+  it('panjang atau huruf yang salah bukan kode', () => {
+    expect(normalizeTrackCode('')).toBeNull();
+    expect(normalizeTrackCode('7K3M9QXR2')).toBeNull();
+    expect(normalizeTrackCode('7K3M9QXR2DA')).toBeNull();
+    // U tidak ada di Crockford base32.
+    expect(normalizeTrackCode('7K3M9QXR2U')).toBeNull();
+    expect(normalizeTrackCode('FM-0001')).toBeNull();
+    expect(normalizeTrackCode('7K3M9QXR2/')).toBeNull();
   });
 });

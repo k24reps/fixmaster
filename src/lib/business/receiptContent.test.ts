@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   GAUGE_STAGES,
+  isServiceReprint,
   receiptAddress,
+  reprintStamp,
   saleReceiptModel,
   serviceDocPlan,
   serviceMoney,
@@ -356,5 +358,38 @@ describe('receiptAddress', () => {
 
   it('keduanya tak ada: string kosong', () => {
     expect(receiptAddress(undefined, null, [])).toBe('');
+  });
+});
+
+describe('isServiceReprint', () => {
+  const plan = (status: ServiceStatus, pickedUp = false) => serviceDocPlan({ status, pickedUp });
+
+  it('cetakan pertama, atau jejak belum termuat, bukan cetak ulang', () => {
+    expect(isServiceReprint(null, plan('diterima'))).toBe(false);
+    expect(isServiceReprint(undefined, plan('diterima'))).toBe(false);
+    expect(isServiceReprint({ lastPrintedKind: null }, plan('diterima'))).toBe(false);
+  });
+
+  it('dokumen berjenis sama yang dicetak lagi adalah salinan', () => {
+    expect(isServiceReprint({ lastPrintedKind: 'intake' }, plan('diterima'))).toBe(true);
+    expect(isServiceReprint({ lastPrintedKind: 'service' }, plan('selesai'))).toBe(true);
+    expect(isServiceReprint({ lastPrintedKind: 'handover' }, plan('lunas', true))).toBe(true);
+  });
+
+  // Tiket yang naik tahap mencetak dokumen baru (tanda terima → nota → serah
+  // terima); itu cetakan pertama dokumen tersebut, bukan salinan.
+  it('dokumen tahap berikutnya bukan cetak ulang', () => {
+    expect(isServiceReprint({ lastPrintedKind: 'intake' }, plan('selesai'))).toBe(false);
+    expect(isServiceReprint({ lastPrintedKind: 'service' }, plan('lunas', true))).toBe(false);
+  });
+
+  it('kertas batal tak pernah diberi penanda salinan', () => {
+    expect(isServiceReprint({ lastPrintedKind: 'service' }, plan('batal'))).toBe(false);
+  });
+});
+
+describe('reprintStamp', () => {
+  it('tanggal dan jam lokal, format yang sama dengan struk POS', () => {
+    expect(reprintStamp(new Date(2026, 10, 12, 9, 5))).toBe('12 Nov 2026 09:05');
   });
 });

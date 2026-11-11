@@ -11,6 +11,7 @@ const spaRoutes = [
   // '/prototype/ticket' sengaja tidak ada: rutenya hanya didaftarkan di dev
   // server (router.tsx, devOnlyRoutes), jadi produksi tak perlu rewrite-nya.
   '/track',
+  '/t/:code',
   '/privacy',
   '/terms',
   '/reset-password',

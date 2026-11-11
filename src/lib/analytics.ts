@@ -20,6 +20,8 @@ interface AnalyticsUrlEvent {
 export function sanitizeAnalyticsEvent<T extends AnalyticsUrlEvent>(event: T): T | null {
   const url = new URL(event.url, 'https://fixmaster.app');
   if (url.pathname === '/track' || url.pathname === '/reset-password') return null;
+  // Kode lacak di jalurnya adalah kunci akses tiket; tak boleh sampai ke analitik.
+  if (url.pathname === '/t' || url.pathname.startsWith('/t/')) return null;
   if (/^\/services\/[^/]+$/.test(url.pathname)) url.pathname = '/services/[id]';
   url.search = '';
   url.hash = '';

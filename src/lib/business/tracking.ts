@@ -76,3 +76,28 @@ export function relativeSince(iso: string, now: number = Date.now()): string | n
   if (days <= 7) return `${days} hari lalu`;
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Kode lacak (0100)
+
+/**
+ * 10 karakter Crockford base32, dibuat server (`gen_track_code()`, 0100); klien
+ * hanya memeriksa bentuknya. Tanpa I, L, O, U: pada kertas termal yang pudar I/L
+ * dan 1, serta O dan 0, paling sering tertukar, jadi huruf itu tak pernah
+ * dipakai dan dibaca sebagai angkanya saat diketik.
+ */
+const TRACK_CODE_RE = /^[0-9A-HJKMNP-TV-Z]{10}$/;
+
+/**
+ * Yang diketik atau dipindai pelanggan menjadi kode baku, atau null bila bukan
+ * kode. Cermin normalisasi `track_service_by_code`: huruf kecil, spasi, tanda
+ * hubung, serta I, L, dan O yang terbaca dari kertas tetap menemukan tiketnya.
+ */
+export function normalizeTrackCode(input: string): string | null {
+  const code = input
+    .replace(/[\s-]/g, '')
+    .toUpperCase()
+    .replace(/[IL]/g, '1')
+    .replace(/O/g, '0');
+  return TRACK_CODE_RE.test(code) ? code : null;
+}

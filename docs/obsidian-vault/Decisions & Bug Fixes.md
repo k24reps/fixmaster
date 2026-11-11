@@ -5758,13 +5758,13 @@ temuan yang lebih ke tepi alur. Laporan: `.impeccable/critique/2026-11-11T04-41-
   di bawah tanggal. `ReceiptDoc.voided` baru membuat `receiptParts` membuang blok `.foot`, baik kalimat
   bawaan maupun ucapan kaki buatan toko. Jahitan di atasnya dan atribusi `.by` tetap tercetak. Struk batal
   yang tadinya masih berpamitan ikut diperbaiki lewat bendera yang sama.
-- **Sengaja belum: penanda CETAK ULANG di nota servis.** Struk POS bisa menandainya karena cetak ulang
+- **Dikerjakan di tahap 8 (di bawah): penanda CETAK ULANG di nota servis.** Alasan awalnya ditunda: struk POS bisa menandainya karena cetak ulang
   adalah aksi tersendiri di riwayat. Nota servis tak punya jejak "sudah pernah dicetak"; menandainya butuh
   status cetak yang tersimpan, yaitu keputusan data dan kemungkinan migrasi. Itu hak pemilik produk, bukan
   efek samping perbaikan kertas. Opsi datanya dikaji di bawah tahap 7b.
 - **Dikerjakan di tahap 7a (di bawah): bilah "Cetak lagi / Tutup" di jendela cetak.** Dulu sengaja belum
   karena bilah harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak.
-- **Sengaja belum: URL lacak pendek.** URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
+- **Dikerjakan di tahap 8 (di bawah): URL lacak pendek.** Alasan awalnya ditunda: URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
   tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak. Dikaji di bawah tahap 7b.
 - **Sengaja belum: lebar kertas per cabang.** Tercatat sebagai tindak lanjut. Judul per tahap siklus hidup
   dan tick-gauge dikerjakan di tahap 7b; Pengaturan di ponsel di tahap 7c.
@@ -5893,7 +5893,7 @@ dan apakah garis tebal 12 titik terbaca bersih di kepala termal sungguhan (di si
 
 #decision #print #receipt #lifecycle
 
-### Kajian (belum dikerjakan): penanda CETAK ULANG di nota servis
+### Kajian (dikerjakan di tahap 8): penanda CETAK ULANG di nota servis
 
 Struk POS bisa menandai cetak ulang karena itu aksi sendiri di riwayat penjualan. Nota servis dicetak dari beberapa
 tempat (Cetak Nota di bilah aksi, modal Notifikasi, panel selesai tiket) lewat `printServiceReceipt()` tanpa jejak.
@@ -5913,7 +5913,7 @@ tak menandai dokumen batal (kertas itu sudah berkotak BATAL). Cap C murah dan ta
 
 #decision #print #receipt #study
 
-### Kajian (belum dikerjakan): URL lacak pendek dan keterbacaan nomor tiket
+### Kajian (dikerjakan di tahap 8): URL lacak pendek dan keterbacaan nomor tiket
 
 **Masalah.** Alamat lacak yang tercetak berbentuk `/track?org=<UUID 36 huruf>&no=FM-0123`. Di 58 mm ia
 memakan **6 baris** (9 baris pada kasus berat). QR tetap penuh; yang menderita adalah pelanggan yang mengetik
@@ -5938,7 +5938,7 @@ alamat tanpa kamera.
   nol baris, sama dengan "tiket tidak ditemukan", jadi rem per organisasi adalah tuas DoS terhadap pelanggan asli.
   Throttle klien 10/60 detik di `TrackingPage.tsx` hanya kosmetik.
 
-**Usulan (belum diimplementasikan; butuh keputusan dan migrasi):**
+**Usulan (poin 1 sampai 4 dikerjakan di tahap 8, migrasi 0100; poin 5 belum):**
 
 1. **Kode lacak acak per tiket**, bukan nomor berurutan: kolom `track_code` (6 sampai 8 huruf dari alfabet 32 simbol
    yang tak mudah tertukar, mis. Crockford base32 tanpa I, L, O, U) diisi server saat tiket dibuat, `unique`, dengan
@@ -6061,3 +6061,87 @@ dilaporkan sudah ada sebelumnya di halaman yang tak disentuh: rail chip kategori
 **Belum terverifikasi:** printer termal fisik, dialog cetak serta `close()` di Android dan iOS sungguhan.
 
 #decision #print #receipt #merge
+
+### Tahap 8: penanda CETAK ULANG dan kode lacak acak (11 Nov 2026)
+
+Dua kajian di atas dikerjakan sebagai satu paket karena keduanya butuh data cetak per tiket: opsi **A** dari
+kajian cetak ulang, dan poin **1 sampai 4** dari kajian URL lacak. Poin 5 (kedaluwarsa kode) tidak dikerjakan.
+
+**Data (migrasi 0100).** Tabel `service_tracking` per tiket: `track_code`, `print_count`, `last_printed_at`,
+`last_printed_kind`. Opsi A mengusulkan kolom di `services`; tabel terpisah dipilih karena:
+
+- tiap UPDATE `services` memancarkan realtime dan membuat semua perangkat menarik ulang daftar servis; mencatat
+  satu cetakan tak boleh semahal itu;
+- kolom berisi nilai acak memaksa penulisan ulang seluruh tabel `services`;
+- klien mengirim baris `services` penuh dari salinan yang bisa basi (0087), jadi kolom milik server butuh penjaga
+  tambahan. Tabel tanpa policy tidak.
+
+Polanya sama dengan `service_secrets` (0094): RLS tanpa policy, revoke, di luar publikasi realtime, akses hanya
+lewat RPC. **Tanpa FK ke `services`**, dengan sengaja: `restore_org_data` menghapus lalu menyisipkan ulang tiket
+dengan id yang sama, dan cascade akan mematikan kode yang sudah tercetak di kertas pelanggan. Baris dibuat
+**malas** saat tiket pertama kali dibuka atau dicetak, jadi migrasinya tak menyentuh satu baris pun di `services`.
+
+**Kode.** 10 karakter Crockford base32 (50 bit) dari `gen_random_uuid()`, unik global, diulang saat bentrok.
+Kajian menyebut 8 karakter (40 bit) untuk kode global; 10 dipilih karena batas per IP bisa diakali dengan banyak
+IP, sedangkan ruang 2^50 tidak. Masukan dirapikan di server dan di klien (`normalizeTrackCode`): huruf kecil,
+spasi, dan tanda hubung; I dan L dibaca 1, O dibaca 0, salah baca yang lazim di kertas termal pudar. Kode hanya
+dibuat server. Pembuat kode di klien sempat ditulis lalu dihapus: tanpa server tak ada yang bisa menerjemahkannya.
+
+**Lacak publik.** `track_service_by_code(code)` untuk anon. Isi barisnya sama dengan `track_service`: tanpa
+harga, tanpa riwayat internal, tanpa id toko maupun id tiket. Batas **30 permintaan per menit per IP**, dicek
+sebelum pencarian. IP dari `cf-connecting-ip`, lalu entri pertama `x-forwarded-for`. Kuncinya di-hash ke 4096 ember
+supaya header palsu tak bisa menumbuhkan `rate_events` tanpa batas; dua IP bisa berbagi ember, peluangnya 1/4096.
+Tanpa header IP (panggilan server) batas dilewati. Di atas batas RPC melempar **SQLSTATE `PT429`, yang dibalas
+PostgREST sebagai HTTP 429**, bukan nol baris seperti `track_service`. Pelanggan asli melihat "tunggu sekitar
+satu menit" dan tahu kodenya tidak salah (poin 3 kajian, varian "dibedakan dengan jelas"). Kode salah format dan
+kode tak terdaftar dibalas sama, nol baris. **`track_service` lama (`?org=&no=`) tetap hidup** untuk nota yang
+sudah beredar. Ia masih bisa dienumerasi dengan rem 60/menit per organisasi; pensiunkan setelah nota lama habis.
+
+**Rute.** `/t/:code` di router dan `vercel.json` (dijaga `deploymentRoutes.test`). `TrackingPage` punya mode
+kode dengan label, contoh, petunjuk, dan pesan tak ditemukan sendiri, plus blok "Terlalu banyak permintaan" untuk
+429; react-query tak mengulang galat itu. Jalur `/t` diblokir dari analitik (`lib/analytics.ts`) karena kodenya
+adalah kunci akses tiket; `/terms` tetap tercatat.
+
+**Cetak ulang.** `isServiceReprint(meta, plan)` (`lib/business/receiptContent.ts`): cetak ulang bila jenis
+dokumen yang sama sudah pernah dicetak. Tanda terima, nota servis, dan serah terima adalah tiga dokumen berbeda,
+jadi tiket yang naik tahap tidak mencetak salinan. Tiket batal tak pernah ditandai; kertasnya sudah berkotak
+BATAL. Kotak **CETAK ULANG · tanggal jam** (`reprintMarkHtml`, kini dipakai bersama struk POS) berada paling atas
+di isi nota, di atas penanda tahap. Jam di kotak = jam cetak ini; `last_printed_at` diisi `now()` server.
+
+**Kapan dicatat.** `window.open` harus tetap sinkron di handler klik, jadi jejak cetak dimuat lebih dulu oleh
+`useServicePrint` (react-query, `staleTime 0`), dan cetakan dicatat sesudah jendela terbuka. `openReceiptWindow`
+kini mengembalikan boolean: demo dan popup terblokir tak tercatat. Dialog cetak yang dibatalkan tetap terhitung,
+seperti diperkirakan kajian; browser tak memberi tahu apakah kertas benar-benar keluar.
+
+**Turun anggun dan urutan rilis.** Sebelum 0100 diterapkan, RPC jejak cetak gagal → `null` → alamat lama dan
+tanpa penanda cetak ulang; mencetak tetap jalan. Akibat sampingnya satu permintaan 404 (`PGRST202`) di konsol
+setiap kali detail tiket dibuka. Karena itu frontend ini boleh masuk `main` sebelum migrasinya, pengecualian sadar
+dari urutan "migrasi dulu" di [[Self-Hosting]]. Mode lokal dan demo tak punya server, jadi jejaknya di memori tab
+tanpa kode dan nota mencetak alamat lama, yang tetap bisa dibuka di tab lain lewat IndexedDB.
+
+**Alamat di kertas.** Dicetak tanpa skema (`trackingUrlLabel`): `fixmaster.app/t/7K3M9QXR2D`, 1 sampai 2 baris di
+58 mm (dulu 6 sampai 9). Alamat lama juga kehilangan `https://`. QR tetap memuat URL lengkap.
+
+**Verifikasi:** build dan lint bersih; **1061 tes / 82 berkas** (1033 + 28: normalisasi kode, `trackingUrl` dan
+labelnya, `isServiceReprint`/`reprintStamp`, nota berkode dan bertanda cetak ulang, hasil `openReceiptWindow`,
+RPC klien beserta pemetaan 429, `servicePrint` lokal dan cloud, `/t` di analitik, rute deploy). Berkas
+integrasi baru `tests/integration/tier3h-track-code.integration.test.ts` lolos type-check dengan tsconfig
+sementara: kode stabil per tiket, toko lain dan anon ditolak, hitungan cetak, pencarian lewat kode (juga huruf
+kecil bertanda hubung), tanpa kebocoran harga atau id, tabel dan pembantu tertutup, dan 429 sesudah 30
+permintaan. Browser, mode lokal: mode kode menampilkan tak ditemukan dan menolak bentuk salah, navigasi merapikan
+kode, `/track` lama tak berubah, tanpa luberan di 375 px; "Cetak Nota" kedua memunculkan kotak CETAK ULANG di
+bawah tanggal dan di atas penanda tahap, dengan alamat berlabel tanpa skema. Probe: `audit-mobile` 5 lebar ponsel dan pita tablet 744 sampai 1152, `audit-zoom` 11 lebar, masing-masing × 13 halaman: nol luberan dokumen, nol overlap, nol teks ter-clip, lantai 12px terjaga. Sisanya identik dengan baseline gabungan 7a/7b/7c: rail chip `/services`, `/customers`, `/pos` dan tabel `/pos` +16px di 1097. Halaman lacak tak termasuk 13 halaman probe; ia diukur terpisah di 375 px.
+
+**Migrasi 0100 BELUM diterapkan ke staging maupun produksi.** Urutannya: SQL Editor staging →
+`npm run test:integration` (beri jeda semenit antar-jalan, uji terakhir `tier3h` menghabiskan kuota IP) → server VPS
+(`docker cp` + `psql -f`, seperti 0084 sampai 0099).
+
+**Belum terverifikasi:** 0100 di Postgres sungguhan; `tier3h` belum pernah jalan; apakah `cf-connecting-ip`
+sampai ke PostgREST lewat Cloudflare Tunnel dan Kong di VPS (uji terakhir `tier3h` memeriksanya; bila gagal,
+batas per IP diam-diam mati dan hanya ruang 2^50 yang menjaga); blok 429 di halaman lacak belum terlihat langsung,
+hanya lewat tes pemetaan; printer termal fisik.
+
+**Sisa, belum dikerjakan:** kedaluwarsa kode (poin 5); pensiun bertahap `?org=&no=`; teks halaman lacak publik
+masih literal bahasa Indonesia, belum lewat `useT()`, sama seperti sebelum tahap ini.
+
+#decision #print #receipt #tracking #security

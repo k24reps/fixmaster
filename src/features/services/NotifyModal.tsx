@@ -4,18 +4,16 @@ import {
   waLink,
   interpolate,
   serviceVars,
-  trackingUrl,
   resolveWaTemplates,
   WA_TEMPLATE_LABELS,
   type WaTemplateKey,
 } from '@/lib/business/notify';
-import { printServiceReceipt } from './printReceipt';
+import { useServicePrint } from './useServicePrint';
 import { getWaTemplateOverrides } from '@/config/orgConfig';
 import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
-import { useCollection } from '@/hooks/useCollection';
 import type { Service } from '@/data/types';
 import styles from './NotifyModal.module.css';
 import { useT } from '@/i18n';
@@ -33,7 +31,7 @@ type TemplateKey = WaTemplateKey;
 export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyModalProps) {
   const t = useT();
   const org = useSessionStore((s) => s.org);
-  const { data: outlets } = useCollection('outlets');
+  const { trackCode, trackLink, print: printReceipt } = useServicePrint(service);
   const [templateKey, setTemplateKey] = useState<TemplateKey>(initialTemplate ?? 'selesai');
   // Dibuka dari panel tiket baru / serah unit: mulai di template momen itu.
   const [wasOpen, setWasOpen] = useState(false);
@@ -48,17 +46,17 @@ export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyM
   // Include finalCost + updatedAt in the memo key so the message regenerates
   // when the cost (or any field) changes after the modal was first opened.
   // Without this, the WA text kept a stale "Rp 0" until a full page refresh.
-  const memoKey = service ? `${service.id}|${templateKey}|${service.finalCost}|${service.updatedAt}` : null;
+  // Kode lacak tiba sesudah modal terbuka; pesannya disusun ulang supaya
+  // tautannya ikut menjadi `/t/<kode>`.
+  const memoKey = service
+    ? `${service.id}|${templateKey}|${service.finalCost}|${service.updatedAt}|${trackCode ?? ''}`
+    : null;
   useResetOnOpen(open, memoKey, () => {
     // Penyempitan tipe tidak menembus batas callback, jadi diulang di sini.
     // `memoKey` sudah null saat service belum ada, jadi ini praktis tak
     // pernah terpicu — tetapi tetap ditulis agar tipenya jujur.
     if (!service || !org) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const vars = {
-      ...serviceVars(service, org),
-      tautan: trackingUrl(origin, org.id, service.serviceNo),
-    };
+    const vars = { ...serviceVars(service, org), tautan: trackLink };
     setMessage(interpolate(templates[templateKey], vars));
   });
 
@@ -71,17 +69,13 @@ export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyM
   };
 
   const copyTracking = async () => {
-    const origin = window.location.origin;
-    const url = trackingUrl(origin, org.id, service.serviceNo);
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(trackLink);
       toast.success(t('notify.linkCopied'));
     } catch {
       toast.error(t('notify.linkFailed'));
     }
   };
-
-  const printReceipt = () => printServiceReceipt(service, org, outlets);
 
   return (
     <Modal

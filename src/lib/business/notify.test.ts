@@ -4,6 +4,7 @@ import {
   waLink,
   interpolate,
   trackingUrl,
+  trackingUrlLabel,
   serviceReceiptLines,
   serviceVars,
   DEFAULT_WA_TEMPLATES,
@@ -58,6 +59,30 @@ describe('trackingUrl', () => {
   it('builds an encoded tracking URL', () => {
     const url = trackingUrl('https://app.test', 'org 1', 'FM-1');
     expect(url).toBe('https://app.test/track?org=org%201&no=FM-1');
+  });
+
+  // Sejak 0100 QR nota menunjuk kode acak; nomor tiket berikutnya tak bisa
+  // ditebak dari nota yang sedang dipegang.
+  it('memakai alamat pendek /t/<kode> bila kode lacak ada', () => {
+    expect(trackingUrl('https://app.test', 'org 1', 'FM-1', '7K3M9QXR2D')).toBe(
+      'https://app.test/t/7K3M9QXR2D',
+    );
+  });
+
+  it('kode kosong atau null jatuh ke alamat lama', () => {
+    expect(trackingUrl('https://app.test', 'o', 'FM-1', null)).toBe(
+      'https://app.test/track?org=o&no=FM-1',
+    );
+    expect(trackingUrl('https://app.test', 'o', 'FM-1', '')).toBe(
+      'https://app.test/track?org=o&no=FM-1',
+    );
+  });
+});
+
+describe('trackingUrlLabel', () => {
+  it('membuang skema supaya teks di kertas lebih pendek', () => {
+    expect(trackingUrlLabel('https://fixmaster.app/t/7K3M9QXR2D')).toBe('fixmaster.app/t/7K3M9QXR2D');
+    expect(trackingUrlLabel('http://localhost:5173/t/X')).toBe('localhost:5173/t/X');
   });
 });
 

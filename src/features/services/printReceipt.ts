@@ -1,4 +1,9 @@
-import { serviceReceiptLines, trackingUrl, type ReceiptLine } from '@/lib/business/notify';
+import {
+  serviceReceiptLines,
+  trackingUrl,
+  trackingUrlLabel,
+  type ReceiptLine,
+} from '@/lib/business/notify';
 import { qrSvg } from '@/lib/qr';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { openPrintWindow, buildPrintDocument, escapeHtml } from '@/lib/print';
@@ -16,6 +21,7 @@ import {
 import { resolveReceiptSettings, receiptLines } from '@/lib/business/receiptTemplate';
 import {
   receiptAddress,
+  reprintStamp,
   serviceDocPlan,
   stampWithTime,
   type GaugeStage,
@@ -185,6 +191,11 @@ export function voidMarkHtml(): string {
   return `<div class="void-mark">${escapeHtml(receiptText('receipt.void'))}</div>`;
 }
 
+/** Penanda salinan di kepala isi, sama untuk struk POS dan nota servis. `at` = saat dicetak. */
+export function reprintMarkHtml(at: string): string {
+  return `<div class="reprint"><strong>${escapeHtml(receiptText('receipt.reprint'))}</strong><br/>${escapeHtml(at)}</div>`;
+}
+
 /** Bagian-bagian isi dipisah jahitan titik; bagian kosong tidak meninggalkan jahitan ganda. */
 export function joinSections(sections: string[]): string {
   return sections
@@ -242,9 +253,10 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   };
 }
 
-export function openReceiptWindow(org: Organization, o: ReceiptDoc): void {
+/** true bila jendela cetak benar-benar terbuka (bukan diblokir popup atau mode demo). */
+export function openReceiptWindow(org: Organization, o: ReceiptDoc): boolean {
   const { title, style, body, paper } = receiptParts(org, o);
-  openPrintWindow({
+  return openPrintWindow({
     demoMessage: o.demoMessage,
     title,
     style,
@@ -265,11 +277,21 @@ export function receiptPreviewHtml(org: Organization, o: ReceiptDoc): string {
  * ada garansi yang bisa diklaim, jadi kertasnya hanya mencatat nasib DP. Ia
  * ditandai kotak BATAL yang sama dengan struk batal dan tanpa ucapan kaki.
  */
+export interface ServiceReceiptOptions {
+  /** Kode lacak (0100). Tanpa kode, alamat lama `?org=&no=` yang tercetak. */
+  trackCode?: string | null;
+  /** Dokumen berjenis sama sudah pernah dicetak — lihat `isServiceReprint`. */
+  reprint?: boolean;
+  /** Hanya untuk tes; default sekarang. */
+  now?: Date;
+}
+
 export function serviceReceiptDoc(
   service: Service,
   org: Organization,
   origin: string,
   outlets: ReadonlyArray<Pick<Outlet, 'id' | 'address'>> = [],
+  opts: ServiceReceiptOptions = {},
 ): ReceiptDoc {
   const cfg = receiptConfigOf(org);
   // Baris yang dimatikan toko dibuang di sini, bukan di notify: serviceReceiptLines
@@ -278,7 +300,9 @@ export function serviceReceiptDoc(
     (l) => (l.key !== 'imei' || cfg.showImei) && (l.key !== 'technician' || cfg.showTechnician),
   );
   const cancelled = service.status === 'batal';
-  const track = trackingUrl(origin, org.id, service.serviceNo);
+  const track = trackingUrl(origin, org.id, service.serviceNo, opts.trackCode);
+  // Kertas batal sudah berkotak BATAL; salinannya tak perlu penanda kedua.
+  const reprint = opts.reprint && !cancelled ? reprintMarkHtml(reprintStamp(opts.now ?? new Date())) : '';
   const note = (org.settings?.publicNote ?? '').trim();
   const paper = paperSpec(paperWidthOf(org));
   const garansi = rowsFor(lines, 'garansi', paper);
@@ -304,7 +328,7 @@ export function serviceReceiptDoc(
     address: receiptAddress(org.address, service.outletId, outlets),
     voided: cancelled,
     body: `
-  ${cancelled ? voidMarkHtml() : stageGaugeHtml(plan.gauge)}
+  ${reprint}${cancelled ? voidMarkHtml() : stageGaugeHtml(plan.gauge)}
   ${joinSections([
     rowsFor(lines, 'unit', paper),
     rowsFor(lines, 'uang', paper, 'money'),
@@ -318,7 +342,7 @@ export function serviceReceiptDoc(
     ${cfg.showQr ? qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 }) : ''}
     <div class="track-copy">
       <div>${escapeHtml(receiptText('receipt.track.copy'))}</div>
-      ${cfg.showTrackUrl ? `<p class="track-url">${escapeHtml(track)}</p>` : ''}
+      ${cfg.showTrackUrl ? `<p class="track-url">${escapeHtml(trackingUrlLabel(track))}</p>` : ''}
     </div>
   </div>
   </div>`
@@ -331,14 +355,16 @@ export function serviceReceiptDoc(
 }
 
 /**
- * Open a thermal-style receipt for a service ticket in a new window and trigger
- * the browser print dialog. Shared by NotifyModal and the ticket detail action
- * bar so both produce an identical nota. Guarded in demo mode.
+ * Buka nota servis di jendela cetak. Dipanggil hanya lewat `useServicePrint`,
+ * yang memuat kode lacak dan jejak cetak lebih dulu lalu mencatat cetakan ini.
+ * Mengembalikan false bila jendela tak terbuka (popup diblokir, mode demo),
+ * supaya cetakan yang gagal tidak tercatat.
  */
 export function printServiceReceipt(
   service: Service,
   org: Organization,
   outlets: ReadonlyArray<Pick<Outlet, 'id' | 'address'>> = [],
-): void {
-  openReceiptWindow(org, serviceReceiptDoc(service, org, window.location.origin, outlets));
+  opts: ServiceReceiptOptions = {},
+): boolean {
+  return openReceiptWindow(org, serviceReceiptDoc(service, org, window.location.origin, outlets, opts));
 }

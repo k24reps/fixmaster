@@ -5,6 +5,7 @@
     { "source": "/landing-preview", "destination": "/index.html" },
     { "source": "/operator", "destination": "/index.html" },
     { "source": "/track", "destination": "/index.html" },
+    { "source": "/t/:code", "destination": "/index.html" },
     { "source": "/privacy", "destination": "/index.html" },
     { "source": "/terms", "destination": "/index.html" },
     { "source": "/reset-password", "destination": "/index.html" },

@@ -432,6 +432,28 @@ export interface ClaimItem {
 /** Jenis kunci layar unit (0094). Isinya TIDAK di tiket — lihat data/serviceSecret. */
 export type ScreenLockKind = 'pin' | 'pola' | 'sandi';
 
+/**
+ * Jenis dokumen di kepala kertas. Tanda terima = unit masih di toko; nota serah
+ * = unit sudah di tangan pelanggan; `service` = nota biasa (siap diambil, dan
+ * tiket batal, yang judulnya dibiarkan netral karena kotak BATAL yang bicara).
+ */
+export type ServiceDocKind = 'intake' | 'service' | 'handover';
+
+/**
+ * Kode lacak dan jejak cetak tiket (tabel `service_tracking`, 0100). BUKAN
+ * bagian baris `services`: dibaca dan ditulis lewat RPC sendiri supaya
+ * mencatat cetakan tidak memancarkan realtime ke semua perangkat. Lihat
+ * data/servicePrint.
+ */
+export interface ServicePrintMeta {
+  /** 10 huruf Crockford base32; alamat lacaknya `/t/<kode>`. */
+  trackCode: string | null;
+  printCount: number;
+  /** Cap waktu SERVER saat cetakan terakhir dicatat. */
+  lastPrintedAt: string | null;
+  lastPrintedKind: ServiceDocKind | null;
+}
+
 export interface Service extends BaseEntity {
   serviceNo: string;
   customerId: ID;

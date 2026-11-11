@@ -1,11 +1,16 @@
 import { useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { repository, isSupabaseConfigured } from '@/data';
-import { trackService } from '@/data/supabase-client';
+import {
+  trackService,
+  trackServiceByCode,
+  TrackRateLimitedError,
+  type TrackServiceResult,
+} from '@/data/supabase-client';
 import { STATUS_LABELS, STATUS_TONE, historyKind, partWarranties } from '@/lib/business/services';
 import type { ServiceStatus } from '@/data/types';
-import { nextStepFor, relativeSince } from '@/lib/business/tracking';
+import { nextStepFor, normalizeTrackCode, relativeSince } from '@/lib/business/tracking';
 import { waLink } from '@/lib/business/notify';
 import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate, localDateOf, localTimeStr } from '@/lib/time';
@@ -49,18 +54,50 @@ function stepStamp(at: string): string {
   return Number.isNaN(d.getTime()) ? date : date + ' · ' + localTimeStr(d);
 }
 
+/** Hasil RPC cloud (lewat nomor maupun kode) dalam bentuk halaman ini. */
+function fromCloud(r: TrackServiceResult | null): TrackResult {
+  return {
+    orgName: r?.orgName ?? 'FixMaster',
+    orgPhone: r?.orgPhone ?? '',
+    orgAddress: r?.orgAddress ?? '',
+    orgLogoUrl: r?.orgLogoUrl ?? null,
+    orgNote: r?.orgNote ?? '',
+    service: r
+      ? {
+          serviceNo: r.serviceNo,
+          device: r.device,
+          category: r.category,
+          status: r.status,
+          warrantyServiceUntil: r.warrantyServiceUntil,
+          warrantyPartsUntil: r.warrantyPartsUntil,
+          partWarranties: r.partWarranties ?? [],
+          pickedUp: r.pickedUp,
+        }
+      : null,
+    publicHistory: (r?.publicHistory ?? []).filter((h) => !h.internal),
+  };
+}
+
 /**
- * Public, no-login service tracking page. Looks up a service by org + no.
+ * Public, no-login service tracking page, in two modes:
  *
- * Cloud mode reads via the `track_service` RPC (security-definer, granted to
- * `anon`) — a direct `services` table read is blocked by RLS for anonymous
- * visitors, which is why a shared link must NOT use `repository.list`. The RPC
- * already returns only safe fields and non-internal history. Local/dev mode
- * (no Supabase) reads the IndexedDB repository, scoped by the org query param.
- * Uses TanStack Query so there's no manual effect/setState.
+ * - `/t/<kode>` (QR nota sejak 0100): kode acak per tiket lewat RPC
+ *   `track_service_by_code`. Kodenya sendiri yang menunjuk toko dan tiket, jadi
+ *   nomor tiket berikutnya tak bisa ditebak dari nota yang sedang dipegang.
+ * - `/track?org=&no=`: nota dan pesan WhatsApp lama tetap terbuka, lewat RPC
+ *   `track_service`.
+ *
+ * Cloud reads go through security-definer RPCs granted to `anon` — a direct
+ * `services` table read is blocked by RLS for anonymous visitors. Local/dev
+ * mode (no Supabase) reads the IndexedDB repository, scoped by the org query
+ * param, and has no codes at all (data/servicePrint).
  */
 export function TrackingPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { code: routeCode } = useParams<{ code?: string }>();
+  const codeMode = routeCode !== undefined;
+  const trackCode = codeMode ? normalizeTrackCode(routeCode) : null;
   // Tracking is inherently org-scoped (service numbers like FM-0001 repeat
   // across shops). Prefer the ?org= param from a shared link; if absent (e.g.
   // an owner opening /track directly while logged in), fall back to the
@@ -69,7 +106,7 @@ export function TrackingPage() {
   const orgId = params.get('org') || sessionOrgId;
   const initialNo = params.get('no') ?? '';
 
-  const [query, setQuery] = useState(initialNo);
+  const [query, setQuery] = useState(codeMode ? (trackCode ?? routeCode ?? '') : initialNo);
   const [searchNo, setSearchNo] = useState(initialNo);
   const [throttleMsg, setThrottleMsg] = useState('');
   // Pengunjung yang datang dari tautan WhatsApp sudah membawa nomornya dan
@@ -93,6 +130,16 @@ export function TrackingPage() {
       return;
     }
     setThrottleMsg('');
+    if (codeMode) {
+      const next = normalizeTrackCode(query);
+      if (!next) {
+        setThrottleMsg('Kode lacak terdiri dari 10 huruf dan angka, seperti di akhir alamat pada nota.');
+        return;
+      }
+      setSearchOpen(false);
+      navigate('/t/' + next);
+      return;
+    }
     if (!orgId) {
       // No org from the link and no logged-in session → we can't know which
       // shop's service to look up. Tell the visitor instead of silently doing
@@ -104,34 +151,19 @@ export function TrackingPage() {
     setSearchOpen(false);
   };
 
-  const { data, isFetching, isFetched, isError, refetch } = useQuery<TrackResult>({
-    queryKey: ['track', orgId, searchNo],
-    enabled: !!orgId && !!searchNo.trim(),
+  // Kode yang bentuknya salah, atau mode lokal yang tak punya server untuk
+  // menerjemahkannya, tak perlu ditanyakan ke mana pun: jawabannya pasti kosong.
+  const codeUnresolvable = codeMode && (!trackCode || !isSupabaseConfigured);
+
+  const { data, error, isFetching, isFetched, isError, refetch } = useQuery<TrackResult>({
+    queryKey: codeMode ? ['track-code', trackCode] : ['track', orgId, searchNo],
+    enabled: codeMode ? !codeUnresolvable : !!orgId && !!searchNo.trim(),
+    // Batas laju server dihitung per menit; mengulang otomatis cuma memperpanjangnya.
+    retry: (count, err) => !(err instanceof TrackRateLimitedError) && count < 3,
     queryFn: async () => {
-      if (isSupabaseConfigured) {
-        // Cloud: public RPC bypasses RLS safely for anonymous visitors.
-        const r = await trackService(orgId, searchNo.trim());
-        return {
-          orgName: r?.orgName ?? 'FixMaster',
-          orgPhone: r?.orgPhone ?? '',
-          orgAddress: r?.orgAddress ?? '',
-          orgLogoUrl: r?.orgLogoUrl ?? null,
-          orgNote: r?.orgNote ?? '',
-          service: r
-            ? {
-                serviceNo: r.serviceNo,
-                device: r.device,
-                category: r.category,
-                status: r.status,
-                warrantyServiceUntil: r.warrantyServiceUntil,
-                warrantyPartsUntil: r.warrantyPartsUntil,
-                partWarranties: r.partWarranties ?? [],
-                pickedUp: r.pickedUp,
-              }
-            : null,
-          publicHistory: (r?.publicHistory ?? []).filter((h) => !h.internal),
-        };
-      }
+      if (codeMode) return fromCloud(await trackServiceByCode(trackCode ?? ''));
+      // Cloud: public RPC bypasses RLS safely for anonymous visitors.
+      if (isSupabaseConfigured) return fromCloud(await trackService(orgId, searchNo.trim()));
       // Local/dev: read the IndexedDB repository, scoped to the org param.
       repository.setScope(orgId, null);
       const [org, services] = await Promise.all([
@@ -185,7 +217,11 @@ export function TrackingPage() {
   // Dulu keduanya jatuh ke pesan "tidak ditemukan", sehingga pelanggan mengira
   // salah ketik lalu menelepon toko, padahal cukup mencoba lagi.
   const loadFailed = isError && !isFetching;
-  const notFound = isFetched && !isFetching && !isError && !service;
+  // Server menolak karena terlalu banyak permintaan dari jaringan ini: bukan
+  // sinyal lemah (mencoba lagi sekarang tak menolong) dan bukan kode salah.
+  const rateLimited = loadFailed && error instanceof TrackRateLimitedError;
+  const notFound = codeUnresolvable || (isFetched && !isFetching && !isError && !service);
+  const searched = codeMode ? (trackCode ?? routeCode ?? '') : searchNo.trim();
 
   // History datang urut lama → baru, jadi entri terakhir adalah yang terbaru.
   const lastUpdate = publicHistory.length
@@ -226,18 +262,22 @@ export function TrackingPage() {
 
         {service && !searchOpen ? (
           <button className={styles.searchToggle} onClick={() => setSearchOpen(true)}>
-            <Icon name="magnifying-glass" aria-hidden /> Lacak nomor servis lain
+            <Icon name="magnifying-glass" aria-hidden />{' '}
+            {codeMode ? 'Lacak kode lain' : 'Lacak nomor servis lain'}
           </button>
         ) : (
           <section className={styles.searchPanel}>
             <label className={styles.searchLabel} htmlFor="tracking-number">
-              Nomor servis
+              {codeMode ? 'Kode lacak' : 'Nomor servis'}
             </label>
             <div className={styles.searchBox}>
               <input
                 id="tracking-number"
                 className={styles.input}
-                placeholder="Contoh: FM-0001"
+                placeholder={codeMode ? 'Contoh: 7K3M9QXR2D' : 'Contoh: FM-0001'}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && runSearch()}
@@ -247,7 +287,9 @@ export function TrackingPage() {
               </button>
             </div>
             <p className={styles.searchHint}>
-              Nomornya tercetak pada nota penerimaan dan ada di pesan WhatsApp dari toko.
+              {codeMode
+                ? 'Kodenya 10 huruf dan angka di akhir alamat lacak, tepat di bawah QR pada nota. '
+                : 'Nomornya tercetak pada nota penerimaan dan ada di pesan WhatsApp dari toko. '}
               Halaman ini menampilkan status pengerjaan dan masa garansi, tanpa perlu masuk akun.
             </p>
           </section>
@@ -260,7 +302,20 @@ export function TrackingPage() {
           </div>
         )}
 
-        {loadFailed && (
+        {rateLimited && (
+          <div className={[styles.notFound, styles.fault].join(' ')} role="alert">
+            <Icon name="clock" aria-hidden />
+            <p>Terlalu banyak permintaan lacak dari jaringan ini.</p>
+            <p className={styles.notFoundHint}>
+              Tunggu sekitar satu menit, lalu coba lagi. Kode yang Anda buka tidak salah.
+            </p>
+            <button type="button" className={styles.retryBtn} onClick={() => refetch()}>
+              <Icon name="arrows-rotate" aria-hidden /> Coba lagi
+            </button>
+          </div>
+        )}
+
+        {loadFailed && !rateLimited && (
           <div className={[styles.notFound, styles.fault].join(' ')} role="alert">
             <Icon name="triangle-exclamation" aria-hidden />
             <p>Status servis belum bisa dimuat.</p>
@@ -277,16 +332,19 @@ export function TrackingPage() {
         {/* RPC mengembalikan nol baris baik untuk nomor salah ketik maupun kode
             toko yang keliru, jadi halaman ini tidak bisa menebak yang mana.
             Yang bisa dilakukan: mengulang nomor yang dicari (menangkap salah
-            ketik) dan menyebut kedua kemungkinan itu apa adanya. */}
+            ketik) dan menyebut kedua kemungkinan itu apa adanya. Kode lacak
+            sudah menunjuk tokonya sendiri, jadi yang tersisa hanya salah salin. */}
         {notFound && (
           <div className={[styles.notFound, styles.fault].join(' ')}>
             <Icon name="circle-question" aria-hidden />
             <p>
-              Nomor <strong className={styles.notFoundNo}>{searchNo.trim()}</strong> tidak ditemukan.
+              {codeMode ? 'Kode' : 'Nomor'}{' '}
+              <strong className={styles.notFoundNo}>{searched}</strong> tidak ditemukan.
             </p>
             <p className={styles.notFoundHint}>
-              Pastikan nomor diketik persis seperti pada nota, dan tautan yang Anda buka berasal
-              dari toko tempat unit diservis.
+              {codeMode
+                ? 'Cocokkan dengan kode di akhir alamat lacak pada nota. Huruf O dan angka 0, juga I atau L dan angka 1, dianggap sama.'
+                : 'Pastikan nomor diketik persis seperti pada nota, dan tautan yang Anda buka berasal dari toko tempat unit diservis.'}
             </p>
           </div>
         )}

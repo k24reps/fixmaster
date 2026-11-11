@@ -7,6 +7,7 @@ import {
   escapeHtml,
   joinSections,
   voidMarkHtml,
+  reprintMarkHtml,
   type ReceiptDoc,
 } from '@/features/services/printReceipt';
 import { receiptText } from '@/features/services/receiptText';
@@ -89,9 +90,7 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleDocOptio
   ].join('');
 
   const voidMark = m.voided ? voidMarkHtml() : '';
-  const reprint = m.reprintAt
-    ? `<div class="reprint"><strong>${escapeHtml(receiptText('receipt.reprint'))}</strong><br/>${escapeHtml(m.reprintAt)}</div>`
-    : '';
+  const reprint = m.reprintAt ? reprintMarkHtml(m.reprintAt) : '';
 
   return {
     demoMessage: receiptText('receipt.demo.sale'),

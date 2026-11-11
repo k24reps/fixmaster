@@ -7,6 +7,7 @@ import {
 } from '@/lib/business/realtime-timing';
 import { mapAuthError } from '@/lib/business/authError';
 import type { ServiceSummary } from '@/lib/business/dashboard';
+import type { ServiceDocKind, ServicePrintMeta } from './types';
 
 /**
  * Supabase client singleton. Reads credentials from Vite env vars:
@@ -254,7 +255,111 @@ export async function trackService(
   });
   if (error) throw new Error(error.message);
   const row = Array.isArray(data) ? data[0] : data;
+  return row ? toTrackResult(row as TrackRow) : null;
+}
+
+/** Batas lacak per IP terlampaui (0100). Bukan "tidak ditemukan": cukup menunggu. */
+export class TrackRateLimitedError extends Error {
+  constructor() {
+    super('rate_limited');
+    this.name = 'TrackRateLimitedError';
+  }
+}
+
+/**
+ * Lacak lewat kode acak per tiket (`/t/<kode>`, RPC `track_service_by_code`,
+ * 0100). Bentuk hasilnya sama dengan {@link trackService}. Server membalas
+ * HTTP 429 (SQLSTATE PT429) bila IP ini melewati 30 permintaan per menit; itu
+ * dilempar sebagai {@link TrackRateLimitedError} supaya halaman bisa
+ * membedakannya dari kode yang tak terdaftar (nol baris → null).
+ */
+export async function trackServiceByCode(code: string): Promise<TrackServiceResult | null> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error, status } = await c.rpc('track_service_by_code', { p_code: code });
+  if (error) {
+    if (status === 429 || error.code === 'PT429' || error.message === 'rate_limited') {
+      throw new TrackRateLimitedError();
+    }
+    throw new Error(error.message);
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? toTrackResult(row as TrackRow) : null;
+}
+
+interface PrintMetaRow {
+  track_code: string | null;
+  print_count: number | null;
+  last_printed_at: string | null;
+  last_printed_kind: ServicePrintMeta['lastPrintedKind'];
+}
+
+function toPrintMeta(data: unknown): ServicePrintMeta | null {
+  const row = (Array.isArray(data) ? data[0] : data) as PrintMetaRow | null | undefined;
   if (!row) return null;
+  return {
+    trackCode: row.track_code ?? null,
+    printCount: row.print_count ?? 0,
+    lastPrintedAt: row.last_printed_at ?? null,
+    lastPrintedKind: row.last_printed_kind ?? null,
+  };
+}
+
+/**
+ * Kode lacak + jejak cetak tiket (RPC `service_tracking_meta`, 0100; membuat
+ * kodenya bila belum ada). Galat apa pun → null, termasuk RPC yang belum ada
+ * karena migrasinya belum diterapkan: pemanggil lalu memakai alamat lacak lama
+ * dan menganggap cetakan berikutnya yang pertama. Mencetak tak boleh gagal
+ * gara-gara jejak ini.
+ */
+export async function fetchServicePrintMeta(args: {
+  orgId: string;
+  serviceId: string;
+}): Promise<ServicePrintMeta | null> {
+  const c = getSupabase();
+  if (!c) return null;
+  const { data, error } = await c.rpc('service_tracking_meta', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+  });
+  return error ? null : toPrintMeta(data);
+}
+
+/** Catat satu cetakan (RPC `mark_service_printed`, 0100). Galat → null, seperti di atas. */
+export async function markServicePrintedRpc(args: {
+  orgId: string;
+  serviceId: string;
+  kind: ServiceDocKind;
+}): Promise<ServicePrintMeta | null> {
+  const c = getSupabase();
+  if (!c) return null;
+  const { data, error } = await c.rpc('mark_service_printed', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+    p_kind: args.kind,
+  });
+  return error ? null : toPrintMeta(data);
+}
+
+/** Baris mentah track_service / track_service_by_code (bentuknya sama). */
+interface TrackRow {
+  service_no: string;
+  device: string;
+  category: string;
+  status: string;
+  org_name: string;
+  org_phone: string | null;
+  org_address: string | null;
+  org_logo_url: string | null;
+  org_public_note: string | null;
+  warranty_service_until: string | null;
+  warranty_parts_until: string | null;
+  part_warranties: TrackServiceResult['partWarranties'] | null;
+  picked_up: boolean | null;
+  public_history: TrackServiceResult['publicHistory'] | null;
+}
+
+function toTrackResult(row: TrackRow): TrackServiceResult {
   return {
     serviceNo: row.service_no,
     device: row.device,
@@ -264,13 +369,13 @@ export async function trackService(
     orgPhone: row.org_phone ?? '',
     orgAddress: row.org_address ?? '',
     orgLogoUrl: row.org_logo_url ?? null,
-    orgNote: (row.org_public_note ?? '') as string,
+    orgNote: row.org_public_note ?? '',
     warrantyServiceUntil: row.warranty_service_until ?? null,
     warrantyPartsUntil: row.warranty_parts_until ?? null,
     // Kosong sampai migrasi 0060 diterapkan; halaman lacak lalu memakai tanggal tunggal.
-    partWarranties: (row.part_warranties ?? []) as TrackServiceResult['partWarranties'],
+    partWarranties: row.part_warranties ?? [],
     pickedUp: row.picked_up ?? false,
-    publicHistory: (row.public_history ?? []) as TrackServiceResult['publicHistory'],
+    publicHistory: row.public_history ?? [],
   };
 }
 

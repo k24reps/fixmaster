@@ -246,9 +246,26 @@ export function resolveWaTemplates(
   return result;
 }
 
-/** Build a public tracking URL for a service. */
-export function trackingUrl(origin: string, orgId: string, serviceNo: string): string {
+/**
+ * Alamat lacak publik. Dengan kode (0100): `/t/<kode>`, tanpa UUID organisasi,
+ * sehingga muat satu baris di kertas 58 mm dan nomor tiket yang berurutan tak
+ * lagi cukup untuk menebak tiket lain. Tanpa kode (migrasi belum diterapkan,
+ * atau gagal dimuat): alamat lama `?org=&no=`, yang tetap dilayani untuk nota
+ * yang sudah beredar.
+ */
+export function trackingUrl(
+  origin: string,
+  orgId: string,
+  serviceNo: string,
+  trackCode?: string | null,
+): string {
+  if (trackCode) return `${origin}/t/${encodeURIComponent(trackCode)}`;
   return `${origin}/track?org=${encodeURIComponent(orgId)}&no=${encodeURIComponent(serviceNo)}`;
+}
+
+/** Alamat untuk dicetak dan diketik: tanpa `https://`. QR tetap memuat alamat lengkap. */
+export function trackingUrlLabel(url: string): string {
+  return url.replace(/^https?:\/\//, '');
 }
 
 /**

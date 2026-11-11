@@ -24,6 +24,15 @@ describe('analytics privacy guard', () => {
         url: 'https://fixmaster.app/reset-password#access_token=secret',
       }),
     ).toBeNull();
+    expect(
+      sanitizeAnalyticsEvent({ type: 'pageview', url: 'https://fixmaster.app/t/7K3M9QXR2D' }),
+    ).toBeNull();
+  });
+
+  it('keeps routes that merely start with the letter t', () => {
+    expect(
+      sanitizeAnalyticsEvent({ type: 'pageview', url: 'https://fixmaster.app/terms' }),
+    ).toEqual({ type: 'pageview', url: 'https://fixmaster.app/terms' });
   });
 
   it('redacts service identifiers from dynamic URLs', () => {

@@ -303,7 +303,7 @@ describe('serviceReceiptDoc: setelan toko', () => {
   it('tanpa setelan: kertas sama seperti sebelum fitur ada (QR, URL, IMEI; tanpa teknisi atau jam)', () => {
     const doc = serviceReceiptDoc(svc({ technicianName: 'Rudi' }), org, 'https://app.test');
     expect(doc.body).toContain('<svg');
-    expect(text(doc.body)).toContain('https://app.test/');
+    expect(text(doc.body)).toContain('app.test/track?org=org-1&no=FM-0123');
     expect(text(doc.body)).toContain('IMEI/SN');
     expect(text(doc.body)).not.toContain('Teknisi');
     expect(doc.date).not.toMatch(/\d{2}:\d{2}/);
@@ -317,7 +317,7 @@ describe('serviceReceiptDoc: setelan toko', () => {
     const doc = docWith({ showQr: false });
     expect(doc.body).not.toContain('<svg');
     expect(text(doc.body)).toContain('LACAK STATUS');
-    expect(text(doc.body)).toContain('https://app.test/');
+    expect(text(doc.body)).toContain('app.test/track?org=org-1&no=FM-0123');
   });
 
   it('alamat lacak dimatikan: QR tetap, tak ada teks tautan', () => {
@@ -455,5 +455,62 @@ describe('serviceReceiptDoc: baris label-nilai ditumpuk bila tak muat', () => {
       (tr) => tr.querySelector('.k')?.textContent === 'Keluhan',
     );
     expect(keluhan?.querySelector('.v')?.textContent).toContain('<img src=x');
+  });
+});
+
+describe('serviceReceiptDoc: kode lacak dan cetak ulang (0100)', () => {
+  const now = new Date(2026, 10, 12, 9, 5); // 12 Nov 2026 09:05 lokal
+  const doc = (s: Service, opts: Parameters<typeof serviceReceiptDoc>[4]) =>
+    serviceReceiptDoc(s, org, 'https://app.test', [], opts);
+
+  it('kode lacak: alamat pendek tercetak tanpa skema, tanpa nomor tiket maupun id toko', () => {
+    const t = text(doc(svc({}), { trackCode: '7K3M9QXR2D' }).body);
+    expect(t).toContain('app.test/t/7K3M9QXR2D');
+    expect(t).not.toContain('https://');
+    expect(t).not.toContain('org=');
+  });
+
+  it('tanpa kode (0100 belum diterapkan): alamat lama, juga tanpa skema', () => {
+    const t = text(doc(svc({}), {}).body);
+    expect(t).toContain('app.test/track?org=org-1&no=FM-0123');
+    expect(t).not.toContain('https://');
+  });
+
+  it('cetak ulang: kotak CETAK ULANG berisi jam cetak, paling atas di isi nota', () => {
+    const body = doc(svc({}), { reprint: true, now }).body;
+    expect(body).toContain('class="reprint"');
+    expect(text(body)).toContain('CETAK ULANG');
+    expect(text(body)).toContain('12 Nov 2026 09:05');
+    expect(body.indexOf('class="reprint"')).toBeLessThan(body.indexOf('LACAK STATUS'));
+    expect(body.trimStart().startsWith('<div class="reprint">')).toBe(true);
+  });
+
+  it('cetakan pertama tak bertanda', () => {
+    expect(doc(svc({}), { now }).body).not.toContain('class="reprint"');
+    expect(doc(svc({}), { reprint: false, now }).body).not.toContain('class="reprint"');
+  });
+
+  it('tiket batal: kotak BATAL saja, tanpa penanda salinan', () => {
+    const body = doc(svc({ status: 'batal' }), { reprint: true, now }).body;
+    expect(body).toContain('class="void-mark"');
+    expect(body).not.toContain('class="reprint"');
+  });
+
+  it('bahasa Inggris memakai kamus sendiri', () => {
+    useSettingsStore.setState({ language: 'en' });
+    expect(text(doc(svc({}), { reprint: true, now }).body)).toContain('REPRINT');
+  });
+});
+
+describe('openReceiptWindow: hasil buka jendela', () => {
+  it('true bila jendela terbuka, false bila popup diblokir (cetakan tak dicatat)', () => {
+    const d = serviceReceiptDoc(svc({}), org, 'https://app.test');
+    vi.spyOn(window, 'open').mockReturnValue({
+      document: { write: vi.fn(), close: vi.fn() },
+    } as unknown as Window);
+    expect(openReceiptWindow(org, d)).toBe(true);
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(openReceiptWindow(org, d)).toBe(false);
+    vi.restoreAllMocks();
   });
 });

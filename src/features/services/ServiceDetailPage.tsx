@@ -38,14 +38,13 @@ import { newId } from '@/lib/id';
 import { fmtRpInput, parseRpInput } from '@/lib/format';
 import { logActivity } from '@/lib/activity';
 import { getLastExpenseWallet, setLastExpenseWallet } from '@/config/orgConfig';
-import { trackingUrl } from '@/lib/business/notify';
 import { Button, ConfirmDialog, Icon, Input, LoadState, Modal, Select, type IconName } from '@/components/ui';
 import { ServiceModal } from './ServiceModal';
 import { StatusModal } from './StatusModal';
 import { NotifyModal } from './NotifyModal';
 import { TicketDoneModal } from './TicketDoneModal';
 import { ScreenLockReadout } from './ScreenLockReadout';
-import { printServiceReceipt } from './printReceipt';
+import { useServicePrint } from './useServicePrint';
 import { WarrantyClaimModal } from './WarrantyClaimModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
 import { PartWarrantyModal } from './PartWarrantyModal';
@@ -90,7 +89,6 @@ export function ServiceDetailPage() {
   // tautan langsung menarik seluruh tabel servis hanya untuk mencari satu baris.
   const { data: services } = useCollection('services', { enabled: false });
   const { data: allWallets } = useCollection('wallets');
-  const { data: outlets } = useCollection('outlets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
@@ -135,6 +133,7 @@ export function ServiceDetailPage() {
   // Modal dadakan dibayar dari wallet cabang tiket atau wallet bersama (0095).
   const wallets = walletsForOutlet(allWallets, service?.outletId ?? null);
   const history = useServiceHistory(service);
+  const servicePrint = useServicePrint(service);
 
   if (!service) {
     // Dulu: layar kosong selama memuat, dan galat jaringan tampil sebagai 404.
@@ -421,9 +420,9 @@ export function ServiceDetailPage() {
   };
 
   const log = [...history].reverse();
-  // Include the org param so the public /track page can scope the lookup
-  // (mirrors the WhatsApp link). Without it, tracking returns "not found".
-  const trackingLink = trackingUrl(window.location.origin, service.orgId, service.serviceNo);
+  // Alamat yang sama dengan QR di nota dan tautan di pesan WhatsApp: `/t/<kode>`
+  // bila kode lacaknya sudah dimuat, selain itu alamat lama `?org=&no=`.
+  const trackingLink = servicePrint.trackLink;
 
   /**
    * Copy the public tracking link with explicit feedback. Uses the async
@@ -504,7 +503,7 @@ export function ServiceDetailPage() {
   const actions: TicketAction[] = [
     { key: 'edit', icon: 'pen', label: t('serviceDetail.edit'), onClick: () => setEditOpen(true) },
     ...(org
-      ? [{ key: 'print', icon: 'print' as const, label: t('serviceDetail.printReceipt'), onClick: () => printServiceReceipt(service, org, outlets) }]
+      ? [{ key: 'print', icon: 'print' as const, label: t('serviceDetail.printReceipt'), onClick: servicePrint.print }]
       : []),
     ...(isManager && (isAwaitingPickup(service) || service.pickedUp)
       ? [

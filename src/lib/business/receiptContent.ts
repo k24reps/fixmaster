@@ -1,6 +1,8 @@
 import { retainedDownPayment } from '@/lib/business/services';
 import { fmtDate, localDateStr, localTimeStr } from '@/lib/time';
-import type { Sale, Service, ServiceStatus } from '@/data/types';
+import type { Sale, Service, ServiceDocKind, ServicePrintMeta, ServiceStatus } from '@/data/types';
+
+export type { ServiceDocKind };
 
 /**
  * Isi nota & struk sebagai DATA, bukan teks: kunci + angka. Label dan format
@@ -143,13 +145,6 @@ export function stageGauge(stage: ServiceStage): GaugeTick[] {
   return GAUGE_STAGES.map((g, i) => ({ stage: g, reached: i <= at, current: i === at }));
 }
 
-/**
- * Jenis dokumen di kepala kertas. Tanda terima = unit masih di toko; nota serah
- * = unit sudah di tangan pelanggan; `service` = nota biasa (siap diambil, dan
- * tiket batal, yang judulnya dibiarkan netral karena kotak BATAL yang bicara).
- */
-export type ServiceDocKind = 'intake' | 'service' | 'handover';
-
 export interface ServiceDocPlan {
   stage: ServiceStage;
   kind: ServiceDocKind;
@@ -167,6 +162,26 @@ export function serviceDocPlan(service: StageSource): ServiceDocPlan {
         ? 'handover'
         : 'service';
   return { stage, kind, gauge: stageGauge(stage), signature: stage === 'pickedUp' };
+}
+
+/**
+ * Cetakan ini salinan bila dokumen berjenis SAMA sudah pernah dicetak. Nota
+ * serah sesudah tanda terima adalah dokumen baru, bukan salinan; tanda terima
+ * kedua justru yang paling perlu ditandai, karena kertas itulah bukti untuk
+ * mengambil unit. Tiket batal tidak ditandai: kotak BATAL sudah menyatakan
+ * kertasnya tak berlaku. Tanpa jejak (migrasi 0100 belum ada, atau gagal
+ * dimuat) = cetakan pertama.
+ */
+export function isServiceReprint(
+  meta: Pick<ServicePrintMeta, 'lastPrintedKind'> | null | undefined,
+  plan: Pick<ServiceDocPlan, 'kind' | 'stage'>,
+): boolean {
+  return plan.stage !== 'cancelled' && !!meta && meta.lastPrintedKind === plan.kind;
+}
+
+/** Cap "CETAK ULANG": tanggal dan jam SAAT dicetak, sama untuk struk POS dan nota servis. */
+export function reprintStamp(now: Date): string {
+  return `${fmtDate(localDateStr(now))} ${localTimeStr(now)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +273,7 @@ export function saleReceiptModel(sale: Sale, opts: SaleReceiptOptions = {}): Sal
     pay,
     voided: sale.voided,
     voidedReason: (sale.voidedReason ?? '').trim(),
-    reprintAt: opts.reprint ? `${fmtDate(localDateStr(now))} ${localTimeStr(now)}` : null,
+    reprintAt: opts.reprint ? reprintStamp(now) : null,
   };
 }
 

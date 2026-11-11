@@ -92,6 +92,16 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    // Alamat pendek di QR nota: kode lacak acak per tiket (migrasi 0100).
+    path: '/t/:code',
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={null}>
+        <TrackingPage />
+      </Suspense>
+    ),
+  },
+  {
     // Public legal pages — linkable from signup consent, payment gateway,
     // and app store listings (no auth required).
     path: '/privacy',
