@@ -61,8 +61,6 @@ import {
   setCategories,
   seedCategoriesFromLocal,
   setMobileNavigation as saveMobileNavigation,
-  PUBLIC_NOTE_MAX,
-  setPublicNote,
 } from '@/config/orgConfig';
 import { NAV_ITEMS } from '@/config/navigation';
 import {
@@ -305,7 +303,6 @@ export function SettingsPage() {
           <ServiceColumnsCard />
           <WarrantyCard />
           <WhatsAppTemplatesCard />
-          <PublicNoteCard />
         </>
       )}
       {tab === 'nota' && <ReceiptTab />}
@@ -1176,61 +1173,6 @@ function RentCard() {
     </Card>
   );
 }
-
-/**
- * Catatan bebas milik toko, tampil di nota cetak DAN halaman lacak publik.
- * Ini satu-satunya teks pada kedua dokumen itu yang ditulis pemiliknya
- * sendiri — jadi nota yang dibawa pulang pelanggan terbaca sebagai dokumen
- * toko tersebut, bukan cetakan seragam dari sebuah aplikasi.
- */
-function PublicNoteCard() {
-  const t = useT();
-  const org = useSessionStore((s) => s.org);
-  const [draft, setDraft] = useState(() => org?.settings?.publicNote ?? '');
-  const [busy, setBusy] = useState(false);
-  const left = PUBLIC_NOTE_MAX - draft.length;
-
-  const save = async () => {
-    if (demoGuard()) return;
-    setBusy(true);
-    try {
-      await setPublicNote(draft);
-      toast.success(t('settingsPage.catatanTokoDisimpan'));
-    } catch {
-      toast.error(t('settingsPage.gagalMenyimpanCatatan'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader icon={<Icon name="note" aria-hidden />} title={t('settingsPage.catatanToko')} />
-      <CardBody>
-        <p className={styles.tplHint}>
-          {t('settingsPage.pTampilDiNotaCetak')}
-        </p>
-        <textarea
-          className={styles.waTextarea}
-          value={draft}
-          maxLength={PUBLIC_NOTE_MAX}
-          rows={4}
-          placeholder={'Senin–Sabtu 09.00–17.00 WIB.\nGaransi batal bila segel rusak.'}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <div className={styles.saveFoot}>
-          <span className={styles.noteCount} data-low={left <= 40 ? 'true' : undefined}>
-            {left} karakter tersisa
-          </span>
-          <Button onClick={save} disabled={busy || draft === (org?.settings?.publicNote ?? '')}>
-            {t('settingsPage.simpanCatatan')}
-          </Button>
-        </div>
-      </CardBody>
-    </Card>
-  );
-}
-
 
 /**
  * Per-key WhatsApp message template editor. Saves overrides to orgConfig;

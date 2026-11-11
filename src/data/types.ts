@@ -121,7 +121,7 @@ export interface OrgSettings {
    * sebagian.
    */
   quoteRates?: QuoteRates;
-  /** Nota servis & struk penjualan: kertas dan (nanti) isi templatenya. */
+  /** Nota servis & struk penjualan: kertas, teks, dan baris mana yang tercetak. */
   receipt?: ReceiptSettings;
 }
 
@@ -133,6 +133,20 @@ export interface OrgSettings {
 export interface ReceiptSettings {
   /** Lebar gulungan termal (mm). Tanpa nilai = 58. */
   paperWidth?: 58 | 80;
+  /** Teks tambahan di bawah nama toko dan kontak (slogan, jam buka). Kosong = tak dicetak. */
+  header?: string;
+  /** Pengganti dua baris ucapan di kaki kertas. Kosong = ucapan bawaan aplikasi. */
+  footer?: string;
+  /** Pengganti catatan kecil di dasar nota servis / struk penjualan. Kosong = bawaan. */
+  serviceTerms?: string;
+  saleTerms?: string;
+  /** Tanpa nilai = tercetak. Hanya `false` yang mematikannya. */
+  showQr?: boolean;
+  showTrackUrl?: boolean;
+  showImei?: boolean;
+  /** Tanpa nilai = TIDAK tercetak (dulu memang tak pernah ada di kertas). */
+  showTechnician?: boolean;
+  showTime?: boolean;
 }
 
 /** Satu template di kalkulator: tombol pintas yang mengisi satu kolom sekali ketuk. */

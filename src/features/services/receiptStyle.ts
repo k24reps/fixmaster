@@ -78,6 +78,7 @@ export function receiptStyle(paper: PaperSpec): string {
     line-height: ${px(36)};
   }
   .contact { margin: ${px(8)} 0 0; }
+  .tagline { margin: ${px(8)} 0 0; font-weight: 700; }
   /* Jahitan titik-titik, meneruskan bahasa "tepi terperforasi" dari aplikasi. Hitam
      pekat setebal 4 titik: abu-abu di bawah ambang 50% tidak dicetak sama sekali. */
   .seam { border: none; border-top: 2px dotted #000; margin: ${px(20)} 0; }

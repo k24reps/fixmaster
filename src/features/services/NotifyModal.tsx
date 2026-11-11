@@ -15,6 +15,7 @@ import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
+import { useCollection } from '@/hooks/useCollection';
 import type { Service } from '@/data/types';
 import styles from './NotifyModal.module.css';
 import { useT } from '@/i18n';
@@ -32,6 +33,7 @@ type TemplateKey = WaTemplateKey;
 export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyModalProps) {
   const t = useT();
   const org = useSessionStore((s) => s.org);
+  const { data: outlets } = useCollection('outlets');
   const [templateKey, setTemplateKey] = useState<TemplateKey>(initialTemplate ?? 'selesai');
   // Dibuka dari panel tiket baru / serah unit: mulai di template momen itu.
   const [wasOpen, setWasOpen] = useState(false);
@@ -79,7 +81,7 @@ export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyM
     }
   };
 
-  const printReceipt = () => printServiceReceipt(service, org);
+  const printReceipt = () => printServiceReceipt(service, org, outlets);
 
   return (
     <Modal

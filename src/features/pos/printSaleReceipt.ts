@@ -1,15 +1,26 @@
 import {
   openReceiptWindow,
   receiptRow,
+  receiptConfigOf,
+  multiline,
   escapeHtml,
   joinSections,
   type ReceiptDoc,
 } from '@/features/services/printReceipt';
 import { receiptText } from '@/features/services/receiptText';
-import { saleReceiptModel, type SaleReceiptOptions } from '@/lib/business/receiptContent';
+import {
+  receiptAddress,
+  saleReceiptModel,
+  stampWithTime,
+  type SaleReceiptOptions,
+} from '@/lib/business/receiptContent';
 import { fmtRp } from '@/lib/format';
-import { fmtDate } from '@/lib/time';
-import type { Sale, Organization } from '@/data/types';
+import type { Sale, Organization, Outlet } from '@/data/types';
+
+export interface SaleDocOptions extends SaleReceiptOptions {
+  /** Cabang toko, untuk alamat kepala kertas; tanpa ini alamat usaha yang tercetak. */
+  outlets?: ReadonlyArray<Pick<Outlet, 'id' | 'address'>>;
+}
 
 /**
  * Dokumen struk penjualan kasir — dokumen kedua yang dibawa pulang pelanggan,
@@ -22,8 +33,9 @@ import type { Sale, Organization } from '@/data/types';
  * di dasar kertas, yang dulu satu-satunya tanda, tak terlihat dari ujung struk
  * yang menggantung di mesin.
  */
-export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleReceiptOptions = {}): ReceiptDoc {
+export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleDocOptions = {}): ReceiptDoc {
   const m = saleReceiptModel(sale, opts);
+  const cfg = receiptConfigOf(org);
   const note = (org.settings?.publicNote ?? '').trim();
 
   const itemRows = m.items
@@ -62,7 +74,8 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleReceiptO
     title: receiptText('receipt.title.sale'),
     kind: receiptText('receipt.doc.sale'),
     no: sale.saleNo,
-    date: fmtDate(sale.date),
+    date: stampWithTime(sale.date, sale.createdAt, cfg.showTime),
+    address: receiptAddress(org.address, sale.outletId, opts.outlets ?? []),
     body: `
   ${voidMark}${reprint}
   ${joinSections([
@@ -73,7 +86,15 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleReceiptO
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.sale.voidReason'))}</p><div class="note">${escapeHtml(m.voidedReason)}</div></div>`
       : '',
     note ? `<div class="note">${escapeHtml(note)}</div>` : '',
-    `<div class="fine">${escapeHtml(receiptText(m.voided ? 'receipt.sale.voidedNote' : 'receipt.sale.fine'))}</div>`,
+    // Struk batal selalu memakai kalimat bawaan: "bukan bukti pembelian" tak boleh
+    // hilang karena toko mengganti syarat penukaran.
+    `<div class="fine">${
+      m.voided
+        ? escapeHtml(receiptText('receipt.sale.voidedNote'))
+        : cfg.saleTerms
+          ? multiline(cfg.saleTerms)
+          : escapeHtml(receiptText('receipt.sale.fine'))
+    }</div>`,
   ])}`,
   };
 }
@@ -83,6 +104,6 @@ export function saleReceiptDoc(sale: Sale, org: Organization, opts: SaleReceiptO
  * memuatnya. `walletName` mengubah id wallet di `sale.payments` jadi nama
  * metode bayar.
  */
-export function printSaleReceipt(sale: Sale, org: Organization, opts: SaleReceiptOptions = {}): void {
+export function printSaleReceipt(sale: Sale, org: Organization, opts: SaleDocOptions = {}): void {
   openReceiptWindow(org, saleReceiptDoc(sale, org, opts));
 }

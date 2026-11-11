@@ -173,3 +173,30 @@ export function saleReceiptModel(sale: Sale, opts: SaleReceiptOptions = {}): Sal
     reprintAt: opts.reprint ? `${fmtDate(localDateStr(now))} ${localTimeStr(now)}` : null,
   };
 }
+
+/**
+ * Tanggal dokumen, dengan jam bila toko menyalakannya. Jam diambil dari
+ * `createdAt` (kapan transaksi dicatat), bukan dari saat cetak: nota yang
+ * dicetak ulang besok tetap menunjuk jam transaksinya. `createdAt` yang tak
+ * terbaca menjatuhkan jam, tidak mengarangnya.
+ */
+export function stampWithTime(date: string, createdAt: string | undefined, withTime: boolean): string {
+  const day = fmtDate(date);
+  if (!withTime || !createdAt) return day;
+  const at = new Date(createdAt);
+  return Number.isNaN(at.getTime()) ? day : `${day} ${localTimeStr(at)}`;
+}
+
+/**
+ * Alamat yang tercetak di kepala kertas: alamat cabang tempat transaksi
+ * terjadi bila cabang itu punya, selain itu alamat usaha. Dulu selalu alamat
+ * usaha, sehingga struk dari Cabang Cimahi memuat alamat pusat.
+ */
+export function receiptAddress(
+  orgAddress: string | undefined,
+  outletId: string | null | undefined,
+  outlets: ReadonlyArray<{ id: string; address?: string }>,
+): string {
+  const own = outletId ? outlets.find((o) => o.id === outletId)?.address?.trim() : '';
+  return own || (orgAddress ?? '').trim();
+}

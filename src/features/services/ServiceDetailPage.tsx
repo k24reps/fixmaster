@@ -90,6 +90,7 @@ export function ServiceDetailPage() {
   // tautan langsung menarik seluruh tabel servis hanya untuk mencari satu baris.
   const { data: services } = useCollection('services', { enabled: false });
   const { data: allWallets } = useCollection('wallets');
+  const { data: outlets } = useCollection('outlets');
   const sessionEmployees = useSessionStore((s) => s.employees);
   const org = useSessionStore((s) => s.org);
   const me = useSessionStore((s) => s.currentEmployee);
@@ -503,7 +504,7 @@ export function ServiceDetailPage() {
   const actions: TicketAction[] = [
     { key: 'edit', icon: 'pen', label: t('serviceDetail.edit'), onClick: () => setEditOpen(true) },
     ...(org
-      ? [{ key: 'print', icon: 'print' as const, label: t('serviceDetail.printReceipt'), onClick: () => printServiceReceipt(service, org) }]
+      ? [{ key: 'print', icon: 'print' as const, label: t('serviceDetail.printReceipt'), onClick: () => printServiceReceipt(service, org, outlets) }]
       : []),
     ...(isManager && (isAwaitingPickup(service) || service.pickedUp)
       ? [

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal, Button, Icon } from '@/components/ui';
 import { useSessionStore } from '@/stores/session';
+import { useCollection } from '@/hooks/useCollection';
 import { fmtRp } from '@/lib/format';
 import { fmtDate } from '@/lib/time';
 import { interpolate } from '@/lib/business/notify';
@@ -28,6 +29,7 @@ interface TicketDoneModalProps {
 export function TicketDoneModal({ open, onClose, service, variant }: TicketDoneModalProps) {
   const t = useT();
   const org = useSessionStore((s) => s.org);
+  const { data: outlets } = useCollection('outlets');
   const navigate = useNavigate();
   const [notifyOpen, setNotifyOpen] = useState(false);
   if (!service) return null;
@@ -102,7 +104,7 @@ export function TicketDoneModal({ open, onClose, service, variant }: TicketDoneM
           <p className={styles.hint}>{t(intake ? 'ticketDone.intakeHint' : 'ticketDone.handoverHint')}</p>
           <div className={styles.actions}>
             {org && (
-              <Button onClick={() => printServiceReceipt(service, org)} iconLeft={<Icon name="print" aria-hidden />}>
+              <Button onClick={() => printServiceReceipt(service, org, outlets)} iconLeft={<Icon name="print" aria-hidden />}>
                 {t(intake ? 'ticketDone.printIntake' : 'ticketDone.printNota')}
               </Button>
             )}

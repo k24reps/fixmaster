@@ -1186,15 +1186,6 @@
 .saveFoot + .tplGroup {
   margin-top: var(--space-5);
 }
-.noteCount {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.noteCount[data-low='true'] {
-  color: var(--warning-text);
-}
 /* ---------- Pemilih termin (Langganan) ---------- */
 /* Satu saklar tiga posisi, dibentuk seperti tombol pada panel alat: kanal
    cekung dengan satu posisi yang menyala. Bukan pil segmented generik —

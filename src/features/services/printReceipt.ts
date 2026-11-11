@@ -1,6 +1,6 @@
 import { serviceReceiptLines, trackingUrl, type ReceiptLine } from '@/lib/business/notify';
 import { qrSvg } from '@/lib/qr';
-import { fmtDate } from '@/lib/time';
+import { fmtDate, localDateOf } from '@/lib/time';
 import { openPrintWindow, buildPrintDocument, escapeHtml } from '@/lib/print';
 import {
   dotsToPx,
@@ -8,17 +8,29 @@ import {
   paperSpec,
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
+import { resolveReceiptSettings, receiptLines } from '@/lib/business/receiptTemplate';
+import { receiptAddress, stampWithTime } from '@/lib/business/receiptContent';
 import { useSettingsStore } from '@/stores/settings';
 import type { TranslationKey } from '@/i18n';
 import { receiptStyle, LOGO_MAX_MM } from './receiptStyle';
 import { receiptText } from './receiptText';
-import type { Service, Organization } from '@/data/types';
+import type { Service, Organization, Outlet } from '@/data/types';
 
 export { escapeHtml };
 
 /** Lebar gulungan pilihan toko; belum dipilih = 58mm. */
 export function paperWidthOf(org: Pick<Organization, 'settings'>): PaperWidth {
   return normalizePaperWidth(org.settings?.receipt?.paperWidth);
+}
+
+/** Setelan nota toko ini, sudah dibersihkan dan berbawaan. */
+export function receiptConfigOf(org: Pick<Organization, 'settings'>) {
+  return resolveReceiptSettings(org.settings?.receipt);
+}
+
+/** Teks bebas milik toko: tiap baris di-escape, baris dipisah `<br/>`. */
+export function multiline(text: string): string {
+  return receiptLines(text).map(escapeHtml).join('<br/>');
 }
 
 /** Modul QR 4 titik (0,5mm): cukup besar untuk head 203 dpi, kecil cukup untuk 58mm. */
@@ -43,6 +55,7 @@ const LINE_LABEL: Partial<Record<ReceiptLine['key'], TranslationKey>> = {
   complaint: 'receipt.line.complaint',
   accessories: 'receipt.line.accessories',
   status: 'receipt.line.status',
+  technician: 'receipt.line.technician',
   estimate: 'receipt.line.estimate',
   cost: 'receipt.line.cost',
   dp: 'receipt.line.dp',
@@ -90,6 +103,8 @@ export interface ReceiptDoc {
   kind: string;
   no: string;
   date: string;
+  /** Alamat kepala kertas bila bukan alamat usaha (alamat cabang). */
+  address?: string;
   body: string;
 }
 
@@ -114,7 +129,12 @@ export function joinSections(sections: string[]): string {
  */
 function receiptParts(org: Organization, o: ReceiptDoc) {
   const paper = paperSpec(paperWidthOf(org));
-  const contact = [org.address, org.phone].filter(Boolean).join(' · ');
+  const cfg = receiptConfigOf(org);
+  const contact = [o.address ?? org.address, org.phone].filter(Boolean).join(' · ');
+  const foot = cfg.footer
+    ? multiline(cfg.footer)
+    : `${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
+    ${escapeHtml(receiptText('receipt.foot.again'))}`;
   return {
     title: `${o.title} ${o.no} | ${org.name}`,
     style: receiptStyle(paper),
@@ -128,6 +148,7 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
     }
     <h1 class="shop">${escapeHtml(org.name)}</h1>
     ${contact ? `<p class="contact">${escapeHtml(contact)}</p>` : ''}
+    ${cfg.header ? `<p class="tagline">${multiline(cfg.header)}</p>` : ''}
   </div>
   <hr class="seam"/>
   <div class="docline">
@@ -138,8 +159,7 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   ${o.body}
   <hr class="seam"/>
   <div class="foot">
-    ${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
-    ${escapeHtml(receiptText('receipt.foot.again'))}
+    ${foot}
   </div>
   <div class="by">${escapeHtml(receiptText('receipt.by'))}</div>`,
   };
@@ -167,20 +187,33 @@ export function receiptPreviewHtml(org: Organization, o: ReceiptDoc): string {
  * maupun "simpan sebagai bukti pengambilan": unitnya tak akan diambil dan tak
  * ada garansi yang bisa diklaim, jadi kertasnya hanya mencatat nasib DP.
  */
-export function serviceReceiptDoc(service: Service, org: Organization, origin: string): ReceiptDoc {
-  const lines = serviceReceiptLines(service);
+export function serviceReceiptDoc(
+  service: Service,
+  org: Organization,
+  origin: string,
+  outlets: ReadonlyArray<Pick<Outlet, 'id' | 'address'>> = [],
+): ReceiptDoc {
+  const cfg = receiptConfigOf(org);
+  // Baris yang dimatikan toko dibuang di sini, bukan di notify: serviceReceiptLines
+  // adalah isi tiket apa adanya, yang tercetak adalah pilihan toko.
+  const lines = serviceReceiptLines(service).filter(
+    (l) => (l.key !== 'imei' || cfg.showImei) && (l.key !== 'technician' || cfg.showTechnician),
+  );
   const cancelled = service.status === 'batal';
-  const date = lines.find((l) => l.key === 'date');
   const track = trackingUrl(origin, org.id, service.serviceNo);
   const note = (org.settings?.publicNote ?? '').trim();
   const garansi = rowsFor(lines, 'garansi', service);
+  const showTrack = !cancelled && (cfg.showQr || cfg.showTrackUrl);
 
   return {
     demoMessage: receiptText('receipt.demo.service'),
     title: receiptText('receipt.title.service'),
     kind: receiptText('receipt.doc.service'),
     no: service.serviceNo,
-    date: date ? lineValue(date, service) : '',
+    date: service.createdAt
+      ? stampWithTime(localDateOf(service.createdAt), service.createdAt, cfg.showTime)
+      : '',
+    address: receiptAddress(org.address, service.outletId, outlets),
     body: `
   ${joinSections([
     rowsFor(lines, 'unit', service),
@@ -188,20 +221,22 @@ export function serviceReceiptDoc(service: Service, org: Organization, origin: s
     garansi
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
       : '',
-    cancelled
-      ? ''
-      : `<div class="block">
+    showTrack
+      ? `<div class="block">
   <p class="block-label">${escapeHtml(receiptText('receipt.block.track'))}</p>
   <div class="track">
-    ${qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 })}
+    ${cfg.showQr ? qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 }) : ''}
     <div class="track-copy">
       <div>${escapeHtml(receiptText('receipt.track.copy'))}</div>
-      <p class="track-url">${escapeHtml(track)}</p>
+      ${cfg.showTrackUrl ? `<p class="track-url">${escapeHtml(track)}</p>` : ''}
     </div>
   </div>
-  </div>`,
+  </div>`
+      : '',
     note ? `<div class="note">${escapeHtml(note)}</div>` : '',
-    cancelled ? '' : `<div class="fine">${escapeHtml(receiptText('receipt.service.fine'))}</div>`,
+    cancelled
+      ? ''
+      : `<div class="fine">${cfg.serviceTerms ? multiline(cfg.serviceTerms) : escapeHtml(receiptText('receipt.service.fine'))}</div>`,
   ])}`,
   };
 }
@@ -211,6 +246,10 @@ export function serviceReceiptDoc(service: Service, org: Organization, origin: s
  * the browser print dialog. Shared by NotifyModal and the ticket detail action
  * bar so both produce an identical nota. Guarded in demo mode.
  */
-export function printServiceReceipt(service: Service, org: Organization): void {
-  openReceiptWindow(org, serviceReceiptDoc(service, org, window.location.origin));
+export function printServiceReceipt(
+  service: Service,
+  org: Organization,
+  outlets: ReadonlyArray<Pick<Outlet, 'id' | 'address'>> = [],
+): void {
+  openReceiptWindow(org, serviceReceiptDoc(service, org, window.location.origin, outlets));
 }

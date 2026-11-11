@@ -88,8 +88,14 @@ Satu objek jsonb untuk semua yang menentukan bentuk dan isi kertas yang dibawa p
 **Tanpa migrasi baru**: kolom `organizations.settings` (`0032`) tak punya daftar kunci yang
 diizinkan, dan kebijakan `org_update` sudah manager-only (diperiksa langsung, bukan diasumsikan).
 
-- **Tipe** (`data/types.ts`): `OrgSettings.receipt?: ReceiptSettings`. Tahap 1 hanya memuat
-  `paperWidth?: 58 | 80`; tahap berikutnya menambah teks kepala/kaki/syarat dan sakelar isi.
+- **Tipe** (`data/types.ts`): `OrgSettings.receipt?: ReceiptSettings` = `paperWidth?: 58 | 80`,
+  teks `header?`, `footer?`, `serviceTerms?`, `saleTerms?` (string; kosong = bawaan), dan saklar
+  `showQr?`, `showTrackUrl?`, `showImei?` (nyala kecuali persis `false`) serta `showTechnician?`,
+  `showTime?` (mati kecuali persis `true`). Catatan Toko tetap `OrgSettings.publicNote` karena
+  halaman lacak publik membacanya.
+- **Penyelesai**: `resolveReceiptSettings(raw)` di `lib/business/receiptTemplate.ts` menerima
+  `unknown`, jadi jsonb rusak jatuh ke bawaan; batas teks di `RECEIPT_TEXT_MAX`, `cleanReceiptText`
+  membersihkannya. Dibaca perender lewat `receiptConfigOf(org)`.
 - **Tulis**: `setReceiptSettings(patch)` di `config/orgConfig.ts`. `patchSettings` hanya menggabung
   kunci tingkat atas, jadi fungsi ini menulis ulang SELURUH objek `receipt` (patch digabung ke
   nilai lama dulu), bukan satu kunci di dalamnya.

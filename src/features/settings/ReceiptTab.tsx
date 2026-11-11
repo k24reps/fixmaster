@@ -1,7 +1,16 @@
-import { useRef, type KeyboardEvent } from 'react';
-import { Card, CardBody, CardHeader, Icon } from '@/components/ui';
-import { setReceiptSettings } from '@/config/orgConfig';
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Button, Card, CardBody, CardHeader, Icon } from '@/components/ui';
+import { PUBLIC_NOTE_MAX, setPublicNote, setReceiptSettings } from '@/config/orgConfig';
+import { useCollection } from '@/hooks/useCollection';
 import { useT, type TranslationKey } from '@/i18n';
+import { saleReceiptDoc } from '@/features/pos/printSaleReceipt';
+import {
+  openReceiptWindow,
+  receiptPreviewHtml,
+  serviceReceiptDoc,
+  type ReceiptDoc,
+} from '@/features/services/printReceipt';
+import { interpolate } from '@/lib/business/notify';
 import {
   PAPER_WIDTHS,
   charsPerLine,
@@ -9,21 +18,73 @@ import {
   paperSpec,
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
+import {
+  RECEIPT_TEXT_MAX,
+  cleanReceiptText,
+  resolveReceiptSettings,
+  type ResolvedReceiptSettings,
+} from '@/lib/business/receiptTemplate';
 import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
+import type { Organization, ReceiptSettings } from '@/data/types';
+import { sampleSale, sampleService } from './receiptSample';
 import styles from './ReceiptTab.module.css';
 
 /**
  * Pengaturan › Nota & Struk: satu rumah untuk semua yang menentukan isi dan
- * bentuk kertas yang dibawa pulang pelanggan. Dulu tersebar: nama dan logo di
+ * bentuk kertas yang dibawa pelanggan. Dulu tersebar: nama dan logo di
  * Usaha, Catatan Toko di kartu keenam Operasional, dan sisanya tertanam di kode.
+ *
+ * Saklar dan lebar kertas tersimpan seketika; teks bebas lewat satu tombol
+ * Simpan. Pratinjau membaca yang SAMA dengan yang dicetak (saklar tersimpan +
+ * teks yang sedang diketik), jadi pemilik toko melihat hasil sebelum menyimpan.
  */
+
+interface TextDraft {
+  header: string;
+  footer: string;
+  serviceTerms: string;
+  saleTerms: string;
+  note: string;
+}
+
+const fromOrg = (org: Organization | null): TextDraft => {
+  const r = resolveReceiptSettings(org?.settings?.receipt);
+  return {
+    header: r.header,
+    footer: r.footer,
+    serviceTerms: r.serviceTerms,
+    saleTerms: r.saleTerms,
+    note: (org?.settings?.publicNote ?? '').trim(),
+  };
+};
+
+const cleanDraft = (d: TextDraft): TextDraft => ({
+  header: cleanReceiptText(d.header, RECEIPT_TEXT_MAX.header),
+  footer: cleanReceiptText(d.footer, RECEIPT_TEXT_MAX.footer),
+  serviceTerms: cleanReceiptText(d.serviceTerms, RECEIPT_TEXT_MAX.terms),
+  saleTerms: cleanReceiptText(d.saleTerms, RECEIPT_TEXT_MAX.terms),
+  note: cleanReceiptText(d.note, PUBLIC_NOTE_MAX),
+});
+
 export function ReceiptTab() {
+  const org = useSessionStore((s) => s.org);
+  const [draft, setDraft] = useState<TextDraft>(() => fromOrg(org));
+
   return (
-    <>
-      <PaperCard />
-    </>
+    <div className={styles.stage}>
+      <div className={styles.layout}>
+        <div className={styles.forms}>
+          <PaperCard />
+          <ContentCard draft={draft} onChange={setDraft} />
+          <ShowCard />
+        </div>
+        <div className={styles.previewCol}>
+          <PreviewCard draft={draft} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -122,6 +183,401 @@ function PaperCard() {
             <li>{t('receipt.setup.android')}</li>
           </ul>
         </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Isi kertas
+
+interface TextFieldProps {
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  max: number;
+  rows: number;
+  /** Teks bawaan, tampil redup selama kolom kosong. */
+  placeholder?: string;
+  onChange: (value: string) => void;
+}
+
+function TextField({ id, label, hint, value, max, rows, placeholder, onChange }: TextFieldProps) {
+  const t = useT();
+  const left = max - value.length;
+  return (
+    <div className={styles.field}>
+      <label className={styles.fieldLabel} htmlFor={id}>
+        {label}
+      </label>
+      {hint && (
+        <p id={`${id}-hint`} className={styles.fieldHint}>
+          {hint}
+        </p>
+      )}
+      <textarea
+        id={id}
+        className={styles.textarea}
+        value={value}
+        maxLength={max}
+        rows={rows}
+        placeholder={placeholder}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <span className={styles.count} data-low={left <= Math.min(40, max / 4) ? 'true' : undefined}>
+        {interpolate(t('receipt.field.left'), { n: String(left) })}
+      </span>
+    </div>
+  );
+}
+
+function ContentCard({ draft, onChange }: { draft: TextDraft; onChange: (d: TextDraft) => void }) {
+  const t = useT();
+  const org = useSessionStore((s) => s.org);
+  const [busy, setBusy] = useState(false);
+  const saved = useMemo(() => cleanDraft(fromOrg(org)), [org]);
+  const dirty = JSON.stringify(cleanDraft(draft)) !== JSON.stringify(saved);
+
+  const set = (key: keyof TextDraft) => (value: string) => onChange({ ...draft, [key]: value });
+
+  const save = async () => {
+    if (demoGuard()) return;
+    const next = cleanDraft(draft);
+    setBusy(true);
+    try {
+      await setReceiptSettings({
+        header: next.header,
+        footer: next.footer,
+        serviceTerms: next.serviceTerms,
+        saleTerms: next.saleTerms,
+      });
+      if (next.note !== saved.note) await setPublicNote(next.note);
+      onChange(next);
+      toast.success(t('receipt.content.saved'));
+    } catch {
+      toast.error(t('receipt.content.saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader icon={<Icon name="note" aria-hidden />} title={t('receipt.content.title')} />
+      <CardBody>
+        <p className={styles.hint}>{t('receipt.content.hint')}</p>
+        <TextField
+          id="receipt-header"
+          label={t('receipt.field.header')}
+          hint={t('receipt.field.headerHint')}
+          value={draft.header}
+          max={RECEIPT_TEXT_MAX.header}
+          rows={2}
+          onChange={set('header')}
+        />
+        <TextField
+          id="receipt-footer"
+          label={t('receipt.field.footer')}
+          hint={t('receipt.field.footerHint')}
+          value={draft.footer}
+          max={RECEIPT_TEXT_MAX.footer}
+          rows={2}
+          placeholder={`${t('receipt.foot.thanks')}\n${t('receipt.foot.again')}`}
+          onChange={set('footer')}
+        />
+        <TextField
+          id="receipt-service-terms"
+          label={t('receipt.field.serviceTerms')}
+          value={draft.serviceTerms}
+          max={RECEIPT_TEXT_MAX.terms}
+          rows={3}
+          placeholder={t('receipt.service.fine')}
+          onChange={set('serviceTerms')}
+        />
+        <TextField
+          id="receipt-sale-terms"
+          label={t('receipt.field.saleTerms')}
+          hint={t('receipt.field.saleTermsHint')}
+          value={draft.saleTerms}
+          max={RECEIPT_TEXT_MAX.terms}
+          rows={3}
+          placeholder={t('receipt.sale.fine')}
+          onChange={set('saleTerms')}
+        />
+        <TextField
+          id="receipt-note"
+          label={t('settingsPage.catatanToko')}
+          hint={t('receipt.field.noteHint')}
+          value={draft.note}
+          max={PUBLIC_NOTE_MAX}
+          rows={3}
+          onChange={set('note')}
+        />
+        <div className={styles.saveFoot}>
+          <span className={styles.dirty} data-on={dirty ? 'true' : undefined} role="status">
+            {dirty && (
+              <>
+                <span className={styles.dirtyLed} aria-hidden />
+                {t('receipt.content.unsaved')}
+              </>
+            )}
+          </span>
+          <Button onClick={() => void save()} disabled={busy || !dirty} loading={busy}>
+            {t('receipt.content.save')}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Yang dicetak
+
+type SwitchKey = 'showQr' | 'showTrackUrl' | 'showImei' | 'showTechnician' | 'showTime';
+
+const SWITCHES: { key: SwitchKey; label: TranslationKey; hint: TranslationKey }[] = [
+  { key: 'showQr', label: 'receipt.show.qr', hint: 'receipt.show.qrHint' },
+  { key: 'showTrackUrl', label: 'receipt.show.trackUrl', hint: 'receipt.show.trackUrlHint' },
+  { key: 'showImei', label: 'receipt.show.imei', hint: 'receipt.show.imeiHint' },
+  { key: 'showTechnician', label: 'receipt.show.technician', hint: 'receipt.show.technicianHint' },
+  { key: 'showTime', label: 'receipt.show.time', hint: 'receipt.show.timeHint' },
+];
+
+function ShowCard() {
+  const t = useT();
+  const org = useSessionStore((s) => s.org);
+  const cfg = resolveReceiptSettings(org?.settings?.receipt);
+  const [busy, setBusy] = useState<SwitchKey | null>(null);
+
+  const flip = async (key: SwitchKey) => {
+    if (busy || demoGuard()) return;
+    setBusy(key);
+    try {
+      await setReceiptSettings({ [key]: !cfg[key] } as Partial<ReceiptSettings>);
+      toast.success(t('receipt.show.saved'));
+    } catch {
+      toast.error(t('receipt.show.saveFailed'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader icon={<Icon name="receipt" aria-hidden />} title={t('receipt.show.title')} />
+      <CardBody>
+        <p className={styles.hint}>{t('receipt.show.hint')}</p>
+        <ul className={styles.switches}>
+          {SWITCHES.map((s) => {
+            const on = cfg[s.key];
+            return (
+              <li key={s.key} className={styles.switchRow}>
+                <div className={styles.switchText}>
+                  <span id={`${s.key}-label`} className={styles.switchLabel}>
+                    {t(s.label)}
+                  </span>
+                  <span id={`${s.key}-hint`} className={styles.switchHint}>
+                    {t(s.hint)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={on}
+                  aria-labelledby={`${s.key}-label`}
+                  aria-describedby={`${s.key}-hint`}
+                  className={styles.switch}
+                  data-on={on}
+                  disabled={busy === s.key}
+                  onClick={() => void flip(s.key)}
+                >
+                  <span className={styles.switchLed} aria-hidden />
+                  {on ? t('receipt.show.on') : t('receipt.show.off')}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pratinjau
+
+type Sample = 'service' | 'sale';
+
+/**
+ * Zoom pratinjau paling besar: kertas 58mm hanya 219px, terlalu kecil untuk
+ * dibaca di layar. Zoom yang dipakai mengecil sendiri bila meja kerjanya lebih
+ * sempit dari kertas yang diperbesar (kertas 80mm di kolom 470px atau di ponsel):
+ * menggeser kertas ke samping di dalam kartu lebih buruk daripada kertas kecil.
+ */
+const PREVIEW_ZOOM = 1.5;
+
+function PreviewCard({ draft }: { draft: TextDraft }) {
+  const t = useT();
+  const org = useSessionStore((s) => s.org);
+  const { data: outlets } = useCollection('outlets');
+  const [which, setWhich] = useState<Sample>('service');
+  const [oneBit, setOneBit] = useState(false);
+  const [height, setHeight] = useState(0);
+  const [avail, setAvail] = useState(0);
+  const frame = useRef<HTMLIFrameElement>(null);
+  const watcher = useRef<ResizeObserver | null>(null);
+
+  // Lebar bersih meja kerja (tanpa padding) diukur dari DOM-nya, bukan ditebak
+  // dari breakpoint: ia menyusut oleh sidebar, kolom, dan zoom aplikasi sekaligus.
+  const watchBench = useCallback((el: HTMLDivElement | null) => {
+    watcher.current?.disconnect();
+    watcher.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const read = () => {
+      const cs = getComputedStyle(el);
+      setAvail(Math.floor(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+    };
+    read();
+    watcher.current = new ResizeObserver(read);
+    watcher.current.observe(el);
+  }, []);
+
+  // Organisasi bayangan: setelan tersimpan + teks yang sedang diketik.
+  const previewOrg = useMemo<Organization | null>(() => {
+    if (!org) return null;
+    const next = cleanDraft(draft);
+    return {
+      ...org,
+      settings: {
+        ...org.settings,
+        publicNote: next.note,
+        receipt: {
+          ...org.settings?.receipt,
+          header: next.header,
+          footer: next.footer,
+          serviceTerms: next.serviceTerms,
+          saleTerms: next.saleTerms,
+        },
+      },
+    };
+  }, [org, draft]);
+
+  const cfg: ResolvedReceiptSettings = resolveReceiptSettings(previewOrg?.settings?.receipt);
+  const paper = paperSpec(cfg.paperWidth);
+
+  const doc = useMemo<ReceiptDoc | null>(() => {
+    if (!previewOrg) return null;
+    const text = {
+      complaint: t('receipt.sample.complaint'),
+      condition: t('receipt.sample.condition'),
+      accessories: t('receipt.sample.accessories'),
+      item1: t('receipt.sample.item1'),
+      item2: t('receipt.sample.item2'),
+    };
+    if (which === 'service')
+      return serviceReceiptDoc(sampleService(text), previewOrg, window.location.origin, outlets);
+    const { sale, change } = sampleSale(text);
+    return saleReceiptDoc(sale, previewOrg, {
+      change,
+      outlets,
+      walletName: (id) => (id === 'sample-cash' ? t('receipt.sample.cash') : ''),
+    });
+  }, [previewOrg, which, outlets, t]);
+
+  if (!previewOrg || !doc) return null;
+  const html = receiptPreviewHtml(previewOrg, doc);
+
+  // Tinggi isi diukur dari dokumennya sendiri: baris yang membungkus bergantung
+  // pada font mono yang ada di mesin ini, bukan pada angka yang kami tebak.
+  const measure = () => {
+    // body, bukan documentElement: scrollHeight html tak bisa lebih kecil dari
+    // tinggi iframe, jadi nota pendek akan terukur setinggi bingkainya.
+    const body = frame.current?.contentDocument?.body;
+    if (body) setHeight(Math.ceil(body.getBoundingClientRect().height));
+  };
+
+  const print = () => openReceiptWindow(previewOrg, doc);
+  const mmPx = (mm: number) => (mm * 96) / 25.4;
+  const paperPx = mmPx(cfg.paperWidth);
+  // Dibulatkan ke bawah per 0,01: ukuran kertas tak ikut bergetar bersama sub-piksel.
+  const zoom =
+    avail > 0 ? Math.min(PREVIEW_ZOOM, Math.floor((avail / paperPx) * 100) / 100) : PREVIEW_ZOOM;
+
+  return (
+    <Card>
+      <CardHeader
+        icon={<Icon name="receipt" aria-hidden />}
+        title={t('receipt.preview.title')}
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            iconLeft={<Icon name="print" aria-hidden />}
+            onClick={print}
+          >
+            {t('receipt.preview.print')}
+          </Button>
+        }
+      />
+      <CardBody>
+        <div role="group" aria-label={t('receipt.preview.title')} className={styles.pick}>
+          {(['service', 'sale'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              className={styles.pickBtn}
+              aria-pressed={which === k}
+              onClick={() => setWhich(k)}
+            >
+              {t(k === 'service' ? 'receipt.preview.service' : 'receipt.preview.sale')}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.readout}>
+          <span>
+            {cfg.paperWidth} mm · {charsPerLine(paper)} {t('receipt.paper.cols')}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={oneBit}
+            className={styles.switch}
+            data-on={oneBit}
+            onClick={() => setOneBit((v) => !v)}
+          >
+            <span className={styles.switchLed} aria-hidden />
+            {t('receipt.preview.bw')}
+          </button>
+        </div>
+        {oneBit && <p className={styles.fieldHint}>{t('receipt.preview.bwHint')}</p>}
+
+        <div className={styles.bench} ref={watchBench}>
+          <div
+            className={styles.sheet}
+            style={{
+              width: paperPx * zoom,
+              height: height ? height * zoom : undefined,
+            }}
+          >
+            <iframe
+              ref={frame}
+              key={cfg.paperWidth}
+              title={interpolate(t('receipt.preview.frame'), { width: String(cfg.paperWidth) })}
+              srcDoc={html}
+              sandbox="allow-same-origin"
+              scrolling="no"
+              className={styles.frame}
+              data-onebit={oneBit ? 'true' : undefined}
+              style={{ width: paperPx, height: height || 480, zoom }}
+              onLoad={measure}
+            />
+          </div>
+        </div>
+        <p className={styles.fieldHint}>{t('receipt.preview.sample')}</p>
       </CardBody>
     </Card>
   );

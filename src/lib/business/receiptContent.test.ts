@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { saleReceiptModel, serviceMoney } from './receiptContent';
+import { receiptAddress, saleReceiptModel, serviceMoney, stampWithTime } from './receiptContent';
 import type { Sale, Service } from '@/data/types';
 
 type MoneySrc = Pick<Service, 'status' | 'estimateCost' | 'finalCost' | 'downPayment' | 'history'>;
@@ -196,5 +196,43 @@ describe('saleReceiptModel: batal dan cetak ulang', () => {
     const now = new Date(2026, 10, 12, 9, 5); // 12 Nov 2026 09:05 lokal
     expect(saleReceiptModel(sale({}), { reprint: true, now }).reprintAt).toBe('12 Nov 2026 09:05');
     expect(saleReceiptModel(sale({}), { now }).reprintAt).toBeNull();
+  });
+});
+
+describe('stampWithTime', () => {
+  const at = new Date(2026, 10, 11, 14, 32).toISOString(); // 14:32 lokal
+
+  it('tanpa jam: hanya tanggal, apa pun createdAt-nya', () => {
+    expect(stampWithTime('2026-11-11', at, false)).toBe('11 Nov 2026');
+  });
+
+  it('dengan jam: jam transaksi dicatat, bukan jam cetak', () => {
+    expect(stampWithTime('2026-11-11', at, true)).toBe('11 Nov 2026 14:32');
+  });
+
+  it('createdAt kosong atau tak terbaca menjatuhkan jam, tak mengarangnya', () => {
+    expect(stampWithTime('2026-11-11', undefined, true)).toBe('11 Nov 2026');
+    expect(stampWithTime('2026-11-11', 'bukan tanggal', true)).toBe('11 Nov 2026');
+  });
+});
+
+describe('receiptAddress', () => {
+  const outlets = [
+    { id: 'a', address: ' Jl. A 1 ' },
+    { id: 'b', address: '   ' },
+    { id: 'c' },
+  ];
+
+  it('alamat cabang (dipangkas) bila cabang itu punya', () => {
+    expect(receiptAddress('Jl. Pusat', 'a', outlets)).toBe('Jl. A 1');
+  });
+
+  it('cabang tanpa alamat, kosong, tak dikenal, atau tanpa cabang: alamat usaha', () => {
+    for (const id of ['b', 'c', 'x', null, undefined])
+      expect(receiptAddress(' Jl. Pusat ', id, outlets)).toBe('Jl. Pusat');
+  });
+
+  it('keduanya tak ada: string kosong', () => {
+    expect(receiptAddress(undefined, null, [])).toBe('');
   });
 });

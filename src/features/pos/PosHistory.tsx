@@ -10,6 +10,7 @@ import { fmtDate } from '@/lib/time';
 import { groupSalesByDay } from '@/lib/business/pos';
 import { interpolate, waLink } from '@/lib/business/notify';
 import { useT } from '@/i18n';
+import { useCollection } from '@/hooks/useCollection';
 import { toast } from '@/stores/toast';
 import type { InventoryItem, Organization, Sale } from '@/data/types';
 import { printSaleReceipt } from './printSaleReceipt';
@@ -31,6 +32,7 @@ interface PosHistoryProps {
 /** Tab Transaksi Terakhir: cetak ulang, kirim ulang WA, dan pembatalan. */
 export function PosHistory({ recentSales, salesLoad, walletName, org, isMgr, monthStart, branchName }: PosHistoryProps) {
   const t = useT();
+  const { data: outlets } = useCollection('outlets');
   const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [voidBusy, setVoidBusy] = useState(false);
@@ -169,7 +171,7 @@ export function PosHistory({ recentSales, salesLoad, walletName, org, isMgr, mon
                         <button
                           type="button"
                           className={styles.iconBtn}
-                          onClick={() => printSaleReceipt(s, org, { reprint: true, walletName })}
+                          onClick={() => printSaleReceipt(s, org, { reprint: true, walletName, outlets })}
                           aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
                           title={t('pos.printTitle')}
                         >

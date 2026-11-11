@@ -5612,3 +5612,67 @@ dalam jendela head; setelah ambang 50%: kotak BATAL 77–89%, baris dicoret 77�
 38% menjadi pekerjaan tahap 5.
 
 #decision #print #receipt #pos #services
+
+### Tahap 4: nota yang bisa diatur toko (shape)
+
+Sampai tahap 3 isi kertas tertanam di kode: kepala, ucapan kaki, syarat, QR, IMEI. Toko yang ingin
+mengganti satu kalimat harus minta developer. Tahap 4 memindahkannya ke Pengaturan › **Nota & Struk**
+dengan pratinjau langsung, tanpa mengubah kertas toko yang tak menyentuh apa pun.
+
+- **Bawaan = kertas lama.** `resolveReceiptSettings` (`lib/business/receiptTemplate.ts`) memberi
+  `showQr`, `showTrackUrl`, `showImei` NYALA kecuali nilainya persis `false`; `showTechnician` dan
+  `showTime` MATI kecuali persis `true`. Teks kosong = kalimat bawaan di kamus `receipt.*`. Nilai
+  asing (angka, `"false"`, `null`) jatuh ke bawaan, jadi data jsonb yang rusak tak bisa mematikan QR
+  diam-diam. Teks dibersihkan `cleanReceiptText`: bukan string jadi kosong, CRLF jadi LF, tiap baris
+  dipangkas, tiga baris kosong jadi satu, dipotong ke batas (kepala 120, kaki 160, syarat 280).
+- **Satu render untuk cetak dan pratinjau.** `receiptPreviewHtml(org, doc)` memanggil `receiptParts`
+  yang sama dengan `openReceiptWindow`, hanya dengan `roll: null`. Pratinjau bukan tiruan CSS:
+  iframe `srcDoc` + `sandbox="allow-same-origin"` berisi HTML yang dikirim ke printer. Organisasi
+  bayangan (setelan tersimpan + teks yang sedang diketik) menggerakkannya, jadi mengetik langsung
+  terlihat tanpa menyimpan. Saklar menyimpan seketika; teks lewat satu tombol Simpan dengan LED
+  "belum tersimpan".
+- **Simulasi 1-bit** = `filter: grayscale(1) contrast(1000)` di iframe. Kontras sebesar itu
+  menjadikan ambang 50% terlihat tanpa menulis ulang CSS nota. Pembuktian tetap di raster
+  (`verify1bit.py`); filter hanya membantu mata.
+- **Aturan yang tak bisa ditimpa teks toko.** Struk batal selalu mencetak "bukan bukti pembelian"
+  bawaan walau `saleTerms` terisi; tiket batal tak mencetak syarat, QR, maupun garansi walau
+  `serviceTerms` terisi. Kertas bukti tak boleh bertentangan dengan keadaannya.
+- **Jam = jam transaksi, bukan jam cetak.** `stampWithTime(date, createdAt, withTime)` mengambil
+  HH:MM dari `createdAt`; `createdAt` kosong atau tak terbaca menjatuhkan jam, tak mengarangnya
+  (cetak ulang memakai jam aslinya dan tetap bertanda "CETAK ULANG").
+- **Alamat kepala per cabang.** `receiptAddress(orgAddress, outletId, outlets)`: alamat cabang
+  (dipangkas) bila cabang itu punya, selain itu alamat usaha. Fungsi cetak sinkron (tak boleh ada
+  `await` sebelum `window.open`, kalau tidak popup diblokir), jadi pemanggil membawa `outlets` dari
+  `useCollection('outlets')` ke `printServiceReceipt(service, org, outlets)` dan
+  `printSaleReceipt(sale, org, { outlets })`.
+- **Baris Teknisi** memakai kunci stabil baru `technician` di `ReceiptLineKey`
+  (`serviceReceiptLines`), difilter perender, bukan notify: `serviceReceiptLines` tetap isi tiket
+  apa adanya, yang tercetak adalah pilihan toko. Barisnya tak tercetak bila teknisi kosong.
+- **Catatan Toko pindah** dari kartu keenam Operasional ke tab ini. Kuncinya tetap
+  `settings.publicNote`: halaman lacak publik membacanya, jadi hanya tempat mengeditnya yang pindah.
+  Empat kunci i18n yatim (`settingsPage.catatanTokoDisimpan`, `gagalMenyimpanCatatan`,
+  `simpanCatatan`, `pTampilDiNotaCetak`) dan CSS `.noteCount` dihapus.
+
+**Dua temuan ukur.**
+1. *Zoom pratinjau tetap 1,5 itu salah.* Kertas 80 mm × 1,5 = 453 px, sedangkan lebar bersih meja
+   kerja di kolom 470 px hanya 394 px: kertas bergeser ke samping 30 px di dalam kartu. Zoom kini
+   `min(1,5; lebar bersih ÷ lebar kertas)` dari `ResizeObserver` pada meja kerja, dibulatkan ke
+   bawah per 0,01. Hasil `thresh.mjs` (wadah 240–1000 px × 58/80 mm): geser internal 0 px di semua
+   lebar (sebelumnya 2–145 px di wadah ≤ 400 px untuk 58 mm, 5–145 px di wadah ≤ 520 px untuk
+   80 mm, dan 30 px di dua kolom 80 mm).
+2. *Ambang 720 px itu tebakan.* Diukur dengan mengunci lebar `.stage`: satu kolom formulir mulai
+   meluap pada wadah 280 px (min-content ±290 px). Dua kolom kini `minmax(340px, 1fr)
+   minmax(360px, 470px)`: lantai formulir 340 px, pratinjau minimal 360 px, 340 + 16 jarak + 360 =
+   716, dan ambang `@container` tetap 720 px kini punya alasan. Sebelumnya di wadah 720 px kolom
+   formulir tinggal 234 px, lebih sempit dari min-content-nya yang nyaman.
+
+**Pelajaran: panel browser tersembunyi menghentikan `requestAnimationFrame`.** Probe yang menunggu
+`rAF` di panel dalam-aplikasi menggantung 45 detik tanpa kesalahan; pengukuran tata letak dikerjakan
+lewat Playwright, yang halamannya tak pernah tersembunyi.
+
+**Verifikasi tahap 4:** 950 tes / 81 berkas (`receiptTemplate.test`, suite "setelan toko" di
+`printReceipt.test` dan `printSaleReceipt.test`, `stampWithTime` dan `receiptAddress` di
+`receiptContent.test`, paritas kunci id/en). Probe tab (`tabprobe.mjs`, 11 lebar 320–1440 px, juga
+zoom aplikasi 1,25): nol luberan dokumen, nol penggeser, nol kesalahan konsol.
+
+#decision #print #receipt #settings #i18n

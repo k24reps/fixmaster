@@ -99,3 +99,36 @@ describe('saleReceiptDoc: cetak ulang', () => {
     expect(doc.kind).toBe('SALES RECEIPT');
   });
 });
+
+describe('saleReceiptDoc: setelan toko', () => {
+  const orgWith = (receipt: Record<string, unknown>) =>
+    ({ ...org, settings: { receipt } }) as unknown as Organization;
+
+  it('syarat toko menggantikan bawaan di struk biasa', () => {
+    const doc = saleReceiptDoc(sale({}), orgWith({ saleTerms: 'Tukar dalam 3 hari.' }), { walletName });
+    const t = text(doc.body);
+    expect(t).toContain('Tukar dalam 3 hari.');
+    expect(t).not.toContain('syarat penukaran');
+  });
+
+  it('struk batal tetap "bukan bukti pembelian" walau toko menulis syarat sendiri', () => {
+    const doc = saleReceiptDoc(sale({ voided: true }), orgWith({ saleTerms: 'Tukar dalam 3 hari.' }), { walletName });
+    const t = text(doc.body);
+    expect(t).toContain('bukan bukti pembelian');
+    expect(t).not.toContain('Tukar dalam 3 hari.');
+  });
+
+  it('jam dinyalakan: tanggal diikuti HH:MM; default hanya tanggal', () => {
+    expect(saleReceiptDoc(sale({}), org, { walletName }).date).toBe('11 Nov 2026');
+    expect(saleReceiptDoc(sale({}), orgWith({ showTime: true }), { walletName }).date).toMatch(
+      /^11 Nov 2026 \d{2}:\d{2}$/,
+    );
+  });
+
+  it('alamat kepala: alamat cabang struk ini, bukan alamat usaha', () => {
+    const o = { ...org, address: 'Jl. Pusat 1' } as unknown as Organization;
+    const outlets = [{ id: 'o-cimahi', address: 'Jl. Cimahi 5' }];
+    expect(saleReceiptDoc(sale({ outletId: 'o-cimahi' }), o, { outlets }).address).toBe('Jl. Cimahi 5');
+    expect(saleReceiptDoc(sale({ outletId: null }), o, { outlets }).address).toBe('Jl. Pusat 1');
+  });
+});

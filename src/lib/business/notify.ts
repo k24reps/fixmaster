@@ -266,6 +266,7 @@ export type ReceiptLineKey =
   | 'complaint'
   | 'accessories'
   | 'status'
+  | 'technician'
   | ServiceMoneyKey
   | 'warrantyService'
   | 'warrantyPart'
@@ -324,6 +325,9 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
   if (service.accessories)
     lines.push({ key: 'accessories', label: 'Kelengkapan', value: service.accessories, group: 'unit' });
   lines.push({ key: 'status', label: 'Status', value: STATUS_LABELS[service.status], group: 'unit' });
+  // Siapa yang memegang unit. Tercetak hanya bila toko menyalakannya di Nota & Struk.
+  if (service.technicianName)
+    lines.push({ key: 'technician', label: 'Teknisi', value: service.technicianName, group: 'unit' });
 
   // Aturan "apa yang boleh tercetak" tinggal di receiptContent (data + tes).
   for (const m of serviceMoney(service))

@@ -120,3 +120,286 @@
   line-height: 1.5;
   color: var(--text-secondary);
 }
+
+/* ---------- Tata letak: formulir di kiri, pratinjau menempel di kanan ----------
+   Container query, bukan @media: ruang konten menyusut saat sidebar muncul dan
+   saat zoom aplikasi dinaikkan, tak satu pun tampak di lebar viewport.
+
+   Ambang 720px diturunkan dari ukuran, bukan angka bulat: satu kolom formulir
+   mulai meluap pada wadah 280px (min-content terukur ≈ 290px), diberi lantai
+   340px agar kolom teks tak sesempit lorong; pratinjau minimal 360px (kertas
+   80mm menyusut zoom-nya sendiri, tak menggeser); 340 + 16 jarak + 360 = 716. */
+.stage {
+  container-type: inline-size;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.forms {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.previewCol {
+  min-width: 0;
+}
+@container (min-width: 720px) {
+  .layout {
+    grid-template-columns: minmax(340px, 1fr) minmax(360px, 470px);
+  }
+  .previewCol {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+/* ---------- Kolom teks ---------- */
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+.field + .field {
+  margin-top: var(--space-4);
+}
+.fieldLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.fieldHint {
+  max-width: 60ch;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+}
+.textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--border-brand);
+  box-shadow: var(--ring);
+}
+.count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.count[data-low='true'] {
+  color: var(--warning-text);
+}
+
+.saveFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border-strong);
+}
+.dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1em;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warning-text);
+}
+.dirtyLed {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--warning);
+  box-shadow: 0 0 7px var(--warning);
+}
+
+/* ---------- Saklar: LED + readout mono, bahasa yang sama dengan kanal notifikasi ---------- */
+.switches {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+.switchRow + .switchRow {
+  border-top: 1px dotted var(--border);
+}
+.switchText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.switchLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.switchHint {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.switch {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.switch:hover:not(:disabled) {
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
+.switch:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.switch[data-on='true'] {
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+  color: var(--success-text);
+}
+.switchLed {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+.switch[data-on='true'] .switchLed {
+  background: var(--success);
+  box-shadow: 0 0 7px var(--success);
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .switch {
+    min-height: var(--control-h);
+  }
+}
+
+/* ---------- Pratinjau ---------- */
+.pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.pickBtn {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.pickBtn:hover {
+  color: var(--text-primary);
+}
+.pickBtn[aria-pressed='true'] {
+  background: var(--brand-soft);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border-brand);
+}
+.pickBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+@media (pointer: coarse) {
+  .pickBtn {
+    min-height: var(--control-h);
+  }
+}
+
+.readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Meja kerja: kertas ditaruh di atas landasan cekung. Putih kertas di sini
+   disengaja dan tak mengikuti tema: tinta di kertas tak punya mode gelap. */
+.bench {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-3) 0;
+  padding: var(--space-4) var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.sheet {
+  flex: none;
+  overflow: hidden;
+  border-bottom: 2px dotted var(--border-strong);
+  box-shadow: var(--shadow-bench-tight);
+}
+.frame {
+  display: block;
+  border: 0;
+  background: #fff;
+  transform-origin: top left;
+}
+/* Simulasi head termal: ambang 50% (abu-abu di bawahnya hilang). */
+.frame[data-onebit='true'] {
+  filter: grayscale(1) contrast(1000);
+}

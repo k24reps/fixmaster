@@ -908,6 +908,19 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Isi yang benar** (tahap 3): nota servis berbiaya akhir 0 + DP mencetak "Sudah dibayar (DP)" (tanpa "Sisa Rp 0"); tiket batal hanya mencetak nasib DP, tanpa garansi dan QR. Struk batal berkotak **BATAL** dan TOTAL dicoret, cetak ulang bertanda "CETAK ULANG" + tanggal-jam, metode bayar dari `sale.payments`. Aturannya di `lib/business/receiptContent.ts`.
 
+**Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),
+**Isi kertas** (lima kolom teks: kepala 120, ucapan kaki 160, syarat servis 280, syarat struk 280,
+Catatan Toko 280 karakter; penghitung "n karakter tersisa", LED "belum tersimpan", satu tombol
+Simpan), dan **Tampilkan** (lima saklar LED: kode QR lacak, alamat lacak berupa huruf, IMEI/SN,
+nama teknisi, jam transaksi; tersimpan seketika). Di kolom kanan **Pratinjau** menempel (sticky)
+dan memuat HTML cetak yang sama persis di iframe: pilih Nota servis atau Struk penjualan, bacaan
+mono "58 mm · 31 huruf per baris", saklar **Simulasi 1-bit** (abu-abu hilang di ambang 50%), dan
+tombol "Cetak percobaan" ke dialog cetak sungguhan. Dua kolom di wadah ≥ 720px (container query,
+diturunkan dari ukuran terukur; lihat [[Decisions & Bug Fixes]]); di bawahnya satu kolom dan kertas
+mengecilkan zoom-nya sendiri (maks 1,5×) agar tak bergeser ke samping. Catatan Toko tak lagi di
+Operasional; ia pindah ke sini. Semua teks lewat `useT()` (`receipt.content.*`, `receipt.field.*`,
+`receipt.show.*`, `receipt.preview.*`, `receipt.sample.*`).
+
 ---
 
 ## Pengaturan — Navigasi Mobile
