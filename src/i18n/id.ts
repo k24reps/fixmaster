@@ -1788,6 +1788,11 @@ export const id = {
   'receipt.title.sale': 'Struk',
   'print.popupBlocked':
     'Browser memblokir jendela cetak. Izinkan popup untuk situs ini, lalu cetak lagi.',
+  'print.controls': 'Kontrol cetak',
+  'print.again': 'Cetak lagi',
+  'print.close': 'Tutup',
+  'print.closeFailed':
+    'Browser tidak mengizinkan jendela ini menutup sendiri. Tutup lewat tombol tab atau jendela.',
   'receipt.demo.service': 'Cetak nota tersedia di FixMaster versi penuh. Daftar gratis.',
   'receipt.demo.sale': 'Cetak struk tersedia di FixMaster versi penuh. Daftar gratis.',
   'receipt.foot.thanks': 'Terima kasih atas kepercayaan Anda.',

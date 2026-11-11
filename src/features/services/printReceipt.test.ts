@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { receiptPreviewHtml, serviceReceiptDoc } from './printReceipt';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { openReceiptWindow, receiptPreviewHtml, serviceReceiptDoc } from './printReceipt';
 import { useSettingsStore } from '@/stores/settings';
 import type { Organization, Service } from '@/data/types';
 
@@ -41,6 +41,27 @@ const text = (body: string) => {
 };
 
 beforeEach(() => useSettingsStore.setState({ language: 'id' }));
+
+describe('bilah "Cetak lagi / Tutup"', () => {
+  it('pratinjau Pengaturan (roll: null) tak pernah memuat bilah maupun skrip', () => {
+    const page = receiptPreviewHtml(org, serviceReceiptDoc(svc({}), org, 'https://app.test'));
+    expect(page).not.toContain('fm-printbar');
+    expect(page).not.toContain('<script>');
+    expect(page).not.toContain('viewport');
+  });
+
+  it('jendela cetak nota memuat bilah, dan gulungan tetap diukur dari <body>', () => {
+    const write = vi.fn();
+    vi.spyOn(window, 'open').mockReturnValue({ document: { write, close: vi.fn() } } as unknown as Window);
+    openReceiptWindow(org, serviceReceiptDoc(svc({}), org, 'https://app.test'));
+    const page = write.mock.calls[0][0] as string;
+    expect(page).toContain('class="fm-printbar"');
+    expect(page).toContain('document.body.getBoundingClientRect()');
+    // Bilah ada di luar `.brand` dan isi nota: bukan bagian kertas.
+    expect(page.indexOf('class="fm-printbar"')).toBeGreaterThan(page.indexOf('DICETAK DENGAN FIXMASTER'));
+    vi.restoreAllMocks();
+  });
+});
 
 describe('serviceReceiptDoc: uang', () => {
   it('biaya akhir 0 + DP: "Sudah dibayar (DP)", tidak ada "Sisa Rp 0"', () => {

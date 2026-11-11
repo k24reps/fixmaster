@@ -910,6 +910,8 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Dokumen batal** (tahap 6b): tiket batal dan struk batal sama-sama berkotak **BATAL** (`voidMarkHtml`, bingkai 2px) tepat di bawah tanggal, dan tak berpamitan: `ReceiptDoc.voided` membuang ucapan kaki, bawaan maupun buatan toko. Jahitan dan atribusi tetap tercetak.
 
+**Bilah jendela cetak** (tahap 7): jendela nota dan laporan punya bilah layar-saja di dasar, pita `#111` bertick-gauge dengan dua tombol, **Cetak lagi** (amber) dan **Tutup**, supaya pengguna yang membatalkan dialog cetak tak terjebak. Bilah `position: fixed` dan disembunyikan di `@media print`, jadi tinggi gulungan yang diukur `fit()` tak berubah (terbukti 38 PDF sebelum/sesudah). Jendela tak menutup sendiri; hanya klik "Tutup" yang memanggil `window.close()`, dengan pesan bila browser menolak. Pratinjau Pengaturan (`roll: null`) tak berbilah. Alasan `afterprint` dan iframe tersembunyi ditolak: [[Decisions & Bug Fixes]].
+
 **Tata letak baris** (tahap 5): kolom label tak dipatok persen. Label dan nilai berdampingan bila muat; bila tidak, baris ditumpuk, label di atas dan nilai utuh di bawahnya (`fitsBeside` di `receiptPaper.ts`, `receiptRow` di `printReceipt.ts`). Barang struk dua baris: nama, lalu `jumlah× harga satuan` dan jumlah rupiah. Tiap baris di-flex sendiri supaya satu baris tumpuk tak menyempitkan kolom baris lain. Alasan lengkap di [[Decisions & Bug Fixes]].
 
 **Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),

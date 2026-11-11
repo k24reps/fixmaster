@@ -70,7 +70,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 ## Hasil testing (22 Sep 2026)
 
-- **Unit (offline)**: **985 lolos / 81 berkas** (11 Nov 2026). `npm run test`.
+- **Unit (offline)**: **1005 lolos / 81 berkas** (11 Nov 2026). `npm run test`.
 - **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. `npm run test:integration`.
 - **Probe regresi UI**: `audit-zoom` 11 lebar × 12 halaman dan `audit-mobile` 5 lebar ponsel +
   5 lebar tablet × 12 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
