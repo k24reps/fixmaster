@@ -22,10 +22,23 @@ const WIDTHS = (process.env.WIDTHS || '320,360,375,390,414').split(',').map(Numb
 // justru MENYUSUT saat viewport melebar. isMobile dimatikan di >=768px.
 const MOBILE = Number(process.env.MOBILE ?? 1) === 1;
 const PAGES = ['/', '/services', '/calculator', '/pos', '/customers', '/suppliers',
-  '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings'];
+  '/finance', '/tasks', '/attendance', '/reports', '/activity', '/settings',
+  // Tab Nota & Struk: dok pratinjau menempel dan panelnya melayang, hal yang tak
+  // terlihat dari /settings (tab pertama).
+  '/settings?tab=nota'];
 
 /** Navigasi in-app ke `path`, memilih klik yang benar untuk lebar saat ini. */
 async function gotoInApp(page, path, w) {
+  // Tab di dalam halaman (mis. /settings?tab=nota) bukan tautan menu: SPA
+  // membacanya dari URL, jadi cukup dorong riwayat. Reload akan mengunci ulang
+  // ke layar PIN.
+  if (path.includes('?')) {
+    await page.evaluate((p) => {
+      history.pushState({}, '', p);
+      dispatchEvent(new PopStateEvent('popstate'));
+    }, path);
+    return;
+  }
   if (w > 1024) {
     await page.locator(`aside nav[aria-label="Navigasi utama"] a[href="${path}"]`).first().click();
     return;

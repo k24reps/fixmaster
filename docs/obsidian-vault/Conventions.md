@@ -50,6 +50,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 - **Tombol utama nonaktif (7 Nov 2026)**: jangan pudarkan amber. `.primary:disabled:not([aria-busy])` di `Button.module.css` memakai permukaan netral, teks redup, dan garis putus, karena amber pudar tetap terbaca sebagai aksi utama. Saat `loading`, `Button` memberi `aria-busy` sehingga tombol yang sedang menyimpan tetap amber. Untuk simpan yang hanya berarti bila ada perubahan, nonaktifkan sampai form kotor (pola Profil Pengaturan). Bila ketukan pada tombol yang belum siap justru harus menjelaskan apa yang kurang, pakai `aria-disabled="true"`, bukan `disabled`. Tampilannya sama (garis putus, tanpa hover/active), tapi tombol tetap bisa difokus dan diketuk, dan handler-nya memfokus kolom yang kurang (bar Proses Kasir, 9 Nov 2026). Di Playwright tombol ini dianggap tidak aktif, jadi ketuk dengan `{ force: true }`. Status "selesai" juga jangan memakai `opacity` pada seluruh baris (kontras jatuh ke 3,3:1); pakai coretan, warna redup, dan spine.
 - **Ergonomi UI operasional**: teks informasi/aksi minimal 12 px; kontrol pada mobile/touch minimal 44×44 px. Deret KPI panjang memakai horizontal rail agar konten kerja utama tetap masuk viewport pertama. Uji minimal pada 390×844, 1024 px, dan 1440 px dalam dark/light; pastikan nol overflow horizontal.
 - **Aksesibilitas bersama (28 Sep 2026)**: judul halaman = satu `<h1>` di Topbar (judul di dalam halaman mulai `h2`; `CardHeader` bawaan `h2` sejak 6 Nov 2026, `as="h3"` hanya bila kartunya di bawah `h2` lain, heading lepas juga mulai `h2`); skip link "Lewati ke isi halaman" jadi elemen Tab pertama `AppLayout`, target `<main id="konten" tabIndex={-1}>`; `Modal` mengembalikan fokus ke pemicu, dan bila pemicunya hilang (baris dihapus, juga yang hilang SETELAH jendela tertutup) jatuh ke `#konten`. Laci sidebar (≤1024px) = `inert` saat tertutup + `useDrawerFocus` saat terbuka (fokus masuk, Tab berputar, Esc, fokus kembali ke tombol menu); `FOCUSABLE_SELECTOR` dan `trapTarget` di `lib/focusTrap.ts` dipakai bersama `Modal`. Daftar saran di bawah kolom ketik memakai `useListNav` (panah + Enter, `aria-activedescendant`).
+- **Kartu yang menata ulang kepalanya (11 Nov 2026)**: `CardHeader` menerima `className`, `titleClassName`, `actionClassName` dan `CardBody` menerima `id` (sasaran `aria-controls`), karena kelas modul `Card` tak terjangkau dari CSS modul lain. Dipakai dok pratinjau Nota di ponsel (kepala kartu jadi bar sticky); lihat [[Signature Pages]] dan [[Decisions & Bug Fixes]] tahap 7 Nota. Pola yang sama berlaku untuk dok berikutnya: `position: fixed` tak bisa di dalam `.stage` ber-`container-type`, pakai `sticky` dan jadikan induknya blok, bukan grid.
 - **i18n**: teks UI lewat `useT()` + key terjemahan, jangan string literal. Teks berisi nilai: `interpolate(t('ns.key'), { name })` dari `lib/business/notify` (placeholder `{name}`). **Yang disimpan sebagai data tetap literal** — catatan riwayat tiket, `description` baris keuangan, `entityLabel` log, kategori (`Lainnya`, `Sparepart`) — karena ia dibaca semua pengguna apa pun bahasanya dan dibandingkan kode. Label status lengkap: `statusLabel.*` (`status.*` = label pendek traveler). **`t` stabil per bahasa** (`useT` memakai `useCallback`, 29 Sep 2026) — aman dimasukkan ke dependency `useEffect`/`useMemo`; dulu fungsi baru tiap render sehingga pemuat yang men-toast error tak bisa mencantumkannya. Di luar komponen (helper modul): `translate(useSettingsStore.getState().language, key)`.
 - **Tanda baca teks UI (6 Nov 2026)**: em dash (U+2014) tidak dipakai di teks yang tampil: kunci i18n, string komponen, template WhatsApp, dokumen cetak, judul tab. Ganti dengan koma, titik dua, titik, atau kurung; judul modal memakai ` · `, judul dokumen ` | `. **Sel kosong**: `<EmptyValue />` (`components/ui/EmptyValue.tsx`: tanda pisah pendek `–` untuk mata + "kosong" untuk pembaca layar); di string atau placeholder angka yang masih dimuat pakai `EMPTY_VALUE` dari `lib/format.ts`. Pengecualian: string yang kembar dengan pesan server (lihat [[Decisions & Bug Fixes]], audit antislop 001), karena mengubahnya butuh migrasi.
 - **Rute khusus pengembangan**: halaman probe/prototipe didaftarkan lewat `devOnlyRoutes()` di `app/router.tsx` (`import.meta.env.DEV`), jadi tidak masuk bundle produksi dan tidak butuh rewrite di `vercel.json`. Contoh: `/prototype/ticket`.
@@ -74,10 +75,10 @@ Dua probe regresi wajib untuk perubahan UI (butuh dev server; keduanya menulis J
 `scripts/shots/`):
 
 ```bash
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 13 halaman
 BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs   # pembesaran (90/110/125/150)
 BASE_URL=http://localhost:5173 DENSITY=padat node scripts/audit-zoom.mjs  # kerapatan Padat
-BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 13 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs
 ```
 
@@ -85,9 +86,9 @@ BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scrip
 bila ada teks informasi di bawah 12px efektif (`TEXT<12` di laporan). Pembesaran dipasang
 lewat pintasan Ctrl+Alt+= setelah halaman demo terbuka, karena demo mem-pin 100% sementara.
 
-Saring tiga positif palsu sebelum membaca hasil: `caption._srOnly` dan `span.fm-visually-hidden`
-(teks khusus pembaca layar, memang di-clip) serta elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan
-terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
+Saring tiga positif palsu sebelum membaca hasil: `caption._srOnly` dan `*.fm-visually-hidden`
+(`span.` di mana-mana, `p.` di `/pos`; teks khusus pembaca layar, memang di-clip) serta elemen `text.` di
+dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
 margin), bukan lebar viewport — dua cacat tata letak PDF hanya muncul di sana.
 
 Untuk perubahan **warna/token**, dua gerbang tambahan:

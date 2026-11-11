@@ -5766,8 +5766,8 @@ temuan yang lebih ke tepi alur. Laporan: `.impeccable/critique/2026-11-11T04-41-
   karena bilah harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak.
 - **Sengaja belum: URL lacak pendek.** URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
   tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak.
-- **Sengaja belum: judul per tahap siklus hidup, tick-gauge, Pengaturan di ponsel (pratinjau di dasar
-  halaman, saklar terkubur), lebar kertas per cabang.** Tercatat sebagai tindak lanjut.
+- **Sengaja belum: judul per tahap siklus hidup, tick-gauge, lebar kertas per cabang.** Tercatat sebagai
+  tindak lanjut. (Pengaturan di ponsel, yang dulu ikut daftar ini, dikerjakan di tahap 7.)
 
 **Verifikasi tahap 6b:** 985 tes / 81 berkas (lima tes baru: BATAL di nota servis dan struk, tanpa ucapan
 kaki walau toko menulis sendiri, tiket berjalan tak berubah), build dan lint bersih. Simulasi 38 PDF
@@ -5964,3 +5964,81 @@ alamat butuh UUID organisasi agar lacak berfungsi, paling jauh membuang `https:/
 enumerasi, tidak menyelesaikannya.
 
 #decision #tracking #security #study
+
+### Tahap 7: Pengaturan Nota di ponsel, pratinjau jadi dok (adapt)
+
+Temuan P2 "Pengaturan di ponsel" dari kritik ulang 6b. Diukur di 390×844 sebelum diubah: dokumen 4061 px,
+pratinjau di dasar halaman, saklar pertama di y 2081 (di bawah lima kolom teks), "Cetak percobaan" di
+kepala kartu pratinjau jauh dari kolom yang sedang diketik, dan saklar berbunyi "CETAK" / "TIDAK" yang
+terbaca sebagai tombol aksi. Orang mengetik ucapan kaki tanpa pernah melihat kertasnya.
+
+**Keputusan: dok sticky di dasar, bukan tab dan bukan pratinjau di atas.** Pratinjau di atas mendorong
+formulir turun ±600 px. Tab Formulir/Pratinjau menyembunyikan salah satu dari dua hal yang harus terlihat
+bersama. Dok mengikuti preseden `.mobileCartDock` POS dan bar simpan Tarif: selalu terjangkau, memakan 61 px.
+Urutan kartu di ponsel diatur lewat `order` (saklar di atas kolom teks), bukan dengan menukar DOM.
+
+**Jebakan teknis yang menentukan bentuknya** (semua terukur, bukan tebakan):
+
+- `position: fixed` tak bisa dipakai: `.stage` ber-`container-type: inline-size` mengandung layout
+  containment, sehingga anak `fixed` menempel ke `.stage`, bukan ke layar. Dipilih `sticky`.
+- `sticky` pada item grid dibatasi sel gridnya sendiri (tinggi satu kartu, tak ada ruang menempel).
+  Di ponsel `.layout` jadi `display: block`, sehingga containing block-nya seluruh `.layout`.
+- Panel tinggi di dalam alur kotak sticky **mendorong bar**: sticky menjaga seluruh kotak tetap di
+  dalam containing block, jadi panel yang tertutup pun, bila ikut alur, menggeser bar 23 px ke bawah
+  dan menimpa menu bawah di 320px saat halaman di puncak. Panel dibuat `position: absolute;
+  bottom: 100%` (melayang di atas bar, tak ikut alur).
+- Panel tertutup memakai `visibility: hidden; max-height: 0`, bukan `display: none`: iframe pratinjau
+  mengukur tinggi kertasnya dan butuh tata letak nyata walau tak terlihat.
+- `global.css` (≤ 720px) memaksa `min-width` / `min-height` tombol dengan `!important`, jadi lebar
+  saklar status dikunci dengan `width`, bukan `min-width` (yang diabaikan diam-diam).
+- Bar 320px: "Pratinjau" terpotong jadi "PRAT…" dan menimpa tombol cetak. `.dockTitle` diberi basis
+  8,25rem dan tombol "Cetak percobaan" yang mengalah (label dua baris), bukan sebaliknya.
+
+**Regresi desktop yang ditangkap pengukuran, bukan tinjauan.** Baseline dibuat dari worktree HEAD di
+port lain, lalu DOM rect dibandingkan di 1112, 1280, 1366, 1440. (Tangkapan "sebelum" 1440 yang pertama
+ternyata halaman onboarding: tombol demo di skrip ukur balapan. Pixel-diff terhadapnya tak bermakna.)
+Saklar status 150px (dulu 82px) menyempitkan kolom teks di kolom kiri 340px menjadi ±126px: kartu
+"Yang dicetak" tumbuh **+126 px** dan "Alamat lacak (huruf)" pecah dua baris. Perbaikan: tata letak
+label+saklar sebaris dengan petunjuk selebar baris dipindah dari blok ponsel ke
+`@container (max-width: 919.98px)`. Ambang itu diturunkan dari ukuran: kolom kiri berlantai 340px sampai
+wadah 826px (340 + 16 + 470), lalu tumbuh 1:1; kolom teks ≥ 220px baru ada pada kolom kiri 434px =
+wadah 920px. Hasil: 1112 hanya **+19 px**; 1280 dan 1366 **identik**; 1440 **+35 px** (dua petunjuk
+kini dua baris karena saklar lebih lebar, bukan rusak). Kartu Kertas termal, Isi kertas, Pratinjau,
+tombol cetak, dan lembar kertas: DOM rect identik di 1112 sampai 1440.
+
+**Trade-off yang sengaja diterima dan perlu diketahui:**
+
+- **Urutan Tab mengikuti DOM**, bukan urutan visual di ponsel. Secara visual saklar naik di atas kolom
+  teks, tetapi Tab masih lewat Kertas, Isi, lalu Yang dicetak; bar dok (kepala kartu) berada sebelum
+  panelnya di DOM padahal di layar di bawahnya. Mengubah DOM berarti mengubah urutan baca di desktop.
+  Jarak aman fokus ditangani `scroll-margin-bottom` pada input/teks/tombol kolom formulir, supaya yang
+  difokus lewat Tab tak tersembunyi di balik dok (WCAG 2.4.11).
+- **Keyboard virtual** bisa menutupi dok saat mengetik. Tak dapat diverifikasi di Playwright; perlu uji
+  di ponsel sungguhan sebelum diklaim beres.
+- Satu `h2` memuat dua isi (`.dockStatic` dan `.peek`); pembaca layar hanya melihat satu karena yang
+  lain `display: none`.
+
+**Verifikasi tahap 7:** build dan lint bersih; tes **985 / 81 berkas** (tak ada tes baru: perubahannya
+tata letak dan label, dan tes paritas kunci i18n lulus). `audit-tokens` 0 pelanggaran; `audit-contrast`
+0 elemen di bawah ambang, tetapi ia tidak menyapu Pengaturan, jadi kontras tab Nota diukur terpisah di DOM
+(dok, saklar, petunjuk, dua tema): terendah **5,6:1**. `audit-mobile` ponsel 5 lebar × 13 halaman (65 baris)
+dan pita tablet 744/834/1025/1112/1152: `docOver` = 0 di semua, tab Nota nol offender, nol scroller, nol
+teks mungil. `audit-zoom` default, `ZOOM=1.25`, `DENSITY=padat` (143 baris × 3): tab Nota nol luberan,
+nol overlap, nol teks ter-clip, lantai 12px terjaga. Satu temuan tersisa: tabel `/pos` di lebar 1097
+meluap 16px (34px di 125%), **identik di HEAD** sebelum tahap ini, jadi bukan dari perubahan ini. Interaksi
+dok diuji di Playwright 390px: `aria-expanded`, `Esc` (fokus kembali ke tombol), fokus keluar menutup
+panel, Tab saat tertutup melompat ke "Cetak percobaan". Galat konsol nol.
+
+**Belum terverifikasi:** keyboard virtual ponsel sungguhan (dok bisa tertutup), `window.print()` dari
+tombol "Cetak percobaan" (handler tak diubah, tetapi tak dipanggil ulang di uji dok), dan baseline
+`SCROLL-X` di `/services` dan `/customers` (rail chip yang tercatat sengaja; tak disentuh).
+
+**Usulan tindak lanjut, belum dikerjakan (di luar lingkup): lebar kertas per cabang atau per printer.**
+Kini `org.settings.receipt.paperWidth` satu per organisasi, jadi toko berbaris 80 mm di kasir dan 58 mm
+di bengkel pasti salah di salah satunya. `Outlet` belum punya kolom pengaturan, jadi usulnya tanpa
+migrasi: peta opsional `paperWidthByOutlet` di dalam jsonb `OrgSettings.receipt` yang menimpa
+`paperWidth` lewat satu pembaca (`getReceiptConfig(org, outletId)`), dan pilihan "Ikuti toko / 58 / 80"
+di kartu Kertas termal untuk outlet aktif. Browser tak mengenal nama printer, jadi "per printer"
+sebenarnya berarti **per perangkat** (localStorage), bukan per cabang; itu keputusan produk tersendiri.
+
+#decision #print #receipt #mobile #layout

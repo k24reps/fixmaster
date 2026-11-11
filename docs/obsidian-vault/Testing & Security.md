@@ -72,12 +72,16 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 - **Unit (offline)**: **1013 lolos / 81 berkas** (11 Nov 2026). `npm run test`.
 - **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. `npm run test:integration`.
-- **Probe regresi UI**: `audit-zoom` 11 lebar × 12 halaman dan `audit-mobile` 5 lebar ponsel +
-  5 lebar tablet × 12 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
+- **Probe regresi UI**: `audit-zoom` 11 lebar × 13 halaman dan `audit-mobile` 5 lebar ponsel +
+  5 lebar tablet × 13 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik
   regresi yang sebenarnya. Temuan tersisa semuanya disengaja: teks ter-ellipsis di `/services`,
   carousel scroll-snap di landing, dan rail chip horizontal (`overflow-x:auto`) di
-  `/services`, `/customers`, `/pos`. (12 halaman: Kalkulator masuk 10 Nov 2026, Inventori
-  dilebur ke Kasir & Stok di hari yang sama; `/inventory` kini hanya pengalihan.)
+  `/services`, `/customers`, `/pos`. (13 halaman: Kalkulator masuk 10 Nov 2026, Inventori
+  dilebur ke Kasir & Stok di hari yang sama; `/inventory` kini hanya pengalihan. Tab
+  `/settings?tab=nota` masuk 11 Nov 2026; `gotoInApp` menangani path ber-`?` lewat
+  `pushState` + `popstate`, karena muat ulang mengunci kembali ke layar PIN.)
+  **Sisa lama yang tercatat:** tabel `/pos` di lebar 1097 (1920 @ 175%) meluap 16px, identik di
+  HEAD sebelum tahap 7 Nota.
 - **Build + Lint**: bersih.
 
 > [!note] Positif palsu yang berulang di laporan probe

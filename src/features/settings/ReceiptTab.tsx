@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { Button, Card, CardBody, CardHeader, Icon } from '@/components/ui';
 import { PUBLIC_NOTE_MAX, setPublicNote, setReceiptSettings } from '@/config/orgConfig';
 import { useCollection } from '@/hooks/useCollection';
@@ -111,6 +119,10 @@ function PaperCard() {
   const org = useSessionStore((s) => s.org);
   const current = normalizePaperWidth(org?.settings?.receipt?.paperWidth);
   const cells = useRef<(HTMLButtonElement | null)[]>([]);
+  // Di ponsel empat langkah dialog cetak tertutup supaya "Yang dicetak" tak
+  // terdorong satu layar ke bawah; di lebar lapang CSS selalu menampilkannya.
+  const [setupOpen, setSetupOpen] = useState(false);
+  const setupId = useId();
 
   const choose = async (width: PaperWidth) => {
     if (width === current) return;
@@ -174,9 +186,21 @@ function PaperCard() {
           })}
         </div>
 
-        <div className={styles.setup}>
-          <h3 className={styles.setupTitle}>{t('receipt.setup.title')}</h3>
-          <ul className={styles.setupList}>
+        <div className={styles.setup} data-open={setupOpen ? 'true' : undefined}>
+          <div className={styles.setupHead}>
+            <h3 className={styles.setupTitle}>{t('receipt.setup.title')}</h3>
+            <button
+              type="button"
+              className={styles.setupToggle}
+              aria-expanded={setupOpen}
+              aria-controls={setupId}
+              onClick={() => setSetupOpen((v) => !v)}
+            >
+              {setupOpen ? t('receipt.setup.close') : t('receipt.setup.open')}
+              <Icon name="chevron-down" className={styles.caret} aria-hidden />
+            </button>
+          </div>
+          <ul id={setupId} className={styles.setupList}>
             <li>{t('receipt.setup.margin')}</li>
             <li>{t('receipt.setup.headers')}</li>
             <li>{t('receipt.setup.scale')}</li>
@@ -264,7 +288,7 @@ function ContentCard({ draft, onChange }: { draft: TextDraft; onChange: (d: Text
   };
 
   return (
-    <Card>
+    <Card className={styles.cardContent}>
       <CardHeader icon={<Icon name="note" aria-hidden />} title={t('receipt.content.title')} />
       <CardBody>
         <p className={styles.hint}>{t('receipt.content.hint')}</p>
@@ -366,7 +390,7 @@ function ShowCard() {
   };
 
   return (
-    <Card>
+    <Card className={styles.cardShow}>
       <CardHeader icon={<Icon name="receipt" aria-hidden />} title={t('receipt.show.title')} />
       <CardBody>
         <p className={styles.hint}>{t('receipt.show.hint')}</p>
@@ -427,8 +451,26 @@ function PreviewCard({ draft }: { draft: TextDraft }) {
   const [oneBit, setOneBit] = useState(false);
   const [height, setHeight] = useState(0);
   const [avail, setAvail] = useState(0);
+  // Hanya bermakna di bawah ambang dua kolom: kartu jadi dok yang menempel di
+  // dasar layar dan panelnya terbuka ke atas. Di lebar lapang CSS mengabaikannya.
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const peek = useRef<HTMLButtonElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const watcher = useRef<ResizeObserver | null>(null);
+
+  // Panel yang terbuka menutupi bagian bawah layar: begitu pemilik toko
+  // menyentuh kolom atau saklar lain, panel menyingkir supaya yang diketik
+  // tak tertutup.
+  useEffect(() => {
+    if (!open) return;
+    const dock = peek.current?.closest('[data-dock]');
+    const away = (e: FocusEvent) => {
+      if (dock && e.target instanceof Node && !dock.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('focusin', away);
+    return () => document.removeEventListener('focusin', away);
+  }, [open]);
 
   // Lebar bersih meja kerja (tanpa padding) diukur dari DOM-nya, bukan ditebak
   // dari breakpoint: ia menyusut oleh sidebar, kolom, dan zoom aplikasi sekaligus.
@@ -506,11 +548,47 @@ function PreviewCard({ draft }: { draft: TextDraft }) {
   const zoom =
     avail > 0 ? Math.min(PREVIEW_ZOOM, Math.floor((avail / paperPx) * 100) / 100) : PREVIEW_ZOOM;
 
+  const closeOnEscape = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Escape' || !open) return;
+    setOpen(false);
+    peek.current?.focus();
+  };
+
   return (
-    <Card>
+    // Escape ditangkap di kartunya: fokus bisa sedang di tombol pilih atau saklar
+    // di dalam panel, bukan di tombol dok.
+    <Card
+      className={styles.monitorCard}
+      data-dock=""
+      data-open={open ? 'true' : undefined}
+      onKeyDown={closeOnEscape}
+    >
       <CardHeader
         icon={<Icon name="receipt" aria-hidden />}
-        title={t('receipt.preview.title')}
+        className={styles.dockHead}
+        titleClassName={styles.dockTitle}
+        actionClassName={styles.dockAction}
+        // Satu h2, dua isi: label biasa di lebar lapang, tombol buka-tutup di
+        // lebar sempit. CSS menyembunyikan yang tak dipakai (display:none, jadi
+        // hilang juga dari pohon aksesibilitas), sehingga di lebar lapang tak
+        // ada tombol mati yang bisa difokus.
+        title={
+          <>
+            <span className={styles.dockStatic}>{t('receipt.preview.title')}</span>
+            <button
+              ref={peek}
+              type="button"
+              className={styles.peek}
+              aria-expanded={open}
+              aria-controls={panelId}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <span className={styles.peekLed} aria-hidden />
+              <span className={styles.peekText}>{t('receipt.preview.title')}</span>
+              <Icon name="chevron-down" className={styles.caret} aria-hidden />
+            </button>
+          </>
+        }
         action={
           <Button
             variant="secondary"
@@ -522,7 +600,7 @@ function PreviewCard({ draft }: { draft: TextDraft }) {
           </Button>
         }
       />
-      <CardBody>
+      <CardBody id={panelId} className={styles.panel}>
         <div role="group" aria-label={t('receipt.preview.title')} className={styles.pick}>
           {(['service', 'sale'] as const).map((k) => (
             <button

@@ -48,20 +48,51 @@ interface CardHeaderProps {
    * hanya bila kartunya berada di bawah h2 lain.
    */
   as?: 'h2' | 'h3';
+  /**
+   * Kait gaya untuk kartu yang menata ulang kepalanya di lebar tertentu
+   * (pratinjau Nota di ponsel: kepala jadi dok). Kelas modul Card tak bisa
+   * dijangkau dari CSS modul lain, jadi tiap bagian diberi kelas tambahan.
+   */
+  className?: string;
+  titleClassName?: string;
+  actionClassName?: string;
 }
 
-export function CardHeader({ icon, title, action, as: Heading = 'h2' }: CardHeaderProps) {
+const join = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(' ');
+
+export function CardHeader({
+  icon,
+  title,
+  action,
+  as: Heading = 'h2',
+  className,
+  titleClassName,
+  actionClassName,
+}: CardHeaderProps) {
   return (
-    <div className={styles.header}>
-      <Heading className={styles.title}>
+    <div className={join(styles.header, className)}>
+      <Heading className={join(styles.title, titleClassName)}>
         {icon && <span className={styles.headerIcon}>{icon}</span>}
         {title}
       </Heading>
-      {action && <div className={styles.action}>{action}</div>}
+      {action && <div className={join(styles.action, actionClassName)}>{action}</div>}
     </div>
   );
 }
 
-export function CardBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={[styles.body, className ?? ''].join(' ')}>{children}</div>;
+export function CardBody({
+  children,
+  className,
+  id,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Sasaran `aria-controls` bagi kartu yang bagian badannya bisa dilipat. */
+  id?: string;
+}) {
+  return (
+    <div id={id} className={[styles.body, className ?? ''].join(' ')}>
+      {children}
+    </div>
+  );
 }

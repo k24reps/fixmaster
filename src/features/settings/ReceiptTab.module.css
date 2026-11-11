@@ -105,11 +105,22 @@
   padding-top: var(--space-4);
   border-top: 1px dotted var(--border);
 }
+.setupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
 .setupTitle {
   margin-bottom: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
+}
+/* Tombol lipat hanya hidup di lebar sempit (blok @container di bawah); di
+   lebar lapang daftar selalu terbuka dan tombolnya tak ada. */
+.setupToggle {
+  display: none;
 }
 .setupList {
   display: grid;
@@ -131,6 +142,16 @@
    80mm menyusut zoom-nya sendiri, tak menggeser); 340 + 16 jarak + 360 = 716. */
 .stage {
   container-type: inline-size;
+  /* Jarak dok pratinjau dari dasar layar. Di bawah 720px viewport menu bawah
+     ada dan menempel di dasar, jadi dok duduk di atasnya (angka yang sama
+     dengan bar simpan Tarif Estimasi). Terikat kehadiran menu, bukan lebar
+     wadah: media query yang sah (AGENTS.md §3). */
+  --dock-bottom: var(--space-3);
+}
+@media (max-width: 720px) {
+  .stage {
+    --dock-bottom: calc(var(--mobile-nav-height) + var(--space-2) + env(safe-area-inset-bottom));
+  }
 }
 .layout {
   display: grid;
@@ -322,6 +343,47 @@
     min-height: var(--control-h);
   }
 }
+/* Teks saklar kini status ("Dicetak" / "Tidak dicetak"), bukan aksi, dan
+   panjangnya beda: lebar dikunci ke yang terpanjang supaya tombol tak melompat
+   dan label di sebelahnya tak ikut bergeser tiap kali diketuk. `width`, bukan
+   `min-width`: global.css (≤720px) memaksa min-width tombol dengan !important. */
+.switchRow .switch {
+  justify-content: flex-start;
+  width: calc(10.5em + 2 * var(--space-3));
+}
+
+/* Label dan saklar sebaris, petunjuk selebar baris di bawahnya. Dulu petunjuk
+   terjepit di kolom sempit di samping saklar, tiga empat baris per saklar.
+   Ambang 920px diturunkan dari ukuran, bukan angka bulat: kolom kiri berlantai
+   340px sampai wadah 826px (340 + 16 jarak + 470 pratinjau), lalu tumbuh 1:1.
+   Saklar 150px + padding kartu 48 + jarak 16 hanya menyisakan ±126px untuk teks
+   pada 340px (terukur: "Alamat lacak (huruf)" pecah dua baris, petunjuk empat).
+   Kolom teks ≥220px baru ada pada kolom kiri 434px = wadah 920px. Sebelum saklar
+   dilebarkan untuk label status, ambangnya tak diperlukan. */
+@container (max-width: 919.98px) {
+  .switchRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label sw'
+      'hint hint';
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: 2px;
+  }
+  .switchText {
+    display: contents;
+  }
+  .switchLabel {
+    grid-area: label;
+  }
+  .switchHint {
+    grid-area: hint;
+  }
+  .switchRow .switch {
+    grid-area: sw;
+  }
+}
 
 /* ---------- Pratinjau ---------- */
 .pick {
@@ -402,4 +464,229 @@
 /* Simulasi head termal: ambang 50% (abu-abu di bawahnya hilang). */
 .frame[data-onebit='true'] {
   filter: grayscale(1) contrast(1000);
+}
+
+/* ---------- Dok pratinjau (hanya di bawah ambang dua kolom) ----------
+   Masalah yang diperbaiki: di satu kolom pratinjau jatuh ke dasar halaman
+   (≈4000px dari atas), jadi kolom teks diketik tanpa melihat hasilnya dan
+   "Cetak percobaan" jauh dari kolom yang baru diubah. Jawabannya meja kerja
+   yang menempel di dasar layar: bar tipis selalu terlihat (buka-tutup di kiri,
+   Cetak percobaan di kanan), panelnya terbuka ke atas.
+
+   Ambangnya SAMA dengan blok dua kolom di atas (720px): satu garis, dua sisi.
+   `.layout` jadi blok, bukan grid: sticky dibatasi containing block-nya, dan
+   untuk item grid itu sel gridnya sendiri (tinggi satu kartu, tak ada ruang
+   untuk menempel), sedangkan untuk anak blok ia seluruh `.layout`. */
+.dockStatic {
+  min-width: 0;
+}
+.peek {
+  display: none;
+}
+.caret {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+@container (max-width: 719.98px) {
+  .layout {
+    display: block;
+  }
+  .previewCol {
+    position: sticky;
+    bottom: var(--dock-bottom);
+    /* Di bawah topbar (--z-sticky) saat tergulir ke atas, bukan menimpanya. */
+    z-index: calc(var(--z-sticky) - 1);
+    margin-top: var(--space-4);
+  }
+
+  /* Urutan di ponsel: kertas, lalu apa yang dicetak, baru isi teks. Saklar
+     dulu karena ia murah (sekali ketuk) dan menentukan teks mana yang masih
+     perlu diisi. Urutan Tab mengikuti DOM (desktop), bukan urutan visual ini. */
+  .cardShow {
+    order: 1;
+  }
+  .cardContent {
+    order: 2;
+  }
+
+  /* Kolom yang difokus lewat Tab tak boleh mendarat di balik bar dok (WCAG
+     2.4.11). 5.5rem ≈ tinggi bar tertutup + celah. */
+  .forms :is(input, textarea, button) {
+    scroll-margin-bottom: calc(var(--dock-bottom) + 5.5rem);
+  }
+
+  /* Kartu pratinjau menjadi dok. Yang menempel hanya BAR-nya (tinggi tetap);
+     panel melayang di atasnya (absolute), bukan ikut menambah tinggi kotak
+     sticky. Dulu panel ikut di dalam alur: kotak sticky setinggi 485px tak
+     muat di antara puncak `.layout` dan dasar layar di 320px, lalu didorong
+     ke bawah sehingga bar Cetak percobaan tertutup menu bawah (terukur 23px). */
+  .monitorCard {
+    overflow: visible;
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-lg);
+  }
+  .monitorCard[data-open='true'] {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  /* Spine tepi: tanda bahwa ini kartu yang sama, hanya dilepas dari alurnya. */
+  .monitorCard::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
+    background: var(--gradient-brand);
+  }
+  .monitorCard .dockHead {
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+    border-bottom: 0;
+  }
+  .monitorCard[data-open='true'] .dockHead {
+    border-top: 1px dotted var(--border-strong);
+  }
+  /* Basis 8.25rem = lebar terkecil yang masih memuat "PRATINJAU" utuh. Yang
+     mengalah saat sempit adalah tombol cetak di sebelahnya, bukan judul. */
+  .dockTitle {
+    flex: 1 0 8.25rem;
+    min-width: 0;
+    font-size: var(--text-sm);
+  }
+  /* Ikon kartu dan label biasa mundur; yang hidup di bar hanya tombolnya. */
+  .dockTitle > :not(.peek) {
+    display: none;
+  }
+  /* Di 320px bar tak muat dua tombol selebar isinya: tombol cetak yang
+     mengalah (labelnya turun ke dua baris). */
+  .dockAction {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .dockAction button {
+    white-space: normal;
+    line-height: 1.2;
+    text-align: left;
+  }
+
+  .peek {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: var(--control-h);
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+  .peek:hover {
+    background: var(--brand-soft);
+  }
+  .peek:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+  .peekLed {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-full);
+    background: var(--brand);
+    opacity: 0.35;
+  }
+  .monitorCard[data-open='true'] .peekLed {
+    opacity: 1;
+    box-shadow: 0 0 7px var(--brand);
+  }
+  .peekText {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Panel terbuka ke ATAS: panah naik saat tertutup, turun saat terbuka. */
+  .monitorCard .caret {
+    transform: rotate(180deg);
+  }
+  .monitorCard[data-open='true'] .caret {
+    transform: none;
+  }
+
+  /* Tertutup: tak terlihat dan tak bisa difokus, tapi TETAP ter-layout. iframe
+     pratinjau mengukur tinggi isinya dan meja kerjanya mengukur lebar untuk
+     zoom; display:none akan membuat keduanya terbaca 0. */
+  .panel {
+    position: absolute;
+    right: -1px;
+    bottom: 100%;
+    left: -1px;
+    border: 1px solid var(--border-strong);
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-lg);
+  }
+  .monitorCard:not([data-open='true']) .panel {
+    visibility: hidden;
+    max-height: 0;
+    padding-block: 0;
+    overflow: hidden;
+  }
+  .monitorCard[data-open='true'] .panel {
+    max-height: calc(var(--app-vh) * 0.6);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Petunjuk memasang kertas: dilipat, baru dibuka bila perlu. Judul tetap
+     terlihat sebagai penanda isinya ada. */
+  .setupHead {
+    min-height: var(--control-h);
+  }
+  .setupTitle {
+    margin: 0;
+  }
+  .setupToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-h);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .setupToggle:hover {
+    border-color: var(--border-brand);
+    color: var(--text-primary);
+  }
+  .setupToggle:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+  .setup[data-open='true'] .caret {
+    transform: rotate(180deg);
+  }
+  .setup[data-open='true'] .setupHead {
+    margin-bottom: var(--space-2);
+  }
+  .setup:not([data-open='true']) .setupList {
+    display: none;
+  }
 }
