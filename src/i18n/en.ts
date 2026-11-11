@@ -1750,6 +1750,8 @@ export const en: Dictionary = {
   'receipt.doc.sale': 'SALES RECEIPT',
   'receipt.title.service': 'Receipt',
   'receipt.title.sale': 'Receipt',
+  'print.popupBlocked':
+    'The browser blocked the print window. Allow pop-ups for this site, then print again.',
   'receipt.demo.service': 'Receipt printing is available in the full version of FixMaster. Sign up for free.',
   'receipt.demo.sale': 'Receipt printing is available in the full version of FixMaster. Sign up for free.',
   'receipt.foot.thanks': 'Thank you for your trust.',

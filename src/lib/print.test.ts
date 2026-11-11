@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildPrintDocument, printScript } from './print';
+import { buildPrintDocument, openPrintWindow, printScript } from './print';
 import { pageHeightMm } from './business/receiptPaper';
+import { translate } from '@/i18n';
+import { useSettingsStore } from '@/stores/settings';
+import { useToastStore } from '@/stores/toast';
 
 describe('buildPrintDocument', () => {
   it('menyisipkan judul yang di-escape, gaya, dan isi', () => {
@@ -68,5 +71,29 @@ describe('printScript (gulungan)', () => {
     document.body.appendChild(img);
     run(500);
     expect(document.head.innerHTML).toContain(`size:58mm ${pageHeightMm(500, 16)}mm`);
+  });
+});
+
+describe('openPrintWindow: popup diblokir', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useToastStore.setState({ toasts: [] });
+    useSettingsStore.setState({ language: 'id' });
+  });
+
+  it('mengembalikan false dan memberi petunjuk yang bisa ditindaklanjuti, bukan sekadar "diblokir"', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(openPrintWindow({ title: 't', style: '', body: '', demoMessage: 'demo' })).toBe(false);
+    const [t] = useToastStore.getState().toasts;
+    expect(t.tone).toBe('error');
+    expect(t.message).toBe(translate('id', 'print.popupBlocked'));
+    expect(t.message).toMatch(/izinkan popup/i);
+  });
+
+  it('pesannya mengikuti bahasa aplikasi', () => {
+    useSettingsStore.setState({ language: 'en' });
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    openPrintWindow({ title: 't', style: '', body: '', demoMessage: 'demo' });
+    expect(useToastStore.getState().toasts[0].message).toBe(translate('en', 'print.popupBlocked'));
   });
 });

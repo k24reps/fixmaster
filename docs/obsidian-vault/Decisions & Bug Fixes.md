@@ -5718,3 +5718,30 @@ nol elemen melewati badan, tinta seluruhnya di dalam jendela head, tinta separat
 tetap selamat di ambang 50%.
 
 #decision #print #receipt #pos #services
+
+### Tahap 6: polish (popup diblokir yang bisa ditindaklanjuti)
+
+Sisa temuan kecil dari kritik nota termal, ditimbang satu per satu:
+
+- **Dikerjakan.** "Popup diblokir browser" adalah string literal di luar i18n DAN tidak memberi langkah
+  perbaikan, padahal jalur cetak nota bergantung pada `window.open`. Kini kunci `print.popupBlocked`
+  (id dan en, paritas dijaga tes) berbunyi "Browser memblokir jendela cetak. Izinkan popup untuk situs
+  ini, lalu cetak lagi." `openPrintWindow` (`lib/print.ts`) memakai `translate(useSettingsStore.getState().language, …)`,
+  pola yang sama dengan `features/services/receiptText.ts`. Dua tes di `print.test.ts`: jatuh ke `false`
+  dengan toast bernada error, dan pesan mengikuti bahasa aplikasi.
+- **Sudah beres di tahap sebelumnya.** Modul QR sudah 4 titik (`QR_MODULE_DOTS`, tahap 1), tak lagi 3,82.
+- **Sengaja dibiarkan: zona sunyi QR `margin: 2`.** `qr.ts` menyarankan 4 modul. Di kertas, ruang putih
+  di sekeliling kode: sisi kiri inset 4 titik + 2 modul + tepi kertas di luar jendela head, sisi kanan
+  sela 20 titik + 2 modul. Itu perkiraan dari geometri, BUKAN hasil uji pemindai sungguhan. Menaikkan
+  margin ke 4 menambah 16 titik lebar dan mempersempit teks di sebelahnya; belum sepadan tanpa bukti
+  bahwa pemindai gagal membaca.
+- **Sengaja dibiarkan: URL lacak penuh.** Memindahkannya ke baris selebar kertas hanya menghemat satu
+  baris di 58 mm; tidak sebanding dengan perubahan susunan blok QR.
+- **Sengaja dibiarkan: logo rusak dihapus diam-diam** (`onerror="this.remove()"`). Jendela cetak tak
+  punya jalur untuk menampilkan pesan, dan pratinjau di Pengaturan memakai dokumen yang sama sehingga
+  logo yang rusak juga langsung tampak hilang di sana.
+
+**Verifikasi tahap 6:** 980 tes / 81 berkas, build dan lint bersih. HTML cetak tidak berubah, jadi
+simulasi PDF dan 1-bit tidak diulang.
+
+#decision #print #i18n

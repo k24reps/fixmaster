@@ -1,5 +1,7 @@
+import { translate } from '@/i18n';
 import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
+import { useSettingsStore } from '@/stores/settings';
 
 /**
  * Jendela cetak di browser — SATU-SATUNYA bagian pencetakan yang menyentuh DOM,
@@ -116,7 +118,7 @@ export function openPrintWindow(o: PrintWindowOptions): boolean {
   if (demoGuard(o.demoMessage)) return false;
   const win = window.open('', '_blank', `width=${o.width ?? 380},height=${o.height ?? 640}`);
   if (!win) {
-    toast.error('Popup diblokir browser');
+    toast.error(translate(useSettingsStore.getState().language, 'print.popupBlocked'));
     return false;
   }
 
