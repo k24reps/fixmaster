@@ -105,7 +105,32 @@ describe('serviceReceiptLines', () => {
     expect(lines.every((l) => typeof l.key === 'string' && l.key.length > 0)).toBe(true);
     const keys = lines.map((l) => l.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toEqual(expect.arrayContaining(['date', 'serviceNo', 'imei', 'status', 'cost', 'dp', 'remaining']));
+    expect(keys).toEqual(expect.arrayContaining(['date', 'serviceNo', 'imei', 'cost', 'dp', 'remaining']));
+  });
+
+  // "Status: Diterima" di kertas yang dibawa pulang basi begitu tiketnya maju.
+  // Tahapnya dicetak lewat judul + pita (serviceDocPlan), bukan baris yang bohong.
+  it('tidak mencetak baris Status pada tahap mana pun', () => {
+    for (const status of ['diterima', 'diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan', 'selesai', 'lunas', 'batal'] as const) {
+      const lines = serviceReceiptLines(svc({ status }));
+      expect(lines.some((l) => (l.key as string) === 'status' || l.label === 'Status'), status).toBe(false);
+    }
+  });
+
+  it('unit sudah diambil: baris "Diambil" membawa tanggal ambil, bukan timestamp mentah', () => {
+    const lines = serviceReceiptLines(svc({ pickedUp: true, pickedUpAt: '2026-09-09T10:30:00.000Z' }));
+    const taken = lines.find((l) => l.key === 'pickedUp');
+    expect(taken?.label).toBe('Diambil');
+    expect(taken?.group).toBe('unit');
+    expect(taken?.value).toMatch(/Sep 2026$/);
+    expect(taken?.value).not.toMatch(/T\d\d:/);
+  });
+
+  it('belum diambil, atau diambil tanpa tanggal, atau batal: tak ada baris "Diambil"', () => {
+    const has = (s: Service) => serviceReceiptLines(s).some((l) => l.key === 'pickedUp');
+    expect(has(svc({ pickedUp: false, pickedUpAt: '2026-09-09T10:30:00.000Z' }))).toBe(false);
+    expect(has(svc({ pickedUp: true, pickedUpAt: null }))).toBe(false);
+    expect(has(svc({ status: 'batal', pickedUp: true, pickedUpAt: '2026-09-09T10:30:00.000Z' }))).toBe(false);
   });
 
   it('biaya akhir 0 + DP: baris "Sudah dibayar (DP)", tanpa baris Sisa', () => {

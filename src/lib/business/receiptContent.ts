@@ -1,6 +1,6 @@
 import { retainedDownPayment } from '@/lib/business/services';
 import { fmtDate, localDateStr, localTimeStr } from '@/lib/time';
-import type { Sale, Service } from '@/data/types';
+import type { Sale, Service, ServiceStatus } from '@/data/types';
 
 /**
  * Isi nota & struk sebagai DATA, bukan teks: kunci + angka. Label dan format
@@ -43,7 +43,7 @@ type MoneySource = Pick<Service, 'status' | 'estimateCost' | 'finalCost' | 'down
  *   hanya "DP diterima", tanpa klaim dikembalikan atau ditahan.
  * - Biaya akhir belum ada tetapi DP sudah masuk: cukup "Sudah dibayar (DP)".
  *   Menghitung sisa dari biaya 0 menghasilkan "Sisa Rp 0", yang terbaca lunas.
- * - Biaya akhir ada: Biaya, lalu DP dan Sisa bila ada DP.
+ * - Biaya akhir ada: Biaya, lalu DP dan Sisa bila ada DP. Estimasi tak ikut.
  */
 export function serviceMoney(service: MoneySource): ServiceMoneyLine[] {
   const dp = service.downPayment;
@@ -63,9 +63,12 @@ export function serviceMoney(service: MoneySource): ServiceMoneyLine[] {
   }
 
   const lines: ServiceMoneyLine[] = [];
-  if (service.estimateCost > 0) lines.push({ key: 'estimate', amount: service.estimateCost });
 
+  // Estimasi hanya informasi selama biaya akhir belum ada. Begitu Biaya tercetak,
+  // estimasi di sampingnya cuma angka kedua yang harus dibedakan pelanggan dari
+  // yang benar-benar ditagih.
   if (!(service.finalCost > 0)) {
+    if (service.estimateCost > 0) lines.push({ key: 'estimate', amount: service.estimateCost });
     if (dp > 0) lines.push({ key: 'paidDp', amount: dp, emphasis: true });
     return lines;
   }
@@ -79,6 +82,91 @@ export function serviceMoney(service: MoneySource): ServiceMoneyLine[] {
     lines[lines.length - 1].emphasis = true;
   }
   return lines;
+}
+
+// ---------------------------------------------------------------------------
+// Nota servis: tahap siklus hidup
+//
+// Kertas yang sama dicetak saat unit diterima, selesai, dan diserahkan, lalu
+// dibawa pulang. Yang berubah-ubah (status) tak boleh dicetak sebagai fakta
+// tetap: "Status: Diterima" di tangan pelanggan dua minggu kemudian adalah
+// kebohongan kecil. Jadi kertas mencatat TAHAP SAAT DICETAK lewat judul dan
+// pita tahap, dan kebenaran yang berjalan diserahkan ke QR lacak.
+
+/**
+ * Tahap yang dilihat pelanggan, lebih kasar daripada `ServiceStatus`:
+ * diagnosa, konfirmasi biaya, dan tunggu sparepart semuanya "masih diproses"
+ * baginya. `pickedUp` bendera sendiri di tiket (bukan status), dan menang atas
+ * status mana pun kecuali batal.
+ */
+export type ServiceStage = 'received' | 'working' | 'ready' | 'pickedUp' | 'cancelled';
+
+/** Urutan pita tahap di kertas, dari kiri ke kanan. Batal tak punya pita. */
+export const GAUGE_STAGES = ['received', 'working', 'ready', 'pickedUp'] as const;
+export type GaugeStage = (typeof GAUGE_STAGES)[number];
+
+/**
+ * Peta lengkap `Record<ServiceStatus, …>`: menambah status baru tanpa
+ * memutuskan tahapnya adalah galat tipe, bukan nota yang diam-diam salah judul.
+ * Lunas yang belum diambil tetap "siap diambil", sama dengan halaman lacak.
+ */
+const STAGE_OF_STATUS: Record<ServiceStatus, ServiceStage> = {
+  diterima: 'received',
+  diagnosa: 'working',
+  konfirmasi: 'working',
+  tunggu: 'working',
+  pengerjaan: 'working',
+  selesai: 'ready',
+  lunas: 'ready',
+  batal: 'cancelled',
+};
+
+type StageSource = Pick<Service, 'status' | 'pickedUp'>;
+
+export function serviceStage(service: StageSource): ServiceStage {
+  const byStatus = STAGE_OF_STATUS[service.status];
+  if (byStatus === 'cancelled') return byStatus;
+  return service.pickedUp ? 'pickedUp' : byStatus;
+}
+
+/** Satu titik pada pita tahap. `current` = tahap saat dicetak, `reached` = sudah dilewati atau sedang. */
+export interface GaugeTick {
+  stage: GaugeStage;
+  reached: boolean;
+  current: boolean;
+}
+
+/** Pita tahap untuk `stage`; kosong untuk tiket batal, yang ditandai kotak BATAL. */
+export function stageGauge(stage: ServiceStage): GaugeTick[] {
+  const at = GAUGE_STAGES.findIndex((g) => g === stage);
+  if (at < 0) return [];
+  return GAUGE_STAGES.map((g, i) => ({ stage: g, reached: i <= at, current: i === at }));
+}
+
+/**
+ * Jenis dokumen di kepala kertas. Tanda terima = unit masih di toko; nota serah
+ * = unit sudah di tangan pelanggan; `service` = nota biasa (siap diambil, dan
+ * tiket batal, yang judulnya dibiarkan netral karena kotak BATAL yang bicara).
+ */
+export type ServiceDocKind = 'intake' | 'service' | 'handover';
+
+export interface ServiceDocPlan {
+  stage: ServiceStage;
+  kind: ServiceDocKind;
+  gauge: GaugeTick[];
+  /** Kotak tanda tangan hanya di nota serah: yang ditandatangani adalah penerimaan unit. */
+  signature: boolean;
+}
+
+export function serviceDocPlan(service: StageSource): ServiceDocPlan {
+  const stage = serviceStage(service);
+  const kind: ServiceDocKind =
+    stage === 'received' || stage === 'working'
+      ? 'intake'
+      : stage === 'pickedUp'
+        ? 'handover'
+        : 'service';
+  return { stage, kind, gauge: stageGauge(stage), signature: stage === 'pickedUp' };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { receiptAddress, saleReceiptModel, serviceMoney, stampWithTime } from './receiptContent';
-import type { Sale, Service } from '@/data/types';
+import {
+  GAUGE_STAGES,
+  receiptAddress,
+  saleReceiptModel,
+  serviceDocPlan,
+  serviceMoney,
+  serviceStage,
+  stageGauge,
+  stampWithTime,
+} from './receiptContent';
+import type { Sale, Service, ServiceStatus } from '@/data/types';
 
 type MoneySrc = Pick<Service, 'status' | 'estimateCost' | 'finalCost' | 'downPayment' | 'history'>;
 
@@ -21,8 +30,20 @@ describe('serviceMoney: tiket berjalan', () => {
     expect(lines).toEqual([{ key: 'paidDp', amount: 200000, emphasis: true }]);
   });
 
-  it('estimasi tetap tampil sebagai informasi, DP-nya di bawah', () => {
+  it('biaya akhir belum ada: estimasi tetap tampil sebagai informasi, DP-nya di bawah', () => {
     expect(keys(money({ estimateCost: 500000, downPayment: 100000 }))).toEqual(['estimate', 'paidDp']);
+  });
+
+  // Dua angka (Estimasi dan Biaya) berdampingan memaksa pelanggan menebak mana
+  // yang ditagih. Begitu Biaya ada, hanya Biaya yang tercetak.
+  it('biaya akhir ada: estimasi tak ikut tercetak, dengan atau tanpa DP', () => {
+    expect(keys(money({ estimateCost: 450000, finalCost: 500000 }))).toEqual(['cost']);
+    expect(keys(money({ estimateCost: 450000, finalCost: 500000, downPayment: 100000 }))).toEqual([
+      'cost',
+      'dp',
+      'remaining',
+    ]);
+    expect(serviceMoney(money({ estimateCost: 450000, finalCost: 500000, downPayment: 100000 })).find((l) => l.emphasis)?.amount).toBe(400000);
   });
 
   it('biaya akhir tanpa DP: total itu yang ditebalkan', () => {
@@ -89,6 +110,107 @@ describe('serviceMoney: tiket batal', () => {
   it('catatan refund tak ada: hanya "DP diterima", tanpa menebak', () => {
     const lines = serviceMoney(cancelled({ downPayment: 100000, history: [] }));
     expect(lines).toEqual([{ key: 'dpReceived', amount: 100000 }]);
+  });
+});
+
+const ALL_STATUSES: ServiceStatus[] = [
+  'diterima',
+  'diagnosa',
+  'konfirmasi',
+  'tunggu',
+  'pengerjaan',
+  'selesai',
+  'lunas',
+  'batal',
+];
+
+describe('serviceStage', () => {
+  const stage = (status: ServiceStatus, pickedUp = false) => serviceStage({ status, pickedUp });
+
+  it('tiap status jatuh ke tahap yang dilihat pelanggan', () => {
+    expect(stage('diterima')).toBe('received');
+    for (const s of ['diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan'] as const)
+      expect(stage(s), s).toBe('working');
+    expect(stage('selesai')).toBe('ready');
+    expect(stage('batal')).toBe('cancelled');
+  });
+
+  // Sama dengan halaman lacak dan nextStepFor: lunas yang belum diambil masih
+  // "siap diambil", jadi kertasnya belum boleh berjudul serah terima.
+  it('lunas yang belum diambil masih "siap"; sudah diambil = diambil', () => {
+    expect(stage('lunas')).toBe('ready');
+    expect(stage('lunas', true)).toBe('pickedUp');
+  });
+
+  it('bendera pickedUp menang atas status mana pun kecuali batal', () => {
+    for (const s of ALL_STATUSES.filter((x) => x !== 'batal')) expect(stage(s, true), s).toBe('pickedUp');
+    expect(stage('batal', true)).toBe('cancelled');
+  });
+});
+
+describe('stageGauge', () => {
+  const reached = (stage: Parameters<typeof stageGauge>[0]) => stageGauge(stage).map((t) => t.reached);
+
+  it('empat titik berurutan dari diterima sampai diambil', () => {
+    expect(stageGauge('received').map((t) => t.stage)).toEqual([...GAUGE_STAGES]);
+    expect(GAUGE_STAGES).toEqual(['received', 'working', 'ready', 'pickedUp']);
+  });
+
+  it('titik yang sudah dilewati menyala sampai titik saat ini, sisanya padam', () => {
+    expect(reached('received')).toEqual([true, false, false, false]);
+    expect(reached('working')).toEqual([true, true, false, false]);
+    expect(reached('ready')).toEqual([true, true, true, false]);
+    expect(reached('pickedUp')).toEqual([true, true, true, true]);
+  });
+
+  it('tepat satu titik "saat ini", dan itu titik terakhir yang menyala', () => {
+    for (const s of GAUGE_STAGES) {
+      const ticks = stageGauge(s);
+      expect(ticks.filter((t) => t.current).map((t) => t.stage)).toEqual([s]);
+      expect(ticks.filter((t) => t.reached).at(-1)?.stage).toBe(s);
+    }
+  });
+
+  it('tiket batal tak punya pita: kotak BATAL yang bicara', () => {
+    expect(stageGauge('cancelled')).toEqual([]);
+  });
+});
+
+describe('serviceDocPlan', () => {
+  const plan = (status: ServiceStatus, pickedUp = false) => serviceDocPlan({ status, pickedUp });
+
+  it('unit masih di toko (diterima s.d. dikerjakan): tanda terima, tanpa tanda tangan', () => {
+    for (const s of ['diterima', 'diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan'] as const) {
+      expect(plan(s).kind, s).toBe('intake');
+      expect(plan(s).signature, s).toBe(false);
+    }
+  });
+
+  it('selesai atau lunas yang belum diambil: nota servis biasa', () => {
+    expect(plan('selesai').kind).toBe('service');
+    expect(plan('lunas').kind).toBe('service');
+    expect(plan('selesai').signature).toBe(false);
+  });
+
+  it('sudah diambil: serah terima, satu-satunya yang memuat kotak tanda tangan', () => {
+    for (const s of ALL_STATUSES.filter((x) => x !== 'batal')) {
+      expect(plan(s, true).kind, s).toBe('handover');
+      expect(plan(s, true).signature, s).toBe(true);
+    }
+    const signed = ALL_STATUSES.flatMap((s) => [plan(s), plan(s, true)]).filter((p) => p.signature);
+    expect(signed.every((p) => p.kind === 'handover')).toBe(true);
+  });
+
+  it('tiket batal: judul netral, tanpa pita, tanpa tanda tangan, walau pickedUp menyala', () => {
+    for (const pickedUp of [false, true]) {
+      const p = plan('batal', pickedUp);
+      expect(p).toEqual({ stage: 'cancelled', kind: 'service', gauge: [], signature: false });
+    }
+  });
+
+  it('pita di rencana sama dengan stageGauge tahapnya', () => {
+    expect(plan('pengerjaan').gauge).toEqual(stageGauge('working'));
+    expect(plan('lunas', true).gauge).toEqual(stageGauge('pickedUp'));
   });
 });
 

@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { openReceiptWindow, receiptPreviewHtml, serviceReceiptDoc } from './printReceipt';
+import { GAUGE_GAP_DOTS } from './receiptStyle';
+import {
+  BASE_FONT_DOTS,
+  MONO_ADVANCE_EM,
+  ROW_GAP_DOTS,
+  STRONG_FONT_DOTS,
+  STRONG_TRACKING_EM,
+  paperSpec,
+} from '@/lib/business/receiptPaper';
 import { useSettingsStore } from '@/stores/settings';
 import type { Organization, Service } from '@/data/types';
 
@@ -137,10 +146,151 @@ describe('serviceReceiptDoc: tiket batal', () => {
 describe('serviceReceiptDoc: bahasa', () => {
   it('label dan teks tetap mengikuti bahasa aplikasi', () => {
     useSettingsStore.setState({ language: 'en' });
-    const doc = serviceReceiptDoc(svc({ finalCost: 500000, downPayment: 200000 }), org, 'https://app.test');
+    const doc = serviceReceiptDoc(
+      svc({ status: 'selesai', finalCost: 500000, downPayment: 200000 }),
+      org,
+      'https://app.test',
+    );
     expect(doc.kind).toBe('SERVICE RECEIPT');
     expect(text(doc.body)).toContain('Balance');
     expect(text(doc.body)).not.toContain('Sisa');
+  });
+});
+
+describe('serviceReceiptDoc: tahap siklus hidup', () => {
+  const docOf = (over: Partial<Service>, o: Organization = org) =>
+    serviceReceiptDoc(svc(over), o, 'https://app.test');
+  const PICKED = { pickedUp: true, pickedUpAt: '2026-11-12T09:00:00.000Z' };
+  const stepsOf = (body: string) => {
+    const el = document.createElement('div');
+    el.innerHTML = body;
+    return [...el.querySelectorAll('.gauge .step')].map((s) => ({
+      name: s.querySelector('.nm')?.textContent ?? '',
+      on: s.classList.contains('on'),
+      cur: s.classList.contains('cur'),
+    }));
+  };
+
+  it('unit masih di toko: judul TANDA TERIMA, pita berhenti di tahap yang tepat', () => {
+    const received = docOf({ status: 'diterima' });
+    expect(received.kind).toBe('TANDA TERIMA');
+    expect(received.title).toBe('Tanda terima');
+    expect(stepsOf(received.body).map((s) => s.on)).toEqual([true, false, false, false]);
+    expect(stepsOf(received.body).findIndex((s) => s.cur)).toBe(0);
+
+    for (const status of ['diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan'] as const) {
+      const working = docOf({ status });
+      expect(working.kind, status).toBe('TANDA TERIMA');
+      expect(stepsOf(working.body).map((s) => s.on), status).toEqual([true, true, false, false]);
+      expect(stepsOf(working.body).findIndex((s) => s.cur), status).toBe(1);
+    }
+  });
+
+  it('selesai atau lunas yang belum diambil: tetap NOTA SERVIS, pita di "Siap"', () => {
+    for (const status of ['selesai', 'lunas'] as const) {
+      const doc = docOf({ status });
+      expect(doc.kind, status).toBe('NOTA SERVIS');
+      expect(stepsOf(doc.body).map((s) => s.on), status).toEqual([true, true, true, false]);
+      expect(stepsOf(doc.body).findIndex((s) => s.cur), status).toBe(2);
+      expect(doc.body, status).not.toContain('sign-box');
+    }
+  });
+
+  it('sudah diambil: SERAH TERIMA, pita penuh, kotak tanda tangan, tanggal diambil', () => {
+    const doc = docOf({ status: 'lunas', finalCost: 500000, ...PICKED });
+    expect(doc.kind).toBe('SERAH TERIMA');
+    expect(doc.title).toBe('Serah terima');
+    expect(stepsOf(doc.body).map((s) => s.on)).toEqual([true, true, true, true]);
+    expect(stepsOf(doc.body).findIndex((s) => s.cur)).toBe(3);
+    expect(doc.body).toContain('class="sign-box"');
+    expect(text(doc.body)).toContain('PENERIMA UNIT');
+    expect(text(doc.body)).toMatch(/Diambil\s*12 Nov 2026/);
+  });
+
+  it('serah terima memakai kalimat serah terima, bukan "bukti pengambilan"', () => {
+    const t = text(docOf({ status: 'lunas', ...PICKED }).body);
+    expect(t).toContain('bukti serah terima');
+    expect(t).not.toMatch(/bukti pengambilan|luar jam operasional/);
+  });
+
+  it('kalimat buatan toko menggantikan kalimat bawaan di semua tahap', () => {
+    const own = {
+      ...org,
+      settings: { receipt: { serviceTerms: 'Garansi hanya berlaku dengan nota ini.' } },
+    } as unknown as Organization;
+    for (const over of [{}, { status: 'selesai' }, { status: 'lunas', ...PICKED }] as Partial<Service>[]) {
+      const t = text(docOf(over, own).body);
+      expect(t).toContain('Garansi hanya berlaku dengan nota ini.');
+      expect(t).not.toMatch(/bukti pengambilan|bukti serah terima/);
+    }
+  });
+
+  it('tiket batal: tak ada pita, tanda tangan, maupun tanggal diambil; judul tetap NOTA SERVIS', () => {
+    const doc = docOf({ status: 'batal', downPayment: 100000, ...PICKED });
+    expect(doc.kind).toBe('NOTA SERVIS');
+    expect(doc.body).not.toContain('class="gauge"');
+    expect(doc.body).not.toContain('sign-box');
+    expect(text(doc.body)).not.toMatch(/Diambil/);
+    expect(doc.body.trimStart()).toMatch(/^<div class="void-mark">BATAL<\/div>/);
+  });
+
+  it('tanda tangan hanya muncul di serah terima', () => {
+    const statuses = ['diterima', 'diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan', 'selesai', 'lunas', 'batal'] as const;
+    for (const status of statuses)
+      for (const picked of [{}, PICKED]) {
+        const doc = docOf({ status, ...picked });
+        expect(doc.body.includes('sign-box'), `${status} ${JSON.stringify(picked)}`).toBe(doc.kind === 'SERAH TERIMA');
+      }
+  });
+
+  // Status tak lagi dicetak sebagai fakta: kertas ini dibawa pulang berminggu-minggu.
+  it('tak ada baris "Status" pada tahap mana pun', () => {
+    for (const status of ['diterima', 'pengerjaan', 'selesai', 'lunas', 'batal'] as const)
+      expect(docOf({ status }).body, status).not.toMatch(/<td>Status<\/td>/);
+  });
+
+  it('pita memuat empat label berurutan; bahasa Inggris memakai kamus sendiri', () => {
+    expect(stepsOf(docOf({}).body).map((s) => s.name)).toEqual(['Masuk', 'Proses', 'Siap', 'Diambil']);
+    useSettingsStore.setState({ language: 'en' });
+    expect(stepsOf(docOf({}).body).map((s) => s.name)).toEqual(['Intake', 'Repair', 'Ready', 'Pickup']);
+    expect(docOf({}).kind).toBe('INTAKE RECEIPT');
+    expect(docOf({ status: 'lunas', ...PICKED }).kind).toBe('PICKUP RECEIPT');
+    expect(text(docOf({ status: 'lunas', ...PICKED }).body)).toContain('RECEIVED BY');
+  });
+
+  it('tepat satu tahap "saat ini", ditandai tebal lewat kelas, bukan gaya sebaris', () => {
+    for (const status of ['diterima', 'pengerjaan', 'selesai'] as const) {
+      const body = docOf({ status }).body;
+      expect(stepsOf(body).filter((s) => s.cur)).toHaveLength(1);
+      expect(body).not.toMatch(/style=/);
+    }
+  });
+
+  it('pita dan judul muat sebaris di kertas 58 mm dalam kedua bahasa', () => {
+    const spec = paperSpec(58);
+    const column = (spec.contentDots - 3 * GAUGE_GAP_DOTS) / 4;
+    const glyph = BASE_FONT_DOTS * MONO_ADVANCE_EM;
+    const noWidth = 'FM-0123'.length * (STRONG_FONT_DOTS * MONO_ADVANCE_EM + STRONG_FONT_DOTS * STRONG_TRACKING_EM);
+    for (const language of ['id', 'en'] as const) {
+      useSettingsStore.setState({ language });
+      for (const over of [{}, { status: 'selesai' }, { status: 'lunas', ...PICKED }] as Partial<Service>[]) {
+        const doc = docOf(over);
+        for (const s of stepsOf(doc.body))
+          expect([...s.name].length * glyph, `${language} ${s.name}`).toBeLessThanOrEqual(column);
+        const kindWidth = [...doc.kind].length * (glyph + BASE_FONT_DOTS * 0.18);
+        expect(kindWidth + ROW_GAP_DOTS + noWidth, `${language} ${doc.kind}`).toBeLessThanOrEqual(spec.contentDots);
+      }
+    }
+  });
+});
+
+describe('serviceReceiptDoc: estimasi', () => {
+  it('biaya akhir ada: Estimasi tak tercetak; belum ada: Estimasi tercetak', () => {
+    const final = text(html(svc({ estimateCost: 450000, finalCost: 500000 })));
+    expect(final).not.toContain('Estimasi');
+    expect(final).toContain('Biaya');
+    const pending = text(html(svc({ estimateCost: 450000, finalCost: 0 })));
+    expect(pending).toContain('Estimasi');
   });
 });
 

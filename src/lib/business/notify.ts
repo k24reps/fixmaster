@@ -265,7 +265,7 @@ export type ReceiptLineKey =
   | 'condition'
   | 'complaint'
   | 'accessories'
-  | 'status'
+  | 'pickedUp'
   | 'technician'
   | ServiceMoneyKey
   | 'warrantyService'
@@ -324,7 +324,17 @@ export function serviceReceiptLines(service: Service): ReceiptLine[] {
     lines.push({ key: 'complaint', label: 'Keluhan', value: service.complaint, group: 'unit' });
   if (service.accessories)
     lines.push({ key: 'accessories', label: 'Kelengkapan', value: service.accessories, group: 'unit' });
-  lines.push({ key: 'status', label: 'Status', value: STATUS_LABELS[service.status], group: 'unit' });
+  // Tak ada baris "Status": kertas ini dibawa pulang dan dibaca berminggu-minggu
+  // kemudian, jadi status saat cetak bukan fakta tetap. Yang tercetak adalah
+  // tahap saat cetak (judul + pita tahap, lihat serviceDocPlan) dan tanggal unit
+  // diambil, yang memang tak berubah lagi.
+  if (service.pickedUp && service.pickedUpAt && service.status !== 'batal')
+    lines.push({
+      key: 'pickedUp',
+      label: 'Diambil',
+      value: fmtDate(localDateOf(service.pickedUpAt)),
+      group: 'unit',
+    });
   // Siapa yang memegang unit. Tercetak hanya bila toko menyalakannya di Nota & Struk.
   if (service.technicianName)
     lines.push({ key: 'technician', label: 'Teknisi', value: service.technicianName, group: 'unit' });
