@@ -82,7 +82,23 @@ Memperluas scoping menjadi **penguncian per-karyawan** + laporan per-cabang akur
 
 Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/repository, jadi 100% unit-testable. Contoh: `isActive()` (servis), `isOverdue()` (tugas), `computeKpis()` (dashboard). Hook UI memanggilnya lalu mem-persist hasil.
 
-### Kalkulator Biaya: `settings.quoteRates` (10 Nov 2026)
+### Nota & Struk: `settings.receipt` (11 Nov 2026)
+
+Satu objek jsonb untuk semua yang menentukan bentuk dan isi kertas yang dibawa pulang pelanggan.
+**Tanpa migrasi baru**: kolom `organizations.settings` (`0032`) tak punya daftar kunci yang
+diizinkan, dan kebijakan `org_update` sudah manager-only (diperiksa langsung, bukan diasumsikan).
+
+- **Tipe** (`data/types.ts`): `OrgSettings.receipt?: ReceiptSettings`. Tahap 1 hanya memuat
+  `paperWidth?: 58 | 80`; tahap berikutnya menambah teks kepala/kaki/syarat dan sakelar isi.
+- **Tulis**: `setReceiptSettings(patch)` di `config/orgConfig.ts`. `patchSettings` hanya menggabung
+  kunci tingkat atas, jadi fungsi ini menulis ulang SELURUH objek `receipt` (patch digabung ke
+  nilai lama dulu), bukan satu kunci di dalamnya.
+- **Baca**: `org.settings?.receipt?.paperWidth` lewat `paperWidthOf(org)` (`printReceipt.ts`) →
+  `normalizePaperWidth`, yang menjatuhkan nilai asing ke 58. Toko lama tanpa `receipt` tetap
+  tercetak 58 mm.
+- **Logika murni**: `lib/business/receiptPaper.ts` (geometri kertas dalam TITIK head 203 dpi,
+  `charsPerLine`, `pageHeightMm`), teruji di `receiptPaper.test.ts`.
+
 
 Harga yang **diajukan** ke pelanggan, dihitung dari tarif pemilik supaya dua staf yang menaksir
 pekerjaan yang sama sampai ke angka yang sama. Kalkulator **tidak menyentuh tiket**: tidak membuat

@@ -1,6 +1,13 @@
 import { repository } from '@/data';
 import { useSessionStore } from '@/stores/session';
-import type { ID, MonthlyTarget, OrgSettings, OutletRent, QuoteRates } from '@/data/types';
+import type {
+  ID,
+  MonthlyTarget,
+  OrgSettings,
+  OutletRent,
+  QuoteRates,
+  ReceiptSettings,
+} from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
 import { sanitizeQuoteRates } from '@/lib/business/quote';
 import { resolveServiceColumns, type ServiceColumnId } from '@/lib/business/serviceColumns';
@@ -94,6 +101,16 @@ export function getPublicNote(): string {
 /** Simpan catatan publik ke baris organisasi (ikut tersinkron antar perangkat). */
 export async function setPublicNote(note: string): Promise<void> {
   await patchSettings({ publicNote: note.trim().slice(0, PUBLIC_NOTE_MAX) });
+}
+
+/**
+ * Setelan nota & struk. Ditulis sebagai SATU objek: `patchSettings` hanya
+ * menggabung kunci tingkat atas, jadi menulis `{ receipt: { paperWidth } }`
+ * tanpa menyertakan sisanya akan menghapus setelan lain di dalamnya.
+ */
+export async function setReceiptSettings(patch: Partial<ReceiptSettings>): Promise<void> {
+  const current = useSessionStore.getState().org?.settings?.receipt ?? {};
+  await patchSettings({ receipt: { ...current, ...patch } });
 }
 
 /**

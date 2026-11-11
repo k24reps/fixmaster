@@ -5500,3 +5500,46 @@ di kolom katalog 323px pada 1097px. `audit-tokens` LULUS. `audit-contrast` BERSI
 adalah petunjuk dev di landing.
 
 #decision #pos #inventory #navigation
+
+---
+
+## Nota & Struk untuk printer termal (11 Nov 2026)
+
+Kritik `impeccable critique` atas `printReceipt.ts` memberi **19/40**: nota dirancang untuk A4
+lalu dipersempit, bukan untuk kertas gulung 58/80 mm. Lima temuan dikerjakan bertahap (adapt →
+harden ×2 → shape → layout → polish), tiap tahap satu commit. Urutan lensa: kecocokan printer
+termal dulu, baru isi nota yang bisa diatur dari Pengaturan. Jalur cetak tetap dialog cetak browser
+(`window.print`); tanpa ESC/POS atau RawBT.
+
+### Tahap 1 — kertas nyata (adapt)
+
+- **Geometri dalam titik head, bukan mm.** Head 203 dpi: 58 mm mencetak 384 titik (48 mm), 80 mm
+  mencetak 576 titik (72 mm). Isi menyisakan tepi aman 4 titik. Huruf dasar 20 titik (±9,46px)
+  → 31 huruf per baris di 58 mm, 47 di 80 mm; tinggi baris 28 titik. Semua ukuran kelipatan titik
+  (`dotsToPx`) karena ukuran di antara titik menjadi tepi kabur setelah threshold 1-bit.
+- **Chromium mengabaikan `@page { size: 58mm auto }`** dan jatuh ke Letter; `size: 58mm` saja
+  berarti kertas persegi 58×58. Yang bekerja: `size: 58mm 400mm`. Maka skrip cetak mengukur tinggi
+  isi tepat sebelum `window.print()` lalu menyuntik `@page{size:Wmm Hmm;margin:0}`
+  (`pageHeightMm` = bulatkan ke atas + 1 mm; logo yang belum `complete` diberi cadangan tinggi).
+  Pratinjau memakai HTML yang sama dengan `roll: null` (tanpa skrip cetak).
+- **Font mono sistem eksplisit** (`RECEIPT_MONO_STACK`); webfont JetBrains Mono tak termuat di
+  jendela cetak sehingga dulu jatuh ke font acak.
+- **Anti luberan**: `overflow-wrap: anywhere` pada sel tabel, catatan, dan kontak; `break-inside:
+  avoid` pada QR dan baris; modul QR 4 titik (0,5 mm) lewat `qrSvg({ modulePx })`.
+- **Berkas**: logika murni `lib/business/receiptPaper.ts`, CSS `features/services/receiptStyle.ts`,
+  pemicu cetak `lib/print.ts` (`buildPrintDocument`, `printScript`), setelan `settings.receipt`
+  ([[Data Layer]]), tab Pengaturan `ReceiptTab.tsx` ([[Signature Pages]]).
+
+**Verifikasi tahap 1:** 22 tes baru (`receiptPaper`, `print`, `receiptStyle`), seluruhnya **876 /
+77 berkas**. Nota IMEI ganda (`352999112345678/352999112345686`) dan 7 kasus lain × 58/80 mm = 16
+PDF: 1 halaman tiap berkas, nol elemen melewati badan nota, tinta seluruhnya di dalam jendela head
+(58 mm: 5,51–52,68 dari jendela 4,91–52,91; 80 mm: 4,38–75,57 dari 4,05–76,05). Nilai IMEI
+membungkus di tengah token, bukan terpotong; sisa satu digit di baris sendiri di 80 mm akan dirapikan
+tahap 5 (nilai panjang ditumpuk rata kiri). Label "Kelengkapan" patah jadi "Kelengkapa/n" di
+kolom label 38% pada 58 mm: juga tahap 5.
+
+**Pelajaran: ukur DOM dan PDF, bukan layar.** Pratinjau layar nota 58 mm di jendela 1440px tidak
+menunjukkan bahwa kertas dipotong ke Letter. Baru PDF dengan `preferCSSPageSize` yang membuktikan
+`size` yang valid.
+
+#decision #print #receipt #settings

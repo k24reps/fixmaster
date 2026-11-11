@@ -1732,4 +1732,21 @@ export const en: Dictionary = {
   'quote.ownerMarkup': 'Markup on cost + shipping',
   'quote.ownerNote':
     'Profit = warranty cover + fitting fee + target profit. Before overhead such as salaries, rent, and electricity.',
+  // ---------- Receipts (Settings) ----------
+  'receipt.tab': 'Receipts',
+  'receipt.paper.title': 'Thermal paper',
+  'receipt.paper.hint':
+    "The roll width in your receipt printer. Receipts print at exactly this width, regardless of the browser's default paper size.",
+  'receipt.paper.w58': '58 mm',
+  'receipt.paper.w58Hint': 'Pocket printers and small counters.',
+  'receipt.paper.w80': '80 mm',
+  'receipt.paper.w80Hint': 'Standard counter printers.',
+  'receipt.paper.cols': 'characters per line',
+  'receipt.paper.saved': 'Paper width saved',
+  'receipt.paper.saveFailed': 'Could not save the paper width',
+  'receipt.setup.title': 'In the browser print dialog',
+  'receipt.setup.margin': 'Margins: choose None.',
+  'receipt.setup.headers': 'Headers and footers: turn off, so the date and site address are not printed.',
+  'receipt.setup.scale': 'Scale: 100%. Do not use "Fit to page".',
+  'receipt.setup.android': 'On Android, pick your thermal printer from the printer list in the Chrome print dialog.',
 };

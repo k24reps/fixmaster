@@ -390,6 +390,13 @@ export function qrMatrix(text: string): Grid {
 export interface QrSvgOptions {
   /** Sisi simbol dalam px (tanpa satuan di atribut, agar bisa dipakai di CSS). */
   size?: number;
+  /**
+   * Sisi satu modul dalam px. Bila diisi, `size` diturunkan darinya
+   * (modul x (modul + quiet zone)). Cetak termal butuh modul yang jatuh tepat
+   * di kelipatan titik head; ukuran bulat dalam px menghasilkan modul 3,82
+   * titik, dan head menggambar sebagian modul lebih tebal dari yang lain.
+   */
+  modulePx?: number;
   /** Quiet zone dalam satuan modul. Spesifikasi menuntut minimal 4. */
   margin?: number;
   /** Warna modul gelap. Dokumen cetak tidak punya token, jadi nilainya literal. */
@@ -402,10 +409,11 @@ export interface QrSvgOptions {
  * termal murah tersendat pada dokumen dengan node sebanyak itu.
  */
 export function qrSvg(text: string, options: QrSvgOptions = {}): string {
-  const { size = 132, margin = 4, dark = '#000000' } = options;
+  const { size: sizeOpt = 132, modulePx, margin = 4, dark = '#000000' } = options;
   const matrix = qrMatrix(text);
   const modules = matrix.length;
   const side = modules + margin * 2;
+  const size = modulePx ? Math.round(side * modulePx * 1000) / 1000 : sizeOpt;
 
   let path = '';
   for (let y = 0; y < modules; y++) {

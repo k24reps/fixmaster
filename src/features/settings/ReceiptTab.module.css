@@ -1,0 +1,122 @@
+/* Pengaturan › Nota & Struk. Sel kertas memakai bahasa yang sama dengan sel
+   Kerapatan: LED di depan nama, petunjuk di bawahnya, glyph di kanan. */
+.hint {
+  max-width: 60ch;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* auto-fit: menumpuk sendiri saat kartu sempit, tanpa breakpoint. */
+.papers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.paper {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  padding-right: 64px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.paper:hover {
+  border-color: var(--border-brand);
+}
+.paper[aria-checked='true'] {
+  border-color: var(--border-brand);
+  background: var(--brand-soft);
+}
+
+.paperName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.led {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  opacity: 0.35;
+}
+.paper[aria-checked='true'] .led {
+  opacity: 1;
+  box-shadow: 0 0 7px var(--brand);
+}
+
+.paperHint {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.paperCols {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Miniatur gulungan: lebarnya sebanding dengan kertasnya (58 : 80). */
+.strip {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  display: flex;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+.strip > span {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--border-strong);
+  border-bottom: 1px dotted var(--border-strong);
+  background: var(--bg-base);
+}
+.strip[data-width='58'] > span {
+  width: 24px;
+}
+.strip[data-width='80'] > span {
+  width: 34px;
+}
+.paper[aria-checked='true'] .strip > span {
+  border-color: var(--border-brand);
+}
+
+.setup {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border);
+}
+.setupTitle {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.setupList {
+  display: grid;
+  gap: 4px;
+  max-width: 64ch;
+  padding-left: 1.2em;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}

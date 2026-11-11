@@ -121,6 +121,18 @@ export interface OrgSettings {
    * sebagian.
    */
   quoteRates?: QuoteRates;
+  /** Nota servis & struk penjualan: kertas dan (nanti) isi templatenya. */
+  receipt?: ReceiptSettings;
+}
+
+/**
+ * Setelan cetak nota & struk (Pengaturan › Nota & Struk). Semua opsional dan
+ * dibaca lewat `resolveReceiptSettings`: isinya jsonb yang ditulis tangan,
+ * jadi nilai asing harus jatuh ke bawaan, bukan merusak cetakan.
+ */
+export interface ReceiptSettings {
+  /** Lebar gulungan termal (mm). Tanpa nilai = 58. */
+  paperWidth?: 58 | 80;
 }
 
 /** Satu template di kalkulator: tombol pintas yang mengisi satu kolom sekali ketuk. */

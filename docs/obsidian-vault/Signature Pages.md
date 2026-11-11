@@ -863,7 +863,7 @@ menyusut di bawah ±5rem. Bar simpan memakai pola fokus yang sama dengan kalkula
 
 ## Pengaturan — Operasional
 
-Halaman `/settings` punya sembilan tab untuk owner cloud (tab yang tak relevan tetap
+Halaman `/settings` punya sepuluh tab untuk owner cloud, termasuk **Nota & Struk** sejak 11 Nov 2026 (tab yang tak relevan tetap
 difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alur kerja:
 - **Layout profil** — dua kolom sampai 960 px agar ruang desktop terpakai, lalu satu
   kolom di mobile. Tab mobile membungkus ke beberapa baris (strip geser lama menyembunyikan tab terakhir di 320px).
@@ -886,6 +886,24 @@ difilter menurut peran/mode). Tab **Operasional** mengelompokkan konfigurasi alu
 - **Tab bagian & Profil (7 Nov 2026).** Tujuh tombol bagian berada dalam `role="group"` dengan
   `aria-pressed`. Simpan Profil nonaktif sampai nama, alamat, atau telepon berubah, dan tombol
   utama nonaktif kini netral bergaris putus (lihat [[Conventions]]).
+
+## Pengaturan — Nota & Struk (11 Nov 2026)
+
+Tab **Nota & Struk** (`?tab=nota`, komponen `ReceiptTab.tsx`) adalah satu rumah untuk kertas yang
+dibawa pulang pelanggan. Tahap 1 berisi kartu **Kertas termal**: radiogroup 58 mm / 80 mm
+(default 58) dengan panah/Home/End berpindah fokus sekaligus memilih, LED brand di depan nama,
+miniatur gulungan selebar kertas (58 : 80), dan bacaan mono "31 / 47 huruf per baris" yang dihitung
+`charsPerLine`, bukan ditulis tangan. Di bawahnya empat petunjuk dialog cetak browser (margin None,
+matikan header/footer, skala 100%, printer termal di Android). Kartu menumpuk sendiri lewat
+`auto-fit`, tanpa breakpoint.
+
+**Kertas nyata** (`receiptStyle.ts`, `lib/print.ts`): area cetak = lebar head (384 titik = 48 mm di
+58 mm, 576 titik = 72 mm di 80 mm), isi menyisakan tepi aman 4 titik. Chromium mengabaikan
+`@page { size: 58mm auto }`, jadi skrip cetak mengukur tinggi isi dan menyuntik
+`@page{size:Wmm Hmm;margin:0}` sebelum `window.print()`. Hasil ukur nota IMEI ganda: nol luberan,
+satu halaman, tinta 5,51–52,68 mm di dalam jendela head 4,91–52,91 mm (58 mm).
+
+---
 
 ## Pengaturan — Navigasi Mobile
 

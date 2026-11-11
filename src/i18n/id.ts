@@ -1768,6 +1768,23 @@ export const id = {
   'quote.ownerMarkup': 'Markup dari modal + ongkir',
   'quote.ownerNote':
     'Profit = cover garansi + jasa pasang + target profit. Belum dikurangi overhead seperti gaji, sewa, dan listrik.',
+  // ---------- Nota & Struk (Pengaturan) ----------
+  'receipt.tab': 'Nota & Struk',
+  'receipt.paper.title': 'Kertas termal',
+  'receipt.paper.hint':
+    'Lebar gulungan di printer nota Anda. Nota dan struk dicetak pas selebar ini, tidak bergantung pada ukuran kertas bawaan browser.',
+  'receipt.paper.w58': '58 mm',
+  'receipt.paper.w58Hint': 'Printer saku dan kasir kecil.',
+  'receipt.paper.w80': '80 mm',
+  'receipt.paper.w80Hint': 'Printer kasir standar.',
+  'receipt.paper.cols': 'huruf per baris',
+  'receipt.paper.saved': 'Lebar kertas disimpan',
+  'receipt.paper.saveFailed': 'Gagal menyimpan lebar kertas',
+  'receipt.setup.title': 'Di dialog cetak browser',
+  'receipt.setup.margin': 'Margin: pilih None (Tidak ada).',
+  'receipt.setup.headers': 'Header dan footer: matikan, supaya tanggal dan alamat situs tidak ikut tercetak.',
+  'receipt.setup.scale': 'Skala: 100%. Jangan "Fit to page".',
+  'receipt.setup.android': 'Di Android, pilih printer termal Anda dari daftar printer di dialog cetak Chrome.',
 } as const;
 
 export type TranslationKey = keyof typeof id;
