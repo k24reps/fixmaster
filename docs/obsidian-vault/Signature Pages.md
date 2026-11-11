@@ -908,6 +908,8 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Isi yang benar** (tahap 3): nota servis berbiaya akhir 0 + DP mencetak "Sudah dibayar (DP)" (tanpa "Sisa Rp 0"); tiket batal hanya mencetak nasib DP, tanpa garansi dan QR. Struk batal berkotak **BATAL** dan TOTAL dicoret, cetak ulang bertanda "CETAK ULANG" + tanggal-jam, metode bayar dari `sale.payments`. Aturannya di `lib/business/receiptContent.ts`.
 
+**Dokumen batal** (tahap 6b): tiket batal dan struk batal sama-sama berkotak **BATAL** (`voidMarkHtml`, bingkai 2px) tepat di bawah tanggal, dan tak berpamitan: `ReceiptDoc.voided` membuang ucapan kaki, bawaan maupun buatan toko. Jahitan dan atribusi tetap tercetak.
+
 **Tata letak baris** (tahap 5): kolom label tak dipatok persen. Label dan nilai berdampingan bila muat; bila tidak, baris ditumpuk, label di atas dan nilai utuh di bawahnya (`fitsBeside` di `receiptPaper.ts`, `receiptRow` di `printReceipt.ts`). Barang struk dua baris: nama, lalu `jumlah× harga satuan` dan jumlah rupiah. Tiap baris di-flex sendiri supaya satu baris tumpuk tak menyempitkan kolom baris lain. Alasan lengkap di [[Decisions & Bug Fixes]].
 
 **Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),
@@ -922,6 +924,14 @@ diturunkan dari ukuran terukur; lihat [[Decisions & Bug Fixes]]); di bawahnya sa
 mengecilkan zoom-nya sendiri (maks 1,5×) agar tak bergeser ke samping. Catatan Toko tak lagi di
 Operasional; ia pindah ke sini. Semua teks lewat `useT()` (`receipt.content.*`, `receipt.field.*`,
 `receipt.show.*`, `receipt.preview.*`, `receipt.sample.*`).
+
+![[settings-nota-dark.png]]
+
+Struk penjualan 80 mm dengan simulasi 1-bit menyala, dan tampilan ponsel (satu kolom):
+
+![[settings-nota-sale-1bit-dark.png]]
+
+![[settings-nota-mobile-dark.png]]
 
 ---
 

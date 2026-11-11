@@ -5745,3 +5745,37 @@ Sisa temuan kecil dari kritik nota termal, ditimbang satu per satu:
 simulasi PDF dan 1-bit tidak diulang.
 
 #decision #print #i18n
+
+### Tahap 6b: dokumen batal ditandai dan tak berpamitan; kritik ulang
+
+Kritik ulang atas `printReceipt.ts` setelah tahap 1 sampai 6 (dua subagen terisolasi: tinjauan desain dan
+detektor) memberi **25/40, naik dari 19/40**. P0 turun dari 1 ke 0; P1 tetap 3 karena temuan lama diganti
+temuan yang lebih ke tepi alur. Laporan: `.impeccable/critique/2026-11-11T04-41-23Z__src-features-services-printreceipt-ts.md`.
+
+- **Dikerjakan: status dokumen nota servis setara struk.** Tiket batal dulu hanya berbeda di baris kecil
+  "Status: Dibatalkan" dan tetap ditutup "sampai jumpa kembali!". Kini `voidMarkHtml()` (kotak BATAL
+  berbingkai 2px hitam, bukan latar, supaya selamat di ambang 1-bit) dipakai nota servis dan struk, tepat
+  di bawah tanggal. `ReceiptDoc.voided` baru membuat `receiptParts` membuang blok `.foot`, baik kalimat
+  bawaan maupun ucapan kaki buatan toko. Jahitan di atasnya dan atribusi `.by` tetap tercetak. Struk batal
+  yang tadinya masih berpamitan ikut diperbaiki lewat bendera yang sama.
+- **Sengaja belum: penanda CETAK ULANG di nota servis.** Struk POS bisa menandainya karena cetak ulang
+  adalah aksi tersendiri di riwayat. Nota servis tak punya jejak "sudah pernah dicetak"; menandainya butuh
+  status cetak yang tersimpan, yaitu keputusan data dan kemungkinan migrasi. Itu hak pemilik produk, bukan
+  efek samping perbaikan kertas.
+- **Sengaja belum: bilah "Cetak lagi / Tutup" di jendela cetak.** Jendela tak menutup sendiri dan tak ada
+  kontrol setelah dialog dibatalkan. `afterprint` dengan `window.close()` berisiko di iOS Safari, dan bilah
+  harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak. Perlu uji di perangkat.
+- **Sengaja belum: URL lacak pendek.** URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
+  tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak.
+- **Sengaja belum: judul per tahap siklus hidup, tick-gauge, Pengaturan di ponsel (pratinjau di dasar
+  halaman, saklar terkubur), lebar kertas per cabang.** Tercatat sebagai tindak lanjut.
+
+**Verifikasi tahap 6b:** 985 tes / 81 berkas (lima tes baru: BATAL di nota servis dan struk, tanpa ucapan
+kaki walau toko menulis sendiri, tiket berjalan tak berubah), build dan lint bersih. Simulasi 38 PDF
+(19 kasus × 58/80 mm): satu halaman tiap berkas, nol luberan, tinta di dalam jendela head, bingkai BATAL,
+jahitan, dan atribusi selamat di ambang 50%.
+
+**Belum terverifikasi:** printer termal fisik, dialog cetak Chrome di Android, pembacaan QR oleh pemindai
+sungguhan, logo toko berwarna asli.
+
+#decision #print #receipt #critique
