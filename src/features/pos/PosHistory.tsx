@@ -175,7 +175,7 @@ export function PosHistory({ recentSales, salesLoad, walletName, org, isMgr, mon
                           aria-label={interpolate(t('pos.printAria'), { no: s.saleNo })}
                           title={t('pos.printTitle')}
                         >
-                          <Icon name="receipt" aria-hidden />
+                          <Icon name="print" aria-hidden />
                         </button>
                       )}
                       {s.voided ? (

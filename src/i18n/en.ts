@@ -1752,6 +1752,11 @@ export const en: Dictionary = {
   'receipt.title.sale': 'Receipt',
   'print.popupBlocked':
     'The browser blocked the print window. Allow pop-ups for this site, then print again.',
+  'print.controls': 'Print controls',
+  'print.again': 'Print again',
+  'print.close': 'Close',
+  'print.closeFailed':
+    'The browser would not let this window close itself. Close it from the tab or window button.',
   'receipt.demo.service': 'Receipt printing is available in the full version of FixMaster. Sign up for free.',
   'receipt.demo.sale': 'Receipt printing is available in the full version of FixMaster. Sign up for free.',
   'receipt.foot.thanks': 'Thank you for your trust.',

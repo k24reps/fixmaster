@@ -714,7 +714,7 @@ export function PosPage() {
               {org && (
                 <Button
                   variant="secondary"
-                  iconLeft={<Icon name="receipt" aria-hidden />}
+                  iconLeft={<Icon name="print" aria-hidden />}
                   onClick={() => printSaleReceipt(done.sale, org, { change: done.change, walletName, outlets })}
                 >
                   {t('pos.printReceipt')}

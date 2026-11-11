@@ -5762,9 +5762,8 @@ temuan yang lebih ke tepi alur. Laporan: `.impeccable/critique/2026-11-11T04-41-
   adalah aksi tersendiri di riwayat. Nota servis tak punya jejak "sudah pernah dicetak"; menandainya butuh
   status cetak yang tersimpan, yaitu keputusan data dan kemungkinan migrasi. Itu hak pemilik produk, bukan
   efek samping perbaikan kertas.
-- **Sengaja belum: bilah "Cetak lagi / Tutup" di jendela cetak.** Jendela tak menutup sendiri dan tak ada
-  kontrol setelah dialog dibatalkan. `afterprint` dengan `window.close()` berisiko di iOS Safari, dan bilah
-  harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak. Perlu uji di perangkat.
+- **Dikerjakan di tahap 7 (di bawah): bilah "Cetak lagi / Tutup" di jendela cetak.** Dulu sengaja belum
+  karena bilah harus layar-saja agar tak mengubah tinggi halaman yang diukur skrip cetak.
 - **Sengaja belum: URL lacak pendek.** URL berisi UUID organisasi memakan 6 sampai 9 baris di 58 mm. QR
   tetap penuh, tetapi alamat berhuruf butuh rute kode pendek di sisi lacak.
 - **Sengaja belum: judul per tahap siklus hidup, tick-gauge, Pengaturan di ponsel (pratinjau di dasar
@@ -5779,3 +5778,66 @@ jahitan, dan atribusi selamat di ambang 50%.
 sungguhan, logo toko berwarna asli.
 
 #decision #print #receipt #critique
+
+### Tahap 7: jalur cetak punya penutup (harden, temuan P1 kritik ulang)
+
+Temuan P1 "jalur cetak tanpa penutup": `openPrintWindow` membuka jendela baru yang tak pernah menutup sendiri,
+sehingga pengguna yang membatalkan dialog cetak terjebak di tab nota tanpa kontrol apa pun.
+
+- **Bilah layar-saja "Cetak lagi" dan "Tutup"** (`controlsMarkup`, `PRINT_CONTROLS_STYLE` di `lib/print.ts`).
+  `position: fixed` di dasar jendela, jadi tak ikut tinggi `<body>` yang diukur `fit()`. Ruang agar ekor nota
+  tak tertutup bilah dipesan di `html` (`@media screen { html { padding-bottom } }`), BUKAN di `body`: rect
+  body memuat padding body, dan `fit()` mengukur rect itu. `@media print { .fm-printbar { display: none !important } }`.
+  Tombol utama amber bertepi gelap di atas pita `#111` dengan tick-gauge di tepi atasnya dan huruf mono,
+  tinggi sentuh 44px (motif bench, bukan tombol bawaan). Warna literal sah di sini: jendela cetak tak
+  mewarisi `tokens.css`, sama seperti seluruh CSS cetak lain.
+- **Bilah ikut semua dokumen yang lewat `openPrintWindow`**, termasuk laporan A4 (`printReport.ts`), karena
+  masalahnya di jalur cetaknya, bukan di nota. Teks lewat i18n (`print.controls`, `print.again`,
+  `print.close`, `print.closeFailed`; id dan en, paritas dijaga `i18n.test.ts`).
+- **Pratinjau Pengaturan tak berbilah.** `receiptPreviewHtml` memakai `roll: null`, dan `controls` sengaja
+  diabaikan bila `roll === null`. Tanpa `controls`, HTML dokumen identik byte-per-byte dengan sebelum tahap ini.
+- **`fit()` kini idempoten.** Aturan `@page` ditulis ke satu `<style id="fm-page">` yang ditimpa tiap
+  dipanggil, jadi "Cetak lagi" mengukur ulang tanpa menumpuk aturan (dulu tiap panggilan menambah `<style>` baru;
+  tak terasa karena `fit()` hanya jalan sekali).
+- **Meta viewport hanya dipasang bersama bilah.** Tanpanya Chrome Android menata jendela 980px dan tombol
+  44px mengecil jadi sekitar 16px. Terukur di emulasi Pixel 7: `@page` hasil `fit()` tidak bergeser.
+- **Keputusan penutupan, dengan alasan tertulis (docblock `openPrintWindow`):**
+  - `afterprint` + `window.close()` otomatis **ditolak**. Di Chrome desktop `print()` menahan skrip sampai
+    dialog selesai, tetapi di iOS Safari dan Chrome Android belum teruji. Bila `afterprint` datang saat
+    lembar cetak baru terbuka, tab tertutup sebelum pengguna mencetak dan nota hilang tanpa jalan kembali.
+    Itu lebih buruk daripada tab yang menganggur.
+  - `iframe` tersembunyi + `contentWindow.print()` **ditolak**. Ia menggeser seluruh jalur cetak yang sudah
+    terukur (lebar tata letak untuk `fit()`, nama berkas PDF dari `<title>`, perilaku `@page` per platform)
+    demi masalah yang cukup ditutup bilah, dan tak satu pun bisa diuji di Android atau iOS.
+  - `window.close()` hanya dipanggil dari klik "Tutup". Bila jendela tak tertutup (tab yang bukan hasil
+    `window.open` skrip), timer 300 ms menulis `print.closeFailed` ke `#fm-printmsg` (`role="status"`) supaya
+    pengguna tahu harus menutup lewat tombol tab.
+- **Ikon cetak seragam.** Kasir memakai `receipt`, Servis memakai `print`; kini semua aksi cetak memakai
+  `print` (`PosPage` "Cetak Struk", `PosHistory` cetak ulang). `receipt` tetap untuk kepala kartu Pengaturan.
+- **Sengaja belum: "Cetak Nota" satu ketukan di detail servis ponsel.** Di ≤760px aksi sekunder masuk panel
+  "Lainnya" (dua ketukan). Tombol ikon di bilah bawah memotong ruang pembacaan biaya dan tombol utama di
+  lebar 320 sampai 360px; itu perubahan tata letak halaman penanda yang harus diukur dengan `audit-mobile`,
+  bukan tambalan kecil. Tercatat sebagai tindak lanjut.
+
+**Bukti tinggi gulungan tak berubah** (skrip pengukur ditulis ulang di folder sementara, bukan di repo;
+19 kasus × 58/80 mm = 38 dokumen, himpunan direkonstruksi karena himpunan asli tahap 5/6b tak tersimpan):
+38/38 `@page` hasil `fit()` identik sebelum dan sesudah; tinggi body di media layar dan media cetak
+identik; 38 PDF sama ukuran halaman, satu halaman, nol luberan; selisih piksel 0 pada raster 203 dpi, jadi
+hasil ambang 1-bit otomatis sama dengan garis dasar yang sudah lolos. Emulasi Pixel 7 (dengan meta
+viewport): 38/38 `@page` sama dengan garis dasar 980px.
+
+**Uji alur di Chromium sungguhan** lewat `openPrintWindow` asli (bukan tiruan): "Cetak lagi" memanggil
+`print` lagi tanpa menumpuk `<style>`; "Tutup" menutup popup hasil `window.open` skrip; di halaman yang
+bukan hasil skrip `close()` ditolak dan pesan muncul; teks bilah mengikuti bahasa.
+
+**Verifikasi tahap 7:** 1005 tes / 81 berkas (dua puluh tes baru: markup dan escape bilah, urutan bilah dan
+gaya, viewport, HTML tanpa `controls` identik dengan dokumen lama, `roll: null` tanpa bilah, A4 tetap
+berbilah, CSS bilah menyembunyikan diri di cetak, `printScript` idempoten dan tombolnya, teks mengikuti
+bahasa, tak ada `afterprint` maupun `close()` otomatis), build dan lint bersih.
+
+**Belum terverifikasi:** printer termal fisik; dialog cetak dan perilaku `window.print()` serta `close()`
+di Chrome Android sungguhan; iOS Safari (termasuk `afterprint`); meta viewport hanya lewat emulasi Pixel 7,
+bukan perangkat nyata; bilah di laporan A4 diuji di tes unit, bukan lewat PDF A4; pembacaan QR dan logo
+berwarna asli.
+
+#decision #print #receipt #harden
