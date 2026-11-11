@@ -14,8 +14,14 @@ import {
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
 import { resolveReceiptSettings, receiptLines } from '@/lib/business/receiptTemplate';
-import { receiptAddress, stampWithTime } from '@/lib/business/receiptContent';
-import { useSettingsStore } from '@/stores/settings';
+import {
+  receiptAddress,
+  serviceDocPlan,
+  stampWithTime,
+  type GaugeStage,
+  type GaugeTick,
+  type ServiceDocKind,
+} from '@/lib/business/receiptContent';
 import type { TranslationKey } from '@/i18n';
 import { receiptStyle, LOGO_MAX_MM } from './receiptStyle';
 import { receiptText } from './receiptText';
@@ -81,7 +87,7 @@ const LINE_LABEL: Partial<Record<ReceiptLine['key'], TranslationKey>> = {
   condition: 'receipt.line.condition',
   complaint: 'receipt.line.complaint',
   accessories: 'receipt.line.accessories',
-  status: 'receipt.line.status',
+  pickedUp: 'receipt.line.pickedUp',
   technician: 'receipt.line.technician',
   estimate: 'receipt.line.estimate',
   cost: 'receipt.line.cost',
@@ -100,32 +106,62 @@ function lineLabel(l: ReceiptLine): string {
   return key ? receiptText(key) : l.label;
 }
 
-function lineValue(l: ReceiptLine, service: Service): string {
+function lineValue(l: ReceiptLine): string {
   if (l.until !== undefined)
     return l.until
       ? `${receiptText('receipt.warranty.until')} ${fmtDate(l.until)}`
       : receiptText('receipt.warranty.none');
-  // STATUS_LABELS hanya berbahasa Indonesia; bahasa lain memakai kamus status aplikasi.
-  if (l.key === 'status' && useSettingsStore.getState().language !== 'id')
-    return receiptText(`status.${service.status}` as TranslationKey);
   return l.value;
 }
 
 function rowsFor(
   lines: ReceiptLine[],
   group: ReceiptLine['group'],
-  service: Service,
   paper: PaperSpec,
   extraClass = '',
 ): string {
   const rows = lines
     .filter((l) => l.group === group)
-    .map((l) =>
-      receiptRow(lineLabel(l), lineValue(l, service), l.emphasis ? 'strong' : '', paper),
-    )
+    .map((l) => receiptRow(lineLabel(l), lineValue(l), l.emphasis ? 'strong' : '', paper))
     .join('');
   return rows ? `<table class="${extraClass}">${rows}</table>` : '';
 }
+
+const STAGE_LABEL: Record<GaugeStage, TranslationKey> = {
+  received: 'receipt.stage.received',
+  working: 'receipt.stage.working',
+  ready: 'receipt.stage.ready',
+  pickedUp: 'receipt.stage.pickedUp',
+};
+
+/**
+ * Pita tahap: empat segmen, yang sudah dilewati berupa batang hitam tebal dan
+ * yang belum berupa garis titik-titik (bahasa jahitan yang sama dengan `.seam`).
+ * Tahap saat ini ditebalkan dan digaris bawah. Semuanya GARIS dan teks, bukan
+ * latar: latar hilang bila "background graphics" mati, garis tepi tidak.
+ * Hierarki tahap terbaca tanpa abu-abu, jadi selamat dari ambang 1-bit.
+ */
+export function stageGaugeHtml(ticks: GaugeTick[]): string {
+  if (!ticks.length) return '';
+  const steps = ticks
+    .map((t) => {
+      const cls = ['step', t.reached ? 'on' : 'off', t.current ? 'cur' : ''].filter(Boolean).join(' ');
+      return `<div class="${cls}"><i class="bar"></i><span class="nm">${escapeHtml(receiptText(STAGE_LABEL[t.stage]))}</span></div>`;
+    })
+    .join('');
+  return `<div class="gauge">${steps}</div>`;
+}
+
+/** Kotak tanda tangan penerima: bingkai kosong yang diisi tangan, bukan latar. */
+export function signBoxHtml(): string {
+  return `<div class="sign"><p class="block-label">${escapeHtml(receiptText('receipt.sign.label'))}</p><div class="sign-box"></div></div>`;
+}
+
+const DOC_TEXT: Record<ServiceDocKind, { kind: TranslationKey; title: TranslationKey }> = {
+  intake: { kind: 'receipt.doc.intake', title: 'receipt.title.intake' },
+  service: { kind: 'receipt.doc.service', title: 'receipt.title.service' },
+  handover: { kind: 'receipt.doc.handover', title: 'receipt.title.handover' },
+};
 
 export interface ReceiptDoc {
   demoMessage: string;
@@ -245,13 +281,22 @@ export function serviceReceiptDoc(
   const track = trackingUrl(origin, org.id, service.serviceNo);
   const note = (org.settings?.publicNote ?? '').trim();
   const paper = paperSpec(paperWidthOf(org));
-  const garansi = rowsFor(lines, 'garansi', service, paper);
+  const garansi = rowsFor(lines, 'garansi', paper);
   const showTrack = !cancelled && (cfg.showQr || cfg.showTrackUrl);
+  // Kertas yang sama dicetak saat unit diterima, siap, dan diserahkan: judul,
+  // pita tahap, dan kotak tanda tangan mengikuti tahap SAAT CETAK.
+  const plan = serviceDocPlan(service);
+  const text = DOC_TEXT[plan.kind];
+  const fine = cfg.serviceTerms
+    ? multiline(cfg.serviceTerms)
+    : escapeHtml(
+        receiptText(plan.kind === 'handover' ? 'receipt.service.fineHandover' : 'receipt.service.fine'),
+      );
 
   return {
     demoMessage: receiptText('receipt.demo.service'),
-    title: receiptText('receipt.title.service'),
-    kind: receiptText('receipt.doc.service'),
+    title: receiptText(text.title),
+    kind: receiptText(text.kind),
     no: service.serviceNo,
     date: service.createdAt
       ? stampWithTime(localDateOf(service.createdAt), service.createdAt, cfg.showTime)
@@ -259,10 +304,10 @@ export function serviceReceiptDoc(
     address: receiptAddress(org.address, service.outletId, outlets),
     voided: cancelled,
     body: `
-  ${cancelled ? voidMarkHtml() : ''}
+  ${cancelled ? voidMarkHtml() : stageGaugeHtml(plan.gauge)}
   ${joinSections([
-    rowsFor(lines, 'unit', service, paper),
-    rowsFor(lines, 'uang', service, paper, 'money'),
+    rowsFor(lines, 'unit', paper),
+    rowsFor(lines, 'uang', paper, 'money'),
     garansi
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
       : '',
@@ -279,9 +324,8 @@ export function serviceReceiptDoc(
   </div>`
       : '',
     note ? `<div class="note">${escapeHtml(note)}</div>` : '',
-    cancelled
-      ? ''
-      : `<div class="fine">${cfg.serviceTerms ? multiline(cfg.serviceTerms) : escapeHtml(receiptText('receipt.service.fine'))}</div>`,
+    plan.signature ? signBoxHtml() : '',
+    cancelled ? '' : `<div class="fine">${fine}</div>`,
   ])}`,
   };
 }

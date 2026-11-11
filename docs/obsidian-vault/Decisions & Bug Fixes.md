@@ -5779,3 +5779,126 @@ jahitan, dan atribusi selamat di ambang 50%.
 sungguhan, logo toko berwarna asli.
 
 #decision #print #receipt #critique
+
+### Tahap 7: nota servis mengikuti tahap tiket (11 Nov 2026)
+
+Kritik ulang 25/40 menyisakan satu keluhan terbesar di nota servis: **satu dokumen untuk semua tahap**. Tanda
+terima yang dicetak saat unit masuk berjudul sama dengan nota lunas, dan baris "Status" membeku di kertas yang
+disimpan pelanggan berminggu-minggu. Tahap 7 menyelesaikan bagian yang **tak butuh data baru**; dua bagian yang
+butuh keputusan data hanya dikaji (di bawah).
+
+**Keputusan:**
+
+- **Satu fungsi murni memutuskan segalanya.** `serviceDocPlan()` di `lib/business/receiptContent.ts` memetakan
+  status ke tahap lewat `STAGE_OF_STATUS: Record<ServiceStatus, ServiceStage>`. Tipe `Record` penuh membuat status
+  baru tanpa pemetaan menjadi **galat kompilasi**, bukan tiket yang diam-diam tercetak dengan judul salah. UI hanya
+  menerima rencana (jenis kertas, tick, perlu tanda tangan atau tidak) dan tak memutuskan apa pun.
+- **Tahap "diambil" dibaca dari `pickedUp`, bukan status.** Status `lunas` tanpa serah unit = **Siap** (sama dengan
+  `nextStepFor` dan halaman lacak); nota baru berjudul SERAH TERIMA setelah unit benar-benar pindah tangan. Tiket
+  batal selalu batal, walau `pickedUp` menyala.
+- **"Status" diganti "tahap saat dicetak"**, bukan dihapus begitu saja: pelanggan tetap melihat posisi tiket, tetapi
+  bentuknya (empat tick, tahap saat ini bergaris bawah) tak lagi terbaca sebagai status hidup.
+- **Penanda tahap dibangun dari garis dan teks.** Tick tercapai: `border-top` 12 titik hitam; belum tercapai:
+  `2px dotted`; tahap kini: tebal + garis bawah 2px. Latar sengaja tak dipakai, karena latar tak tercetak bila
+  "background graphics" mati dan abu-abu hilang di ambang 1-bit. Label dibatasi 7 huruf: kolom 58 mm = (376 − 3×8)/4
+  = 88 titik, label 7 huruf memakai 84.
+- **Kotak tanda tangan hanya di serah terima**, bingkai 2px setinggi 72 titik berlabel PENERIMA UNIT, `break-inside:avoid`.
+  Baris "Diambil" mencetak `pickedUpAt`, hanya bila tiket tak batal.
+- **"Estimasi" dibuang bila "Biaya" ada**: dua angka untuk satu hal. Estimasi tetap tercetak selama biaya akhir belum ditetapkan.
+
+**Simulasi (cara kerja dan satu jebakan).** Skrip ditulis di folder sementara, bukan di repo: Playwright memuat modul
+dev server Vite, membuat HTML yang sama persis dengan jendela cetak (`receiptPreviewHtml`), mengukur DOM dalam media
+cetak, lalu `page.pdf` dan pymupdf pada 203 dpi dengan ambang 50%. Cakupan 40 berkas: id/en × 58/80 mm × 5 tahap ×
+isi polos/penuh sesak (nama toko, perangkat, IMEI, dan nomor tiket panjang). Hasil: **40/40 lolos**, satu halaman tiap
+berkas, nol luberan, tinta di dalam jendela head, tanpa warna selain `#000`/`#fff` (DOM dan PDF), ukuran huruf dan
+tinggi baris kelipatan titik, tick tercapai tetap pekat dan tak tercapai tetap putus-putus, bingkai tanda tangan
+tertutup dan bagian dalamnya kosong.
+
+> [!warning] Jebakan simulasi: jangan paksa tinggi PDF tanpa `@page`
+> Percobaan pertama menunjukkan isi menyusut ke 0,657 (huruf 4,66pt). Penyebabnya bukan produk: CSS `@page` masih
+> 297 mm sementara tinggi PDF dipaksa 195 mm, sehingga Chrome menskalakan 195/297. `printScript` sudah benar: ia
+> menyuntik `@page{size:Wmm Hmm;margin:0}` tepat sebelum `print()`. Simulasi harus meniru itu
+> (`preferCSSPageSize:true` dengan `@page` yang sama), jika tidak, semua angka ukuran bohong.
+> Dua pemeriksaan 1-bit juga awalnya gagal oleh pembulatan setengah titik di tepi (kepadatan bar 0,82; tepi bingkai
+> "terbuka"). Itu bukan cacat produk; ukur ketebalan dari larik hitam terpanjang dan cari tepi dalam pita ±3 titik.
+
+**Verifikasi tahap 7:** 1013 tes / 81 berkas (28 tes baru: judul per tahap, penanda tahap, kotak tanda tangan dan
+baris Diambil, kalimat kaki serah terima, syarat toko tetap menang, tiket batal tanpa penanda dan tanda tangan,
+label en, tak ada gaya inline, judul dan label muat di 58 mm, Estimasi), build dan lint bersih.
+
+**Belum terverifikasi:** printer termal fisik, dialog cetak Chrome di Android, pembacaan QR oleh pemindai sungguhan,
+dan apakah garis tebal 12 titik terbaca bersih di kepala termal sungguhan (di simulasi 1-bit ia pekat).
+
+#decision #print #receipt #lifecycle
+
+### Kajian (belum dikerjakan): penanda CETAK ULANG di nota servis
+
+Struk POS bisa menandai cetak ulang karena itu aksi sendiri di riwayat penjualan. Nota servis dicetak dari beberapa
+tempat (Cetak Nota di bilah aksi, modal Notifikasi, panel selesai tiket) lewat `printServiceReceipt()` tanpa jejak.
+Untuk tahu "ini cetakan kedua" harus ada sesuatu yang tersimpan, jadi ini **keputusan data milik pemilik produk**.
+
+| Opsi | Cara kerja | Biaya | Risiko |
+|---|---|---|---|
+| **A. Kolom `last_printed_at` + `print_count` di `services`** (migrasi baru setelah 0099) | Cetak menulis kolom lewat `repository`; kertas mencetak "CETAK ULANG · tgl jam" bila `print_count ≥ 1` | Satu migrasi, dua field di `types.ts` dan adapter lokal, tes adapter, satu tulis per cetak | Tulis terjadi saat dialog dibuka, bukan saat kertas benar-benar keluar (dialog dibatalkan tetap terhitung). Dua perangkat offline yang mencetak bersamaan bisa saling menimpa hitungan (jumlahkan di server). Tiket lama bernilai `null` = "belum pernah", sehingga cetakan pertama setelah rilis tampak asli padahal bukan. Pemakai non-owner pun menulis ke `services` (kebijakan `services_upd` mengizinkan anggota organisasi), tetapi tiket di luar cakupan outlet-nya tidak |
+| **B. Entri di `history` jsonb** | Tambah entri cetak ke riwayat | Nol migrasi | **Buruk.** `history` ≈78% ukuran tiap baris dan sumber egress terbesar produk (komentar `completedAt` di `types.ts`); tiap cetak membengkakkannya |
+| **C. Tanpa data: cap waktu cetak saja** | Setiap cetakan mencetak "Dicetak 11 Nov 2026 14.05" | Nol migrasi, nol tulis | Tak mendeteksi cetak ulang; hanya memberi bukti umur kertas. Cukup untuk sengketa ("nota ini dari kapan?"), tidak untuk "ini salinan" |
+| **D. Tabel `receipt_prints` (log)** | Satu baris per cetak (siapa, kapan) | Migrasi + RLS + kuota | Berlebihan untuk satu kata di kertas; berguna hanya bila pemilik ingin audit siapa mencetak |
+
+**Rekomendasi: A** bila pemilik memang ingin kata CETAK ULANG; **C** bila yang dicari hanya bukti umur kertas dan
+tak mau menyentuh skema. Hindari B. Jika A dipilih: tulis lewat satu fungsi di `repository` (mis.
+`markServicePrinted(id)`), bukan di komponen; ambil cap waktu di server (`now()`), bukan jam perangkat; pertimbangkan
+tak menandai dokumen batal (kertas itu sudah berkotak BATAL). Cap C murah dan tak menutup pintu A.
+
+#decision #print #receipt #study
+
+### Kajian (belum dikerjakan): URL lacak pendek dan keterbacaan nomor tiket
+
+**Masalah.** Alamat lacak yang tercetak berbentuk `/track?org=<UUID 36 huruf>&no=FM-0123`. Di 58 mm ia
+memakan **6 baris** (9 baris pada kasus berat). QR tetap penuh; yang menderita adalah pelanggan yang mengetik
+alamat tanpa kamera.
+
+**Temuan keamanan (dari kode, bukan dugaan): ya, nomor tiket bisa dienumerasi, dengan satu rem.**
+
+- `track_service` (migrasi 0060, `security definer`, dapat dipanggil `anon`) menerima `(org_id, service_no)` dan
+  mencocokkan `lower(service_no)`. Nomor tiket berurutan per organisasi (0061, `unique (org_id, service_no)`), jadi
+  `FM-0001`, `FM-0002`, … bisa ditebak. **UUID organisasi tercetak di setiap QR dan alamat**, sehingga siapa pun yang
+  memegang satu nota mengetahuinya, lalu dapat mengiterasi nomor tiket pelanggan lain di toko yang sama.
+- Yang dikembalikan per tiket: nomor, perangkat, kategori, status, `picked_up`, tanggal garansi servis dan part,
+  **nama part terpasang** beserta garansinya, identitas toko, dan `public_history` (entri riwayat yang tak ditandai
+  `internal`). Tidak ada nama atau HP pelanggan dan tidak ada biaya (komentar di 0082 menegaskan yang pertama).
+  Dampaknya "orang lain tahu ada servis Samsung A54 yang kini selesai", bukan kebocoran identitas. Belum diperiksa:
+  apakah teks bebas staf pernah masuk ke entri riwayat yang tak ditandai `internal`; periksa sebelum menyimpulkan
+  bahwa dampaknya sekecil itu.
+- Satu-satunya rem: `check_rate_limit('track:'||org_id, 60, 60)`, **60 permintaan per menit per organisasi**
+  (0015), bukan per IP; fungsinya sendiri sudah dicabut dari `anon`/`authenticated` (0082) sehingga hanya
+  `track_service` yang bisa memanggilnya. Penebak yang menjaga 59/menit menyapu ±3.500 nomor per jam tanpa tertahan.
+  Penebak yang lebih cepat justru **mengunci pelacakan seluruh pelanggan toko itu**: di atas batas, RPC mengembalikan
+  nol baris, sama dengan "tiket tidak ditemukan", jadi rem per organisasi adalah tuas DoS terhadap pelanggan asli.
+  Throttle klien 10/60 detik di `TrackingPage.tsx` hanya kosmetik.
+
+**Usulan (belum diimplementasikan; butuh keputusan dan migrasi):**
+
+1. **Kode lacak acak per tiket**, bukan nomor berurutan: kolom `track_code` (6 sampai 8 huruf dari alfabet 32 simbol
+   yang tak mudah tertukar, mis. Crockford base32 tanpa I, L, O, U) diisi server saat tiket dibuat, `unique`, dengan
+   ulang saat bentrok. 32^6 = 2^30 ≈ 1,07 miliar; pada 60 permintaan/menit menyapu seluruh ruangnya butuh puluhan
+   tahun, tetapi batas itu tetap per organisasi, jadi poin 2 dan 3 tetap perlu.
+2. **Rute pendek di sisi lacak**: `/t/<kode>` (kode global, tanpa UUID) atau `/<slug-toko>/<kode>`. Tanpa UUID
+   organisasi di kertas, alamat berhuruf turun dari 6 sampai 9 baris menjadi 1 sampai 2 baris di 58 mm. Kode global
+   butuh 8 huruf (2^40) agar tabrakan antarorganisasi tak jadi masalah. Batas per kode dan per IP perlu ditegakkan di
+   tepi (Edge Function atau CDN), karena `check_rate_limit` per organisasi tidak cukup.
+3. **Respons seragam**: kode salah, kode tak ada, dan terkena batas dibalas dengan bentuk dan waktu yang sama
+   (atau terkena batas dibedakan dengan jelas dari "tak ditemukan" supaya pelanggan asli tahu harus mencoba lagi).
+4. **Tetap terima `?org=&no=` untuk nota lama.** Kertas yang sudah beredar tak boleh mati. Selama jalur lama hidup,
+   ia tetap bisa dienumerasi; pensiunkan bertahap hanya bila ada kebutuhan.
+5. **Opsional: kedaluwarsa kode** (mis. 12 bulan setelah tiket ditutup).
+
+**Biaya:** satu migrasi (kolom, indeks unik, pengisian untuk tiket lama), perubahan RPC `track_service` (menerima
+kode), satu rute dan halaman, `trackUrl()` di `lib/business/tracking.ts`, teks cetak, dan tes keamanan RPC di
+`tests/integration`. **Risiko:** QR yang sudah tercetak harus tetap bekerja (poin 4); kode global memerlukan batas per
+IP; pengisian tiket lama tak boleh menimpa kode yang sudah ada. Tanpa migrasi hampir tak ada yang bisa dipersingkat:
+alamat butuh UUID organisasi agar lacak berfungsi, paling jauh membuang `https://`.
+
+**Rekomendasi:** kerjakan poin 1 sampai 4 sebagai satu paket. Poin 2 tanpa poin 1 hanya menggeser masalah
+enumerasi, tidak menyelesaikannya.
+
+#decision #tracking #security #study

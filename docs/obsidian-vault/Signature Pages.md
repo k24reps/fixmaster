@@ -910,6 +910,21 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Dokumen batal** (tahap 6b): tiket batal dan struk batal sama-sama berkotak **BATAL** (`voidMarkHtml`, bingkai 2px) tepat di bawah tanggal, dan tak berpamitan: `ReceiptDoc.voided` membuang ucapan kaki, bawaan maupun buatan toko. Jahitan dan atribusi tetap tercetak.
 
+**Nota mengikuti tahap tiket** (tahap 7): nota servis bukan lagi satu dokumen untuk semua tahap. `serviceDocPlan(service)` di `lib/business/receiptContent.ts` memetakan 8 status plus `pickedUp` ke lima tahap (`received`, `working`, `ready`, `pickedUp`, `cancelled`) dan dari situ ke tiga jenis kertas:
+
+| Tahap | Judul kertas | Penanda tahap | Kotak tanda tangan |
+|---|---|---|---|
+| Masuk, Proses | **TANDA TERIMA** | ya | tidak |
+| Siap (selesai, atau lunas belum diambil) | **NOTA SERVIS** | ya | tidak |
+| Diambil | **SERAH TERIMA** | ya, empat tick terisi | ya, **PENERIMA UNIT** |
+| Batal | NOTA SERVIS + kotak **BATAL** | tidak | tidak |
+
+- **Baris "Status" dihapus.** Ia membeku saat dicetak dan pelanggan menyimpannya berminggu-minggu, jadi cepat menyesatkan. Penggantinya **penanda tahap** yang sengaja dibaca sebagai "tahap saat nota ini dicetak".
+- **Penanda tahap** (`stageGaugeHtml`): empat tick Masuk · Proses · Siap · Diambil. Tick tercapai = garis atas **12 titik hitam pekat**, belum tercapai = garis **putus-putus 2px**, tahap saat ini = label **tebal + garis bawah**. Semuanya garis dan teks, tanpa latar, sehingga selamat di ambang 1-bit dan saat "background graphics" mati. Label maksimal 7 huruf agar satu baris di 58 mm (kolom 88 titik).
+- **Baris "Diambil"** (tanggal, dari `pickedUpAt`) hanya muncul bila `pickedUp` dan tiket tidak batal. Nota serah terima juga mengganti kalimat kaki dengan "Simpan nota ini sebagai bukti serah terima unit dan untuk klaim garansi."; syarat servis buatan toko tetap menang.
+- **"Estimasi" dibuang bila "Biaya" ada** (`serviceMoney`): dua angka yang berbeda untuk hal yang sama membingungkan pelanggan.
+- Semua teks lewat `useT()` (`receipt.doc.*`, `receipt.title.*`, `receipt.stage.*`, `receipt.sign.label`, `receipt.line.pickedUp`), id dan en berpasangan.
+
 **Tata letak baris** (tahap 5): kolom label tak dipatok persen. Label dan nilai berdampingan bila muat; bila tidak, baris ditumpuk, label di atas dan nilai utuh di bawahnya (`fitsBeside` di `receiptPaper.ts`, `receiptRow` di `printReceipt.ts`). Barang struk dua baris: nama, lalu `jumlah× harga satuan` dan jumlah rupiah. Tiap baris di-flex sendiri supaya satu baris tumpuk tak menyempitkan kolom baris lain. Alasan lengkap di [[Decisions & Bug Fixes]].
 
 **Nota yang bisa diatur** (tahap 4): empat kartu di kolom formulir. **Kertas termal** (tahap 1),
