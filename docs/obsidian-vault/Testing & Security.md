@@ -71,7 +71,7 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 
 ## Hasil testing (22 Sep 2026)
 
-- **Unit (offline)**: **1078 lolos / 83 berkas** (12 Nov 2026). `npm run test`.
+- **Unit (offline)**: **1078 lolos / 83 berkas** (12 Nov 2026). `npm run test`. Ini satu-satunya tempat angka ini dicatat (AGENTS.md §5); perbarui di sini bila jumlah tes berubah.
 - **Integration RLS/RPC (staging)**: **149 lolos / 12 berkas**. Berkas ke-13, `tier3h-track-code` (kode lacak dan jejak cetak, 0100), **belum pernah dijalankan**: 0100 sudah ada di produksi (12 Nov 2026) tetapi belum di staging, tempat satu-satunya berkas ini bisa jalan. Uji terakhirnya menghabiskan kuota lacak IP mesin selama semenit, jadi beri jeda sebelum menjalankan ulang. `npm run test:integration`.
 - **Probe regresi UI**: `audit-zoom` 11 lebar × 13 halaman dan `audit-mobile` 5 lebar ponsel +
   5 lebar tablet × 13 halaman. **`docOver` = 0 di SETIAP lebar dan halaman** — itu metrik

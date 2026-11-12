@@ -6446,3 +6446,38 @@ bersih; angka di tuts yang tertekan (`--text-muted` di atas `--brand-soft`) dihi
 `sync-vault-attachments.ps1` (container tanpa PowerShell; `scripts/shots/` dan lampiran vault
 di-gitignore), jadi tiga gambar `services-scope-*` perlu difoto ulang dengan
 `scripts/shoot-services-scope.mjs` lalu disinkron di mesin lokal.
+
+## Aturan vault §5 direvisi (12 Nov 2026)
+
+**Permintaan pemilik:** audit apakah §5 AGENTS.md (vault wajib diperbarui "di turn yang sama",
+foto + sync wajib, angka ikut diperbarui di AGENTS.md) memang perlu atau justru menghambat.
+Pemicunya: pekerjaan sakelar lingkup Servis di sesi cloud selesai, tetapi foto vault harus
+dilempar ke pemilik karena container tak punya PowerShell.
+
+**Yang dipertahankan, dengan bukti dari sesi yang sama:** catatan vault menentukan arah tiga
+kali. "Kaji ulang Sembunyikan tuntas" memberi angka toko pemilik (8 belum tuntas, 103 arsip)
+yang menunjukkan label "Belum tuntas 103" akan menyesatkan. Audit kata 7 Nov menjelaskan kenapa
+"tuntas" diganti "arsip". Testing & Security mencatat rel chip gulir-samping sebagai disengaja,
+sehingga hasil audit ponsel tak terbaca sebagai regresi. CLAUDE.md mencatat sesi 21-22 Sep saat
+aturan ini tak termuat dan vault basi.
+
+**Yang diubah:**
+- **Ukuran selesai = commit atau PR yang sama, bukan turn.** Turn tak terlihat dari repo,
+  commit bisa diperiksa. Praktiknya sudah begitu: dari 37 commit kode terakhir (clone dangkal,
+  51 commit), 17 menyentuh vault, dan sebagian besar sisanya bagian dari batch yang vault-nya
+  diperbarui di commit lain (mis. seri Kalkulator 10 Nov).
+- **Foto + sync jadi opsional, hanya di mesin lokal.** Vault menyematkan 108 gambar, dan clone
+  baru berisi 0, karena `scripts/shots/` dan lampiran vault di-gitignore; sinkronnya butuh
+  PowerShell. Bagian yang katanya "mengikat lintas mesin" justru satu-satunya yang tak ikut
+  pindah mesin. Gantinya: di cloud, sebut gambar yang belum diperbarui di laporan akhir; sematan
+  gambar baru mencatat skrip pembuatnya (contoh: `scripts/shoot-services-scope.mjs`).
+- **Jumlah tes hanya di [[Testing & Security]].** Dulu disalin di AGENTS.md §4, Conventions,
+  Testing & Security, dan entri Decisions. Angkanya bisa dicek dengan `npm run test`, tiap fitur
+  yang menambah tes memaksa empat suntingan, dan dua branch paralel pasti bentrok di baris yang
+  sama saat merge. Angka di entri Decisions tetap sebagai catatan saat itu.
+
+**Diawasi, belum diubah:** berkas ini sekitar 6.500 baris (530 KB), sekitar 60% vault, dan
+terus tumbuh. Agent mencarinya per judul, jadi masih aman. Memecahnya akan memutus banyak tautan
+`[[Decisions & Bug Fixes#…]]`, jadi ditunda sampai benar-benar menghambat.
+
+**Berkas:** AGENTS.md (§4, §5, §6), CLAUDE.md, [[Conventions]], [[Testing & Security]].

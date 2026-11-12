@@ -16,7 +16,7 @@ Kondisi itu bukan teori: pada sesi 21-22 September 2026, `AGENTS.md` TIDAK
 termuat meski tidak ada `CLAUDE.md` sama sekali. Akibatnya satu sesi penuh —
 audit logika bisnis, migrasi 0069-0079, pembersihan `/simplify`, dan fitur
 ekspor PDF — berjalan tanpa aturan §3 (konvensi), §4 (probe regresi UI), §5
-(pemeliharaan vault same-turn), dan §6 (saran model). Vault jadi basi tanpa
+(pemeliharaan vault), dan §6 (saran model). Vault jadi basi tanpa
 jejak, persis yang dikhawatirkan §5.
 
 Impor `@AGENTS.md` adalah cara yang direkomendasikan dokumentasi resmi untuk
