@@ -6195,6 +6195,51 @@ terverifikasi:** printer termal fisik dan pemindaian dengan ponsel sungguhan; uj
 
 #decision #print #receipt #qr
 
+### Syarat & Ketentuan servis untuk pelanggan (12 Nov 2026)
+
+Permintaan pemilik: FixMaster punya template S&K yang berlaku bagi pelanggan "agar meminimalisir kasus
+yang tidak diinginkan", dan nota memuat tautannya. Draf dibahas dulu di percakapan dan diaudit dua kali
+("lebih simpel lebih baik"): 11 pasal jadi **6 pasal**, teks tinggal sekitar sepertiga. Tambahan
+pemilik: garansi dihitung sejak pelanggan dikabari unit selesai (sudah sesuai `StatusModal`, yang
+menghitung masa garansi dari tanggal tiket ditandai Selesai), dan kalimat *human error*.
+
+- **Isi.** Penerimaan dan biaya, Data, Pembatalan, Garansi, Pengambilan, Batas pengambilan (bawaan
+  **60 hari**), plus ketentuan tambahan toko. Sapaan "kami". **Tidak ada klausul pelepas tanggung
+  jawab**: UU 8/1999 Pasal 18 membatalkannya demi hukum ("bukan tanggung jawab kami", "unit menjadi
+  milik toko"). Pegangan toko di pasal 6 adalah biaya simpan opsional dan penyerahan setelah lunas.
+  *Human error* diberi contoh konkret (jatuh, tertekan, cairan), karena tanpa contoh ia terlalu luas
+  dan mudah dibantah. Belum diperiksa ahli hukum.
+- **Teks pasal tetap, toko mengatur angka.** Empat isian: batas pengambilan, biaya simpan per hari,
+  biaya pengecekan bila batal (kosong = kalimatnya tak tampil), ketentuan tambahan. Tanpa saklar per
+  pasal. Alasan: bahasa bawaan tetap aman, dan perbaikan teks oleh FixMaster berlaku untuk semua toko.
+- **Versi.** Tanggal isi terakhir diubah (`termsToSave`: menyimpan ulang tanpa perubahan tak membuat
+  versi baru). Mengubah teks bawaan = menaikkan `TERMS_TEMPLATE_VERSION`.
+- **Salinan per tiket di riwayat, bukan kolom.** Lihat [[Data Layer]]. Keputusan kuncinya: kolom
+  `services.terms` akan memaksa migrasi ke VPS sebelum frontend masuk `main` (urutan wajib di
+  [[Self-Hosting]]); tanpa kolom di server, `put` tiket baru dan daftar servis (`SERVICE_LIST_COLUMNS`)
+  gagal total. Entri "Unit diterima" sudah append-only di server dan sudah mengalir ke halaman lacak
+  lewat `public_history`, jadi fitur ini **tanpa migrasi** dan salinannya tak bisa diubah belakangan.
+- **Nota hanya satu kalimat** (pilihan pemilik): "Dengan menitipkan unit, Anda menyetujui S&K versi
+  …", tebal, karena Pasal 18 ayat 2 juga membatalkan klausula yang letaknya sulit terlihat. Tidak ada
+  QR kedua; kalimat di bawah QR lacak menyebut S&K, dan S&K tampil di halaman yang dibuka QR itu.
+- **Batas yang diketahui.** Tiket sebelum fitur ini dan tiket klaim garansi tak membawa salinan (klaim
+  cloud disusun RPC `create_warranty_claim`; klaim mengikuti S&K tiket asli). Riwayat cloud dimuat
+  terpisah dari daftar servis; bila tombol cetak ditekan sebelum riwayat termuat, nota tercetak tanpa
+  kalimat S&K. Halaman S&K publik per toko dan tautan di template WA ditunda: halaman lacak per tiket
+  sudah menjadi tempatnya.
+
+**Verifikasi:** build, lint, **1098 tes / 84 berkas** (`serviceTerms.test.ts` 18 tes: bawaan, jsonb
+rusak, versi, salinan, pasal bersyarat, tak ada klausul pelepas tanggung jawab id/en, rupiah tak
+terbelah; nota ber-S&K 5 tes; CSS tebal 1 tes). Browser (demo + IndexedDB lokal): form Servis Baru
+menulis `history[0].terms`; kartu Pengaturan memperbarui daftar pasal dan pratinjau nota saat diketik,
+menolak batas hari kosong; laci halaman lacak tertutup bawaan, judul satu baris 44 px, 6 pasal +
+ketentuan tambahan, nol luberan di 390 px. Probe `audit-zoom` 11 lebar, `audit-mobile` 5 lebar ponsel
+dan pita tablet 744–1152: `/settings?tab=nota` nol luberan, nol overlap, nol teks ter-clip, lantai
+12px terjaga; sisanya identik dengan baseline (pita chip `/services`, `/customers`, `/pos`). Halaman
+lacak tak termasuk 13 halaman probe; diukur terpisah di 390 px.
+
+#decision #receipt #terms #tracking #settings
+
 ## Tujuh temuan side-tab sisa, dipilah (10 Nov 2026)
 
 Sisa pindai `impeccable detect --no-advisory src` setelah tiga temuan di atas: tujuh `side-tab`

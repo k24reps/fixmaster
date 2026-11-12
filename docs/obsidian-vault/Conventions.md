@@ -40,6 +40,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 - **Baris nota lewat `receiptRow(label, value, cls, paper)`, jangan menulis `<tr>` sendiri dan jangan mematok lebar kolom persen.** Yang menentukan berdampingan atau bertumpuk adalah `fitsBeside` (hitungan huruf mono, murni, teruji). Baris dibangun flex per baris, bukan tabel otomatis: sel tumpuk selebar baris di tabel biasa menyempitkan kolom baris lain. Barang struk lewat `saleItemRow`.
 - **Pratinjau nota = dokumen cetak yang sama.** Jangan membuat render kedua: pratinjau memanggil `receiptPreviewHtml(org, doc)` (HTML cetak dengan `roll: null`) di iframe. Fungsi cetak (`printServiceReceipt`, `printSaleReceipt`) tetap sinkron; data yang butuh `useCollection` (mis. `outlets`) dibawa pemanggil sebagai argumen.
 - **Dokumen batal diberi tahu lewat `ReceiptDoc.voided`, bukan dengan menyaring HTML.** Nota servis dan struk memakai `voidMarkHtml()` yang sama untuk kotak BATAL, dan `receiptParts` membuang ucapan kaki bila `voided`. Dokumen baru yang bisa batal wajib mengisi bendera itu.
+- **S&K servis lewat `lib/business/serviceTerms.ts` (12 Nov 2026).** Teks pasal bawaan tinggal di kamus `terms.*` dan tidak bisa diketik toko: klausul pelepas tanggung jawab batal demi hukum (UU 8/1999 Pasal 18), dan tes menjaga tak ada "bukan tanggung jawab" di teks bawaan. **Mengubah teks pasal bawaan wajib menaikkan `TERMS_TEMPLATE_VERSION`.** Kalimat bersyarat ditulis utuh per varian (`terms.cancel.body` / `bodyFee`), bukan disambung potongan. Rupiah di dalam kalimat memakai spasi tak-putus.
 - **Data**: baca via `useCollection('<koleksi>')`; mutasi via `repository`. Lihat [[Data Layer]].
 - **Logika domain**: tulis murni & testable di `lib/business/`, panggil dari UI. Jangan taruh aturan di komponen.
 - **Percabangan cloud/lokal**: `isCloudMode()` TIDAK hidup di dalam modal/halaman. Bungkus jadi satu modul tulis di `src/data/` (pola `serviceParts.ts`, `financeEntry.ts`) yang menyembunyikan "RPC atau tulis lokal" dari pemanggilnya. Salinan di tiap modal harus disepakati ulang setiap kali bentuk barisnya berubah, dan jalur lokalnya hanya bisa diuji lewat UI.
@@ -63,7 +64,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (1074 test / 83 berkas) |
+| `npm run test` | Vitest (1098 test / 84 berkas) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 | `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |

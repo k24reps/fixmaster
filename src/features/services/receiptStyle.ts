@@ -154,6 +154,8 @@ export function receiptStyle(paper: PaperSpec): string {
   .track-copy { margin: 0; text-wrap: balance; }
   .track-url { margin: ${px(4)} 0 0; font-weight: 700; }
   .note { white-space: pre-wrap; }
+  /* Kalimat persetujuan S&K: tebal, karena klausula yang sulit terlihat tak mengikat. */
+  .terms { margin: ${px(8)} 0 0; font-weight: 700; }
   .foot { text-align: center; margin-top: ${px(16)}; text-wrap: balance; }
   .by { text-align: center; letter-spacing: 0.14em; margin-top: ${px(20)}; }
 `;

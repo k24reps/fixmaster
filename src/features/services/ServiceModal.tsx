@@ -21,6 +21,7 @@ import { saveScreenLock } from '@/data/serviceSecret';
 import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
 import { interpolate } from '@/lib/business/notify';
+import { currentTerms } from '@/lib/business/serviceTerms';
 import { useListNav } from '@/hooks/useListNav';
 
 interface IntakeDraft {
@@ -363,6 +364,9 @@ export function ServiceModal({
               byName: me?.name ?? '',
               note: 'Unit diterima',
               internal: false,
+              // S&K yang disetujui saat unit dititipkan. Di riwayat, yang append-only
+              // di server, jadi perubahan S&K toko sesudahnya tak menyentuh tiket ini.
+              terms: currentTerms(org?.settings?.terms),
             },
           ],
           archived: false,

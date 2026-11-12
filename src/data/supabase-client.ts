@@ -231,7 +231,8 @@ export interface TrackServiceResult {
   partWarranties: { name: string; until: string | null }[];
   pickedUp: boolean;
   /** History entries already filtered server-side to non-internal only. */
-  publicHistory: { status: string; at: string; note?: string; internal?: boolean }[];
+  /** `terms`: salinan S&K di entri "Unit diterima" (jsonb mentah, dibaca lewat `termsOf`). */
+  publicHistory: { status: string; at: string; note?: string; internal?: boolean; terms?: unknown }[];
 }
 
 /**

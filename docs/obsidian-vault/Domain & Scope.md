@@ -44,6 +44,7 @@ Aplikasi web untuk mengelola **toko/usaha reparasi gadget & elektronik** — mis
 | Pembelian Luar | Part/jasa yang dibeli di luar stok untuk satu tiket, dibayar dari wallet (dulu "Modal Dadakan"; nama kode tetap `modalDadakan*`) |
 | Arsip (tiket) | Tiket Lunas/Batal yang unitnya sudah diambil; bisa disembunyikan di Daftar Servis (dulu "tuntas") |
 | Anda | Sapaan baku di semua teks layar dan pesan; jangan "kamu/-mu" |
+| S&K | Syarat & Ketentuan servis untuk pelanggan: template bawaan enam pasal, disalin ke tiket saat unit diterima |
 | Ubah / Diperbarui | Tombol & judul aksi = "Ubah" (bukan "Edit"); entri riwayat atas perubahan itu = "Diperbarui" |
 
 Teks layar memakai istilah aplikasi, bukan campuran Inggris (tautan lacak, Ekspor, Riwayat,

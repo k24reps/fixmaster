@@ -7,6 +7,7 @@ import type {
   OutletRent,
   QuoteRates,
   ReceiptSettings,
+  TermsSettings,
 } from '@/data/types';
 import { sanitizeMobileNavPaths } from '@/lib/business/navigation';
 import { sanitizeQuoteRates } from '@/lib/business/quote';
@@ -111,6 +112,11 @@ export async function setPublicNote(note: string): Promise<void> {
 export async function setReceiptSettings(patch: Partial<ReceiptSettings>): Promise<void> {
   const current = useSessionStore.getState().org?.settings?.receipt ?? {};
   await patchSettings({ receipt: { ...current, ...patch } });
+}
+
+/** Setelan S&K servis. Ditulis utuh oleh pemanggil (`termsToSave`), termasuk versinya. */
+export async function setTermsSettings(terms: TermsSettings): Promise<void> {
+  await patchSettings({ terms });
 }
 
 /**

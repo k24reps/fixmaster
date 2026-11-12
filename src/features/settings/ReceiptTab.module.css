@@ -257,6 +257,90 @@
   box-shadow: 0 0 7px var(--warning);
 }
 
+/* ---------- Syarat & Ketentuan ----------
+   Versi dibaca sebagai readout bench (LED + mono), sama dengan sel kertas. Nomor
+   pasal 01, 02, ... berona brand: bahasa yang sama dengan halaman lacak, tempat
+   pelanggan membaca teks yang persis ini. */
+.termsVersion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border);
+}
+.termsVersionLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.termsVersionValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.termsView {
+  margin-top: var(--space-3);
+}
+.termsSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--brand-text);
+  list-style: none;
+  cursor: pointer;
+}
+.termsSummary::-webkit-details-marker {
+  display: none;
+}
+.termsSummary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.termsView[open] .caret {
+  transform: rotate(180deg);
+}
+.termsList {
+  counter-reset: term;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+  max-width: 64ch;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+.termsList li {
+  counter-increment: term;
+  display: grid;
+  grid-template-columns: 2.5ch minmax(0, 1fr);
+  column-gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.termsList li::before {
+  content: counter(term, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-bold);
+  color: var(--brand-text);
+}
+.termsList strong {
+  color: var(--text-primary);
+}
+.termsExtra {
+  white-space: pre-wrap;
+}
+
 /* ---------- Saklar: LED + readout mono, bahasa yang sama dengan kanal notifikasi ---------- */
 .switches {
   display: grid;
@@ -508,6 +592,9 @@
   }
   .cardContent {
     order: 2;
+  }
+  .cardTerms {
+    order: 3;
   }
 
   /* Kolom yang difokus lewat Tab tak boleh mendarat di balik bar dok (WCAG

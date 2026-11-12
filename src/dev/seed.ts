@@ -15,6 +15,7 @@ import { commitWizard, emptyWizardData } from '@/features/onboarding/wizard-logi
 import { useSessionStore } from '@/stores/session';
 import { newId } from '@/lib/id';
 import { localDateStr, addDays, calcHours } from '@/lib/time';
+import { currentTerms } from '@/lib/business/serviceTerms';
 import type {
   Customer,
   InventoryItem,
@@ -193,7 +194,8 @@ export async function seedDemoWorkspace(): Promise<void> {
       pickedUpAt: pickedUp ? now : null,
       warrantyClaimOf: null,
       history: [
-        entry('diterima', 'Unit diterima', createdAt),
+        // Tiket demo membawa S&K bawaan, seperti tiket yang dibuat lewat form servis.
+        { ...entry('diterima', 'Unit diterima', createdAt), terms: currentTerms(undefined) },
         ...(done
           ? [entry('pengerjaan', 'Mulai dikerjakan', createdAt), entry('selesai', opts.handling ?? 'Selesai', doneAt)]
           : []),

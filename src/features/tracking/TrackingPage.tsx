@@ -12,6 +12,7 @@ import { STATUS_LABELS, STATUS_TONE, historyKind, partWarranties } from '@/lib/b
 import type { ServiceStatus } from '@/data/types';
 import { nextStepFor, normalizeTrackCode, relativeSince } from '@/lib/business/tracking';
 import { waLink, interpolate } from '@/lib/business/notify';
+import { termsClauses, termsOf, termsSentenceText } from '@/lib/business/serviceTerms';
 import { useT } from '@/i18n';
 import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate, localDateOf, localTimeStr } from '@/lib/time';
@@ -40,7 +41,7 @@ interface TrackResult {
     partWarranties: { name: string; until: string | null }[];
     pickedUp: boolean;
   } | null;
-  publicHistory: { status: string; at: string; note?: string }[];
+  publicHistory: { status: string; at: string; note?: string; terms?: unknown }[];
 }
 
 /**
@@ -215,6 +216,8 @@ export function TrackingPage() {
   // Setelah Selesai, garansi kosong berarti "tanpa garansi" yang disengaja.
   const warrantyDecided = service?.status === 'selesai' || service?.status === 'lunas';
   const publicHistory = data?.publicHistory ?? [];
+  // S&K yang disetujui saat unit diterima, bukan S&K toko hari ini.
+  const terms = termsOf(publicHistory);
   // Gagal memuat (sinyal putus, server sibuk) BUKAN berarti nomornya salah.
   // Dulu keduanya jatuh ke pesan "tidak ditemukan", sehingga pelanggan mengira
   // salah ketik lalu menelepon toko, padahal cukup mencoba lagi.
@@ -489,6 +492,39 @@ export function TrackingPage() {
                 </span>
                 <p className={styles.shopNoteBody}>{orgNote}</p>
               </div>
+            )}
+
+            {/* Tertutup bawaan: yang dicari pelanggan di halaman ini adalah status.
+                Kalimat persetujuan di nota menunjuk ke sini lewat QR. */}
+            {terms && (
+              <details className={styles.terms}>
+                <summary className={styles.termsHead}>
+                  <span className={styles.termsLabel}>
+                    <Icon name="scale-balanced" aria-hidden /> {t('terms.title')}
+                  </span>
+                  <Icon name="chevron-down" className={styles.termsCaret} aria-hidden />
+                </summary>
+                <p className={styles.termsLead}>
+                  {interpolate(t('terms.version'), { date: fmtDate(terms.version) })}
+                </p>
+                <ol className={styles.termsList}>
+                  {termsClauses(terms).map((c) => (
+                    <li key={c.title}>
+                      <span>
+                        <strong>{t(c.title)}.</strong>{' '}
+                        {c.body.map((b) => termsSentenceText(b, t)).join(' ')}
+                      </span>
+                    </li>
+                  ))}
+                  {terms.extra && (
+                    <li>
+                      <span className={styles.termsExtra}>
+                        <strong>{t('terms.extra.title')}.</strong> {terms.extra}
+                      </span>
+                    </li>
+                  )}
+                </ol>
+              </details>
             )}
           </div>
         )}

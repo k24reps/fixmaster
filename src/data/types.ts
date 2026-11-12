@@ -123,7 +123,31 @@ export interface OrgSettings {
   quoteRates?: QuoteRates;
   /** Nota servis & struk penjualan: kertas, teks, dan baris mana yang tercetak. */
   receipt?: ReceiptSettings;
+  /** Syarat & Ketentuan servis untuk pelanggan (Pengaturan › Nota & Struk). */
+  terms?: TermsSettings;
 }
+
+/**
+ * Bagian S&K servis yang diatur toko. Teks pasalnya tetap di kode (kamus
+ * `terms.*`), supaya bahasanya tak bisa berubah jadi klausul pelepas tanggung
+ * jawab yang batal demi hukum; toko hanya mengatur angka dan menambah ketentuan
+ * sendiri. Dibaca lewat `currentTerms`: isinya jsonb yang ditulis tangan.
+ */
+export interface TermsSettings {
+  /** Batas pengambilan unit (hari) sejak pelanggan dikabari unit selesai. Bawaan 60. */
+  pickupDays?: number;
+  /** Biaya simpan per hari sesudah batas pengambilan (Rp). 0 = tidak ada. */
+  storageFee?: number;
+  /** Biaya pengecekan bila servis batal (Rp). 0 = tidak disebut. */
+  checkFee?: number;
+  /** Ketentuan tambahan, teks bebas milik toko. */
+  extra?: string;
+  /** Tanggal (YYYY-MM-DD) isi S&K terakhir diubah: "versi" yang tercetak di nota. */
+  version?: string;
+}
+
+/** S&K yang berlaku untuk SATU tiket, disalin saat unit diterima. */
+export type ServiceTerms = Required<TermsSettings>;
 
 /**
  * Setelan cetak nota & struk (Pengaturan › Nota & Struk). Semua opsional dan
@@ -417,6 +441,13 @@ export interface ServiceHistoryEntry {
    * Tak ada di tiket yang dibatalkan sebelumnya — DP-nya "tak diketahui".
    */
   refund?: number;
+  /**
+   * Hanya entri pertama ("Unit diterima"): S&K yang disetujui pelanggan saat
+   * menitipkan unit. Disimpan di riwayat, bukan kolom sendiri, karena riwayat
+   * append-only di server (0058) sehingga salinannya tak bisa diubah belakangan,
+   * dan halaman lacak publik sudah menerimanya lewat `public_history`.
+   */
+  terms?: ServiceTerms;
 }
 
 /** Bagian tiket asli yang diklaim garansinya (migrasi 0065, kolom `claimed_items`). */

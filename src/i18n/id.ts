@@ -1875,6 +1875,52 @@ export const id = {
   'receipt.block.warranty': 'GARANSI',
   'receipt.track.copy': 'Pindai untuk cek status & garansi',
   'receipt.track.visit': 'Cek status & garansi di:',
+  'receipt.terms.agree': 'Dengan menitipkan unit, Anda menyetujui S&K versi {date}.',
+  'receipt.track.copyTerms': 'Pindai untuk cek status, garansi & S&K',
+  'receipt.track.visitTerms': 'Cek status, garansi & S&K di:',
+  // S&K servis (lib/business/serviceTerms). Teks pasal tetap; toko hanya mengatur angka.
+  'terms.title': 'Syarat & Ketentuan',
+  'terms.version': 'Versi {date}. Unit Anda mengikuti versi yang tercantum di nota.',
+  'terms.intake.title': 'Penerimaan dan biaya',
+  'terms.intake.body':
+    'Kondisi dan kelengkapan unit dicatat di tanda terima. Biaya awal adalah estimasi. Bila ditemukan kerusakan lain saat dibongkar atau biayanya berubah, kami minta persetujuan Anda sebelum mengerjakan.',
+  'terms.data.title': 'Data',
+  'terms.data.body': 'Cadangkan data Anda sebelum servis. Bila perbaikan berisiko menghapus data, kami beri tahu lebih dulu.',
+  'terms.cancel.title': 'Pembatalan',
+  'terms.cancel.body':
+    'Bila servis dibatalkan atau unit tidak bisa diperbaiki, DP dikembalikan setelah dikurangi harga sparepart yang sudah dipesan atas persetujuan Anda.',
+  'terms.cancel.bodyFee':
+    'Bila servis dibatalkan atau unit tidak bisa diperbaiki, DP dikembalikan setelah dikurangi biaya pengecekan {fee} dan harga sparepart yang sudah dipesan atas persetujuan Anda.',
+  'terms.warranty.title': 'Garansi',
+  'terms.warranty.body':
+    'Masa garansi dihitung sejak kami kabari unit selesai, bukan sejak unit diambil. Tanggal akhirnya tercantum di nota. Garansi berlaku untuk kerusakan yang diperbaiki dan sparepart yang diganti. Garansi tidak berlaku untuk kerusakan akibat kesalahan pemakaian (human error), misalnya unit jatuh, tertekan, atau terkena cairan, juga bila segel rusak atau unit dibongkar pihak lain.',
+  'terms.pickup.title': 'Pengambilan',
+  'terms.pickup.body':
+    'Unit diserahkan kepada pembawa nota atau kode lacak setelah biaya dilunasi. Bila nota hilang, tunjukkan identitas yang sesuai dengan nama di tiket.',
+  'terms.limit.title': 'Batas pengambilan',
+  'terms.limit.body': 'Ambil unit paling lambat {days} hari setelah kami kabari unit selesai.',
+  'terms.limit.fee': 'Setelah itu berlaku biaya simpan {fee} per hari.',
+  'terms.extra.title': 'Ketentuan tambahan',
+  'terms.settings.title': 'Syarat & Ketentuan',
+  'terms.settings.hint':
+    'Tampil di halaman lacak pelanggan, dan nota mencetak satu kalimat persetujuan beserta versinya. Teks pasal tetap; Anda mengatur angka dan bisa menambah ketentuan sendiri.',
+  'terms.settings.pickupDays': 'Batas pengambilan (hari)',
+  'terms.settings.pickupDaysHint': 'Dihitung sejak pelanggan dikabari unit selesai. 1 sampai 365.',
+  'terms.settings.storageFee': 'Biaya simpan per hari (Rp)',
+  'terms.settings.storageFeeHint': 'Berlaku sesudah batas pengambilan. Kosong = tanpa biaya simpan.',
+  'terms.settings.checkFee': 'Biaya pengecekan bila batal (Rp)',
+  'terms.settings.checkFeeHint': 'Dipotong dari DP. Kosong = tidak disebut di S&K.',
+  'terms.settings.extra': 'Ketentuan tambahan',
+  'terms.settings.extraHint':
+    'Tampil di bawah pasal bawaan. Hindari kalimat "bukan tanggung jawab kami": klausul pelepas tanggung jawab batal demi hukum.',
+  'terms.settings.version': 'Versi berlaku',
+  'terms.settings.versionHint': 'Berganti saat Anda menyimpan perubahan. Tiket yang sudah masuk tetap memakai versi lamanya.',
+  'terms.settings.view': 'Lihat isi S&K',
+  'terms.settings.save': 'Simpan S&K',
+  'terms.settings.saved': 'S&K tersimpan.',
+  'terms.settings.saveFailed': 'S&K gagal disimpan. Coba lagi.',
+  'terms.settings.invalidDays': 'Isi batas pengambilan 1 sampai 365 hari.',
+  'terms.settings.invalidFee': 'Biaya paling banyak Rp 10.000.000.',
   'receipt.service.fine':
     'Simpan nota ini sebagai bukti pengambilan unit dan klaim garansi.',
   'receipt.service.fineHandover':

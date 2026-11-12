@@ -82,6 +82,27 @@ Memperluas scoping menjadi **penguncian per-karyawan** + laporan per-cabang akur
 
 Semua aturan domain ada di `src/lib/business/*.ts` — **tanpa** dependensi DOM/repository, jadi 100% unit-testable. Contoh: `isActive()` (servis), `isOverdue()` (tugas), `computeKpis()` (dashboard). Hook UI memanggilnya lalu mem-persist hasil.
 
+### Syarat & Ketentuan: `settings.terms` + salinan di riwayat tiket (12 Nov 2026)
+
+**Tanpa migrasi.** Setelan toko di `OrgSettings.terms?: TermsSettings` (`pickupDays`, `storageFee`,
+`checkFee`, `extra`, `version` = tanggal YYYY-MM-DD isi terakhir diubah), ditulis
+`setTermsSettings` (`config/orgConfig.ts`) sebagai objek utuh dari `termsToSave`. Dibaca lewat
+`currentTerms(raw)`: jsonb rusak jatuh ke bawaan (60 hari, tanpa biaya), versi tak pernah lebih tua
+dari `TERMS_TEMPLATE_VERSION`.
+
+**Salinan per tiket** di `ServiceHistoryEntry.terms?: ServiceTerms`, hanya pada entri pertama
+("Unit diterima", ditulis `ServiceModal` dan seed demo). Sengaja bukan kolom `services.terms`:
+1. riwayat append-only di server (`0058`), jadi S&K yang disetujui pelanggan tak bisa diubah sesudahnya;
+2. `public_history` di `track_service_by_code`/`track_service` sudah membawa entri itu ke halaman lacak, tanpa
+   mengubah RPC;
+3. kolom baru akan menuntut migrasi SEBELUM frontend masuk `main`; tanpa kolom, `put` dan
+   `SERVICE_LIST_COLUMNS` akan gagal total di server yang belum dimigrasi.
+
+Dibaca `termsOf(history)` (entri pertama yang membawa `terms`). Riwayat cloud tak ikut daftar servis,
+jadi `useServicePrint` memuatnya lewat `useServiceHistory` (kunci kueri sama dengan linimasa detail
+tiket). **Tanpa salinan:** tiket lama dan tiket klaim garansi (`create_warranty_claim` menyusun riwayat di
+server); klaim mengikuti S&K tiket aslinya.
+
 ### Nota & Struk: `settings.receipt` (11 Nov 2026)
 
 Satu objek jsonb untuk semua yang menentukan bentuk dan isi kertas yang dibawa pulang pelanggan.

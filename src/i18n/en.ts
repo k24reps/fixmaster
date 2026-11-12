@@ -1839,6 +1839,51 @@ export const en: Dictionary = {
   'receipt.block.warranty': 'WARRANTY',
   'receipt.track.copy': 'Scan to check status & warranty',
   'receipt.track.visit': 'Check status & warranty at:',
+  'receipt.terms.agree': 'By leaving the device, you agree to the Terms version {date}.',
+  'receipt.track.copyTerms': 'Scan to check status, warranty & Terms',
+  'receipt.track.visitTerms': 'Check status, warranty & Terms at:',
+  'terms.title': 'Terms & Conditions',
+  'terms.version': 'Version {date}. Your device follows the version printed on your receipt.',
+  'terms.intake.title': 'Intake and cost',
+  'terms.intake.body':
+    'The condition and accessories of the device are recorded on the intake receipt. The initial cost is an estimate. If we find other damage when opening the device or the cost changes, we ask for your approval before continuing.',
+  'terms.data.title': 'Data',
+  'terms.data.body': 'Back up your data before the repair. If a repair may erase data, we tell you first.',
+  'terms.cancel.title': 'Cancellation',
+  'terms.cancel.body':
+    'If the repair is cancelled or the device cannot be repaired, the down payment is refunded minus the price of parts ordered with your approval.',
+  'terms.cancel.bodyFee':
+    'If the repair is cancelled or the device cannot be repaired, the down payment is refunded minus a {fee} inspection fee and the price of parts ordered with your approval.',
+  'terms.warranty.title': 'Warranty',
+  'terms.warranty.body':
+    'The warranty period starts when we tell you the device is ready, not when you pick it up. The end date is printed on your receipt. The warranty covers the repaired fault and the replaced parts. It does not cover damage caused by misuse (human error), such as drops, pressure, or liquid, nor devices with a broken seal or opened by someone else.',
+  'terms.pickup.title': 'Pickup',
+  'terms.pickup.body':
+    'The device is handed to whoever brings the receipt or tracking code, once the bill is paid. If the receipt is lost, show an ID matching the name on the ticket.',
+  'terms.limit.title': 'Pickup deadline',
+  'terms.limit.body': 'Please pick up the device within {days} days after we tell you it is ready.',
+  'terms.limit.fee': 'After that, a storage fee of {fee} per day applies.',
+  'terms.extra.title': 'Additional terms',
+  'terms.settings.title': 'Terms & Conditions',
+  'terms.settings.hint':
+    'Shown on the customer tracking page, and the receipt prints one consent line with the version. The clause text is fixed; you set the numbers and can add your own terms.',
+  'terms.settings.pickupDays': 'Pickup deadline (days)',
+  'terms.settings.pickupDaysHint': 'Counted from when the customer is told the device is ready. 1 to 365.',
+  'terms.settings.storageFee': 'Storage fee per day (Rp)',
+  'terms.settings.storageFeeHint': 'Applies after the pickup deadline. Empty = no storage fee.',
+  'terms.settings.checkFee': 'Inspection fee on cancellation (Rp)',
+  'terms.settings.checkFeeHint': 'Deducted from the down payment. Empty = not mentioned in the Terms.',
+  'terms.settings.extra': 'Additional terms',
+  'terms.settings.extraHint':
+    'Shown below the default clauses. Avoid lines like "not our responsibility": liability waivers are void by law.',
+  'terms.settings.version': 'Current version',
+  'terms.settings.versionHint': 'Changes when you save edits. Tickets already received keep their version.',
+  'terms.settings.view': 'View the Terms',
+  'terms.settings.save': 'Save Terms',
+  'terms.settings.saved': 'Terms saved.',
+  'terms.settings.saveFailed': 'Terms could not be saved. Try again.',
+  'terms.settings.invalidDays': 'Enter a pickup deadline from 1 to 365 days.',
+  'terms.settings.invalidFee': 'Fees can be at most Rp 10,000,000.',
   'receipt.service.fine':
     'Keep this receipt as proof of pickup and for warranty claims.',
   'receipt.service.fineHandover':

@@ -7,8 +7,24 @@ import {
   useState,
   type KeyboardEvent,
 } from 'react';
-import { Button, Card, CardBody, CardHeader, Icon } from '@/components/ui';
-import { PUBLIC_NOTE_MAX, setPublicNote, setReceiptSettings } from '@/config/orgConfig';
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  FormError,
+  FormFields,
+  FormRow,
+  Icon,
+  Input,
+  Textarea,
+} from '@/components/ui';
+import {
+  PUBLIC_NOTE_MAX,
+  setPublicNote,
+  setReceiptSettings,
+  setTermsSettings,
+} from '@/config/orgConfig';
 import { useCollection } from '@/hooks/useCollection';
 import { useT, type TranslationKey } from '@/i18n';
 import { saleReceiptDoc } from '@/features/pos/printSaleReceipt';
@@ -19,6 +35,17 @@ import {
   type ReceiptDoc,
 } from '@/features/services/printReceipt';
 import { interpolate } from '@/lib/business/notify';
+import {
+  TERMS_EXTRA_MAX,
+  currentTerms,
+  isValidPickupDays,
+  isValidTermsFee,
+  termsClauses,
+  termsSentenceText,
+  termsToSave,
+} from '@/lib/business/serviceTerms';
+import { fmtRpInput, parseRpInput } from '@/lib/format';
+import { fmtDate, localDateStr } from '@/lib/time';
 import {
   PAPER_WIDTHS,
   charsPerLine,
@@ -35,7 +62,7 @@ import {
 import { demoGuard } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
-import type { Organization, ReceiptSettings } from '@/data/types';
+import type { Organization, ReceiptSettings, ServiceTerms } from '@/data/types';
 import { sampleSale, sampleService } from './receiptSample';
 import styles from './ReceiptTab.module.css';
 
@@ -79,6 +106,7 @@ const cleanDraft = (d: TextDraft): TextDraft => ({
 export function ReceiptTab() {
   const org = useSessionStore((s) => s.org);
   const [draft, setDraft] = useState<TextDraft>(() => fromOrg(org));
+  const [terms, setTerms] = useState<TermsDraft>(() => termsDraftOf(currentTerms(org?.settings?.terms)));
 
   return (
     <div className={styles.stage}>
@@ -87,9 +115,10 @@ export function ReceiptTab() {
           <PaperCard />
           <ContentCard draft={draft} onChange={setDraft} />
           <ShowCard />
+          <TermsCard draft={terms} onChange={setTerms} />
         </div>
         <div className={styles.previewCol}>
-          <PreviewCard draft={draft} />
+          <PreviewCard draft={draft} terms={terms} />
         </div>
       </div>
     </div>
@@ -431,6 +460,188 @@ function ShowCard() {
 }
 
 // ---------------------------------------------------------------------------
+// Syarat & Ketentuan
+
+/** Isian S&K sebagai teks yang sedang diketik; angka dibaca saat disimpan. */
+interface TermsDraft {
+  pickupDays: string;
+  storageFee: string;
+  checkFee: string;
+  extra: string;
+}
+
+const termsDraftOf = (t: ServiceTerms): TermsDraft => ({
+  pickupDays: String(t.pickupDays),
+  storageFee: t.storageFee ? fmtRpInput(String(t.storageFee)) : '',
+  checkFee: t.checkFee ? fmtRpInput(String(t.checkFee)) : '',
+  extra: t.extra,
+});
+
+function termsValues(d: TermsDraft) {
+  const days = d.pickupDays.replace(/\D/g, '');
+  return {
+    pickupDays: days ? Number(days) : Number.NaN,
+    storageFee: parseRpInput(d.storageFee),
+    checkFee: parseRpInput(d.checkFee),
+    extra: d.extra,
+  };
+}
+
+/**
+ * S&K yang akan berlaku bila isian ini disimpan sekarang, atau `null` bila
+ * isiannya belum sah. Satu fungsi untuk tombol Simpan, LED "belum tersimpan",
+ * dan pratinjau nota, supaya ketiganya tak pernah berbeda pendapat.
+ */
+function termsFromDraft(saved: ServiceTerms, d: TermsDraft): ServiceTerms | null {
+  const v = termsValues(d);
+  if (!isValidPickupDays(v.pickupDays) || !isValidTermsFee(v.storageFee) || !isValidTermsFee(v.checkFee))
+    return null;
+  return termsToSave(saved, v, localDateStr());
+}
+
+function TermsClauseList({ terms }: { terms: ServiceTerms }) {
+  const t = useT();
+  return (
+    <ol className={styles.termsList}>
+      {termsClauses(terms).map((c) => (
+        <li key={c.title}>
+          <span>
+            <strong>{t(c.title)}.</strong> {c.body.map((b) => termsSentenceText(b, t)).join(' ')}
+          </span>
+        </li>
+      ))}
+      {terms.extra && (
+        <li>
+          <span className={styles.termsExtra}>
+            <strong>{t('terms.extra.title')}.</strong> {terms.extra}
+          </span>
+        </li>
+      )}
+    </ol>
+  );
+}
+
+function TermsCard({ draft, onChange }: { draft: TermsDraft; onChange: (d: TermsDraft) => void }) {
+  const t = useT();
+  const org = useSessionStore((s) => s.org);
+  const saved = useMemo(() => currentTerms(org?.settings?.terms), [org]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const v = termsValues(draft);
+  const badDays = !isValidPickupDays(v.pickupDays);
+  const next = termsFromDraft(saved, draft);
+  const dirty = next !== saved;
+  const shown = next ?? saved;
+
+  const set = (key: keyof TermsDraft, money = false) => (value: string) => {
+    setError('');
+    onChange({ ...draft, [key]: money ? fmtRpInput(value) : value });
+  };
+
+  const save = async () => {
+    if (!next) {
+      setError(t(badDays ? 'terms.settings.invalidDays' : 'terms.settings.invalidFee'));
+      return;
+    }
+    if (demoGuard()) return;
+    setBusy(true);
+    try {
+      await setTermsSettings(next);
+      onChange(termsDraftOf(next));
+      toast.success(t('terms.settings.saved'));
+    } catch {
+      toast.error(t('terms.settings.saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className={styles.cardTerms}>
+      <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={t('terms.settings.title')} />
+      <CardBody>
+        <p className={styles.hint}>{t('terms.settings.hint')}</p>
+        <FormFields>
+          <FormError>{error}</FormError>
+          <Input
+            id="terms-pickup-days"
+            label={t('terms.settings.pickupDays')}
+            hint={t('terms.settings.pickupDaysHint')}
+            inputMode="numeric"
+            autoComplete="off"
+            value={draft.pickupDays}
+            invalid={!!error && badDays}
+            onChange={(e) => set('pickupDays')(e.target.value.replace(/\D/g, '').slice(0, 3))}
+          />
+          <FormRow>
+            <Input
+              id="terms-storage-fee"
+              label={t('terms.settings.storageFee')}
+              hint={t('terms.settings.storageFeeHint')}
+              inputMode="numeric"
+              autoComplete="off"
+              value={draft.storageFee}
+              invalid={!!error && !isValidTermsFee(v.storageFee)}
+              onChange={(e) => set('storageFee', true)(e.target.value)}
+            />
+            <Input
+              id="terms-check-fee"
+              label={t('terms.settings.checkFee')}
+              hint={t('terms.settings.checkFeeHint')}
+              inputMode="numeric"
+              autoComplete="off"
+              value={draft.checkFee}
+              invalid={!!error && !isValidTermsFee(v.checkFee)}
+              onChange={(e) => set('checkFee', true)(e.target.value)}
+            />
+          </FormRow>
+          <Textarea
+            id="terms-extra"
+            label={t('terms.settings.extra')}
+            hint={t('terms.settings.extraHint')}
+            value={draft.extra}
+            maxLength={TERMS_EXTRA_MAX}
+            rows={3}
+            onChange={(e) => set('extra')(e.target.value)}
+          />
+        </FormFields>
+
+        <div className={styles.termsVersion}>
+          <span className={styles.termsVersionLabel}>
+            <span className={styles.led} aria-hidden />
+            {t('terms.settings.version')}
+          </span>
+          <span className={styles.termsVersionValue}>{fmtDate(shown.version)}</span>
+        </div>
+        <p className={styles.fieldHint}>{t('terms.settings.versionHint')}</p>
+
+        <details className={styles.termsView}>
+          <summary className={styles.termsSummary}>
+            {t('terms.settings.view')}
+            <Icon name="chevron-down" className={styles.caret} aria-hidden />
+          </summary>
+          <TermsClauseList terms={shown} />
+        </details>
+
+        <div className={styles.saveFoot}>
+          <span className={styles.dirty} data-on={dirty ? 'true' : undefined} role="status">
+            {dirty && (
+              <>
+                <span className={styles.dirtyLed} aria-hidden />
+                {t('receipt.content.unsaved')}
+              </>
+            )}
+          </span>
+          <Button onClick={() => void save()} disabled={busy || !dirty} loading={busy}>
+            {t('terms.settings.save')}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Pratinjau
 
 type Sample = 'service' | 'sale';
@@ -443,9 +654,14 @@ type Sample = 'service' | 'sale';
  */
 const PREVIEW_ZOOM = 1.5;
 
-function PreviewCard({ draft }: { draft: TextDraft }) {
+function PreviewCard({ draft, terms }: { draft: TextDraft; terms: TermsDraft }) {
   const t = useT();
   const org = useSessionStore((s) => s.org);
+  // S&K yang akan berlaku bila disimpan sekarang; isian yang belum sah = yang tersimpan.
+  const previewTerms = useMemo(() => {
+    const saved = currentTerms(org?.settings?.terms);
+    return termsFromDraft(saved, terms) ?? saved;
+  }, [org, terms]);
   const { data: outlets } = useCollection('outlets');
   const [which, setWhich] = useState<Sample>('service');
   const [oneBit, setOneBit] = useState(false);
@@ -520,14 +736,16 @@ function PreviewCard({ draft }: { draft: TextDraft }) {
       item2: t('receipt.sample.item2'),
     };
     if (which === 'service')
-      return serviceReceiptDoc(sampleService(text), previewOrg, window.location.origin, outlets);
+      return serviceReceiptDoc(sampleService(text), previewOrg, window.location.origin, outlets, {
+        terms: previewTerms,
+      });
     const { sale, change } = sampleSale(text);
     return saleReceiptDoc(sale, previewOrg, {
       change,
       outlets,
       walletName: (id) => (id === 'sample-cash' ? t('receipt.sample.cash') : ''),
     });
-  }, [previewOrg, which, outlets, t]);
+  }, [previewOrg, which, outlets, t, previewTerms]);
 
   if (!previewOrg || !doc) return null;
   const html = receiptPreviewHtml(previewOrg, doc);

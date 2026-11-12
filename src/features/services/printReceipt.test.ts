@@ -564,3 +564,47 @@ describe('kertas nota: kepala dan penutup ringkas', () => {
     expect(page(org, svc({ status: 'batal' }))).toMatch(/<hr class="seam"\/>\s*<div class="by">/);
   });
 });
+
+describe('serviceReceiptDoc: Syarat & Ketentuan', () => {
+  const terms = {
+    pickupDays: 60,
+    storageFee: 0,
+    checkFee: 0,
+    extra: '',
+    version: '2026-11-12',
+  };
+  const body = (s: Service, extra: Parameters<typeof serviceReceiptDoc>[4] = {}) =>
+    serviceReceiptDoc(s, org, 'https://app.test', [], { trackCode: '7K3M9QXR2D', ...extra }).body;
+
+  it('tiket ber-S&K: satu kalimat persetujuan tebal beserta versinya, di blok catatan', () => {
+    const el = document.createElement('div');
+    el.innerHTML = body(svc({}), { terms });
+    expect(el.querySelector('.fine .terms')?.textContent).toBe(
+      'Dengan menitipkan unit, Anda menyetujui S&K versi 12\u00a0Nov\u00a02026.',
+    );
+    expect(el.querySelectorAll('.terms')).toHaveLength(1);
+  });
+
+  it('kalimat di bawah QR menyebut S&K; QR mati: ajakan membuka alamat', () => {
+    expect(text(body(svc({}), { terms }))).toContain('Pindai untuk cek status, garansi & S&K');
+    const noQr = { ...org, settings: { receipt: { showQr: false } } } as unknown as Organization;
+    const t = text(serviceReceiptDoc(svc({}), noQr, 'https://app.test', [], { terms }).body);
+    expect(t).toContain('Cek status, garansi & S&K di:');
+  });
+
+  it('tiket lama tanpa salinan S&K: tanpa kalimat persetujuan, kalimat QR lama', () => {
+    const b = body(svc({}));
+    expect(b).not.toContain('class="terms"');
+    expect(text(b)).toContain('Pindai untuk cek status & garansi');
+    expect(text(b)).not.toContain('S&K');
+  });
+
+  it('tiket batal tak mencetak kalimat persetujuan', () => {
+    expect(body(svc({ status: 'batal' }), { terms })).not.toContain('class="terms"');
+  });
+
+  it('bahasa Inggris memakai kamus sendiri', () => {
+    useSettingsStore.setState({ language: 'en' });
+    expect(text(body(svc({}), { terms }))).toContain('By leaving the device, you agree to the Terms version');
+  });
+});

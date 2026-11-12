@@ -1,4 +1,5 @@
 import {
+  interpolate,
   serviceReceiptLines,
   trackingUrl,
   trackingUrlLabel,
@@ -31,7 +32,7 @@ import {
 import type { TranslationKey } from '@/i18n';
 import { receiptStyle, LOGO_MAX_MM } from './receiptStyle';
 import { receiptText } from './receiptText';
-import type { Service, Organization, Outlet } from '@/data/types';
+import type { Service, Organization, Outlet, ServiceTerms } from '@/data/types';
 
 export { escapeHtml };
 
@@ -137,7 +138,13 @@ function rowsFor(
  * dari `qrModuleDots` dengan zona sunyi penuh, dan tanpa label blok: kalimat
  * di bawah kode sudah menyatakan gunanya.
  */
-export function trackBlockHtml(url: string, paper: PaperSpec, showQr: boolean, showUrl: boolean): string {
+export function trackBlockHtml(
+  url: string,
+  paper: PaperSpec,
+  showQr: boolean,
+  showUrl: boolean,
+  withTerms = false,
+): string {
   if (!showQr && !showUrl) return '';
   const qr = showQr
     ? qrSvg(url, {
@@ -145,7 +152,16 @@ export function trackBlockHtml(url: string, paper: PaperSpec, showQr: boolean, s
         margin: QR_QUIET_MODULES,
       })
     : '';
-  const copy = receiptText(showQr ? 'receipt.track.copy' : 'receipt.track.visit');
+  // Tiket ber-S&K: halaman lacak juga memuat S&K-nya, jadi kalimatnya menyebutnya.
+  const copy = receiptText(
+    withTerms
+      ? showQr
+        ? 'receipt.track.copyTerms'
+        : 'receipt.track.visitTerms'
+      : showQr
+        ? 'receipt.track.copy'
+        : 'receipt.track.visit',
+  );
   return `<div class="track">${qr}<p class="track-copy">${escapeHtml(copy)}</p>${
     showUrl ? `<p class="track-url">${trackUrlHtml(url)}</p>` : ''
   }</div>`;
@@ -297,6 +313,19 @@ export interface ServiceReceiptOptions {
   reprint?: boolean;
   /** Hanya untuk tes; default sekarang. */
   now?: Date;
+  /**
+   * S&K yang disetujui saat unit diterima (`termsOf(history)`). Tanpa salinan
+   * (tiket lama, klaim garansi) nota tak mencetak kalimat persetujuan.
+   */
+  terms?: ServiceTerms | null;
+}
+
+/** Satu kalimat persetujuan S&K, tebal: klausula baku yang sulit terlihat tak mengikat. */
+export function termsLineHtml(terms: ServiceTerms): string {
+  return `<p class="terms">${escapeHtml(
+    // Tanggal versi tak dibelah di ujung baris: "12 Nov / 2026" terbaca dua tanggal.
+    interpolate(receiptText('receipt.terms.agree'), { date: fmtDate(terms.version).replace(/ /g, '\u00a0') }),
+  )}</p>`;
 }
 
 export function serviceReceiptDoc(
@@ -313,6 +342,7 @@ export function serviceReceiptDoc(
     (l) => (l.key !== 'imei' || cfg.showImei) && (l.key !== 'technician' || cfg.showTechnician),
   );
   const cancelled = service.status === 'batal';
+  const terms = opts.terms ?? null;
   const track = trackingUrl(origin, org.id, service.serviceNo, opts.trackCode);
   // Kertas batal sudah berkotak BATAL; salinannya tak perlu penanda kedua.
   const reprint = opts.reprint && !cancelled ? reprintMarkHtml(reprintStamp(opts.now ?? new Date())) : '';
@@ -347,10 +377,10 @@ export function serviceReceiptDoc(
     garansi
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
       : '',
-    cancelled ? '' : trackBlockHtml(track, paper, cfg.showQr, cfg.showTrackUrl),
+    cancelled ? '' : trackBlockHtml(track, paper, cfg.showQr, cfg.showTrackUrl, !!terms),
     note ? `<div class="note">${escapeHtml(note)}</div>` : '',
     plan.signature ? signBoxHtml() : '',
-    cancelled ? '' : `<div class="fine">${fine}</div>`,
+    cancelled ? '' : `<div class="fine">${fine}${terms ? termsLineHtml(terms) : ''}</div>`,
   ])}`,
   };
 }

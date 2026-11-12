@@ -53,6 +53,10 @@ describe('receiptStyle', () => {
     expect(css).toMatch(/\.nw \{ white-space: nowrap; \}/);
   });
 
+  it('kalimat persetujuan S&K tebal: klausula yang sulit terlihat tak mengikat', () => {
+    expect(receiptStyle(paperSpec(58))).toMatch(/\.terms \{[^}]*font-weight: 700/);
+  });
+
   // Head termal = dua keadaan. Driver berambang 50% menghapus abu-abu: #8a8a8a
   // dan #9a9a9a pernah menghasilkan 0% titik hitam (garis pemisah dan baris
   // atribusi hilang dari kertas). Tak ada literal warna selain hitam dan putih.
