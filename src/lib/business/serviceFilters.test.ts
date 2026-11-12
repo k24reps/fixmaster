@@ -7,12 +7,16 @@ import {
   createdRange,
   listedCost,
   matchesPayment,
+  SERVICE_SCOPES,
   matchesQuery,
+  matchesScope,
   matchesTechnician,
   nextSort,
+  scopeCounts,
   serviceSearchFilter,
   sortDirectionOn,
   stalledDays,
+  type ServiceScope,
   type ServiceSort,
 } from './serviceFilters';
 import { STATUS_LABELS } from './services';
@@ -89,6 +93,45 @@ describe('stalledDays', () => {
     expect(stalledDays({ status: 'pengerjaan', pickedUp: false, updatedAt: at('2026-09-10') }, '2026-09-13')).toBe(3);
     expect(stalledDays({ status: 'lunas', pickedUp: false, updatedAt: at('2026-09-04') }, '2026-09-13')).toBe(9);
     expect(stalledDays({ status: 'lunas', pickedUp: true, updatedAt: at('2026-09-04') }, '2026-09-13')).toBeNull();
+  });
+});
+
+describe('lingkup daftar (Semua / Belum tuntas / Tertahan)', () => {
+  const today = '2026-09-13';
+  const at = (date: string) => `${date}T10:00:00`;
+  const tickets = {
+    // Arsip: lunas/batal DAN sudah diambil, walau sudah lama tanpa aktivitas.
+    arsipLunas: { status: 'lunas', pickedUp: true, updatedAt: at('2026-08-01') },
+    arsipBatal: { status: 'batal', pickedUp: true, updatedAt: at('2026-08-01') },
+    // Belum tuntas tapi tidak tertahan.
+    baru: { status: 'diterima', pickedUp: false, updatedAt: at('2026-09-13') },
+    lunasBelumDiambil: { status: 'lunas', pickedUp: false, updatedAt: at('2026-09-12') },
+    // Tertahan.
+    konfirmasiLama: { status: 'konfirmasi', pickedUp: false, updatedAt: at('2026-09-10') },
+    batalBelumDiambil: { status: 'batal', pickedUp: false, updatedAt: at('2026-09-01') },
+  } as const;
+  const shown = (scope: ServiceScope) =>
+    Object.entries(tickets)
+      .filter(([, s]) => matchesScope(s, scope, today))
+      .map(([k]) => k);
+
+  it('bertingkat: Semua ⊃ Belum tuntas ⊃ Tertahan', () => {
+    expect(shown('all')).toHaveLength(6);
+    expect(shown('open')).toEqual(['baru', 'lunasBelumDiambil', 'konfirmasiLama', 'batalBelumDiambil']);
+    expect(shown('stalled')).toEqual(['konfirmasiLama', 'batalBelumDiambil']);
+    for (const k of shown('stalled')) expect(shown('open')).toContain(k);
+  });
+
+  it('angka sakelar = jumlah yang tampil di posisi itu; arsip = sisanya', () => {
+    const list = Object.values(tickets);
+    const counts = scopeCounts(list, today);
+    expect(counts).toEqual({ open: shown('open').length, stalled: shown('stalled').length, closed: 2 });
+    expect(counts.open + counts.closed).toBe(list.length);
+    expect(scopeCounts([], today)).toEqual({ open: 0, stalled: 0, closed: 0 });
+  });
+
+  it('urutan sakelar tetap: Semua, Belum tuntas, Tertahan', () => {
+    expect(SERVICE_SCOPES).toEqual(['all', 'open', 'stalled']);
   });
 });
 

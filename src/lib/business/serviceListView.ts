@@ -1,5 +1,12 @@
 import type { ServiceStatus } from '@/data/types';
-import { SERVICE_SORTS, type DateFilter, type PaymentFilter, type ServiceSort } from './serviceFilters';
+import {
+  SERVICE_SCOPES,
+  SERVICE_SORTS,
+  type DateFilter,
+  type PaymentFilter,
+  type ServiceScope,
+  type ServiceSort,
+} from './serviceFilters';
 import { STATUS_LABELS } from './services';
 
 /**
@@ -37,9 +44,9 @@ export interface ServiceListView {
   date: DateFilter;
   from: string;
   to: string;
-  stalledOnly: boolean;
   sort: ServiceSort;
-  hideClosed: boolean;
+  /** Semua / Belum tuntas / Tertahan. `?open=1` dari Dashboard = 'open'. */
+  scope: ServiceScope;
 }
 
 export const EMPTY_LIST_VIEW: ServiceListView = {
@@ -53,9 +60,8 @@ export const EMPTY_LIST_VIEW: ServiceListView = {
   date: 'all',
   from: '',
   to: '',
-  stalledOnly: false,
   sort: 'newest',
-  hideClosed: false,
+  scope: 'all',
 };
 
 export interface ServiceListSnapshot {
@@ -98,7 +104,7 @@ export function viewFromParams(params: URLSearchParams): ServiceListView | null 
     pickup: params.get('pickup') === 'awaiting' ? 'awaiting' : 'all',
     tech: params.get('tech') === 'me' ? 'me' : 'all',
     date: params.get('date') === 'month' ? 'thisMonth' : 'all',
-    hideClosed: params.get('open') === '1',
+    scope: params.get('open') === '1' ? 'open' : 'all',
   };
 }
 
@@ -116,6 +122,13 @@ const limitOf = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v)
     ? Math.min(MAX_LIST_LIMIT, Math.max(LIST_PAGE_SIZE, Math.round(v)))
     : LIST_PAGE_SIZE;
+
+/**
+ * Ingatan dari sebelum sakelar lingkup (12 Nov 2026) menyimpan dua tombol.
+ * Tertahan menang karena ia selalu menyembunyikan arsip juga.
+ */
+const legacyScope = (v: Record<string, unknown>): ServiceScope =>
+  v.stalledOnly === true ? 'stalled' : v.hideClosed === true ? 'open' : 'all';
 
 /**
  * Baca ingatan dari teks tersimpan. Setiap kolom dipaksa ke nilai sah, jadi
@@ -151,10 +164,9 @@ export function parseListSnapshot(raw: string | null): ServiceListSnapshot | nul
       date: pick(v.date, DATES, 'all'),
       from: typeof v.from === 'string' && DAY.test(v.from) ? v.from : '',
       to: typeof v.to === 'string' && DAY.test(v.to) ? v.to : '',
-      stalledOnly: v.stalledOnly === true,
       // Nilai lama ('newest'/'oldest') tetap sah; nilai asing/usang jatuh ke Terbaru.
       sort: pick(v.sort, SERVICE_SORTS, 'newest'),
-      hideClosed: v.hideClosed === true,
+      scope: pick(v.scope, SERVICE_SCOPES, legacyScope(v)),
     },
   };
 }

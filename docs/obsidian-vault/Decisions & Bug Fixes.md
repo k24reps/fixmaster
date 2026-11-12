@@ -2953,6 +2953,9 @@ menumpuk selama jendela). Tombol ini satu-satunya cara melihat antrean kerja
 "semua yang belum tuntas" — chip status hanya satu status sekaligus, dan status
 `lunas` belum diambil tidak tuntas.
 
+> Sejak 12 Nov 2026 tombol ini menjadi posisi **Belum tuntas** pada sakelar lingkup, bersama
+> Tertahan. Lihat [[#Sakelar lingkup Daftar Servis: Semua · Belum tuntas · Tertahan (12 Nov 2026)]].
+
 ## Realtime: putaran reconnect → resync tanpa akhir (23 Sep 2026)
 
 **Gejala (log Envoy replika, sesi pemilik):** mulai 14:51:59, ±1 detik setelah token
@@ -4401,7 +4404,8 @@ Temuan critique layout (P1):
   (`.readoutMoney`) tidak tampil ≤720px, karena uang dibaca di Dashboard dan Laporan.
   LED pindah ke depan angka.
 - **Filter dilipat ke satu tombol** (`.phoneMore`, ikon slider) di samping kolom cari: Teknisi,
-  Urutan, Tertahan, Sembunyikan arsip, dan tombol Filter lainnya.
+  Urutan, Tertahan, Sembunyikan arsip, dan tombol Filter lainnya. (Sejak 12 Nov 2026 Tertahan
+  dan Sembunyikan arsip menjadi satu sakelar lingkup.)
   - Angka di tombol = `moreActive + foldedOnMobile`.
   - Bilah filter hilang lewat `:not(:has(.resetBtn, .awaitingChip))`, kecuali ada yang perlu
     dilihat.
@@ -6435,3 +6439,55 @@ tanpa blok `bizIdentity`, ringkasan Pelanggan yang dihapus, dan semua dokumen ce
   `ReportsPage` 30, `ResetPasswordPage` 28, modal pemasok (PO 22, terima 20, pemasok 15), lalu
   ekor pendek di bawah 15. Isi dokumen cetak (nota, laporan PDF) tidak disentuh.
 - **Verifikasi:** build, lint, **1065 tes / 83 berkas** (1061 + 4 tes `demoGuard`). `audit-mobile` (5 lebar ponsel dan pita tablet) dan `audit-zoom` (11 lebar x 13 halaman) tanpa regresi terhadap baseline: luberan dokumen 0, offender 0, tak ada target sentuh kecil baru, dan satu-satunya wadah meluap tetap pita kategori POS 1097px (+16) yang sudah ada sebelumnya. Dilihat langsung di dev server: Lacak servis (mode kode dan mode nomor) menampilkan teks main apa adanya, dan Keluar di demo menampilkan "akun Anda sendiri". **Belum diverifikasi:** wizard onboarding (hanya tampil saat basis data lokal kosong), bahasa Inggris (pilihan bahasa masih terkunci ke ID), dan jendela cetak (tak disentuh).
+
+
+## Sakelar lingkup Daftar Servis: Semua · Belum tuntas · Tertahan (12 Nov 2026)
+
+**Permintaan pemilik:** apakah chip Tertahan dan Sembunyikan arsip masuk akal dijadikan satu
+chip "Belum tuntas"?
+
+**Temuan:** keduanya bertingkat, bukan saringan yang berdiri sendiri. `stalledDays` selalu
+`null` untuk tiket lunas/batal yang sudah diambil, jadi Tertahan ⊂ Belum tuntas ⊂ Semua. Dua
+tombol lama memberi empat kombinasi untuk tiga hasil: saat Tertahan menyala, Sembunyikan arsip
+tak berefek tapi tetap bisa ditekan dan tetap berangka. Satu tombol "Belum tuntas" saja
+ditolak, karena saringan Tertahan (konfirmasi biaya ≥ 2 hari, dikerjakan ≥ 3, belum diambil
+≥ 7) dan angka peringatannya ikut hilang. Penanda "Tertahan n hari" per baris cukup untuk 8
+tiket aktif, tidak untuk 30–50.
+
+**Keputusan:** satu sakelar tiga posisi. Bentuk visualnya di [[Signature Pages#Daftar Servis — Repair Job Cards]].
+- **Model:** `ServiceScope = 'all' | 'open' | 'stalled'` + `SERVICE_SCOPES`, `matchesScope`,
+  `scopeCounts` di `lib/business/serviceFilters.ts`. `ServiceListView` kehilangan
+  `stalledOnly` + `hideClosed` dan mendapat `scope`. `?open=1` (Dashboard "Tiket saya") →
+  `'open'`. Ingatan sesi dari sebelum perubahan dibaca lewat `legacyScope`: Tertahan menang
+  atas Sembunyikan arsip karena ia selalu menyembunyikan arsip juga.
+- **Angka = yang tampil bila posisi dipilih.** Dulu chip arsip menghitung tiket yang
+  *disembunyikan* (103 di toko pemilik), sehingga label "Belum tuntas 103" akan berbohong; kini
+  Belum tuntas menghitung tiket belum tuntas. Semua tanpa angka (alasan di Signature Pages).
+- **Reset filter:** Tertahan dihitung saringan (memunculkan Reset), Belum tuntas tidak
+  (cara pandang, sama seperti `hideClosed` dulu). Reset dari Tertahan → Belum tuntas, bukan
+  Semua: Tertahan = Belum tuntas + saringan, jadi yang dilepas hanya saringannya.
+- **Teks:** `services.hideClosed`/`hideClosedHint` dihapus; baru `services.scopeAria`,
+  `scopeAll`, `scopeAllHint`, `scopeOpen`, `scopeOpenHint` (id/en). "Tampilkan arsip" di daftar
+  kosong dan ekor "· n tiket arsip disembunyikan" tetap, kini bersyarat `scope === 'open'`.
+  Istilah "tuntas" kembali ke layar setelah audit kata 7 Nov menggantinya dengan "arsip";
+  keduanya kini berpasangan di [[Domain & Scope]]: arsip = yang sudah selesai semuanya, belum
+  tuntas = sisanya.
+- **Ponsel:** tuts dibagi rata (96px di 320px) memecah "Belum tuntas 5" jadi tiga baris dan
+  teksnya menempel ke tepi tuts. `flex: 1 1 auto` membuat lebarnya mengikuti isi: 65 + 119 +
+  104px, satu baris.
+- **Skrip foto:** `scripts/shoot-services-scope.mjs` (desktop gelap/terang, ponsel 390) mencetak
+  ukuran tiap tuts dan tanda TERPOTONG dari DOM.
+
+**Verifikasi:** build, lint, **1078 tes / 83 berkas** (+4: `matchesScope` bertingkat,
+`scopeCounts`, urutan `SERVICE_SCOPES`, migrasi ingatan lama). Diklik di demo pada 1440 (dua
+tema), 1112, 390, dan 320: Belum tuntas 5 dan Tertahan 3 sesuai daftarnya, ekor "· 2 tiket
+arsip disembunyikan" hanya di Belum tuntas, Reset dari Tertahan mendarat di Belum tuntas, Tab +
+spasi menekan tuts. `audit-mobile` (5 lebar ponsel + pita tablet) dan `audit-zoom` (100%, 125%,
+Padat): `docOver` 0 di semua lebar, lantai 12px 0 pelanggaran, `/services` tanpa teks terpotong
+atau overlap setelah positif palsu disaring. Rel chip "Status servis" +5px di 1025px dan tabel
+`/pos` 1097px identik dengan sebelum perubahan (dibandingkan langsung lewat stash). `audit-contrast`
+bersih; angka di tuts yang tertekan (`--text-muted` di atas `--brand-soft`) dihitung dari token:
+4,59:1 gelap, 4,95:1 terang. Detektor impeccable: 0 temuan. **Belum dijalankan di sini:**
+`sync-vault-attachments.ps1` (container tanpa PowerShell; `scripts/shots/` dan lampiran vault
+di-gitignore), jadi tiga gambar `services-scope-*` perlu difoto ulang dengan
+`scripts/shoot-services-scope.mjs` lalu disinkron di mesin lokal.

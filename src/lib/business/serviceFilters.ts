@@ -1,6 +1,6 @@
 import type { Service, ServiceStatus } from '@/data/types';
 import { addDays, daysBetween, localDateOf } from '@/lib/time';
-import { AWAITING_PICKUP_STATUSES } from './services';
+import { AWAITING_PICKUP_STATUSES, isClosedOut } from './services';
 import type { TranslationKey } from '@/i18n';
 
 // "Lunas" sengaja tidak ada: chip status Lunas sudah menyaring hal yang sama.
@@ -202,6 +202,45 @@ export function stalledDays(
     return idle >= STALL_DAYS.pickup ? idle : null;
   }
   return null;
+}
+
+/**
+ * Lingkup Daftar Servis, satu sakelar tiga posisi. Ketiganya bertingkat, bukan
+ * saringan yang berdiri sendiri: tiket tertahan selalu belum tuntas, dan yang
+ * belum tuntas = semua tiket kecuali arsip (lunas/batal yang unitnya sudah
+ * diambil). Dulu dua tombol terpisah (Tertahan, Sembunyikan arsip) memberi empat
+ * kombinasi untuk tiga hasil: saat Tertahan menyala, tombol arsip tak berefek.
+ */
+export type ServiceScope = 'all' | 'open' | 'stalled';
+
+/** Semua nilai sah, urut seperti di sakelar. Sumber tunggal bagi koersi ingatan daftar. */
+export const SERVICE_SCOPES: readonly ServiceScope[] = ['all', 'open', 'stalled'];
+
+type ScopeFields = Pick<Service, 'status' | 'pickedUp' | 'updatedAt'>;
+
+export function matchesScope(s: ScopeFields, scope: ServiceScope, today: string): boolean {
+  if (scope === 'all') return true;
+  if (isClosedOut(s)) return false;
+  return scope === 'open' || stalledDays(s, today) !== null;
+}
+
+/**
+ * Angka di sakelar lingkup: berapa tiket yang tampil bila posisi itu dipilih.
+ * `closed` (arsip) tidak tampil di sakelar; dipakai pesan daftar kosong dan
+ * keterangan "n tiket arsip disembunyikan".
+ */
+export function scopeCounts(
+  services: readonly ScopeFields[],
+  today: string,
+): { open: number; stalled: number; closed: number } {
+  let open = 0;
+  let stalled = 0;
+  for (const s of services) {
+    if (isClosedOut(s)) continue;
+    open += 1;
+    if (stalledDays(s, today) !== null) stalled += 1;
+  }
+  return { open, stalled, closed: services.length - open };
 }
 
 /**
