@@ -54,7 +54,12 @@ function devOnlyRoutes(): RouteObject[] {
   ];
 }
 
-export const router = createBrowserRouter([
+/**
+ * Every route the PRODUCTION bundle serves. Exported so deploymentRoutes.test
+ * can hold vercel.json's rewrite list to it: a route missing a rewrite works
+ * by in-app click but 404s on refresh, a new tab, or a shared link.
+ */
+export const productionRoutes: RouteObject[] = [
   {
     // Stable preview alias for the live signed-out landing page. Keeping this
     // route makes design review links durable while AuthGate serves V2 at `/`.
@@ -80,7 +85,6 @@ export const router = createBrowserRouter([
       </Suspense>
     ),
   },
-  ...devOnlyRoutes(),
   {
     // Public, no-login service tracking.
     path: '/track',
@@ -144,4 +148,7 @@ export const router = createBrowserRouter([
     ),
     children: appChildRoutes,
   },
-]);
+];
+
+// Route order does not matter: React Router ranks matches by specificity.
+export const router = createBrowserRouter([...productionRoutes, ...devOnlyRoutes()]);

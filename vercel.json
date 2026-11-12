@@ -22,7 +22,8 @@
     { "source": "/attendance", "destination": "/index.html" },
     { "source": "/reports", "destination": "/index.html" },
     { "source": "/activity", "destination": "/index.html" },
-    { "source": "/settings", "destination": "/index.html" }
+    { "source": "/settings", "destination": "/index.html" },
+    { "source": "/istilah", "destination": "/index.html" }
   ],
   "headers": [
     {
