@@ -306,7 +306,7 @@ describe('tampilan Daftar servis', () => {
     expect(tsx).toContain('readListSnapshot()');
     expect(tsx).not.toContain("searchParams.get('status')");
     expect(tsx).toContain('useState(start.query)');
-    expect(tsx).toContain('useState(start.hideClosed)');
+    expect(tsx).toContain('useState<ServiceScope>(start.scope)');
     // Setiap perubahan saringan dicatat; gulir dicatat hanya selama halaman ini masih terpasang
     // (peralihan rute memotong gulir ke 0 — itu bukan posisi daftar).
     expect(tsx).toContain('saveListView(listOwner, entryKey, {');

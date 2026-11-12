@@ -42,7 +42,8 @@ Aplikasi web untuk mengelola **toko/usaha reparasi gadget & elektronik** — mis
 | POS / Kasir | Penjualan langsung (sparepart/aksesori) |
 | Outlet | Cabang/lokasi toko |
 | Pembelian Luar | Part/jasa yang dibeli di luar stok untuk satu tiket, dibayar dari wallet (dulu "Modal Dadakan"; nama kode tetap `modalDadakan*`) |
-| Arsip (tiket) | Tiket Lunas/Batal yang unitnya sudah diambil; bisa disembunyikan di Daftar Servis (dulu "tuntas") |
+| Arsip (tiket) | Tiket Lunas/Batal yang unitnya sudah diambil (`isClosedOut`). Tampil di posisi Semua pada sakelar lingkup Daftar Servis |
+| Belum tuntas | Semua tiket kecuali arsip: masih dikerjakan, ditagih, atau menunggu diambil. Posisi tengah sakelar lingkup; Tertahan adalah bagian darinya |
 | Anda | Sapaan baku di semua teks layar dan pesan; jangan "kamu/-mu" |
 | Ubah / Diperbarui | Tombol & judul aksi = "Ubah" (bukan "Edit"); entri riwayat atas perubahan itu = "Diperbarui" |
 

@@ -20,7 +20,7 @@ const snap = (over: Partial<ServiceListSnapshot> = {}): ServiceListSnapshot => (
   entryKey: 'k1',
   savedAt: NOW - 60_000,
   scrollTop: 480,
-  view: { ...EMPTY_LIST_VIEW, query: 'Andi', stalledOnly: true, sort: 'oldest' },
+  view: { ...EMPTY_LIST_VIEW, query: 'Andi', scope: 'stalled', sort: 'oldest' },
   ...over,
 });
 
@@ -45,7 +45,7 @@ describe('viewFromParams', () => {
     expect(viewFromParams(params('pickup=awaiting'))?.pickup).toBe('awaiting');
     expect(viewFromParams(params('tech=me'))?.tech).toBe('me');
     expect(viewFromParams(params('date=month'))?.date).toBe('thisMonth');
-    expect(viewFromParams(params('open=1'))?.hideClosed).toBe(true);
+    expect(viewFromParams(params('open=1'))?.scope).toBe('open');
   });
 
   it('nilai asing jatuh ke bawaan, tapi tetap dihitung sebagai tautan bersaringan', () => {
@@ -81,7 +81,7 @@ describe('parseListSnapshot', () => {
         sort: 'acak',
         from: 'bukan-tanggal',
         to: '2026-11-09',
-        stalledOnly: 'ya',
+        scope: 'tertahan',
         query: 'q'.repeat(500),
       },
     });
@@ -94,9 +94,24 @@ describe('parseListSnapshot', () => {
       sort: 'newest',
       from: '',
       to: '2026-11-09',
-      stalledOnly: false,
+      scope: 'all',
     });
     expect(parsed?.view.query).toHaveLength(200);
+  });
+
+  it('ingatan dari sebelum sakelar lingkup (dua tombol) dibaca ke posisi yang sama', () => {
+    const old = (flags: Record<string, unknown>) => {
+      const { scope: _drop, ...view } = { ...EMPTY_LIST_VIEW, ...flags };
+      return parseListSnapshot(JSON.stringify(snap({ view: view as never })))?.view.scope;
+    };
+    expect(old({})).toBe('all');
+    expect(old({ hideClosed: true })).toBe('open');
+    expect(old({ stalledOnly: true })).toBe('stalled');
+    // Tertahan selalu menyembunyikan arsip juga, jadi ia menang.
+    expect(old({ stalledOnly: true, hideClosed: true })).toBe('stalled');
+    // Nilai baru yang sah mengalahkan sisa kolom lama.
+    const mixed = { ...EMPTY_LIST_VIEW, scope: 'open', stalledOnly: true };
+    expect(parseListSnapshot(JSON.stringify(snap({ view: mixed as never })))?.view.scope).toBe('open');
   });
 
   it('urutan per kolom: tiap nilai sah dipulihkan apa adanya (termasuk "newest"/"oldest" lama)', () => {
@@ -197,7 +212,7 @@ describe('resolveListView', () => {
     const r = resolve();
     expect(r.view.query).toBe('Andi');
     expect(r.view.sort).toBe('oldest');
-    expect(r.view.stalledOnly).toBe(true);
+    expect(r.view.scope).toBe('stalled');
     expect(r.scrollTop).toBe(480);
   });
 
@@ -234,7 +249,7 @@ describe('resolveListView', () => {
       snapshot: snap({ savedAt: NOW - LIST_MEMORY_MS - 1, entryKey: 'k2' }),
       params: params('open=1'),
     });
-    expect(r.view.hideClosed).toBe(true);
+    expect(r.view.scope).toBe('open');
     expect(r.view.query).toBe('');
   });
 });

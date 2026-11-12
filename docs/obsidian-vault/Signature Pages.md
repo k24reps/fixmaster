@@ -640,7 +640,7 @@ Kartu jam jadi **readout LCD waktu hidup** (berdetak per detik, scanline, LED st
 
 **Ponsel: antrean di layar pertama (7 Nov 2026, critique layout P1).** Di 390×844 tiket pertama dulu mulai di y=651, hanya 117px terlihat di atas menu bawah. Kini y=373. Penyebabnya diselesaikan begini:
 - **Strip readout** (sejak 7 Nov 2026 komponen bersama `PageSummary`, lihat [[Conventions]]): satu baris empat sel dengan label pendek: Total, Proses, Siap ambil, Selesai (`services.stat*Short`). Sel rupiah tidak tampil di ponsel, dan LED pindah ke depan angka.
-- **Filter:** Teknisi, Urutan, Tertahan, dan Sembunyikan arsip dilipat ke satu tombol slider di samping kolom cari. Angka pada tombol itu = filter lanjutan aktif + filter terlipat yang menyala. Baris filter hilang bila kosong, dan tetap tampil bila ada tombol reset atau chip Siap ambil.
+- **Filter:** Teknisi, Urutan, dan sakelar lingkup (Semua · Belum tuntas · Tertahan; sebelum 12 Nov 2026 dua tombol Tertahan dan Sembunyikan arsip) dilipat ke satu tombol slider di samping kolom cari. Angka pada tombol itu = filter lanjutan aktif + filter terlipat yang menyala. Baris filter hilang bila kosong, dan tetap tampil bila ada tombol reset atau chip Siap ambil.
 - **Servis Baru:** pindah ke dok zona jempol (`ThumbDock`), mengambang 8px di atas menu bawah.
 - **Chip status:** memudar di tepi yang masih menyimpan chip, supaya terbaca bisa digeser. Pola ini dipakai bersama lewat `CategoryChips`.
 - **Nomor tiket di kartu** setinggi tombol status di sebelahnya (`--control-h`, 44px). Dulu 59×22px, padahal itu satu-satunya jalan ke detail dari kartu.
@@ -649,6 +649,19 @@ Di desktop, nama perangkat boleh dua baris (dulu "MacBook Pro 13" 2019" terpoton
 
 ![[services-phone-queue-390-dark.png]]
 ![[services-device-2line-1700-dark.png]]
+
+**Sakelar lingkup (12 Nov 2026, permintaan pemilik).** Tombol Tertahan dan Sembunyikan arsip dilebur jadi satu kontrol tiga posisi: **Semua · Belum tuntas · Tertahan**. Ketiganya bertingkat (tiket tertahan selalu belum tuntas; belum tuntas = semua kecuali arsip), jadi dua tombol lama memberi empat kombinasi untuk tiga hasil, dan saat Tertahan menyala tombol arsip tak berefek apa pun.
+- **Bentuk:** satu rumah berisi tiga tuts yang saling mengunci, seperti bank tombol pemilih di alat ukur. Tepi rumah `--border-control` lewat bayangan inset (tinggi tetap `--control-h` walau aturan sentuh global memaksa tiap tombol 44px). Tuts tertekan = `--brand-soft` + tepi `--border-brand`, menutupi tepi rumah. Sambungan titik di antara tuts, menjorok 10px atas-bawah, hilang di kedua sisi tuts yang tertekan.
+- **Angka:** mono tabular, = tiket yang tampil bila posisi itu dipilih (`scopeCounts`). Semua sengaja tanpa angka: di cloud daftarnya berjendela 31 hari sehingga angkanya akan bertabrakan dengan TOTAL di strip, dan chip status "Semua n" tepat di bawahnya sudah menghitung.
+- **LED** hanya di Tertahan: lampu `--warning` redup bila nol, menyala dengan glow bila ada yang tertahan (Lit-Signal Rule). Belum tuntas bukan sinyal, jadi tanpa LED.
+- **Aksesibilitas:** `role="group"` + tombol `aria-pressed`, pola yang sama dengan chip status (`CategoryChips`) dan strip saringan Kasir & Stok.
+- **Ponsel:** ikut terlipat di tombol filter; di panel ia mengambil satu baris penuh, lebar tuts mengikuti isi (`flex: 1 1 auto`). Dibagi rata, tuts 96px di 320px memecah "Belum tuntas 5" jadi tiga baris; kini terukur 65 + 119 + 104px (= 288px, lebar baris), satu baris tanpa terpotong.
+- **Reset filter** dari Tertahan kembali ke Belum tuntas (Belum tuntas adalah cara pandang, bukan saringan, jadi tak pernah direset dan tak memunculkan tombol reset).
+
+Detail: [[Decisions & Bug Fixes#Sakelar lingkup Daftar Servis: Semua · Belum tuntas · Tertahan (12 Nov 2026)]].
+
+![[services-scope-1440-dark.png]]
+![[services-scope-390-dark.png]]
 
 **Aksi cepat Tambah sparepart (7 Nov 2026, permintaan pemilik).** Tiap baris dan kartu tiket yang masih dikerjakan (belum Lunas atau Batal) punya tombol ikon chip (`microchip`, ikon yang sama dengan baris sparepart di BOM detail). Tombol ini membuka `SparepartPickerModal` yang sama dengan detail tiket, tanpa pindah halaman. Di atas pencarian ada strip tiket tujuan: spine brand, nomor mono, perangkat, pelanggan. Simpannya lewat `addServicePart` (`src/data/serviceParts.ts`), jalur yang kini juga dipakai detail: tiket dibaca ulang, baris inventori `deducted: true`, stok dipotong di transaksi yang sama. Jendela tetap terbuka untuk part berikutnya, dan baris yang sudah masuk terbaca "Tambah lagi". Tiket Selesai yang biaya finalnya sudah ditetapkan mendapat toast peringatan: biaya final belum ikut naik, sesuaikan di detail. Tombol ditaruh paling kiri, sehingga tiga aksi lain tetap sejajar antarbaris. Lajur aksi di Daftar sempat melebar dari 7.5rem ke 10rem, lalu kembali ke 7.5rem pada 9 Nov 2026 (seluruh baris membuka tiket, jadi ikon Lihat tiket hanya tersisa di Kartu). Detail: [[Decisions & Bug Fixes#Aksi cepat Tambah sparepart di Daftar Servis (7 Nov 2026)]].
 

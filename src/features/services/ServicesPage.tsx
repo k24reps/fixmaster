@@ -42,18 +42,22 @@ import { resolveServiceColumns } from '@/lib/business/serviceColumns';
 import { LIST_PAGE_SIZE, resolveListView, scrollRestoreStep } from '@/lib/business/serviceListView';
 import { readListSnapshot, readScroll, saveListScroll, saveListView, writeScroll } from './listMemory';
 import {
+  SERVICE_SCOPES,
   SERVICE_SORTS,
   SORT_LABEL_KEY,
   compareServices,
   createdRange,
   matchesPayment,
   matchesQuery,
+  matchesScope,
   matchesTechnician,
   nextSort,
+  scopeCounts,
   sortDirectionOn,
   stalledDays,
   type DateFilter,
   type PaymentFilter,
+  type ServiceScope,
   type ServiceSort,
   type ServiceSortColumn,
 } from '@/lib/business/serviceFilters';
@@ -65,7 +69,7 @@ import { TicketDoneModal } from './TicketDoneModal';
 import { SparepartPickerModal } from './SparepartPickerModal';
 import type { Service, ServiceSparepart, ServiceStatus } from '@/data/types';
 import styles from './ServicesPage.module.css';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
 import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
 
@@ -80,6 +84,12 @@ import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
  */
 const SERVICE_WINDOW_DAYS = 31;
 const NO_WINDOW: { rows: Service[]; truncated: boolean } = { rows: [], truncated: false };
+
+const SCOPE_TEXT: Record<ServiceScope, { label: TranslationKey; hint: TranslationKey }> = {
+  all: { label: 'services.scopeAll', hint: 'services.scopeAllHint' },
+  open: { label: 'services.scopeOpen', hint: 'services.scopeOpenHint' },
+  stalled: { label: 'services.stalled', hint: 'services.stalledHint' },
+};
 
 export function ServicesPage() {
   const t = useT();
@@ -155,12 +165,11 @@ export function ServicesPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>(start.date);
   const [customFrom, setCustomFrom] = useState(start.from);
   const [customTo, setCustomTo] = useState(start.to);
-  const [stalledOnly, setStalledOnly] = useState(start.stalledOnly);
   const [sort, setSort] = useState<ServiceSort>(start.sort);
-  // Tiket tuntas (lunas/batal DAN sudah diambil) ikut tampil menurut urutan
-  // tanggal; "Sembunyikan tuntas" menyaringnya saat daftar dipakai sebagai antrean kerja.
-  // `?open=1` = "Tiket saya belum tuntas" dari Dashboard.
-  const [hideClosed, setHideClosed] = useState(start.hideClosed);
+  // Semua / Belum tuntas / Tertahan. Arsip (lunas/batal DAN sudah diambil) ikut
+  // tampil di Semua menurut urutan tanggal; Belum tuntas membuangnya saat daftar
+  // dipakai sebagai antrean kerja. `?open=1` = "Tiket saya" dari Dashboard.
+  const [scope, setScope] = useState<ServiceScope>(start.scope);
   // `?new=1` membuka Servis Baru langsung (tombol cepat Dashboard).
   const [editOpen, setEditOpen] = useState(() => searchParams.get('new') === '1');
   const [editing, setEditing] = useState<Service | null>(null);
@@ -218,18 +227,18 @@ export function ServicesPage() {
     [summaryQuery.data, services, monthFrom, monthTo],
   );
 
-  const closedCount = useMemo(() => visible.filter(isClosedOut).length, [visible]);
-  const stalledCount = useMemo(
-    () => visible.filter((s) => !isClosedOut(s) && stalledDays(s, today) !== null).length,
-    [visible, today],
-  );
+  const {
+    open: openCount,
+    stalled: stalledCount,
+    closed: closedCount,
+  } = useMemo(() => scopeCounts(visible, today), [visible, today]);
 
   // Semua filter KECUALI status — dasar hitungan chip status, supaya angka di
   // chip selalu berarti "yang akan tampil kalau chip ini dipilih".
   const filteredExceptStatus = useMemo(() => {
     const range = createdRange(dateFilter, today, { from: customFrom, to: customTo });
     return visible
-      .filter((s) => !hideClosed || !isClosedOut(s))
+      .filter((s) => matchesScope(s, scope, today))
       .filter((s) => categoryFilter === 'all' || s.category === categoryFilter)
       .filter((s) => pickupFilter === 'all' || isAwaitingPickup(s))
       .filter((s) => matchesTechnician(s, techFilter, techs, me))
@@ -239,11 +248,10 @@ export function ServicesPage() {
         const created = localDateOf(s.createdAt);
         return created >= range.from && created <= range.to;
       })
-      .filter((s) => !stalledOnly || stalledDays(s, today) !== null)
       .filter((s) => matchesQuery(s, query));
   }, [
     visible,
-    hideClosed,
+    scope,
     pickupFilter,
     categoryFilter,
     techFilter,
@@ -254,7 +262,6 @@ export function ServicesPage() {
     customFrom,
     customTo,
     today,
-    stalledOnly,
     query,
   ]);
 
@@ -283,7 +290,7 @@ export function ServicesPage() {
     techFilter !== 'all' ||
     paymentFilter !== 'all' ||
     dateFilter !== 'all' ||
-    stalledOnly;
+    scope === 'stalled';
 
   // Filter yang jarang dipakai tinggal di panel "Filter lainnya"; jumlah yang
   // aktif tampil di tombolnya supaya daftar yang tersaring tak pernah tanpa sebab.
@@ -305,13 +312,12 @@ export function ServicesPage() {
     [services],
   );
   const showTech = cols.has('technician') && distinctTechs > 1;
-  // Di ponsel teknisi, urutan, Tertahan & arsip dilipat ke tombol filter di
+  // Di ponsel teknisi, urutan, dan sakelar lingkup dilipat ke tombol filter di
   // samping kolom cari (CSS); yang aktif ikut dihitung di tombol itu.
   const foldedOnMobile = [
     showTechFilter && techFilter !== 'all',
     sort !== 'newest',
-    stalledOnly,
-    hideClosed,
+    scope !== 'all',
   ].filter(Boolean).length;
 
   // Setiap perubahan filter kembali ke potongan pertama daftar.
@@ -330,7 +336,9 @@ export function ServicesPage() {
       setDateFilter('all');
       setCustomFrom('');
       setCustomTo('');
-      setStalledOnly(false);
+      // Belum tuntas adalah cara pandang, bukan saringan, jadi tak direset.
+      // Tertahan = Belum tuntas + saringan, maka resetnya kembali ke Belum tuntas.
+      setScope((v) => (v === 'stalled' ? 'open' : v));
     });
 
   // Hanya potongan ini yang dirender. `stats` di atas SENGAJA tetap dihitung
@@ -409,9 +417,8 @@ export function ServicesPage() {
       date: dateFilter,
       from: customFrom,
       to: customTo,
-      stalledOnly,
       sort,
-      hideClosed,
+      scope,
     });
   }, [
     listOwner,
@@ -426,9 +433,8 @@ export function ServicesPage() {
     dateFilter,
     customFrom,
     customTo,
-    stalledOnly,
     sort,
-    hideClosed,
+    scope,
   ]);
   useEffect(() => {
     let raf = 0;
@@ -828,7 +834,7 @@ export function ServicesPage() {
             aria-label={t('services.searchAria')}
           />
         </div>
-        {/* Ponsel: seluruh filter (termasuk Tertahan & arsip) dilipat ke sini,
+        {/* Ponsel: seluruh filter (termasuk sakelar lingkup) dilipat ke sini,
             di samping kolom cari, supaya tiket pertama naik ke layar pertama. */}
         <button
           type="button"
@@ -881,25 +887,33 @@ export function ServicesPage() {
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          className={[styles.toggle, styles.foldable, stalledOnly ? styles.toggleOn : ''].join(' ')}
-          aria-pressed={stalledOnly}
-          onClick={() => change(() => setStalledOnly((v) => !v))}
-          title={t('services.stalledHint')}
-        >
-          <span className={styles.toggleLed} aria-hidden />
-          {t('services.stalled')} <span className={styles.toggleCount}>{stalledCount}</span>
-        </button>
-        <button
-          type="button"
-          className={[styles.toggle, styles.foldable, hideClosed ? styles.toggleOn : ''].join(' ')}
-          aria-pressed={hideClosed}
-          onClick={() => change(() => setHideClosed((v) => !v))}
-          title={t('services.hideClosedHint')}
-        >
-          {t('services.hideClosed')} <span className={styles.toggleCount}>{closedCount}</span>
-        </button>
+        {/* Sakelar lingkup: tiga posisi bertingkat dalam satu rumah. Angka =
+            tiket yang tampil bila posisi itu dipilih. Semua sengaja tanpa angka:
+            di cloud daftarnya berjendela (31 hari), jadi angkanya akan
+            bertabrakan dengan TOTAL di strip atas, dan chip status di bawah
+            sudah menghitungnya. */}
+        <div className={[styles.scope, styles.foldable].join(' ')} role="group" aria-label={t('services.scopeAria')}>
+          {SERVICE_SCOPES.map((value) => {
+            const count = value === 'open' ? openCount : value === 'stalled' ? stalledCount : null;
+            return (
+              <button
+                key={value}
+                type="button"
+                className={styles.scopeCell}
+                aria-pressed={scope === value}
+                onClick={() => change(() => setScope(value))}
+                title={t(SCOPE_TEXT[value].hint)}
+              >
+                {/* Lampu peringatan Tertahan menyala selama ada tiket yang tertahan. */}
+                {value === 'stalled' && (
+                  <span className={styles.scopeLed} data-lit={stalledCount > 0} aria-hidden />
+                )}
+                <span>{t(SCOPE_TEXT[value].label)}</span>
+                {count !== null && <span className={styles.scopeCount}>{fmtNumber(count)}</span>}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
           className={[styles.toggle, styles.moreBtn, moreOpen ? styles.toggleOn : ''].join(' ')}
@@ -1015,7 +1029,7 @@ export function ServicesPage() {
             description={
               visible.length === 0
                 ? t('services.emptyFirst')
-                : !filtersActive && hideClosed && closedCount > 0
+                : !filtersActive && scope === 'open' && closedCount > 0
                   ? t('services.emptyAllClosed')
                   : t('services.emptyFiltered')
             }
@@ -1028,8 +1042,8 @@ export function ServicesPage() {
                 <Button variant="secondary" size="sm" onClick={resetFilters}>
                   {t('services.resetFilters')}
                 </Button>
-              ) : hideClosed && closedCount > 0 ? (
-                <Button variant="secondary" size="sm" onClick={() => setHideClosed(false)}>
+              ) : scope === 'open' && closedCount > 0 ? (
+                <Button variant="secondary" size="sm" onClick={() => change(() => setScope('all'))}>
                   {t('services.showClosed')}
                 </Button>
               ) : null
@@ -1233,7 +1247,7 @@ export function ServicesPage() {
               <span className={styles.loadMoreHint}>
                 {interpolate(t('services.shownOf'), { shown: String(shownRows.length), total: String(rows.length) })}
                 {rows.length !== stats.total && interpolate(t('services.totalTail'), { n: String(stats.total) })}
-                {hideClosed && closedCount > 0 && interpolate(t('services.closedHiddenTail'), { n: String(closedCount) })}
+                {scope === 'open' && closedCount > 0 && interpolate(t('services.closedHiddenTail'), { n: String(closedCount) })}
                 {windowed && archive.length === 0 && t(truncated ? 'services.truncatedTail' : 'services.olderTail')}
               </span>
             </div>
