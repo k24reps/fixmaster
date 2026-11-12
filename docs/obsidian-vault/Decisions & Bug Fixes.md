@@ -5731,7 +5731,7 @@ Sisa temuan kecil dari kritik nota termal, ditimbang satu per satu:
   pola yang sama dengan `features/services/receiptText.ts`. Dua tes di `print.test.ts`: jatuh ke `false`
   dengan toast bernada error, dan pesan mengikuti bahasa aplikasi.
 - **Sudah beres di tahap sebelumnya.** Modul QR sudah 4 titik (`QR_MODULE_DOTS`, tahap 1), tak lagi 3,82.
-- **Sengaja dibiarkan: zona sunyi QR `margin: 2`.** `qr.ts` menyarankan 4 modul. Di kertas, ruang putih
+- **Sengaja dibiarkan (dikerjakan 12 Nov 2026, lihat "Nota ringkas dan QR besar di tengah"): zona sunyi QR `margin: 2`.** `qr.ts` menyarankan 4 modul. Di kertas, ruang putih
   di sekeliling kode: sisi kiri inset 4 titik + 2 modul + tepi kertas di luar jendela head, sisi kanan
   sela 20 titik + 2 modul. Itu perkiraan dari geometri, BUKAN hasil uji pemindai sungguhan. Menaikkan
   margin ke 4 menambah 16 titik lebar dan mempersempit teks di sebelahnya; belum sepadan tanpa bukti
@@ -6149,6 +6149,51 @@ masih literal bahasa Indonesia, belum lewat `useT()`, sama seperti sebelum tahap
 #decision #print #receipt #tracking #security
 
 ---
+
+### Nota ringkas dan QR besar di tengah (12 Nov 2026)
+
+Permintaan pemilik: nota servis "lebih simple, tapi tetap memuat info penting", dan kode QR "agak
+diperbesar, di tengah, kadang tidak bisa terscan karena terlalu kecil". Isi bukti tidak dikurangi;
+yang dibuang adalah pengulang dan hiasan.
+
+- **QR: modul 6 titik, zona sunyi 4, berdiri sendiri.** Dulu modul 4 titik (0,5 mm) dengan zona
+  sunyi 2 dan teks di sebelahnya: kode lacak pendek (versi 4, 33 modul) hanya ±16,5 mm. Kini
+  `qrModuleDots(modules, spec)` (`lib/business/receiptPaper.ts`, murni) memberi `QR_MODULE_DOTS` = 6
+  titik (0,75 mm) bila simbol plus `QR_QUIET_MODULES` = 4 muat selebar isi, selain itu turun ke
+  ukuran yang muat. **Hanya bilangan genap**: sisi simbol plus zona sunyi selalu ganjil (17 + 4v + 8),
+  dan isi 376/568 titik genap, jadi modul genap membuat kode yang dirata-tengah jatuh tepat di titik.
+  Hasil: kode pendek ±25 mm (30,8 mm dengan zona), alamat lama `?org=&no=` (versi 6) 30,8 mm, versi
+  10 di 58 mm turun ke 4 titik. Ini menutup "sengaja dibiarkan: zona sunyi `margin: 2`" di tahap 6.
+- **Bukti pindai (simulasi, bukan pemindai sungguhan).** Render nota pada 203 dpi persis, ambang
+  50%, tinta meleber 1 titik, lalu "kamera": blur Gauss dalam mm, turunkan ke N px/mm, kontras
+  kertas kusam + derau, dekode `zxing-cpp`, wajib lolos 3 benih derau. QR lama hanya terbaca di
+  6 px/mm dengan blur 0,1 mm, dan alamat lama gagal di semua kondisi. QR baru lolos mulai 3,5 px/mm
+  (blur 0,1 mm) dan tahan blur 0,2 mm di 5 sampai 6 px/mm. Keduanya terbaca pada raster bersih.
+- **Blok lacak tanpa label** (`trackBlockHtml` di `printReceipt.ts`): "LACAK STATUS" dihapus,
+  kalimat di bawah kode sudah menyatakan gunanya ("Pindai untuk cek status & garansi"; bila QR mati
+  "Cek status & garansi di:", dulu tetap "Pindai…" walau tak ada yang bisa dipindai). Alamat tebal
+  dengan `<wbr>` setelah `/` dan sebelum `?`/`&`: di 58 mm `…vercel.app/t/` lalu kode lacak utuh di
+  baris kedua, bukan dibelah `overflow-wrap: anywhere`. Kalimat dan ucapan kaki memakai
+  `text-wrap: balance` agar tak menyisakan satu kata ("Anda.").
+- **Pita tahap empat tick dibuang.** Judul kertas (TANDA TERIMA / NOTA SERVIS / SERAH TERIMA) sudah
+  menyatakan tahap saat cetak; pita memakan dua baris plus jahitan. Ikut dihapus: `stageGaugeHtml`,
+  CSS `.gauge`/`.step`, `GAUGE_GAP_DOTS`, `stageGauge`, `GAUGE_STAGES`, `GaugeTick`,
+  `ServiceDocPlan.gauge`, kunci `receipt.stage.*` dan `receipt.block.track`.
+- **Penutup satu blok, berlaku juga untuk struk** (`receiptParts`): ucapan menyambung catatan kaki
+  tanpa jahitan; dokumen batal (tanpa ucapan) ditutup jahitan sebelum atribusi. Ucapan bawaan satu
+  kalimat (`receipt.foot.again` dihapus, petunjuk kolom "Ucapan di kaki" ikut diganti). Catatan
+  bawaan nota servis kehilangan kalimat jam operasional; toko yang butuh menulisnya sendiri.
+- **Telepon kepala tak dibelah**: `<span class="nw">` (nowrap) untuk nomor, alamat tetap boleh
+  membungkus. Kontak kini dirakit sebagai HTML ter-escape per bagian, bukan satu string.
+- **Hasil ukur DOM** (6 kasus × 58/80 mm): nol elemen melewati badan, QR selisih tengah 0 px; nota
+  "siap" 58 mm 793 → 758 px, tanda terima 701 → 666 px, walau QR membesar 1,5×.
+
+**Verifikasi:** build, lint, **1074 tes / 83 berkas** (`qrModuleDots` 4 tes, blok lacak 4, kepala dan
+penutup 4, CSS QR 1; tes pita tahap dihapus). Probe `audit-mobile`/`audit-zoom` tidak dijalankan:
+halaman aplikasi tak berubah selain placeholder satu kolom di Pengaturan › Nota & Struk. **Belum
+terverifikasi:** printer termal fisik dan pemindaian dengan ponsel sungguhan; uji di atas simulasi.
+
+#decision #print #receipt #qr
 
 ## Tujuh temuan side-tab sisa, dipilah (10 Nov 2026)
 

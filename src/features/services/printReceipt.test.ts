@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { openReceiptWindow, receiptPreviewHtml, serviceReceiptDoc } from './printReceipt';
-import { GAUGE_GAP_DOTS } from './receiptStyle';
 import {
   BASE_FONT_DOTS,
   MONO_ADVANCE_EM,
+  QR_QUIET_MODULES,
   ROW_GAP_DOTS,
   STRONG_FONT_DOTS,
   STRONG_TRACKING_EM,
+  dotsToPx,
   paperSpec,
 } from '@/lib/business/receiptPaper';
+import { qrMatrix } from '@/lib/qr';
 import { useSettingsStore } from '@/stores/settings';
 import type { Organization, Service } from '@/data/types';
 
@@ -92,7 +94,7 @@ describe('serviceReceiptDoc: tiket batal', () => {
   it('tak mencetak garansi, QR pelacakan, maupun teks bukti pengambilan', () => {
     const body = html(cancelled({ downPayment: 100000, history: [{ status: 'batal', refund: 100000 } as never] }));
     expect(body).not.toContain('GARANSI');
-    expect(body).not.toContain('LACAK STATUS');
+    expect(body).not.toContain('class="track"');
     expect(body).not.toContain('<svg');
     expect(text(body)).not.toMatch(/bukti pengambilan/);
   });
@@ -137,7 +139,7 @@ describe('serviceReceiptDoc: tiket batal', () => {
 
   it('tiket berjalan tetap membawa QR, blok pelacakan, dan teks bukti', () => {
     const body = html(svc({}));
-    expect(body).toContain('LACAK STATUS');
+    expect(body).toContain('class="track"');
     expect(body).toContain('<svg');
     expect(text(body)).toMatch(/bukti pengambilan/);
   });
@@ -161,47 +163,33 @@ describe('serviceReceiptDoc: tahap siklus hidup', () => {
   const docOf = (over: Partial<Service>, o: Organization = org) =>
     serviceReceiptDoc(svc(over), o, 'https://app.test');
   const PICKED = { pickedUp: true, pickedUpAt: '2026-11-12T09:00:00.000Z' };
-  const stepsOf = (body: string) => {
-    const el = document.createElement('div');
-    el.innerHTML = body;
-    return [...el.querySelectorAll('.gauge .step')].map((s) => ({
-      name: s.querySelector('.nm')?.textContent ?? '',
-      on: s.classList.contains('on'),
-      cur: s.classList.contains('cur'),
-    }));
-  };
 
-  it('unit masih di toko: judul TANDA TERIMA, pita berhenti di tahap yang tepat', () => {
+  it('unit masih di toko: judul TANDA TERIMA', () => {
     const received = docOf({ status: 'diterima' });
     expect(received.kind).toBe('TANDA TERIMA');
     expect(received.title).toBe('Tanda terima');
-    expect(stepsOf(received.body).map((s) => s.on)).toEqual([true, false, false, false]);
-    expect(stepsOf(received.body).findIndex((s) => s.cur)).toBe(0);
-
-    for (const status of ['diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan'] as const) {
-      const working = docOf({ status });
-      expect(working.kind, status).toBe('TANDA TERIMA');
-      expect(stepsOf(working.body).map((s) => s.on), status).toEqual([true, true, false, false]);
-      expect(stepsOf(working.body).findIndex((s) => s.cur), status).toBe(1);
-    }
+    for (const status of ['diagnosa', 'konfirmasi', 'tunggu', 'pengerjaan'] as const)
+      expect(docOf({ status }).kind, status).toBe('TANDA TERIMA');
   });
 
-  it('selesai atau lunas yang belum diambil: tetap NOTA SERVIS, pita di "Siap"', () => {
+  it('selesai atau lunas yang belum diambil: tetap NOTA SERVIS', () => {
     for (const status of ['selesai', 'lunas'] as const) {
       const doc = docOf({ status });
       expect(doc.kind, status).toBe('NOTA SERVIS');
-      expect(stepsOf(doc.body).map((s) => s.on), status).toEqual([true, true, true, false]);
-      expect(stepsOf(doc.body).findIndex((s) => s.cur), status).toBe(2);
       expect(doc.body, status).not.toContain('sign-box');
     }
   });
 
-  it('sudah diambil: SERAH TERIMA, pita penuh, kotak tanda tangan, tanggal diambil', () => {
+  // Judul sudah menyatakan tahap saat cetak; pita empat tahap dibuang agar nota ringkas.
+  it('tak ada pita tahap di tahap mana pun', () => {
+    for (const over of [{ status: 'diterima' }, { status: 'selesai' }, { status: 'lunas', ...PICKED }] as Partial<Service>[])
+      expect(docOf(over).body).not.toMatch(/class="(gauge|step)/);
+  });
+
+  it('sudah diambil: SERAH TERIMA, kotak tanda tangan, tanggal diambil', () => {
     const doc = docOf({ status: 'lunas', finalCost: 500000, ...PICKED });
     expect(doc.kind).toBe('SERAH TERIMA');
     expect(doc.title).toBe('Serah terima');
-    expect(stepsOf(doc.body).map((s) => s.on)).toEqual([true, true, true, true]);
-    expect(stepsOf(doc.body).findIndex((s) => s.cur)).toBe(3);
     expect(doc.body).toContain('class="sign-box"');
     expect(text(doc.body)).toContain('PENERIMA UNIT');
     expect(text(doc.body)).toMatch(/Diambil\s*12 Nov 2026/);
@@ -225,10 +213,9 @@ describe('serviceReceiptDoc: tahap siklus hidup', () => {
     }
   });
 
-  it('tiket batal: tak ada pita, tanda tangan, maupun tanggal diambil; judul tetap NOTA SERVIS', () => {
+  it('tiket batal: tak ada tanda tangan maupun tanggal diambil; judul tetap NOTA SERVIS', () => {
     const doc = docOf({ status: 'batal', downPayment: 100000, ...PICKED });
     expect(doc.kind).toBe('NOTA SERVIS');
-    expect(doc.body).not.toContain('class="gauge"');
     expect(doc.body).not.toContain('sign-box');
     expect(text(doc.body)).not.toMatch(/Diambil/);
     expect(doc.body.trimStart()).toMatch(/^<div class="void-mark">BATAL<\/div>/);
@@ -249,34 +236,26 @@ describe('serviceReceiptDoc: tahap siklus hidup', () => {
       expect(docOf({ status }).body, status).not.toMatch(/<td>Status<\/td>/);
   });
 
-  it('pita memuat empat label berurutan; bahasa Inggris memakai kamus sendiri', () => {
-    expect(stepsOf(docOf({}).body).map((s) => s.name)).toEqual(['Masuk', 'Proses', 'Siap', 'Diambil']);
+  it('bahasa Inggris memakai kamus sendiri', () => {
     useSettingsStore.setState({ language: 'en' });
-    expect(stepsOf(docOf({}).body).map((s) => s.name)).toEqual(['Intake', 'Repair', 'Ready', 'Pickup']);
     expect(docOf({}).kind).toBe('INTAKE RECEIPT');
     expect(docOf({ status: 'lunas', ...PICKED }).kind).toBe('PICKUP RECEIPT');
     expect(text(docOf({ status: 'lunas', ...PICKED }).body)).toContain('RECEIVED BY');
   });
 
-  it('tepat satu tahap "saat ini", ditandai tebal lewat kelas, bukan gaya sebaris', () => {
-    for (const status of ['diterima', 'pengerjaan', 'selesai'] as const) {
-      const body = docOf({ status }).body;
-      expect(stepsOf(body).filter((s) => s.cur)).toHaveLength(1);
-      expect(body).not.toMatch(/style=/);
-    }
+  it('tanpa gaya sebaris: semua tata letak lewat kelas', () => {
+    for (const status of ['diterima', 'pengerjaan', 'selesai'] as const)
+      expect(docOf({ status }).body).not.toMatch(/style=/);
   });
 
-  it('pita dan judul muat sebaris di kertas 58 mm dalam kedua bahasa', () => {
+  it('judul dan nomor muat sebaris di kertas 58 mm dalam kedua bahasa', () => {
     const spec = paperSpec(58);
-    const column = (spec.contentDots - 3 * GAUGE_GAP_DOTS) / 4;
     const glyph = BASE_FONT_DOTS * MONO_ADVANCE_EM;
     const noWidth = 'FM-0123'.length * (STRONG_FONT_DOTS * MONO_ADVANCE_EM + STRONG_FONT_DOTS * STRONG_TRACKING_EM);
     for (const language of ['id', 'en'] as const) {
       useSettingsStore.setState({ language });
       for (const over of [{}, { status: 'selesai' }, { status: 'lunas', ...PICKED }] as Partial<Service>[]) {
         const doc = docOf(over);
-        for (const s of stepsOf(doc.body))
-          expect([...s.name].length * glyph, `${language} ${s.name}`).toBeLessThanOrEqual(column);
         const kindWidth = [...doc.kind].length * (glyph + BASE_FONT_DOTS * 0.18);
         expect(kindWidth + ROW_GAP_DOTS + noWidth, `${language} ${doc.kind}`).toBeLessThanOrEqual(spec.contentDots);
       }
@@ -313,10 +292,11 @@ describe('serviceReceiptDoc: setelan toko', () => {
     expect(text(doc.body)).toMatch(/bukti pengambilan/);
   });
 
-  it('QR dimatikan: tak ada <svg>, alamat lacak tetap tercetak', () => {
+  it('QR dimatikan: tak ada <svg>, alamat lacak tetap tercetak tanpa ajakan memindai', () => {
     const doc = docWith({ showQr: false });
     expect(doc.body).not.toContain('<svg');
-    expect(text(doc.body)).toContain('LACAK STATUS');
+    expect(text(doc.body)).toContain('Cek status & garansi di:');
+    expect(text(doc.body)).not.toContain('Pindai');
     expect(text(doc.body)).toContain('app.test/track?org=org-1&no=FM-0123');
   });
 
@@ -326,9 +306,9 @@ describe('serviceReceiptDoc: setelan toko', () => {
     expect(doc.body).not.toContain('class="track-url"');
   });
 
-  it('QR dan alamat dimatikan: seluruh blok LACAK STATUS hilang', () => {
+  it('QR dan alamat dimatikan: seluruh blok lacak hilang', () => {
     const doc = docWith({ showQr: false, showTrackUrl: false });
-    expect(doc.body).not.toContain('LACAK STATUS');
+    expect(doc.body).not.toContain('class="track"');
     expect(doc.body).not.toContain('<svg');
   });
 
@@ -481,7 +461,7 @@ describe('serviceReceiptDoc: kode lacak dan cetak ulang (0100)', () => {
     expect(body).toContain('class="reprint"');
     expect(text(body)).toContain('CETAK ULANG');
     expect(text(body)).toContain('12 Nov 2026 09:05');
-    expect(body.indexOf('class="reprint"')).toBeLessThan(body.indexOf('LACAK STATUS'));
+    expect(body.indexOf('class="reprint"')).toBeLessThan(body.indexOf('class="track"'));
     expect(body.trimStart().startsWith('<div class="reprint">')).toBe(true);
   });
 
@@ -512,5 +492,75 @@ describe('openReceiptWindow: hasil buka jendela', () => {
     vi.spyOn(window, 'open').mockReturnValue(null);
     expect(openReceiptWindow(org, d)).toBe(false);
     vi.restoreAllMocks();
+  });
+});
+
+describe('serviceReceiptDoc: blok lacak ringkas, QR besar di tengah', () => {
+  const orgOf = (paperWidth: number) =>
+    ({ ...org, settings: { receipt: { paperWidth } } }) as unknown as Organization;
+  const trackOf = (paperWidth = 58, trackCode: string | null = '7K3M9QXR2D') => {
+    const el = document.createElement('div');
+    el.innerHTML = serviceReceiptDoc(svc({}), orgOf(paperWidth), 'https://app.test', [], { trackCode }).body;
+    return el.querySelector('.track');
+  };
+
+  it('QR berdiri sendiri: tanpa label blok, kalimat dan alamat di bawahnya', () => {
+    const track = trackOf();
+    expect(track?.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    expect(track?.querySelector('.track-copy')?.textContent).toBe('Pindai untuk cek status & garansi');
+    expect(track?.querySelector('.track-url')?.textContent).toBe('app.test/t/7K3M9QXR2D');
+    expect(track?.querySelector('.block-label')).toBeNull();
+  });
+
+  it('modul 6 titik dengan zona sunyi 4 modul: kode ±25 mm, dulu ±16 mm', () => {
+    const url = 'https://app.test/t/7K3M9QXR2D';
+    const modules = qrMatrix(url).length;
+    const svg = trackOf()?.querySelector('svg');
+    const side = modules + 2 * QR_QUIET_MODULES;
+    expect(svg?.getAttribute('viewBox')).toBe(`0 0 ${side} ${side}`);
+    expect(Number(svg?.getAttribute('width'))).toBeCloseTo(side * dotsToPx(6), 2);
+    expect(Number(svg?.getAttribute('width'))).toBeLessThanOrEqual(paperSpec(58).contentPx);
+  });
+
+  it('alamat lama yang panjang tetap muat selebar isi 58 mm', () => {
+    const svg = trackOf(58, null)?.querySelector('svg');
+    expect(Number(svg?.getAttribute('width'))).toBeLessThanOrEqual(paperSpec(58).contentPx);
+  });
+
+  it('alamat lacak punya titik patah setelah "/" dan sebelum "?"/"&": kode tak dibelah', () => {
+    expect(trackOf()?.querySelector('.track-url')?.innerHTML).toBe('app.test/<wbr>t/<wbr>7K3M9QXR2D');
+    expect(trackOf(58, null)?.querySelector('.track-url')?.innerHTML).toBe(
+      'app.test/<wbr>track<wbr>?org=org-1<wbr>&amp;no=FM-0123',
+    );
+  });
+});
+
+describe('kertas nota: kepala dan penutup ringkas', () => {
+  const page = (o: Organization = org, s: Service = svc({})) =>
+    receiptPreviewHtml(o, serviceReceiptDoc(s, o, 'https://app.test'));
+
+  it('nomor telepon tak dibelah: dibungkus nowrap, alamat tetap boleh membungkus', () => {
+    const el = document.createElement('div');
+    el.innerHTML = page();
+    expect(el.querySelector('.contact')?.textContent).toBe('Jl. Merdeka 12 · 0812');
+    expect(el.querySelector('.contact .nw')?.textContent).toBe('0812');
+  });
+
+  it('kontak tetap di-escape', () => {
+    const odd = { ...org, address: '<b>Jl</b>', phone: '<i>0812</i>' } as unknown as Organization;
+    const el = document.createElement('div');
+    el.innerHTML = page(odd);
+    expect(el.querySelector('.contact b, .contact i')).toBeNull();
+    expect(el.querySelector('.contact')?.textContent).toBe('<b>Jl</b> · <i>0812</i>');
+  });
+
+  it('ucapan bawaan satu baris, langsung menyambung catatan tanpa jahitan', () => {
+    const p = page();
+    expect(p).toMatch(/<div class="fine">[^<]*<\/div>\s*<div class="foot">Terima kasih atas kepercayaan Anda\.<\/div>/);
+    expect(p).not.toMatch(/sampai jumpa/i);
+  });
+
+  it('dokumen batal tanpa ucapan: jahitan yang menutup isi sebelum atribusi', () => {
+    expect(page(org, svc({ status: 'batal' }))).toMatch(/<hr class="seam"\/>\s*<div class="by">/);
   });
 });

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GAUGE_STAGES,
   isServiceReprint,
   receiptAddress,
   reprintStamp,
@@ -8,7 +7,6 @@ import {
   serviceDocPlan,
   serviceMoney,
   serviceStage,
-  stageGauge,
   stampWithTime,
 } from './receiptContent';
 import type { Sale, Service, ServiceStatus } from '@/data/types';
@@ -150,34 +148,6 @@ describe('serviceStage', () => {
   });
 });
 
-describe('stageGauge', () => {
-  const reached = (stage: Parameters<typeof stageGauge>[0]) => stageGauge(stage).map((t) => t.reached);
-
-  it('empat titik berurutan dari diterima sampai diambil', () => {
-    expect(stageGauge('received').map((t) => t.stage)).toEqual([...GAUGE_STAGES]);
-    expect(GAUGE_STAGES).toEqual(['received', 'working', 'ready', 'pickedUp']);
-  });
-
-  it('titik yang sudah dilewati menyala sampai titik saat ini, sisanya padam', () => {
-    expect(reached('received')).toEqual([true, false, false, false]);
-    expect(reached('working')).toEqual([true, true, false, false]);
-    expect(reached('ready')).toEqual([true, true, true, false]);
-    expect(reached('pickedUp')).toEqual([true, true, true, true]);
-  });
-
-  it('tepat satu titik "saat ini", dan itu titik terakhir yang menyala', () => {
-    for (const s of GAUGE_STAGES) {
-      const ticks = stageGauge(s);
-      expect(ticks.filter((t) => t.current).map((t) => t.stage)).toEqual([s]);
-      expect(ticks.filter((t) => t.reached).at(-1)?.stage).toBe(s);
-    }
-  });
-
-  it('tiket batal tak punya pita: kotak BATAL yang bicara', () => {
-    expect(stageGauge('cancelled')).toEqual([]);
-  });
-});
-
 describe('serviceDocPlan', () => {
   const plan = (status: ServiceStatus, pickedUp = false) => serviceDocPlan({ status, pickedUp });
 
@@ -203,16 +173,11 @@ describe('serviceDocPlan', () => {
     expect(signed.every((p) => p.kind === 'handover')).toBe(true);
   });
 
-  it('tiket batal: judul netral, tanpa pita, tanpa tanda tangan, walau pickedUp menyala', () => {
+  it('tiket batal: judul netral, tanpa tanda tangan, walau pickedUp menyala', () => {
     for (const pickedUp of [false, true]) {
       const p = plan('batal', pickedUp);
-      expect(p).toEqual({ stage: 'cancelled', kind: 'service', gauge: [], signature: false });
+      expect(p).toEqual({ stage: 'cancelled', kind: 'service', signature: false });
     }
-  });
-
-  it('pita di rencana sama dengan stageGauge tahapnya', () => {
-    expect(plan('pengerjaan').gauge).toEqual(stageGauge('working'));
-    expect(plan('lunas', true).gauge).toEqual(stageGauge('pickedUp'));
   });
 });
 

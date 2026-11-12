@@ -45,6 +45,14 @@ describe('receiptStyle', () => {
     expect(css).toMatch(/\btr \{[^}]*break-inside: avoid/);
   });
 
+  it('QR berdiri di tengah barisnya sendiri; nomor telepon tak dibelah', () => {
+    const css = receiptStyle(paperSpec(58));
+    expect(css).toMatch(/\.track \{[^}]*text-align: center/);
+    expect(css).toMatch(/\.track svg \{ display: block; margin: 0 auto; \}/);
+    expect(css).not.toMatch(/\.track \{[^}]*display: flex/);
+    expect(css).toMatch(/\.nw \{ white-space: nowrap; \}/);
+  });
+
   // Head termal = dua keadaan. Driver berambang 50% menghapus abu-abu: #8a8a8a
   // dan #9a9a9a pernah menghasilkan 0% titik hitam (garis pemisah dan baris
   // atribusi hilang dari kertas). Tak ada literal warna selain hitam dan putih.

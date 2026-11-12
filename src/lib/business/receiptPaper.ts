@@ -145,6 +145,29 @@ export function fitsBeside(
 }
 
 /**
+ * Lebar satu modul QR (titik) yang diincar: 6 titik = 0,75 mm. Modul 4 titik
+ * (0,5 mm) membuat kode lacak hanya ±16 mm dan kadang gagal dipindai, karena
+ * tepi tiap titik termal sedikit meleber dan memakan modul putih di sebelahnya.
+ */
+export const QR_MODULE_DOTS = 6;
+
+/** Zona sunyi QR (modul) di tiap sisi, sesuai spesifikasi. Kode berdiri di barisnya sendiri. */
+export const QR_QUIET_MODULES = 4;
+
+/**
+ * Lebar modul QR untuk simbol `modules`×`modules` di kertas ini: `QR_MODULE_DOTS`
+ * bila simbol plus zona sunyi muat selebar isi, selain itu turun ke ukuran yang
+ * muat. Hanya bilangan GENAP: sisi simbol plus zona sunyi selalu ganjil (17 + 4v
+ * + 8), jadi modul genap membuat sisa ruang genap dan kode yang dirata-tengah
+ * jatuh tepat di titik, tidak di setengah titik yang membuat tepinya kabur.
+ */
+export function qrModuleDots(modules: number, spec: PaperSpec): number {
+  const side = modules + 2 * QR_QUIET_MODULES;
+  for (let dots = QR_MODULE_DOTS; dots > 2; dots -= 2) if (side * dots <= spec.contentDots) return dots;
+  return 2;
+}
+
+/**
  * Pita kosong di bawah baris terakhir: tempat gulungan disobek atau dipotong
  * tanpa memotong baris terakhir.
  */

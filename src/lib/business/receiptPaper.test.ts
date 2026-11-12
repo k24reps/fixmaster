@@ -3,6 +3,8 @@ import {
   BASE_FONT_DOTS,
   DEFAULT_PAPER_WIDTH,
   MONO_ADVANCE_EM,
+  QR_MODULE_DOTS,
+  QR_QUIET_MODULES,
   ROW_GAP_DOTS,
   charsPerLine,
   dotRemainder,
@@ -12,6 +14,7 @@ import {
   normalizePaperWidth,
   pageHeightMm,
   paperSpec,
+  qrModuleDots,
 } from './receiptPaper';
 
 describe('normalizePaperWidth', () => {
@@ -151,5 +154,42 @@ describe('fitsBeside', () => {
     expect(fitsBeside('Diskon', '−Rp 25.000', p58)).toBe(true);
     // Emoji = dua unit UTF-16 tapi satu huruf.
     expect(fitsBeside('a'.repeat(14), '😀'.repeat(14), p58)).toBe(true);
+  });
+});
+
+describe('qrModuleDots', () => {
+  const p58 = paperSpec(58);
+  const p80 = paperSpec(80);
+  const side = (modules: number) => modules + 2 * QR_QUIET_MODULES;
+
+  it('kode lacak pendek (versi 4, 33 modul): 6 titik = 0,75 mm, kode ±25 mm di kedua kertas', () => {
+    expect(QR_MODULE_DOTS).toBe(6);
+    expect(qrModuleDots(33, p58)).toBe(6);
+    expect(qrModuleDots(33, p80)).toBe(6);
+    expect(dotsToMm(33 * qrModuleDots(33, p58))).toBeGreaterThanOrEqual(24);
+  });
+
+  it('alamat lama ?org=&no= (versi 6, 41 modul) tetap 6 titik di 58 mm', () => {
+    expect(qrModuleDots(41, p58)).toBe(6);
+  });
+
+  it('simbol terbesar (versi 10, 57 modul) turun ke ukuran yang muat, tak pernah meluap', () => {
+    expect(qrModuleDots(57, p58)).toBe(4);
+    expect(qrModuleDots(57, p80)).toBe(6);
+    for (let v = 1; v <= 10; v++) {
+      const modules = 17 + 4 * v;
+      for (const p of [p58, p80]) expect(side(modules) * qrModuleDots(modules, p), `v${v}`).toBeLessThanOrEqual(p.contentDots);
+    }
+  });
+
+  it('selalu genap: sisa ruang genap sehingga kode rata-tengah jatuh tepat di titik', () => {
+    for (let v = 1; v <= 10; v++) {
+      const modules = 17 + 4 * v;
+      for (const p of [p58, p80]) {
+        const dots = qrModuleDots(modules, p);
+        expect(dots % 2, `v${v}`).toBe(0);
+        expect((p.contentDots - side(modules) * dots) % 2, `v${v}`).toBe(0);
+      }
+    }
   });
 });

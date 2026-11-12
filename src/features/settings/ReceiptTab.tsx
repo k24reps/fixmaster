@@ -308,7 +308,7 @@ function ContentCard({ draft, onChange }: { draft: TextDraft; onChange: (d: Text
           value={draft.footer}
           max={RECEIPT_TEXT_MAX.footer}
           rows={2}
-          placeholder={`${t('receipt.foot.thanks')}\n${t('receipt.foot.again')}`}
+          placeholder={t('receipt.foot.thanks')}
           onChange={set('footer')}
         />
         <TextField

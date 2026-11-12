@@ -92,8 +92,8 @@ export function serviceMoney(service: MoneySource): ServiceMoneyLine[] {
 // Kertas yang sama dicetak saat unit diterima, selesai, dan diserahkan, lalu
 // dibawa pulang. Yang berubah-ubah (status) tak boleh dicetak sebagai fakta
 // tetap: "Status: Diterima" di tangan pelanggan dua minggu kemudian adalah
-// kebohongan kecil. Jadi kertas mencatat TAHAP SAAT DICETAK lewat judul dan
-// pita tahap, dan kebenaran yang berjalan diserahkan ke QR lacak.
+// kebohongan kecil. Jadi kertas mencatat TAHAP SAAT DICETAK lewat judulnya,
+// dan kebenaran yang berjalan diserahkan ke QR lacak.
 
 /**
  * Tahap yang dilihat pelanggan, lebih kasar daripada `ServiceStatus`:
@@ -102,10 +102,6 @@ export function serviceMoney(service: MoneySource): ServiceMoneyLine[] {
  * status mana pun kecuali batal.
  */
 export type ServiceStage = 'received' | 'working' | 'ready' | 'pickedUp' | 'cancelled';
-
-/** Urutan pita tahap di kertas, dari kiri ke kanan. Batal tak punya pita. */
-export const GAUGE_STAGES = ['received', 'working', 'ready', 'pickedUp'] as const;
-export type GaugeStage = (typeof GAUGE_STAGES)[number];
 
 /**
  * Peta lengkap `Record<ServiceStatus, …>`: menambah status baru tanpa
@@ -131,24 +127,9 @@ export function serviceStage(service: StageSource): ServiceStage {
   return service.pickedUp ? 'pickedUp' : byStatus;
 }
 
-/** Satu titik pada pita tahap. `current` = tahap saat dicetak, `reached` = sudah dilewati atau sedang. */
-export interface GaugeTick {
-  stage: GaugeStage;
-  reached: boolean;
-  current: boolean;
-}
-
-/** Pita tahap untuk `stage`; kosong untuk tiket batal, yang ditandai kotak BATAL. */
-export function stageGauge(stage: ServiceStage): GaugeTick[] {
-  const at = GAUGE_STAGES.findIndex((g) => g === stage);
-  if (at < 0) return [];
-  return GAUGE_STAGES.map((g, i) => ({ stage: g, reached: i <= at, current: i === at }));
-}
-
 export interface ServiceDocPlan {
   stage: ServiceStage;
   kind: ServiceDocKind;
-  gauge: GaugeTick[];
   /** Kotak tanda tangan hanya di nota serah: yang ditandatangani adalah penerimaan unit. */
   signature: boolean;
 }
@@ -161,7 +142,7 @@ export function serviceDocPlan(service: StageSource): ServiceDocPlan {
       : stage === 'pickedUp'
         ? 'handover'
         : 'service';
-  return { stage, kind, gauge: stageGauge(stage), signature: stage === 'pickedUp' };
+  return { stage, kind, signature: stage === 'pickedUp' };
 }
 
 /**

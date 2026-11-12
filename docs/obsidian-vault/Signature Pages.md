@@ -915,20 +915,28 @@ Logo toko kini memuat petunjuk bahwa logo tercetak hitam-putih (`settingsPage.lo
 
 **Nota mengikuti tahap tiket** (tahap 7b): nota servis bukan lagi satu dokumen untuk semua tahap. `serviceDocPlan(service)` di `lib/business/receiptContent.ts` memetakan 8 status plus `pickedUp` ke lima tahap (`received`, `working`, `ready`, `pickedUp`, `cancelled`) dan dari situ ke tiga jenis kertas:
 
-| Tahap | Judul kertas | Penanda tahap | Kotak tanda tangan |
-|---|---|---|---|
-| Masuk, Proses | **TANDA TERIMA** | ya | tidak |
-| Siap (selesai, atau lunas belum diambil) | **NOTA SERVIS** | ya | tidak |
-| Diambil | **SERAH TERIMA** | ya, empat tick terisi | ya, **PENERIMA UNIT** |
-| Batal | NOTA SERVIS + kotak **BATAL** | tidak | tidak |
+| Tahap | Judul kertas | Kotak tanda tangan |
+|---|---|---|
+| Masuk, Proses | **TANDA TERIMA** | tidak |
+| Siap (selesai, atau lunas belum diambil) | **NOTA SERVIS** | tidak |
+| Diambil | **SERAH TERIMA** | ya, **PENERIMA UNIT** |
+| Batal | NOTA SERVIS + kotak **BATAL** | tidak |
 
-- **Baris "Status" dihapus.** Ia membeku saat dicetak dan pelanggan menyimpannya berminggu-minggu, jadi cepat menyesatkan. Penggantinya **penanda tahap** yang sengaja dibaca sebagai "tahap saat nota ini dicetak".
-- **Penanda tahap** (`stageGaugeHtml`): empat tick Masuk · Proses · Siap · Diambil. Tick tercapai = garis atas **12 titik hitam pekat**, belum tercapai = garis **putus-putus 2px**, tahap saat ini = label **tebal + garis bawah**. Semuanya garis dan teks, tanpa latar, sehingga selamat di ambang 1-bit dan saat "background graphics" mati. Label maksimal 7 huruf agar satu baris di 58 mm (kolom 88 titik).
+- **Baris "Status" dihapus.** Ia membeku saat dicetak dan pelanggan menyimpannya berminggu-minggu, jadi cepat menyesatkan. Judul kertas yang menyatakan "tahap saat nota ini dicetak".
+- **Penanda tahap empat tick dihapus (12 Nov 2026, nota ringkas).** Dulu `stageGaugeHtml` mencetak pita Masuk · Proses · Siap · Diambil di bawah tanggal. Judul kertas sudah membawa informasi yang sama, jadi pita itu dibuang bersama `stageGauge`, `GAUGE_STAGES`, `ServiceDocPlan.gauge`, dan kunci `receipt.stage.*`. Lihat **Nota ringkas** di bawah.
 - **Baris "Diambil"** (tanggal, dari `pickedUpAt`) hanya muncul bila `pickedUp` dan tiket tidak batal. Nota serah terima juga mengganti kalimat kaki dengan "Simpan nota ini sebagai bukti serah terima unit dan untuk klaim garansi."; syarat servis buatan toko tetap menang.
 - **"Estimasi" dibuang bila "Biaya" ada** (`serviceMoney`): dua angka yang berbeda untuk hal yang sama membingungkan pelanggan.
-- Semua teks lewat `useT()` (`receipt.doc.*`, `receipt.title.*`, `receipt.stage.*`, `receipt.sign.label`, `receipt.line.pickedUp`), id dan en berpasangan.
+- Semua teks lewat `useT()` (`receipt.doc.*`, `receipt.title.*`, `receipt.sign.label`, `receipt.line.pickedUp`), id dan en berpasangan.
 
-**Cetak ulang dan alamat pendek** (tahap 8): nota servis yang dicetak lagi dengan **jenis kertas yang sama** (tanda terima, nota servis, atau serah terima; `isServiceReprint(meta, plan)` di `lib/business/receiptContent.ts`) diberi kotak **CETAK ULANG · tanggal jam** (`reprintMarkHtml`, kini dipakai bersama struk POS) paling atas di isi nota, di bawah tanggal dan di atas penanda tahap. Naik tahap mencetak dokumen baru, bukan salinan; tiket batal hanya berkotak BATAL. Jejak cetak dicatat hanya bila jendela cetak benar-benar terbuka (`openReceiptWindow` mengembalikan boolean; demo dan popup terblokir tak tercatat), lewat hook `useServicePrint` yang memuat jejak lebih dulu karena `window.open` harus tetap sinkron di handler klik. Dipakai Cetak Nota di detail, modal Notifikasi, dan panel selesai tiket. Alamat lacak berhuruf dicetak **tanpa skema** (`trackingUrlLabel`): `fixmaster.app/t/<kode>`, 1 sampai 2 baris di 58 mm (dulu 6 sampai 9). Sebelum migrasi 0100 diterapkan, nota tetap memakai alamat lama (juga tanpa `https://`) dan tanpa penanda cetak ulang.
+**Nota ringkas, QR besar di tengah** (12 Nov 2026): permintaan pemilik, "lebih simple tapi tetap memuat info penting, QR diperbesar di tengah karena kadang tak terbaca". Isi bukti tak berubah (pelanggan, perangkat, IMEI/SN, kondisi, keluhan, kelengkapan, uang, garansi, tanda tangan); yang dibuang hanya pengulang dan hiasan.
+
+- **Blok lacak** (`trackBlockHtml`): QR berdiri sendiri di tengah, modul **6 titik (0,75 mm)** dari `qrModuleDots` dengan **zona sunyi 4 modul**; kode lacak pendek jadi ±25 mm (dulu ±16,5 mm, 4 titik, zona 2, berbagi baris dengan teks). Label "LACAK STATUS" dihapus; di bawah QR satu kalimat "Pindai untuk cek status & garansi" (QR mati: "Cek status & garansi di:") dan alamat tebal dengan titik patah `<wbr>` setelah `/` dan sebelum `?`/`&`, sehingga di 58 mm kodenya turun utuh ke baris kedua.
+- **Penutup satu blok**: catatan kaki lalu ucapan terima kasih tanpa jahitan di antaranya; ucapan bawaan kini satu kalimat ("Terima kasih atas kepercayaan Anda.", kunci `receipt.foot.again` dihapus). Dokumen batal tanpa ucapan ditutup jahitan sebelum atribusi. Berlaku juga untuk struk, karena kepala dan kakinya satu fungsi (`receiptParts`).
+- **Catatan bawaan dipendekkan**: kalimat "pengambilan di luar jam operasional" dibuang; toko yang membutuhkannya menulis syarat servis sendiri atau Catatan Toko.
+- **Nomor telepon kepala** dibungkus `.nw` (nowrap) supaya tak terbelah "0812-/3456-7890".
+- Hasil: nota "siap" 58 mm 35 px lebih pendek walau QR membesar 1,5×. Alasan dan uji pindai di [[Decisions & Bug Fixes#Nota ringkas dan QR besar di tengah (12 Nov 2026)]].
+
+**Cetak ulang dan alamat pendek** (tahap 8): nota servis yang dicetak lagi dengan **jenis kertas yang sama** (tanda terima, nota servis, atau serah terima; `isServiceReprint(meta, plan)` di `lib/business/receiptContent.ts`) diberi kotak **CETAK ULANG · tanggal jam** (`reprintMarkHtml`, kini dipakai bersama struk POS) paling atas di isi nota, tepat di bawah tanggal. Naik tahap mencetak dokumen baru, bukan salinan; tiket batal hanya berkotak BATAL. Jejak cetak dicatat hanya bila jendela cetak benar-benar terbuka (`openReceiptWindow` mengembalikan boolean; demo dan popup terblokir tak tercatat), lewat hook `useServicePrint` yang memuat jejak lebih dulu karena `window.open` harus tetap sinkron di handler klik. Dipakai Cetak Nota di detail, modal Notifikasi, dan panel selesai tiket. Alamat lacak berhuruf dicetak **tanpa skema** (`trackingUrlLabel`): `fixmaster.app/t/<kode>`, 1 sampai 2 baris di 58 mm (dulu 6 sampai 9). Sebelum migrasi 0100 diterapkan, nota tetap memakai alamat lama (juga tanpa `https://`) dan tanpa penanda cetak ulang.
 
 **Tata letak baris** (tahap 5): kolom label tak dipatok persen. Label dan nilai berdampingan bila muat; bila tidak, baris ditumpuk, label di atas dan nilai utuh di bawahnya (`fitsBeside` di `receiptPaper.ts`, `receiptRow` di `printReceipt.ts`). Barang struk dua baris: nama, lalu `jumlah× harga satuan` dan jumlah rupiah. Tiap baris di-flex sendiri supaya satu baris tumpuk tak menyempitkan kolom baris lain. Alasan lengkap di [[Decisions & Bug Fixes]].
 

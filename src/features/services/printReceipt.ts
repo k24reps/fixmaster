@@ -4,17 +4,19 @@ import {
   trackingUrlLabel,
   type ReceiptLine,
 } from '@/lib/business/notify';
-import { qrSvg } from '@/lib/qr';
+import { qrMatrix, qrSvg } from '@/lib/qr';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { openPrintWindow, buildPrintDocument, escapeHtml } from '@/lib/print';
 import {
   BASE_FONT_DOTS,
+  QR_QUIET_MODULES,
   STRONG_FONT_DOTS,
   STRONG_TRACKING_EM,
   dotsToPx,
   fitsBeside,
   normalizePaperWidth,
   paperSpec,
+  qrModuleDots,
   type PaperSpec,
   type PaperWidth,
 } from '@/lib/business/receiptPaper';
@@ -24,8 +26,6 @@ import {
   reprintStamp,
   serviceDocPlan,
   stampWithTime,
-  type GaugeStage,
-  type GaugeTick,
   type ServiceDocKind,
 } from '@/lib/business/receiptContent';
 import type { TranslationKey } from '@/i18n';
@@ -49,9 +49,6 @@ export function receiptConfigOf(org: Pick<Organization, 'settings'>) {
 export function multiline(text: string): string {
   return receiptLines(text).map(escapeHtml).join('<br/>');
 }
-
-/** Modul QR 4 titik (0,5mm): cukup besar untuk head 203 dpi, kecil cukup untuk 58mm. */
-const QR_MODULE_DOTS = 4;
 
 /**
  * Satu baris label→nilai pada nota. `cls` = 'strong' untuk baris total.
@@ -133,29 +130,36 @@ function rowsFor(
   return rows ? `<table class="${extraClass}">${rows}</table>` : '';
 }
 
-const STAGE_LABEL: Record<GaugeStage, TranslationKey> = {
-  received: 'receipt.stage.received',
-  working: 'receipt.stage.working',
-  ready: 'receipt.stage.ready',
-  pickedUp: 'receipt.stage.pickedUp',
-};
+/**
+ * Blok lacak: kode QR besar di tengah barisnya sendiri, lalu satu kalimat dan
+ * alamatnya, juga rata tengah. Dulu QR 0,5 mm per modul berbagi baris dengan
+ * teks di sebelahnya (±16 mm) dan kadang tak terbaca kamera. Kini ukurannya
+ * dari `qrModuleDots` dengan zona sunyi penuh, dan tanpa label blok: kalimat
+ * di bawah kode sudah menyatakan gunanya.
+ */
+export function trackBlockHtml(url: string, paper: PaperSpec, showQr: boolean, showUrl: boolean): string {
+  if (!showQr && !showUrl) return '';
+  const qr = showQr
+    ? qrSvg(url, {
+        modulePx: dotsToPx(qrModuleDots(qrMatrix(url).length, paper)),
+        margin: QR_QUIET_MODULES,
+      })
+    : '';
+  const copy = receiptText(showQr ? 'receipt.track.copy' : 'receipt.track.visit');
+  return `<div class="track">${qr}<p class="track-copy">${escapeHtml(copy)}</p>${
+    showUrl ? `<p class="track-url">${trackUrlHtml(url)}</p>` : ''
+  }</div>`;
+}
 
 /**
- * Pita tahap: empat segmen, yang sudah dilewati berupa batang hitam tebal dan
- * yang belum berupa garis titik-titik (bahasa jahitan yang sama dengan `.seam`).
- * Tahap saat ini ditebalkan dan digaris bawah. Semuanya GARIS dan teks, bukan
- * latar: latar hilang bila "background graphics" mati, garis tepi tidak.
- * Hierarki tahap terbaca tanpa abu-abu, jadi selamat dari ambang 1-bit.
+ * Alamat lacak tanpa skema, dengan titik patah setelah `/` dan sebelum `?`/`&`.
+ * Di 58 mm `app.vercel.app/t/` lalu kodenya turun utuh ke baris berikutnya,
+ * bukan dibelah di tengah kode yang harus diketik pelanggan.
  */
-export function stageGaugeHtml(ticks: GaugeTick[]): string {
-  if (!ticks.length) return '';
-  const steps = ticks
-    .map((t) => {
-      const cls = ['step', t.reached ? 'on' : 'off', t.current ? 'cur' : ''].filter(Boolean).join(' ');
-      return `<div class="${cls}"><i class="bar"></i><span class="nm">${escapeHtml(receiptText(STAGE_LABEL[t.stage]))}</span></div>`;
-    })
-    .join('');
-  return `<div class="gauge">${steps}</div>`;
+function trackUrlHtml(url: string): string {
+  return escapeHtml(trackingUrlLabel(url))
+    .replace(/\//g, '/<wbr>')
+    .replace(/(\?|&amp;)/g, '<wbr>$1');
 }
 
 /** Kotak tanda tangan penerima: bingkai kosong yang diisi tangan, bukan latar. */
@@ -218,13 +222,19 @@ export function joinSections(sections: string[]): string {
 function receiptParts(org: Organization, o: ReceiptDoc) {
   const paper = paperSpec(paperWidthOf(org));
   const cfg = receiptConfigOf(org);
-  const contact = [o.address ?? org.address, org.phone].filter(Boolean).join(' · ');
+  // Nomor telepon tak dibelah di tengah ("0812-/3456-7890"): turun utuh ke baris berikutnya.
+  const address = o.address ?? org.address;
+  const contact = [
+    address ? escapeHtml(address) : '',
+    org.phone ? `<span class="nw">${escapeHtml(org.phone)}</span>` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const foot = o.voided
     ? ''
     : cfg.footer
       ? multiline(cfg.footer)
-      : `${escapeHtml(receiptText('receipt.foot.thanks'))}<br/>
-    ${escapeHtml(receiptText('receipt.foot.again'))}`;
+      : escapeHtml(receiptText('receipt.foot.thanks'));
   return {
     title: `${o.title} ${o.no} | ${org.name}`,
     style: receiptStyle(paper),
@@ -237,7 +247,7 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
         : ''
     }
     <h1 class="shop">${escapeHtml(org.name)}</h1>
-    ${contact ? `<p class="contact">${escapeHtml(contact)}</p>` : ''}
+    ${contact ? `<p class="contact">${contact}</p>` : ''}
     ${cfg.header ? `<p class="tagline">${multiline(cfg.header)}</p>` : ''}
   </div>
   <hr class="seam"/>
@@ -247,8 +257,11 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   </div>
   ${o.date ? `<div class="date">${escapeHtml(o.date)}</div>` : ''}
   ${o.body}
-  <hr class="seam"/>
-  ${foot ? `<div class="foot">${foot}</div>` : ''}
+  ${
+    // Ucapan menyambung catatan terakhir sebagai satu penutup, tanpa jahitan di
+    // antaranya. Dokumen batal tak berucapan: jahitan yang menutup isinya.
+    foot ? `<div class="foot">${foot}</div>` : '<hr class="seam"/>'
+  }
   <div class="by">${escapeHtml(receiptText('receipt.by'))}</div>`,
   };
 }
@@ -306,9 +319,8 @@ export function serviceReceiptDoc(
   const note = (org.settings?.publicNote ?? '').trim();
   const paper = paperSpec(paperWidthOf(org));
   const garansi = rowsFor(lines, 'garansi', paper);
-  const showTrack = !cancelled && (cfg.showQr || cfg.showTrackUrl);
-  // Kertas yang sama dicetak saat unit diterima, siap, dan diserahkan: judul,
-  // pita tahap, dan kotak tanda tangan mengikuti tahap SAAT CETAK.
+  // Kertas yang sama dicetak saat unit diterima, siap, dan diserahkan: judul
+  // dan kotak tanda tangan mengikuti tahap SAAT CETAK.
   const plan = serviceDocPlan(service);
   const text = DOC_TEXT[plan.kind];
   const fine = cfg.serviceTerms
@@ -328,25 +340,14 @@ export function serviceReceiptDoc(
     address: receiptAddress(org.address, service.outletId, outlets),
     voided: cancelled,
     body: `
-  ${reprint}${cancelled ? voidMarkHtml() : stageGaugeHtml(plan.gauge)}
+  ${reprint}${cancelled ? voidMarkHtml() : ''}
   ${joinSections([
     rowsFor(lines, 'unit', paper),
     rowsFor(lines, 'uang', paper, 'money'),
     garansi
       ? `<div class="block"><p class="block-label">${escapeHtml(receiptText('receipt.block.warranty'))}</p>${garansi}</div>`
       : '',
-    showTrack
-      ? `<div class="block">
-  <p class="block-label">${escapeHtml(receiptText('receipt.block.track'))}</p>
-  <div class="track">
-    ${cfg.showQr ? qrSvg(track, { modulePx: dotsToPx(QR_MODULE_DOTS), margin: 2 }) : ''}
-    <div class="track-copy">
-      <div>${escapeHtml(receiptText('receipt.track.copy'))}</div>
-      ${cfg.showTrackUrl ? `<p class="track-url">${escapeHtml(trackingUrlLabel(track))}</p>` : ''}
-    </div>
-  </div>
-  </div>`
-      : '',
+    cancelled ? '' : trackBlockHtml(track, paper, cfg.showQr, cfg.showTrackUrl),
     note ? `<div class="note">${escapeHtml(note)}</div>` : '',
     plan.signature ? signBoxHtml() : '',
     cancelled ? '' : `<div class="fine">${fine}</div>`,

@@ -44,9 +44,6 @@ export const RECEIPT_MONO_STACK =
 
 const px = (dots: number) => `${dotsToPx(dots)}px`;
 
-/** Celah antar segmen pita tahap (titik). Lebar tiap kolom label = (isi − 3 celah) / 4. */
-export const GAUGE_GAP_DOTS = 8;
-
 export function receiptStyle(paper: PaperSpec): string {
   const base = BASE_FONT_DOTS;
   const line = BASE_LINE_DOTS;
@@ -84,6 +81,7 @@ export function receiptStyle(paper: PaperSpec): string {
     line-height: ${px(36)};
   }
   .contact { margin: ${px(8)} 0 0; }
+  .nw { white-space: nowrap; }
   .tagline { margin: ${px(8)} 0 0; font-weight: 700; }
   /* Jahitan titik-titik, meneruskan bahasa "tepi terperforasi" dari aplikasi. Hitam
      pekat setebal 4 titik: abu-abu di bawah ambang 50% tidak dicetak sama sekali. */
@@ -143,29 +141,20 @@ export function receiptStyle(paper: PaperSpec): string {
     letter-spacing: 0.3em;
     text-indent: 0.3em;
   }
-  /* Pita tahap siklus hidup. Empat segmen bergandengan; celah di antaranya jadi
-     "tick" pada mistar. Dilewati = batang hitam 12 titik (garis tepi, bukan latar),
-     belum = garis titik-titik 4 titik yang sejajar di tengah tinggi yang sama, supaya
-     label di bawahnya tak naik-turun. Tahap saat ini = tebal + garis bawah. */
-  .gauge { display: flex; gap: ${px(GAUGE_GAP_DOTS)}; margin: ${px(12)} 0 0; break-inside: avoid; }
-  .step { flex: 1 1 0; min-width: 0; text-align: center; }
-  .step .bar { display: block; height: ${px(12)}; }
-  .step.on .bar { border-top: ${px(12)} solid #000; }
-  .step.off .bar { height: ${px(8)}; margin-top: ${px(4)}; border-top: 2px dotted #000; }
-  .step .nm { display: block; margin-top: ${px(6)}; }
-  .step.cur .nm { font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: ${px(4)}; }
   /* Kotak tanda tangan: bingkai kosong setinggi 72 titik (9mm), diisi dengan pulpen. */
   .sign { break-inside: avoid; }
   .sign-box { height: ${px(72)}; border: 2px solid #000; }
   .reprint { margin: ${px(12)} 0 0; text-align: center; letter-spacing: 0.14em; }
   .reprint strong { letter-spacing: 0.18em; }
   tr.strike td { text-decoration: line-through; text-decoration-thickness: 2px; }
-  .track { display: flex; gap: ${px(20)}; align-items: center; break-inside: avoid; }
-  .track svg { flex: 0 0 auto; }
-  .track-copy { min-width: 0; }
-  .track-url { margin: ${px(6)} 0 0; }
+  /* QR berdiri sendiri di tengah; zona sunyinya sudah di dalam SVG, jadi tak perlu
+     margin. Kalimat dan alamat di bawahnya ikut rata tengah, dibagi seimbang. */
+  .track { text-align: center; break-inside: avoid; }
+  .track svg { display: block; margin: 0 auto; }
+  .track-copy { margin: 0; text-wrap: balance; }
+  .track-url { margin: ${px(4)} 0 0; font-weight: 700; }
   .note { white-space: pre-wrap; }
-  .foot { text-align: center; }
+  .foot { text-align: center; margin-top: ${px(16)}; text-wrap: balance; }
   .by { text-align: center; letter-spacing: 0.14em; margin-top: ${px(20)}; }
 `;
 }
