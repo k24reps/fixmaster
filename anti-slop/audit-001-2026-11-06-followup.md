@@ -65,8 +65,46 @@ Sesuai aturan baru di `DESIGN.md` (panah berarti pindah tempat):
   - 12 menu demo x 2 tema: 0 kontras gagal, 0 em dash, 0 luberan, 0 lompatan heading, 0 sel navigasi bercahaya, 0 badge bercahaya.
   - 12 menu di 375px: 0 luberan dokumen. Target kecil yang tersisa: skip link (196x41, hanya tampil saat fokus), label kolom di Pengaturan (teks label; kontrol yang dilabelinya punya target sendiri), dan tautan `Term` yang area sentuhnya sudah diperluas `::after`.
 
+## Lanjutan setelah Playwright dipasang (6 November 2026, sore)
+
+Atas izin Anda, browser Chromium Playwright dipasang (`npx playwright install chromium`, 112 MB dari CDN resmi Playwright). Tiga hal yang tertunda kini sudah dijalankan.
+
+**Probe tata letak**
+
+- Ponsel (320 sampai 414px x 12 halaman) dan pita tablet (744 sampai 1152px): 0 luberan dokumen.
+- Zoom aplikasi 100% dan 125% (11 lebar x 12 halaman): 0 luberan dokumen, 0 tumpang tindih kolom sticky. Satu-satunya wadah yang bisa digeser ke samping adalah rail chip `CatalogControls`, yang memang dirancang begitu sejak 14 September 2026.
+- **`audit-zoom.mjs` ternyata rusak diam-diam.** Ia menulis zoom ke localStorage, tetapi demo publik menyematkan zoom sendiri (0.8 untuk mouse), jadi `ZOOM=1` dan `ZOOM=1.25` menghasilkan laporan yang identik. Skrip kini memasang zoom langsung ke halaman dan mencetak zoom yang benar-benar berlaku.
+
+**Halaman publik** (wizard, privasi, syarat, reset sandi, lacak servis; 375 dan 1280px, dua tema)
+
+| Temuan | Hasil |
+|---|---|
+| Tautan "Kebijakan Privasi" di halaman Syarat 2,8:1 dan tag "reset" di reset sandi 2,6:1 (tema terang) | **Diperbaiki.** Keduanya memakai `--brand` (warna isian) sebagai warna teks. Diganti `--brand-text`, 7,2:1. Dua tautan teks di halaman masuk dengan pola yang sama ikut diganti. |
+| Wizard onboarding tanpa `h1` | **Diperbaiki.** Judul langkah jadi `h1`; ukuran visual tetap. |
+| Tautan navigasi legal di bawah 44px ("Beranda" 22px, kode dokumen 37px) | **Diperbaiki.** Diikat ke 44px di layar sentuh. |
+| Tautan di dalam kalimat ("Kebijakan Privasi", tinggi 19px) | Dibiarkan: target di dalam kalimat dikecualikan WCAG 2.5.8. |
+| Tombol "Isi data demo & masuk" 3,1:1 di tema terang | Dibiarkan: hanya tampil di mode pengembangan. |
+| Kode dokumen "DOK. SK-001" dan nomor bagian "01" di halaman legal (tema terang) | **Diperbaiki.** Ketahuan dari foto 375px, bukan dari pemindai: kode dokumen duduk di atas latar gradien (dilewati pemindai) dan nomor bagian adalah teks `::before` (tak terbaca pemindai). Keduanya jadi `--brand-text`. |
+| Warna hover teks di Lacak servis (tombol cari, coba lagi, baris kontak) | **Diperbaiki.** Pola `--brand` sebagai teks yang sama; hover tidak terukur pemindai. Ikon langkah berikutnya tetap `--brand` (bukan teks, lolos 3:1). |
+
+Setelah perbaikan: 0 kontras gagal di luar tombol dev, 0 em dash, 0 luberan, 0 lompatan heading, tepat satu `h1` di tiap halaman.
+
+**Pelajaran:** pemindai kontras buta terhadap latar gradien, teks pseudo-element, dan keadaan hover. Foto tetap perlu dilihat.
+
+**Screenshot vault**
+
+33 dari 44 gambar di `docs/obsidian-vault/attachments/` dipotret ulang dan disinkron. Skrip yang menyalin ke `public/` (`shoot-demo`, `shoot-menus`) tidak dijalankan; dashboard demo dan halaman Pelanggan dipotret dengan skrip sementara yang hanya menulis ke `scripts/shots/`. Sebelas gambar tidak bisa dibuat ulang di mesin ini, dan tidak satu pun karena perbaikan audit:
+
+| Gambar | Sebab |
+|---|---|
+| `auth-dark` | Mode lokal: `AuthPage` tidak bisa dirender. |
+| `billing-dark`, `bulk-task-dark`, `error-dark` | Butuh berkas HTML harness dari variabel lingkungan yang tidak ada di repo. |
+| `fix-mobile-open-dark` | `verify-sidebar.mjs` basi: mencari tombol Menu di 430px, padahal ponsel kini memakai bottom nav. |
+| `modal-profit-detail-dark`, `modal-profit-table-dark` | `shoot-modal-profit.mjs` basi: pemilih sparepart tetap terbuka setelah "Tambah" (perilaku sekarang, dicek dengan probe). |
+| `settings-operasional-dark`, `status-warranty-dark`, `warranty-detail-dark`, `warranty-modal-loss-dark` | `shoot-revisi-lanjutan.mjs` dan `shoot-warranty.mjs` membuka `/`, yang kini wizard onboarding. |
+
 ## Belum dikerjakan
 
-- **Screenshot vault** belum diregenerasi: browser Playwright belum terpasang, dan `npx playwright install` butuh unduhan yang perlu izin Anda.
-- **Pita tablet dan zoom aplikasi** (`audit-mobile.mjs` dengan `MOBILE=0`, `audit-zoom.mjs`) belum dijalankan, dengan alasan yang sama.
-- **Halaman auth, onboarding, legal, dan lacak servis** diperbaiki dari kode; DOM-nya belum diukur.
+- **Halaman masuk/daftar (`AuthPage`)** belum diukur DOM-nya. Dev server di mesin ini berjalan tanpa `.env` (mode lokal), sehingga `/?auth=1` menampilkan wizard. Perbaikan warnanya dikerjakan dari kode dan dihitung dari token.
+- **Dua belas aturan `color: var(--brand)` lain di 11 berkas aplikasi** belum disapu (Operator, Pengaturan, Absensi, Log Aktivitas, riwayat pelanggan, template tugas, demo, serta `Input`, `EmptyState`, `Card`, `Topbar`). Sebagian mungkin ikon, yang cukup 3:1. 12 menu demo lolos ukur, tetapi pseudo-element dan hover tidak terukur di sana.
+- **Lima skrip foto basi** (di tabel atas) belum diperbaiki, jadi sebelas gambar vault masih versi lama.

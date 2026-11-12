@@ -22,7 +22,13 @@ const BASE = process.env.BASE_URL || 'http://localhost:5183';
 // ZOOM=0.8 menguji pengaturan zoom aplikasi (properti CSS `zoom` di :root),
 // bukan zoom browser. Keduanya menambah ruang layout, tapi hanya container
 // query yang mengikuti — lihat ServicesPage.module.css.
-const ZOOM = Number(process.env.ZOOM || 1);
+// Tanpa ZOOM, yang diukur adalah kerapatan bawaan demo: demo menyematkan zoom
+// sementara per kelas perangkat (0.8 untuk mouse, lihat deviceDensityZoom) dan
+// MENGABAIKAN `fixmaster-zoom` di localStorage. Jadi ZOOM dipasang langsung ke
+// DOM setelah demo memuat, meniru applyZoom() di src/stores/zoom.ts. Sampai
+// 6 Nov 2026 skrip ini menulis localStorage saja, sehingga setiap ZOOM diam-diam
+// terukur sebagai 0.8.
+const ZOOM = process.env.ZOOM ? Number(process.env.ZOOM) : null;
 
 // Lebar CSS-px ekuivalen zoom untuk jendela 1440 dan 1920.
 const WIDTHS = [
@@ -112,20 +118,28 @@ const rows = [];
 for (const { w, note } of WIDTHS) {
   const page = await browser.newPage({ viewport: { width: w, height: 900 } });
   await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
-  await page.evaluate((Z) => {
+  await page.evaluate(() => {
     localStorage.setItem('fixmaster-theme', 'dark');
-    localStorage.setItem('fixmaster-zoom', String(Z));
     document.documentElement.setAttribute('data-theme', 'dark');
-  }, ZOOM);
+  });
   await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' });
   await page.waitForSelector('a[href="/services"]', { timeout: 20000 });
+  if (ZOOM !== null) {
+    await page.evaluate((Z) => {
+      const root = document.documentElement;
+      root.style.zoom = Z === 1 ? '' : String(Z);
+      root.style.setProperty('--zoom', String(Z));
+    }, ZOOM);
+  }
   await page.waitForTimeout(500);
+  const zoom = await page.evaluate(() => getComputedStyle(document.documentElement).zoom);
+  console.log(`${w}: zoom aplikasi ${zoom}`);
 
   for (const p of PAGES) {
     await gotoInApp(page, p, w);
     await page.waitForTimeout(900);
     const r = await page.evaluate(probe);
-    rows.push({ w, note, page: p, ...r });
+    rows.push({ w, note, zoom, page: p, ...r });
     const flags = [];
     if (r.docOver > 1) flags.push(`DOC+${r.docOver}`);
     r.tables.filter((t) => t.over > 0).forEach((t) => flags.push(`tbl+${t.over}`));

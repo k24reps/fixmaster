@@ -178,7 +178,7 @@
   color: var(--text-secondary);
 }
 .searchToggle:hover {
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 /* ---------- Galat & tidak ditemukan ---------- */
@@ -227,7 +227,7 @@
 }
 .retryBtn:hover {
   border-color: var(--brand);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 .retryBtn:focus-visible {
   outline: none;
@@ -463,7 +463,7 @@
   margin: 0;
 }
 a.contactRow:hover {
-  color: var(--brand);
+  color: var(--brand-text);
 }
 /* Teks milik pemilik toko: newline-nya dipertahankan, karena ia mengetik
    jam operasional dan syarat garansi sebagai baris-baris terpisah. */

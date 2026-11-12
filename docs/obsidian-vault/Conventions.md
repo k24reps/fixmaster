@@ -68,14 +68,16 @@ Dua probe regresi wajib untuk perubahan UI (butuh dev server; keduanya menulis J
 `scripts/shots/`):
 
 ```bash
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 12 halaman
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs      # 11 lebar desktop x 12 halaman, kerapatan demo 0.8
+BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs   # zoom aplikasi 125% (juga ZOOM=1)
 BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs    # 5 lebar ponsel x 12 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs
 ```
 
-Saring dua positif palsu sebelum membaca hasil: `caption._srOnly` (caption khusus pembaca layar,
-memang di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan
-terlihat merah total. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
+Saring tiga positif palsu sebelum membaca hasil: `caption._srOnly` dan `span.fm-visually-hidden`
+(teks khusus pembaca layar, memang di-clip) serta elemen `text.` di dalam SVG (label sumbu
+grafik). Tanpa itu tiap laporan terlihat merah total. Rail chip `CatalogControls` (`_categoryBar`)
+sengaja bisa digeser dan ikut tercatat di `tables` audit zoom; itu bukan tabel yang meluber. Untuk **dokumen cetak**, ukur pada lebar medianya (A4 = 186 mm setelah
 margin), bukan lebar viewport — dua cacat tata letak PDF hanya muncul di sana.
 
 Untuk perubahan **warna/token**, dua gerbang tambahan:

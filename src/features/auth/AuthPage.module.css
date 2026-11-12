@@ -369,7 +369,7 @@
   padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--brand-soft);
-  color: var(--brand);
+  color: var(--brand-text);
   border: 1px solid var(--border-brand);
 }
 
@@ -418,7 +418,7 @@
   margin: calc(-1 * var(--space-2)) 0 0;
 }
 .consentLink {
-  color: var(--brand);
+  color: var(--brand-text);
   font-weight: var(--fw-medium);
   text-decoration: underline;
 }
@@ -458,7 +458,7 @@
   display: inline-flex;
   align-items: center;
   padding-inline: var(--space-1);
-  color: var(--brand);
+  color: var(--brand-text);
   font-weight: var(--fw-semibold);
   background: none;
   border: none;

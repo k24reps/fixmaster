@@ -3905,3 +3905,47 @@ pemilik meminta semuanya diperbaiki. Hasil per nomor ada di
   (Playwright belum terpasang): 12 menu demo x 2 tema + landing, 0 kontras gagal, 0 em dash
   tampil, 0 lompatan heading; 375px: 0 luberan dokumen di 12 menu. Screenshot vault belum
   diregenerasi karena Playwright belum terpasang.
+
+### Lanjutan: ukur Playwright (6 Nov 2026, sore)
+
+Setelah browser Playwright dipasang (`npx playwright install chromium`), probe yang tertunda
+dijalankan. Yang layak diingat:
+
+- **`audit-zoom.mjs` diam-diam selalu mengukur zoom 0.8.** Skrip menulis `fixmaster-zoom` ke
+  localStorage, tetapi demo publik menyematkan zoom sementara per kelas perangkat
+  (`deviceDensityZoom()`: 0.8 untuk mouse, termasuk Chromium headless) dan mengabaikan
+  preferensi tersimpan. Terukur: localStorage `1.25`, `:root` zoom `0.8`. Laporan `ZOOM=1` dan
+  `ZOOM=1.25` byte-identik. Kini zoom dipasang langsung ke DOM setelah demo memuat (meniru
+  `applyZoom()`), zoom efektif dicetak per lebar dan ikut tertulis di laporan. Tanpa `ZOOM`, skrip
+  sengaja mengukur kerapatan bawaan demo. Catatan verifikasi lama yang menyebut "dipasang lewat
+  localStorage" berlaku sebelum demo menyematkan zoom sendiri. **Pelajaran: probe yang mengatur
+  keadaan lewat jalur tak langsung harus membaca balik keadaan efektifnya.**
+- **Hasil probe:** ponsel 5 lebar x 12 halaman dan pita tablet: 0 luberan dokumen. Zoom 100%:
+  bersih. Zoom 125%: satu-satunya "tabel meluber" adalah rail chip `CatalogControls`
+  (`_categoryBar`), yang memang digeser dan dibuat begitu sejak 14 Sep 2026. Positif palsu ketiga
+  dicatat: `span.fm-visually-hidden` (teks pembaca layar `Term` dan `EmptyValue`).
+- **Halaman publik diukur** (wizard, privasi, syarat, reset sandi, lacak servis; 375 dan 1280px x
+  2 tema). Tiga temuan diperbaiki: (1) **`--brand` dipakai sebagai warna teks** di tautan prosa
+  legal dan tag mode "reset" (2,6-2,8:1 di tema terang). `--brand` adalah warna isian; teks
+  memakai `--brand-text` (7,2:1). Dua tautan teks di `AuthPage` (`consentLink`, `linkStrong`)
+  dengan pola yang sama ikut diganti, walau halaman itu tak bisa dirender di dev server mode
+  lokal. Foto 375px lalu memperlihatkan dua kasus yang **lolos dari pemindai kontras**: kode
+  "DOK. SK-001" (di atas latar gradien, yang dilewati pemindai) dan nomor bagian "01" (teks
+  `::before`, tak terbaca pemindai yang hanya membaca node teks). Keduanya ikut `--brand-text`,
+  begitu juga tiga warna hover teks di Lacak servis. **Pemindai kontras buta terhadap latar
+  gradien dan teks pseudo-element; foto tetap perlu dilihat.** Dua belas aturan
+  `color: var(--brand)` lain di 11 berkas aplikasi belum disapu (sebagian mungkin ikon, yang
+  cukup 3:1); menu demo lolos ukur, tetapi pseudo-element dan hover tidak terukur di sana.
+  (2) **Wizard onboarding tanpa `h1`**: judul langkah `h3` kini `h1`, karena hanya itu
+  heading di layar setup. (3) **Tautan navigasi legal di bawah 44px** (Beranda 22px): diikat ke
+  `--control-h` di layar sentuh. Tautan di dalam kalimat dibiarkan (pengecualian inline WCAG
+  2.5.8). Tombol dev "Isi data demo & masuk" (3,1:1 di terang) dibiarkan: hanya tampil di mode
+  pengembangan.
+- **Batas mode lokal:** tanpa `.env`, `/?auth=1` jatuh ke wizard, jadi `AuthPage` dan
+  `auth-dark.png` tidak bisa diukur atau dipotret ulang di mesin ini.
+- **Screenshot vault:** 33 dari 44 gambar dipotret ulang. Sebelas tertinggal karena skrip foto
+  basi, bukan karena perbaikan audit: `verify-sidebar` mencari tombol Menu (ponsel kini bottom
+  nav), `shoot-modal-profit` mengira pemilih sparepart menutup setelah "Tambah",
+  `shoot-revisi-lanjutan` dan `shoot-warranty` membuka `/` (kini wizard), dan tiga gambar butuh
+  HTML harness dari variabel lingkungan yang tidak ada di repo. Daftar lengkap di
+  `anti-slop/audit-001-2026-11-06-followup.md`.

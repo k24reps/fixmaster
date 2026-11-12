@@ -83,8 +83,9 @@ Dua probe regresi siap pakai (butuh dev server jalan):
 # yang benar-benar jalan (vite biasanya 5173, dan bisa bergeser bila port terpakai).
 BASE_URL=http://localhost:5173 node scripts/audit-mobile.mjs   # 5 lebar ponsel x 12 halaman
 BASE_URL=http://localhost:5173 MOBILE=0 WIDTHS=744,834,1025,1112,1152 node scripts/audit-mobile.mjs   # pita tablet
-BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman
-BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # zoom aplikasi
+BASE_URL=http://localhost:5173 node scripts/audit-zoom.mjs     # 11 lebar desktop x 12 halaman, kerapatan bawaan demo (0.8 untuk mouse)
+BASE_URL=http://localhost:5173 ZOOM=1 node scripts/audit-zoom.mjs     # zoom aplikasi 100%
+BASE_URL=http://localhost:5173 ZOOM=1.25 node scripts/audit-zoom.mjs  # zoom aplikasi 125%
 ```
 
 Untuk perubahan **warna/token**, dua gerbang tambahan — `audit-tokens` juga menjaga
@@ -98,10 +99,12 @@ BASE_URL=http://localhost:5173 node scripts/audit-contrast.mjs    # DOM sungguha
 Gerbang token saja TIDAK cukup: komponen meracik warna lewat `color-mix` dan lapisan
 semi-transparan yang tak terlihat dari `tokens.css`. Ukur DOM juga.
 
-Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. **Saring dua
-positif palsu** sebelum menyimpulkan: `caption._srOnly` (caption khusus pembaca layar, memang
-di-clip) dan elemen `text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat
-merah total padahal bersih.
+Hasilnya ditulis ke `scripts/shots/{zoom,mobile}-report.json`, bukan ke stdout. **Saring tiga
+positif palsu** sebelum menyimpulkan: `caption._srOnly` dan `span.fm-visually-hidden` (teks
+khusus pembaca layar, memang di-clip; yang kedua dipakai `Term` dan `EmptyValue`) serta elemen
+`text.` di dalam SVG (label sumbu grafik). Tanpa itu tiap laporan terlihat merah total padahal
+bersih. Rail chip `CatalogControls` (`_categoryBar`) memang digeser ke samping dan muncul juga di
+daftar `tables` audit zoom; itu bukan tabel yang meluber.
 
 Keduanya melaporkan luberan dokumen, tiap wadah yang bisa digeser ke samping, overlap kolom
 sticky, dan teks ter-clip. **Ukur DOM rect, jangan baca screenshot terkompresi** — tiga temuan
