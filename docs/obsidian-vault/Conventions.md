@@ -64,13 +64,13 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `npm run dev` | Dev server (Vite, port 5173) |
 | `npm run build` | Type-check + build produksi |
-| `npm run test` | Vitest (1102 test / 84 berkas) |
+| `npm run test` | Vitest unit, offline (jumlah terkini di [[Testing & Security]]) |
 | `npm run lint` | ESLint |
 | `npm run type-check` | Cek tipe tanpa emit |
 | `npm run brand:render` | Regenerasi PNG PWA/Apple + OG dari SVG VOLT Probe |
 
 ## Verifikasi UI
-Screenshot via Playwright di `scripts/` (mis. `shoot-batch.mjs`, `verify-sidebar.mjs`). Seed data demo lewat `window.__fixmasterSeed()`. Sinkron attachment vault: `scripts/sync-vault-attachments.ps1`.
+Screenshot via Playwright di `scripts/` (mis. `shoot-batch.mjs`, `verify-sidebar.mjs`). Seed data demo lewat `window.__fixmasterSeed()`. Sinkron attachment vault: `scripts/sync-vault-attachments.ps1` (opsional, hanya di mesin lokal Windows; lihat AGENTS.md §5).
 
 Dua probe regresi wajib untuk perubahan UI (butuh dev server; keduanya menulis JSON ke
 `scripts/shots/`):

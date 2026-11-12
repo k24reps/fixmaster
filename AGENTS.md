@@ -64,7 +64,7 @@ Repo punya knowledge base Obsidian di `docs/obsidian-vault/`. Gunakan secara **b
 
 ```bash
 npm run build   # type-check + build
-npm run test    # vitest unit (1102 test / 84 berkas, offline)
+npm run test    # vitest unit, offline (jumlah terkini dicatat di Testing & Security.md)
 npm run test:integration  # RLS/RPC ke staging (butuh .env.test.local)
 npm run lint    # eslint
 ```
@@ -110,24 +110,31 @@ Keduanya melaporkan luberan dokumen, tiap wadah yang bisa digeser ke samping, ov
 sticky, dan teks ter-clip. **Ukur DOM rect, jangan baca screenshot terkompresi** — tiga temuan
 palsu pada audit sebelumnya lahir dari membaca gambar. Pelajaran lengkap di `docs/obsidian-vault/Decisions & Bug Fixes.md`.
 
-## 5. Pemeliharaan knowledge base (WAJIB — bagian dari "selesai")
+## 5. Pemeliharaan knowledge base (WAJIB, bagian dari "selesai")
 
 > [!IMPORTANT]
-> Update vault **bukan langkah terpisah yang boleh ditunda**. Ia adalah bagian dari *definition of done*: sebuah tugas baru dianggap **selesai** bila kode **dan** dokumentasi vault sudah sama-sama diperbarui — **di turn yang sama**.
+> Catatan vault diperbarui bersama kodenya. Sebuah tugas baru **selesai** bila perubahan kode **dan** pembaruan vault-nya ada di **commit atau PR yang sama**. Bila agent tidak meng-commit sendiri, ia memperbarui vault sebelum melaporkan tugasnya selesai.
 
-Aturan same-turn (berlaku untuk perubahan **signifikan**: fitur baru, perubahan entity/`types.ts`, perubahan alur/UI, keputusan desain, bug fix penting):
+Berlaku untuk perubahan **signifikan**: fitur baru, perubahan entity/`types.ts`, perubahan alur/UI, keputusan desain, bug fix penting.
 1. Selesaikan perubahan kode + verifikasi (build/test/lint).
-2. **Sebelum mengakhiri turn**, perbarui catatan vault terkait di `docs/obsidian-vault/` (mis. Data Layer, Signature Pages, Decisions & Bug Fixes, Conventions). Jangan biarkan basi.
-3. Bila ada perubahan UI, regen screenshot lalu sinkron ke attachment vault:
-   ```bash
-   powershell -ExecutionPolicy Bypass -File scripts/sync-vault-attachments.ps1
-   ```
-4. Bila angka/fakta berubah (mis. jumlah test, daftar koleksi, field entity), perbarui juga rujukannya di vault **dan** di AGENTS.md ini.
+2. Perbarui catatan vault terkait di `docs/obsidian-vault/` (mis. Data Layer, Signature Pages, Decisions & Bug Fixes, Conventions) sebelum commit yang membawa perubahannya. Pekerjaan yang dipecah ke beberapa commit boleh membawa catatan vault di commit terakhir batch itu, asalkan sebelum push.
+3. Bila angka atau fakta berubah (mis. daftar koleksi, field entity), perbarui rujukannya di vault **dan** di AGENTS.md ini. **Kecuali jumlah tes:** angka itu hanya dicatat di `Testing & Security.md`, bertanggal. Tempat lain cukup menyebut `npm run test`. Angka tes di entri Decisions & Bug Fixes adalah catatan saat itu, bukan rujukan yang ikut diperbarui.
+
+### Foto layar vault (opsional, hanya di mesin lokal)
+`scripts/shots/` dan `docs/obsidian-vault/attachments/` di-gitignore, jadi gambar vault hanya ada di mesin yang membuatnya, dan skrip sinkronnya butuh PowerShell. Karena itu langkah ini **bukan** syarat selesai:
+- Di mesin lokal Windows, bila UI berubah: jalankan skrip foto yang relevan (`scripts/shoot-*.mjs`), lalu
+  ```bash
+  powershell -ExecutionPolicy Bypass -File scripts/sync-vault-attachments.ps1
+  ```
+- Di cloud atau mesin tanpa PowerShell: lewati, lalu sebut di laporan akhir gambar mana yang belum diperbarui.
+- Bila menambah sematan gambar baru (`![[nama.png]]`), catat di catatan yang sama skrip yang membuatnya, supaya gambar itu bisa dibuat ulang di mesin mana pun.
 
 ### Kenapa aturan ini ada
-Vault tidak ter-update otomatis — agent hanya aktif saat dipanggil, jadi update dokumentasi adalah aksi sadar, bukan proses latar belakang. Menundanya (mis. saat loop "lanjutkan" panjang) membuat vault basi tanpa jejak. Karena repo bisa berpindah akun/mesin, aturan ini ditaruh di sini agar **mengikat lintas sesi**.
+Agent hanya bekerja saat dipanggil, jadi pembaruan vault adalah tindakan sadar, bukan proses latar belakang. Bila ditunda (mis. di tengah loop "lanjutkan" panjang), vault basi tanpa jejak; itu terjadi pada sesi 21-22 Sep 2026 (lihat CLAUDE.md). Karena repo bisa berpindah akun atau mesin, aturan ini ditaruh di sini agar **mengikat lintas sesi**.
 
-### Pengecualian (TRIVIAL — tidak wajib update vault)
+Ukurannya commit, bukan turn, karena commit bisa diperiksa saat review sedangkan turn tidak terlihat dari repo. Sampai 12 Nov 2026 aturan ini meminta pembaruan "di turn yang sama", foto + sync wajib, dan angka tes di empat tempat; alasan revisinya di `Decisions & Bug Fixes.md`, bagian "Aturan vault §5 direvisi (12 Nov 2026)".
+
+### Pengecualian (TRIVIAL: tidak wajib update vault)
 Typo, satu baris, jalankan perintah, pertanyaan cepat, atau perubahan yang tidak mengubah arsitektur/alur/fakta yang didokumentasikan. Kalau ragu apakah signifikan: perbarui vault.
 
 ## 6. Efisiensi biaya & pilihan model (berbasis data nyata)
@@ -150,7 +157,7 @@ Temuan biaya (dari 8/9 revisi): pengeluaran **didominasi input token × jumlah r
 - Untuk tugas panjang, sarankan user pakai **`/goal`** agar agent jalan menerus dalam lebih sedikit turn besar.
 
 ### Jangan dikorbankan demi hemat
-Gerbang verifikasi (build/test/lint) dan update vault **same-turn** biayanya kecil tapi mencegah rework mahal. Menundanya ke sesi baru justru menambah input token (harus baca ulang kode). Tetap jalankan.
+Gerbang verifikasi (build/test/lint) dan update vault **di commit yang sama** biayanya kecil tapi mencegah rework mahal. Menundanya ke sesi baru justru menambah input token (harus baca ulang kode). Tetap jalankan.
 
 ## 7. Skill proyek (ikut repo, `.claude/skills/`)
 
