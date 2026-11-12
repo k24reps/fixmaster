@@ -6276,3 +6276,72 @@ dijalankan. Yang layak diingat:
   `shoot-revisi-lanjutan` dan `shoot-warranty` membuka `/` (kini wizard), dan tiga gambar butuh
   HTML harness dari variabel lingkungan yang tidak ada di repo. Daftar lengkap di
   `anti-slop/audit-001-2026-11-06-followup.md`.
+
+---
+
+## Literal UI ke kunci i18n, gelombang 1 (dibuat 6 Nov, dipindahkan ke main 12 Nov 2026)
+
+Lanjutan audit antislop 001: teks UI yang masih ditulis langsung di komponen dipindah ke
+kunci `useT()` (aturan [[Conventions]] §i18n). Kerja ini lahir di worktree lama dari `main`
+6029ab9 dan tak pernah masuk; 12 Nov 2026 ia diputar ulang di atas `main` terkini
+(cherry-pick cadangan `cadangan/affectionate-easley-a913f9`, cabang `claude/i18n-gelombang-1`).
+Pilihan bahasa masih dikunci ke ID, jadi tampilan tidak berubah; `en.ts` diisi padanan
+Inggris yang wajar. Berkas yang kini bersih: `Topbar`, `Sidebar`, `MobileBottomNav`,
+`CustomersPage`, `AttendancePage`, `onboarding/Wizard`, `TrackingPage`, `NotifyModal`,
+`LegalLayout` + judul/intro `PrivacyPage`/`TermsPage`, serta pesan penjaga demo di
+`SettingsPage`. `InventoryPage` tidak ikut: `main` menghapusnya (d1dfdc9).
+
+**Aturan pemindahan: kode dari cadangan, kata-kata dari main.** Dua puluh berkas konflik karena
+`main` bergerak sesudah 6029ab9 (navigasi didesain ulang, nota Tahap 7, mode kode lacak Tahap 8,
+dan pembersihan salinan). Mengambil kunci cadangan apa adanya akan diam-diam mengembalikan teks
+yang sudah dibersihkan `main`: "dulu" dibuang, "Check-in" jadi "Absen masuk", "aktif di" jadi
+"tersedia di", "akunmu" jadi "akun Anda", "Edit" jadi "Ubah". Maka nilai `id.ts` disetel ke
+literal `main` yang sekarang (19 kunci: pesan `demo.*`, `tracking.noOrg`,
+`tracking.next.cancelled`, `onboarding.subtitle`, `customers.edit`, dan 11 kunci
+`attendance.*`). Bagian yang main menangkan seluruhnya: chip zoom Topbar, sumur nav Sidebar
+tanpa blok `bizIdentity`, ringkasan Pelanggan yang dihapus, dan semua dokumen cetak
+(`receiptText` Tahap 7 sudah punya bahasa cetak sendiri, `receipt.demo.*`).
+
+- **Kunci yatim dibuang, bukan dibawa.** Enam belas kunci cadangan kehilangan pemakainya di
+  `main` (`inventory.*` 5, `topbar.zoom*` 3, `customers.summary*` 3, `sidebar.businessUnit` /
+  `activeBranchTitle` / `branchTag`, `demo.printReceipt` / `printSale`). Pindai kunci tanpa
+  rujukan (`id.ts` terhadap seluruh `src` di luar `src/i18n`) kini bersih, dan
+  `print.popupBlocked` yang ada di dua sisi hanya dipertahankan sekali (kunci ganda dalam
+  literal objek membuat `tsc` gagal).
+- **`demoGuard` menerima `TranslationKey | { text: string }`.** Cadangan membuatnya menerima
+  kunci supaya helper cetak, yang memanggilnya di luar React, tak perlu `t`. Di `main`, jendela
+  cetak sudah membawa teks yang diterjemahkan ke bahasa nota (`receiptText`), bukan bahasa UI,
+  sehingga `print.ts` memanggil `demoGuard({ text })`. Bentuk objek sengaja dipisah: seandainya
+  `demoGuard` menerima `string` polos, teks Indonesia yang terselip di satu pemanggil akan dicari
+  di kamus dan tampil sebagai kuncinya sendiri, dan `tsc` tak bisa melihat bedanya. Tes
+  `src/stores/demo.test.ts` (4 tes) menjaga semua cabangnya. `printReport` menerjemahkan
+  `demo.exportPdf` sendiri karena laporan PDF memang berbahasa UI.
+- **Mode kode lacak (Tahap 8) ikut berkunci.** Enam kunci baru: `tracking.searchAnotherCode`,
+  `codeLabel`, `codePh`, `codeHint`, `notFoundCode`, `notFoundHintCode`. Kalimat "tidak
+  ditemukan" tetap satu kunci dengan token `{no}` yang dipecah di komponen supaya urutan kata
+  milik penerjemah; ada dua kunci (nomor, kode) karena kata bendanya ikut berubah. Warna nada
+  status tak diubah: nada netral `main` menang atas `brand` cadangan.
+- **Logika murni mengembalikan kunci, UI yang menerjemahkan.** `STATUS_LABEL` absensi kini
+  `Record<AttendanceStatus, TranslationKey>`; `StepError` wizard membawa `messageKey`;
+  `nextStepFor` di `lib/business/tracking.ts` mengembalikan `textKey`, dan
+  `relativeSince(iso, t, now)` menerima `t` supaya tetap murni. `tracking.test.ts` menerjemahkan
+  dengan `translate('id', …)` dan asersinya tidak berubah.
+- **Kalimat dengan `<strong>` di tengah.** Pola repo dipakai: kunci dipecah di sekitar
+  `<strong>` (peringatan undangan di wizard), atau satu kunci dengan token yang dipecah di komponen
+  (lacak servis).
+- **Sengaja tetap literal:** merek (`FixMaster`, `BENCH OS`, `FX · BENCH OS`), kode dokumen
+  (`PRIVASI-001`, `SK-001`, `REV`, `UU PDP No. 27/2022`), isi pasal legal (dokumen hukum
+  berbahasa Indonesia), placeholder contoh angka/singkatan (`SGS`, `0812-3456-7890`,
+  `15.000.000`, `50`), awalan `ID-`, salam WhatsApp ke pelanggan, dan semua teks yang disimpan
+  sebagai data (default wallet `Tunai`, kategori awal, nama `Outlet N` cadangan).
+  `OperatorActionModal` dilewati: ia pengecualian i18n yang sudah disetujui (surface internal
+  vendor, lihat "Penyimpangan i18n yang disengaja").
+- **Sisa (gelombang berikut).** Pemindai AST 6 Nov (teks JSX, atribut tampil, argumen toast,
+  properti label/judul) menemukan sekitar 950 literal di 56 berkas `src/features` +
+  `src/components`. Angka itu belum dihitung ulang sesudah `main` bergerak. Terbanyak:
+  `OperatorPage` 111 (sebagian besar ikut pengecualian vendor), `TaskTemplateModal` 63,
+  `TasksPage` 61, `RepairTicketPrototype` 57 (khusus dev), `SettingsPage` 53, `SuppliersPage` 40,
+  `glossary/terms.ts` 39, `exportDatasets.ts` 39, `ActivityLogPage` 35, `LandingPageV2` 33,
+  `ReportsPage` 30, `ResetPasswordPage` 28, modal pemasok (PO 22, terima 20, pemasok 15), lalu
+  ekor pendek di bawah 15. Isi dokumen cetak (nota, laporan PDF) tidak disentuh.
+- **Verifikasi:** build, lint, **1065 tes / 83 berkas** (1061 + 4 tes `demoGuard`). `audit-mobile` (5 lebar ponsel dan pita tablet) dan `audit-zoom` (11 lebar x 13 halaman) tanpa regresi terhadap baseline: luberan dokumen 0, offender 0, tak ada target sentuh kecil baru, dan satu-satunya wadah meluap tetap pita kategori POS 1097px (+16) yang sudah ada sebelumnya. Dilihat langsung di dev server: Lacak servis (mode kode dan mode nomor) menampilkan teks main apa adanya, dan Keluar di demo menampilkan "akun Anda sendiri". **Belum diverifikasi:** wizard onboarding (hanya tampil saat basis data lokal kosong), bahasa Inggris (pilihan bahasa masih terkunci ke ID), dan jendela cetak (tak disentuh).

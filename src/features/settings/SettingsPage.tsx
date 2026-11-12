@@ -318,9 +318,7 @@ export function SettingsPage() {
         <SystemTab
           onReset={() => {
             if (
-              demoGuard(
-                t('settingsPage.resetDemo'),
-              )
+              demoGuard('settingsPage.resetDemo')
             )
               return;
             setConfirmReset(true);
@@ -3004,7 +3002,7 @@ function BackupCard() {
   // lokal: ambil teksnya, lalu masuk ke dialog konfirmasi yang sudah ada.
   // Satu format, satu jalur restore, satu tempat yang bisa salah.
   const restoreFromCloud = async (backup: CloudBackup) => {
-    if (demoGuard('Restore tersedia di FixMaster versi penuh. Daftar gratis.')) return;
+    if (demoGuard('demo.restore')) return;
     try {
       stageRestore(await readCloudBackup(backup.path));
     } catch (e) {
@@ -3026,7 +3024,7 @@ function BackupCard() {
 
   const handleBackup = async () => {
     if (!canBackup) return;
-    if (demoGuard('Backup tersedia di FixMaster versi penuh. Daftar gratis.')) return;
+    if (demoGuard('demo.backup')) return;
     setBusy(true);
     try {
       const backup = await createBackup(org?.id ?? null);
@@ -3058,7 +3056,7 @@ function BackupCard() {
   };
 
   const handleRestore = async () => {
-    if (demoGuard('Pulihkan data tersedia di FixMaster versi penuh. Daftar gratis.'))
+    if (demoGuard('demo.restoreData'))
       return;
     if (pendingText === null) return;
     setRestoring(true);
@@ -3273,7 +3271,7 @@ function SystemTab({ onReset, isOwner }: { onReset: () => void; isOwner: boolean
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
-    if (demoGuard('Hapus akun dinonaktifkan di demo.')) return;
+    if (demoGuard('demo.deleteAccount')) return;
     setDeleting(true);
     try {
       // 1. Local mode: wipe the local DB. In cloud this is a deliberate no-op

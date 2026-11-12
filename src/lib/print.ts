@@ -227,7 +227,7 @@ ${script}
  *   ditutup bilah, dan tak satu pun dari itu bisa diuji di Android atau iOS.
  */
 export function openPrintWindow(o: PrintWindowOptions): boolean {
-  if (demoGuard(o.demoMessage)) return false;
+  if (demoGuard({ text: o.demoMessage })) return false;
   const lang = useSettingsStore.getState().language;
   const win = window.open('', '_blank', `width=${o.width ?? 380},height=${o.height ?? 640}`);
   if (!win) {

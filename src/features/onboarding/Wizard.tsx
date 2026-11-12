@@ -7,6 +7,8 @@ import { isSupabaseConfigured } from '@/data/supabase-client';
 import { useSessionStore } from '@/stores/session';
 import { toast } from '@/stores/toast';
 import { trackEvent } from '@/lib/analytics';
+import { useT, type TranslationKey } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import {
   emptyWizardData,
   validateStep,
@@ -32,18 +34,18 @@ function Input(props: ComponentProps<typeof BaseInput>) {
  * of *visible* steps while keeping each step's logical number intact.
  */
 const STEP_DEFS = [
-  { n: 1, label: 'Profil' },
-  { n: 6, label: 'Outlet' },
-  { n: 2, label: 'Wallet' },
-  { n: 3, label: 'Kategori' },
-  { n: 4, label: 'Tim' },
-  { n: 5, label: 'Target' },
+  { n: 1, labelKey: 'onboarding.step.profile' },
+  { n: 6, labelKey: 'onboarding.step.outlet' },
+  { n: 2, labelKey: 'onboarding.step.wallet' },
+  { n: 3, labelKey: 'onboarding.step.category' },
+  { n: 4, labelKey: 'onboarding.step.team' },
+  { n: 5, labelKey: 'onboarding.step.target' },
 ] as const;
 
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'owner', label: 'Owner' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'karyawan', label: 'Karyawan' },
+const ROLE_OPTIONS: { value: Role; labelKey: TranslationKey }[] = [
+  { value: 'owner', labelKey: 'settingsPage.owner' },
+  { value: 'admin', labelKey: 'settingsPage.admin' },
+  { value: 'karyawan', labelKey: 'settingsPage.karyawan' },
 ];
 
 interface WizardProps {
@@ -58,6 +60,7 @@ export function Wizard({ onComplete }: WizardProps) {
   // toko baru. Wajib terlihat: menyelesaikan wizard di sini membuat toko
   // TANDINGAN yang tak bisa lagi diundang ke toko pengundang.
   const setupNotice = useSessionStore((st) => st.setupNotice);
+  const t = useT();
 
   const [idx, setIdx] = useState(0);
   const [data, setData] = useState<WizardData>(emptyWizardData());
@@ -73,11 +76,11 @@ export function Wizard({ onComplete }: WizardProps) {
   const errorMap = (): Record<string, string> => {
     const list = validateStep(step, data);
     const map: Record<string, string> = Object.fromEntries(
-      list.map((e) => [e.field, e.message]),
+      list.map((e) => [e.field, t(e.messageKey)]),
     );
     // Cloud captures the owner name on the Profil step (no Tim step).
     if (isCloud && step === 1 && !data.employees[0]?.name.trim()) {
-      map.ownerName = 'Nama Anda wajib diisi';
+      map.ownerName = t('onboarding.ownerNameRequired');
     }
     return map;
   };
@@ -86,7 +89,7 @@ export function Wizard({ onComplete }: WizardProps) {
     const map = errorMap();
     if (Object.keys(map).length) {
       setErrors(map);
-      toast.error('Periksa kembali isian yang ditandai');
+      toast.error(t('onboarding.checkFields'));
       return;
     }
     setErrors({});
@@ -107,10 +110,10 @@ export function Wizard({ onComplete }: WizardProps) {
     try {
       const { org, owner } = await commitWizard(data);
       trackEvent('activation_completed', { workspace_mode: isCloud ? 'cloud' : 'local' });
-      toast.success('Workspace berhasil dibuat!');
+      toast.success(t('onboarding.created'));
       onComplete(org.id, owner.id);
     } catch {
-      toast.error('Gagal membuat workspace. Coba lagi.');
+      toast.error(t('onboarding.createFailed'));
       setBusy(false);
     }
   };
@@ -124,7 +127,7 @@ export function Wizard({ onComplete }: WizardProps) {
       const { seedDemoWorkspace } = await import('@/dev/seed');
       await seedDemoWorkspace();
     } catch {
-      toast.error('Gagal memuat data demo');
+      toast.error(t('onboarding.seedFailed'));
       setSeeding(false);
     }
   };
@@ -139,7 +142,7 @@ export function Wizard({ onComplete }: WizardProps) {
             </span>
             FixMaster
           </div>
-          <p className={styles.subtitle}>Pengaturan awal toko Anda</p>
+          <p className={styles.subtitle}>{t('onboarding.subtitle')}</p>
         </header>
 
         {import.meta.env.DEV && !isCloud && (
@@ -151,9 +154,9 @@ export function Wizard({ onComplete }: WizardProps) {
               disabled={seeding}
             >
               <Icon name="boxes-stacked" aria-hidden />
-              {seeding ? 'Memuat data demo…' : 'Isi data demo & masuk'}
+              {seeding ? t('onboarding.seeding') : t('onboarding.seed')}
             </button>
-            <span className={styles.devHint}>Mode dev · login sebagai Owner (PIN 1234)</span>
+            <span className={styles.devHint}>{t('onboarding.devHint')}</span>
           </div>
         )}
 
@@ -163,15 +166,12 @@ export function Wizard({ onComplete }: WizardProps) {
             <span>
               {setupNotice ? (
                 <>
-                  <strong>{setupNotice}</strong> Jangan lanjutkan setup ini. Membuat toko
-                  baru justru mengunci akunmu dari toko yang mengundang. Hubungi pemilik
-                  tokonya dulu.
+                  <strong>{setupNotice}</strong> {t('onboarding.inviteStop')}
                 </>
               ) : (
                 <>
-                  Diundang bergabung ke toko yang sudah ada? <strong>Jangan isi form ini.</strong>{' '}
-                  Keluar, lalu masuk memakai email yang persis diundang. Kalau meleset satu
-                  huruf pun kamu akan berakhir membuat toko sendiri.
+                  {t('onboarding.inviteQuestion')} <strong>{t('onboarding.inviteDontFill')}</strong>{' '}
+                  {t('onboarding.inviteHowTo')}
                 </>
               )}
             </span>
@@ -186,7 +186,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 <span className={[styles.dot, styles[state]].join(' ')}>
                   {i < idx ? <Icon name="check" aria-hidden /> : i + 1}
                 </span>
-                <span className={styles.dotLabel}>{s.label}</span>
+                <span className={styles.dotLabel}>{t(s.labelKey)}</span>
                 {i < steps.length - 1 && <span className={styles.line} />}
               </div>
             );
@@ -195,10 +195,10 @@ export function Wizard({ onComplete }: WizardProps) {
 
         <div className={styles.card}>
           {step === 1 && (
-            <Step title="Profil Usaha" desc="Informasi dasar tentang usaha reparasi Anda">
+            <Step title={t('onboarding.profileTitle')} desc={t('onboarding.profileDesc')}>
               <Input
-                label="Nama Usaha"
-                placeholder="Contoh: Sinar Gadget Service"
+                label={t('onboarding.shopName')}
+                placeholder={t('onboarding.shopNamePh')}
                 value={data.shopName}
                 error={errors.shopName}
                 onChange={(e) => {
@@ -211,8 +211,8 @@ export function Wizard({ onComplete }: WizardProps) {
               />
               {isCloud && (
                 <Input
-                  label="Nama Anda (Pemilik)"
-                  placeholder="Nama lengkap Anda"
+                  label={t('onboarding.ownerName')}
+                  placeholder={t('onboarding.ownerNamePh')}
                   value={data.employees[0]?.name ?? ''}
                   error={errors.ownerName}
                   onChange={(e) => {
@@ -228,13 +228,13 @@ export function Wizard({ onComplete }: WizardProps) {
               )}
               <div className={styles.row}>
                 <Input
-                  label="Alamat"
-                  placeholder="Jl. Sudirman No. 25, Jakarta"
+                  label={t('onboarding.address')}
+                  placeholder={t('onboarding.addressPh')}
                   value={data.address}
                   onChange={(e) => update({ address: e.target.value })}
                 />
                 <Input
-                  label="Inisial Servis"
+                  label={t('onboarding.prefix')}
                   placeholder="SGS"
                   maxLength={5}
                   value={data.servicePrefix}
@@ -242,7 +242,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 />
               </div>
               <Input
-                label="No. Telepon"
+                label={t('onboarding.phone')}
                 placeholder="0812-3456-7890"
                 value={data.phone}
                 onChange={(e) => update({ phone: e.target.value })}
@@ -251,13 +251,13 @@ export function Wizard({ onComplete }: WizardProps) {
           )}
 
           {step === 2 && (
-            <Step title="Wallet / Kas" desc="Metode pembayaran & saldo awal">
+            <Step title={t('onboarding.walletTitle')} desc={t('onboarding.walletDesc')}>
               {errors.wallets && <p className={styles.formError}>{errors.wallets}</p>}
               <div className={styles.list}>
                 {data.wallets.map((w, i) => (
                   <div key={i} className={styles.listRow}>
                     <Input
-                      placeholder="Nama wallet"
+                      placeholder={t('onboarding.walletName')}
                       value={w.name}
                       onChange={(e) => {
                         const wallets = [...data.wallets];
@@ -266,7 +266,7 @@ export function Wizard({ onComplete }: WizardProps) {
                       }}
                     />
                     <Input
-                      placeholder="Saldo awal"
+                      placeholder={t('onboarding.walletBalance')}
                       value={w.balance ? fmtRpInput(String(w.balance)) : ''}
                       onChange={(e) => {
                         const wallets = [...data.wallets];
@@ -279,7 +279,7 @@ export function Wizard({ onComplete }: WizardProps) {
                       onClick={() =>
                         update({ wallets: data.wallets.filter((_, j) => j !== i) })
                       }
-                      aria-label="Hapus"
+                      aria-label={t('common.delete')}
                     >
                       <Icon name="trash" aria-hidden />
                     </button>
@@ -292,13 +292,13 @@ export function Wizard({ onComplete }: WizardProps) {
                 iconLeft={<Icon name="plus" aria-hidden />}
                 onClick={() => update({ wallets: [...data.wallets, { name: '', balance: 0 }] })}
               >
-                Tambah Wallet
+                {t('onboarding.addWallet')}
               </Button>
             </Step>
           )}
 
           {step === 3 && (
-            <Step title="Kategori Perangkat" desc="Jenis perangkat yang Anda servis">
+            <Step title={t('onboarding.categoryTitle')} desc={t('onboarding.categoryDesc')}>
               {errors.categories && <p className={styles.formError}>{errors.categories}</p>}
               <div className={styles.chips}>
                 {data.categories.map((c, i) => (
@@ -308,7 +308,7 @@ export function Wizard({ onComplete }: WizardProps) {
                       onClick={() =>
                         update({ categories: data.categories.filter((_, j) => j !== i) })
                       }
-                      aria-label="Hapus"
+                      aria-label={t('common.delete')}
                     >
                       <Icon name="times" aria-hidden />
                     </button>
@@ -322,13 +322,13 @@ export function Wizard({ onComplete }: WizardProps) {
           )}
 
           {step === 4 && (
-            <Step title="Tim / Karyawan" desc="Minimal 1 Owner dengan PIN 4 digit">
+            <Step title={t('onboarding.teamTitle')} desc={t('onboarding.teamDesc')}>
               {errors.employees && <p className={styles.formError}>{errors.employees}</p>}
               <div className={styles.list}>
                 {data.employees.map((emp, i) => (
                   <div key={i} className={styles.empRow}>
                     <Input
-                      placeholder="Nama lengkap"
+                      placeholder={t('onboarding.fullName')}
                       value={emp.name}
                       error={errors[`emp-name-${i}`]}
                       onChange={(e) => {
@@ -348,12 +348,12 @@ export function Wizard({ onComplete }: WizardProps) {
                     >
                       {ROLE_OPTIONS.map((r) => (
                         <option key={r.value} value={r.value}>
-                          {r.label}
+                          {t(r.labelKey)}
                         </option>
                       ))}
                     </select>
                     <Input
-                      placeholder="PIN"
+                      placeholder={t('onboarding.pin')}
                       maxLength={4}
                       inputMode="numeric"
                       value={emp.pin}
@@ -369,7 +369,7 @@ export function Wizard({ onComplete }: WizardProps) {
                       onClick={() =>
                         update({ employees: data.employees.filter((_, j) => j !== i) })
                       }
-                      aria-label="Hapus"
+                      aria-label={t('common.delete')}
                     >
                       <Icon name="trash" aria-hidden />
                     </button>
@@ -386,22 +386,22 @@ export function Wizard({ onComplete }: WizardProps) {
                   })
                 }
               >
-                Tambah Anggota
+                {t('onboarding.addMember')}
               </Button>
             </Step>
           )}
 
           {step === 5 && (
-            <Step title="Target Bulanan" desc="Proyeksi bulanan (bisa diubah nanti)">
+            <Step title={t('onboarding.targetTitle')} desc={t('onboarding.targetDesc')}>
               <div className={styles.row}>
                 <Input
-                  label="Target Pendapatan / bln"
+                  label={t('onboarding.targetRevenue')}
                   placeholder="15.000.000"
                   value={data.targetRevenue ? fmtRpInput(String(data.targetRevenue)) : ''}
                   onChange={(e) => update({ targetRevenue: parseRpInput(e.target.value) })}
                 />
                 <Input
-                  label="Target Servis Selesai / Bulan"
+                  label={t('onboarding.targetServices')}
                   type="number"
                   placeholder="50"
                   value={data.targetServiceCount || ''}
@@ -409,21 +409,24 @@ export function Wizard({ onComplete }: WizardProps) {
                 />
               </div>
               <p className={styles.stepHint}>
-                <Icon name="info-circle" aria-hidden /> Biaya tetap (gaji, sewa, listrik) tidak perlu
-                ditebak di sini: catat pembayarannya di Keuangan, Laporan menghitung overhead-nya otomatis.
+                <Icon name="info-circle" aria-hidden /> {t('onboarding.targetHint')}
               </p>
             </Step>
           )}
 
           {step === 6 && (
-            <Step title="Outlet / Lokasi" desc="Satu outlet untuk usaha tunggal, atau beberapa untuk multi-cabang">
+            <Step title={t('onboarding.outletTitle')} desc={t('onboarding.outletDesc')}>
               {errors.outlets && <p className={styles.formError}>{errors.outlets}</p>}
               <div className={styles.list}>
                 {data.outlets.map((o, i) => (
                   <div key={i} className={styles.listRow}>
                     <Input
-                      label={i === 0 ? 'Outlet Utama' : `Cabang ${i}`}
-                      placeholder={i === 0 ? (data.shopName || 'Nama outlet utama') : 'Nama cabang'}
+                      label={i === 0 ? t('onboarding.primaryOutlet') : interpolate(t('onboarding.branchN'), { n: String(i) })}
+                      placeholder={
+                        i === 0
+                          ? data.shopName || t('onboarding.primaryOutletPh')
+                          : t('onboarding.branchNamePh')
+                      }
                       value={o.name}
                       error={errors[`outlet-name-${i}`]}
                       onChange={(e) => {
@@ -433,8 +436,12 @@ export function Wizard({ onComplete }: WizardProps) {
                       }}
                     />
                     <Input
-                      label="Alamat"
-                      placeholder={i === 0 ? (data.address || 'Alamat outlet') : 'Alamat cabang'}
+                      label={t('onboarding.address')}
+                      placeholder={
+                        i === 0
+                          ? data.address || t('onboarding.outletAddressPh')
+                          : t('onboarding.branchAddressPh')
+                      }
                       value={o.address}
                       onChange={(e) => {
                         const outlets = [...data.outlets];
@@ -446,7 +453,7 @@ export function Wizard({ onComplete }: WizardProps) {
                       <button
                         className={styles.removeBtn}
                         onClick={() => update({ outlets: data.outlets.filter((_, j) => j !== i) })}
-                        aria-label="Hapus"
+                        aria-label={t('common.delete')}
                       >
                         <Icon name="trash" aria-hidden />
                       </button>
@@ -454,7 +461,13 @@ export function Wizard({ onComplete }: WizardProps) {
                     <div className={styles.rentLine}>
                       <select
                         className={styles.roleSelect}
-                        aria-label={`Cara bayar sewa ${o.name || (i === 0 ? 'outlet utama' : `cabang ${i}`)}`}
+                        aria-label={interpolate(t('onboarding.rentModeLabel'), {
+                          name:
+                            o.name ||
+                            (i === 0
+                              ? t('onboarding.primaryOutletLower')
+                              : interpolate(t('onboarding.branchNLower'), { n: String(i) })),
+                        })}
                         value={o.rentMode ?? 'bulanan'}
                         onChange={(e) => {
                           const outlets = [...data.outlets];
@@ -462,13 +475,13 @@ export function Wizard({ onComplete }: WizardProps) {
                           update({ outlets });
                         }}
                       >
-                        <option value="bulanan">Sewa bulanan / milik sendiri</option>
-                        <option value="tahunan">Sewa tahunan</option>
+                        <option value="bulanan">{t('onboarding.rentMonthly')}</option>
+                        <option value="tahunan">{t('onboarding.rentYearly')}</option>
                       </select>
                       {o.rentMode === 'tahunan' && (
                         <Input
-                          aria-label="Sewa per tahun"
-                          placeholder="Sewa per tahun, mis. 24.000.000"
+                          aria-label={t('onboarding.rentYearlyLabel')}
+                          placeholder={t('onboarding.rentYearlyPh')}
                           inputMode="numeric"
                           value={o.rentYearly ? fmtRpInput(String(o.rentYearly)) : ''}
                           onChange={(e) => {
@@ -483,9 +496,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 ))}
               </div>
               <p className={styles.stepHint}>
-                <Icon name="info-circle" aria-hidden /> Outlet utama otomatis memakai nama &
-                alamat usaha bila dikosongkan. Tambah cabang hanya jika usaha Anda multi-lokasi.
-                Sewa tahunan dibagi rata per bulan di Laporan; bisa diubah di Pengaturan.
+                <Icon name="info-circle" aria-hidden /> {t('onboarding.outletHint')}
               </p>
               <Button
                 variant="secondary"
@@ -493,7 +504,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 iconLeft={<Icon name="plus" aria-hidden />}
                 onClick={() => update({ outlets: [...data.outlets, { name: '', address: '' }] })}
               >
-                Tambah Cabang
+                {t('onboarding.addBranch')}
               </Button>
             </Step>
           )}
@@ -505,14 +516,14 @@ export function Wizard({ onComplete }: WizardProps) {
                 onClick={prev}
                 iconLeft={<Icon name="arrow-left" aria-hidden />}
               >
-                Kembali
+                {t('common.back')}
               </Button>
             ) : (
               <span />
             )}
             {!isLast ? (
               <Button onClick={next} iconRight={<Icon name="arrow-right" aria-hidden />}>
-                Lanjut
+                {t('common.next')}
               </Button>
             ) : (
               <Button
@@ -521,7 +532,7 @@ export function Wizard({ onComplete }: WizardProps) {
                 loading={busy}
                 iconLeft={<Icon name="check-circle" aria-hidden />}
               >
-                Selesai & Mulai
+                {t('onboarding.finish')}
               </Button>
             )}
           </div>
@@ -551,6 +562,7 @@ function Step({
 }
 
 function CategoryAdder({ onAdd }: { onAdd: (name: string) => void }) {
+  const t = useT();
   const [value, setValue] = useState('');
   const add = () => {
     if (value.trim()) {
@@ -561,13 +573,13 @@ function CategoryAdder({ onAdd }: { onAdd: (name: string) => void }) {
   return (
     <div className={styles.adder}>
       <Input
-        placeholder="Tambah kategori baru"
+        placeholder={t('onboarding.categoryPh')}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && add()}
       />
       <Button variant="secondary" onClick={add} iconLeft={<Icon name="plus" aria-hidden />}>
-        Tambah
+        {t('common.add')}
       </Button>
     </div>
   );

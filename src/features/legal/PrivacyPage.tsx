@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { LegalLayout } from './LegalLayout';
+import { useT } from '@/i18n';
 
 /**
  * Public Privacy Policy. Content is structured around Indonesia's UU PDP
@@ -8,19 +9,20 @@ import { LegalLayout } from './LegalLayout';
  * professional before public launch (see the in-page disclaimer).
  */
 export function PrivacyPage() {
+  const t = useT();
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Kebijakan Privasi | FixMaster';
+    document.title = t('legal.privacyDocTitle');
     return () => {
       document.title = prev;
     };
-  }, []);
+  }, [t]);
 
   return (
     <LegalLayout
-      title="Kebijakan Privasi"
+      title={t('legal.privacyTitle')}
       docId="PRIVASI-001"
-      intro="Bagaimana FixMaster mengumpulkan, menggunakan, dan melindungi data Anda serta data pelanggan usaha reparasi Anda."
+      intro={t('legal.privacyIntro')}
       updated="2026-09-27"
     >
       <div className="callout">

@@ -10,14 +10,15 @@ import { useAuthStore } from '@/stores/auth';
 import { demoGuard } from '@/stores/demo';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { getVisibleNavigation, resolveMobileNavigation, type ResolvedNavItem } from '@/lib/business/navigation';
-import { useSettingsStore } from '@/stores/settings';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import { ZoomStepper } from './DisplayControls';
 import styles from './MobileBottomNav.module.css';
 
-const ROLE_LABEL: Record<string, Record<string, string>> = {
-  id: { owner: 'Pemilik', admin: 'Admin', karyawan: 'Karyawan' },
-  en: { owner: 'Owner', admin: 'Admin', karyawan: 'Staff' },
+const ROLE_LABEL: Record<string, TranslationKey> = {
+  owner: 'role.owner',
+  admin: 'role.admin',
+  karyawan: 'role.karyawan',
 };
 
 function pathIsActive(path: string, pathname: string): boolean {
@@ -33,7 +34,6 @@ export function MobileBottomNav() {
   const setActiveOutlet = useSessionStore((state) => state.setActiveOutlet);
   const signOutEmployee = useSessionStore((state) => state.signOutEmployee);
   const authSignOut = useAuthStore((state) => state.signOut);
-  const language = useSettingsStore((state) => state.language);
   const { data: outlets } = useCollection('outlets');
   const signals = useNavSignals();
   const t = useT();
@@ -71,7 +71,7 @@ export function MobileBottomNav() {
   }, [moreOpen]);
 
   const handleLogout = () => {
-    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akun Anda sendiri.')) return;
+    if (demoGuard('demo.logout')) return;
     setMoreOpen(false);
     if (isSupabaseConfigured) void authSignOut();
     else signOutEmployee();
@@ -137,7 +137,7 @@ export function MobileBottomNav() {
                     </span>
                     <span className={styles.moreLabel}>{t(item.labelKey)}</span>
                     {locked ? (
-                      <span className={styles.proBadge}><span aria-hidden />PRO</span>
+                      <span className={styles.proBadge}><span aria-hidden />{t('nav.mobile.pro')}</span>
                     ) : renderSignal(item.to)}
                   </Link>
                 );
@@ -179,7 +179,7 @@ export function MobileBottomNav() {
                 </span>
                 <span className={styles.operatorInfo}>
                   <strong>{employee?.name ?? <EmptyValue />}</strong>
-                  <small>{employee ? ROLE_LABEL[language][employee.role] : ''}</small>
+                  <small>{employee ? t(ROLE_LABEL[employee.role]) : ''}</small>
                 </span>
                 <button type="button" className={styles.logoutButton} onClick={handleLogout}>
                   <Icon name="right-from-bracket" aria-hidden />
@@ -201,7 +201,7 @@ export function MobileBottomNav() {
               to={destinationFor(entry)}
               className={[styles.navItem, active ? styles.active : '', locked ? styles.locked : ''].join(' ')}
               aria-current={active ? 'page' : undefined}
-              title={locked ? `${t(item.labelKey)} · PRO` : t(item.labelKey)}
+              title={locked ? interpolate(t('nav.mobile.lockedTitle'), { label: t(item.labelKey) }) : t(item.labelKey)}
             >
               <span className={styles.navIcon}>
                 <Icon name={item.icon} weight={active ? 'fill' : 'regular'} aria-hidden />

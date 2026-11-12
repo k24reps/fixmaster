@@ -3,6 +3,8 @@ import { toast } from './toast';
 import { authIntentHref } from '@/features/auth/auth-intent';
 import { trackEvent } from '@/lib/analytics';
 import { isSupabaseConfigured } from '@/data/supabase-client';
+import { translate, type TranslationKey } from '@/i18n';
+import { useSettingsStore } from './settings';
 
 /**
  * Public-demo session flag. Set true only while the landing-page demo
@@ -39,13 +41,24 @@ export function isCloudMode(): boolean {
  * Returns `false` in the real app, so normal behavior proceeds.
  *
  *   function handleSignOut() {
- *     if (demoGuard()) return;   // blocked in demo
+ *     if (demoGuard('demo.logout')) return;   // blocked in demo
  *     ...real sign-out...
  *   }
+ *
+ * Takes a translation KEY: the helpers call it outside React where there is no
+ * `t`, and a key keeps every nudge in the dictionaries. The one exception is
+ * `{ text }`, for a message that is ALREADY translated (the print window gets
+ * its text in the receipt language, not the UI language). It is a distinct
+ * type on purpose: a bare string would be read as a key, and a missing key
+ * shows up to the user as the key itself, which `tsc` can't tell from text.
  */
-export function demoGuard(message?: string): boolean {
+export function demoGuard(message: TranslationKey | { text: string } = 'demo.default'): boolean {
   if (!useDemoStore.getState().isDemo) return false;
-  toast.info(message ?? 'Fitur ini tersedia di FixMaster versi penuh. Daftar gratis untuk mencoba.');
+  const text =
+    typeof message === 'string'
+      ? translate(useSettingsStore.getState().language, message)
+      : message.text;
+  toast.info(text);
   return true;
 }
 

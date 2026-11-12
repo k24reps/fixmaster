@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { LegalLayout } from './LegalLayout';
+import { useT } from '@/i18n';
 
 /**
  * Public Terms of Service. Covers the subscription model (trial → paid),
@@ -7,19 +8,20 @@ import { LegalLayout } from './LegalLayout';
  * Good-faith template — review by a legal professional before launch.
  */
 export function TermsPage() {
+  const t = useT();
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Syarat & Ketentuan | FixMaster';
+    document.title = t('legal.termsDocTitle');
     return () => {
       document.title = prev;
     };
-  }, []);
+  }, [t]);
 
   return (
     <LegalLayout
-      title="Syarat & Ketentuan"
+      title={t('legal.termsTitle')}
       docId="SK-001"
-      intro="Ketentuan penggunaan layanan FixMaster, termasuk langganan, pembayaran, dan tanggung jawab masing-masing pihak."
+      intro={t('legal.termsIntro')}
       updated="2026-06-07"
     >
       <div className="callout">

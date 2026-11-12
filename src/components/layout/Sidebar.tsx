@@ -10,6 +10,7 @@ import { useT } from '@/i18n';
 import { useNavSignals } from '@/hooks/useNavSignals';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useDrawerFocus } from '@/hooks/useDrawerFocus';
+import { interpolate } from '@/lib/business/notify';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
 
@@ -149,7 +150,7 @@ export function Sidebar({
           <button
             className={styles.collapseBtn}
             onClick={onToggleCollapse}
-            aria-label="Lipat sidebar"
+            aria-label={t('sidebar.collapse')}
           >
             <Icon name="angles-left" aria-hidden />
           </button>
@@ -159,7 +160,7 @@ export function Sidebar({
         {/* Sumur terpisah dari <nav>: tepi pudar menyamarkan isi nav, dan
             latar sumur di belakangnya menjaga warnanya tetap utuh. */}
         <div className={styles.navWell}>
-        <nav ref={navRef} className={styles.nav} aria-label="Navigasi utama">
+        <nav ref={navRef} className={styles.nav} aria-label={t('sidebar.mainNav')}>
           {visibleNav.map(({ item, locked }, i) => {
             // Sambungan bertitik di awal tiap grup: operasional, kantor, sistem.
             const seam = i > 0 && visibleNav[i - 1].item.group !== item.group ? styles.seam : '';
@@ -170,7 +171,7 @@ export function Sidebar({
                   to="/settings"
                   onClick={onCloseMobile}
                   className={[styles.navItem, styles.locked, seam].join(' ')}
-                  title={`${t(item.labelKey)} (tersedia di paket Pro)`}
+                  title={interpolate(t('sidebar.lockedTitle'), { label: t(item.labelKey) })}
                 >
                   <span className={styles.navIconCell} aria-hidden>
                     <Icon name={item.icon} className={styles.navIcon} />
@@ -178,7 +179,7 @@ export function Sidebar({
                   <span className={styles.navLabel}>{t(item.labelKey)}</span>
                   <span className={styles.lockBadge}>
                     <span className={styles.lockLed} aria-hidden />
-                    <span className={styles.lockBadgeText}>Pro</span>
+                    <span className={styles.lockBadgeText}>{t('sidebar.pro')}</span>
                   </span>
                 </NavLink>
               );
@@ -353,7 +354,7 @@ function BranchSelector({
             >
               <Icon name="shop" className={styles.branchOptIcon} aria-hidden />
               <span className={styles.branchOptName}>{o.name}</span>
-              {o.isPrimary && <span className={styles.branchPrimary}>Utama</span>}
+              {o.isPrimary && <span className={styles.branchPrimary}>{t('sidebar.primary')}</span>}
               {activeOutletId === o.id && <Icon name="check" className={styles.branchCheck} aria-hidden />}
             </button>
           ))}
