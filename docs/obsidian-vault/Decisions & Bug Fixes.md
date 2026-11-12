@@ -6390,3 +6390,82 @@ tanpa blok `bizIdentity`, ringkasan Pelanggan yang dihapus, dan semua dokumen ce
   `ReportsPage` 30, `ResetPasswordPage` 28, modal pemasok (PO 22, terima 20, pemasok 15), lalu
   ekor pendek di bawah 15. Isi dokumen cetak (nota, laporan PDF) tidak disentuh.
 - **Verifikasi:** build, lint, **1065 tes / 83 berkas** (1061 + 4 tes `demoGuard`). `audit-mobile` (5 lebar ponsel dan pita tablet) dan `audit-zoom` (11 lebar x 13 halaman) tanpa regresi terhadap baseline: luberan dokumen 0, offender 0, tak ada target sentuh kecil baru, dan satu-satunya wadah meluap tetap pita kategori POS 1097px (+16) yang sudah ada sebelumnya. Dilihat langsung di dev server: Lacak servis (mode kode dan mode nomor) menampilkan teks main apa adanya, dan Keluar di demo menampilkan "akun Anda sendiri". **Belum diverifikasi:** wizard onboarding (hanya tampil saat basis data lokal kosong), bahasa Inggris (pilihan bahasa masih terkunci ke ID), dan jendela cetak (tak disentuh).
+
+## Audit repo (12 Nov 2026)
+
+Audit menyeluruh: gerbang verifikasi, `npm audit`, rahasia di riwayat git, RLS, fungsi yang
+terbuka untuk `anon`, edge function, permukaan XSS dokumen cetak, dan rute deploy. Tiga cacat
+nyata diperbaiki; sisanya higiene. Yang diperiksa dan bersih dicatat di [[Testing & Security]].
+
+### Backup terpotong di `max_rows`, restore menghapus sisanya
+
+- **Akar.** `list(name, { full: true })` hanya mengganti kolom (membawa `services.history`).
+  Koleksi di luar `FULL_LIST` tetap satu permintaan, jadi dipotong `max_rows` PostgREST (1000 di
+  Supabase cloud). `auto-backup` memakai satu `select('*')` per tabel, juga terpotong.
+  `restore_org_data` (versi terakhir di `0086`) menghapus seluruh baris org lebih dulu, sehingga
+  memulihkan berkas yang terpotong menghapus baris lama secara permanen. `recordCount` dan ukuran
+  berkas tetap tampak wajar, jadi tak ada yang curiga.
+- **Terukur.** Klien palsu ber-cap 1000 dengan 2500 baris: services, sales, incomes, expenses,
+  activity kembali 1000; customers dan inventory utuh (keduanya `FULL_LIST`).
+- **Perbaikan.** Keyset `id` naik, berhenti hanya di halaman **kosong**: cabang `full` di
+  `SupabaseAdapter.list` dan `supabase/functions/auto-backup/fetchAll.ts` (organizations + 16
+  tabel). Offset ditolak karena soft-delete di tengah backup menggeser offset dan melewatkan satu
+  baris. "Berhenti di halaman pendek" ditolak karena server dengan `max_rows` di bawah 1000 selalu
+  memberi halaman pendek. Guard: id terakhir wajib maju (urutan uuid di Postgres = urutan teks hex
+  huruf kecil); kueri yang lupa `gt('id', …)` gagal keras alih-alih berputar selamanya.
+- **Tes.** `src/data/supabase-adapter.full.test.ts` (13; 10 di antaranya gagal pada kode lama),
+  `supabase/functions/auto-backup/fetchAll.test.ts` (5).
+- **Produksi VPS** tidak mengatur `PGRST_DB_MAX_ROWS` di repo, jadi status cap-nya tak terbaca
+  dari sini. Backup kini tidak bergantung padanya. Daftar layar biasa tetap dipotong seperti dulu.
+
+### Workflow "sekali jalan" yang ternyata tahunan
+
+`.github/workflows/scheduled-golive.yml` memakai cron `0 18 11 6 *` untuk promosi 12 Juni 2026.
+Cron tidak punya kolom tahun, jadi ia aktif lagi setiap 11 Juni dan, bila `staging` berbeda dari
+`main`, me-merge lalu push ke `main` tanpa review (Vercel langsung men-deploy). Dihapus bersama
+`scripts/golive-once.ps1` (pasangan Windows Scheduled Task untuk tanggal yang sama). Pelajaran:
+jadwal sekali pakai lewat cron harus memeriksa tanggalnya sendiri di langkah pertama, atau dihapus
+di commit yang sama dengan hasil promosinya.
+
+### `/istilah` 404 saat dibuka langsung
+
+Rutenya ada di `appChildRoutes`, rewrite-nya tidak ada di `vercel.json`. Klik dari `Term` lolos
+karena navigasi klien; muat ulang, tab baru, dan tautan yang dibagikan jatuh ke `404.html`.
+`deploymentRoutes.test.ts` tidak menangkapnya karena daftarnya ditulis tangan. Kini `router.tsx`
+mengekspor `productionRoutes` (rute dev tetap di `devOnlyRoutes()`), dan tes menurunkan path dari
+router plus `/demo` (dipilih `App.tsx` di luar router), lalu menuntut daftar rewrite sama persis,
+dua arah. Lihat [[Conventions]].
+
+### Higiene
+
+- **Dependensi.** react-router-dom 7.16.0 → 7.18.5 (open redirect lewat backslash), zod 4.4.3 →
+  4.6.7, vite 8.0.16 → 8.3.8, vitest/coverage 4.1.8 → 4.1.12. `npm audit --omit=dev` = 0. Sisa
+  10 moderat dev-only lewat `minimatch` di rantai ESLint; perbaikannya butuh versi mayor.
+  `npm audit fix` dengan npm 10.9 gagal `Cannot read properties of null (reading 'edgesOut')` di
+  arborist (peer set `@emnapi/*` milik rolldown/Vite 8); `npx npm@11.6.2 audit fix` berhasil,
+  **tetapi** lock hasilnya tidak menulis `@emnapi/core` dan `@emnapi/runtime` `2.0.0-beta.2` yang
+  diminta `@rolldown/binding-wasm32-wasi`, sehingga `npm ci` dengan npm 10 (yang dipakai CI)
+  menolak lock sebagai tidak sinkron. Dilengkapi dengan `npm install --package-lock-only` memakai
+  npm 10 (tidak crash pada lock yang sudah ada). Sesudah memperbarui dependensi dengan npm lain,
+  selalu uji `rm -rf node_modules && npm ci` dengan npm bawaan Node CI.
+- **CI** Node 20 (habis dukungan April 2026) → 22, sama dengan mesin verifikasi.
+- **Edge function** mengimpor `esm.sh/@supabase/supabase-js@2.106.2`, bukan `@2`. Versi mayor saja
+  berarti versi berganti diam-diam di tiap deploy atau cold start. Naikkan bersama `package.json`.
+- **`delete-account`** membalas kode stabil (`owner_lookup_failed`, `org_delete_failed`,
+  `credential_delete_failed`, `internal_error`), bukan pesan database. Klien tidak berubah:
+  `functions.invoke` sudah membalas error generik untuk status non-2xx; detail tetap di log.
+
+### Koreksi atas laporan audit
+
+- Literal Indonesia di `printReport.ts` bukan pelanggaran: isi dokumen cetak sengaja di luar
+  gelombang i18n 1 (lihat [[#Literal UI ke kunci i18n, gelombang 1 (dibuat 6 Nov, dipindahkan ke main 12 Nov 2026)]]).
+- `isCloudMode()` di layar dan modal: laporan menyebut 14 berkas, hitungan ulang 15
+  (`PosHistory` terlewat). Tidak dipindah di sini karena tiap titik adalah jalur uang/stok yang
+  jalur lokalnya hanya teruji lewat UI. Didaftarkan sebagai utang di [[Data Layer]].
+
+**Verifikasi:** build, lint, **1094 tes / 85 berkas**, `tests/audit` 5/5, cek tipe manual berkas
+baru di `supabase/functions/` (di luar `tsc -b`). Uji asap build produksi di Chromium: `/`,
+`/demo`, navigasi Servis dan Kasir & Stok. Satu-satunya error konsol berasal dari
+`/_vercel/insights/script.js` yang hanya ada di Vercel.
+
+#audit #backup #security #deploy

@@ -63,7 +63,10 @@ batal instal ulang ke Linux. Stack yang sama persis dengan uji di mesin kerja.
    sinkron antar-perangkat mati.
 10. Buat ulang rahasia vault + jadwal + `BACKUP_CRON_SECRET` (lihat bagian backup).
 11. Salin `supabase/functions/{auto-backup,delete-account,health}` ke
-    `volumes/functions/`, lalu `docker compose up -d --wait functions`.
+    `volumes/functions/`, lalu `docker compose up -d --wait functions`. Salin **foldernya**,
+    bukan hanya `index.ts`: sejak 12 Nov 2026 `auto-backup` mengimpor `fetchAll.ts` di folder
+    yang sama. supabase-js di keempat fungsi dipin (`esm.sh/@supabase/supabase-js@2.106.2`,
+    sama dengan frontend); naikkan bersamaan dengan `package.json`.
 12. Verifikasi (bagian terakhir).
 
 ## Jebakan — masing-masing ditemukan saat uji

@@ -537,6 +537,18 @@ Edge Function, karena **aplikasi web tidak bisa menjalankan tugas terjadwal saat
 langkah manual (secret `BACKUP_CRON_SECRET` + penjadwalan) dicatat di kepala `0052`. Klien membacanya
 lewat [`src/data/cloudBackup.ts`](src/data/cloudBackup.ts).
 
+**Backup wajib memuat SEMUA baris (12 Nov 2026).** `restore_org_data` menghapus seluruh baris org
+sebelum mengisi dari berkas, jadi berkas yang kehilangan baris lama menghapusnya permanen saat
+dipulihkan. Dua jalur backup dulu sama-sama terpotong di `max_rows` PostgREST (1000 di Supabase
+cloud): `list(name, { full: true })` hanya mengganti kolom, dan `auto-backup` memakai satu
+`select('*')` per tabel. Kini keduanya mengambil per halaman lewat **keyset `id`** dan berhenti
+hanya di halaman **kosong**: `SupabaseAdapter.list` cabang `full`, dan
+[`auto-backup/fetchAll.ts`](supabase/functions/auto-backup/fetchAll.ts) (tanpa impor, diuji Vitest).
+Bukan offset, karena soft-delete di tengah backup menggeser offset sehingga satu baris terlewat.
+Bukan "berhenti di halaman pendek", karena server dengan `max_rows` di bawah 1000 selalu
+memberi halaman pendek. Daftar layar biasa tetap dipotong seperti sebelumnya. Tes:
+`supabase-adapter.full.test.ts`, `fetchAll.test.ts`. Detail di [[Decisions & Bug Fixes#Audit repo (12 Nov 2026)]].
+
 ## Penegakan server menyeluruh (migrasi `0069`–`0079`)
 
 Hasil audit logika bisnis lima menu. Prinsipnya: **server menegakkan, klien mencerminkan
@@ -573,6 +585,22 @@ ulang saat bentuk barisnya berubah, dan jalur lokalnya hanya bisa diuji lewat UI
 |---|---|
 | [`serviceParts.ts`](src/data/serviceParts.ts) | Simpan sparepart tiket + selisih stok (RPC `update_service_parts` vs tulis lokal); `addServicePart` dan `addServiceModalLine` dipakai detail tiket dan aksi cepat Daftar Servis |
 | [`financeEntry.ts`](src/data/financeEntry.ts) | Catat pemasukan/pengeluaran + saldo wallet (RPC `record_finance_entry` vs tulis lokal). Dipakai Keuangan DAN saldo awal wallet di Pengaturan |
+
+> [!warning] Utang terdaftar (audit 12 Nov 2026): aturan ini BELUM berlaku di 15 berkas
+> Percabangan `isCloudMode()` masih hidup langsung di layar dan modal berikut. Masing-masing
+> berpasangan "RPC atau tulis lokal" di jalur uang/stok, jadi pindahkan satu per satu ke modul
+> `src/data/` dengan uji jalur lokal lewat demo (`scripts/e2e-demo-flow.mjs`), bukan sekaligus.
+>
+> - Servis: `StatusModal` (3 titik: `applyStatus` ganti status, `applyDp` uang muka, `applyKoreksi` koreksi biaya), `ServiceDetailPage` (2: ubah dan hapus baris Pembelian Luar), `WarrantyClaimModal` (buat klaim garansi)
+> - Keuangan: `EntryModal` (`saveEdit`), `FinancePage` (`confirmDelete`, hapus entri)
+> - Kasir & stok: `PosPage` (`checkout`), `PosHistory` (`confirmVoid`, batal jual), `InventoryModal` (`save`, simpan barang + selisih stok)
+> - Supplier: `PurchaseOrderModal` (buat/ubah PO), `ReceiveModal` (terima barang + keuangan), `SuppliersPage` (batal PO)
+> - Lain: `CustomerModal` (salin nama & HP ke tiket pelanggan), `AttendancePage` (2: masuk/pulang)
+> - `ActivityLogPage` hanya menyembunyikan kontrol hapus log di mode lokal. Itu gerbang tampilan,
+>   bukan percabangan tulis, dan boleh tetap di layar.
+>
+> Daftar ini dibuat dengan `grep -rl "isCloudMode()" src/features src/components`. Kurangi daftar
+> setiap kali satu berkas dipindah.
 
 ## Terkait
 - [[Tech Stack]] · [[Decisions & Bug Fixes]] · [[Sidebar - Live Diagnostic Rail]]
