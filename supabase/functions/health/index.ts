@@ -11,7 +11,7 @@
 // to confirm Postgres connectivity without touching tenant data.
 // ============================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.106.2';
 
 const VERSION = '1.0.0';
 

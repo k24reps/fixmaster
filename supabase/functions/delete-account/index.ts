@@ -28,7 +28,7 @@
 // Deploy: supabase functions deploy delete-account
 // ============================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.106.2';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +36,8 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Error bodies carry a stable code, never the database message: table and
+// constraint names are no business of the caller. Details go to the logs.
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
       .eq('active', true);
     if (mErr) {
       console.error('delete-account: owner lookup failed', mErr.message);
-      return json({ error: mErr.message }, 500);
+      return json({ error: 'owner_lookup_failed' }, 500);
     }
     const orgIds = [...new Set((ownedOrgs ?? []).map((m) => m.org_id))];
     if (orgIds.length > 0) {
@@ -94,7 +96,7 @@ Deno.serve(async (req) => {
         // Fail closed: data NOT erased → keep the credential so the user can
         // retry with the account still fully intact.
         console.error('delete-account: org delete failed', orgErr.message);
-        return json({ error: orgErr.message }, 500);
+        return json({ error: 'org_delete_failed' }, 500);
       }
     }
 
@@ -102,13 +104,13 @@ Deno.serve(async (req) => {
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) {
       console.error('delete-account: deleteUser failed', delErr.message);
-      return json({ error: delErr.message }, 500);
+      return json({ error: 'credential_delete_failed' }, 500);
     }
 
     console.log('delete-account: account + data deleted', { userId: user.id, orgs: orgIds.length });
     return json({ ok: true });
   } catch (err) {
     console.error('delete-account: unhandled error', err instanceof Error ? err.stack : err);
-    return json({ error: err instanceof Error ? err.message : 'Internal error' }, 500);
+    return json({ error: 'internal_error' }, 500);
   }
 });

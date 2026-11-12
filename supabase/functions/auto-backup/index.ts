@@ -19,7 +19,7 @@
 //   supabase secrets set BACKUP_CRON_SECRET="<rahasia panjang acak>"
 // ============================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.106.2';
 import { fetchAllById } from './fetchAll.ts';
 
 /** Versi format berkas — harus sama dengan BACKUP_VERSION di src/lib/business/backup.ts. */

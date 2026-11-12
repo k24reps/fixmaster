@@ -22,7 +22,7 @@
 //   { "orgId": "<uuid>", "dryRun": true }
 // ============================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.106.2';
 
 const BUCKET = 'org-backups';
 const LINK_TTL_SECONDS = 7 * 24 * 60 * 60;
