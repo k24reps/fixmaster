@@ -6132,11 +6132,12 @@ permintaan. Browser, mode lokal: mode kode menampilkan tak ditemukan dan menolak
 kode, `/track` lama tak berubah, tanpa luberan di 375 px; "Cetak Nota" kedua memunculkan kotak CETAK ULANG di
 bawah tanggal dan di atas penanda tahap, dengan alamat berlabel tanpa skema. Probe: `audit-mobile` 5 lebar ponsel dan pita tablet 744 sampai 1152, `audit-zoom` 11 lebar, masing-masing × 13 halaman: nol luberan dokumen, nol overlap, nol teks ter-clip, lantai 12px terjaga. Sisanya identik dengan baseline gabungan 7a/7b/7c: rail chip `/services`, `/customers`, `/pos` dan tabel `/pos` +16px di 1097. Halaman lacak tak termasuk 13 halaman probe; ia diukur terpisah di 375 px.
 
-**Migrasi 0100 BELUM diterapkan ke staging maupun produksi.** Urutannya: SQL Editor staging →
-`npm run test:integration` (beri jeda semenit antar-jalan, uji terakhir `tier3h` menghabiskan kuota IP) → server VPS
-(`docker cp` + `psql -f`, seperti 0084 sampai 0099).
+**Migrasi 0100 diterapkan ke produksi (VPS) 12 Nov 2026**, sehari sesudah frontend-nya masuk `main`. Staging
+cloud dilewati. Cara: `scp` ke `/tmp` di VPS, `sudo docker cp` ke `supabase-db`, lalu `psql -U postgres -v
+ON_ERROR_STOP=1 -1 -f`. Semua pernyataan sukses (tabel, indeks, lima fungsi, revoke, grant). Hak akses
+diperiksa langsung: dari lima fungsi, hanya `track_service_by_code` yang bisa dipanggil anon.
 
-**Belum terverifikasi:** 0100 di Postgres sungguhan; `tier3h` belum pernah jalan; apakah `cf-connecting-ip`
+**Belum terverifikasi:** `tier3h` belum pernah jalan (butuh staging, yang tak ketiban 0100); jalur cetak sungguhan di produksi sesudah migrasi; apakah `cf-connecting-ip`
 sampai ke PostgREST lewat Cloudflare Tunnel dan Kong di VPS (uji terakhir `tier3h` memeriksanya; bila gagal,
 batas per IP diam-diam mati dan hanya ruang 2^50 yang menjaga); blok 429 di halaman lacak belum terlihat langsung,
 hanya lewat tes pemetaan; printer termal fisik.
