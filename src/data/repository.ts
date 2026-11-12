@@ -74,9 +74,11 @@ export interface Repository {
 
   // ---- Collections ----
   /**
-   * `full`: every column. The cloud adapter omits heavy columns from plain
-   * lists (services.history); anything that must be lossless — backups —
-   * passes `full: true`.
+   * `full`: every column AND every row. The cloud adapter omits heavy columns
+   * from plain lists (services.history) and caps transaction tables at
+   * PostgREST max_rows; anything that must be lossless — backups — passes
+   * `full: true`. A backup missing old rows is worse than none, because
+   * restore_org_data deletes the org's rows before inserting the file.
    */
   list<K extends CollectionName>(collection: K, options?: { full?: boolean }): Promise<EntityMap[K][]>;
   /**

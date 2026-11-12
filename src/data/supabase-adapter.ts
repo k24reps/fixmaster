@@ -258,7 +258,7 @@ export class SupabaseAdapter implements Repository {
     // screens that show it fetch one row (useServiceHistory); backups pass
     // `full`. Date-range queries below keep '*' — Laporan needs history.
     const columns = collection === 'services' && !options?.full ? SERVICE_LIST_COLUMNS : '*';
-    const build = () => {
+    const base = () => {
       let query = this.client
         .from(TABLE[collection])
         .select(columns)
@@ -270,16 +270,42 @@ export class SupabaseAdapter implements Repository {
       if (this.outletId && OUTLET_SCOPED.has(collection)) {
         query = query.or(`outlet_id.eq.${this.outletId},outlet_id.is.null`);
       }
-      // Newest-first, ALWAYS ordered: PostgREST caps responses (max_rows, default
-      // 1000) and without ORDER BY the truncated subset is unspecified — an
-      // append-only table like activity_logs would show an arbitrary slice,
-      // possibly missing the NEWEST events. Ordered, the cap drops oldest rows.
-      // `id` breaks ties so FULL_LIST pages never overlap or skip a row.
-      return query.order('created_at', { ascending: false }).order('id', { ascending: true });
+      return query;
     };
+    // Newest-first, ALWAYS ordered: PostgREST caps responses (max_rows, default
+    // 1000) and without ORDER BY the truncated subset is unspecified — an
+    // append-only table like activity_logs would show an arbitrary slice,
+    // possibly missing the NEWEST events. Ordered, the cap drops oldest rows.
+    // `id` breaks ties so FULL_LIST pages never overlap or skip a row.
+    const build = () =>
+      base().order('created_at', { ascending: false }).order('id', { ascending: true });
     // A runtime column string defeats supabase-js's select() type parser.
     const toEntities = (rows: unknown[] | null) =>
       (rows ?? []).map((r) => fromRow<EntityMap[K]>(r as unknown as Record<string, unknown>));
+
+    // Backups: keyset on `id`, stopping only on an EMPTY page. Offset paging
+    // skips a row whenever one is soft-deleted mid-backup (the rest shift up),
+    // and "stop when a page is short" stops early on a server whose max_rows
+    // is below LIST_PAGE. Either way the file would silently miss rows.
+    if (options?.full) {
+      const rows: Record<string, unknown>[] = [];
+      let after: string | null = null;
+      for (;;) {
+        let query = base().order('id', { ascending: true }).limit(LIST_PAGE);
+        if (after !== null) query = query.gt('id', after);
+        const { data, error } = await query;
+        if (error) throw error;
+        const page = (data ?? []) as unknown as Record<string, unknown>[];
+        if (page.length === 0) return toEntities(rows);
+        const last = String(page[page.length - 1].id);
+        // uuid order in Postgres = byte order = order of the lowercase hex text.
+        if (after !== null && last <= after) {
+          throw new Error(`list(${collection}, full): pagination did not advance`);
+        }
+        rows.push(...page);
+        after = last;
+      }
+    }
 
     if (!FULL_LIST.has(collection)) {
       const { data, error } = await build();

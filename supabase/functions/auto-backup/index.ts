@@ -20,6 +20,7 @@
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchAllById } from './fetchAll.ts';
 
 /** Versi format berkas — harus sama dengan BACKUP_VERSION di src/lib/business/backup.ts. */
 const BACKUP_VERSION = 1;
@@ -112,13 +113,19 @@ Deno.serve(async (req) => {
 
   // Organisasi yang tidak disuspend. Org yang sudah kedaluwarsa tetap
   // di-backup: justru di situ pemiliknya paling mungkin butuh datanya kembali.
-  const { data: orgs, error: orgErr } = await admin
-    .from('organizations')
-    .select('*')
-    .neq('plan_type', 'suspended');
-
-  if (orgErr) {
-    return new Response(JSON.stringify({ error: orgErr.message }), {
+  let orgs: Record<string, unknown>[];
+  try {
+    orgs = await fetchAllById((after, size) => {
+      const q = admin
+        .from('organizations')
+        .select('*')
+        .neq('plan_type', 'suspended')
+        .order('id')
+        .limit(size);
+      return after ? q.gt('id', after) : q;
+    }, 'organizations');
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
       status: 500,
       headers: { 'content-type': 'application/json' },
     });
@@ -137,14 +144,18 @@ Deno.serve(async (req) => {
       // ---- 1) Kumpulkan seluruh koleksi ----
       const collections: Record<string, unknown[]> = {};
       for (const [table, collection] of Object.entries(TABLE_TO_COLLECTION)) {
-        const { data, error } = await admin
-          .from(table)
-          .select('*')
-          .eq('org_id', orgId)
-          .is('deleted_at', null);
-        if (error) throw new Error(`${table}: ${error.message}`);
-        collections[collection] = (data ?? []).map(fromRow);
-        recordCount += data?.length ?? 0;
+        const data = await fetchAllById((after, size) => {
+          const q = admin
+            .from(table)
+            .select('*')
+            .eq('org_id', orgId)
+            .is('deleted_at', null)
+            .order('id')
+            .limit(size);
+          return after ? q.gt('id', after) : q;
+        }, table);
+        collections[collection] = data.map(fromRow);
+        recordCount += data.length;
       }
 
       // ---- 2) Rakit berkas dalam format BackupFile v1 ----
