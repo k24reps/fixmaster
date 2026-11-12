@@ -21,7 +21,8 @@ import { isManager } from '@/config/plans';
 import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { toast } from '@/stores/toast';
 import { logActivity } from '@/lib/activity';
-import { waLink } from '@/lib/business/notify';
+import { waLink, interpolate } from '@/lib/business/notify';
+import { useT } from '@/i18n';
 import { demoGuard } from '@/stores/demo';
 import { CustomerModal } from './CustomerModal';
 import { CustomerHistoryDrawer } from './CustomerHistoryDrawer';
@@ -37,6 +38,7 @@ export function CustomersPage() {
   // Selama belum termuat / gagal, "0x · Rp 0 · Belum servis" adalah angka palsu, jadi tampil "—".
   const statsQuery = useCustomerStats();
   const servicesPending = loadPending(statsQuery);
+  const t = useT();
   const me = useSessionStore((s) => s.currentEmployee);
   const org = useSessionStore((s) => s.org);
   const isMgr = me ? isManager(me.role) : false;
@@ -103,11 +105,11 @@ export function CustomersPage() {
   // Open WhatsApp with a pre-filled, shop-branded greeting the user can edit
   // before sending. Mirrors NotifyModal: wa.me deep link, demo-guarded.
   const sendWa = (c: Customer) => {
-    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh. Daftar gratis.')) return;
+    if (demoGuard('demo.whatsapp')) return;
     const toko = org?.name?.trim();
     const greeting = toko ? `Halo ${c.name}, ${toko} di sini. ` : `Halo ${c.name}, `;
     window.open(waLink(c.phone, greeting), '_blank');
-    toast.success('Membuka WhatsApp…');
+    toast.success(t('customers.waOpening'));
   };
 
   // Pelanggan yang punya tiket tidak dihapus: tiketnya kehilangan pemilik dan
@@ -117,12 +119,12 @@ export function CustomersPage() {
     // Statistik belum termuat = setiap pelanggan terbaca "0 tiket", dan dialog
     // konfirmasi menyatakan hal yang belum tentu benar sebagai fakta.
     if (statsQuery.loading) {
-      toast.warning('Statistik servis belum selesai dimuat. Tunggu sebentar.');
+      toast.warning(t('customers.statsLoading'));
       return;
     }
     const used = stats.get(c.id)?.count ?? 0;
     if (used > 0) {
-      toast.warning(`"${c.name}" punya ${used} tiket servis. Perbarui datanya saja, jangan dihapus.`);
+      toast.warning(interpolate(t('customers.hasTickets'), { name: c.name, count: String(used) }));
       return;
     }
     setToDelete(c);
@@ -132,7 +134,7 @@ export function CustomersPage() {
     if (!toDelete) return;
     try {
       await repository.remove('customers', toDelete.id);
-      toast.success('Pelanggan dihapus');
+      toast.success(t('customers.deleted'));
       logActivity({
         action: 'customer.delete',
         entityType: 'customer',
@@ -140,7 +142,7 @@ export function CustomersPage() {
         entityLabel: toDelete.name,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus pelanggan');
+      toast.error(e instanceof Error ? e.message : t('customers.deleteFailed'));
     } finally {
       setToDelete(null);
     }
@@ -164,8 +166,8 @@ export function CustomersPage() {
             e.stopPropagation();
             sendWa(c);
           }}
-          aria-label="Kirim WhatsApp"
-          title="Kirim WhatsApp"
+          aria-label={t('customers.sendWa')}
+          title={t('customers.sendWa')}
         >
           <Icon name="whatsapp" aria-hidden />
         </button>
@@ -176,7 +178,7 @@ export function CustomersPage() {
           e.stopPropagation();
           openEdit(c);
         }}
-        aria-label="Edit"
+        aria-label={t('customers.edit')}
       >
         <Icon name="pen" aria-hidden />
       </button>
@@ -187,7 +189,7 @@ export function CustomersPage() {
             e.stopPropagation();
             requestDelete(c);
           }}
-          aria-label="Hapus"
+          aria-label={t('common.delete')}
         >
           <Icon name="trash" aria-hidden />
         </button>
@@ -200,7 +202,7 @@ export function CustomersPage() {
       <div className={styles.toolbar}>
         <div className={styles.search}>
           <Input
-            placeholder="Cari nama atau no. HP…"
+            placeholder={t('customers.searchPh')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
@@ -211,15 +213,15 @@ export function CustomersPage() {
             className={styles.sortSelect}
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            aria-label="Urutkan pelanggan"
+            aria-label={t('customers.sortLabel')}
           >
-            <option value="svc_desc">Servis Terbanyak</option>
-            <option value="trx_desc">Nilai Servis Tertinggi</option>
-            <option value="name_asc">Nama A-Z</option>
+            <option value="svc_desc">{t('customers.sortServices')}</option>
+            <option value="trx_desc">{t('customers.sortValue')}</option>
+            <option value="name_asc">{t('customers.sortName')}</option>
           </select>
-          <ViewToggle value={view} onChange={chooseView} label="Tampilan pelanggan" />
+          <ViewToggle value={view} onChange={chooseView} label={t('customers.viewLabel')} />
           <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
-            Pelanggan Baru
+            {t('customers.new')}
           </Button>
         </div>
       </div>
@@ -229,13 +231,13 @@ export function CustomersPage() {
         total={customers.length}
         value={activeCategory}
         onChange={setCategory}
-        label="Kategori perangkat"
+        label={t('customers.categoryLabel')}
       />
 
       <div className={styles.summary}>
-        <span><strong>{customers.length}</strong> pelanggan</span>
-        <span><strong>{servicesPending ? EMPTY_VALUE : repeatCount}</strong> pelanggan berulang</span>
-        <span><strong>{rows.length}</strong> ditampilkan</span>
+        <span><strong>{customers.length}</strong> {t('customers.summaryTotal')}</span>
+        <span><strong>{servicesPending ? EMPTY_VALUE : repeatCount}</strong> {t('customers.summaryRepeat')}</span>
+        <span><strong>{rows.length}</strong> {t('customers.summaryShown')}</span>
       </div>
 
       {loadPending(customersLoad) ? (
@@ -246,14 +248,14 @@ export function CustomersPage() {
         <Card>
           <EmptyState
             icon={<Icon name="users" aria-hidden />}
-            title={filtered ? 'Tidak ada hasil' : 'Belum ada pelanggan'}
+            title={filtered ? t('customers.noResults') : t('customers.emptyTitle')}
             description={
-              filtered ? 'Coba kata kunci atau kategori lain.' : 'Tambahkan pelanggan pertama Anda.'
+              filtered ? t('customers.noResultsHint') : t('customers.emptyHint')
             }
             action={
               !filtered && (
                 <Button onClick={openNew} iconLeft={<Icon name="plus" aria-hidden />}>
-                  Pelanggan Baru
+                  {t('customers.new')}
                 </Button>
               )
             }
@@ -271,7 +273,7 @@ export function CustomersPage() {
                 tabIndex={0}
                 onClick={() => setHistoryCustomer(c)}
                 onKeyDown={openOnKey(c)}
-                title="Lihat riwayat servis"
+                title={t('customers.viewHistory')}
               >
                 <div className={styles.tileHead}>
                   <span className={[styles.plate, styles.tilePlate].join(' ')}>
@@ -279,7 +281,7 @@ export function CustomersPage() {
                   </span>
                   <div className={styles.ident}>
                     <div className={styles.tileName}>{c.name}</div>
-                    <div className={styles.idTag}>{c.phone || 'tanpa nomor'}</div>
+                    <div className={styles.idTag}>{c.phone || t('customers.noPhone')}</div>
                   </div>
                 </div>
                 <div className={styles.tileFoot}>
@@ -309,7 +311,7 @@ export function CustomersPage() {
                     setHistoryCustomer(c);
                   }
                 }}
-                title="Lihat riwayat servis"
+                title={t('customers.viewHistory')}
               >
                 <div className={styles.head}>
                   <span className={styles.plate}>{c.name.charAt(0).toUpperCase()}</span>
@@ -322,19 +324,19 @@ export function CustomersPage() {
                 <div className={styles.contacts}>
                   <div className={styles.contactRow}>
                     <Icon name="phone" aria-hidden />
-                    <span>{c.phone || <em className={styles.contactMuted}>tanpa nomor</em>}</span>
+                    <span>{c.phone || <em className={styles.contactMuted}>{t('customers.noPhone')}</em>}</span>
                   </div>
                 </div>
 
                 <div className={styles.activity}>
                   <div className={styles.activityBlock}>
-                    <span className={styles.activityLabel}>Servis</span>
+                    <span className={styles.activityLabel}>{t('customers.services')}</span>
                     <span className={[styles.activityValue, !servicesPending && st.count > 0 ? styles.brand : styles.idle].join(' ')}>
                       {servicesPending ? EMPTY_VALUE : `${st.count}x`}
                     </span>
                   </div>
                   <div className={styles.activityBlock}>
-                    <span className={styles.activityLabel}>Servis Lunas</span>
+                    <span className={styles.activityLabel}>{t('customers.paidServices')}</span>
                     <span className={styles.activityValue}>{servicesPending ? EMPTY_VALUE : fmtRp(st.paidTotal)}</span>
                   </div>
                 </div>
@@ -343,9 +345,9 @@ export function CustomersPage() {
                   {servicesPending ? (
                     <span className={styles.newcomer}><EmptyValue /></span>
                   ) : st.count > 1 ? (
-                    <span className={styles.repeat}>Pelanggan Setia</span>
+                    <span className={styles.repeat}>{t('customers.loyal')}</span>
                   ) : (
-                    <span className={styles.newcomer}>{st.count === 1 ? 'Pernah servis' : 'Belum servis'}</span>
+                    <span className={styles.newcomer}>{st.count === 1 ? t('customers.servedOnce') : t('customers.neverServed')}</span>
                   )}
                   <div className={styles.cardActions}>{renderActions(c)}</div>
                 </div>
@@ -371,9 +373,9 @@ export function CustomersPage() {
       />
       <ConfirmDialog
         open={!!toDelete}
-        title="Hapus Pelanggan?"
-        message={`"${toDelete?.name}" belum punya tiket servis dan akan dihapus permanen.`}
-        confirmLabel="Hapus"
+        title={t('customers.deleteTitle')}
+        message={interpolate(t('customers.deleteMessage'), { name: toDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}

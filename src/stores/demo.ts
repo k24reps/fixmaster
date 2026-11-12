@@ -3,6 +3,8 @@ import { toast } from './toast';
 import { authIntentHref } from '@/features/auth/auth-intent';
 import { trackEvent } from '@/lib/analytics';
 import { isSupabaseConfigured } from '@/data/supabase-client';
+import { translate, type TranslationKey } from '@/i18n';
+import { useSettingsStore } from './settings';
 
 /**
  * Public-demo session flag. Set true only while the landing-page demo
@@ -39,13 +41,16 @@ export function isCloudMode(): boolean {
  * Returns `false` in the real app, so normal behavior proceeds.
  *
  *   function handleSignOut() {
- *     if (demoGuard()) return;   // blocked in demo
+ *     if (demoGuard('demo.logout')) return;   // blocked in demo
  *     ...real sign-out...
  *   }
+ *
+ * Takes a translation KEY, not text: the print helpers call it outside React
+ * where there is no `t`, and a key keeps every nudge in the dictionaries.
  */
-export function demoGuard(message?: string): boolean {
+export function demoGuard(messageKey: TranslationKey = 'demo.default'): boolean {
   if (!useDemoStore.getState().isDemo) return false;
-  toast.info(message ?? 'Fitur ini aktif di FixMaster versi penuh. Daftar gratis untuk mencoba.');
+  toast.info(translate(useSettingsStore.getState().language, messageKey));
   return true;
 }
 

@@ -9,6 +9,7 @@
  * itu, geofence hanya menentukan di mana baris LAHIR, bukan apa isinya.
  */
 import type { Attendance, AttendanceStatus, Outlet } from '@/data/types';
+import type { TranslationKey } from '@/i18n';
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -43,12 +44,12 @@ export function hasGeofence(outlet: Pick<Outlet, 'lat' | 'lng' | 'geofenceRadius
   );
 }
 
-/** Label Indonesia untuk tiap status — satu sumber, dipakai modal dan tabel. */
-export const STATUS_LABEL: Record<AttendanceStatus, string> = {
-  hadir: 'Hadir',
-  izin: 'Izin',
-  sakit: 'Sakit',
-  alpha: 'Alpha',
+/** Kunci label tiap status. Satu sumber untuk modal, tabel, dan rekap. */
+export const STATUS_LABEL: Record<AttendanceStatus, TranslationKey> = {
+  hadir: 'attendance.status.hadir',
+  izin: 'attendance.status.izin',
+  sakit: 'attendance.status.sakit',
+  alpha: 'attendance.status.alpha',
 };
 
 /**

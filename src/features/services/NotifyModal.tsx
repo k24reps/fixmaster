@@ -63,7 +63,7 @@ export function NotifyModal({ open, onClose, service, initialTemplate }: NotifyM
   if (!service || !org) return null;
 
   const sendWa = () => {
-    if (demoGuard('Kirim WhatsApp aktif di FixMaster versi penuh. Daftar gratis.')) return;
+    if (demoGuard('demo.whatsapp')) return;
     window.open(waLink(service.customerPhone, message), '_blank');
     toast.success(t('notify.waOpening'));
   };

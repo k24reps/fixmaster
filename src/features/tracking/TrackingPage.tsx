@@ -6,7 +6,8 @@ import { trackService } from '@/data/supabase-client';
 import { STATUS_LABELS, STATUS_TONE, historyKind, partWarranties } from '@/lib/business/services';
 import type { ServiceStatus } from '@/data/types';
 import { nextStepFor, relativeSince } from '@/lib/business/tracking';
-import { waLink } from '@/lib/business/notify';
+import { waLink, interpolate } from '@/lib/business/notify';
+import { useT } from '@/i18n';
 import { slidingWindowAllow } from '@/lib/rate-limit';
 import { fmtDate, localDateOf, localTimeStr } from '@/lib/time';
 import { Icon } from '@/components/ui';
@@ -60,6 +61,7 @@ function stepStamp(at: string): string {
  * Uses TanStack Query so there's no manual effect/setState.
  */
 export function TrackingPage() {
+  const t = useT();
   const [params] = useSearchParams();
   // Tracking is inherently org-scoped (service numbers like FM-0001 repeat
   // across shops). Prefer the ?org= param from a shared link; if absent (e.g.
@@ -89,7 +91,7 @@ export function TrackingPage() {
     );
     searchTimes.current = timestamps;
     if (!allowed) {
-      setThrottleMsg('Terlalu banyak pencarian. Coba lagi dalam ' + retryAfter + ' detik.');
+      setThrottleMsg(interpolate(t('tracking.throttled'), { seconds: String(retryAfter) }));
       return;
     }
     setThrottleMsg('');
@@ -97,7 +99,7 @@ export function TrackingPage() {
       // No org from the link and no logged-in session → we can't know which
       // shop's service to look up. Tell the visitor instead of silently doing
       // nothing (the lookup query stays disabled without an org).
-      setThrottleMsg('Link tidak lengkap (tanpa kode toko). Gunakan link lacak yang diberikan toko Anda.');
+      setThrottleMsg(t('tracking.noOrg'));
       return;
     }
     setSearchNo(query);
@@ -189,17 +191,22 @@ export function TrackingPage() {
 
   // History datang urut lama → baru, jadi entri terakhir adalah yang terbaru.
   const lastUpdate = publicHistory.length
-    ? relativeSince(publicHistory[publicHistory.length - 1].at)
+    ? relativeSince(publicHistory[publicHistory.length - 1].at, t)
     : null;
   const nextStep = service ? nextStepFor(service.status, service.pickedUp) : null;
   const statusTone = service
     ? (STATUS_TONE[service.status as keyof typeof STATUS_TONE] ?? 'brand')
     : 'brand';
+  // Status dari server bisa saja nilai yang belum dikenal klien; tampilkan apa adanya.
+  const statusText = (s: string) =>
+    s in STATUS_LABELS ? t(`statusLabel.${s as ServiceStatus}`) : s;
   const statusLabel = service?.pickedUp
-    ? 'Sudah Diambil'
+    ? t('tracking.pickedUpStatus')
     : service
-      ? (STATUS_LABELS[service.status as keyof typeof STATUS_LABELS] ?? service.status)
+      ? statusText(service.status)
       : '';
+  // Kalimat "tidak ditemukan" membungkus nomor yang dicari dalam <strong>.
+  const [notFoundBefore, notFoundAfter = ''] = t('tracking.notFound').split('{no}');
   // Chat kosong memaksa pelanggan menjelaskan ulang siapa dia dan unit mana,
   // padahal halaman ini sudah tahu keduanya.
   const contactMessage = service
@@ -220,35 +227,34 @@ export function TrackingPage() {
           </span>
           <div className={styles.headerText}>
             <h1 className={styles.title}>{orgName}</h1>
-            <p className={styles.subtitle}>Pantau progres perbaikan perangkat Anda secara langsung.</p>
+            <p className={styles.subtitle}>{t('tracking.subtitle')}</p>
           </div>
         </header>
 
         {service && !searchOpen ? (
           <button className={styles.searchToggle} onClick={() => setSearchOpen(true)}>
-            <Icon name="magnifying-glass" aria-hidden /> Lacak nomor servis lain
+            <Icon name="magnifying-glass" aria-hidden /> {t('tracking.searchAnother')}
           </button>
         ) : (
           <section className={styles.searchPanel}>
             <label className={styles.searchLabel} htmlFor="tracking-number">
-              Nomor servis
+              {t('tracking.numberLabel')}
             </label>
             <div className={styles.searchBox}>
               <input
                 id="tracking-number"
                 className={styles.input}
-                placeholder="Contoh: FM-0001"
+                placeholder={t('tracking.numberPh')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && runSearch()}
               />
               <button className={styles.searchBtn} onClick={runSearch} disabled={isFetching}>
-                {isFetching ? <Icon name="circle-notch" className="spin" aria-hidden /> : <><Icon name="magnifying-glass" aria-hidden /> Lacak</>}
+                {isFetching ? <Icon name="circle-notch" className="spin" aria-hidden /> : <><Icon name="magnifying-glass" aria-hidden /> {t('tracking.track')}</>}
               </button>
             </div>
             <p className={styles.searchHint}>
-              Nomornya tercetak pada nota penerimaan dan ada di pesan WhatsApp dari toko.
-              Halaman ini menampilkan status pengerjaan dan masa garansi, tanpa perlu masuk akun.
+              {t('tracking.searchHint')}
             </p>
           </section>
         )}
@@ -263,13 +269,12 @@ export function TrackingPage() {
         {loadFailed && (
           <div className={styles.notFound} role="alert">
             <Icon name="triangle-exclamation" aria-hidden />
-            <p>Status servis belum bisa dimuat.</p>
+            <p>{t('tracking.loadFailed')}</p>
             <p className={styles.notFoundHint}>
-              Biasanya karena koneksi internet sedang lemah. Nomor yang Anda masukkan tidak
-              berubah, cukup coba lagi.
+              {t('tracking.loadFailedHint')}
             </p>
             <button type="button" className={styles.retryBtn} onClick={() => refetch()}>
-              <Icon name="arrows-rotate" aria-hidden /> Coba lagi
+              <Icon name="arrows-rotate" aria-hidden /> {t('common.retry')}
             </button>
           </div>
         )}
@@ -282,11 +287,12 @@ export function TrackingPage() {
           <div className={styles.notFound}>
             <Icon name="circle-question" aria-hidden />
             <p>
-              Nomor <strong className={styles.notFoundNo}>{searchNo.trim()}</strong> tidak ditemukan.
+              {notFoundBefore}
+              <strong className={styles.notFoundNo}>{searchNo.trim()}</strong>
+              {notFoundAfter}
             </p>
             <p className={styles.notFoundHint}>
-              Pastikan nomor diketik persis seperti pada nota, dan tautan yang Anda buka berasal
-              dari toko tempat unit diservis.
+              {t('tracking.notFoundHint')}
             </p>
           </div>
         )}
@@ -304,12 +310,16 @@ export function TrackingPage() {
                 harus dia lakukan. Kotak pencarian tidak pernah jadi pembacaan
                 instrumen, jadi ia turun ke perlakuan input biasa. */}
             <div className={styles.statusWell}>
-              <p className={styles.wellLabel}>Status pengerjaan</p>
+              <p className={styles.wellLabel}>{t('tracking.statusLabel')}</p>
               <p className={styles.statusReadout}>
                 <span className={styles.led} data-tone={statusTone} aria-hidden />
                 {statusLabel}
               </p>
-              {lastUpdate && <p className={styles.lastUpdate}>Diperbarui {lastUpdate}</p>}
+              {lastUpdate && (
+                <p className={styles.lastUpdate}>
+                  {interpolate(t('tracking.updated'), { when: lastUpdate })}
+                </p>
+              )}
               {nextStep && (
                 <p className={styles.nextStep} data-tone={nextStep.tone}>
                   <Icon
@@ -322,7 +332,7 @@ export function TrackingPage() {
                     }
                     aria-hidden
                   />
-                  <span>{nextStep.text}</span>
+                  <span>{t(nextStep.textKey)}</span>
                 </p>
               )}
             </div>
@@ -336,12 +346,12 @@ export function TrackingPage() {
                       {(() => {
                         const k = historyKind(h as { status: ServiceStatus | 'edit'; note: string });
                         return k === 'pickup'
-                          ? 'Diambil'
+                          ? t('services.pickedUp')
                           : k === 'unpickup'
-                            ? 'Tanda ambil dibatalkan'
+                            ? t('tracking.unpickup')
                             : k === 'edit'
-                              ? 'Diperbarui'
-                              : (STATUS_LABELS[k] ?? h.status);
+                              ? t('tracking.edited')
+                              : statusText(k);
                       })()}
                     </strong>
                     <small>
@@ -356,16 +366,16 @@ export function TrackingPage() {
             {(warrantyDecided || service.warrantyServiceUntil || service.warrantyPartsUntil) && (
               <div className={styles.warranty}>
                 <span className={styles.blockLabel}>
-                  <Icon name="shield-halved" aria-hidden /> Garansi
+                  <Icon name="shield-halved" aria-hidden /> {t('tracking.warranty')}
                 </span>
                 <div className={styles.warrantyRows}>
                   {(service.warrantyServiceUntil || warrantyDecided) && (
                     <div className={styles.warrantyRow}>
-                      <span>Jasa</span>
+                      <span>{t('tracking.labor')}</span>
                       <strong>
                         {service.warrantyServiceUntil
-                          ? `s/d ${fmtDate(service.warrantyServiceUntil.slice(0, 10))}`
-                          : 'Tanpa garansi'}
+                          ? interpolate(t('tracking.until'), { date: fmtDate(service.warrantyServiceUntil.slice(0, 10)) })
+                          : t('serviceDetail.noWarranty')}
                       </strong>
                     </div>
                   )}
@@ -373,13 +383,19 @@ export function TrackingPage() {
                     ? service.partWarranties.map((p, i) => (
                         <div key={`${p.name}-${i}`} className={styles.warrantyRow}>
                           <span>{p.name}</span>
-                          <strong>{p.until ? `s/d ${fmtDate(p.until.slice(0, 10))}` : 'Tanpa garansi'}</strong>
+                          <strong>
+                            {p.until
+                              ? interpolate(t('tracking.until'), { date: fmtDate(p.until.slice(0, 10)) })
+                              : t('serviceDetail.noWarranty')}
+                          </strong>
                         </div>
                       ))
                     : service.warrantyPartsUntil && (
                         <div className={styles.warrantyRow}>
-                          <span>Sparepart</span>
-                          <strong>s/d {fmtDate(service.warrantyPartsUntil.slice(0, 10))}</strong>
+                          <span>{t('tracking.parts')}</span>
+                          <strong>
+                            {interpolate(t('tracking.until'), { date: fmtDate(service.warrantyPartsUntil.slice(0, 10)) })}
+                          </strong>
                         </div>
                       )}
                 </div>
@@ -389,7 +405,7 @@ export function TrackingPage() {
             {(orgPhone || orgAddress) && (
               <div className={styles.contact}>
                 <span className={styles.blockLabel}>
-                  <Icon name="store" aria-hidden /> Kontak Toko
+                  <Icon name="store" aria-hidden /> {t('tracking.contact')}
                 </span>
                 {orgPhone && (
                   <a
@@ -415,7 +431,7 @@ export function TrackingPage() {
             {orgNote && (
               <div className={styles.shopNote}>
                 <span className={styles.blockLabel}>
-                  <Icon name="note" aria-hidden /> Catatan Toko
+                  <Icon name="note" aria-hidden /> {t('tracking.shopNote')}
                 </span>
                 <p className={styles.shopNoteBody}>{orgNote}</p>
               </div>
@@ -423,7 +439,7 @@ export function TrackingPage() {
           </div>
         )}
 
-        <footer className={styles.footer}>Didukung oleh FixMaster</footer>
+        <footer className={styles.footer}>{t('tracking.poweredBy')}</footer>
       </div>
     </div>
   );

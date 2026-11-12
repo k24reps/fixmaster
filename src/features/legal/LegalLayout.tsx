@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Icon } from '@/components/ui';
+import { useT } from '@/i18n';
 import styles from './LegalLayout.module.css';
 
 interface LegalLayoutProps {
@@ -25,6 +26,7 @@ interface LegalLayoutProps {
  * Not generic prose. Token-only → dark/light automatic.
  */
 export function LegalLayout({ title, docId, intro, updated, children }: LegalLayoutProps) {
+  const t = useT();
   const rev = updated.replace(/-/g, '.');
   return (
     <div className={styles.page}>
@@ -39,7 +41,7 @@ export function LegalLayout({ title, docId, intro, updated, children }: LegalLay
           </span>
         </Link>
         <Link to="/" className={styles.backLink}>
-          <Icon name="arrow-left" aria-hidden /> Beranda
+          <Icon name="arrow-left" aria-hidden /> {t('legal.home')}
         </Link>
       </header>
 
@@ -49,23 +51,27 @@ export function LegalLayout({ title, docId, intro, updated, children }: LegalLay
           <span className={[styles.screw, styles.screwTL].join(' ')} aria-hidden />
           <span className={[styles.screw, styles.screwTR].join(' ')} aria-hidden />
           <div className={styles.docMeta}>
-            <span className={styles.docCode}>DOK. {docId}</span>
+            <span className={styles.docCode}>
+              {t('legal.docPrefix')} {docId}
+            </span>
             <span className={styles.docRev}>REV {rev}</span>
           </div>
           <h1 className={styles.title}>{title}</h1>
           <p className={styles.intro}>{intro}</p>
           <dl className={styles.docSpecs}>
             <div className={styles.docSpecRow}>
-              <dt>STATUS</dt>
-              <dd><span className={styles.led} /> BERLAKU</dd>
+              <dt>{t('legal.status')}</dt>
+              <dd>
+                <span className={styles.led} /> {t('legal.inForce')}
+              </dd>
             </div>
             <div className={styles.docSpecRow}>
-              <dt>DASAR</dt>
+              <dt>{t('legal.basis')}</dt>
               <dd>UU PDP No. 27/2022</dd>
             </div>
             <div className={styles.docSpecRow}>
-              <dt>BAHASA</dt>
-              <dd>Bahasa Indonesia</dd>
+              <dt>{t('legal.language')}</dt>
+              <dd>{t('legal.languageValue')}</dd>
             </div>
           </dl>
         </div>
@@ -74,17 +80,17 @@ export function LegalLayout({ title, docId, intro, updated, children }: LegalLay
 
         <div className={styles.crossLinks}>
           <Link to="/privacy" className={styles.crossLink}>
-            <Icon name="shield-halved" aria-hidden /> DOK. PRIVASI-001
+            <Icon name="shield-halved" aria-hidden /> {t('legal.docPrefix')} PRIVASI-001
           </Link>
           <Link to="/terms" className={styles.crossLink}>
-            <Icon name="file-invoice" aria-hidden /> DOK. SK-001
+            <Icon name="file-invoice" aria-hidden /> {t('legal.docPrefix')} SK-001
           </Link>
         </div>
       </main>
 
       <footer className={styles.footer}>
         <span>© {new Date().getFullYear()} FixMaster · FX-{new Date().getFullYear()}</span>
-        <span className={styles.footNote}>Manajemen usaha reparasi gadget &amp; elektronik</span>
+        <span className={styles.footNote}>{t('legal.tagline')}</span>
       </footer>
     </div>
   );

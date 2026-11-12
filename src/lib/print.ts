@@ -1,5 +1,7 @@
 import { toast } from '@/stores/toast';
 import { demoGuard } from '@/stores/demo';
+import { translate, type TranslationKey } from '@/i18n';
+import { useSettingsStore } from '@/stores/settings';
 
 /**
  * Jendela cetak di browser — SATU-SATUNYA bagian pencetakan yang menyentuh DOM,
@@ -27,8 +29,8 @@ export function escapeHtml(s: string): string {
 }
 
 export interface PrintWindowOptions {
-  /** Pesan penjaga mode demo; cetak dimatikan di sana. */
-  demoMessage: string;
+  /** Kunci pesan penjaga mode demo; cetak dimatikan di sana. */
+  demoMessage: TranslationKey;
   /** Judul dokumen — tampil sebagai nama bawaan berkas PDF hasil "Simpan sebagai PDF". */
   title: string;
   /** CSS lengkap dokumen (tidak ada yang diwarisi dari aplikasi). */
@@ -52,7 +54,7 @@ export function openPrintWindow(o: PrintWindowOptions): boolean {
   if (demoGuard(o.demoMessage)) return false;
   const win = window.open('', '_blank', `width=${o.width ?? 380},height=${o.height ?? 640}`);
   if (!win) {
-    toast.error('Popup diblokir browser');
+    toast.error(translate(useSettingsStore.getState().language, 'print.popupBlocked'));
     return false;
   }
 

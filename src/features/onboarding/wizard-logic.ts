@@ -13,6 +13,7 @@ import { getSupabase, isSupabaseConfigured } from '@/data/supabase-client';
 import { newId, derivePrefix } from '@/lib/id';
 import { hashPin } from '@/lib/pin';
 import { looksLikeCash } from '@/lib/business/finance';
+import type { TranslationKey } from '@/i18n';
 
 export interface WizardWalletDraft {
   name: string;
@@ -68,42 +69,43 @@ export function emptyWizardData(): WizardData {
 
 export interface StepError {
   field: string;
-  message: string;
+  /** Kunci pesan, diterjemahkan oleh Wizard. Logika ini tetap murni tanpa `t`. */
+  messageKey: TranslationKey;
 }
 
 /** Validate a single wizard step. Returns [] when valid. */
 export function validateStep(step: number, data: WizardData): StepError[] {
   const errors: StepError[] = [];
   if (step === 1) {
-    if (!data.shopName.trim()) errors.push({ field: 'shopName', message: 'Nama usaha wajib diisi' });
+    if (!data.shopName.trim()) errors.push({ field: 'shopName', messageKey: 'onboarding.err.shopName' });
   }
   if (step === 2) {
     const valid = data.wallets.filter((w) => w.name.trim());
     if (valid.length === 0)
-      errors.push({ field: 'wallets', message: 'Minimal 1 wallet/kas diperlukan' });
+      errors.push({ field: 'wallets', messageKey: 'onboarding.err.wallet' });
   }
   if (step === 3) {
     if (data.categories.length === 0)
-      errors.push({ field: 'categories', message: 'Minimal 1 kategori perangkat' });
+      errors.push({ field: 'categories', messageKey: 'onboarding.err.category' });
   }
   if (step === 4) {
     const owners = data.employees.filter((e) => e.role === 'owner');
     if (owners.length === 0)
-      errors.push({ field: 'employees', message: 'Minimal 1 Owner diperlukan' });
+      errors.push({ field: 'employees', messageKey: 'onboarding.err.owner' });
     data.employees.forEach((e, i) => {
-      if (!e.name.trim()) errors.push({ field: `emp-name-${i}`, message: 'Nama wajib diisi' });
+      if (!e.name.trim()) errors.push({ field: `emp-name-${i}`, messageKey: 'onboarding.err.name' });
       if (!/^\d{4}$/.test(e.pin))
-        errors.push({ field: `emp-pin-${i}`, message: 'PIN harus 4 digit' });
+        errors.push({ field: `emp-pin-${i}`, messageKey: 'onboarding.err.pin' });
     });
   }
   // Step 6 = Outlet. The first outlet's name falls back to the shop name, so
   // only additional outlets must be named. Always need at least one.
   if (step === 6) {
     if (data.outlets.length === 0)
-      errors.push({ field: 'outlets', message: 'Minimal 1 outlet diperlukan' });
+      errors.push({ field: 'outlets', messageKey: 'onboarding.err.outlet' });
     data.outlets.forEach((o, i) => {
       if (i > 0 && !o.name.trim())
-        errors.push({ field: `outlet-name-${i}`, message: 'Nama outlet wajib diisi' });
+        errors.push({ field: `outlet-name-${i}`, messageKey: 'onboarding.err.outletName' });
     });
   }
   return errors;

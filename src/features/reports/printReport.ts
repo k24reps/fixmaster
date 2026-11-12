@@ -625,7 +625,7 @@ export function reportDocHtml(data: ReportDocData): string {
  */
 export function printReport(data: ReportDocData): boolean {
   return openPrintWindow({
-    demoMessage: 'Ekspor PDF aktif di FixMaster versi penuh. Daftar gratis.',
+    demoMessage: 'demo.exportPdf',
     title: `Laporan ${data.org.name} ${data.from} sd ${data.to}`,
     style: A4_STYLE,
     body: buildBody(data),

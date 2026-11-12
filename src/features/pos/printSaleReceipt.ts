@@ -30,7 +30,7 @@ export function printSaleReceipt(sale: Sale, org: Organization, change = 0): voi
   ].join('');
 
   openReceiptWindow(org, {
-    demoMessage: 'Cetak struk aktif di FixMaster versi penuh. Daftar gratis.',
+    demoMessage: 'demo.printSale',
     title: 'Struk',
     kind: 'STRUK PENJUALAN',
     no: sale.saleNo,

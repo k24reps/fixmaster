@@ -2,6 +2,7 @@ import { serviceReceiptLines, trackingUrl, type ReceiptLine } from '@/lib/busine
 import { qrSvg } from '@/lib/qr';
 import { openPrintWindow, escapeHtml } from '@/lib/print';
 import type { Service, Organization } from '@/data/types';
+import type { TranslationKey } from '@/i18n';
 
 export { escapeHtml };
 
@@ -110,7 +111,7 @@ function rowsFor(lines: ReceiptLine[], group: ReceiptLine['group'], extraClass =
  */
 export function openReceiptWindow(
   org: Organization,
-  o: { demoMessage: string; title: string; kind: string; no: string; date: string; body: string },
+  o: { demoMessage: TranslationKey; title: string; kind: string; no: string; date: string; body: string },
 ): void {
   const contact = [org.address, org.phone].filter(Boolean).join(' · ');
 
@@ -157,7 +158,7 @@ export function printServiceReceipt(service: Service, org: Organization): void {
   const garansi = rowsFor(lines, 'garansi');
 
   openReceiptWindow(org, {
-    demoMessage: 'Cetak nota aktif di FixMaster versi penuh. Daftar gratis.',
+    demoMessage: 'demo.printReceipt',
     title: 'Nota',
     kind: 'NOTA SERVIS',
     no: service.serviceNo,

@@ -5,15 +5,16 @@ import { Icon } from '@/components/ui';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
-import { useSettingsStore } from '@/stores/settings';
 import { demoGuard } from '@/stores/demo';
 import { isSupabaseConfigured } from '@/data/supabase-client';
-import { useT } from '@/i18n';
+import { useT, type TranslationKey } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import styles from './Topbar.module.css';
 
-const ROLE_LABEL: Record<string, Record<string, string>> = {
-  id: { owner: 'Pemilik', admin: 'Admin', karyawan: 'Karyawan' },
-  en: { owner: 'Owner', admin: 'Admin', karyawan: 'Staff' },
+const ROLE_LABEL: Record<string, TranslationKey> = {
+  owner: 'role.owner',
+  admin: 'role.admin',
+  karyawan: 'role.karyawan',
 };
 
 interface TopbarProps {
@@ -22,10 +23,18 @@ interface TopbarProps {
   onToggleMobile: () => void;
 }
 
-const SYNC_LABEL: Record<'connecting' | 'live' | 'offline', string> = {
-  connecting: 'SYNC…',
-  live: 'LIVE',
-  offline: 'OFFLINE',
+type SyncStatus = 'connecting' | 'live' | 'offline';
+
+const SYNC_LABEL: Record<SyncStatus, TranslationKey> = {
+  connecting: 'topbar.syncConnecting',
+  live: 'topbar.syncLive',
+  offline: 'topbar.syncOffline',
+};
+
+const SYNC_TITLE: Record<SyncStatus, TranslationKey> = {
+  connecting: 'topbar.syncConnectingTitle',
+  live: 'topbar.syncLiveTitle',
+  offline: 'topbar.syncOfflineTitle',
 };
 
 /**
@@ -36,21 +45,16 @@ const SYNC_LABEL: Record<'connecting' | 'live' | 'offline', string> = {
 function SyncBadge() {
   const status = useRealtimeStore((s) => s.status);
   const active = useRealtimeStore((s) => s.active);
+  const t = useT();
   if (!active) return null;
   return (
     <span
       className={styles.sync}
       data-status={status}
-      title={
-        status === 'live'
-          ? 'Sinkron realtime aktif'
-          : status === 'connecting'
-            ? 'Menyambungkan ke server…'
-            : 'Koneksi terputus, mencoba sambung ulang'
-      }
+      title={t(SYNC_TITLE[status])}
     >
       <span className={styles.syncLed} aria-hidden />
-      <span className={styles.syncText}>{SYNC_LABEL[status]}</span>
+      <span className={styles.syncText}>{t(SYNC_LABEL[status])}</span>
     </span>
   );
 }
@@ -66,15 +70,16 @@ function ZoomControl() {
   const stepZoom = useZoomStore((s) => s.stepZoom);
   const min = zoom === ZOOM_LEVELS[0];
   const max = zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+  const t = useT();
 
   return (
-    <div className={styles.zoom} role="group" aria-label="Zoom tampilan">
+    <div className={styles.zoom} role="group" aria-label={t('topbar.zoomGroup')}>
       <button
         className={styles.zoomBtn}
         onClick={() => stepZoom(-1)}
         disabled={min}
-        aria-label="Perkecil tampilan"
-        title="Perkecil tampilan"
+        aria-label={t('topbar.zoomOut')}
+        title={t('topbar.zoomOut')}
       >
         <Icon name="minus" aria-hidden />
       </button>
@@ -85,8 +90,8 @@ function ZoomControl() {
         className={styles.zoomBtn}
         onClick={() => stepZoom(1)}
         disabled={max}
-        aria-label="Perbesar tampilan"
-        title="Perbesar tampilan"
+        aria-label={t('topbar.zoomIn')}
+        title={t('topbar.zoomIn')}
       >
         <Icon name="plus" aria-hidden />
       </button>
@@ -103,7 +108,6 @@ function AccountMenu() {
   const employee = useSessionStore((s) => s.currentEmployee);
   const signOut = useSessionStore((s) => s.signOutEmployee);
   const authSignOut = useAuthStore((s) => s.signOut);
-  const language = useSettingsStore((s) => s.language);
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -125,13 +129,13 @@ function AccountMenu() {
   }, [open]);
 
   if (!employee) return null;
-  const role = ROLE_LABEL[language][employee.role];
+  const role = t(ROLE_LABEL[employee.role]);
 
   // Cloud: true sign-out of the Supabase account (→ AuthPage).
   // Local: switch user (re-enter PIN) — there is no cloud account.
   const handleLogout = () => {
     setOpen(false);
-    if (demoGuard('Keluar dinonaktifkan di demo. Daftar gratis untuk memakai akunmu sendiri.')) return;
+    if (demoGuard('demo.logout')) return;
     if (isSupabaseConfigured) void authSignOut();
     else signOut();
   };
@@ -144,7 +148,7 @@ function AccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Akun ${employee.name}`}
+        aria-label={interpolate(t('topbar.account'), { name: employee.name })}
         title={`${employee.name} · ${role}`}
       >
         <span className={styles.avatar}>
@@ -175,7 +179,7 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
 
   return (
     <header className={styles.topbar}>
-      <button className={styles.mobileToggle} onClick={onToggleMobile} aria-label="Menu">
+      <button className={styles.mobileToggle} onClick={onToggleMobile} aria-label={t('topbar.menu')}>
         <Icon name="bars" aria-hidden />
       </button>
 
@@ -202,7 +206,7 @@ export function Topbar({ title, subtitle, onToggleMobile }: TopbarProps) {
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} aria-hidden />
         </button>
 
-        <button className={styles.iconBtn} aria-label="Notifikasi">
+        <button className={styles.iconBtn} aria-label={t('topbar.notifications')}>
           <Icon name="bell" aria-hidden />
           <span className={styles.notifDot} />
         </button>

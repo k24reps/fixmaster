@@ -3905,3 +3905,44 @@ pemilik meminta semuanya diperbaiki. Hasil per nomor ada di
   (Playwright belum terpasang): 12 menu demo x 2 tema + landing, 0 kontras gagal, 0 em dash
   tampil, 0 lompatan heading; 375px: 0 luberan dokumen di 12 menu. Screenshot vault belum
   diregenerasi karena Playwright belum terpasang.
+
+## Literal UI ke kunci i18n, gelombang 1 (6 Nov 2026)
+
+Lanjutan audit antislop 001: teks UI yang masih ditulis langsung di komponen dipindah ke
+kunci `useT()` (aturan [[Conventions]] §i18n). Teks Indonesia dipindah **huruf per huruf**
+(pilihan bahasa masih dikunci ke ID, jadi tampilan tidak berubah); `en.ts` diisi padanan
+Inggris yang wajar. Berkas yang kini bersih: `Topbar`, `Sidebar`, `MobileBottomNav`,
+`CustomersPage`, `InventoryPage`, `AttendancePage`, `onboarding/Wizard`, `TrackingPage`,
+`LegalLayout` + judul/intro `PrivacyPage`/`TermsPage`. Yang layak diingat:
+
+- **`demoGuard` menerima kunci, bukan teks.** `demoGuard(messageKey: TranslationKey =
+  'demo.default')` menerjemahkan sendiri lewat `translate(language, key)`, karena helper
+  cetak (`lib/print.ts`, `printReceipt`, `printSaleReceipt`, `printReport`) memanggilnya di
+  luar React tanpa `t`. Opsi `demoMessage` di `openPrintWindow` ikut jadi `TranslationKey`.
+  Semua pesan demo ada di namespace `demo.*`; pesan popup diblokir di `print.popupBlocked`.
+- **Logika murni mengembalikan kunci, UI yang menerjemahkan.** `STATUS_LABEL` absensi
+  (`lib/business/attendance.ts`) kini `Record<AttendanceStatus, TranslationKey>`;
+  `StepError` wizard membawa `messageKey` (bukan `message`); `nextStepFor` di
+  `lib/business/tracking.ts` mengembalikan `textKey`, dan `relativeSince(iso, t, now)`
+  menerima `t` sebagai argumen supaya tetap murni. `tracking.test.ts` menerjemahkan dengan
+  `translate('id', …)` dan asersinya tidak berubah.
+- **Kalimat dengan `<strong>` di tengah.** Pola repo dipakai: kunci dipecah di sekitar
+  `<strong>` (peringatan undangan di wizard). Untuk "Nomor {no} tidak ditemukan." di lacak
+  servis, satu kunci dengan token `{no}` dipecah di komponen supaya urutan kata tetap milik
+  penerjemah.
+- **Sengaja tetap literal:** merek (`FixMaster`, `BENCH OS`, `FX · BENCH OS`), kode dokumen
+  (`PRIVASI-001`, `SK-001`, `REV`, `UU PDP No. 27/2022`), isi pasal legal (dokumen hukum
+  berbahasa Indonesia), placeholder contoh angka/singkatan (`SGS`, `0812-3456-7890`,
+  `15.000.000`, `50`), awalan `ID-`, salam WhatsApp ke pelanggan (`Halo {nama}, …` di
+  Pelanggan dan pesan kontak di lacak servis), dan semua teks yang disimpan sebagai data
+  (default wallet `Tunai`, kategori awal, nama `Outlet N` cadangan).
+- **`OperatorActionModal` dilewati**: ia pengecualian i18n yang sudah disetujui (surface
+  internal khusus vendor, lihat bagian "Penyimpangan i18n yang disengaja").
+- **Sisa (gelombang berikut).** Pemindai AST (teks JSX, atribut tampil, argumen toast,
+  properti label/judul) masih menemukan sekitar 950 literal di 56 berkas `src/features` +
+  `src/components`. Terbanyak: `OperatorPage` (111, sebagian besar ikut pengecualian vendor),
+  `TaskTemplateModal` 63, `TasksPage` 61, `RepairTicketPrototype` 57 (khusus dev),
+  `SettingsPage` 53, `SuppliersPage` 40, `glossary/terms.ts` 39, `exportDatasets.ts` 39,
+  `ActivityLogPage` 35, `LandingPageV2` 33, `ReportsPage` 30, `ResetPasswordPage` 28,
+  modal pemasok (PO 22, terima 20, pemasok 15), lalu ekor pendek di bawah 15.
+  Isi dokumen cetak (nota, laporan PDF) belum disentuh: hanya pesan penjaga demonya.

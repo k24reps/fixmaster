@@ -144,7 +144,7 @@ export function InventoryPage() {
       usedIn = 0;
     }
     if (usedIn > 0) {
-      toast.warning(`"${item.name}" dipakai di ${usedIn} servis aktif. Periksa dulu.`);
+      toast.warning(interpolate(t('inventory.inUseWarning'), { name: item.name, count: String(usedIn) }));
     }
     setToDelete(item);
   };
@@ -250,7 +250,7 @@ export function InventoryPage() {
                 <div className={styles.itemStock}>
                   <span className={styles.stockNum}>{i.stock}</span>
                   <span>
-                    min {i.minStock} · {t(STATE_LABEL[st])}
+                    {interpolate(t('inventory.minTag'), { n: String(i.minStock) })} · {t(STATE_LABEL[st])}
                   </span>
                 </div>
                 <div className={styles.itemPrice}>
@@ -278,7 +278,7 @@ export function InventoryPage() {
                 <div className={styles.tileFoot}>
                   <span className={styles.itemStock}>
                     <span className={styles.stockNum}>{i.stock}</span>
-                    <span>min {i.minStock}</span>
+                    <span>{interpolate(t('inventory.minTag'), { n: String(i.minStock) })}</span>
                   </span>
                   <div className={styles.binActions}>{renderActions(i)}</div>
                 </div>
@@ -292,27 +292,26 @@ export function InventoryPage() {
             const st = stockState(i);
             const full = Math.max(i.minStock * 3, 1);
             const pct = Math.max(0, Math.min(100, (i.stock / full) * 100));
-            const ledLabel = st === 'out' ? 'HABIS' : st === 'low' ? 'MENIPIS' : 'AMAN';
             return (
               <div key={i.id} className={[styles.bin, styles[st]].join(' ')}>
                 <div className={styles.binHead}>
-                  <span className={styles.binCat}>{i.category || 'UMUM'}</span>
+                  <span className={styles.binCat}>{i.category || t('inventory.uncategorized')}</span>
                   <span className={styles.led}>
                     <span className={styles.ledDot} aria-hidden />
-                    {ledLabel}
+                    {t(STATE_LABEL[st])}
                   </span>
                 </div>
                 <div className={styles.binName}>{i.name}</div>
                 <div>
                   <div className={styles.stockRow}>
                     <span className={styles.stockNum}>{i.stock}</span>
-                    <span className={styles.stockUnit}>min {i.minStock}</span>
+                    <span className={styles.stockUnit}>{interpolate(t('inventory.minTag'), { n: String(i.minStock) })}</span>
                   </div>
                   <div className={styles.gauge}>
                     <div className={styles.gaugeFill} style={{ width: `${pct}%` }} />
                   </div>
                   <div className={styles.gaugeMeta}>
-                    <span>STOK</span>
+                    <span>{t('inventory.gaugeLabel')}</span>
                     <span>{Math.round(pct)}%</span>
                   </div>
                 </div>
@@ -338,7 +337,7 @@ export function InventoryPage() {
       <ConfirmDialog
         open={!!toDelete}
         title={t('inventory.hapusSparepart')}
-        message={`"${toDelete?.name}" akan dihapus dari inventori.`}
+        message={interpolate(t('inventory.deleteMessage'), { name: toDelete?.name ?? '' })}
         confirmLabel={t('inventory.hapus')}
         danger
         onConfirm={confirmDelete}

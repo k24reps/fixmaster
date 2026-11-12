@@ -24,6 +24,8 @@ import { localDateStr, localTimeStr, localTimeSec, calcHours, fmtDate } from '@/
 import { toast } from '@/stores/toast';
 import { useFormat } from '@/lib/useFormat';
 import { useSessionStore } from '@/stores/session';
+import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import type { Attendance } from '@/data/types';
 import styles from './AttendancePage.module.css';
 
@@ -45,6 +47,7 @@ export function AttendancePage() {
   // operasional, itu urusan ketenagakerjaan.
   const owner = me ? isOwner(me.role) : false;
   const { fmtDate: fmtLocaleDate } = useFormat();
+  const t = useT();
 
   // Koreksi owner: ubah jam/status atau hapus baris; plus entri manual
   // (absenkan karyawan) lewat modal yang sama, jalur `creating`.
@@ -159,11 +162,11 @@ export function AttendancePage() {
     // calcHours mengembalikan 0 — sehari upah hilang tanpa satu peringatan.
     const badFormat = (v: string | null) => v !== null && !/^\d{2}:\d{2}$/.test(v);
     if (badFormat(checkIn) || badFormat(checkOut)) {
-      toast.error('Format jam harus HH:MM, misalnya 08:30');
+      toast.error(t('attendance.badTime'));
       return;
     }
     if (checkOut && !checkIn) {
-      toast.error('Isi jam masuk dulu sebelum jam keluar');
+      toast.error(t('attendance.inBeforeOut'));
       return;
     }
     const totalHours = checkIn && checkOut ? calcHours(checkIn, checkOut) : 0;
@@ -172,14 +175,14 @@ export function AttendancePage() {
       if (creating) {
         const emp = employees.find((e) => e.id === editEmp);
         if (!emp) {
-          toast.error('Pilih karyawan dulu');
+          toast.error(t('attendance.pickEmployee'));
           return;
         }
         // One row per employee per day — a second one would double-count hours.
         // Pemeriksaan ramah di klien; indeks unik di database (0054) yang
         // benar-benar menjaminnya, termasuk untuk tanggal di luar periode ini.
         if (rows.some((a) => a.employeeId === emp.id && a.date === editDate)) {
-          toast.error(`${emp.name} sudah punya absensi ${fmtDate(editDate)}`);
+          toast.error(interpolate(t('attendance.duplicate'), { name: emp.name, date: fmtDate(editDate) }));
           return;
         }
         const now = new Date().toISOString();
@@ -199,7 +202,7 @@ export function AttendancePage() {
           updatedAt: now,
           deletedAt: null,
         });
-        toast.success(`${emp.name} diabsenkan ${fmtDate(editDate)}`);
+        toast.success(interpolate(t('attendance.created'), { name: emp.name, date: fmtDate(editDate) }));
         logActivity({
           action: 'attendance.checkin',
           entityType: 'attendance',
@@ -215,7 +218,7 @@ export function AttendancePage() {
           note: editNote.trim(),
           totalHours,
         });
-        toast.success('Absensi diperbarui');
+        toast.success(t('attendance.updated'));
         logActivity({
           action: 'attendance.update',
           entityType: 'attendance',
@@ -226,7 +229,7 @@ export function AttendancePage() {
       }
       closeModal();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan absensi');
+      toast.error(e instanceof Error ? e.message : t('attendance.saveFailed'));
     } finally {
       setEditBusy(false);
     }
@@ -236,7 +239,7 @@ export function AttendancePage() {
     if (!toDelete) return;
     try {
       await repository.remove('attendance', toDelete.id);
-      toast.success('Absensi dihapus');
+      toast.success(t('attendance.deleted'));
       logActivity({
         action: 'attendance.delete',
         entityType: 'attendance',
@@ -245,7 +248,7 @@ export function AttendancePage() {
         meta: { date: toDelete.date },
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal menghapus absensi');
+      toast.error(e instanceof Error ? e.message : t('attendance.deleteFailed'));
     } finally {
       setToDelete(null);
     }
@@ -332,7 +335,7 @@ export function AttendancePage() {
     // yang menggelembung. Server menolaknya juga (migrasi 0053); ini hanya
     // supaya pesannya ramah, bukan lemparan RPC.
     if (todayRows.some((a) => a.employeeId === me.id && a.date === today)) {
-      toast.error('Anda sudah tercatat absen hari ini');
+      toast.error(t('attendance.alreadyToday'));
       return;
     }
     setBusy(true);
@@ -372,7 +375,7 @@ export function AttendancePage() {
           deletedAt: null,
         });
       }
-      toast.success(`Check-in ${localTimeStr()}`);
+      toast.success(interpolate(t('attendance.checkedIn'), { time: localTimeStr() }));
       logActivity({
         action: 'attendance.checkin',
         entityType: 'attendance',
@@ -381,7 +384,7 @@ export function AttendancePage() {
         outletId: targetOutlet?.id ?? null,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal check-in');
+      toast.error(e instanceof Error ? e.message : t('attendance.checkInFailed'));
     } finally {
       setBusy(false);
     }
@@ -411,7 +414,7 @@ export function AttendancePage() {
           totalHours: calcHours(myToday.checkIn ?? '00:00', out),
         });
       }
-      toast.success(`Check-out ${out}`);
+      toast.success(interpolate(t('attendance.checkedOut'), { time: out }));
       logActivity({
         action: 'attendance.checkout',
         entityType: 'attendance',
@@ -420,7 +423,7 @@ export function AttendancePage() {
         meta: { time: out, totalHours: calcHours(myToday.checkIn ?? '00:00', out) },
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal check-out');
+      toast.error(e instanceof Error ? e.message : t('attendance.checkOutFailed'));
     } finally {
       setBusy(false);
     }
@@ -459,7 +462,7 @@ export function AttendancePage() {
           value={from}
           onChange={(e) => setFrom(e.target.value)}
           className={styles.dateInput}
-          aria-label="Tanggal mulai"
+          aria-label={t('attendance.periodFrom')}
         />
         <span className={styles.periodSep} aria-hidden>
           &ndash;
@@ -471,18 +474,18 @@ export function AttendancePage() {
           value={to}
           onChange={(e) => setTo(e.target.value)}
           className={styles.dateInput}
-          aria-label="Tanggal akhir"
+          aria-label={t('attendance.periodTo')}
         />
       </div>
       <div className={styles.periodPresets}>
         <button type="button" className={styles.presetBtn} onClick={() => setPreset('thisMonth')}>
-          Bulan ini
+          {t('attendance.thisMonth')}
         </button>
         <button type="button" className={styles.presetBtn} onClick={() => setPreset('lastMonth')}>
-          Bulan lalu
+          {t('attendance.lastMonth')}
         </button>
         <button type="button" className={styles.presetBtn} onClick={() => setPreset('last7')}>
-          7 hari
+          {t('attendance.last7')}
         </button>
       </div>
     </div>
@@ -494,25 +497,29 @@ export function AttendancePage() {
     <div className={styles.wrap}>
       <div className={styles.clock}>
         <div className={styles.clockInfo}>
-          <span className={styles.clockGreet}>{me?.name ? `Operator · ${me.name}` : 'Operator'}</span>
+          <span className={styles.clockGreet}>{me?.name ? interpolate(t('attendance.operatorName'), { name: me.name }) : t('attendance.operator')}</span>
           <span className={styles.clockTime}>{hhmmss}</span>
           <span className={styles.clockDate}>{fmtDate(today)}</span>
           {myToday && (
             <span className={styles.clockStatus}>
               <span className={[styles.statusLed, styles.working].join(' ')} aria-hidden />
-              Bekerja sejak {myToday.checkIn}
+              {interpolate(t('attendance.workingSince'), { time: myToday.checkIn ?? '' })}
             </span>
           )}
           {myTodayDone && (
             <span className={styles.clockStatus}>
               <span className={[styles.statusLed, styles.done].join(' ')} aria-hidden />
-              Selesai · {myTodayDone.totalHours} jam ({myTodayDone.checkIn}–{myTodayDone.checkOut})
+              {interpolate(t('attendance.doneSummary'), {
+                hours: String(myTodayDone.totalHours),
+                in: myTodayDone.checkIn ?? '',
+                out: myTodayDone.checkOut ?? '',
+              })}
             </span>
           )}
           {myAbsent && (
             <span className={styles.clockStatus}>
               <span className={styles.statusLed} aria-hidden />
-              Tercatat {STATUS_LABEL[myAbsent.status].toLowerCase()} hari ini
+              {interpolate(t('attendance.recordedToday'), { status: t(STATUS_LABEL[myAbsent.status]).toLowerCase() })}
             </span>
           )}
         </div>
@@ -522,22 +529,22 @@ export function AttendancePage() {
               muncul, dan menekannya hanya menghasilkan penolakan. */}
           {!myRow && (
             <Button size="lg" onClick={checkIn} loading={busy} iconLeft={<Icon name="right-to-bracket" aria-hidden />}>
-              Check In
+              {t('attendance.checkIn')}
             </Button>
           )}
           {myToday && (
             <Button size="lg" variant="secondary" onClick={checkOut} loading={busy} iconLeft={<Icon name="right-from-bracket" aria-hidden />}>
-              Check Out
+              {t('attendance.checkOut')}
             </Button>
           )}
           {myTodayDone && (
             <span className={[styles.statePill, styles.done].join(' ')}>
-              <Icon name="circle-check" aria-hidden /> Lengkap
+              <Icon name="circle-check" aria-hidden /> {t('attendance.complete')}
             </span>
           )}
           {myAbsent && (
             <span className={[styles.statePill, styles.absent].join(' ')}>
-              {STATUS_LABEL[myAbsent.status]}
+              {t(STATUS_LABEL[myAbsent.status])}
             </span>
           )}
         </div>
@@ -546,13 +553,13 @@ export function AttendancePage() {
       <Card>
         <CardHeader
           icon={<Icon name="users" aria-hidden />}
-          title="Kehadiran Hari Ini"
+          title={t('attendance.todayTitle')}
           action={
             // Owner-only, sejalan dengan tombol edit/hapus di riwayat: yang
             // boleh menulis absensi orang lain hanya yang menggajinya.
             owner && (
               <Button size="sm" variant="secondary" onClick={openCreate} iconLeft={<Icon name="plus" aria-hidden />}>
-                Absenkan
+                {t('attendance.record')}
               </Button>
             )
           }
@@ -563,8 +570,8 @@ export function AttendancePage() {
           ) : todayRecords.length === 0 ? (
             <EmptyState
               icon={<Icon name="user-clock" aria-hidden />}
-              title="Belum ada check-in"
-              description="Kehadiran tim hari ini akan tampil di sini."
+              title={t('attendance.noCheckIn')}
+              description={t('attendance.noCheckInHint')}
             />
           ) : (
             <ul className={styles.list}>
@@ -576,7 +583,7 @@ export function AttendancePage() {
                     <small>
                       {a.status === 'hadir'
                         ? `${a.checkIn ?? EMPTY_VALUE}${a.checkOut ? ` – ${a.checkOut}` : ''}`
-                        : STATUS_LABEL[a.status]}
+                        : t(STATUS_LABEL[a.status])}
                       {a.note ? ` · ${a.note}` : ''}
                     </small>
                   </div>
@@ -585,12 +592,12 @@ export function AttendancePage() {
                       dengan nol jam — kebalikan dari kenyataannya. */}
                   {a.status !== 'hadir' ? (
                     <span className={[styles.statePill, styles.absent].join(' ')}>
-                      {STATUS_LABEL[a.status]}
+                      {t(STATUS_LABEL[a.status])}
                     </span>
                   ) : a.checkOut ? (
-                    <span className={[styles.statePill, styles.done].join(' ')}>{a.totalHours} jam</span>
+                    <span className={[styles.statePill, styles.done].join(' ')}>{interpolate(t('attendance.hours'), { hours: String(a.totalHours) })}</span>
                   ) : (
-                    <span className={[styles.statePill, styles.working].join(' ')}>Bekerja</span>
+                    <span className={[styles.statePill, styles.working].join(' ')}>{t('attendance.working')}</span>
                   )}
                 </li>
               ))}
@@ -605,7 +612,7 @@ export function AttendancePage() {
       <Card>
         <CardBody className={styles.periodBody}>
           <span className={styles.periodLabel}>
-            <Icon name="calendar" aria-hidden /> Periode
+            <Icon name="calendar" aria-hidden /> {t('attendance.period')}
           </span>
           {periodPicker}
         </CardBody>
@@ -615,23 +622,23 @@ export function AttendancePage() {
         <Card>
           <CardHeader
             icon={<Icon name="clock" aria-hidden />}
-            title="Total Jam Kerja per Karyawan"
+            title={t('attendance.recapTitle')}
             action={<span className={styles.periodTag}>{periodLabel}</span>}
           />
           <CardBody className={styles.noPad}>
             {loadPending(periodLoad) ? (
               <LoadState queries={[periodLoad]} />
             ) : recap.length === 0 ? (
-              <EmptyState icon={<Icon name="calendar" aria-hidden />} title="Belum ada absensi pada periode ini" />
+              <EmptyState icon={<Icon name="calendar" aria-hidden />} title={t('attendance.recapEmpty')} />
             ) : (
               <div className={styles.ledger}>
                 <div className={styles.recapHead}>
-                  <span>Karyawan</span>
-                  <span className={styles.hours}>Hadir</span>
-                  <span className={styles.hours}>Izin</span>
-                  <span className={styles.hours}>Sakit</span>
-                  <span className={styles.hours}>Alpha</span>
-                  <span className={styles.hours}>Total Jam</span>
+                  <span>{t('attendance.colEmployee')}</span>
+                  <span className={styles.hours}>{t(STATUS_LABEL.hadir)}</span>
+                  <span className={styles.hours}>{t(STATUS_LABEL.izin)}</span>
+                  <span className={styles.hours}>{t(STATUS_LABEL.sakit)}</span>
+                  <span className={styles.hours}>{t(STATUS_LABEL.alpha)}</span>
+                  <span className={styles.hours}>{t('attendance.colTotalHours')}</span>
                 </div>
                 {recap.map((r) => (
                   <div key={r.employeeId} className={styles.recapRow}>
@@ -644,9 +651,9 @@ export function AttendancePage() {
                       {r.openShifts > 0 && (
                         <small
                           className={styles.openShift}
-                          title="Hari hadir yang jam keluarnya belum tercatat, jadi hari itu terhitung 0 jam"
+                          title={t('attendance.openShiftTitle')}
                         >
-                          {r.openShifts} blm tutup
+                          {interpolate(t('attendance.openShifts'), { n: String(r.openShifts) })}
                         </small>
                       )}
                     </span>
@@ -655,7 +662,7 @@ export function AttendancePage() {
                     <span className={[styles.hours, r.izin ? '' : styles.muted].join(' ')}>{r.izin}</span>
                     <span className={[styles.hours, r.sakit ? '' : styles.muted].join(' ')}>{r.sakit}</span>
                     <span className={[styles.hours, r.alpha ? '' : styles.muted].join(' ')}>{r.alpha}</span>
-                    <span className={styles.hours}>{r.totalHours} jam</span>
+                    <span className={styles.hours}>{interpolate(t('attendance.hours'), { hours: String(r.totalHours) })}</span>
                   </div>
                 ))}
               </div>
@@ -667,7 +674,7 @@ export function AttendancePage() {
       <Card>
         <CardHeader
           icon={<Icon name="clock-rotate-left" aria-hidden />}
-          title="Riwayat Absensi"
+          title={t('attendance.historyTitle')}
           action={
             <span className={styles.historyAction}>
               {owner && historyPeople.length > 1 && (
@@ -675,9 +682,9 @@ export function AttendancePage() {
                   className={styles.empSelect}
                   value={activeHistoryEmp}
                   onChange={(e) => setHistoryEmp(e.target.value)}
-                  aria-label="Tampilkan riwayat karyawan"
+                  aria-label={t('attendance.historyFilter')}
                 >
-                  <option value="all">Semua karyawan ({recentByDay.length})</option>
+                  <option value="all">{interpolate(t('attendance.allEmployees'), { n: String(recentByDay.length) })}</option>
                   {historyPeople.map(([id, person]) => (
                     <option key={id} value={id}>
                       {person.name} ({person.count})
@@ -697,20 +704,20 @@ export function AttendancePage() {
               icon={<Icon name="calendar" aria-hidden />}
               title={
                 historyEmpName
-                  ? `Belum ada riwayat ${historyEmpName} pada periode ini`
-                  : 'Belum ada riwayat pada periode ini'
+                  ? interpolate(t('attendance.historyEmptyFor'), { name: historyEmpName })
+                  : t('attendance.historyEmpty')
               }
             />
           ) : (
             <div className={styles.ledger}>
               <div className={[styles.ledgerHead, owner ? styles.withActions : ''].join(' ')}>
-                <span>Tanggal</span>
-                <span>Karyawan</span>
-                <span>Masuk</span>
-                <span>Keluar</span>
-                <span>Status</span>
-                <span className={styles.hours}>Total</span>
-                {owner && <span className={styles.actionsCol}>Aksi</span>}
+                <span>{t('common.date')}</span>
+                <span>{t('attendance.colEmployee')}</span>
+                <span>{t('attendance.colIn')}</span>
+                <span>{t('attendance.colOut')}</span>
+                <span>{t('common.status')}</span>
+                <span className={styles.hours}>{t('common.total')}</span>
+                {owner && <span className={styles.actionsCol}>{t('common.actions')}</span>}
               </div>
               {historyRows.map((a) => (
                 <div key={a.id} className={[styles.ledgerRow, owner ? styles.withActions : ''].join(' ')}>
@@ -730,7 +737,7 @@ export function AttendancePage() {
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        Lokasi check-in
+                        {t('attendance.checkInLocation')}
                       </a>
                     )}
                   </span>
@@ -738,7 +745,7 @@ export function AttendancePage() {
                   <span className={styles.punch}>{a.checkOut ?? <span className={styles.muted}><EmptyValue /></span>}</span>
                   <span>
                     <span className={[styles.statusTag, styles[a.status]].join(' ')}>
-                      {STATUS_LABEL[a.status]}
+                      {t(STATUS_LABEL[a.status])}
                     </span>
                   </span>
                   {/* Jam hanya dihitung untuk hari yang benar-benar dikerjakan.
@@ -748,17 +755,17 @@ export function AttendancePage() {
                       bertentangan tentang upah yang sama. */}
                   <span className={styles.hours}>
                     {isWorkedDay(a) && a.checkOut ? (
-                      `${a.totalHours} jam`
+                      interpolate(t('attendance.hours'), { hours: String(a.totalHours) })
                     ) : (
                       <span className={styles.muted}><EmptyValue /></span>
                     )}
                   </span>
                   {owner && (
                     <span className={styles.actionsCol}>
-                      <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label="Edit absensi">
+                      <button className={styles.rowBtn} onClick={() => openEdit(a)} aria-label={t('attendance.editRow')}>
                         <Icon name="pen" aria-hidden />
                       </button>
-                      <button className={[styles.rowBtn, styles.danger].join(' ')} onClick={() => setToDelete(a)} aria-label="Hapus absensi">
+                      <button className={[styles.rowBtn, styles.danger].join(' ')} onClick={() => setToDelete(a)} aria-label={t('attendance.deleteRow')}>
                         <Icon name="trash" aria-hidden />
                       </button>
                     </span>
@@ -773,12 +780,12 @@ export function AttendancePage() {
       <Modal
         open={editRow !== null || creating}
         onClose={closeModal}
-        title={creating ? 'Absenkan Karyawan' : `Koreksi Absensi · ${editRow?.employeeName ?? ''}`}
+        title={creating ? t('attendance.createTitle') : interpolate(t('attendance.editTitle'), { name: editRow?.employeeName ?? '' })}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Batal</Button>
-            <Button onClick={saveEdit} loading={editBusy}>Simpan</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('common.cancel')}</Button>
+            <Button onClick={saveEdit} loading={editBusy}>{t('common.save')}</Button>
           </>
         }
       >
@@ -786,16 +793,16 @@ export function AttendancePage() {
           {creating && (
             <>
               <Select
-                label="Karyawan"
+                label={t('attendance.colEmployee')}
                 value={editEmp}
                 onChange={(e) => setEditEmp(e.target.value)}
-                placeholder="Pilih karyawan"
+                placeholder={t('attendance.pickEmployeePh')}
                 options={employees
                   .filter((e) => e.active)
                   .map((e) => ({ value: e.id, label: e.name }))}
               />
               <Input
-                label="Tanggal"
+                label={t('common.date')}
                 type="date"
                 max={today}
                 value={editDate}
@@ -803,11 +810,11 @@ export function AttendancePage() {
               />
               {outlets.length > 1 && (
                 <Select
-                  label="Cabang"
+                  label={t('attendance.branch')}
                   value={editOutlet}
                   onChange={(e) => setEditOutlet(e.target.value)}
                   options={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                  hint="Cabang tempat orang ini bekerja hari itu"
+                  hint={t('attendance.branchHint')}
                 />
               )}
             </>
@@ -816,40 +823,43 @@ export function AttendancePage() {
               bebas: "8" tersimpan apa adanya, calcHours mengembalikan 0, dan
               sehari upah hilang di balik toast hijau "Absensi diperbarui". */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <Input label="Jam Masuk" type="time" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
+            <Input label={t('attendance.timeIn')} type="time" value={editIn} onChange={(e) => setEditIn(e.target.value)} />
             <Input
-              label="Jam Keluar"
+              label={t('attendance.timeOut')}
               type="time"
               value={editOut}
               onChange={(e) => setEditOut(e.target.value)}
-              hint={editHours !== null ? `${editHours} jam` : undefined}
+              hint={editHours !== null ? interpolate(t('attendance.hours'), { hours: String(editHours) }) : undefined}
               error={
                 editHours !== null && editHours > IMPLAUSIBLE_HOURS
-                  ? `${editHours} jam. Jam masuk & keluar tertukar?`
+                  ? interpolate(t('attendance.hoursSwapped'), { hours: String(editHours) })
                   : undefined
               }
             />
           </div>
           <Select
-            label="Status"
+            label={t('common.status')}
             value={editStatus}
             onChange={(e) => setEditStatus(e.target.value)}
             options={[
-              { value: 'hadir', label: 'Hadir' },
-              { value: 'izin', label: 'Izin' },
-              { value: 'sakit', label: 'Sakit' },
-              { value: 'alpha', label: 'Alpha' },
+              { value: 'hadir', label: t(STATUS_LABEL.hadir) },
+              { value: 'izin', label: t(STATUS_LABEL.izin) },
+              { value: 'sakit', label: t(STATUS_LABEL.sakit) },
+              { value: 'alpha', label: t(STATUS_LABEL.alpha) },
             ]}
           />
-          <Input label="Catatan" placeholder="Opsional" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
+          <Input label={t('attendance.note')} placeholder={t('attendance.optional')} value={editNote} onChange={(e) => setEditNote(e.target.value)} />
         </div>
       </Modal>
 
       <ConfirmDialog
         open={!!toDelete}
-        title="Hapus Absensi?"
-        message={`Baris absensi ${toDelete?.employeeName ?? ''} (${toDelete ? fmtDate(toDelete.date) : ''}) akan dihapus permanen.`}
-        confirmLabel="Hapus"
+        title={t('attendance.deleteTitle')}
+        message={interpolate(t('attendance.deleteMessage'), {
+          name: toDelete?.employeeName ?? '',
+          date: toDelete ? fmtDate(toDelete.date) : '',
+        })}
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}

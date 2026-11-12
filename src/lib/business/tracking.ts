@@ -1,7 +1,10 @@
 /**
  * Helper murni untuk halaman lacak publik. Dipisah dari komponennya supaya
- * kalimat yang dibaca pelanggan bisa diuji tanpa merender apa pun.
+ * kalimat yang dibaca pelanggan bisa diuji tanpa merender apa pun. Kalimatnya
+ * tinggal di kamus i18n; helper ini hanya memilih kuncinya.
  */
+import type { TranslationKey } from '@/i18n';
+import { interpolate } from './notify';
 
 /**
  * "Lalu saya harus apa?" — pertanyaan yang selama ini tidak dijawab halaman
@@ -14,45 +17,27 @@
  */
 export interface NextStep {
   tone: 'action' | 'wait' | 'done';
-  text: string;
+  textKey: TranslationKey;
 }
 
 export function nextStepFor(status: string, pickedUp: boolean): NextStep {
   // Sudah diambil menang atas status apa pun: tiket 'selesai' yang unitnya
   // sudah di tangan pelanggan tidak boleh lagi menyuruh datang ke toko.
   if (pickedUp)
-    return {
-      tone: 'done',
-      text: 'Unit sudah diambil dari toko. Tidak ada lagi yang perlu Anda lakukan.',
-    };
+    return { tone: 'done', textKey: 'tracking.next.pickedUp' };
 
   switch (status) {
     case 'selesai':
     case 'lunas':
-      return {
-        tone: 'action',
-        text: 'Perbaikan sudah selesai. Unit siap diambil di toko pada jam operasional. Tunjukkan nomor servis ini saat pengambilan.',
-      };
+      return { tone: 'action', textKey: 'tracking.next.ready' };
     case 'konfirmasi':
-      return {
-        tone: 'action',
-        text: 'Menunggu persetujuan Anda atas estimasi biaya. Hubungi toko untuk melanjutkan atau membatalkan pengerjaan.',
-      };
+      return { tone: 'action', textKey: 'tracking.next.confirm' };
     case 'batal':
-      return {
-        tone: 'action',
-        text: 'Pengerjaan dihentikan. Unit bisa diambil kembali di toko. Hubungi toko bila ingin penjelasan lebih dulu.',
-      };
+      return { tone: 'action', textKey: 'tracking.next.cancelled' };
     case 'tunggu':
-      return {
-        tone: 'wait',
-        text: 'Pengerjaan menunggu sparepart tiba. Tidak ada yang perlu Anda lakukan. Toko akan mengabari begitu berlanjut.',
-      };
+      return { tone: 'wait', textKey: 'tracking.next.waitingParts' };
     default:
-      return {
-        tone: 'wait',
-        text: 'Unit sedang ditangani teknisi. Tidak ada yang perlu Anda lakukan. Buka halaman ini lagi nanti untuk perkembangan terbaru.',
-      };
+      return { tone: 'wait', textKey: 'tracking.next.inProgress' };
   }
 }
 
@@ -60,19 +45,25 @@ export function nextStepFor(status: string, pickedUp: boolean): NextStep {
  * "Ada perkembangan gak?" dijawab kebaruannya, bukan tanggalnya. Tanggal
  * absolut tetap tampil di timeline, jadi di atas 7 hari helper ini menyerah
  * (null) daripada mengulang informasi yang sama dengan kata lain.
+ *
+ * `t` diterima sebagai argumen (bukan `useT`) agar helper tetap murni.
  */
-export function relativeSince(iso: string, now: number = Date.now()): string | null {
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return null;
-  const diff = now - t;
+export function relativeSince(
+  iso: string,
+  t: (key: TranslationKey) => string,
+  now: number = Date.now(),
+): string | null {
+  const at = new Date(iso).getTime();
+  if (Number.isNaN(at)) return null;
+  const diff = now - at;
   // Jam perangkat pelanggan bisa lebih lambat dari server; anggap saja baru.
-  if (diff < 60_000) return 'baru saja';
+  if (diff < 60_000) return t('tracking.justNow');
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 60) return `${minutes} menit lalu`;
+  if (minutes < 60) return interpolate(t('tracking.minutesAgo'), { n: String(minutes) });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} jam lalu`;
+  if (hours < 24) return interpolate(t('tracking.hoursAgo'), { n: String(hours) });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'kemarin';
-  if (days <= 7) return `${days} hari lalu`;
+  if (days === 1) return t('tracking.yesterday');
+  if (days <= 7) return interpolate(t('tracking.daysAgo'), { n: String(days) });
   return null;
 }

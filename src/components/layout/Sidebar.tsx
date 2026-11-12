@@ -8,6 +8,7 @@ import { useSessionStore } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
 import { useT } from '@/i18n';
 import { useNavSignals } from '@/hooks/useNavSignals';
+import { interpolate } from '@/lib/business/notify';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
 
@@ -74,14 +75,14 @@ export function Sidebar({
           <button
             className={styles.collapseBtn}
             onClick={onToggleCollapse}
-            aria-label="Lipat sidebar"
+            aria-label={t('sidebar.collapse')}
           >
             <Icon name="angles-left" aria-hidden />
           </button>
         </div>
 
         {/* ---------- Diagnostic rail ---------- */}
-        <nav className={styles.nav} aria-label="Navigasi utama">
+        <nav className={styles.nav} aria-label={t('sidebar.mainNav')}>
           {visibleNav.map(({ item, locked }) => {
             if (locked) {
               return (
@@ -90,7 +91,7 @@ export function Sidebar({
                   to="/settings"
                   onClick={onCloseMobile}
                   className={[styles.navItem, styles.locked].join(' ')}
-                  title={`${t(item.labelKey)} (tersedia di paket Pro)`}
+                  title={interpolate(t('sidebar.lockedTitle'), { label: t(item.labelKey) })}
                 >
                   <span className={styles.navIconCell} aria-hidden>
                     <Icon name={item.icon} className={styles.navIcon} />
@@ -98,7 +99,7 @@ export function Sidebar({
                   <span className={styles.navLabel}>{t(item.labelKey)}</span>
                   <span className={styles.lockBadge}>
                     <span className={styles.lockLed} aria-hidden />
-                    <span className={styles.lockBadgeText}>Pro</span>
+                    <span className={styles.lockBadgeText}>{t('sidebar.pro')}</span>
                   </span>
                 </NavLink>
               );
@@ -154,7 +155,7 @@ export function Sidebar({
               )}
             </span>
             <div className={styles.bizInfo}>
-              <small className={styles.bizLabel}>UNIT USAHA</small>
+              <small className={styles.bizLabel}>{t('sidebar.businessUnit')}</small>
               <strong className={styles.bizName}>{org?.name ?? <EmptyValue />}</strong>
             </div>
           </div>
@@ -189,6 +190,7 @@ function BranchSelector({
   activeOutletId: ID | null;
   onSelect: (id: ID | null) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -202,7 +204,7 @@ function BranchSelector({
   }, [open]);
 
   const active = outlets.find((o) => o.id === activeOutletId) ?? null;
-  const label = active ? active.name : 'Semua Outlet';
+  const label = active ? active.name : t('nav.mobile.allOutlets');
 
   return (
     <div className={styles.branchSel} ref={ref}>
@@ -212,11 +214,11 @@ function BranchSelector({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={`Cabang aktif: ${label}`}
+        title={interpolate(t('sidebar.activeBranchTitle'), { label })}
       >
         <span className={styles.branchLed} aria-hidden />
         <span className={styles.branchMain}>
-          <span className={styles.branchTag}>CABANG</span>
+          <span className={styles.branchTag}>{t('sidebar.branchTag')}</span>
           <span className={styles.branchName}>{label}</span>
         </span>
         <Icon name="chevron-down" className={styles.branchCaret} aria-hidden />
@@ -235,7 +237,7 @@ function BranchSelector({
             }}
           >
             <Icon name="boxes-stacked" className={styles.branchOptIcon} aria-hidden />
-            <span className={styles.branchOptName}>Semua Outlet</span>
+            <span className={styles.branchOptName}>{t('nav.mobile.allOutlets')}</span>
             {!activeOutletId && <Icon name="check" className={styles.branchCheck} aria-hidden />}
           </button>
           {outlets.map((o) => (
@@ -252,7 +254,7 @@ function BranchSelector({
             >
               <Icon name="shop" className={styles.branchOptIcon} aria-hidden />
               <span className={styles.branchOptName}>{o.name}</span>
-              {o.isPrimary && <span className={styles.branchPrimary}>Utama</span>}
+              {o.isPrimary && <span className={styles.branchPrimary}>{t('sidebar.primary')}</span>}
               {activeOutletId === o.id && <Icon name="check" className={styles.branchCheck} aria-hidden />}
             </button>
           ))}
