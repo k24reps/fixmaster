@@ -572,7 +572,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: var(--text-xs);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .reasonCell,

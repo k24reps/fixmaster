@@ -88,9 +88,10 @@ Permukaan yang disisir: auth/password, 3 edge function, validasi zod, link Whats
 > [!note] Positif palsu yang berulang di laporan probe
 > Selain `clipped`, `scrollers` juga bukan daftar cacat: ia mendaftar SETIAP elemen yang bisa
 > digeser ke samping, termasuk yang memang dirancang begitu (rail chip, carousel). Yang menandakan
-> regresi hanyalah `docOver` > 0. Dua hal SELALU muncul di `clipped` dan bukan cacat: `caption._srOnly` (caption tabel khusus
-> pembaca layar, memang disembunyikan dengan clip) dan elemen `text.` di dalam SVG (label sumbu
-> grafik — `scrollWidth` pada SVG text tidak berarti apa-apa). Saring keduanya sebelum membaca
+> regresi hanyalah `docOver` > 0. Tiga hal SELALU muncul di `clipped` dan bukan cacat: `caption._srOnly` (caption tabel khusus
+> pembaca layar, memang disembunyikan dengan clip), `span.fm-visually-hidden` (teks pembaca layar di
+> `Term` dan `EmptyValue`), dan elemen `text.` di dalam SVG (label sumbu
+> grafik — `scrollWidth` pada SVG text tidak berarti apa-apa). Saring ketiganya sebelum membaca
 > hasil, kalau tidak tiap laporan terlihat merah total.
 > Di `audit-contrast`, jumlah "ADA TEMUAN" juga menghitung langkah yang gagal ("langkah gagal",
 > "navigasi gagal"). Setelah halaman atau selektor berubah, cek baris itu dulu: pada 10 Nov 2026

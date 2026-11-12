@@ -790,7 +790,7 @@
   padding: 2px 7px;
   border-radius: var(--radius-full);
   background: var(--brand-soft);
-  color: var(--brand);
+  color: var(--brand-text);
   border: 1px solid var(--border-brand);
 }
 .planCardName {

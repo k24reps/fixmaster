@@ -6221,3 +6221,58 @@ sama dengan font aplikasi) dan temuan `layout-transition`; keduanya sudah ada se
 tak disentuh.
 
 #decision #design-system #a11y
+
+---
+
+### Lanjutan: ukur Playwright (6 Nov 2026, sore)
+
+Setelah browser Playwright dipasang (`npx playwright install chromium`), probe yang tertunda
+dijalankan. Yang layak diingat:
+
+- **`audit-zoom.mjs` diam-diam selalu mengukur zoom 0.8** (ditemukan 6 Nov 2026). Skrip menulis
+  `fixmaster-zoom` ke localStorage, tetapi demo publik waktu itu menyematkan zoom sementara per kelas
+  perangkat (`deviceDensityZoom()`: 0.8 untuk mouse, termasuk Chromium headless) dan mengabaikan
+  preferensi tersimpan. Terukur: localStorage `1.25`, `:root` zoom `0.8`. Laporan `ZOOM=1` dan
+  `ZOOM=1.25` byte-identik. Perbaikannya kini hidup di `scripts/audit-zoom.mjs` di `main`, bukan
+  tambalan DOM langsung yang sempat dikerjakan di folder utama dan tak pernah ter-commit: zoom dipasang
+  lewat pintasan `Ctrl+Alt + =/−` setelah demo termuat, lalu dibaca balik dan proses berhenti bila zoom
+  efektif tak sama dengan `ZOOM`. Demo sendiri sejak itu menyematkan 100% + Lapang (`stores/zoom.ts`).
+  **Pelajaran: probe yang mengatur keadaan lewat jalur tak langsung harus membaca balik keadaan
+  efektifnya.**
+- **Hasil probe:** ponsel 5 lebar x 12 halaman dan pita tablet: 0 luberan dokumen. Zoom 100%:
+  bersih. Zoom 125%: satu-satunya "tabel meluber" adalah rail chip `CatalogControls`
+  (`_categoryBar`), yang memang digeser dan dibuat begitu sejak 14 Sep 2026. Positif palsu ketiga
+  dicatat: `span.fm-visually-hidden` (teks pembaca layar `Term` dan `EmptyValue`).
+- **Halaman publik diukur** (wizard, privasi, syarat, reset sandi, lacak servis; 375 dan 1280px x
+  2 tema). Tiga temuan diperbaiki: (1) **`--brand` dipakai sebagai warna teks** di tautan prosa
+  legal dan tag mode "reset" (2,6-2,8:1 di tema terang). `--brand` adalah warna isian; teks
+  memakai `--brand-text` (7,2:1). Dua tautan teks di `AuthPage` (`consentLink`, `linkStrong`)
+  dengan pola yang sama ikut diganti, walau halaman itu tak bisa dirender di dev server mode
+  lokal. Foto 375px lalu memperlihatkan dua kasus yang **lolos dari pemindai kontras**: kode
+  "DOK. SK-001" (di atas latar gradien, yang dilewati pemindai) dan nomor bagian "01" (teks
+  `::before`, tak terbaca pemindai yang hanya membaca node teks). Keduanya ikut `--brand-text`,
+  begitu juga tiga warna hover teks di Lacak servis. **Pemindai kontras buta terhadap latar
+  gradien dan teks pseudo-element; foto tetap perlu dilihat.** Sisanya disapu 12 Nov 2026,
+  ketika `main` sudah menyisakan delapan `color: var(--brand)` di delapan berkas aplikasi (catatan
+  6 Nov menyebut dua belas di sebelas; sebagian sudah berubah di jalur lain). **Empat teks diganti
+  ke `--brand-text`:** hover `.langBtn` (Topbar), `.trailAction` (Operator), tag `.planRecTag`
+  (Pengaturan), `.bulkCount` (Template Tugas). Ukuran: di tema terang `--brand` di atas isian tag
+  hanya 2,99:1, `--brand-text` 6,01:1; di tema gelap 5,88:1 naik ke 6,68:1, jadi tak ada tema yang
+  dirugikan. **Empat ikon/glif sengaja dibiarkan** (cukup 3:1, dan fokusnya sudah bercincin):
+  `.reveal:focus-visible` (Input), panah `.ticketArrow` hover (Riwayat Pelanggan), `.bootMark`
+  (layar muat demo), ikon `.nextStep[data-tone='action']` (Lacak servis). Aturan praktisnya:
+  `--brand` untuk isian dan ikon, `--brand-text` untuk huruf. `audit-contrast` DOM: 0 gagal di dua
+  tema; menu demo lolos ukur, tetapi pseudo-element dan hover tidak terukur di sana.
+  (2) **Wizard onboarding tanpa `h1`**: judul langkah `h3` kini `h1`, karena hanya itu
+  heading di layar setup. (3) **Tautan navigasi legal di bawah 44px** (Beranda 22px): diikat ke
+  `--control-h` di layar sentuh. Tautan di dalam kalimat dibiarkan (pengecualian inline WCAG
+  2.5.8). Tombol dev "Isi data demo & masuk" (3,1:1 di terang) dibiarkan: hanya tampil di mode
+  pengembangan.
+- **Batas mode lokal:** tanpa `.env`, `/?auth=1` jatuh ke wizard, jadi `AuthPage` dan
+  `auth-dark.png` tidak bisa diukur atau dipotret ulang di mesin ini.
+- **Screenshot vault:** 33 dari 44 gambar dipotret ulang. Sebelas tertinggal karena skrip foto
+  basi, bukan karena perbaikan audit: `verify-sidebar` mencari tombol Menu (ponsel kini bottom
+  nav), `shoot-modal-profit` mengira pemilih sparepart menutup setelah "Tambah",
+  `shoot-revisi-lanjutan` dan `shoot-warranty` membuka `/` (kini wizard), dan tiga gambar butuh
+  HTML harness dari variabel lingkungan yang tidak ada di repo. Daftar lengkap di
+  `anti-slop/audit-001-2026-11-06-followup.md`.

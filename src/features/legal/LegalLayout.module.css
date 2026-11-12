@@ -237,6 +237,7 @@
   font-weight: var(--fw-semibold);
 }
 .prose :global(a) {
+  /* --brand adalah warna isian; di tema terang ia hanya 2,8:1 sebagai teks. */
   color: var(--brand-text);
   text-decoration: underline;
 }
@@ -314,6 +315,17 @@
 }
 .footNote {
   color: var(--text-muted);
+}
+
+/* Aturan sentuh global hanya mengenai <button> dan field; tautan navigasi
+   halaman ini perlu diikat sendiri ke tinggi kontrol. Tautan di dalam prosa
+   dibiarkan: target inline dalam kalimat dikecualikan WCAG 2.5.8. */
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+  .brand,
+  .backLink,
+  .crossLink {
+    min-height: var(--control-h);
+  }
 }
 
 @media (max-width: 600px) {

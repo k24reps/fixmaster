@@ -542,7 +542,8 @@ function Step({
 }) {
   return (
     <div className={styles.step}>
-      <h3 className={styles.stepTitle}>{title}</h3>
+      {/* Satu-satunya heading di layar setup: judul langkah adalah judul halaman. */}
+      <h1 className={styles.stepTitle}>{title}</h1>
       <p className={styles.stepDesc}>{desc}</p>
       <div className={styles.stepBody}>{children}</div>
     </div>

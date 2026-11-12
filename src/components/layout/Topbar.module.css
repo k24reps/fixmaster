@@ -147,7 +147,7 @@
 }
 .langBtn:hover {
   border-color: var(--border-brand);
-  color: var(--brand);
+  color: var(--brand-text);
   background: var(--bg-hover);
 }
 .notifDot {
