@@ -1,6 +1,6 @@
 import type { Service, ServiceStatus } from '@/data/types';
 import { addDays, daysBetween, localDateOf } from '@/lib/time';
-import { AWAITING_PICKUP_STATUSES, isClosedOut } from './services';
+import { AWAITING_PICKUP_STATUSES, isClosedOut, retainedDownPayment } from './services';
 import type { TranslationKey } from '@/i18n';
 
 // "Lunas" sengaja tidak ada: chip status Lunas sudah menyaring hal yang sama.
@@ -243,17 +243,35 @@ export function scopeCounts(
   return { open, stalled, closed: services.length - open };
 }
 
+type CostFields = Pick<Service, 'status' | 'finalCost' | 'estimateCost' | 'downPayment' | 'history'>;
+
 /**
- * Nominal yang tampil di kolom Biaya: biaya final, atau estimasi selama biaya
- * final belum ditetapkan (aturan yang sama dengan `renderCost` di Daftar). 0 =
- * kolomnya kosong.
+ * Isi kolom Biaya Daftar Servis. `renderCost` dan urutan Biaya sama-sama
+ * membaca ini, supaya angka yang tampil adalah angka yang diurutkan.
+ *
+ * Tiket batal tidak menagih biaya final maupun estimasi; uangnya adalah DP yang
+ * ditahan, termasuk biaya pengecekan yang dibayar saat Batal (0097 menambahkan
+ * biaya itu ke DP). Estimasi tiket batal tak pernah dibayar, jadi tidak tampil.
  */
-export function listedCost(s: Pick<Service, 'finalCost' | 'estimateCost'>): number {
-  if (s.finalCost > 0) return s.finalCost;
-  return s.estimateCost > 0 ? s.estimateCost : 0;
+export type CostReadout =
+  | { kind: 'final' | 'estimate' | 'kept'; amount: number }
+  | { kind: 'none'; amount: 0 };
+
+export function costReadout(s: CostFields): CostReadout {
+  if (s.status === 'batal') {
+    const kept = retainedDownPayment(s);
+    return kept !== null && kept > 0 ? { kind: 'kept', amount: kept } : { kind: 'none', amount: 0 };
+  }
+  if (s.finalCost > 0) return { kind: 'final', amount: s.finalCost };
+  return s.estimateCost > 0 ? { kind: 'estimate', amount: s.estimateCost } : { kind: 'none', amount: 0 };
 }
 
-type SortFields = Pick<Service, 'createdAt' | 'customerName' | 'status' | 'finalCost' | 'estimateCost'>;
+/** Nominal kolom Biaya; 0 = kolomnya kosong. */
+export function listedCost(s: CostFields): number {
+  return costReadout(s).amount;
+}
+
+type SortFields = Pick<Service, 'createdAt' | 'customerName'> & CostFields;
 
 const flowRank = (status: ServiceStatus): number => {
   const i = STATUS_FLOW.indexOf(status);

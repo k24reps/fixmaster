@@ -30,6 +30,8 @@ import {
   isAwaitingPickup,
   serviceProfit,
   serviceModalTotal,
+  heldCost,
+  cancelledProfit,
   isClosedOut,
   outstandingBalance,
   canQuickAddParts,
@@ -46,6 +48,7 @@ import {
   SERVICE_SORTS,
   SORT_LABEL_KEY,
   compareServices,
+  costReadout,
   createdRange,
   matchesPayment,
   matchesQuery,
@@ -679,21 +682,29 @@ export function ServicesPage() {
 
   // Biaya, sama di ketiga tampilan: biaya final (plus modal/profit untuk pemilik
   // bila ada modal), atau estimasi berlabel selama biaya final belum ditetapkan.
+  // Tiket batal: DP yang ditahan (biaya cek), dengan modal = biaya yang tetap
+  // ditanggung, sama seperti rincian Detail Servis.
   const renderCost = (s: Service) => {
-    if (s.finalCost <= 0) {
-      return s.estimateCost > 0 ? (
+    const shown = costReadout(s);
+    if (shown.kind === 'none') return <span className={styles.muted}><EmptyValue /></span>;
+    if (shown.kind === 'estimate') {
+      return (
         <span className={styles.estimate} title={t('services.estimateHint')}>
-          {interpolate(t('services.estimateShort'), { amount: fmtRp(s.estimateCost) })}
+          {interpolate(t('services.estimateShort'), { amount: fmtRp(shown.amount) })}
         </span>
-      ) : (
-        <span className={styles.muted}><EmptyValue /></span>
       );
     }
-    const modal = serviceModalTotal(s.spareparts);
-    const profit = serviceProfit(s);
+    const kept = shown.kind === 'kept';
+    const modal = kept ? heldCost(s.spareparts) : serviceModalTotal(s.spareparts);
+    const profit = kept ? (cancelledProfit(s) ?? 0) : serviceProfit(s);
     return (
       <>
-        <span className={styles.cost}>{fmtRp(s.finalCost)}</span>
+        <span className={styles.cost}>{fmtRp(shown.amount)}</span>
+        {kept && (
+          <span className={styles.costTag} title={t('services.keptHint')}>
+            {t('services.keptTag')}
+          </span>
+        )}
         {/* Hanya kalau ada modal. Tanpa sparepart, profit SAMA DENGAN biaya, dan
             sub-baris cuma mengulang angka di atasnya. */}
         {isOwner && modal > 0 && (
@@ -830,6 +841,8 @@ export function ServicesPage() {
             placeholder={t('services.searchPh')}
             value={query}
             onChange={(e) => change(() => setQuery(e.target.value))}
+            onClear={() => change(() => setQuery(''))}
+            clearLabel={t('services.searchClear')}
             iconLeft={<Icon name="magnifying-glass" aria-hidden />}
             aria-label={t('services.searchAria')}
           />

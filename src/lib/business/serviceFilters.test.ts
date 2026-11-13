@@ -4,6 +4,7 @@ import {
   SORT_LABEL_KEY,
   STATUS_FLOW,
   compareServices,
+  costReadout,
   createdRange,
   listedCost,
   matchesPayment,
@@ -143,6 +144,7 @@ const row = (tag: string, o: Partial<SortRow> = {}): SortRow => ({
   status: 'diterima',
   finalCost: 0,
   estimateCost: 0,
+  downPayment: 0,
   ...o,
 });
 const order = (rows: SortRow[], sort: ServiceSort) =>
@@ -196,6 +198,37 @@ describe('compareServices', () => {
     expect(listedCost(rows[1])).toBe(300);
     expect(order(rows, 'costAsc')).toEqual(['final 50', 'estimasi 300', 'final 500']);
     expect(order(rows, 'costDesc')).toEqual(['final 500', 'estimasi 300', 'final 50']);
+  });
+
+  it('tiket batal: kolom Biaya = DP ditahan (biaya cek), bukan estimasi atau biaya final', () => {
+    const batal = (refund: number | undefined, o: Partial<SortRow> = {}) =>
+      row('batal', {
+        status: 'batal',
+        estimateCost: 300,
+        history: [{ at: '2026-09-05', status: 'batal', by: 'e', byName: 'A', note: 'Batal', internal: false, refund }],
+        ...o,
+      });
+    // Biaya cek 50 rb tanpa DP sebelumnya: cancel_service menambahkannya ke DP.
+    expect(costReadout(batal(0, { downPayment: 50 }))).toEqual({ kind: 'kept', amount: 50 });
+    // DP 100 rb, refund 50 rb: toko menahan 50 rb.
+    expect(costReadout(batal(50, { downPayment: 100, finalCost: 400 }))).toEqual({ kind: 'kept', amount: 50 });
+    // DP dikembalikan penuh, atau tak ada DP: kosong, estimasinya tidak ikut tampil.
+    expect(costReadout(batal(100, { downPayment: 100 }))).toEqual({ kind: 'none', amount: 0 });
+    expect(costReadout(batal(0))).toEqual({ kind: 'none', amount: 0 });
+    // Tiket lama tanpa catatan refund: DP ditahan tak diketahui.
+    expect(costReadout(batal(undefined, { downPayment: 100 }))).toEqual({ kind: 'none', amount: 0 });
+    expect(costReadout(row('final', { finalCost: 500 })).kind).toBe('final');
+    expect(costReadout(row('est', { estimateCost: 300 })).kind).toBe('estimate');
+  });
+
+  it('urutan Biaya memakai DP ditahan tiket batal', () => {
+    const cek = row('batal cek 80', {
+      status: 'batal',
+      downPayment: 80,
+      history: [{ at: '2026-09-05', status: 'batal', by: 'e', byName: 'A', note: 'Batal', internal: false, refund: 0 }],
+    });
+    const rows = [row('final 50', { finalCost: 50 }), cek, row('final 100', { finalCost: 100 })];
+    expect(order(rows, 'costAsc')).toEqual(['final 50', 'batal cek 80', 'final 100']);
   });
 
   it('biaya kosong (0) selalu di dasar: "tanpa biaya" bukan yang termurah', () => {

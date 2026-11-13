@@ -1,5 +1,5 @@
-import { forwardRef, useId, useState } from 'react';
-import type { InputHTMLAttributes, ReactNode, ChangeEvent } from 'react';
+import { forwardRef, useId, useImperativeHandle, useRef, useState } from 'react';
+import type { InputHTMLAttributes, ReactNode, ChangeEvent, KeyboardEvent } from 'react';
 import { capitalizeFirst, capitalizeWords } from '@/lib/text';
 import { Icon } from './Icon';
 import styles from './Input.module.css';
@@ -34,6 +34,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   revealable?: boolean;
   /** Localized labels for the optional password visibility control. */
   revealLabels?: { show: string; hide: string };
+  /**
+   * Tombol hapus isi (✕) di kanan kolom, tampil selama kolom berisi. Esc juga
+   * mengosongkan. Kolom yang dikendalikan saja (`value`); diabaikan bila
+   * `revealable`, karena sisi kanan sudah milik tombol mata.
+   */
+  onClear?: () => void;
+  /** Nama aksesibel tombol hapus; wajib bersama `onClear`. */
+  clearLabel?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -49,8 +57,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     autoCapWords,
     revealable,
     revealLabels,
+    onClear,
+    clearLabel,
     type,
     onChange,
+    onKeyDown,
     ...rest
   },
   ref,
@@ -61,6 +72,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const autoId = useId();
   const inputId = id ?? rest.name ?? autoId;
   const [revealed, setRevealed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
+  const clearable = !!onClear && !revealable && rest.value != null && String(rest.value) !== '';
+
+  // Fokus kembali ke kolom: setelah menghapus, yang wajar adalah mengetik ulang.
+  const clear = () => {
+    onClear?.();
+    inputRef.current?.focus();
+  };
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented || e.key !== 'Escape' || !clearable) return;
+    // Esc pertama mengosongkan kolom, bukan menutup jendela atau laci di atasnya.
+    e.preventDefault();
+    e.stopPropagation();
+    onClear?.();
+  };
 
   // Auto-capitalize free-text fields. Skipped where casing matters
   // (email/tel/number/password) and when explicitly opted out. Only changed
@@ -88,19 +116,28 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       <div className={[styles.wrap, error || invalid ? styles.hasError : ''].join(' ')}>
         {iconLeft && <span className={styles.icon}>{iconLeft}</span>}
         <input
-          ref={ref}
+          ref={inputRef}
           id={inputId}
           type={renderType}
           className={[
             styles.input,
             iconLeft ? styles.withIcon : '',
             revealable ? styles.withReveal : '',
+            clearable ? styles.withClear : '',
             className ?? '',
           ].join(' ')}
           aria-invalid={!!error || !!invalid}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           {...rest}
         />
+        {clearable && (
+          <button type="button" className={styles.clear} onClick={clear} aria-label={clearLabel} title={clearLabel}>
+            <span className={styles.clearKey}>
+              <Icon name="xmark" aria-hidden />
+            </span>
+          </button>
+        )}
         {revealable && (
           <button
             type="button"

@@ -84,6 +84,58 @@
   box-shadow: var(--ring);
 }
 
+/* Hapus isi: tuts mekanis kecil (bahasa pad tender Kasir: tepi bawah tebal,
+   turun saat ditekan) di dalam area sentuh 44px, bukan silang polos. */
+.withClear {
+  padding-right: 48px;
+}
+.clear {
+  position: absolute;
+  right: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.clearKey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: 1px solid var(--border-control);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  font-size: var(--text-xs);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.clear:hover .clearKey {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+.clear:active .clearKey {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+.clear:focus-visible {
+  outline: none;
+}
+.clear:focus-visible .clearKey {
+  color: var(--brand);
+  border-color: var(--brand);
+  box-shadow: var(--ring);
+}
+
 .hasError .input {
   border-color: var(--danger);
 }

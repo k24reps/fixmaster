@@ -6492,6 +6492,49 @@ bersih; angka di tuts yang tertekan (`--text-muted` di atas `--brand-soft`) dihi
 di-gitignore), jadi tiga gambar `services-scope-*` perlu difoto ulang dengan
 `scripts/shoot-services-scope.mjs` lalu disinkron di mesin lokal.
 
+## Kolom Biaya tiket batal dan tombol hapus cari Servis (13 Nov 2026)
+
+**Permintaan pemilik:** (1) kolom cari di menu Servis butuh tombol ✕ supaya kata kunci tidak
+dihapus manual; (2) biaya cek tidak tampil di kolom Biaya menu Servis.
+
+**Penyebab biaya cek hilang:** sejak 0097, biaya pengecekan yang dibayar saat Batal ditambahkan
+ke `downPayment` (`cancel_service` di cloud, cermin lokal di `StatusModal`), sehingga
+`retainedDownPayment` memuatnya sebagai pendapatan tiket. Detail Servis ("DP ditahan") dan
+Laporan sudah membaca angka itu, tetapi `renderCost` di Daftar Servis hanya membaca
+`finalCost` lalu `estimateCost`. Tiket batal dengan biaya cek Rp 50.000 tampil "–", atau
+"Est. Rp 300.000" bila ada estimasi. Estimasi itu tak pernah dibayar. Komentar `listedCost`
+juga mengaku "aturan yang sama dengan `renderCost`", padahal keduanya ditulis terpisah.
+
+**Keputusan:**
+- **Satu sumber:** `costReadout(s)` di `lib/business/serviceFilters.ts` mengembalikan
+  `{ kind: 'final' | 'estimate' | 'kept' | 'none', amount }`. `renderCost` (tiga tampilan)
+  dan `listedCost` (urutan Biaya) sama-sama memanggilnya. Tiket batal: `kept` = DP ditahan
+  bila > 0; selain itu kosong. Estimasi dan biaya final tiket batal tidak tampil.
+- **Rincian pemilik tiket batal** mengikuti Detail Servis: modal = `heldCost` (part terpakai +
+  modal dadakan), profit = `cancelledProfit`.
+- **Label:** angka diberi readout mono **BIAYA CEK** di bawahnya (blok, jadi lajur Biaya tidak
+  melebar), `title` = `services.keptHint`. Di layar disebut "biaya cek" karena itu kata pemilik.
+  Nominalnya mencakup DP yang tidak direfund, sebab sejak 0097 keduanya tak bisa dibedakan dan
+  toko memang memperlakukan DP yang ditahan sebagai biaya pengecekan.
+- **Tombol hapus cari:** prop umum `onClear` + `clearLabel` di `Input`, bukan tombol khusus
+  Servis, supaya kolom cari lain bisa memakainya. Bentuknya tuts mekanis kecil (tepi bawah 3px,
+  turun saat ditekan, bahasa pad tender Kasir) di dalam area sentuh 44×44, bukan silang polos.
+  Klik mengosongkan dan mengembalikan fokus ke kolom; Esc mengosongkan kolom berisi tanpa
+  diteruskan, sedangkan Esc di kolom kosong tetap diteruskan. Tombol masuk urutan Tab (cincin
+  brand saat `:focus-visible`), berbeda dari tombol mata password yang `tabIndex=-1`.
+- **Teks baru (id/en):** `services.keptTag`, `services.keptHint`, `services.searchClear`.
+
+**Verifikasi:** build, lint, **1107 tes / 85 berkas** (+5: tiga `Input.test.tsx` untuk tombol
+hapus, Esc, dan password; dua `serviceFilters.test.ts` untuk `costReadout` tiket batal dan
+urutannya). Di demo, tiket FM-0006 dibatalkan lewat UI dengan biaya cek Rp 50.000, lalu diukur
+dari DOM: sel Biaya "Rp 50.000 BIAYA CEK" di Daftar 1280 dan Kartu 390 (dua tema); tombol ✕
+44×44 di dalam kolom, terjangkau Tab; klik mengosongkan dan fokus kembali; Esc mengosongkan;
+`docOver` 0 di 390. `audit-mobile` (5 lebar ponsel): nol luberan dokumen; scroller
+`div._38` di `/services` sama dengan di `/customers` dan `/pos` yang tidak disentuh (rail yang
+memang ada). `audit-zoom` (100%): lantai 12px 0 pelanggaran; satu-satunya temuan, tabel `/pos`
++16px di 1097px, sama dengan catatan 12 Nov. **Tidak dijalankan:** `sync-vault-attachments.ps1`
+(container tanpa PowerShell) dan tidak ada gambar vault baru.
+
 ## Aturan vault §5 direvisi (12 Nov 2026)
 
 **Permintaan pemilik:** audit apakah §5 AGENTS.md (vault wajib diperbarui "di turn yang sama",
