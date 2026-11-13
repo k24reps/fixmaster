@@ -29,12 +29,7 @@ import {
   stampWithTime,
   type ServiceDocKind,
 } from '@/lib/business/receiptContent';
-import { translate, type TranslationKey } from '@/i18n';
-import { renderReceiptPng, shareOrDownload } from '@/lib/receiptImage';
-import { usePrintModeStore } from '@/stores/printMode';
-import { demoGuard } from '@/stores/demo';
-import { useSettingsStore } from '@/stores/settings';
-import { toast } from '@/stores/toast';
+import type { TranslationKey } from '@/i18n';
 import { receiptStyle, LOGO_MAX_MM } from './receiptStyle';
 import { receiptText } from './receiptText';
 import type { Service, Organization, Outlet, ServiceTerms } from '@/data/types';
@@ -287,33 +282,9 @@ function receiptParts(org: Organization, o: ReceiptDoc) {
   };
 }
 
-/**
- * Mode "kirim ke aplikasi printer": dokumen yang sama dengan pratinjau, dijadikan
- * PNG setinggi isinya. Berjalan di belakang; galat dikabarkan lewat toast.
- */
-async function shareReceipt(html: string, paper: PaperSpec, no: string): Promise<void> {
-  const lang = useSettingsStore.getState().language;
-  try {
-    const blob = await renderReceiptPng(html, paper);
-    const outcome = await shareOrDownload(blob, `${no.replace(/[^\w.-]+/g, '-') || 'nota'}.png`);
-    if (outcome === 'downloaded') toast.info(translate(lang, 'print.share.downloaded'));
-  } catch {
-    toast.error(translate(lang, 'print.share.failed'));
-  }
-}
-
-/**
- * true bila nota benar-benar dikirim: jendela cetak terbuka, atau gambar mulai
- * disiapkan untuk aplikasi printer (mode per perangkat, `usePrintModeStore`).
- * false bila diblokir popup atau mode demo.
- */
+/** true bila jendela cetak benar-benar terbuka (bukan diblokir popup atau mode demo). */
 export function openReceiptWindow(org: Organization, o: ReceiptDoc): boolean {
   const { title, style, body, paper } = receiptParts(org, o);
-  if (usePrintModeStore.getState().mode === 'share') {
-    if (demoGuard({ text: o.demoMessage })) return false;
-    void shareReceipt(buildPrintDocument({ title, style, body, roll: null }), paper, o.no);
-    return true;
-  }
   return openPrintWindow({
     demoMessage: o.demoMessage,
     title,

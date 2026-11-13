@@ -12,13 +12,6 @@ import {
 } from '@/lib/business/receiptPaper';
 import { qrMatrix } from '@/lib/qr';
 import { useSettingsStore } from '@/stores/settings';
-import { usePrintModeStore } from '@/stores/printMode';
-import { renderReceiptPng, shareOrDownload } from '@/lib/receiptImage';
-
-vi.mock('@/lib/receiptImage', () => ({
-  renderReceiptPng: vi.fn(async () => new Blob(['png'], { type: 'image/png' })),
-  shareOrDownload: vi.fn(async () => 'shared'),
-}));
 import type { Organization, Service } from '@/data/types';
 
 const org = {
@@ -77,23 +70,6 @@ describe('bilah "Cetak lagi / Tutup"', () => {
     expect(page).toContain('document.body.getBoundingClientRect()');
     // Bilah ada di luar `.brand` dan isi nota: bukan bagian kertas.
     expect(page.indexOf('class="fm-printbar"')).toBeGreaterThan(page.indexOf('DICETAK DENGAN FIXMASTER'));
-    vi.restoreAllMocks();
-  });
-});
-
-describe('mode "Kirim ke aplikasi printer"', () => {
-  it('tanpa jendela cetak: dokumen pratinjau yang sama dijadikan gambar lalu dibagikan', async () => {
-    usePrintModeStore.setState({ mode: 'share' });
-    const open = vi.spyOn(window, 'open');
-    const doc = serviceReceiptDoc(svc({}), org, 'https://app.test');
-    expect(openReceiptWindow(org, doc)).toBe(true);
-    expect(open).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(shareOrDownload).toHaveBeenCalled());
-    const [page, paper] = vi.mocked(renderReceiptPng).mock.calls[0];
-    expect(page).toBe(receiptPreviewHtml(org, doc));
-    expect(paper.widthMm).toBe(58);
-    expect(vi.mocked(shareOrDownload).mock.calls[0][1]).toBe('FM-0123.png');
-    usePrintModeStore.setState({ mode: 'dialog' });
     vi.restoreAllMocks();
   });
 });

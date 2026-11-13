@@ -26,7 +26,6 @@ import {
   setTermsSettings,
 } from '@/config/orgConfig';
 import { useCollection } from '@/hooks/useCollection';
-import { usePrintModeStore, type PrintMode } from '@/stores/printMode';
 import { useT, type TranslationKey } from '@/i18n';
 import { saleReceiptDoc } from '@/features/pos/printSaleReceipt';
 import {
@@ -144,64 +143,6 @@ function radioStep(key: string, index: number, last: number): number | null {
   return null;
 }
 
-const PRINT_MODES: readonly PrintMode[] = ['dialog', 'share'];
-
-/** Cara cetak per perangkat (localStorage), di bawah pilihan kertas milik toko. */
-function PrintModeChoice() {
-  const t = useT();
-  const mode = usePrintModeStore((s) => s.mode);
-  const setMode = usePrintModeStore((s) => s.setMode);
-  const cells = useRef<(HTMLButtonElement | null)[]>([]);
-  const titleId = useId();
-
-  const choose = (next: PrintMode) => {
-    if (next === mode) return;
-    setMode(next);
-    toast.success(t('receipt.mode.saved'));
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const next = radioStep(e.key, PRINT_MODES.indexOf(mode), PRINT_MODES.length - 1);
-    if (next === null) return;
-    e.preventDefault();
-    choose(PRINT_MODES[next]);
-    cells.current[next]?.focus();
-  };
-
-  return (
-    <div className={styles.modeBlock}>
-      <h3 id={titleId} className={styles.setupTitle}>{t('receipt.mode.title')}</h3>
-      <p className={styles.hint}>{t('receipt.mode.hint')}</p>
-      <div role="radiogroup" aria-labelledby={titleId} className={styles.papers} onKeyDown={onKeyDown}>
-        {PRINT_MODES.map((m, i) => {
-          const checked = m === mode;
-          return (
-            <button
-              key={m}
-              ref={(el) => {
-                cells.current[i] = el;
-              }}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              tabIndex={checked ? 0 : -1}
-              className={styles.paper}
-              onClick={() => choose(m)}
-            >
-              <span className={styles.paperName}>
-                <span className={styles.led} aria-hidden />
-                {t(m === 'share' ? 'receipt.mode.share' : 'receipt.mode.dialog')}
-              </span>
-              <span className={styles.paperHint}>
-                {t(m === 'share' ? 'receipt.mode.shareHint' : 'receipt.mode.dialogHint')}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function PaperCard() {
   const t = useT();
   const org = useSessionStore((s) => s.org);
@@ -273,8 +214,6 @@ function PaperCard() {
             );
           })}
         </div>
-
-        <PrintModeChoice />
 
         <div className={styles.setup} data-open={setupOpen ? 'true' : undefined}>
           <div className={styles.setupHead}>
