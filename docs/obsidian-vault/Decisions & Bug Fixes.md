@@ -6535,6 +6535,46 @@ memang ada). `audit-zoom` (100%): lantai 12px 0 pelanggaran; satu-satunya temuan
 +16px di 1097px, sama dengan catatan 12 Nov. **Tidak dijalankan:** `sync-vault-attachments.ps1`
 (container tanpa PowerShell) dan tidak ada gambar vault baru.
 
+## Nota di Android: kirim gambar ke aplikasi printer (13 Nov 2026)
+
+**Laporan pemilik (foto):** nota "Tanda Terima" dicetak dari Chrome Android ke aplikasi printer
+XANTRI (kertas "58MM1:1"). Isi nota sekitar 15 cm, tetapi halaman yang dikirim jauh lebih
+panjang, jadi sisanya kertas kosong.
+
+**Penyebab:** `fit()` di `lib/print.ts` mengukur `<body>` dan menulis `@page { size: 58mm <tinggi>mm }`.
+Itu bekerja di Chrome desktop, tetapi di Android ukuran halaman diambil dari aplikasi printer
+lewat dialog cetak sistem, bukan dari `@page`. Panjang halaman tak bisa dipendekkan dari CSS.
+Catatan sebelumnya sudah menandai "dialog cetak Chrome di Android belum terverifikasi"; ini
+temuan pertamanya. Tidak bisa direproduksi di container (tanpa Android), jadi penyebabnya
+disimpulkan dari foto: rasio halaman pada foto cocok dengan 58 × ±297 mm.
+
+**Keputusan (pilihan pemilik):** cara cetak kedua, dipilih per perangkat di Pengaturan > Nota &
+Struk > "Cara cetak di perangkat ini": **Dialog cetak** (bawaan, tetap seperti dulu) atau
+**Kirim ke aplikasi printer**.
+- **Per perangkat, bukan per toko** (`stores/printMode.ts`, localStorage
+  `fixmaster-print-mode`): HP kasir dan komputer di toko yang sama butuh cara berbeda.
+- **Satu pintu:** `openReceiptWindow` bercabang di sini, sehingga nota servis, struk Kasir, dan
+  "Cetak percobaan" ikut tanpa tombol baru di tiap layar. Mode demo tetap diblokir `demoGuard`.
+- **Render tanpa pustaka** (`lib/receiptImage.ts`): HTML pratinjau (`roll: null`) dimuat di
+  iframe tersembunyi, logo URL Storage diubah jadi data URL, tinggi `<body>` diukur, lalu
+  dokumen dibungkus SVG `foreignObject` dan dirasterisasi langsung di resolusi head (lebar =
+  `printableDots`, 384 titik untuk 58 mm), diambang hitam-putih 50%, dan disimpan PNG.
+  `html2canvas` dan sejenisnya ditolak: dokumen nota sudah mandiri (satu `<style>`, QR SVG,
+  font sistem), jadi pustaka 40+ KB tak menambah apa pun.
+- **Bagikan:** `navigator.share({ files })`. Tanpa dukungan berbagi berkas (kebanyakan
+  desktop), atau bila jeda render menghabiskan izin gestur, PNG diunduh dan toast meminta
+  membukanya di aplikasi printer. Membatalkan lembar Bagikan tidak memunculkan apa-apa.
+- **Petunjuk** `receipt.setup.android` kini menyebut sebab sisa kertas dan menunjuk pilihan ini.
+
+**Verifikasi:** build, lint, **1110 tes / 86 berkas** (+3: `receiptSvg` lebar titik 58/80,
+`thresholdPixels`, dan `openReceiptWindow` mode share yang memakai dokumen pratinjau yang sama
+tanpa membuka jendela). Di Chromium sungguhan, nota NS-0646 (logo, QR, S&K) dirender:
+384 × 1288 titik (161 mm), nol piksel abu-abu, tinta terakhir 58 baris sebelum ujung (ekor
+sobek `TAIL_MM`). Pilihan di Pengaturan diklik pada 390px: tersimpan `share`, `docOver` 0.
+**Belum terverifikasi:** lembar Bagikan dan cetak XANTRI di Android sungguhan, Safari iOS
+(yang menodai kanvas dari `foreignObject`, sehingga jatuh ke toast gagal), serta logo URL
+Storage (jalur `fetch` + CORS).
+
 ## Aturan vault §5 direvisi (12 Nov 2026)
 
 **Permintaan pemilik:** audit apakah §5 AGENTS.md (vault wajib diperbarui "di turn yang sama",

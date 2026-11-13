@@ -100,6 +100,14 @@
   border-color: var(--border-brand);
 }
 
+.modeBlock {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dotted var(--border);
+}
+.modeBlock .hint {
+  margin-bottom: var(--space-3);
+}
 .setup {
   margin-top: var(--space-5);
   padding-top: var(--space-4);
