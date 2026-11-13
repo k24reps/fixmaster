@@ -6560,6 +6560,16 @@ panjang kertas mengikuti "Ukuran kertas" di aplikasi printer, dan menyarankan uk
 pendek atau kertas gulung bila ada. Mode gambar, `stores/printMode.ts`, `lib/receiptImage.ts`
 dan tesnya dihapus lewat revert.
 
+**Lanjutan, panjang nota di bilah cetak (13 Nov 2026):** foto pengaturan XANTRI menunjukkan
+sumber panjang halaman: **Media 58MM + Print Length (80–350 mm) = 250**. Nota 145–195 mm (tanpa
+logo; logo menambah ±16 mm) tercetak di halaman 250 mm. Bilah "Cetak lagi / Tutup" kini
+menampilkan "Panjang nota: N mm…", diisi `fit()` dari angka yang sama yang ia tulis ke `@page`
+(`PrintControls.length`, kunci `print.length`). Baris itu hanya ada bila dokumen membawa bilah,
+jadi pratinjau Pengaturan tak berubah. Karena Print Length satu angka tetap, sarannya ke pemilik
+adalah angka sedikit di atas nota terpanjang yang biasa dicetak: nota yang lebih panjang dari
+Print Length terpecah ke halaman kedua, dan itu lebih boros dari sisa kertas. Ruang bilah di
+`html` dinaikkan 68 → 92 px agar baris tambahan tak menutup ekor nota di layar.
+
 ## Aturan vault §5 direvisi (12 Nov 2026)
 
 **Permintaan pemilik:** audit apakah §5 AGENTS.md (vault wajib diperbarui "di turn yang sama",

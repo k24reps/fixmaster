@@ -1803,6 +1803,7 @@ export const id = {
   'print.controls': 'Kontrol cetak',
   'print.again': 'Cetak lagi',
   'print.close': 'Tutup',
+  'print.length': 'Panjang nota: {mm} mm. Di Android, isi angka ini di Print Length aplikasi printer.',
   'print.closeFailed':
     'Browser tidak mengizinkan jendela ini menutup sendiri. Tutup lewat tombol tab atau jendela.',
   'receipt.demo.service': 'Cetak nota tersedia di FixMaster versi penuh. Daftar gratis.',

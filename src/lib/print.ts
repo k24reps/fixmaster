@@ -40,6 +40,12 @@ export interface PrintControls {
   close: string;
   /** Tampil bila browser menolak `window.close()`: tombol "Tutup" tak boleh mati tanpa kabar. */
   closeFailed: string;
+  /**
+   * Gulungan saja: "Panjang nota: {mm} mm", diisi `fit()` dari ukuran yang ia
+   * tulis ke `@page`. Di Android panjang kertas diatur aplikasi printer (mis.
+   * "Print Length" XANTRI), bukan `@page`, jadi pemilik butuh angkanya.
+   */
+  length?: string;
 }
 
 export interface PrintDocumentOptions {
@@ -114,13 +120,17 @@ export const PRINT_CONTROLS_STYLE = `
      mengumumkan teksnya saat terisi (display: none membuang pengumuman itu). */
   .fm-printbar .fm-printmsg { margin: 0 0 8px; font-size: 12px; font-weight: 400; color: #f7b733; }
   .fm-printbar .fm-printmsg:empty { margin: 0; }
-  @media screen { html { padding-bottom: calc(68px + env(safe-area-inset-bottom)); } }
+  .fm-printbar .fm-printlen { margin: 0 0 8px; font-size: 12px; font-weight: 400; color: #d6d6d6; }
+  .fm-printbar .fm-printlen:empty { margin: 0; }
+  @media screen { html { padding-bottom: calc(92px + env(safe-area-inset-bottom)); } }
   @media print { .fm-printbar { display: none !important; } }
 `;
 
 function controlsMarkup(c: PrintControls): string {
   return `<div class="fm-printbar" role="group" aria-label="${escapeHtml(c.label)}">
-<p class="fm-printmsg" id="fm-printmsg" role="status" data-failed="${escapeHtml(c.closeFailed)}"></p>
+<p class="fm-printmsg" id="fm-printmsg" role="status" data-failed="${escapeHtml(c.closeFailed)}"></p>${
+    c.length ? `\n<p class="fm-printlen" id="fm-printlen" data-tpl="${escapeHtml(c.length)}"></p>` : ''
+  }
 <div class="fm-printrow">
 <button type="button" class="fm-printagain" id="fm-printagain">${escapeHtml(c.again)}</button>
 <button type="button" id="fm-printclose">${escapeHtml(c.close)}</button>
@@ -149,6 +159,13 @@ export function printScript(roll: PrintDocumentOptions['roll'], controls = false
     var s = document.getElementById('fm-page');
     if (!s) { s = document.createElement('style'); s.id = 'fm-page'; document.head.appendChild(s); }
     s.textContent = '@page{size:${roll.widthMm}mm ' + mm + 'mm;margin:0}';
+${
+      controls
+        ? `
+    var l = document.getElementById('fm-printlen');
+    if (l) l.textContent = l.getAttribute('data-tpl').replace('{mm}', mm);`
+        : ''
+    }
   }`
     : '';
   const wire = controls
@@ -242,6 +259,7 @@ export function openPrintWindow(o: PrintWindowOptions): boolean {
     again: translate(lang, 'print.again'),
     close: translate(lang, 'print.close'),
     closeFailed: translate(lang, 'print.closeFailed'),
+    length: o.roll ? translate(lang, 'print.length') : undefined,
   };
   win.document.write(buildPrintDocument({ ...o, controls }));
   win.document.close();

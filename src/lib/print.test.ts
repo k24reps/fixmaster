@@ -237,6 +237,24 @@ describe('printScript: tombol bilah', () => {
   });
 });
 
+describe('panjang nota di bilah', () => {
+  it('fit() menulis panjang yang sama dengan @page ke bilah; pratinjau tanpa bilah tak menyentuhnya', () => {
+    const script = printScript(ROLL, true);
+    expect(script).toContain("getElementById('fm-printlen')");
+    expect(script.indexOf("'mm;margin:0}'")).toBeLessThan(script.indexOf('fm-printlen'));
+    const html = buildPrintDocument({
+      title: 'N', style: '', body: '<p>x</p>', roll: ROLL,
+      controls: { label: 'K', again: 'A', close: 'T', closeFailed: 'F', length: 'Panjang {mm} mm' },
+    });
+    expect(html).toContain('id="fm-printlen" data-tpl="Panjang {mm} mm"');
+    const noLen = buildPrintDocument({
+      title: 'N', style: '', body: '<p>x</p>', roll: ROLL,
+      controls: { label: 'K', again: 'A', close: 'T', closeFailed: 'F' },
+    });
+    expect(noLen).not.toContain('fm-printlen"');
+  });
+});
+
 describe('openPrintWindow: bilah di jendela cetak', () => {
   afterEach(() => {
     vi.restoreAllMocks();

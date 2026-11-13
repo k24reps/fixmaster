@@ -1767,6 +1767,7 @@ export const en: Dictionary = {
   'print.controls': 'Print controls',
   'print.again': 'Print again',
   'print.close': 'Close',
+  'print.length': 'Receipt length: {mm} mm. On Android, enter this in the printer app Print Length.',
   'print.closeFailed':
     'The browser would not let this window close itself. Close it from the tab or window button.',
   'receipt.demo.service': 'Receipt printing is available in the full version of FixMaster. Sign up for free.',
