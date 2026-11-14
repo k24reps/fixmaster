@@ -6687,3 +6687,20 @@ dan pita tablet 744–1152) dan `audit-zoom` (11 lebar) hanya untuk `/reports`: 
 12px 0. Audit itu hanya memeriksa tab bawaan; tab lain berisi kartu yang sama seperti sebelum
 tahap ini dan diukur lewat probe di atas.
 
+**Tahap 3, mutu servis (14 Nov 2026):** rincian di [[Signature Pages#Laporan — Analyzer Printout]].
+Keputusan: **tanpa RPC baru.** Laporan di cloud menghitung lewat RPC karena daftar servis
+dipotong 1000 baris; di sini cukup dua kueri yang sudah difilter server (kolom `completed_at`
+0080, dan `openOnly` yang dipakai Dashboard), jadi tak ada migrasi yang harus dipasang di staging
+dan produksi sebelum fitur ini aman. **Belum dikerjakan:** klaim garansi per teknisi. Teknisi
+yang bertanggung jawab ada di tiket ASLI (`warrantyClaimOf`), yang sering di luar periode dan
+tidak termuat; menghitungnya dari tiket klaim akan menyalahkan teknisi yang memperbaiki, bukan
+yang menyebabkan. Butuh pencarian tiket asli per id (RPC atau `get` per klaim). Demo tak punya
+tiket klaim atau batal, jadi dua readout itu tampil 0%. Kunci i18n baru `reports.q*`,
+`reports.pickup*`, `reports.status`, `reports.techRow`, `reports.techSortNote`.
+**Verifikasi:** build, lint, **1123 tes / 85 berkas** (+4: `serviceQuality` ×2,
+`technicianProfit`, `awaitingPickup`). Demo, `?bagian=servis`: median 2 hari dari 4 unit
+selesai, 0 klaim, 0 dari 7 tiket batal, 0/4 melebihi estimasi; FM-0003 (Lunas, 9 hari) dan
+FM-0007 (Selesai, 0 hari) menunggu diambil, keduanya bertaut ke tiketnya; teknisi Rizal Pratama
+4 unit, laba Rp 3.005.000 = laba servis di struk Laba Rugi. Nol luberan/clip di 1440/820/390.
+`audit-mobile` dan `audit-zoom` untuk `/reports?bagian=servis`: nol temuan, lantai 12px 0.
+

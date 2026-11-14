@@ -6,9 +6,13 @@ import {
   profitByDeviceCategory,
   cancelDate,
   completionDate,
+  awaitingPickup,
   type Receivable,
   type CategoryProfit,
+  type PickupWait,
 } from '@/lib/business/reports';
+import { visibleServices } from '@/lib/business/services';
+import type { Service } from '@/data/types';
 import { addDays, localDayStartISO, isInRange } from '@/lib/time';
 import { useSessionStore } from '@/stores/session';
 import { isCloudMode } from '@/stores/demo';
@@ -16,6 +20,10 @@ import { useDerivedQuery } from './useCollection';
 
 const NO_RECEIVABLES: Receivable[] = [];
 const NO_CATEGORIES: CategoryProfit[] = [];
+const NO_SERVICES: Service[] = [];
+const NO_PICKUPS: PickupWait[] = [];
+/** Batas tiket belum tuntas yang diambil untuk "menunggu diambil" (Dashboard: 60). */
+const OPEN_LIMIT = 500;
 
 /**
  * Piutang servis: keadaan SEKARANG, bukan besaran periode. Dulu dihitung dari
@@ -68,3 +76,58 @@ export function useCategoryProfit(from: string, to: string) {
     NO_CATEGORIES,
   );
 }
+
+/**
+ * Tiket yang SELESAI dalam periode (tanggal lokal `completedAt`, atau riwayat
+ * di adapter lokal) — himpunan yang sama dengan Laba per Kategori. Dipakai
+ * kartu Mutu Servis dan Performa Teknisi, yang butuh part tiap tiket untuk
+ * menghitung laba. Cloud memfilter di server lewat kolom `completed_at`
+ * (0080), jadi tidak terpotong batas 1000 baris daftar servis.
+ */
+export function useCompletedServices(from: string, to: string) {
+  const outletId = useSessionStore((s) => s.activeOutletId);
+
+  return useDerivedQuery(
+    ['collection', 'services', outletId, 'completedRange', from, to],
+    async () => {
+      const inRange = (s: Service) => {
+        const at = completionDate(s);
+        return at !== null && isInRange(at, from, to);
+      };
+      if (isCloudMode()) {
+        const rows = await repository.listByDateRange(
+          'services',
+          'completedAt',
+          localDayStartISO(from),
+          localDayStartISO(addDays(to, 1)),
+        );
+        return rows.filter(inRange);
+      }
+      // Lokal/demo: baris lama tak membawa completedAt; completionDate membaca riwayat.
+      return (await repository.list('services')).filter(inRange);
+    },
+    NO_SERVICES,
+  );
+}
+
+/**
+ * Unit yang sudah selesai atau batal tapi belum diambil: keadaan SEKARANG,
+ * berapa pun umur tiketnya — seperti piutang, yang paling tua justru yang
+ * paling perlu dihubungi. Cloud memakai kueri tiket belum tuntas yang sama
+ * dengan Dashboard (`openOnly`), bukan daftar 1000 tiket terbaru.
+ */
+export function useAwaitingPickup() {
+  const outletId = useSessionStore((s) => s.activeOutletId);
+
+  return useDerivedQuery(
+    ['collection', 'services', outletId, 'awaitingPickup'],
+    async () => {
+      const rows = repository.queryServices
+        ? await repository.queryServices({ openOnly: true, visibleOnly: true, limit: OPEN_LIMIT })
+        : visibleServices(await repository.list('services'));
+      return awaitingPickup(rows);
+    },
+    NO_PICKUPS,
+  );
+}
+

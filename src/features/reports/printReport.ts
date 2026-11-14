@@ -24,8 +24,10 @@ import type {
   Receivable,
   TxnRow,
   PeriodComparison,
+  ServiceQuality,
+  TechProfit,
+  PickupWait,
 } from '@/lib/business/reports';
-import type { TechStat } from '@/lib/business/dashboard';
 import type { InventoryItem, Organization } from '@/data/types';
 
 /**
@@ -208,8 +210,9 @@ export interface ReportDocData {
   partUsage: PartUsage[];
   restock: InventoryItem[];
   funnel: FunnelStage[];
-  turnaround: number;
-  leaderboard: TechStat[];
+  quality: ServiceQuality;
+  techRows: TechProfit[];
+  pickups: PickupWait[];
   outletStats: OutletStat[];
   receivables: Receivable[];
   txnRows: TxnRow[];
@@ -315,7 +318,9 @@ function buildBody(d: ReportDocData): string {
   const maxCatProfit = Math.max(1, ...d.catProfit.map((c) => c.profit));
   const maxPartQty = Math.max(1, ...d.partUsage.map((p) => p.qty));
   const maxFunnel = Math.max(1, ...d.funnel.map((f) => f.count));
-  const maxLeaderRev = Math.max(1, ...d.leaderboard.map((t) => t.revenue));
+  const maxTechProfit = Math.max(1, ...d.techRows.map((t) => t.profit));
+  const days = (n: number | null) => (n === null ? EMPTY_VALUE : `${n.toLocaleString('id-ID', { maximumFractionDigits: 1 })} hari`);
+  const rate = (a: number, b: number) => (b > 0 ? fmtPercent(a / b, 0) : EMPTY_VALUE);
   const maxOutletNet = Math.max(1, ...d.outletStats.map((o) => Math.abs(o.net)));
   const receivablesTotal = d.receivables.reduce((s, r) => s + r.outstanding, 0);
 
@@ -530,31 +535,67 @@ function buildBody(d: ReportDocData): string {
           d.funnel.map((f) => ({ label: f.label, value: f.count, display: String(f.count) })),
           maxFunnel,
         )}
-        <p class="note">Tiket yang MASUK pada periode ini · rata-rata penyelesaian ${
-          d.turnaround > 0 ? `${d.turnaround.toFixed(1)} hari` : 'belum terukur'
-        }</p>`,
+        <p class="note">Tiket yang MASUK pada periode ini</p>`,
     { count: `${d.funnel.reduce((s, f) => s + f.count, 0)} tiket` },
+  );
+
+  const q = d.quality;
+  const quality = section(
+    'Mutu & Kecepatan Servis',
+    `<table>
+      <tbody>
+        <tr><td>Waktu selesai (median)</td><td class="r num">${esc(days(q.medianDays))}</td><td class="note">${q.done} unit selesai</td></tr>
+        <tr><td>Balik garansi</td><td class="r num">${esc(rate(q.claims, q.done))}</td><td class="note">${q.claims} klaim · ${q.done} unit selesai</td></tr>
+        <tr><td>Batal</td><td class="r num">${esc(rate(q.cancelled, q.intake))}</td><td class="note">${q.cancelled} dari ${q.intake} tiket masuk</td></tr>
+        <tr><td>Melebihi estimasi</td><td class="r num">${q.estimated > 0 ? `${q.overEstimate} / ${q.estimated}` : EMPTY_VALUE}</td><td class="note">biaya akhir &gt; estimasi + 10%</td></tr>
+      </tbody>
+    </table>`,
   );
 
   const leaderboard = section(
     'Performa Teknisi',
-    d.leaderboard.length === 0
+    d.techRows.length === 0
       ? empty('Belum ada servis selesai')
       : `<table>
-          <thead><tr><th>Teknisi</th><th class="r">Selesai</th><th class="r">Nilai Lunas</th></tr></thead>
-          <tbody>${d.leaderboard
+          <thead><tr><th>Teknisi</th><th class="r">Unit</th><th class="r">Median</th><th class="r">Omzet</th><th class="r">Laba</th></tr></thead>
+          <tbody>${d.techRows
             .map(
               (t) => `<tr>
                 <td>${esc(t.name)}
-                  <div class="bar-track"><div class="bar-fill" style="width:${pct(t.revenue, maxLeaderRev)}%"></div></div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${pct(Math.max(0, t.profit), maxTechProfit)}%"></div></div>
                 </td>
-                <td class="r num">${t.completed}</td>
+                <td class="r num">${t.units}</td>
+                <td class="r num">${esc(days(t.medianDays))}</td>
                 <td class="r num">${esc(fmtRp(t.revenue))}</td>
+                <td class="r num">${esc(fmtRp(t.profit))}</td>
               </tr>`,
             )
             .join('')}</tbody>
-        </table>`,
+        </table>
+        <p class="note">Urut laba · unit selesai periode ini, tanpa klaim garansi</p>`,
   );
+
+  const pickups =
+    d.pickups.length === 0
+      ? ''
+      : section(
+          'Unit Menunggu Diambil',
+          `<table>
+            <thead><tr><th>No. Servis</th><th>Pelanggan</th><th>Status</th><th class="r">Menunggu</th></tr></thead>
+            <tbody>${d.pickups
+              .map(
+                (r) => `<tr>
+                  <td class="num">${esc(r.serviceNo)}</td>
+                  <td>${esc(r.customerName)}</td>
+                  <td>${esc(tr(`status.${r.status}` as TranslationKey))}</td>
+                  <td class="r num ${r.bucket === '31+' ? 'crit' : ''}">${r.ageDays} hari</td>
+                </tr>`,
+              )
+              .join('')}</tbody>
+          </table>
+          <p class="note">Keadaan saat dicetak, semua periode</p>`,
+          { count: `${d.pickups.length} unit`, flow: true },
+        );
 
   const restock =
     d.restock.length === 0
@@ -670,7 +711,9 @@ function buildBody(d: ReportDocData): string {
     ${section('Tren Pemasukan vs Pengeluaran', chartSvg(d.trend))}
     <div class="cols">${incomeCat}${expenseCat}</div>
     <div class="cols">${catProfit}${parts}</div>
-    <div class="cols">${funnel}${leaderboard}</div>
+    <div class="cols">${quality}${funnel}</div>
+    ${leaderboard}
+    ${pickups}
     ${restock}
     ${outlets}
     ${receivables}

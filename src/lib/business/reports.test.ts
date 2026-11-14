@@ -17,6 +17,9 @@ import {
   outletComparison,
   receivablesAging,
   agingFromRows,
+  serviceQuality,
+  technicianProfit,
+  awaitingPickup,
 } from './reports';
 import type {
   Service,
@@ -99,6 +102,7 @@ const svc = (over: Partial<Service>): Service => ({
   createdAt: over.createdAt ?? '2026-06-01T00:00:00.000Z',
   updatedAt: '2026-06-01T00:00:00.000Z',
   deletedAt: null,
+  ...over,
 });
 
 const item = (over: Partial<InventoryItem>): InventoryItem => ({
@@ -633,3 +637,78 @@ describe('agingFromRows', () => {
     expect(out[1]).toMatchObject({ ageDays: 5, bucket: '0-7' });
   });
 });
+
+describe('serviceQuality', () => {
+  const at = (d: string) => `${d}T05:00:00.000Z`;
+  const intake = [
+    svc({ id: 'a', status: 'lunas', createdAt: at('2026-11-02') }),
+    svc({ id: 'b', status: 'batal', createdAt: at('2026-11-03') }),
+    svc({ id: 'c', status: 'pengerjaan', createdAt: at('2026-11-04') }),
+    svc({ id: 'k', status: 'diterima', createdAt: at('2026-11-05'), warrantyClaimOf: 'old' }),
+  ];
+  const done = [
+    svc({ id: 'a', status: 'lunas', createdAt: at('2026-11-02'), completedAt: at('2026-11-03'), estimateCost: 100, finalCost: 105 }),
+    svc({ id: 'd', status: 'selesai', createdAt: at('2026-10-20'), completedAt: at('2026-11-05'), estimateCost: 100, finalCost: 150 }),
+    svc({ id: 'e', status: 'lunas', createdAt: at('2026-11-06'), completedAt: at('2026-11-08'), estimateCost: 0 }),
+    svc({ id: 'k2', status: 'selesai', createdAt: at('2026-11-01'), completedAt: at('2026-11-30'), warrantyClaimOf: 'x' }),
+  ];
+
+  it('batal & klaim dari tiket masuk; kecepatan & estimasi dari unit selesai, tanpa klaim', () => {
+    expect(serviceQuality(intake, done)).toEqual({
+      intake: 3,
+      cancelled: 1,
+      claims: 1,
+      done: 3,
+      // 1, 16, 2 hari → median 2 (bukan rata-rata 6,3: satu unit tunggu part tak menyeret semuanya).
+      medianDays: 2,
+      estimated: 2,
+      overEstimate: 1, // 105 masih dalam toleransi 10%, 150 tidak
+    });
+  });
+
+  it('tanpa unit selesai, median null — bukan 0 hari yang dikarang', () => {
+    expect(serviceQuality([], []).medianDays).toBeNull();
+  });
+});
+
+describe('technicianProfit', () => {
+  const at = (d: string) => `${d}T05:00:00.000Z`;
+  it('diurutkan menurut laba, bukan omzet; klaim tidak dihitung', () => {
+    const rows = technicianProfit([
+      // Andi: omzet besar dari LCD mahal, laba tipis.
+      svc({ id: '1', technicianName: 'Andi', finalCost: 2_000_000, spareparts: [part({ costPrice: 1_800_000 })], createdAt: at('2026-11-01'), completedAt: at('2026-11-04') }),
+      // Rina: dua jasa bersih.
+      svc({ id: '2', technicianName: 'Rina', finalCost: 300_000, createdAt: at('2026-11-01'), completedAt: at('2026-11-02') }),
+      svc({ id: '3', technicianName: 'Rina', finalCost: 250_000, createdAt: at('2026-11-03'), completedAt: at('2026-11-03') }),
+      svc({ id: '4', technicianName: 'Rina', finalCost: 999_000, warrantyClaimOf: '2' }),
+    ]);
+    expect(rows.map((r) => [r.name, r.units, r.revenue, r.profit])).toEqual([
+      ['Rina', 2, 550_000, 550_000],
+      ['Andi', 1, 2_000_000, 200_000],
+    ]);
+    expect(rows[0].medianDays).toBe(0.5);
+  });
+});
+
+describe('awaitingPickup', () => {
+  it('unit selesai/lunas/batal yang belum diambil, tertua dulu, umur dari tanggal selesai', () => {
+    const today = new Date(2026, 10, 14, 12);
+    const rows = awaitingPickup(
+      [
+        svc({ id: 'a', serviceNo: 'FM-1', status: 'selesai', completedAt: '2026-11-10T05:00:00.000Z' }),
+        svc({ id: 'b', serviceNo: 'FM-2', status: 'lunas', completedAt: '2026-10-01T05:00:00.000Z' }),
+        svc({ id: 'c', serviceNo: 'FM-3', status: 'lunas', pickedUp: true, completedAt: '2026-10-01T05:00:00.000Z' }),
+        svc({ id: 'd', serviceNo: 'FM-4', status: 'pengerjaan' }),
+        // Batal tanpa riwayat (daftar cloud): umur dari updatedAt.
+        svc({ id: 'e', serviceNo: 'FM-5', status: 'batal', updatedAt: '2026-11-04T05:00:00.000Z' }),
+      ],
+      today,
+    );
+    expect(rows.map((r) => [r.serviceNo, r.ageDays, r.bucket])).toEqual([
+      ['FM-2', 44, '31+'],
+      ['FM-5', 10, '8-30'],
+      ['FM-1', 4, '0-7'],
+    ]);
+  });
+});
+

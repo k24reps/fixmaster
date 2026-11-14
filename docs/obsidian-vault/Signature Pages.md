@@ -533,7 +533,8 @@ tanggal menumpuk tanpa overflow.
 **Tab bagian (14 Nov 2026; dulu indeks lompat "Isi laporan", 7 Nov).** Di bawah metrik ada
 `role="tablist"` berlabel "Isi laporan": **Ringkasan** (Laba Rugi & Break-even, Tren) · **Uang**
 (Pemasukan/Pengeluaran per Kategori, Perbandingan Antar-Outlet, Rincian Transaksi) · **Servis**
-(Laba per Kategori Perangkat, Tahapan Servis, Performa Teknisi) · **Kasir & Stok** (Sparepart
+(Mutu & Kecepatan Servis, Unit Menunggu Diambil, Laba per Kategori Perangkat, Tahapan Servis,
+Performa Teknisi) · **Kasir & Stok** (Sparepart
 Terlaris, Saran Restok) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
 Tiap tab = label + readout mono ("margin 58%", "10 transaksi", "7 tiket", "2 perlu restok",
 "Rp 350.000"); LED hanya pada kanal berstatus (impas/belum bila overhead tercatat, restok,
@@ -585,6 +586,29 @@ dan mengembalikan `nowX`; layar mengarsir sisa sumbu (`--bg-input`) + garis titi
 6. **Delta vs Periode Lalu** — metric tile pemasukan/pengeluaran/laba menampilkan % perubahan vs jendela sebelumnya yang setara (pengeluaran: naik = merah).
 7. **Perbandingan Antar-Outlet** — income/expense/net per cabang (hanya muncul bila >1 outlet; null = "Tanpa Cabang").
 8. **Aging Piutang** — tabel servis selesai yang belum lunas (sisa = finalCost − DP), umur dari tanggal selesai dengan tag 0-7 / 8-30 / 31+.
+
+**Tab Servis: mutu, unit menunggu, teknisi menurut laba (14 Nov 2026).**
+- **Mutu & Kecepatan Servis:** empat readout mono di atas divider titik (`dl.qGrid`, 4 → 2
+  kolom di wadah ≤766px): *Waktu selesai* (median hari diterima → selesai), *Balik garansi*
+  (klaim masuk ÷ unit selesai), *Batal* (batal ÷ tiket masuk), *Melebihi estimasi* (biaya akhir
+  > estimasi +10%, `OVER_ESTIMATE_TOLERANCE`). Batal & klaim dari tiket MASUK; kecepatan &
+  estimasi dari unit SELESAI tanpa klaim (`serviceQuality`). Median, bukan rata-rata: satu unit
+  tunggu part tiga minggu tak menyeret angka. Tanpa LED, karena ambang "baik" berbeda per toko.
+  Rata-rata hari di header Tahapan Servis dicabut (pertanyaan lain, angka mirip).
+- **Unit Menunggu Diambil:** keadaan sekarang, semua periode, tertua dulu (`awaitingPickup`):
+  selesai/lunas/batal yang belum diambil, umur dari tanggal selesai (batal: tanggal batal, lalu
+  `updatedAt` bila riwayat tak dimuat), tag umur 0-7/8-30/31+ seperti piutang, nomor servis
+  bertaut ke `/services/:id`, maksimal 10 baris + catatan jumlahnya.
+- **Performa Teknisi menurut laba:** `technicianProfit` dari unit selesai periode ini: unit ·
+  median hari · omzet, nilai = laba (biaya final − part). Dulu `service_summary` (0063) memberi
+  jumlah selesai + nilai Lunas, sehingga omzet part mahal memenangkan papan.
+- **Data:** `useCompletedServices` (cloud: `listByDateRange('services','completedAt')`, filter
+  di server lewat kolom 0080; lokal: riwayat via `completionDate`) dan `useAwaitingPickup`
+  (`queryServices({ openOnly, visibleOnly, limit: 500 })`, sama dengan Dashboard) di
+  `hooks/useReportData.ts`. Tanpa RPC atau migrasi baru. Laporan tak lagi memakai
+  `useServiceSummary`.
+- PDF: tabel Mutu, Performa Teknisi lima kolom (unit, median, omzet, laba), Unit Menunggu
+  Diambil (semua baris).
 
 - **Break-even (29 Sep 2026; sejak 14 Nov 2026 satu kartu dengan Laba Rugi, lihat di atas).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang

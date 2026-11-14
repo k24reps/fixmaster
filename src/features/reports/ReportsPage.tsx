@@ -8,19 +8,19 @@ import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRang
 import { fmtRp, fmtPercent } from '@/lib/format';
 import { localDateStr, localDateOf, fmtDate, fmtDateRange, isInRange } from '@/lib/time';
 import { isCapitalFlow, summarize } from '@/lib/business/finance';
-import { useServiceSummary } from '@/hooks/useServiceSummary';
 import {
   trendSeries,
   transactionRows,
   sparepartUsage,
   restockSuggestions,
   serviceFunnel,
-  avgTurnaroundDays,
+  serviceQuality,
+  technicianProfit,
   periodComparison,
   comparisonWindows,
   outletComparison,
 } from '@/lib/business/reports';
-import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
+import { useReceivables, useCategoryProfit, useCompletedServices, useAwaitingPickup } from '@/hooks/useReportData';
 import { getRent, getStartMonth } from '@/config/orgConfig';
 import {
   computeBreakEven,
@@ -86,6 +86,10 @@ const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 /** Baris biaya di struk Laba Rugi: selalu bertanda minus, nol tetap "Rp 0". */
 const minusRp = (n: number) => (n === 0 ? fmtRp(0) : `−${fmtRp(Math.abs(n))}`);
+/** Baris maksimum Unit Menunggu Diambil; sisanya disebut, tertua tetap di atas. */
+const PICKUP_ROWS = 10;
+/** Hari dengan satu desimal bila perlu ("2", "0,5"); format angka tak ikut bahasa. */
+const fmtDays = (n: number) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
 /** Total: tanpa "+", minus hanya bila memang negatif. */
 const signedPlain = (n: number) => (n < 0 ? `−${fmtRp(Math.abs(n))}` : fmtRp(n));
 
@@ -135,9 +139,11 @@ export function ReportsPage() {
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   // Panel laporan menampilkan "Belum ada data" hanya setelah datanya benar-benar
   // termuat; selama memuat atau gagal, kosong bukan fakta.
-  // Performa teknisi = tiket yang SELESAI dikerjakan dalam periode (bukan yang
-  // masuk), dihitung dari semua tiket — lihat service_summary (0063).
-  const summaryQuery = useServiceSummary(from, to);
+  // Mutu servis & performa teknisi = tiket yang SELESAI dalam periode (bukan
+  // yang masuk), dengan part-nya, supaya teknisi diurutkan menurut laba.
+  const completedQuery = useCompletedServices(from, to);
+  // Unit menunggu diambil: keadaan sekarang, semua periode (seperti piutang).
+  const pickupQuery = useAwaitingPickup();
   // Dua kartu ini tidak boleh dibatasi jendela yang dimuat halaman: piutang
   // adalah keadaan sekarang, dan laba per kategori memakai tanggal SELESAI.
   const receivablesQuery = useReceivables();
@@ -148,7 +154,8 @@ export function ReportsPage() {
     salesLoad,
     servicesLoad,
     inventoryLoad,
-    summaryQuery,
+    completedQuery,
+    pickupQuery,
     receivablesQuery,
     catProfitQuery,
   ];
@@ -169,7 +176,8 @@ export function ReportsPage() {
   const fSales = useMemo(() => sales.filter((s) => isInRange(s.date, from, to) && !s.voided), [sales, from, to]);
 
   const summary = useMemo(() => summarize(fIncomes, fExpenses), [fIncomes, fExpenses]);
-  const leaderboard = summaryQuery.data?.leaderboard ?? [];
+  const completed = completedQuery.data;
+  const pickups = pickupQuery.data;
 
   // New aggregations (all pure, from reports.ts).
   const trend = useMemo(() => trendSeries(incomes, expenses, from, to, today), [incomes, expenses, from, to, today]);
@@ -178,7 +186,8 @@ export function ReportsPage() {
   const partUsage = useMemo(() => sparepartUsage(fServices), [fServices]);
   const restock = useMemo(() => restockSuggestions(inventory), [inventory]);
   const funnel = useMemo(() => serviceFunnel(fServices), [fServices]);
-  const turnaround = useMemo(() => avgTurnaroundDays(fServices), [fServices]);
+  const quality = useMemo(() => serviceQuality(fServices, completed), [fServices, completed]);
+  const techRows = useMemo(() => technicianProfit(completed), [completed]);
   const comparison = useMemo(
     () =>
       periodComparison(
@@ -320,7 +329,7 @@ export function ReportsPage() {
   const paidOverhead = expenseGroups.find((g) => g.id === 'overhead')?.total ?? 0;
   const maxIncome = Math.max(1, ...incomeByCategory.map(([, v]) => v));
   const maxExpense = Math.max(1, ...expenseByCategory.map(([, v]) => v));
-  const maxLeaderRev = Math.max(1, ...leaderboard.map((tech) => tech.revenue));
+  const maxTechProfit = Math.max(1, ...techRows.map((tech) => tech.profit));
   const maxCatProfit = Math.max(1, ...catProfit.map((c) => c.profit));
   const maxPartQty = Math.max(1, ...partUsage.map((p) => p.qty));
   const maxFunnel = Math.max(1, ...funnel.map((f) => f.count));
@@ -392,8 +401,9 @@ export function ReportsPage() {
       partUsage,
       restock,
       funnel,
-      turnaround,
-      leaderboard,
+      quality,
+      techRows,
+      pickups,
       outletStats,
       receivables,
       txnRows,
@@ -1043,6 +1053,102 @@ export function ReportsPage() {
       {panel(
         'servis',
         <>
+          {/* Mutu & kecepatan: empat readout. Tanpa LED: ambang "baik" untuk
+              klaim atau batal berbeda per toko, dan lampu tanpa ambang yang
+              disepakati hanya menyala tanpa arti (Lit-Signal). */}
+          <Card>
+            <CardHeader icon={<Icon name="gauge" aria-hidden />} title={t('reports.qualityTitle')} />
+            <CardBody>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : (
+                <dl className={styles.qGrid}>
+                  <QTile
+                    label={t('reports.qTurnaround')}
+                    value={
+                      quality.medianDays === null ? <EmptyValue /> : interpolate(t('reports.qDays'), { n: fmtDays(quality.medianDays) })
+                    }
+                    sub={interpolate(t('reports.qDoneSub'), { n: String(quality.done) })}
+                  />
+                  <QTile
+                    label={t('reports.qClaims')}
+                    value={quality.done > 0 ? fmtPercent(quality.claims / quality.done, 0) : <EmptyValue />}
+                    sub={interpolate(t('reports.qClaimsSub'), { claims: String(quality.claims), done: String(quality.done) })}
+                  />
+                  <QTile
+                    label={t('reports.qCancelled')}
+                    value={quality.intake > 0 ? fmtPercent(quality.cancelled / quality.intake, 0) : <EmptyValue />}
+                    sub={interpolate(t('reports.qCancelledSub'), { n: String(quality.cancelled), total: String(quality.intake) })}
+                  />
+                  <QTile
+                    label={t('reports.qOverEstimate')}
+                    value={quality.estimated > 0 ? `${quality.overEstimate} / ${quality.estimated}` : <EmptyValue />}
+                    sub={t('reports.qOverEstimateSub')}
+                  />
+                </dl>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Unit menunggu diambil: keadaan sekarang, semua periode. Rak penuh
+              unit yang tak diambil = modal part tertahan dan risiko hilang. */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="box-open" aria-hidden />}
+              title={t('reports.pickupTitle')}
+              action={
+                <span className={styles.turnaround}>
+                  {pickups.length > 0 ? `${interpolate(t('reports.pickupCount'), { n: String(pickups.length) })} · ` : ''}
+                  {t('reports.allPeriods')}
+                </span>
+              }
+            />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : pickups.length === 0 ? (
+                <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.pickupNone')} />
+              ) : (
+                <div className={styles.tableScroll}>
+                  <table className={styles.table}>
+                    <caption className={styles.srOnly}>{t('reports.pickupCaption')}</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('reports.noServis')}</th>
+                        <th scope="col">{t('reports.pelanggan')}</th>
+                        <th scope="col">{t('reports.status')}</th>
+                        <th scope="col" className={styles.num}>{t('reports.pickupWaiting')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pickups.slice(0, PICKUP_ROWS).map((r) => (
+                        <tr key={r.serviceId}>
+                          <td className={styles.mono}>
+                            <Link className={styles.catLink} to={`/services/${r.serviceId}`}>
+                              {r.serviceNo}
+                            </Link>
+                          </td>
+                          <td>{r.customerName}</td>
+                          <td>{t(`status.${r.status}` as TranslationKey)}</td>
+                          <td className={styles.num}>
+                            <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
+                              {interpolate(t('reports.qDays'), { n: String(r.ageDays) })}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {pickups.length > PICKUP_ROWS && (
+                    <p className={styles.tableNote}>
+                      {interpolate(t('reports.pickupMore'), { shown: String(PICKUP_ROWS), total: String(pickups.length) })}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
           {/* 3. Profit by device category */}
           <Card>
             <CardHeader
@@ -1075,25 +1181,11 @@ export function ReportsPage() {
             </CardBody>
           </Card>
 
-          {/* 5. Service funnel + turnaround */}
+          {/* Tahapan servis. Kecepatan pindah ke Mutu & Kecepatan (median dari
+              unit yang SELESAI); rata-rata dari tiket masuk di sini dulu
+              menjawab pertanyaan lain dengan angka yang mirip. */}
           <Card>
-            <CardHeader
-              icon={<Icon name="filter" aria-hidden />}
-              title={t('reports.funnelServisTiketMasuk')}
-              action={
-                /* `avgTurnaroundDays` mengembalikan 0 untuk himpunan kosong, jadi
-                   toko yang tidak menyelesaikan apa pun diberi tahu rata-ratanya
-                   "0.0 hari" — status yang menyesatkan demi terlihat rapi. Titik
-                   desimalnya juga diganti koma, supaya tidak berdampingan dengan
-                   "102,0%" dari fmtPercent dalam satu viewport. */
-                <span className={styles.turnaround}>
-                  <Icon name="clock" aria-hidden />{' '}
-                  {turnaround > 0
-                    ? `Rata-rata ${turnaround.toFixed(1).replace('.', ',')} hari`
-                    : t('reports.belumAdaServisSelesai')}
-                </span>
-              }
-            />
+            <CardHeader icon={<Icon name="filter" aria-hidden />} title={t('reports.funnelServisTiketMasuk')} />
             <CardBody className={styles.noPad}>
               {reportPending ? (
                 <LoadState queries={reportLoad} />
@@ -1117,24 +1209,43 @@ export function ReportsPage() {
             </CardBody>
           </Card>
 
-          {/* Technician leaderboard (existing) */}
+          {/* Teknisi menurut LABA, dari unit selesai periode ini. */}
           <Card>
-            <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('reports.performaTeknisiPeriode')} />
+            <CardHeader
+              icon={<Icon name="trophy" aria-hidden />}
+              title={t('reports.performaTeknisiPeriode')}
+              action={<span className={styles.liveTag}>{t('reports.techSortNote')}</span>}
+            />
             <CardBody className={styles.noPad}>
               {reportPending ? (
                 <LoadState queries={reportLoad} />
-              ) : leaderboard.length === 0 ? (
+              ) : techRows.length === 0 ? (
                 <EmptyState icon={<Icon name="users" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
               ) : (
                 <ul className={styles.breakdown}>
-                  {leaderboard.map((tech) => (
+                  {techRows.map((tech) => (
                     <li key={tech.key} className={styles.channel}>
                       <div className={styles.channelTop}>
-                        <span className={styles.channelName}>{tech.name} · {tech.completed} selesai</span>
-                        <span className={styles.channelValue}>{fmtRp(tech.revenue)}</span>
+                        <span className={styles.channelName}>
+                          {tech.name}{' '}
+                          <span className={styles.channelMeta}>
+                            ·{' '}
+                            {interpolate(t('reports.techRow'), {
+                              units: String(tech.units),
+                              days: tech.medianDays === null ? '–' : fmtDays(tech.medianDays),
+                              revenue: fmtRp(tech.revenue),
+                            })}
+                          </span>
+                        </span>
+                        <span className={[styles.channelValue, tech.profit >= 0 ? styles.inc : styles.neg].join(' ')}>
+                          {signedPlain(tech.profit)}
+                        </span>
                       </div>
                       <div className={styles.bar}>
-                        <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(tech.revenue / maxLeaderRev) * 100}%` }} />
+                        <div
+                          className={[styles.barFill, styles.brand].join(' ')}
+                          style={{ width: `${(Math.max(0, tech.profit) / maxTechProfit) * 100}%` }}
+                        />
                       </div>
                     </li>
                   ))}
@@ -1373,5 +1484,16 @@ function PlLine({
       </span>
       <span className={[styles.plAmount, muted ? styles.plMuted : ''].filter(Boolean).join(' ')}>{amount}</span>
     </li>
+  );
+}
+
+/** Satu readout Mutu Servis: label mono, nilai besar, keterangan dasar angkanya. */
+function QTile({ label, value, sub }: { label: string; value: ReactNode; sub: string }) {
+  return (
+    <div className={styles.qTile}>
+      <dt className={styles.qLabel}>{label}</dt>
+      <dd className={styles.qValue}>{value}</dd>
+      <dd className={styles.qSub}>{sub}</dd>
+    </div>
   );
 }

@@ -623,3 +623,139 @@ export function receivablesAging(
 
 /** Re-export for callers that want the inventory cost of a service's parts. */
 export { sparepartCost };
+
+// ---------- 9. Mutu & kecepatan servis ----------
+/** Biaya akhir yang melewati estimasi lebih dari ini dihitung "meleset". */
+export const OVER_ESTIMATE_TOLERANCE = 0.1;
+
+export interface ServiceQuality {
+  /** Tiket masuk periode ini, tanpa tiket klaim garansi. */
+  intake: number;
+  /** Dari tiket masuk itu, yang berstatus batal. */
+  cancelled: number;
+  /** Tiket klaim garansi yang masuk periode ini (unit yang balik). */
+  claims: number;
+  /** Unit yang SELESAI periode ini, tanpa klaim (kerja ulang bukan pekerjaan baru). */
+  done: number;
+  /** Median hari dari unit diterima sampai selesai; null tanpa unit selesai. */
+  medianDays: number | null;
+  /** Unit selesai yang punya estimasi dan biaya akhir. */
+  estimated: number;
+  /** Dari `estimated`, yang biaya akhirnya > estimasi + 10%. */
+  overEstimate: number;
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function turnaroundDays(s: Service): number | null {
+  const done = completionDate(s);
+  if (!done) return null;
+  const span = daysBetween(localDateOf(s.createdAt), done);
+  return span >= 0 ? span : null;
+}
+
+/**
+ * Mutu servis dari dua himpunan yang berbeda definisi periodenya, sengaja:
+ * batal & klaim dihitung dari tiket yang MASUK (kapan pelanggan datang),
+ * kecepatan & estimasi dari unit yang SELESAI (kapan pekerjaan tuntas) —
+ * definisi yang sama dengan Laba per Kategori dan Performa Teknisi.
+ *
+ * Median, bukan rata-rata: satu unit yang menunggu part tiga minggu menarik
+ * rata-rata jauh dari pengalaman pelanggan biasa.
+ */
+export function serviceQuality(intake: Service[], done: Service[]): ServiceQuality {
+  const fresh = intake.filter((s) => !s.warrantyClaimOf);
+  const finished = done.filter((s) => !s.warrantyClaimOf);
+  const withEstimate = finished.filter((s) => s.estimateCost > 0 && s.finalCost > 0);
+  return {
+    intake: fresh.length,
+    cancelled: fresh.filter((s) => s.status === 'batal').length,
+    claims: intake.length - fresh.length,
+    done: finished.length,
+    medianDays: median(finished.map(turnaroundDays).filter((d): d is number => d !== null)),
+    estimated: withEstimate.length,
+    overEstimate: withEstimate.filter((s) => s.finalCost > s.estimateCost * (1 + OVER_ESTIMATE_TOLERANCE)).length,
+  };
+}
+
+export interface TechProfit {
+  /** technicianId, atau nama untuk tiket lama tanpa id. */
+  key: string;
+  name: string;
+  units: number;
+  revenue: number;
+  profit: number;
+  medianDays: number | null;
+}
+
+/**
+ * Teknisi menurut LABA dari unit yang selesai periode ini. Dulu papan ini
+ * diurutkan menurut nilai Lunas, sehingga teknisi yang memasang LCD mahal
+ * menang atas teknisi yang cepat dan bermargin baik — omzet part bukan
+ * kerjanya. Klaim garansi tidak dihitung, sama dengan papan lama.
+ */
+export function technicianProfit(done: Service[]): TechProfit[] {
+  const map = new Map<string, TechProfit & { spans: number[] }>();
+  for (const s of done) {
+    if (!s.technicianName || s.warrantyClaimOf) continue;
+    if (s.status !== 'selesai' && s.status !== 'lunas') continue;
+    const key = s.technicianId ?? s.technicianName;
+    const cur = map.get(key) ?? { key, name: s.technicianName, units: 0, revenue: 0, profit: 0, medianDays: null, spans: [] };
+    cur.units += 1;
+    cur.revenue += s.finalCost;
+    cur.profit += serviceProfit(s);
+    const span = turnaroundDays(s);
+    if (span !== null) cur.spans.push(span);
+    map.set(key, cur);
+  }
+  return [...map.values()]
+    .map(({ spans, ...t }) => ({ ...t, medianDays: median(spans) }))
+    .sort((a, b) => b.profit - a.profit || b.units - a.units);
+}
+
+export interface PickupWait {
+  serviceId: string;
+  serviceNo: string;
+  customerName: string;
+  customerPhone: string;
+  status: ServiceStatus;
+  ageDays: number;
+  bucket: AgingBucket;
+}
+
+/**
+ * Unit yang sudah selesai (atau batal) tapi belum diambil, tertua dulu. Umur
+ * dihitung dari tanggal selesai; tiket batal dari tanggal batal, lalu
+ * `updatedAt` bila riwayatnya tidak dimuat (daftar cloud tanpa `history`).
+ */
+export function awaitingPickup(
+  services: Pick<
+    Service,
+    'id' | 'serviceNo' | 'customerName' | 'customerPhone' | 'status' | 'pickedUp' | 'createdAt' | 'updatedAt' | 'completedAt' | 'history'
+  >[],
+  today: Date = new Date(),
+): PickupWait[] {
+  const todayStr = localDateStr(today);
+  return services
+    .filter((s) => !s.pickedUp && (s.status === 'selesai' || s.status === 'lunas' || s.status === 'batal'))
+    .map((s) => {
+      const since =
+        (s.status === 'batal' ? cancelDate(s as Service) : completionDate(s as Service)) ?? localDateOf(s.updatedAt);
+      const ageDays = Math.max(0, daysBetween(since, todayStr));
+      return {
+        serviceId: s.id,
+        serviceNo: s.serviceNo,
+        customerName: s.customerName,
+        customerPhone: s.customerPhone,
+        status: s.status,
+        ageDays,
+        bucket: agingBucket(ageDays),
+      };
+    })
+    .sort((a, b) => b.ageDays - a.ageDays);
+}
