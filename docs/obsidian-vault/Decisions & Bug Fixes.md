@@ -6741,3 +6741,35 @@ tombol ekspor terkunci tampil di demo (Trial). `audit-mobile` (`/reports` dan
 `?bagian=piutang`, ponsel; `/reports` pita tablet) dan `audit-zoom` (100% dan 125%): nol temuan,
 lantai 12px 0.
 
+**Tahap 6, pelanggan, nilai stok, target (14 Nov 2026):** rincian di
+[[Signature Pages#Laporan — Analyzer Printout]]. Keputusan: "pelanggan baru" dari tanggal data
+pelanggan dibuat, bukan tiket pertama (tiket lama tak termuat; data pelanggan diambil per
+rentang `createdAt` di server). "Tak bergerak" bergantung periode yang dipilih, dan itu
+disengaja: sebulan menjawab "apa yang tidak laku bulan ini", setahun menjawab stok mati. Target
+hanya untuk satu bulan kalender, karena target bulanan dibagi rata ke seminggu atau dikalikan
+ke setahun adalah angka karangan. Tab menjadi enam; ambang kolom kembali ke 921px (pengukuran
+indeks enam kanal 7 Nov).
+**Ditemukan saat verifikasi, diperbaiki di commit ini:** tautan "Buka di Kasir & Stok" yang
+ditambahkan tahap 5 di header Saran Restok meluap 19px di 390px (`.turnaround` nowrap), dan
+readout header Piutang ("Total Rp … · semua periode") meluap di 360px (sudah ada sebelum tahap
+1). `audit-mobile` tidak menangkap keduanya: ia mengukur luberan dokumen dan wadah gulir, bukan
+isi yang terpotong di dalam kartu `overflow: hidden`. Perbaikan: tautan restok pindah ke baris
+di bawah daftar; readout header Piutang dan Unit Menunggu Diambil memakai `.headWrap` (boleh
+patah baris, rata kanan). **Pelajaran:** untuk Laporan, jalankan juga pemeriksa clip per kartu
+(elemen yang `getBoundingClientRect` keluar dari kartu induknya) di 320/360/390 untuk SETIAP tab,
+bukan hanya tab bawaan.
+**Tes PDF pertama:** `src/features/reports/printReport.test.ts` (4 tes) merakit dokumen dari
+fungsi murni yang sama dan memeriksa bagian baru, target hanya untuk satu bulan, dan "Kurang
+untuk impas" vs "Rugi usaha" menurut status periode. Kunci i18n baru `reports.tabCustomers`,
+`reports.cust*`, `reports.stock*`, `reports.target*`.
+**Verifikasi:** build, lint, **1133 tes / 86 berkas** (+3 fungsi murni: `customerStats`,
+`stockValue`, `monthTargetPace`; +4 tes PDF). Demo: modal di rak Rp 13.250.000, nilai jual
+Rp 20.410.000, 1 barang tak bergerak (Baterai A1964, Rp 720.000, 5%); 3 pelanggan (semua baru,
+karena data demo dibuat hari ini), 2 pembeli umum, Andi Pratama teratas Rp 1.850.000; target
+seed Rp 50 jt / 60 unit di laju 47% (hari ke-14 dari 30). Pemeriksa clip per kartu: nol di
+320/360/390/744/1025 untuk enam tab. `audit-mobile` (ponsel + pita tablet) dan `audit-zoom`
+untuk enam tab: nol temuan, lantai 12px 0. **Tidak dijalankan:** `sync-vault-attachments.ps1`
+(tanpa PowerShell); `rep-dark.png` di [[Signature Pages]] masih memperlihatkan Laporan sebelum
+tab (buat ulang dengan `scripts/shoot-reports.mjs` di mesin lokal). Ekspor PDF tak bisa dicoba
+lewat demo (Trial); dokumennya diperiksa lewat `reportDocHtml` di tes.
+

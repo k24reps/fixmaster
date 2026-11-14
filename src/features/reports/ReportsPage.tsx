@@ -18,14 +18,17 @@ import {
   serviceQuality,
   technicianProfit,
     salesBreakdown,
-  periodPreset,
+    periodPreset,
   PERIOD_PRESETS,
+  customerStats,
+  stockValue,
+  monthTargetPace,
   periodComparison,
   comparisonWindows,
   outletComparison,
 } from '@/lib/business/reports';
 import { useReceivables, useCategoryProfit, useCompletedServices, useAwaitingPickup } from '@/hooks/useReportData';
-import { getRent, getStartMonth } from '@/config/orgConfig';
+import { getRent, getStartMonth, getTarget } from '@/config/orgConfig';
 import {
   computeBreakEven,
   breakEvenVerdict,
@@ -65,7 +68,7 @@ const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'war
   tied: { key: 'reports.verdictTied', tone: 'warn' },
   loss: { key: 'reports.verdictLoss', tone: 'crit' },
 };
-const TAB_IDS = ['ringkasan', 'uang', 'servis', 'stok', 'piutang'] as const;
+const TAB_IDS = ['ringkasan', 'uang', 'servis', 'stok', 'pelanggan', 'piutang'] as const;
 type TabId = (typeof TAB_IDS)[number];
 const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as readonly string[]).includes(v);
 interface TabItem {
@@ -90,6 +93,8 @@ const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 /** Baris biaya di struk Laba Rugi: selalu bertanda minus, nol tetap "Rp 0". */
 const minusRp = (n: number) => (n === 0 ? fmtRp(0) : `−${fmtRp(Math.abs(n))}`);
+/** Barang tak bergerak yang ditampilkan, modal tertahan terbesar dulu. */
+const IDLE_ROWS = 5;
 /** Barang kasir yang ditampilkan; daftar lengkap ada di PDF. */
 const TOP_PRODUCTS = 8;
 /** Baris maksimum Unit Menunggu Diambil; sisanya disebut, tertua tetap di atas. */
@@ -141,7 +146,9 @@ export function ReportsPage() {
   // so widen the query ±1 day; the exact localDateOf filter below trims edges.
   const [svcFrom, svcTo] = rangeForTimestamp(from, to);
   const { data: services, ...servicesLoad } = useCollectionRange('services', 'createdAt', svcFrom, svcTo);
-  const { data: outlets } = useCollection('outlets');
+    const { data: outlets } = useCollection('outlets');
+  // Pelanggan yang datanya dibuat di periode ini = pelanggan baru.
+  const { data: newCustomers, ...newCustomersLoad } = useCollectionRange('customers', 'createdAt', svcFrom, svcTo);
   const { data: inventory, ...inventoryLoad } = useCollection('inventory');
   // Panel laporan menampilkan "Belum ada data" hanya setelah datanya benar-benar
   // termuat; selama memuat atau gagal, kosong bukan fakta.
@@ -160,8 +167,9 @@ export function ReportsPage() {
     salesLoad,
     servicesLoad,
     inventoryLoad,
-    completedQuery,
+        completedQuery,
     pickupQuery,
+    newCustomersLoad,
     receivablesQuery,
     catProfitQuery,
   ];
@@ -196,7 +204,27 @@ export function ReportsPage() {
   const techRows = useMemo(() => technicianProfit(completed), [completed]);
   // `sales`, bukan fSales: struk batal ikut dihitung (terpisah) di sini.
   const salesInfo = useMemo(() => salesBreakdown(sales, from, to), [sales, from, to]);
-  const topProducts = salesInfo.products.slice(0, TOP_PRODUCTS);
+    const topProducts = salesInfo.products.slice(0, TOP_PRODUCTS);
+  const newCustomerIds = useMemo(
+    () => new Set(newCustomers.filter((c) => isInRange(localDateOf(c.createdAt), from, to)).map((c) => c.id)),
+    [newCustomers, from, to],
+  );
+  const custStats = useMemo(
+    () => customerStats(fServices, completed, sales, newCustomerIds, from, to),
+    [fServices, completed, sales, newCustomerIds, from, to],
+  );
+  const maxCustSpend = Math.max(1, ...custStats.top.map((c) => c.spend));
+  // Nilai stok: keadaan sekarang; "tak bergerak" = tak terjual/terpakai di periode.
+  const stock = useMemo(
+    () => stockValue(inventory, sales, [...fServices, ...completed], from, to),
+    [inventory, sales, fServices, completed, from, to],
+  );
+  const idleTop = stock.idle.slice(0, IDLE_ROWS);
+  const maxIdle = Math.max(1, ...idleTop.map((i) => i.value));
+  // Target bulanan hanya bila periodenya tepat satu bulan kalender.
+  const target = getTarget();
+  const pace = monthTargetPace(from, to, today);
+  const hasTarget = pace !== null && (target.revenue > 0 || target.serviceCount > 0);
   const maxProductProfit = Math.max(1, ...topProducts.map((p) => p.profit));
   const comparison = useMemo(
     () =>
@@ -401,6 +429,9 @@ export function ReportsPage() {
       noBaseline,
       salesTotal,
       salesInfo,
+      custStats,
+      stock,
+      target: { revenue: target.revenue, serviceCount: target.serviceCount, pace },
       breakEven,
       pl,
       unitsDone,
@@ -481,6 +512,11 @@ export function ReportsPage() {
             tone: 'warn',
           }
         : { id: 'stok', label: t('reports.tabStock'), readout: t('reports.idxStockOk'), tone: 'ok' },
+        {
+      id: 'pelanggan',
+      label: t('reports.tabCustomers'),
+      readout: reportPending ? pendingReadout : interpolate(t('reports.custCount'), { n: String(custStats.active) }),
+    },
     reportPending
       ? { id: 'piutang', label: t('reports.idxReceivables'), readout: pendingReadout }
       : receivables.length > 0
@@ -882,6 +918,50 @@ export function ReportsPage() {
             </Card>
           )}
 
+          {/* Target bulanan dari Pengaturan, hanya untuk periode tepat satu bulan.
+              Tanda titik = laju merata: di tanggal 15 dari 30, separuh target. */}
+          {hasTarget && pace !== null && (
+            <Card>
+              <CardHeader
+                icon={<Icon name="bullseye" aria-hidden />}
+                title={t('reports.targetTitle')}
+                action={
+                  <span className={styles.turnaround}>
+                    <Link className={styles.catLink} to="/settings?tab=usaha">
+                      {t('reports.targetEdit')}
+                    </Link>
+                  </span>
+                }
+              />
+              <CardBody>
+                <div className={styles.targets}>
+                  {target.revenue > 0 && (
+                    <TargetRow
+                      label={t('reports.targetRevenue')}
+                      value={`${fmtRp(summary.income)} / ${fmtRp(target.revenue)}`}
+                      ratio={summary.income / target.revenue}
+                      pace={pace}
+                    />
+                  )}
+                  {target.serviceCount > 0 && (
+                    <TargetRow
+                      label={t('reports.targetUnits')}
+                      value={`${unitsDone} / ${target.serviceCount}`}
+                      ratio={unitsDone / target.serviceCount}
+                      pace={pace}
+                    />
+                  )}
+                </div>
+                {pace < 1 && (
+                  <small className={styles.beNote}>
+                    <span className={styles.paceKey} aria-hidden />
+                    {interpolate(t('reports.targetPace'), { pct: fmtPercent(pace, 0) })}
+                  </small>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
           {/* 1. Income vs expense trend chart */}
           <Card>
             <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
@@ -1138,7 +1218,7 @@ export function ReportsPage() {
               icon={<Icon name="box-open" aria-hidden />}
               title={t('reports.pickupTitle')}
               action={
-                <span className={styles.turnaround}>
+                <span className={[styles.turnaround, styles.headWrap].join(' ')}>
                   {pickups.length > 0 ? `${interpolate(t('reports.pickupCount'), { n: String(pickups.length) })} · ` : ''}
                   {t('reports.allPeriods')}
                 </span>
@@ -1390,6 +1470,73 @@ export function ReportsPage() {
             )}
           </Card>
 
+          {/* Nilai stok: modal di rak sekarang, dan bagian yang tak bergerak di
+              periode ini. Restok saja tidak memberi tahu uang yang tertahan. */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="boxes-stacked" aria-hidden />}
+              title={t('reports.stockTitle')}
+              action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
+            />
+            {reportPending ? (
+              <CardBody>
+                <LoadState queries={reportLoad} />
+              </CardBody>
+            ) : (
+              <>
+                <CardBody>
+                  <dl className={styles.qGrid}>
+                    <QTile
+                      label={t('reports.stockCost')}
+                      value={fmtRp(stock.cost)}
+                      sub={interpolate(t('reports.stockCostSub'), { n: String(stock.items) })}
+                    />
+                    <QTile label={t('reports.stockRetail')} value={fmtRp(stock.retail)} sub={t('reports.stockRetailSub')} />
+                    <QTile
+                      label={t('reports.stockIdle')}
+                      value={String(stock.idleCount)}
+                      sub={t('reports.stockIdleSub')}
+                    />
+                    <QTile
+                      label={t('reports.stockIdleValue')}
+                      value={fmtRp(stock.idleValue)}
+                      sub={
+                        stock.cost > 0
+                          ? interpolate(t('reports.stockIdleValueSub'), { pct: fmtPercent(stock.idleValue / stock.cost, 0) })
+                          : t('reports.stockIdleSub')
+                      }
+                    />
+                  </dl>
+                </CardBody>
+                {idleTop.length > 0 && (
+                  <CardBody className={[styles.noPad, styles.dottedTop].join(' ')}>
+                    <ul className={styles.breakdown}>
+                      {idleTop.map((i) => (
+                        <li key={i.id} className={styles.channel}>
+                          <div className={styles.channelTop}>
+                            <span className={styles.channelName}>
+                              {i.name}{' '}
+                              <span className={styles.channelMeta}>
+                                · {interpolate(t('reports.stockIdleRow'), { n: String(i.stock) })}
+                              </span>
+                            </span>
+                            <span className={styles.channelValue}>{fmtRp(i.value)}</span>
+                          </div>
+                          <div className={styles.bar}>
+                            <div
+                              className={[styles.barFill, styles.capital].join(' ')}
+                              style={{ width: `${(i.value / maxIdle) * 100}%` }}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardBody>
+                )}
+              </>
+            )}
+          </Card>
+
           <div className={styles.grid}>
             {/* 4a. Sparepart usage */}
             <Card>
@@ -1425,19 +1572,7 @@ export function ReportsPage() {
               <CardHeader
                 icon={<Icon name="boxes-stacked" aria-hidden />}
                 title={t('reports.saranRestok')}
-                action={
-                  <span className={styles.turnaround}>
-                    {t('reports.stokSaatIni')}
-                    {restock.length > 0 && (
-                      <>
-                        {' · '}
-                        <Link className={styles.catLink} to="/pos?stock=low">
-                          {t('reports.openRestock')}
-                        </Link>
-                      </>
-                    )}
-                  </span>
-                }
+                action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
               />
               <CardBody className={styles.noPad}>
                 {reportPending ? (
@@ -1445,6 +1580,7 @@ export function ReportsPage() {
                 ) : restock.length === 0 ? (
                   <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.stokSemuaAman')} />
                 ) : (
+                  <>
                   <ul className={styles.breakdown}>
                     {restock.slice(0, 8).map((i) => {
                       // Bar = KEKURANGAN, bukan sisa stok. Rumus lama (stock /
@@ -1473,11 +1609,90 @@ export function ReportsPage() {
                       );
                     })}
                   </ul>
+                  <p className={styles.tableNote}>
+                    {/* Di bawah daftar, bukan di header: di 390px header tak muat dua readout. */}
+                    <Link className={styles.catLink} to="/pos?stock=low">
+                      {t('reports.openRestock')}
+                    </Link>
+                  </p>
+                  </>
                 )}
               </CardBody>
             </Card>
           </div>
       </>)}
+
+            {panel(
+        'pelanggan',
+        <Card>
+          <CardHeader
+            icon={<Icon name="users" aria-hidden />}
+            title={t('reports.custTitle')}
+            action={<span className={styles.liveTag}>{t('reports.custSortNote')}</span>}
+          />
+          {reportPending ? (
+            <CardBody>
+              <LoadState queries={reportLoad} />
+            </CardBody>
+          ) : custStats.active === 0 && custStats.walkIn === 0 ? (
+            <CardBody>
+              <EmptyState icon={<Icon name="users" aria-hidden />} title={t('reports.custNone')} />
+            </CardBody>
+          ) : (
+            <>
+              <CardBody>
+                <dl className={styles.qGrid}>
+                  <QTile
+                    label={t('reports.custActive')}
+                    value={String(custStats.active)}
+                    sub={interpolate(t('reports.custActiveSub'), { fresh: String(custStats.fresh), back: String(custStats.returning) })}
+                  />
+                  <QTile
+                    label={t('reports.custReturning')}
+                    value={custStats.active > 0 ? fmtPercent(custStats.returning / custStats.active, 0) : <EmptyValue />}
+                    sub={t('reports.custReturningSub')}
+                  />
+                  <QTile
+                    label={t('reports.custAvg')}
+                    value={custStats.active > 0 ? fmtRp(Math.round(custStats.spendTotal / custStats.active)) : <EmptyValue />}
+                    sub={t('reports.custAvgSub')}
+                  />
+                  <QTile
+                    label={t('reports.custWalkIn')}
+                    value={String(custStats.walkIn)}
+                    sub={t('reports.custWalkInSub')}
+                  />
+                </dl>
+              </CardBody>
+              {custStats.top.length > 0 && (
+                <CardBody className={[styles.noPad, styles.dottedTop].join(' ')}>
+                  <ul className={styles.breakdown}>
+                    {custStats.top.map((c) => (
+                      <li key={c.id} className={styles.channel}>
+                        <div className={styles.channelTop}>
+                          <span className={styles.channelName}>
+                            {c.name}{' '}
+                            <span className={styles.channelMeta}>
+                              · {interpolate(t('reports.custVisits'), { n: String(c.visits) })}
+                            </span>
+                          </span>
+                          <span className={styles.channelValue}>{fmtRp(c.spend)}</span>
+                        </div>
+                        <div className={styles.bar}>
+                          <div
+                            className={[styles.barFill, styles.brand].join(' ')}
+                            style={{ width: `${(c.spend / maxCustSpend) * 100}%` }}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CardBody>
+              )}
+            </>
+          )}
+        </Card>,
+      )}
 
       {panel('piutang', <>
           {/* 8. Receivables aging */}
@@ -1489,7 +1704,7 @@ export function ReportsPage() {
                  di header: piutang adalah keadaan sekarang, dan yang paling tua
                  justru selalu di luar periode yang sedang dilihat. */
               action={
-                <span className={styles.turnaround}>
+                <span className={[styles.turnaround, styles.headWrap].join(' ')}>
                   {receivables.length > 0 ? interpolate(t('reports.totalPrefix'), { amount: fmtRp(receivablesTotal) }) : ''}
                   {t('reports.allPeriods')}
                   {canExport && receivables.length > 0 && (
@@ -1652,3 +1867,33 @@ function QTile({ label, value, sub }: { label: string; value: ReactNode; sub: st
     </div>
   );
 }
+
+/**
+ * Satu baris target: nilai / target, persen, dan tick-gauge dengan penanda
+ * laju merata. LED hijau bila di depan laju (atau tercapai), jingga bila di
+ * belakang — target yang tertinggal bukan kegagalan, jadi tidak merah.
+ */
+function TargetRow({ label, value, ratio, pace }: { label: string; value: string; ratio: number; pace: number }) {
+  const ahead = ratio >= Math.min(1, pace);
+  return (
+    <div className={styles.targetRow} data-tone={ahead ? 'ok' : 'warn'}>
+      <div className={styles.targetTop}>
+        <span className={styles.targetLabel}>
+          <span className={styles.plLed} aria-hidden />
+          {label}
+        </span>
+        <span className={styles.targetValue}>
+          {value} · {fmtPercent(ratio, 0)}
+        </span>
+      </div>
+      <div className={styles.beGauge}>
+        <div
+          className={[styles.beFill, ahead ? styles.beOk : ''].join(' ')}
+          style={{ width: `${Math.min(100, Math.max(0, ratio * 100))}%` }}
+        />
+        {pace < 1 && <span className={styles.paceMark} style={{ left: `${pace * 100}%` }} aria-hidden />}
+      </div>
+    </div>
+  );
+}
+

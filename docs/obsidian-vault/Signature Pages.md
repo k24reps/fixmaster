@@ -531,11 +531,12 @@ terpotong. Di ponsel nilai menyusut `clamp(--text-sm, 6.4cqi - 4.2px, --text-xl)
 tanggal menumpuk tanpa overflow.
 
 **Tab bagian (14 Nov 2026; dulu indeks lompat "Isi laporan", 7 Nov).** Di bawah metrik ada
-`role="tablist"` berlabel "Isi laporan": **Ringkasan** (Laba Rugi & Break-even, Tren) · **Uang**
+`role="tablist"` berlabel "Isi laporan": **Ringkasan** (Laba Rugi & Break-even, Target Bulan Ini, Tren) · **Uang**
 (Pemasukan/Pengeluaran per Kategori, Perbandingan Antar-Outlet, Rincian Transaksi) · **Servis**
 (Mutu & Kecepatan Servis, Unit Menunggu Diambil, Laba per Kategori Perangkat, Tahapan Servis,
 Performa Teknisi) · **Kasir & Stok** (Penjualan Kasir, Part
-Terpakai di Servis — dulu "Sparepart Terlaris", Saran Restok) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
+Terpakai di Servis — dulu "Sparepart Terlaris", Nilai Stok di Rak, Saran Restok) · **Pelanggan**
+(Pelanggan Periode Ini) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
 Tiap tab = label + readout mono ("margin 58%", "10 transaksi", "7 tiket", "2 perlu restok",
 "Rp 350.000"); LED hanya pada kanal berstatus (impas/belum bila overhead tercatat, restok,
 piutang 31+ = merah), jadi deret ini tetap ringkasan tanpa menggulir. Tab terpilih = kanal
@@ -543,8 +544,9 @@ menyala seperti item aktif sidebar (`--rail-active`, tepi `--border-brand`, soro
 WAI-ARIA: roving tabindex, panah kiri/kanan + Home/End memindah fokus dan memilih, panel
 `role="tabpanel"` dengan `hidden` (aturan `.panel[hidden]` perlu karena `display:flex` kelas
 mengalahkan `[hidden]`). Tab aktif di URL `?bagian=uang|servis|stok|piutang` (Ringkasan = tanpa
-parameter), `replace` supaya berpindah tab tidak menumpuk riwayat. Kolom 5 → 3 (wadah ≤766px,
-±147px per kanal) → 2 (≤456px, kanal kelima selebar baris). Readout "…" saat data dimuat. PDF
+parameter), `replace` supaya berpindah tab tidak menumpuk riwayat. Kolom 6 → 3 (wadah ≤921px,
+±147px per kanal, ambang lama indeks enam kanal) → 2 (≤456px). Sejak tahap 6 ada enam tab
+(Pelanggan masuk sebelum Piutang); `?bagian=pelanggan`. Readout "…" saat data dimuat. PDF
 tetap mencetak semua bagian. Tinggi halaman di 390px: Ringkasan 2336px (dulu 5336px untuk
 seluruh halaman).
 
@@ -628,13 +630,34 @@ memuat tabel yang sama dengan daftar barang lengkap.
   ke `/settings?tab=langganan`, pola gerbang yang sama dengan kartu Export Data di Pengaturan.
 - **Tautan tindak lanjut:** nomor servis di Piutang dan Unit Menunggu Diambil membuka tiketnya
   (tempat tombol WhatsApp dan pelunasan; RPC piutang tak membawa nomor HP, jadi tombol WA
-  langsung di Laporan butuh perubahan server); Saran Restok menaut ke `/pos?stock=low`.
+  langsung di Laporan butuh perubahan server); Saran Restok menaut ke `/pos?stock=low` lewat
+  baris di bawah daftarnya (di header ia meluap di 390px).
 - **Grafik tren:** viewBox selebar wadah terukur (`ResizeObserver`), jadi label sumbu tampil
   12px di semua lebar (dulu ±5px di 390px); label X dijarangkan sampai ±56 unit per label
   (4 label di ponsel); pad kiri 68 agar "2,63 jt" tidak terpotong; tinggi 200 bila <480px.
   `aria-label` kini memuat ringkasan (total pemasukan/pengeluaran, puncak dan tanggalnya).
 - ±13 literal UI pindah ke kunci i18n; transisi `width` pada batang dicabut (gerak tersebar,
   dan detektor menandainya); `.estTag` memakai `--text-xs`.
+
+**Pelanggan, nilai stok, target (14 Nov 2026).**
+- **Pelanggan Periode Ini** (tab Pelanggan): Pelanggan (baru · langganan), Pelanggan kembali (%),
+  Belanja per pelanggan, Pembeli umum (struk tanpa nama); lalu lima pelanggan teratas menurut
+  belanja ("3 kunjungan"). `customerStats`: *baru* = data pelanggan dibuat di periode
+  (`useCollectionRange('customers','createdAt')`), bukan "tiket pertamanya", karena riwayat tiket
+  lama sering tak termuat; belanja = biaya servis SELESAI + kasir (definisi Laba Rugi);
+  kunjungan = tiket MASUK + struk. Readout tab: "3 pelanggan".
+- **Nilai Stok di Rak** (tab Kasir & Stok, sebelum Part Terpakai): Modal di rak (stok × HPP),
+  Nilai jual (stok × harga katalog), Tak bergerak (barang bersisa yang tak terjual dan tak
+  terpakai di periode), Modal mengendap (+ persen dari modal di rak); lima barang tak bergerak
+  dengan modal terbesar, batang netral (`.capital`), karena stok bukan biaya. `stockValue`.
+- **Target Bulan Ini** (tab Ringkasan, setelah Laba Rugi): hanya bila periode tepat satu bulan
+  kalender (`monthTargetPace`, `null` untuk rentang lain) dan target diisi di Pengaturan. Omzet =
+  Pemasukan usaha (`summary.income`, sama dengan Dashboard), Unit selesai = unit Laba Rugi.
+  Tick-gauge dengan penanda titik "laju merata hari ini" (hari ke-n ÷ hari dalam bulan), LED
+  hijau bila di depan laju, jingga bila di belakang (bukan merah: tertinggal target bukan
+  kegagalan). Tautan "Ubah target" ke `/settings?tab=usaha`.
+- PDF: Target Bulan Ini setelah Laba Rugi; Nilai Stok di Rak (15 barang tak bergerak teratas)
+  dan Pelanggan Periode Ini di akhir bagian operasional.
 
 - **Break-even (29 Sep 2026; sejak 14 Nov 2026 satu kartu dengan Laba Rugi, lihat di atas).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang

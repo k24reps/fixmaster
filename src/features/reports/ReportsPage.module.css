@@ -646,7 +646,7 @@
 }
 .indexList {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -698,6 +698,53 @@
 }
 .panel[hidden] {
   display: none;
+}
+/* Target bulan: baris label + nilai, lalu tick-gauge dengan penanda laju. */
+.targets {
+  display: grid;
+  gap: var(--space-4);
+}
+.targetRow {
+  --tone: var(--success);
+}
+.targetRow[data-tone='warn'] {
+  --tone: var(--warning);
+}
+.targetTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.targetLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+.targetValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+/* Kunci legenda penanda laju di catatan bawah kartu. */
+.paceKey {
+  display: inline-block;
+  width: 0;
+  height: 10px;
+  border-left: 2px dotted var(--text-primary);
+}
+.paceMark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 2px dotted var(--text-primary);
+  z-index: 1;
 }
 .indexLabel {
   font-size: var(--text-sm);
@@ -863,6 +910,15 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+/* Readout header yang boleh patah baris (total + "semua periode"): di 360px
+   satu baris nowrap meluap keluar kartu. Dipatah, ia menyusut ke kata terpanjang. */
+.headWrap {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  white-space: normal;
+  text-align: right;
 }
 
 /* ---------- Extra bar fills + tones ---------- */
@@ -1043,9 +1099,10 @@
 /* Indeks: readout mono xs = 7,2px per karakter. Anggaran 15 karakter
    ("12 perlu restok") + LED 13px = 121px, ditambah padding & border 26px =
    kanal 147px. Enam kanal + 5 gap 8 butuh wadah 922px; tiga kanal 457px. */
-/* 5 kolom butuh ±147px per kanal (readout 15 karakter + LED, terukur 7 Nov)
-   + 4 celah: 767px. Di 2 kolom kanal kelima mengisi baris sendiri. */
-@container laporan (max-width: 766px) {
+/* 6 kolom butuh ±147px per kanal (readout 15 karakter + LED, terukur 7 Nov)
+   + 5 celah: 922px (ambang lama indeks enam kanal). 3 lalu 2 kolom = 2 dan 3
+   baris rata; aturan kanal ganjil terakhir tetap untuk jumlah tab lain. */
+@container laporan (max-width: 921px) {
   .indexList {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

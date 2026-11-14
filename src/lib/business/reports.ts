@@ -873,3 +873,156 @@ export function periodPreset(id: PeriodPreset, today: string = localDateStr()): 
   }
 }
 
+// ---------- 12. Pelanggan ----------
+export interface CustomerSpend {
+  id: string;
+  name: string;
+  /** Tiket masuk + struk kasir di periode. */
+  visits: number;
+  /** Biaya servis yang selesai + belanja kasir di periode. */
+  spend: number;
+}
+
+export interface CustomerStats {
+  /** Pelanggan bernama yang datang, mengambil servis, atau belanja di periode. */
+  active: number;
+  /** Dari `active`, yang datanya baru dibuat di periode ini. */
+  fresh: number;
+  returning: number;
+  /** Struk kasir tanpa pelanggan (pembeli umum). */
+  walkIn: number;
+  spendTotal: number;
+  top: CustomerSpend[];
+}
+
+/**
+ * Pelanggan periode ini. "Baru" = data pelanggannya dibuat di periode ini
+ * (`newIds`, diambil dari kolom createdAt), bukan "tiket pertamanya di
+ * periode": riwayat tiket lama sering tak termuat, data pelanggan selalu.
+ * Belanja dihitung dari biaya servis yang SELESAI + kasir, definisi yang
+ * sama dengan Laba Rugi; kunjungan dari tiket MASUK + struk.
+ */
+export function customerStats(
+  intake: Pick<Service, 'customerId' | 'customerName'>[],
+  done: Pick<Service, 'customerId' | 'customerName' | 'finalCost' | 'warrantyClaimOf'>[],
+  sales: Pick<Sale, 'date' | 'total' | 'voided' | 'customerId' | 'customerName'>[],
+  newIds: ReadonlySet<string>,
+  from: string,
+  to: string,
+  topN = 5,
+): CustomerStats {
+  const map = new Map<string, CustomerSpend>();
+  const touch = (id: string, name: string) => {
+    const cur = map.get(id) ?? { id, name, visits: 0, spend: 0 };
+    if (name) cur.name = name;
+    map.set(id, cur);
+    return cur;
+  };
+  let walkIn = 0;
+  for (const s of intake) if (s.customerId) touch(s.customerId, s.customerName).visits += 1;
+  for (const s of done) if (s.customerId && !s.warrantyClaimOf) touch(s.customerId, s.customerName).spend += s.finalCost;
+  for (const s of sales) {
+    if (s.voided || !isInRange(s.date, from, to)) continue;
+    if (!s.customerId) {
+      walkIn += 1;
+      continue;
+    }
+    const cur = touch(s.customerId, s.customerName ?? '');
+    cur.visits += 1;
+    cur.spend += s.total;
+  }
+  const all = [...map.values()];
+  const fresh = all.filter((c) => newIds.has(c.id)).length;
+  return {
+    active: all.length,
+    fresh,
+    returning: all.length - fresh,
+    walkIn,
+    spendTotal: all.reduce((sum, c) => sum + c.spend, 0),
+    top: all
+      .filter((c) => c.spend > 0)
+      .sort((a, b) => b.spend - a.spend || b.visits - a.visits)
+      .slice(0, topN),
+  };
+}
+
+// ---------- 13. Nilai stok ----------
+export interface IdleItem {
+  id: string;
+  name: string;
+  stock: number;
+  /** Modal tertahan: stok × HPP. */
+  value: number;
+}
+
+export interface StockValue {
+  /** Stok × HPP seluruh barang (keadaan sekarang). */
+  cost: number;
+  /** Stok × harga jual: nilai bila semua laku di harga katalog. */
+  retail: number;
+  items: number;
+  /** Barang bersisa yang tak terjual dan tak terpakai di periode. */
+  idleCount: number;
+  idleValue: number;
+  /** Modal tertahan terbesar dulu. */
+  idle: IdleItem[];
+}
+
+/**
+ * Modal di rak, dan bagian yang tidak bergerak. "Bergerak" = terjual di Kasir
+ * atau terpasang di tiket servis pada periode yang dipilih, jadi pilihan
+ * periode menentukan arti "tak bergerak" (sebulan vs setahun).
+ */
+export function stockValue(
+  inventory: Pick<InventoryItem, 'id' | 'name' | 'stock' | 'costPrice' | 'sellPrice'>[],
+  sales: Pick<Sale, 'date' | 'voided' | 'lines'>[],
+  services: Pick<Service, 'spareparts'>[],
+  from: string,
+  to: string,
+): StockValue {
+  const moved = new Set<string>();
+  for (const s of sales) {
+    if (s.voided || !isInRange(s.date, from, to)) continue;
+    for (const l of s.lines) moved.add(l.itemId);
+  }
+  for (const s of services) for (const p of s.spareparts) if (p.itemId) moved.add(p.itemId);
+  let cost = 0;
+  let retail = 0;
+  const idle: IdleItem[] = [];
+  for (const i of inventory) {
+    const stock = Math.max(0, i.stock);
+    cost += stock * i.costPrice;
+    retail += stock * i.sellPrice;
+    if (stock > 0 && !moved.has(i.id)) idle.push({ id: i.id, name: i.name, stock, value: stock * i.costPrice });
+  }
+  idle.sort((a, b) => b.value - a.value);
+  return {
+    cost,
+    retail,
+    items: inventory.length,
+    idleCount: idle.length,
+    idleValue: idle.reduce((sum, i) => sum + i.value, 0),
+    idle,
+  };
+}
+
+// ---------- 14. Target bulanan ----------
+/**
+ * Bagian bulan yang sudah lewat untuk sebuah periode satu bulan kalender:
+ * 1 untuk bulan yang sudah tutup, 0 untuk bulan yang belum mulai, dan
+ * tanggal/hari-dalam-bulan untuk bulan berjalan (sama dengan `monthPace`
+ * Dashboard). `null` bila periodenya bukan tepat satu bulan kalender — target
+ * bulanan tidak bisa dibandingkan dengan seminggu atau setahun.
+ */
+export function monthTargetPace(from: string, to: string, today: string = localDateStr()): number | null {
+  const f = parseISODate(from);
+  const t = parseISODate(to);
+  if (!f || !t) return null;
+  const whole =
+    f.getDate() === 1 && f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth() && addDays(to, 1).slice(8) === '01';
+  if (!whole) return null;
+  if (today > to) return 1;
+  if (today < from) return 0;
+  return (daysBetween(from, today) + 1) / (daysBetween(from, to) + 1);
+}
+

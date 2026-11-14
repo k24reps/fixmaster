@@ -22,6 +22,9 @@ import {
   awaitingPickup,
   salesBreakdown,
   periodPreset,
+  customerStats,
+  stockValue,
+  monthTargetPace,
 } from './reports';
 import type {
   Service,
@@ -754,6 +757,63 @@ describe('periodPreset', () => {
   });
   it('bulan lalu dari Januari jatuh ke Desember tahun sebelumnya', () => {
     expect(periodPreset('lastMonth', '2027-01-05')).toEqual(['2026-12-01', '2026-12-31']);
+  });
+});
+
+describe('customerStats', () => {
+  it('baru vs kembali dari data pelanggan; belanja = servis selesai + kasir; pembeli umum terpisah', () => {
+    const r = customerStats(
+      [{ customerId: 'a', customerName: 'Ana' }, { customerId: 'b', customerName: 'Budi' }],
+      [
+        { customerId: 'a', customerName: 'Ana', finalCost: 500_000, warrantyClaimOf: null },
+        { customerId: 'c', customerName: 'Citra', finalCost: 300_000, warrantyClaimOf: null },
+        { customerId: 'a', customerName: 'Ana', finalCost: 999_000, warrantyClaimOf: 'x' },
+      ],
+      [
+        { date: '2026-11-03', total: 200_000, voided: false, customerId: 'b', customerName: 'Budi' },
+        { date: '2026-11-03', total: 50_000, voided: false, customerId: null },
+        { date: '2026-11-04', total: 70_000, voided: true, customerId: 'b', customerName: 'Budi' },
+        { date: '2026-10-04', total: 70_000, voided: false, customerId: 'a', customerName: 'Ana' },
+      ],
+      new Set(['b']),
+      '2026-11-01',
+      '2026-11-30',
+    );
+    expect(r).toMatchObject({ active: 3, fresh: 1, returning: 2, walkIn: 1, spendTotal: 1_000_000 });
+    expect(r.top.map((c) => [c.name, c.visits, c.spend])).toEqual([
+      ['Ana', 1, 500_000],
+      ['Citra', 0, 300_000],
+      ['Budi', 2, 200_000],
+    ]);
+  });
+});
+
+describe('stockValue', () => {
+  it('modal di rak, nilai jual, dan barang yang tak terjual/terpakai di periode', () => {
+    const r = stockValue(
+      [
+        { id: 'lcd', name: 'LCD', stock: 2, costPrice: 500_000, sellPrice: 800_000 },
+        { id: 'bat', name: 'Baterai', stock: 5, costPrice: 100_000, sellPrice: 180_000 },
+        { id: 'kbl', name: 'Kabel', stock: 10, costPrice: 10_000, sellPrice: 25_000 },
+        { id: 'hab', name: 'Habis', stock: 0, costPrice: 99_000, sellPrice: 1 },
+      ],
+      [{ date: '2026-11-02', voided: false, lines: [{ itemId: 'kbl', name: 'Kabel', qty: 1, sellPrice: 25_000, costPrice: 10_000 }] }],
+      [{ spareparts: [{ itemId: 'bat', name: 'Baterai', qty: 1, costPrice: 100_000, sellPrice: 180_000, deducted: true }] }],
+      '2026-11-01',
+      '2026-11-30',
+    );
+    expect(r).toMatchObject({ cost: 1_600_000, retail: 2_750_000, items: 4, idleCount: 1, idleValue: 1_000_000 });
+    expect(r.idle.map((i) => i.id)).toEqual(['lcd']);
+  });
+});
+
+describe('monthTargetPace', () => {
+  it('hanya untuk tepat satu bulan kalender', () => {
+    expect(monthTargetPace('2026-11-01', '2026-11-30', '2026-11-15')).toBeCloseTo(0.5);
+    expect(monthTargetPace('2026-10-01', '2026-10-31', '2026-11-15')).toBe(1);
+    expect(monthTargetPace('2026-12-01', '2026-12-31', '2026-11-15')).toBe(0);
+    expect(monthTargetPace('2026-11-08', '2026-11-14', '2026-11-15')).toBeNull();
+    expect(monthTargetPace('2026-01-01', '2026-12-31', '2026-11-15')).toBeNull();
   });
 });
 

@@ -28,6 +28,8 @@ import type {
   TechProfit,
   PickupWait,
   SalesBreakdown,
+  CustomerStats,
+  StockValue,
 } from '@/lib/business/reports';
 import type { InventoryItem, Organization } from '@/data/types';
 
@@ -199,6 +201,10 @@ export interface ReportDocData {
   noBaseline: boolean;
   salesTotal: number;
   salesInfo: SalesBreakdown;
+  custStats: CustomerStats;
+  stock: StockValue;
+  /** Target bulanan; `pace` null bila periodenya bukan tepat satu bulan. */
+  target: { revenue: number; serviceCount: number; pace: number | null };
   breakEven: BreakEven | null;
   /** Struk Laba Rugi; angka laba kotornya sama dengan `breakEven.gross`. */
   pl: ProfitLoss;
@@ -568,6 +574,58 @@ function buildBody(d: ReportDocData): string {
     { flow: true },
   );
 
+  const cs = d.custStats;
+  const customers = section(
+    'Pelanggan Periode Ini',
+    cs.active === 0 && cs.walkIn === 0
+      ? empty('Belum ada pelanggan bertransaksi periode ini')
+      : `<table><tbody>
+          <tr><td>Pelanggan</td><td class="r num">${cs.active}</td><td class="note">${cs.fresh} baru · ${cs.returning} langganan</td></tr>
+          <tr><td>Belanja per pelanggan</td><td class="r num">${esc(cs.active > 0 ? fmtRp(Math.round(cs.spendTotal / cs.active)) : EMPTY_VALUE)}</td><td class="note">servis selesai + kasir</td></tr>
+          <tr><td>Pembeli umum</td><td class="r num">${cs.walkIn}</td><td class="note">struk kasir tanpa nama pelanggan</td></tr>
+        </tbody></table>
+        ${
+          cs.top.length === 0
+            ? ''
+            : `<table><thead><tr><th>Pelanggan teratas</th><th class="r">Kunjungan</th><th class="r">Belanja</th></tr></thead><tbody>${cs.top
+                .map((c) => `<tr><td>${esc(c.name)}</td><td class="r num">${c.visits}</td><td class="r num">${esc(fmtRp(c.spend))}</td></tr>`)
+                .join('')}</tbody></table>`
+        }`,
+  );
+
+  const st = d.stock;
+  const stockSection = section(
+    'Nilai Stok di Rak',
+    `<table><tbody>
+        <tr><td>Modal di rak</td><td class="r num">${esc(fmtRp(st.cost))}</td><td class="note">stok × HPP · ${st.items} barang</td></tr>
+        <tr><td>Nilai jual</td><td class="r num">${esc(fmtRp(st.retail))}</td><td class="note">bila semua laku di harga katalog</td></tr>
+        <tr><td>Tak bergerak</td><td class="r num">${st.idleCount}</td><td class="note">modal mengendap ${esc(fmtRp(st.idleValue))}</td></tr>
+      </tbody></table>
+      ${
+        st.idle.length === 0
+          ? ''
+          : `<table><thead><tr><th>Barang tak bergerak</th><th class="r">Stok</th><th class="r">Modal</th></tr></thead><tbody>${st.idle
+              .slice(0, 15)
+              .map((i) => `<tr><td>${esc(i.name)}</td><td class="r num">${i.stock}</td><td class="r num">${esc(fmtRp(i.value))}</td></tr>`)
+              .join('')}</tbody></table>`
+      }
+      <p class="note">Keadaan stok saat dicetak; "tak bergerak" = tak terjual dan tak terpakai di periode laporan</p>`,
+  );
+
+  const tg = d.target;
+  const unitsDone = d.unitsDone;
+  const targetSection =
+    tg.pace === null || (tg.revenue <= 0 && tg.serviceCount <= 0)
+      ? ''
+      : section(
+          'Target Bulan Ini',
+          `<table><tbody>
+            ${tg.revenue > 0 ? `<tr><td>Omzet</td><td class="r num">${esc(fmtRp(d.summary.income))} / ${esc(fmtRp(tg.revenue))}</td><td class="r num">${esc(rate(d.summary.income, tg.revenue))}</td></tr>` : ''}
+            ${tg.serviceCount > 0 ? `<tr><td>Unit selesai</td><td class="r num">${unitsDone} / ${tg.serviceCount}</td><td class="r num">${esc(rate(unitsDone, tg.serviceCount))}</td></tr>` : ''}
+          </tbody></table>
+          ${tg.pace < 1 ? `<p class="note">Laju merata saat dicetak: ${esc(fmtPercent(tg.pace, 0))}</p>` : ''}`,
+        );
+
   const q = d.quality;
   const quality = section(
     'Mutu & Kecepatan Servis',
@@ -737,10 +795,13 @@ function buildBody(d: ReportDocData): string {
 
   return `${head}${verdict}${kpis}
     ${breakEven}
+    ${targetSection}
     ${section('Tren Pemasukan vs Pengeluaran', chartSvg(d.trend))}
     <div class="cols">${incomeCat}${expenseCat}</div>
     ${salesSection}
     <div class="cols">${catProfit}${parts}</div>
+    ${stockSection}
+    ${customers}
     <div class="cols">${quality}${funnel}</div>
     ${leaderboard}
     ${pickups}
