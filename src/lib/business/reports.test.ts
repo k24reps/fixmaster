@@ -13,6 +13,7 @@ import {
   ratioDelta,
   periodComparison,
   previousWindow,
+  comparisonWindows,
   outletComparison,
   receivablesAging,
   agingFromRows,
@@ -153,6 +154,14 @@ describe('trendSeries', () => {
     expect(series[0].income).toBe(100);
     expect(series[2].income).toBe(200);
   });
+  it('menandai hari yang belum terjadi, bukan menganggapnya nol', () => {
+    const series = trendSeries([inc('2026-11-02', 100)], [], '2026-11-01', '2026-11-05', '2026-11-03');
+    expect(series.map((p) => p.future)).toEqual([false, false, false, true, true]);
+  });
+  it('bulan berjalan pada rentang panjang tidak dianggap masa depan', () => {
+    const series = trendSeries([], [], '2026-06-01', '2027-02-28', '2026-11-14');
+    expect(series.map((p) => p.future)).toEqual([false, false, false, false, false, false, true, true, true]);
+  });
 });
 
 // Grafik di layar dan grafik di laporan PDF menggambar dari fungsi ini. Kalau
@@ -192,6 +201,16 @@ describe('trendGeometry', () => {
     expect(trendGeometry([pts[0]]).x(0)).toBeCloseTo(
       trendGeometry([pts[0]]).pad.left + trendGeometry([pts[0]]).plotW / 2,
     );
+  });
+
+  it('garis berhenti di hari ini; sisa sumbu tetap ada', () => {
+    const withFuture = [...pts, { label: 'C', income: 0, expense: 0, net: 0, future: true }];
+    const g = trendGeometry(withFuture);
+    // Tiga ember di sumbu, tapi jalur hanya melewati dua titik.
+    expect(g.incPath.split(' L ').length).toBe(2);
+    expect(g.nowX).toBeCloseTo(g.x(1));
+    expect(g.incArea).toContain(`L ${g.x(1)} `);
+    expect(trendGeometry(pts).nowX).toBeNull();
   });
 
   it('menghormati ukuran khusus dokumen cetak', () => {
@@ -403,6 +422,53 @@ describe('periodComparison', () => {
 
   it('menghitung jendela pembanding yang sama panjang', () => {
     expect(previousWindow('2026-06-08', '2026-06-14')).toEqual(['2026-06-01', '2026-06-07']);
+  });
+
+  it('memakai jendela pembanding yang diberikan', () => {
+    const result = periodComparison(
+      [inc('2026-11-05', 300), inc('2026-10-05', 100), inc('2026-10-25', 999)],
+      [],
+      '2026-11-01',
+      '2026-11-14',
+      ['2026-10-01', '2026-10-14'],
+    );
+    expect(result.previous.income).toBe(100);
+    expect(result.incomeDelta).toBeCloseTo(2);
+  });
+});
+
+describe('comparisonWindows', () => {
+  it('bulan berjalan dipotong ke hari ini, dibanding tanggal yang sama bulan lalu', () => {
+    // Regresi kritik 14 Nov 2026: 14 hari November dulu dibanding 30 hari Oktober.
+    expect(comparisonWindows('2026-11-01', '2026-11-30', '2026-11-14')).toEqual({
+      current: ['2026-11-01', '2026-11-14'],
+      previous: ['2026-10-01', '2026-10-14'],
+      clamped: true,
+    });
+  });
+
+  it('bulan penuh yang sudah lewat dibanding bulan sebelumnya, dipotong di akhir bulan', () => {
+    expect(comparisonWindows('2026-03-01', '2026-03-31', '2026-11-14').previous).toEqual([
+      '2026-02-01',
+      '2026-02-28',
+    ]);
+    expect(comparisonWindows('2026-10-01', '2026-10-31', '2026-11-14')).toMatchObject({
+      current: ['2026-10-01', '2026-10-31'],
+      previous: ['2026-09-01', '2026-09-30'],
+      clamped: false,
+    });
+  });
+
+  it('rentang bebas memakai jendela geser sepanjang bagian yang sudah terjadi', () => {
+    expect(comparisonWindows('2026-11-10', '2026-11-20', '2026-11-14')).toEqual({
+      current: ['2026-11-10', '2026-11-14'],
+      previous: ['2026-11-05', '2026-11-09'],
+      clamped: true,
+    });
+  });
+
+  it('periode yang belum dimulai tidak dipotong', () => {
+    expect(comparisonWindows('2026-12-01', '2026-12-31', '2026-11-14').clamped).toBe(false);
   });
 });
 

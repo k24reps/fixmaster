@@ -6606,3 +6606,68 @@ terus tumbuh. Agent mencarinya per judul, jadi masih aman. Memecahnya akan memut
 `[[Decisions & Bug Fixes#…]]`, jadi ditunda sampai benar-benar menghambat.
 
 **Berkas:** AGENTS.md (§4, §5, §6), CLAUDE.md, [[Conventions]], [[Testing & Security]].
+
+## Laporan: kritik kelengkapan, lalu Laba Rugi dan pembanding yang adil (14 Nov 2026)
+
+**Permintaan pemilik:** "audit dan kritik menu laporan agar lebih lengkap". Kritik impeccable
+(`critique` + `audit`, satu konteks) memberi skor 28/40 heuristik dan 16/20 teknis; ringkasannya
+di `.impeccable/critique/2026-11-14T04-18-49Z__src-features-reports-reportspage-tsx.md`.
+Temuan pokok: halaman ini jujur soal **kas** tapi tidak menjawab "untung bersih berapa" (laba
+usaha hanya muncul sebagai "Break-even −Rp 115.000", laba penjualan kasir dihitung di
+`grossProfit` tanpa pernah tampil, margin % tidak ada); "vs periode lalu" tidak adil di tengah
+bulan; mutu servis (klaim garansi, batal, unit belum diambil) tak terukur; daftar tindak lanjut
+tak bisa diklik; ponsel tanpa pintasan periode dan label grafik ±5px. Pemilik memilih: Laba Rugi
+dulu, struktur **tab per bagian**, dan **semua temuan dikerjakan bertahap**:
+
+1. Laba Rugi + pembanding adil + grafik berhenti di hari ini (entri ini)
+2. Tab per bagian: Ringkasan · Uang · Servis · Kasir & Stok · Piutang
+3. Mutu & Kecepatan Servis (klaim garansi, batal, belum diambil, median hari, teknisi menurut laba)
+4. Analisis Kasir (barang terlaris & paling untung, diskon, struk batal)
+5. Perbaikan kecil (tautan piutang + WA tagih, preset periode, label grafik ponsel, ±13 literal i18n, P3)
+6. Tingkat 2 (pelanggan, nilai stok, target vs realisasi)
+
+**Tahap 1, keputusan:**
+- **Satu kartu "Laba Rugi & Break-even", bukan kartu ke-14.** Struk dan gauge membaca laba
+  kotor yang sama; dua kartu berarti dua tempat yang bisa saling membantah. `profitLoss` di
+  `lib/business/overhead.ts` memecah laba kotor per baris; tesnya mengunci `gross ===
+  grossProfit(...)`. `grossProfit` kini memakai pembantu yang sama (`salesParts`, `directCost`).
+- **Basis akrual, ditulis di kartu.** Pendapatan servis = `catProfit.revenue` (tanggal SELESAI,
+  termasuk DP ditahan tiket batal), bukan income Servis di buku kas. Catatan di kartu mencegah
+  pemilik mengira struk salah karena berbeda dari Pemasukan.
+- **"Rugi" hanya untuk periode yang sudah tutup.** Overhead bulan berjalan dihitung sebulan
+  penuh (`overheadForRange`, tidak diporsi) sedangkan laba kotor baru sampai hari ini; minus di
+  tanggal 5 adalah jarak ke impas. Periode berjalan: "Kurang untuk impas"/"Surplus setelah
+  overhead" (warn/ok). Periode tutup: "Laba usaha"/"Rugi usaha" + margin usaha (ok/crit).
+- **Pembanding:** `comparisonWindows` memotong periode berjalan ke hari ini; bulan kalender
+  dibanding tanggal yang sama bulan lalu, bukan jendela geser, karena sewa dan gaji jatuh di
+  tanggal tetap (jendela geser 18–31 Okt vs 1–14 Nov akan membandingkan bulan yang membayar sewa
+  dengan yang tidak). Rentangnya ditulis di sumber vonis. `periodComparison` menerima jendela
+  pembanding eksplisit (default tetap `previousWindow`).
+- **Grafik:** ember setelah hari ini ditandai `future`; garis dan arsiran berhenti, sisa sumbu
+  diarsir. PDF memakai geometri yang sama, jadi ikut berhenti.
+- **Sampingan: ⓘ `Term` kini `inline-block`.** Reset global `svg { display: block }` membuat
+  ikonnya jatuh ke baris sendiri di bawah istilah di 16 tempat (judul kartu Laporan, label
+  Keuangan, dll.). Terlihat saat struk Laba Rugi difoto.
+- **Ambang dua kolom `@container laba` 52rem** dari lebar terukur (baris struk 369px, baris gauge
+  365px, nominal 7 digit).
+- **Teks baru (id/en):** `reports.pl*`, `reports.idxPl`, `reports.idxMargin`,
+  `reports.idxNoRevenue`, `reports.chartAria`, `reports.chartFuture`; `reports.prevPeriod` kini
+  memuat `{range}`. Dihapus karena tak terpakai: `reports.indikatorBreakEven`, `idxBe`,
+  `idxBeEmpty`, `idxBeCovered`, `beSurplus`, `beShort`. Kamus Istilah: `laba-usaha`. Pembantu
+  `fmtDateRange` di `lib/time.ts`.
+
+**Verifikasi tahap 1:** build, lint, **1119 tes / 85 berkas** (+11: `comparisonWindows` ×4,
+jendela eksplisit, `trendSeries` future ×2, `trendGeometry` berhenti di hari ini, `profitLoss` ×2,
+`fmtDateRange`). Demo diukur dari DOM: struk Pendapatan servis Rp 3.900.000 − part Rp 895.000 +
+kasir Rp 2.900.000 − HPP Rp 1.970.000 = laba kotor Rp 3.935.000 (sama dengan gauge), margin
+57,9%, baris akhir "Kurang untuk impas Rp 115.000"; dua kolom di wadah 1032px, satu kolom di 692
+dan 324px; nol elemen ter-clip, nol luberan dokumen di 390/820/1100/1440, dua tema. Grafik
+berhenti di 14/11.
+`audit-mobile` (5 lebar ponsel): `/reports` dan `/finance` (halaman `Term`) nol temuan; hanya
+rail `div._38` lama di `/services`, `/pos`, `/customers`. `audit-zoom` (100%, 11 lebar): lantai
+12px 0 pelanggaran; satu temuan, tabel `/pos` +16px di 1097px, sama dengan catatan 13 Nov.
+Kedua skrip dijalankan dari salinan sementara dengan `executablePath` Chromium container
+(Playwright proyek meminta build lain), dan `scripts/shots/` perlu dibuat dulu di clone baru
+agar laporan JSON-nya tertulis. **Tidak dijalankan:** `sync-vault-attachments.ps1` (container
+tanpa PowerShell); `rep-dark.png` di [[Signature Pages]] belum memperlihatkan kartu Laba Rugi
+(`scripts/shoot-reports.mjs` di mesin lokal).

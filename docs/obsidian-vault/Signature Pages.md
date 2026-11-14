@@ -531,9 +531,9 @@ terpotong. Di ponsel nilai menyusut `clamp(--text-sm, 6.4cqi - 4.2px, --text-xl)
 tanggal menumpuk tanpa overflow.
 
 **Indeks "Isi laporan" (7 Nov 2026).** Halaman ±6 layar, jadi tepat di bawah metrik ada deret
-kanal: Break-even · Kategori · Sparepart · Servis & teknisi · Piutang · Rincian transaksi. Tiap
-kanal = label + readout mono (mis. "97% tertutup", "2 perlu restok", "Rp 350.000"); LED hanya
-pada kanal yang punya status (break-even tertutup/tidak, restok, umur piutang 31+ = merah).
+kanal: Laba rugi (dulu Break-even, 14 Nov 2026) · Kategori · Sparepart · Servis & teknisi · Piutang · Rincian transaksi. Tiap
+kanal = label + readout mono (mis. "margin 58%", "2 perlu restok", "Rp 350.000"); LED hanya
+pada kanal yang punya status (impas/belum bila overhead tercatat, restok, umur piutang 31+ = merah).
 Klik menggulir halus (tanpa animasi bila `prefers-reduced-motion`) dan memindahkan fokus ke
 bagian tujuan (`tabIndex=-1`, `scroll-margin-top` = topbar sticky + jarak). Kolom 6 → 3 → 2
 pada wadah 922px / 457px (anggaran readout 15 karakter + LED). Readout menampilkan "…" saat
@@ -542,6 +542,33 @@ data servis masih dimuat.
 Tanpa data periode lalu, kartu metrik **tidak** menampilkan baris delta sama sekali: vonis di
 atas sudah menyebutnya sekali ("tidak ada data periode lalu untuk dibandingkan"), sebelumnya
 kalimat yang sama diulang di tiga kartu.
+
+**Laba Rugi & Break-even (14 Nov 2026).** Kartu pertama sesudah indeks (dulu kartu Break-even
+di urutan ketiga). Kiri: struk seperti pita Kalkulator Biaya, baris dipisah divider titik,
+total bergaris rangkap: Pendapatan servis (n unit selesai) · Part & pembelian luar ·
+Penjualan kasir · HPP barang terjual · Beban langsung (hanya bila >0) · **Laba kotor + margin
+%** · Overhead (rincian per kategori + tanda est.) · baris akhir ber-LED. Kanan (di bawah bila
+wadah `laba` <52rem): vonis kas × impas, tick-gauge, catatan basis/porsi/Lainnya/gaji, dan
+catatan akrual ("pendapatan servis dihitung saat unit selesai, termasuk yang belum dibayar").
+Angkanya dari `profitLoss` di [`lib/business/overhead.ts`](src/lib/business/overhead.ts):
+total laba kotornya diuji sama persis dengan `grossProfit`, jadi struk dan gauge tak bisa
+saling membantah. **Baris akhir bergantung status periode:** periode masih berjalan (hari ini
+di dalam rentang) = "Kurang untuk impas"/"Surplus setelah overhead", nada warn/ok, karena laba
+kotor baru sampai hari ini sedangkan overhead bulan berjalan dihitung sebulan penuh; periode
+yang sudah tutup = "Laba usaha"/"Rugi usaha" + margin usaha, nada ok/crit. Tanpa overhead
+tercatat: baris Overhead "belum dicatat", tanpa baris akhir, dan petunjuk `beEmpty` tetap
+muncul. Judul memakai `Term` baru `laba-usaha`. Kanal indeks pertama kini "Laba rugi ·
+margin 58%" (LED ok/warn hanya bila overhead tercatat). PDF memuat struk yang sama di bagian
+yang sama, sebelum grafik tren.
+
+**Pembanding yang adil (14 Nov 2026).** `comparisonWindows` di `lib/business/reports.ts`:
+periode berjalan dipotong ke hari ini; satu bulan kalender dibanding tanggal yang sama di
+bulan sebelumnya (1–14 Nov vs 1–14 Okt; Maret vs 1–28 Feb), rentang bebas dibanding jendela
+geser sepanjang bagian yang sudah terjadi. Sumber vonis menyebut rentangnya ("pembanding
+1–14 Okt 2026: Rp X", `fmtDateRange` di `lib/time.ts`). **Grafik tren berhenti di hari ini:**
+`trendSeries` menandai ember `future`, `trendGeometry` tidak menggambar garis/arsiran di sana
+dan mengembalikan `nowX`; layar mengarsir sisa sumbu (`--bg-input`) + garis titik, legend
+"Belum terjadi", dan hover di ember mendatang menulis "Belum terjadi", bukan Rp 0.
 1. **Tren Pemasukan vs Pengeluaran** — grafik garis **SVG murni** (komponen [`TrendChart`](src/features/reports/TrendChart.tsx), tanpa library; geometrinya dari `trendGeometry` di `lib/business/reports.ts`, dipakai bersama grafik di laporan PDF supaya keduanya tak bisa menggambar bentuk berbeda) dengan crosshair hover, area pemasukan, gridline + label mono. Bucket auto: harian (≤31 hr) / mingguan (≤184 hr) / bulanan (selebihnya).
 2. **Rincian Transaksi** — tabel on-screen (versi layar dari CSV): tag jenis, kategori, keterangan, nominal bertanda; cap 100 baris (sisanya via ekspor).
 3. **Laba per Kategori Perangkat** — omzet + laba kotor (finalCost − biaya part) per jenis perangkat (HP/laptop/dst), servis selesai/lunas.
@@ -551,7 +578,7 @@ kalimat yang sama diulang di tiga kartu.
 7. **Perbandingan Antar-Outlet** — income/expense/net per cabang (hanya muncul bila >1 outlet; null = "Tanpa Cabang").
 8. **Aging Piutang** — tabel servis selesai yang belum lunas (sisa = finalCost − DP), umur dari tanggal selesai dengan tag 0-7 / 8-30 / 31+.
 
-- **Break-even (29 Sep 2026).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
+- **Break-even (29 Sep 2026; sejak 14 Nov 2026 satu kartu dengan Laba Rugi, lihat di atas).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang
   periode (hari mendatang tak dihitung) — `lib/business/overhead.ts`, teruji. Overhead = Gaji,
   Sewa, Operasional, Lainnya; Sparepart (stok) dan Prive tidak. Bulan lewat = realisasi; bulan

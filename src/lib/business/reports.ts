@@ -57,6 +57,8 @@ export interface TrendPoint {
   income: number;
   expense: number;
   net: number;
+  /** Ember yang mulai setelah hari ini. Nolnya bukan fakta, jadi tidak digambar. */
+  future?: boolean;
 }
 
 export interface TrendGeometry {
@@ -78,6 +80,8 @@ export interface TrendGeometry {
   gridYs: { y: number; value: number }[];
   /** Label sumbu X yang lolos penjarangan (maksimal ~8 supaya tidak berdesakan). */
   xLabels: { x: number; label: string }[];
+  /** X titik terakhir yang sudah terjadi, bila ada ember di masa depan; selain itu null. */
+  nowX: number | null;
 }
 
 const TREND_SIZE = { width: 720, height: 240 };
@@ -105,8 +109,14 @@ export function trendGeometry(
 
   const x = (i: number) => pad.left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
   const y = (v: number) => pad.top + plotH - (v / max) * plotH;
+  // Garis berhenti di hari ini. Dulu sisa bulan digambar sebagai garis datar
+  // nol, yang terbaca "tidak ada pemasukan" padahal harinya belum terjadi.
+  const past = points.filter((p) => !p.future).length;
   const toPath = (sel: (p: TrendPoint) => number) =>
-    points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(sel(p)).toFixed(1)}`).join(' ');
+    points
+      .slice(0, past)
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(sel(p)).toFixed(1)}`)
+      .join(' ');
 
   const incPath = toPath((p) => p.income);
   const labelStep = Math.max(1, Math.ceil(n / 8));
@@ -122,7 +132,7 @@ export function trendGeometry(
     y,
     incPath,
     expPath: toPath((p) => p.expense),
-    incArea: n === 0 ? '' : `${incPath} L ${x(n - 1)} ${pad.top + plotH} L ${x(0)} ${pad.top + plotH} Z`,
+    incArea: past === 0 ? '' : `${incPath} L ${x(past - 1)} ${pad.top + plotH} L ${x(0)} ${pad.top + plotH} Z`,
     gridYs: [0, 0.25, 0.5, 0.75, 1].map((f) => ({
       y: pad.top + plotH - f * plotH,
       value: Math.round(max * f),
@@ -130,6 +140,7 @@ export function trendGeometry(
     xLabels: points
       .map((p, i) => ({ x: x(i), label: p.label, i }))
       .filter(({ i }) => i % labelStep === 0),
+    nowX: past < n && past > 0 ? x(past - 1) : past === 0 && n > 0 ? pad.left : null,
   };
 }
 
@@ -152,10 +163,12 @@ export function trendSeries(
   expenses: Pick<Expense, 'date' | 'amount' | 'category'>[],
   from: string,
   to: string,
+  today: string = localDateStr(),
 ): TrendPoint[] {
   const mode = trendMode(from, to);
   const keys: string[] = [];
   const labels: string[] = [];
+  const starts: string[] = [];
   const indexOf = new Map<string, number>();
 
   if (mode === 'month') {
@@ -168,6 +181,7 @@ export function trendSeries(
       const key = `${y}-${String(m + 1).padStart(2, '0')}`;
       indexOf.set(key, keys.length);
       keys.push(key);
+      starts.push(`${key}-01`);
       labels.push(`${MONTH_LABELS[m]} ${String(y).slice(2)}`);
       m += 1;
       if (m > 11) {
@@ -182,17 +196,19 @@ export function trendSeries(
       const key = `b${keys.length}`;
       indexOf.set(key, keys.length);
       keys.push(key);
+      starts.push(cursor);
       const d = parseISODate(cursor);
       labels.push(d ? `${d.getDate()}/${d.getMonth() + 1}` : cursor);
       cursor = addDays(cursor, step);
     }
   }
 
-  const points: TrendPoint[] = labels.map((label) => ({
+  const points: TrendPoint[] = labels.map((label, i) => ({
     label,
     income: 0,
     expense: 0,
     net: 0,
+    future: starts[i] > today,
   }));
   const bucketIndex = (date: string): number => {
     if (mode === 'month') return indexOf.get(date.slice(0, 7)) ?? -1;
@@ -423,17 +439,60 @@ export function ratioDelta(current: number, previous: number): number | null {
   return (current - previous) / Math.abs(previous);
 }
 
+export interface ComparisonWindows {
+  /** Jendela periode ini yang SUDAH terjadi: `to` dipotong ke hari ini. */
+  current: [string, string];
+  previous: [string, string];
+  /** `to` dipotong karena periode masih berjalan. */
+  clamped: boolean;
+}
+
 /**
- * Compare the selected window against the immediately-preceding window of the
- * same length (ending the day before `from`).
+ * Jendela yang adil untuk "vs periode lalu".
+ *
+ * Periode bawaan Laporan adalah bulan berjalan sampai tanggal terakhirnya. Dulu
+ * 1–30 Nov dibandingkan dengan 30 hari penuh sebelumnya, padahal pada 14 Nov
+ * baru ada 14 hari data — di pertengahan bulan selisihnya hampir selalu
+ * "lebih buruk ±50%". Sekarang periode dipotong ke hari ini, dan satu bulan
+ * kalender dibandingkan dengan rentang tanggal yang sama di bulan sebelumnya
+ * (1–14 Nov vs 1–14 Okt), bukan 14 hari terakhir Oktober: sewa dan gaji jatuh
+ * di tanggal yang sama tiap bulan, jadi jendela geser akan membandingkan bulan
+ * yang membayar sewa dengan yang tidak.
+ */
+export function comparisonWindows(from: string, to: string, today: string = localDateStr()): ComparisonWindows {
+  const clamped = from <= today && today < to;
+  const end = clamped ? today : to;
+  const f = parseISODate(from);
+  const t = parseISODate(to);
+  const wholeMonth =
+    !!f &&
+    !!t &&
+    f.getDate() === 1 &&
+    f.getFullYear() === t.getFullYear() &&
+    f.getMonth() === t.getMonth() &&
+    addDays(to, 1).slice(8) === '01';
+  if (wholeMonth && f) {
+    const prevFirst = localDateStr(new Date(f.getFullYear(), f.getMonth() - 1, 1, 12));
+    const prevLast = addDays(from, -1);
+    const prevEnd = addDays(prevFirst, daysBetween(from, end));
+    return { current: [from, end], previous: [prevFirst, prevEnd < prevLast ? prevEnd : prevLast], clamped };
+  }
+  return { current: [from, end], previous: previousWindow(from, end), clamped };
+}
+
+/**
+ * Compare the selected window against a previous window — by default the
+ * immediately-preceding window of the same length (ending the day before
+ * `from`); pass `prev` from `comparisonWindows` for the calendar-aware one.
  */
 export function periodComparison(
   incomes: Pick<Income, 'date' | 'amount' | 'category'>[],
   expenses: Pick<Expense, 'date' | 'amount' | 'category'>[],
   from: string,
   to: string,
+  prev: [string, string] = previousWindow(from, to),
 ): PeriodComparison {
-  const [prevFrom, prevTo] = previousWindow(from, to);
+  const [prevFrom, prevTo] = prev;
   const curInc = incomes.filter((i) => isInRange(i.date, from, to));
   const curExp = expenses.filter((e) => isInRange(e.date, from, to));
   const prevInc = incomes.filter((i) => isInRange(i.date, prevFrom, prevTo));

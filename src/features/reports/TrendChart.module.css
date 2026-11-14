@@ -33,6 +33,16 @@
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+/* Sisa periode yang belum terjadi: sumur redup + garis titik "hari ini". */
+.future {
+  fill: var(--bg-input);
+  opacity: 0.6;
+}
+.nowLine {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
 .incArea {
   fill: var(--success-soft);
   opacity: 0.5;
@@ -75,6 +85,12 @@
 }
 .expSwatch {
   background: var(--text-secondary);
+}
+.futureSwatch {
+  height: 10px;
+  border-radius: var(--radius-xs);
+  border: 1px dotted var(--border-strong);
+  background: var(--bg-input);
 }
 .readout {
   margin-left: auto;

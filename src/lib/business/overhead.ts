@@ -212,20 +212,76 @@ export function overheadBreakdown(byCategory: CategoryAmounts): [string, number]
     .sort((a, b) => b[1] - a[1]);
 }
 
+type SaleForProfit = { total: number; lines: { qty: number; costPrice: number }[] };
+
+function salesParts(sales: SaleForProfit[]): { revenue: number; cost: number } {
+  let revenue = 0;
+  let cost = 0;
+  for (const s of sales) {
+    revenue += s.total;
+    for (const l of s.lines) cost += l.qty * l.costPrice;
+  }
+  return { revenue, cost };
+}
+
+function directCost(expenses: Pick<Expense, 'category' | 'amount'>[]): number {
+  return expenses
+    .filter((e) => DIRECT_COST_CATEGORIES.includes(e.category))
+    .reduce((sum, e) => sum + e.amount, 0);
+}
+
 /** Laba kotor = laba servis + laba penjualan − beban langsung (garansi, refund, ongkir). */
 export function grossProfit(
   serviceProfit: number,
-  sales: { total: number; lines: { qty: number; costPrice: number }[] }[],
+  sales: SaleForProfit[],
   expenses: Pick<Expense, 'category' | 'amount'>[],
 ): number {
-  const salesProfit = sales.reduce(
-    (sum, s) => sum + s.total - s.lines.reduce((c, l) => c + l.qty * l.costPrice, 0),
-    0,
-  );
-  const direct = expenses
-    .filter((e) => DIRECT_COST_CATEGORIES.includes(e.category))
-    .reduce((sum, e) => sum + e.amount, 0);
-  return serviceProfit + salesProfit - direct;
+  const { revenue, cost } = salesParts(sales);
+  return serviceProfit + revenue - cost - directCost(expenses);
+}
+
+/**
+ * Laba kotor yang dipecah per baris, untuk kartu Laba Rugi. Totalnya HARUS sama
+ * dengan `grossProfit` — break-even dan Laba Rugi membaca angka yang sama, jadi
+ * dua rumus yang menyimpang akan membuat satu kartu membantah kartu lain.
+ *
+ * Basisnya akrual, bukan kas: pendapatan servis dihitung saat unit selesai
+ * (termasuk yang belum dibayar), sehingga bisa berbeda dari Pemasukan di atas.
+ */
+export interface ProfitLoss {
+  serviceRevenue: number;
+  /** Part stok + pembelian luar yang terpakai di tiket. */
+  serviceCost: number;
+  salesRevenue: number;
+  /** HPP barang yang terjual di Kasir. */
+  salesCost: number;
+  /** Garansi, refund penjualan, ongkos kirim. */
+  directCost: number;
+  revenue: number;
+  gross: number;
+  /** gross ÷ revenue; `null` tanpa pendapatan, supaya tidak tampil 0% yang dikarang. */
+  grossMargin: number | null;
+}
+
+export function profitLoss(
+  service: { revenue: number; profit: number },
+  sales: SaleForProfit[],
+  expenses: Pick<Expense, 'category' | 'amount'>[],
+): ProfitLoss {
+  const s = salesParts(sales);
+  const direct = directCost(expenses);
+  const revenue = service.revenue + s.revenue;
+  const gross = service.profit + s.revenue - s.cost - direct;
+  return {
+    serviceRevenue: service.revenue,
+    serviceCost: service.revenue - service.profit,
+    salesRevenue: s.revenue,
+    salesCost: s.cost,
+    directCost: direct,
+    revenue,
+    gross,
+    grossMargin: revenue > 0 ? gross / revenue : null,
+  };
 }
 
 /**
@@ -274,8 +330,8 @@ export interface BreakEven {
 export function computeBreakEven(
   input: OverheadInput,
   serviceProfit: number,
-  sales: Parameters<typeof grossProfit>[1],
-  rangeExpenses: Parameters<typeof grossProfit>[2],
+  sales: SaleForProfit[],
+  rangeExpenses: Pick<Expense, 'category' | 'amount'>[],
 ): BreakEven | null {
   const overhead = overheadForRange(input);
   if (!overhead) return null;

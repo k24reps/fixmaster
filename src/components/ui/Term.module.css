@@ -15,7 +15,10 @@
   outline-offset: 2px;
   border-radius: 2px;
 }
+/* inline-block: reset global `svg { display: block }` membuat ⓘ jatuh ke baris
+   sendiri di bawah istilahnya — di judul kartu dan label, bukan di sampingnya. */
 .mark {
+  display: inline-block;
   margin-left: 3px;
   font-size: 0.8em;
   opacity: 0.6;

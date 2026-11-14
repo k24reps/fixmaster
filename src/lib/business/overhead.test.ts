@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   overheadForRange,
   grossProfit,
+  profitLoss,
   overheadFetchFrom,
   overheadFetchTo,
   expenseGroupOf,
@@ -110,6 +111,35 @@ describe('grossProfit', () => {
     const sales = [{ total: 1e6, lines: [{ qty: 2, costPrice: 300e3 }] }];
     const exps = [ex('2026-09-01', 'Garansi', 100e3), ex('2026-09-01', 'Gaji', 5e6), ex('2026-09-02', 'Refund Penjualan', 50e3)];
     expect(grossProfit(2e6, sales, exps)).toBe(2e6 + 400e3 - 150e3);
+  });
+});
+
+describe('profitLoss', () => {
+  const sales = [
+    { total: 1e6, lines: [{ qty: 2, costPrice: 300e3 }] },
+    { total: 250e3, lines: [{ qty: 1, costPrice: 100e3 }] },
+  ];
+  const exps = [ex('2026-09-01', 'Garansi', 100e3), ex('2026-09-01', 'Gaji', 5e6), ex('2026-09-02', 'Ongkos Kirim', 20e3)];
+
+  it('memecah laba kotor per baris, totalnya sama persis dengan grossProfit', () => {
+    const pl = profitLoss({ revenue: 3e6, profit: 2e6 }, sales, exps);
+    expect(pl).toMatchObject({
+      serviceRevenue: 3e6,
+      serviceCost: 1e6,
+      salesRevenue: 1.25e6,
+      salesCost: 700e3,
+      directCost: 120e3,
+      revenue: 4.25e6,
+    });
+    // Kartu Laba Rugi dan break-even membaca angka yang sama.
+    expect(pl.gross).toBe(grossProfit(2e6, sales, exps));
+    expect(pl.grossMargin).toBeCloseTo(pl.gross / 4.25e6);
+  });
+
+  it('tanpa pendapatan, margin null — bukan 0% yang dikarang', () => {
+    const pl = profitLoss({ revenue: 0, profit: 0 }, [], [ex('2026-09-01', 'Garansi', 50e3)]);
+    expect(pl.gross).toBe(-50e3);
+    expect(pl.grossMargin).toBeNull();
   });
 });
 

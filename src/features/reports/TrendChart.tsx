@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { fmtRp, fmtRpCompact } from '@/lib/format';
 import { trendGeometry, type TrendPoint } from '@/lib/business/reports';
+import { useT } from '@/i18n';
 import styles from './TrendChart.module.css';
 
 interface TrendChartProps {
@@ -16,6 +17,7 @@ interface TrendChartProps {
  * PDF — supaya keduanya tidak bisa menggambar bentuk yang berbeda.
  */
 export function TrendChart({ points }: TrendChartProps) {
+  const t = useT();
   const [hover, setHover] = useState<number | null>(null);
   const g = useMemo(() => trendGeometry(points), [points]);
 
@@ -35,7 +37,7 @@ export function TrendChart({ points }: TrendChartProps) {
         viewBox={`0 0 ${W} ${H}`}
         className={styles.svg}
         role="img"
-        aria-label="Grafik tren pemasukan dan pengeluaran"
+        aria-label={t('reports.chartAria')}
         preserveAspectRatio="xMidYMid meet"
         onMouseLeave={() => setHover(null)}
       >
@@ -55,6 +57,20 @@ export function TrendChart({ points }: TrendChartProps) {
             {l.label}
           </text>
         ))}
+
+        {/* Hari yang belum terjadi: diarsir, bukan digambar sebagai nol. */}
+        {g.nowX != null && (
+          <g>
+            <rect
+              x={g.nowX}
+              y={PAD.top}
+              width={W - PAD.right - g.nowX}
+              height={plotH}
+              className={styles.future}
+            />
+            <line x1={g.nowX} y1={PAD.top} x2={g.nowX} y2={PAD.top + plotH} className={styles.nowLine} />
+          </g>
+        )}
 
         {/* Area under income for depth */}
         <path d={g.incArea} className={styles.incArea} />
@@ -78,23 +94,39 @@ export function TrendChart({ points }: TrendChartProps) {
         {active && hover != null && (
           <g>
             <line x1={x(hover)} y1={PAD.top} x2={x(hover)} y2={PAD.top + plotH} className={styles.crosshair} />
-            <circle cx={x(hover)} cy={yInc(active.income)} r={4} className={styles.incDot} />
-            <circle cx={x(hover)} cy={yExp(active.expense)} r={4} className={styles.expDot} />
+            {!active.future && (
+              <>
+                <circle cx={x(hover)} cy={yInc(active.income)} r={4} className={styles.incDot} />
+                <circle cx={x(hover)} cy={yExp(active.expense)} r={4} className={styles.expDot} />
+              </>
+            )}
           </g>
         )}
       </svg>
 
       <div className={styles.legend}>
         <span className={styles.legendItem}>
-          <i className={[styles.swatch, styles.incSwatch].join(' ')} /> Pemasukan
+          <i className={[styles.swatch, styles.incSwatch].join(' ')} /> {t('reports.pemasukan')}
         </span>
         <span className={styles.legendItem}>
-          <i className={[styles.swatch, styles.expSwatch].join(' ')} /> Pengeluaran
+          <i className={[styles.swatch, styles.expSwatch].join(' ')} /> {t('reports.pengeluaran')}
         </span>
+        {g.nowX != null && (
+          <span className={styles.legendItem}>
+            <i className={[styles.swatch, styles.futureSwatch].join(' ')} /> {t('reports.chartFuture')}
+          </span>
+        )}
         {active && (
           <span className={styles.readout}>
-            {active.label}: <strong className={styles.inc}>{fmtRp(active.income)}</strong> ·{' '}
-            <strong className={styles.exp}>{fmtRp(active.expense)}</strong>
+            {active.label}:{' '}
+            {active.future ? (
+              t('reports.chartFuture')
+            ) : (
+              <>
+                <strong className={styles.inc}>{fmtRp(active.income)}</strong> ·{' '}
+                <strong className={styles.exp}>{fmtRp(active.expense)}</strong>
+              </>
+            )}
           </span>
         )}
       </div>

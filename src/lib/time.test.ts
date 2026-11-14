@@ -6,6 +6,7 @@ import {
   localTimeStr,
   localTimeSec,
   fmtDate,
+  fmtDateRange,
   parseISODate,
   isInRange,
   addDays,
@@ -76,6 +77,15 @@ describe('fmtDate', () => {
   });
   it('returns input unchanged when invalid', () => {
     expect(fmtDate('not-a-date')).toBe('not-a-date');
+  });
+});
+
+describe('fmtDateRange', () => {
+  it('meringkas rentang di bulan, tahun, dan lintas tahun', () => {
+    expect(fmtDateRange('2026-10-01', '2026-10-14')).toBe('1–14 Okt 2026');
+    expect(fmtDateRange('2026-10-28', '2026-11-03')).toBe('28 Okt – 3 Nov 2026');
+    expect(fmtDateRange('2025-12-01', '2026-01-05')).toBe('1 Des 2025 – 5 Jan 2026');
+    expect(fmtDateRange('2026-10-05', '2026-10-05')).toBe('5 Okt 2026');
   });
 });
 

@@ -10,6 +10,7 @@ import {
   expenseGroupOf,
   breakEvenVerdict,
   type BreakEven,
+  type ProfitLoss,
 } from '@/lib/business/overhead';
 import { translate, type TranslationKey } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
@@ -164,6 +165,9 @@ const A4_STYLE = `
   .be .pct { font-size: 13pt; font-weight: 700; }
   .be-verdict { margin: 0 0 6px; padding: 4px 8px; border-left: 2px solid ${INK.muted}; font-weight: 600; }
   .be-verdict small { display: block; font-weight: 400; color: ${INK.muted}; }
+  .pl td { padding: 2px 4px; border-bottom: 1px dotted ${INK.rule}; }
+  .pl td small { display: block; color: ${INK.muted}; font-size: 7pt; }
+  .pl tr.total td { border-top: 3px double ${INK.rule}; border-bottom: none; font-weight: 700; padding-top: 4px; }
   .grp { display: flex; justify-content: space-between; margin: 6px 0 2px; font-size: 7pt;
     letter-spacing: 0.06em; text-transform: uppercase; color: ${INK.muted}; }
 
@@ -192,6 +196,11 @@ export interface ReportDocData {
   noBaseline: boolean;
   salesTotal: number;
   breakEven: BreakEven | null;
+  /** Struk Laba Rugi; angka laba kotornya sama dengan `breakEven.gross`. */
+  pl: ProfitLoss;
+  unitsDone: number;
+  /** Periode masih berjalan: baris akhir dibaca sebagai jarak ke impas, bukan rugi. */
+  running: boolean;
   trend: TrendPoint[];
   incomeByCategory: [string, number][];
   expenseByCategory: [string, number][];
@@ -276,6 +285,11 @@ function chartSvg(points: TrendPoint[]): string {
   return `<div class="chart">
     <svg viewBox="0 0 ${g.width} ${g.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Grafik tren pemasukan dan pengeluaran">
       ${grid}${xLabels}
+      ${
+        g.nowX != null
+          ? `<rect x="${g.nowX}" y="${g.pad.top}" width="${g.width - g.pad.right - g.nowX}" height="${g.plotH}" fill="${INK.ruleSoft}"/>`
+          : ''
+      }
       <path d="${g.incArea}" fill="${INK.income}" fill-opacity="0.08"/>
       <path d="${g.expPath}" fill="none" stroke="${INK.muted}" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round"/>
       <path d="${g.incPath}" fill="none" stroke="${INK.income}" stroke-width="1.5" stroke-linejoin="round"/>
@@ -368,11 +382,50 @@ function buildBody(d: ReportDocData): string {
         .join(' · ')
     : '';
   const otherShare = be && be.overhead.total > 0 ? (be.overhead.byCategory.Lainnya ?? 0) / be.overhead.total : 0;
-  // Tanpa catatan biaya bulanan tak ada yang dibandingkan; di layar kartu kosongnya memberi petunjuk.
-  const breakEven = be && be.overhead.total > 0
+  const hasOverhead = !!be && be.overhead.total > 0;
+  const minus = (n: number) => (n === 0 ? fmtRp(0) : `−${fmtRp(Math.abs(n))}`);
+  const plain = (n: number) => (n < 0 ? `−${fmtRp(Math.abs(n))}` : fmtRp(n));
+  const plRow = (label: string, amount: string, o: { sub?: string; total?: boolean; cls?: string } = {}) =>
+    `<tr${o.total ? ' class="total"' : ''}><td>${esc(label)}${o.sub ? `<small class="num">${esc(o.sub)}</small>` : ''}</td>` +
+    `<td class="r num ${o.cls ?? ''}">${esc(amount)}</td></tr>`;
+  const pl = d.pl;
+  const operating = be?.surplus ?? 0;
+  const finalLabel = d.running
+    ? tr(operating >= 0 ? 'reports.plRunningSurplus' : 'reports.plRunningShort')
+    : tr(operating >= 0 ? 'reports.plOperating' : 'reports.plOperatingLoss');
+  const plTable = `<table class="pl"><tbody>
+      ${plRow(tr('reports.plServiceRevenue'), fmtRp(pl.serviceRevenue), { sub: interpolate(tr('reports.plUnits'), { n: String(d.unitsDone) }) })}
+      ${plRow(tr('reports.plServiceCost'), minus(pl.serviceCost))}
+      ${plRow(tr('reports.plSalesRevenue'), fmtRp(pl.salesRevenue))}
+      ${plRow(tr('reports.plSalesCost'), minus(pl.salesCost))}
+      ${pl.directCost > 0 ? plRow(tr('reports.plDirect'), minus(pl.directCost)) : ''}
+      ${plRow(tr('reports.plGross'), plain(pl.gross), {
+        total: true,
+        sub: pl.grossMargin === null ? undefined : interpolate(tr('reports.plMargin'), { pct: fmtPercent(pl.grossMargin) }),
+      })}
+      ${plRow(tr('reports.plOverhead'), hasOverhead && be ? minus(be.overhead.total) : tr('reports.plOverheadNone'), {
+        sub: beParts || undefined,
+      })}
+      ${
+        hasOverhead
+          ? plRow(finalLabel, d.running ? fmtRp(Math.abs(operating)) : plain(operating), {
+              total: true,
+              cls: operating >= 0 ? 'up' : d.running ? 'neg' : 'crit',
+              sub:
+                d.running || pl.revenue <= 0
+                  ? undefined
+                  : interpolate(tr('reports.plMargin'), { pct: fmtPercent(operating / pl.revenue) }),
+            })
+          : ''
+      }
+    </tbody></table>`;
+  const breakEven = be
     ? section(
-        tr('reports.indikatorBreakEven'),
-        `<p class="be-verdict">${esc(tr(VERDICT_KEY[breakEvenVerdict(d.summary.net, be.surplus)]))}
+        tr('reports.plTitle'),
+        `<div class="cols"><div>${plTable}</div><div>
+          ${
+            hasOverhead
+              ? `<p class="be-verdict">${esc(tr(VERDICT_KEY[breakEvenVerdict(d.summary.net, be.surplus)]))}
             <small class="num">${esc(interpolate(tr('reports.verdictSub'), { cash: signed(d.summary.net), be: signed(be.surplus) }))}</small>
           </p>
           <div class="be">
@@ -382,14 +435,18 @@ function buildBody(d: ReportDocData): string {
             <div class="pct num ${be.pct >= 1 ? 'up' : ''}">${esc(fmtPercent(be.pct))}</div>
           </div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct(be.pct, 1)}%"></div></div>
-          <p class="note num">${esc(beParts)}</p>
           <p class="note">${esc(tr(BASIS_KEY[be.overhead.basis]))}</p>
+          ${d.running ? `<p class="note">${esc(tr('reports.plRunningNote'))}</p>` : ''}
           ${be.overhead.prorated ? `<p class="note">${esc(tr('reports.beProrated'))}</p>` : ''}
           ${
             otherShare > 0.2
               ? `<p class="note">⚠ ${esc(interpolate(tr('reports.beOtherHigh'), { amount: fmtRp(be.overhead.byCategory.Lainnya ?? 0), pct: fmtPercent(otherShare, 0) }))}</p>`
               : ''
-          }`,
+          }`
+              : `<p class="note">${esc(tr('reports.beEmpty'))}</p>`
+          }
+          <p class="note">${esc(tr('reports.plAccrualNote'))}</p>
+        </div></div>`,
       )
     : '';
 
@@ -609,8 +666,8 @@ function buildBody(d: ReportDocData): string {
   </div>`;
 
   return `${head}${verdict}${kpis}
-    ${section('Tren Pemasukan vs Pengeluaran', chartSvg(d.trend))}
     ${breakEven}
+    ${section('Tren Pemasukan vs Pengeluaran', chartSvg(d.trend))}
     <div class="cols">${incomeCat}${expenseCat}</div>
     <div class="cols">${catProfit}${parts}</div>
     <div class="cols">${funnel}${leaderboard}</div>

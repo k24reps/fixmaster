@@ -72,6 +72,19 @@ export function fmtDate(iso: string): string {
   return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** Rentang ringkas: "1–14 Okt 2026", "28 Okt – 3 Nov 2026", "1 Des 2025 – 5 Jan 2026". */
+export function fmtDateRange(from: string, to: string): string {
+  const f = parseISODate(from);
+  const t = parseISODate(to);
+  if (!f || !t) return `${from} – ${to}`;
+  if (from === to) return fmtDate(from);
+  if (f.getFullYear() !== t.getFullYear()) return `${fmtDate(from)} – ${fmtDate(to)}`;
+  if (f.getMonth() !== t.getMonth()) {
+    return `${f.getDate()} ${MONTH_NAMES[f.getMonth()]} – ${fmtDate(to)}`;
+  }
+  return `${f.getDate()}–${fmtDate(to)}`;
+}
+
 /** Format with day name → "Senin, 2 Jun 2026". */
 export function fmtDateFull(iso: string): string {
   const d = parseISODate(iso);

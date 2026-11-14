@@ -6,7 +6,7 @@ import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { fmtRp, fmtPercent } from '@/lib/format';
-import { localDateStr, localDateOf, fmtDate, isInRange } from '@/lib/time';
+import { localDateStr, localDateOf, fmtDate, fmtDateRange, isInRange } from '@/lib/time';
 import { isCapitalFlow, summarize } from '@/lib/business/finance';
 import { useServiceSummary } from '@/hooks/useServiceSummary';
 import {
@@ -17,7 +17,7 @@ import {
   serviceFunnel,
   avgTurnaroundDays,
   periodComparison,
-  previousWindow,
+  comparisonWindows,
   outletComparison,
 } from '@/lib/business/reports';
 import { useReceivables, useCategoryProfit } from '@/hooks/useReportData';
@@ -25,6 +25,7 @@ import { getRent, getStartMonth } from '@/config/orgConfig';
 import {
   computeBreakEven,
   breakEvenVerdict,
+  profitLoss,
   overheadFetchFrom,
   overheadFetchTo,
   overheadBreakdown,
@@ -73,6 +74,10 @@ const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
   owner: 'prive',
 };
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
+/** Baris biaya di struk Laba Rugi: selalu bertanda minus, nol tetap "Rp 0". */
+const minusRp = (n: number) => (n === 0 ? fmtRp(0) : `−${fmtRp(Math.abs(n))}`);
+/** Total: tanpa "+", minus hanya bila memang negatif. */
+const signedPlain = (n: number) => (n < 0 ? `−${fmtRp(Math.abs(n))}` : fmtRp(n));
 
 /** Urut nominal, tetapi Modal/Prive (arus kas pemilik) selalu di dasar. */
 const byCapitalLast = (a: [string, number], b: [string, number]) =>
@@ -95,7 +100,13 @@ export function ReportsPage() {
   // terpisah, bukan dengan melebarkan fetch di atas, karena trendSeries mode
   // bulanan memetakan lewat date.slice(0,7): baris bulan lalu akan masuk ke
   // ember grafik yang sama saat `from` bukan tanggal 1.
-  const [prevFrom, prevTo] = previousWindow(from, to);
+  // Periode berjalan dipotong ke hari ini dan dibanding tanggal yang sama
+  // bulan lalu (comparisonWindows) — bukan 30 hari penuh sebelumnya.
+  const today = localDateStr();
+  const cmp = useMemo(() => comparisonWindows(from, to, today), [from, to, today]);
+  const running = from <= today && today <= to;
+  const [curFrom, curTo] = cmp.current;
+  const [prevFrom, prevTo] = cmp.previous;
   const { data: prevIncomes } = useCollectionRange('incomes', 'date', prevFrom, prevTo);
   const { data: prevExpenses } = useCollectionRange('expenses', 'date', prevFrom, prevTo);
   // Overhead butuh bulan penuh + 3 bulan riwayat, di luar jendela periode.
@@ -150,7 +161,7 @@ export function ReportsPage() {
   const leaderboard = summaryQuery.data?.leaderboard ?? [];
 
   // New aggregations (all pure, from reports.ts).
-  const trend = useMemo(() => trendSeries(incomes, expenses, from, to), [incomes, expenses, from, to]);
+  const trend = useMemo(() => trendSeries(incomes, expenses, from, to, today), [incomes, expenses, from, to, today]);
   const txnRows = useMemo(() => transactionRows(fIncomes, fExpenses), [fIncomes, fExpenses]);
   const catProfit = catProfitQuery.data;
   const partUsage = useMemo(() => sparepartUsage(fServices), [fServices]);
@@ -162,10 +173,11 @@ export function ReportsPage() {
       periodComparison(
         [...incomes, ...prevIncomes],
         [...expenses, ...prevExpenses],
-        from,
-        to,
+        curFrom,
+        curTo,
+        [prevFrom, prevTo],
       ),
-    [incomes, prevIncomes, expenses, prevExpenses, from, to],
+    [incomes, prevIncomes, expenses, prevExpenses, curFrom, curTo, prevFrom, prevTo],
   );
   const outletStats = useMemo(
     () => outletComparison(incomes, expenses, outlets, from, to),
@@ -203,9 +215,12 @@ export function ReportsPage() {
     const arah = d >= 0 ? t('reports.better') : t('reports.worse');
     return {
       headline: interpolate(t('reports.netVsPrev'), { net, dir: arah, pct: fmtPercent(Math.abs(d)) }),
-      source: `${src} · ${interpolate(t('reports.prevPeriod'), { amount: fmtRp(comparison.previous.net) })}`,
+      source: `${src} · ${interpolate(t('reports.prevPeriod'), {
+        range: fmtDateRange(prevFrom, prevTo),
+        amount: fmtRp(comparison.previous.net),
+      })}`,
     };
-  }, [rangeValid, summary, noBaseline, comparison, t]);
+  }, [rangeValid, summary, noBaseline, comparison, prevFrom, prevTo, t]);
 
   const salesTotal = fSales.reduce((sum, s) => sum + s.total, 0);
   // Keuangan menampilkan satu bulan: tautan membuka bulan terakhir periode.
@@ -243,6 +258,28 @@ export function ReportsPage() {
   }, [rangeValid, overheadExpenses, from, to, activeOutletId, outlets, catProfit, fSales, fExpenses]);
   const verdictKind =
     breakEven && breakEven.overhead.total > 0 ? breakEvenVerdict(summary.net, breakEven.surplus) : null;
+  // Laba Rugi = break-even yang dipecah per baris; labanya angka yang sama.
+  const pl = useMemo(
+    () =>
+      profitLoss(
+        {
+          revenue: catProfit.reduce((sum, c) => sum + c.revenue, 0),
+          profit: catProfit.reduce((sum, c) => sum + c.profit, 0),
+        },
+        fSales,
+        fExpenses,
+      ),
+    [catProfit, fSales, fExpenses],
+  );
+  const unitsDone = catProfit.reduce((sum, c) => sum + c.count, 0);
+  const hasOverhead = !!breakEven && breakEven.overhead.total > 0;
+  const operating = breakEven?.surplus ?? 0;
+  // Bulan berjalan dibandingkan dengan overhead SEBULAN: minus di tanggal 5 itu
+  // jarak ke impas, bukan rugi. Kata "rugi" hanya untuk periode yang sudah tutup.
+  const finalTone: 'ok' | 'warn' | 'crit' = operating >= 0 ? 'ok' : running ? 'warn' : 'crit';
+  const finalLabel = running
+    ? t(operating >= 0 ? 'reports.plRunningSurplus' : 'reports.plRunningShort')
+    : t(operating >= 0 ? 'reports.plOperating' : 'reports.plOperatingLoss');
   // "Lainnya" gampang jadi tempat membuang catatan; porsi besar = biaya bulanan membengkak.
   const otherShare =
     breakEven && breakEven.overhead.total > 0 ? (breakEven.overhead.byCategory.Lainnya ?? 0) / breakEven.overhead.total : 0;
@@ -334,6 +371,9 @@ export function ReportsPage() {
       noBaseline,
       salesTotal,
       breakEven,
+      pl,
+      unitsDone,
+      running,
       trend,
       incomeByCategory,
       expenseByCategory,
@@ -379,14 +419,17 @@ export function ReportsPage() {
   const indexItems: { id: string; label: string; readout: string; tone?: 'ok' | 'warn' | 'crit' }[] = [
     ...(breakEven
       ? [
-          breakEven.overhead.total === 0
-            ? { id: 'lap-be', label: t('reports.idxBe'), readout: t('reports.idxBeEmpty') }
-            : {
-                id: 'lap-be',
-                label: t('reports.idxBe'),
-                readout: interpolate(t('reports.idxBeCovered'), { pct: fmtPercent(breakEven.pct, 0) }),
-                tone: breakEven.pct >= 1 ? ('ok' as const) : ('warn' as const),
-              },
+          reportPending
+            ? { id: 'lap-laba', label: t('reports.idxPl'), readout: pendingReadout }
+            : pl.grossMargin === null
+              ? { id: 'lap-laba', label: t('reports.idxPl'), readout: t('reports.idxNoRevenue') }
+              : {
+                  id: 'lap-laba',
+                  label: t('reports.idxPl'),
+                  readout: interpolate(t('reports.idxMargin'), { pct: fmtPercent(pl.grossMargin, 0) }),
+                  // Tanpa overhead tercatat, margin saja tak bisa menyebut impas atau belum.
+                  tone: hasOverhead ? (operating >= 0 ? ('ok' as const) : ('warn' as const)) : undefined,
+                },
         ]
       : []),
     {
@@ -587,6 +630,176 @@ export function ReportsPage() {
         </ol>
       </nav>
 
+      {/* Laba Rugi + break-even dalam satu kartu: keduanya membaca laba kotor
+          yang sama. Dulu laba usaha hanya muncul sebagai "Break-even −Rp X" di
+          kalimat kecil kartu ketiga, dan laba penjualan kasir dihitung tanpa
+          pernah ditampilkan. */}
+      {breakEven && (
+        <Card
+          id="lap-laba"
+          tabIndex={-1}
+          className={styles.jumpTarget}
+          accent={!hasOverhead ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}
+        >
+          <CardHeader
+            icon={<Icon name="scale-balanced" aria-hidden />}
+            title={<Term id="laba-usaha">{t('reports.plTitle')}</Term>}
+          />
+          <CardBody>
+            {reportPending ? (
+              <LoadState queries={reportLoad} />
+            ) : (
+              <div className={styles.plWrap}>
+                <div className={styles.pl}>
+                  <ul className={styles.plLines} aria-label={t('reports.plLines')}>
+                    <PlLine
+                      label={t('reports.plServiceRevenue')}
+                      sub={interpolate(t('reports.plUnits'), { n: String(unitsDone) })}
+                      amount={fmtRp(pl.serviceRevenue)}
+                    />
+                    <PlLine label={t('reports.plServiceCost')} amount={minusRp(pl.serviceCost)} />
+                    <PlLine label={t('reports.plSalesRevenue')} amount={fmtRp(pl.salesRevenue)} />
+                    <PlLine
+                      label={<Term id="hpp">{t('reports.plSalesCost')}</Term>}
+                      amount={minusRp(pl.salesCost)}
+                    />
+                    {pl.directCost > 0 && (
+                      <PlLine
+                        label={<Term id="beban-langsung">{t('reports.plDirect')}</Term>}
+                        amount={minusRp(pl.directCost)}
+                      />
+                    )}
+                    <PlLine
+                      kind="total"
+                      label={<Term id="laba-kotor">{t('reports.plGross')}</Term>}
+                      sub={
+                        pl.grossMargin === null
+                          ? undefined
+                          : interpolate(t('reports.plMargin'), { pct: fmtPercent(pl.grossMargin) })
+                      }
+                      amount={signedPlain(pl.gross)}
+                    />
+                    <PlLine
+                      label={<Term id="overhead">{t('reports.plOverhead')}</Term>}
+                      amount={hasOverhead ? minusRp(breakEven.overhead.total) : t('reports.plOverheadNone')}
+                      muted={!hasOverhead}
+                    />
+                    {hasOverhead && (
+                      <li className={styles.plDetail}>
+                        <ul className={styles.plBreakdown} aria-label={t('reports.beBreakdown')}>
+                          {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
+                            <li key={c}>
+                              {financeLink(c)}
+                              {breakEven.overhead.estimated.includes(c) && (
+                                <i className={styles.estTag}>{t('reports.estTag')}</i>
+                              )}{' '}
+                              <b>{fmtRp(v)}</b>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    )}
+                    {hasOverhead && (
+                      <PlLine
+                        kind="final"
+                        tone={finalTone}
+                        label={finalLabel}
+                        sub={
+                          running || pl.revenue <= 0
+                            ? undefined
+                            : interpolate(t('reports.plMargin'), { pct: fmtPercent(operating / pl.revenue) })
+                        }
+                        amount={running ? fmtRp(Math.abs(operating)) : signedPlain(operating)}
+                      />
+                    )}
+                  </ul>
+
+                  <div className={styles.plSide}>
+                    {verdictKind && (
+                      <div className={styles.beVerdict} data-tone={VERDICT[verdictKind].tone}>
+                        <span className={styles.beLed} aria-hidden />
+                        <div>
+                          <strong>{t(VERDICT[verdictKind].key)}</strong>
+                          <span className={styles.beVerdictSub}>
+                            {interpolate(t('reports.verdictSub'), {
+                              cash: signedRp(summary.net),
+                              be: signedRp(breakEven.surplus),
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {hasOverhead ? (
+                      <>
+                        <div className={styles.breakEven}>
+                          <div>
+                            <span className={styles.beLabel}>
+                              <Term id="break-even">{t('reports.beGrossVsOverhead')}</Term>
+                            </span>
+                            <strong className={styles.beValue}>
+                              {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
+                            </strong>
+                          </div>
+                          <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
+                            {fmtPercent(breakEven.pct)}
+                          </span>
+                        </div>
+                        <div className={styles.beGauge}>
+                          <div
+                            className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
+                            style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
+                          />
+                        </div>
+                        <small className={styles.beNote}>
+                          <Icon name="info-circle" aria-hidden />{' '}
+                          {t(
+                            breakEven.overhead.basis === 'actual'
+                              ? 'reports.beBasisActual'
+                              : breakEven.overhead.basis === 'estimate'
+                                ? 'reports.beBasisEstimate'
+                                : 'reports.beBasisPartial',
+                          )}
+                        </small>
+                        {running && (
+                          <small className={styles.beNote}>
+                            <Icon name="info-circle" aria-hidden /> {t('reports.plRunningNote')}
+                          </small>
+                        )}
+                        {breakEven.overhead.prorated && (
+                          <small className={styles.beNote}>
+                            <Icon name="info-circle" aria-hidden /> {t('reports.beProrated')}
+                          </small>
+                        )}
+                        {otherShare > OTHER_WARN_SHARE && (
+                          <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
+                            <Icon name="triangle-exclamation" aria-hidden />{' '}
+                            {interpolate(t('reports.beOtherHigh'), {
+                              amount: fmtRp(breakEven.overhead.byCategory.Lainnya ?? 0),
+                              pct: fmtPercent(otherShare, 0),
+                            })}
+                          </Link>
+                        )}
+                        {breakEven.overhead.missingPayroll && (
+                          <small className={[styles.beNote, styles.beWarn].join(' ')}>
+                            <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
+                          </small>
+                        )}
+                      </>
+                    ) : (
+                      // Tanpa isian perkiraan, kalimat inilah yang memberi tahu break-even ada.
+                      <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
+                    )}
+                    <small className={styles.beNote}>
+                      <Icon name="info-circle" aria-hidden /> {t('reports.plAccrualNote')}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
       {/* 1. Income vs expense trend chart */}
       <Card>
         <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
@@ -600,97 +813,6 @@ export function ReportsPage() {
           )}
         </CardBody>
       </Card>
-
-      {breakEven && (
-        <Card id="lap-be" tabIndex={-1} className={styles.jumpTarget} accent={breakEven.overhead.total === 0 ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}>
-          <CardHeader icon={<Icon name="scale-balanced" aria-hidden />} title={<Term id="break-even">{t('reports.indikatorBreakEven')}</Term>} />
-          <CardBody>
-            {breakEven.overhead.total === 0 ? (
-              // Tanpa isian perkiraan, kartu kosong inilah yang memberi tahu fitur ini ada.
-              <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
-            ) : (
-              <>
-                {verdictKind && (
-                  <div className={styles.beVerdict} data-tone={VERDICT[verdictKind].tone}>
-                    <span className={styles.beLed} aria-hidden />
-                    <div>
-                      <strong>{t(VERDICT[verdictKind].key)}</strong>
-                      <span className={styles.beVerdictSub}>
-                        {interpolate(t('reports.verdictSub'), {
-                          cash: signedRp(summary.net),
-                          be: signedRp(breakEven.surplus),
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className={styles.breakEven}>
-                  <div>
-                    <span className={styles.beLabel}>
-                      <Term id="laba-kotor">{t('reports.beGrossVsOverhead')}</Term>
-                    </span>
-                    <strong className={styles.beValue}>
-                      {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
-                    </strong>
-                  </div>
-                  <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
-                    {fmtPercent(breakEven.pct)}
-                  </span>
-                </div>
-                <div className={styles.beGauge}>
-                  <div
-                    className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
-                    style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
-                  />
-                </div>
-                <p className={styles.beResult}>
-                  {interpolate(t(breakEven.pct >= 1 ? 'reports.beSurplus' : 'reports.beShort'), {
-                    amount: fmtRp(Math.abs(breakEven.gross - breakEven.overhead.total)),
-                  })}
-                </p>
-                <ul className={styles.beBreakdown} aria-label={t('reports.beBreakdown')}>
-                  {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
-                    <li key={c}>
-                      {financeLink(c)}
-                      {breakEven.overhead.estimated.includes(c) && <i className={styles.estTag}>{t('reports.estTag')}</i>}{' '}
-                      <b>{fmtRp(v)}</b>
-                    </li>
-                  ))}
-                </ul>
-                <small className={styles.beNote}>
-                  <Icon name="info-circle" aria-hidden />{' '}
-                  {t(
-                    breakEven.overhead.basis === 'actual'
-                      ? 'reports.beBasisActual'
-                      : breakEven.overhead.basis === 'estimate'
-                        ? 'reports.beBasisEstimate'
-                        : 'reports.beBasisPartial',
-                  )}
-                </small>
-                {breakEven.overhead.prorated && (
-                  <small className={styles.beNote}>
-                    <Icon name="info-circle" aria-hidden /> {t('reports.beProrated')}
-                  </small>
-                )}
-            {otherShare > OTHER_WARN_SHARE && (
-                  <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
-                    <Icon name="triangle-exclamation" aria-hidden />{' '}
-                    {interpolate(t('reports.beOtherHigh'), {
-                      amount: fmtRp(breakEven.overhead.byCategory.Lainnya ?? 0),
-                      pct: fmtPercent(otherShare, 0),
-                    })}
-                  </Link>
-                )}
-            {breakEven.overhead.missingPayroll && (
-                  <small className={[styles.beNote, styles.beWarn].join(' ')}>
-                    <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
-                  </small>
-                )}
-              </>
-            )}
-          </CardBody>
-        </Card>
-      )}
 
       <div id="lap-kategori" tabIndex={-1} className={[styles.grid, styles.jumpTarget].join(' ')}>
         <Card>
@@ -1170,5 +1292,40 @@ function Metric({
         )}
       </div>
     </div>
+  );
+}
+
+/** Satu baris struk Laba Rugi: nama (+ keterangan kecil) di kiri, nominal mono di kanan. */
+function PlLine({
+  label,
+  sub,
+  amount,
+  kind = 'line',
+  tone,
+  muted,
+}: {
+  label: ReactNode;
+  sub?: string;
+  amount: string;
+  kind?: 'line' | 'total' | 'final';
+  tone?: 'ok' | 'warn' | 'crit';
+  muted?: boolean;
+}) {
+  return (
+    <li
+      className={[styles.plLine, kind === 'total' ? styles.plTotal : '', kind === 'final' ? styles.plFinal : '']
+        .filter(Boolean)
+        .join(' ')}
+      data-tone={tone}
+    >
+      <span className={styles.plName}>
+        {tone && <span className={styles.plLed} aria-hidden />}
+        <span>
+          {label}
+          {sub && <small className={styles.plSub}>{sub}</small>}
+        </span>
+      </span>
+      <span className={[styles.plAmount, muted ? styles.plMuted : ''].filter(Boolean).join(' ')}>{amount}</span>
+    </li>
   );
 }

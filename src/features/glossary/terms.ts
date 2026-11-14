@@ -12,6 +12,7 @@ export type TermId =
   | 'overhead'
   | 'beban-langsung'
   | 'break-even'
+  | 'laba-usaha'
   | 'hpp'
   | 'persediaan'
   | 'aset-tetap'
@@ -125,6 +126,16 @@ export const GLOSSARY: GlossaryTerm[] = [
       { label: 'Dashboard', to: '/' },
       { label: 'Laporan', to: '/reports' },
     ],
+  },
+  {
+    id: 'laba-usaha',
+    term: 'Laba Usaha (Laba Rugi)',
+    short: 'Untung toko setelah semua biaya, termasuk overhead.',
+    body:
+      'Laba kotor dikurangi overhead. Inilah jawaban "bulan ini untung berapa". Berbeda dari arus kas: pembelian stok, kasbon, dan prive mengubah kas tapi bukan biaya, sedangkan servis yang selesai tapi belum dibayar sudah dihitung sebagai pendapatan. Selama periode masih berjalan, angka ini dibaca sebagai sisa yang perlu dikejar sampai impas.',
+    formula: 'Laba kotor − Overhead',
+    example: 'Laba kotor Rp 18 jt − overhead Rp 15,1 jt = laba usaha Rp 2,9 jt (margin usaha 9% dari pendapatan Rp 32 jt).',
+    seenIn: [{ label: 'Laporan', to: '/reports' }],
   },
   {
     id: 'hpp',
