@@ -6704,3 +6704,18 @@ FM-0007 (Selesai, 0 hari) menunggu diambil, keduanya bertaut ke tiketnya; teknis
 4 unit, laba Rp 3.005.000 = laba servis di struk Laba Rugi. Nol luberan/clip di 1440/820/390.
 `audit-mobile` dan `audit-zoom` untuk `/reports?bagian=servis`: nol temuan, lantai 12px 0.
 
+**Tahap 4, Penjualan Kasir (14 Nov 2026):** sebelumnya Laporan hanya tahu omzet kasir. Kartu
+baru di tab Kasir & Stok (rincian di [[Signature Pages#Laporan — Analyzer Printout]]).
+Keputusan: diskon struk dibagi proporsional ke baris, bukan dibebankan ke baris pertama atau
+diabaikan; tanpa itu barang di struk berdiskon terlihat lebih untung, dan jumlah laba per
+barang tidak sama dengan laba kasir di Laba Rugi. Urut laba, bukan jumlah terjual: kabel murah
+yang laku banyak dan LCD mahal yang laku sekali sama-sama perlu terlihat, dan pertanyaan pemilik
+adalah "barang mana yang menghasilkan". Tanpa LED pada diskon dan struk batal: ambangnya keputusan
+toko. Kunci i18n baru `reports.salesTitle`, `reports.s*`; `reports.sparepartTerlaris` berganti
+teks ("Part Terpakai di Servis" / "Parts Used in Service").
+**Verifikasi:** build, lint, **1124 tes / 85 berkas** (+1 `salesBreakdown`: diskon 10% dibagi
+ke dua barang, jumlah omzet = total struk, laba per barang = omzet − HPP, struk batal terpisah,
+struk di luar periode diabaikan). Demo `?bagian=stok`: 2 struk, rata-rata Rp 1.450.000, laba
+kasir Rp 930.000 (margin 32%), LCD iPhone 12 Rp 600.000 di atas SSD Rp 330.000; nol luberan/clip
+di 1440/820/390. `audit-mobile` dan `audit-zoom` untuk `/reports?bagian=stok`: nol temuan.
+

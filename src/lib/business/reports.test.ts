@@ -20,6 +20,7 @@ import {
   serviceQuality,
   technicianProfit,
   awaitingPickup,
+  salesBreakdown,
 } from './reports';
 import type {
   Service,
@@ -708,6 +709,36 @@ describe('awaitingPickup', () => {
       ['FM-2', 44, '31+'],
       ['FM-5', 10, '8-30'],
       ['FM-1', 4, '0-7'],
+    ]);
+  });
+});
+
+describe('salesBreakdown', () => {
+  const line = (itemId: string, qty: number, sellPrice: number, costPrice: number) => ({
+    itemId,
+    name: itemId.toUpperCase(),
+    qty,
+    sellPrice,
+    costPrice,
+  });
+  const sales = [
+    // Struk berdiskon 10%: 1.000.000 → 900.000.
+    { date: '2026-11-02', subtotal: 1_000_000, total: 900_000, voided: false, lines: [line('lcd', 1, 800_000, 600_000), line('kabel', 2, 100_000, 30_000)] },
+    { date: '2026-11-03', subtotal: 100_000, total: 100_000, voided: false, lines: [line('kabel', 1, 100_000, 30_000)] },
+    { date: '2026-11-04', subtotal: 500_000, total: 500_000, voided: true, lines: [line('lcd', 1, 500_000, 400_000)] },
+    { date: '2026-10-30', subtotal: 999_000, total: 999_000, voided: false, lines: [line('lcd', 1, 999_000, 1)] },
+  ];
+
+  it('diskon dibagi ke baris, jadi omzet per barang = total struk', () => {
+    const r = salesBreakdown(sales, '2026-11-01', '2026-11-30');
+    expect(r).toMatchObject({ count: 2, revenue: 1_000_000, cost: 690_000, discount: 100_000, subtotal: 1_100_000, voidCount: 1, voidValue: 500_000 });
+    const sum = r.products.reduce((a, p) => a + p.revenue, 0);
+    expect(sum).toBeCloseTo(r.revenue);
+    expect(r.products.reduce((a, p) => a + p.profit, 0)).toBeCloseTo(r.revenue - r.cost);
+    // Kabel: 2 × 100rb × 0,9 + 100rb = 280rb omzet, modal 90rb → laba 190rb, di atas LCD (720rb − 600rb = 120rb).
+    expect(r.products.map((p) => [p.key, p.qty, Math.round(p.revenue), Math.round(p.profit)])).toEqual([
+      ['kabel', 3, 280_000, 190_000],
+      ['lcd', 1, 720_000, 120_000],
     ]);
   });
 });

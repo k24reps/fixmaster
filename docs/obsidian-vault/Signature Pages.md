@@ -534,8 +534,8 @@ tanggal menumpuk tanpa overflow.
 `role="tablist"` berlabel "Isi laporan": **Ringkasan** (Laba Rugi & Break-even, Tren) · **Uang**
 (Pemasukan/Pengeluaran per Kategori, Perbandingan Antar-Outlet, Rincian Transaksi) · **Servis**
 (Mutu & Kecepatan Servis, Unit Menunggu Diambil, Laba per Kategori Perangkat, Tahapan Servis,
-Performa Teknisi) · **Kasir & Stok** (Sparepart
-Terlaris, Saran Restok) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
+Performa Teknisi) · **Kasir & Stok** (Penjualan Kasir, Part
+Terpakai di Servis — dulu "Sparepart Terlaris", Saran Restok) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
 Tiap tab = label + readout mono ("margin 58%", "10 transaksi", "7 tiket", "2 perlu restok",
 "Rp 350.000"); LED hanya pada kanal berstatus (impas/belum bila overhead tercatat, restok,
 piutang 31+ = merah), jadi deret ini tetap ringkasan tanpa menggulir. Tab terpilih = kanal
@@ -609,6 +609,16 @@ dan mengembalikan `nowX`; layar mengarsir sisa sumbu (`--bg-input`) + garis titi
   `useServiceSummary`.
 - PDF: tabel Mutu, Performa Teknisi lima kolom (unit, median, omzet, laba), Unit Menunggu
   Diambil (semua baris).
+
+**Penjualan Kasir (14 Nov 2026, tab Kasir & Stok).** Empat readout (`qGrid`): Struk (+ rata-rata
+per struk), Laba kotor kasir (+ margin dan omzet), Diskon diberikan (+ persen dari harga jual),
+Struk dibatalkan (+ nilainya); lalu, di bawah divider titik, delapan barang teratas menurut
+laba ("1 terjual · omzet Rp …"). `salesBreakdown` di `lib/business/reports.ts` membagi diskon
+struk ke barisnya sebanding harga jual, jadi omzet per barang berjumlah sama dengan total struk
+dan laba kasir sama dengan baris kasir di struk Laba Rugi (demo: Rp 930.000). Struk batal
+dihitung terpisah, tidak dibuang. Kartu yang dulu "Sparepart Terlaris" (pemakaian part di tiket
+servis) diberi judul "Part Terpakai di Servis" supaya tidak tertukar dengan barang kasir. PDF
+memuat tabel yang sama dengan daftar barang lengkap.
 
 - **Break-even (29 Sep 2026; sejak 14 Nov 2026 satu kartu dengan Laba Rugi, lihat di atas).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang

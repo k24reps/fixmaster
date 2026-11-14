@@ -27,6 +27,7 @@ import type {
   ServiceQuality,
   TechProfit,
   PickupWait,
+  SalesBreakdown,
 } from '@/lib/business/reports';
 import type { InventoryItem, Organization } from '@/data/types';
 
@@ -197,6 +198,7 @@ export interface ReportDocData {
   comparison: PeriodComparison;
   noBaseline: boolean;
   salesTotal: number;
+  salesInfo: SalesBreakdown;
   breakEven: BreakEven | null;
   /** Struk Laba Rugi; angka laba kotornya sama dengan `breakEven.gross`. */
   pl: ProfitLoss;
@@ -507,7 +509,7 @@ function buildBody(d: ReportDocData): string {
   );
 
   const parts = section(
-    'Sparepart Terlaris',
+    'Part Terpakai di Servis',
     d.partUsage.length === 0
       ? empty('Belum ada pemakaian sparepart periode ini')
       : `<table>
@@ -537,6 +539,33 @@ function buildBody(d: ReportDocData): string {
         )}
         <p class="note">Tiket yang MASUK pada periode ini</p>`,
     { count: `${d.funnel.reduce((s, f) => s + f.count, 0)} tiket` },
+  );
+
+  const si = d.salesInfo;
+  const salesSection = section(
+    'Penjualan Kasir',
+    si.count === 0 && si.voidCount === 0
+      ? empty('Belum ada penjualan kasir periode ini')
+      : `<table><tbody>
+          <tr><td>Struk</td><td class="r num">${si.count}</td><td class="note">${si.count > 0 ? `rata-rata ${esc(fmtRp(Math.round(si.revenue / si.count)))} / struk` : ''}</td></tr>
+          <tr><td>Laba kotor kasir</td><td class="r num">${esc(fmtRp(si.revenue - si.cost))}</td><td class="note">margin ${esc(rate(si.revenue - si.cost, si.revenue))} · omzet ${esc(fmtRp(si.revenue))}</td></tr>
+          <tr><td>Diskon diberikan</td><td class="r num">${esc(fmtRp(si.discount))}</td><td class="note">${esc(si.subtotal > 0 ? fmtPercent(si.discount / si.subtotal) : EMPTY_VALUE)} dari harga jual</td></tr>
+          <tr><td>Struk dibatalkan</td><td class="r num">${si.voidCount}</td><td class="note">senilai ${esc(fmtRp(si.voidValue))}</td></tr>
+        </tbody></table>
+        ${
+          si.products.length === 0
+            ? ''
+            : `<table>
+          <thead><tr><th>Barang</th><th class="r">Terjual</th><th class="r">Omzet</th><th class="r">Laba</th></tr></thead>
+          <tbody>${si.products
+            .map(
+              (p) => `<tr><td>${esc(p.name)}</td><td class="r num">${p.qty}</td><td class="r num">${esc(fmtRp(Math.round(p.revenue)))}</td><td class="r num">${esc(fmtRp(Math.round(p.profit)))}</td></tr>`,
+            )
+            .join('')}</tbody>
+        </table>
+        <p class="note">Urut laba · diskon struk dibagi ke barang sebanding harga jual</p>`
+        }`,
+    { flow: true },
   );
 
   const q = d.quality;
@@ -710,6 +739,7 @@ function buildBody(d: ReportDocData): string {
     ${breakEven}
     ${section('Tren Pemasukan vs Pengeluaran', chartSvg(d.trend))}
     <div class="cols">${incomeCat}${expenseCat}</div>
+    ${salesSection}
     <div class="cols">${catProfit}${parts}</div>
     <div class="cols">${quality}${funnel}</div>
     ${leaderboard}

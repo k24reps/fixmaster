@@ -10,6 +10,7 @@ import type {
   Expense,
   InventoryItem,
   Outlet,
+  Sale,
   ServiceStatus,
 } from '@/data/types';
 import {
@@ -759,3 +760,81 @@ export function awaitingPickup(
     })
     .sort((a, b) => b.ageDays - a.ageDays);
 }
+
+// ---------- 10. Penjualan kasir ----------
+export interface ProductSales {
+  /** itemId; nama terbaru menang bila barangnya berganti nama. */
+  key: string;
+  name: string;
+  qty: number;
+  /** Omzet setelah diskon struk dibagi proporsional ke tiap baris. */
+  revenue: number;
+  profit: number;
+}
+
+export interface SalesBreakdown {
+  /** Struk sah (tidak dibatalkan) di periode. */
+  count: number;
+  revenue: number;
+  cost: number;
+  /** Potongan harga yang diberikan: subtotal − total. */
+  discount: number;
+  /** Jumlah harga jual sebelum diskon, dasar persen diskon. */
+  subtotal: number;
+  voidCount: number;
+  voidValue: number;
+  /** Diurutkan menurut laba. */
+  products: ProductSales[];
+}
+
+/**
+ * Penjualan Kasir per barang. Diskon struk dibagi ke barisnya sebanding harga
+ * jual, supaya jumlah omzet per barang SAMA dengan total struk (angka yang
+ * dipakai Laba Rugi) — tanpa itu barang di struk berdiskon terlihat lebih
+ * untung daripada kenyataannya. Struk batal dihitung terpisah, bukan dibuang:
+ * pembatalan yang sering adalah hal yang perlu dilihat pemilik.
+ */
+export function salesBreakdown(
+  sales: Pick<Sale, 'date' | 'lines' | 'subtotal' | 'total' | 'voided'>[],
+  from: string,
+  to: string,
+): SalesBreakdown {
+  const out: SalesBreakdown = {
+    count: 0,
+    revenue: 0,
+    cost: 0,
+    discount: 0,
+    subtotal: 0,
+    voidCount: 0,
+    voidValue: 0,
+    products: [],
+  };
+  const map = new Map<string, ProductSales>();
+  for (const s of sales) {
+    if (!isInRange(s.date, from, to)) continue;
+    if (s.voided) {
+      out.voidCount += 1;
+      out.voidValue += s.total;
+      continue;
+    }
+    out.count += 1;
+    out.revenue += s.total;
+    out.subtotal += s.subtotal;
+    out.discount += Math.max(0, s.subtotal - s.total);
+    const ratio = s.subtotal > 0 ? s.total / s.subtotal : 0;
+    for (const l of s.lines) {
+      const cost = l.qty * l.costPrice;
+      out.cost += cost;
+      const revenue = l.qty * l.sellPrice * ratio;
+      const cur = map.get(l.itemId) ?? { key: l.itemId, name: l.name, qty: 0, revenue: 0, profit: 0 };
+      cur.name = l.name;
+      cur.qty += l.qty;
+      cur.revenue += revenue;
+      cur.profit += revenue - cost;
+      map.set(l.itemId, cur);
+    }
+  }
+  out.products = [...map.values()].sort((a, b) => b.profit - a.profit || b.qty - a.qty);
+  return out;
+}
+

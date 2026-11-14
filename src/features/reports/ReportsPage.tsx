@@ -16,6 +16,7 @@ import {
   serviceFunnel,
   serviceQuality,
   technicianProfit,
+  salesBreakdown,
   periodComparison,
   comparisonWindows,
   outletComparison,
@@ -86,6 +87,8 @@ const GROUP_TERM: Partial<Record<ExpenseGroup, TermId>> = {
 const signedRp = (n: number) => `${n >= 0 ? '+' : '−'}${fmtRp(Math.abs(n))}`;
 /** Baris biaya di struk Laba Rugi: selalu bertanda minus, nol tetap "Rp 0". */
 const minusRp = (n: number) => (n === 0 ? fmtRp(0) : `−${fmtRp(Math.abs(n))}`);
+/** Barang kasir yang ditampilkan; daftar lengkap ada di PDF. */
+const TOP_PRODUCTS = 8;
 /** Baris maksimum Unit Menunggu Diambil; sisanya disebut, tertua tetap di atas. */
 const PICKUP_ROWS = 10;
 /** Hari dengan satu desimal bila perlu ("2", "0,5"); format angka tak ikut bahasa. */
@@ -188,6 +191,10 @@ export function ReportsPage() {
   const funnel = useMemo(() => serviceFunnel(fServices), [fServices]);
   const quality = useMemo(() => serviceQuality(fServices, completed), [fServices, completed]);
   const techRows = useMemo(() => technicianProfit(completed), [completed]);
+  // `sales`, bukan fSales: struk batal ikut dihitung (terpisah) di sini.
+  const salesInfo = useMemo(() => salesBreakdown(sales, from, to), [sales, from, to]);
+  const topProducts = salesInfo.products.slice(0, TOP_PRODUCTS);
+  const maxProductProfit = Math.max(1, ...topProducts.map((p) => p.profit));
   const comparison = useMemo(
     () =>
       periodComparison(
@@ -390,6 +397,7 @@ export function ReportsPage() {
       comparison,
       noBaseline,
       salesTotal,
+      salesInfo,
       breakEven,
       pl,
       unitsDone,
@@ -1257,6 +1265,93 @@ export function ReportsPage() {
       )}
 
       {panel('stok', <>
+          {/* Penjualan Kasir. Dulu Laporan hanya tahu omzetnya (kartu metrik);
+              laba, barang yang menghasilkannya, diskon, dan struk batal tak
+              terlihat di mana pun. */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="cash-register" aria-hidden />}
+              title={t('reports.salesTitle')}
+              action={<span className={styles.liveTag}>{t('reports.sSortNote')}</span>}
+            />
+            {reportPending ? (
+              <CardBody>
+                <LoadState queries={reportLoad} />
+              </CardBody>
+            ) : salesInfo.count === 0 && salesInfo.voidCount === 0 ? (
+              <CardBody>
+                <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.sNone')} />
+              </CardBody>
+            ) : (
+              <>
+                <CardBody>
+                  <dl className={styles.qGrid}>
+                    <QTile
+                      label={t('reports.sReceipts')}
+                      value={String(salesInfo.count)}
+                      sub={
+                        salesInfo.count > 0
+                          ? interpolate(t('reports.sReceiptsSub'), { avg: fmtRp(Math.round(salesInfo.revenue / salesInfo.count)) })
+                          : t('reports.sNone')
+                      }
+                    />
+                    <QTile
+                      label={t('reports.sGross')}
+                      value={signedPlain(salesInfo.revenue - salesInfo.cost)}
+                      sub={interpolate(t('reports.sGrossSub'), {
+                        pct: salesInfo.revenue > 0 ? fmtPercent((salesInfo.revenue - salesInfo.cost) / salesInfo.revenue, 0) : '–',
+                        revenue: fmtRp(salesInfo.revenue),
+                      })}
+                    />
+                    <QTile
+                      label={t('reports.sDiscount')}
+                      value={fmtRp(salesInfo.discount)}
+                      sub={interpolate(t('reports.sDiscountSub'), {
+                        pct: salesInfo.subtotal > 0 ? fmtPercent(salesInfo.discount / salesInfo.subtotal, 1) : '–',
+                      })}
+                    />
+                    <QTile
+                      label={t('reports.sVoid')}
+                      value={String(salesInfo.voidCount)}
+                      sub={interpolate(t('reports.sVoidSub'), { amount: fmtRp(salesInfo.voidValue) })}
+                    />
+                  </dl>
+                </CardBody>
+                {topProducts.length > 0 && (
+                  <CardBody className={[styles.noPad, styles.dottedTop].join(' ')}>
+                    <ul className={styles.breakdown}>
+                      {topProducts.map((p) => (
+                        <li key={p.key} className={styles.channel}>
+                          <div className={styles.channelTop}>
+                            <span className={styles.channelName}>
+                              {p.name}{' '}
+                              <span className={styles.channelMeta}>
+                                ·{' '}
+                                {interpolate(t('reports.sProductRow'), {
+                                  qty: String(p.qty),
+                                  revenue: fmtRp(Math.round(p.revenue)),
+                                })}
+                              </span>
+                            </span>
+                            <span className={[styles.channelValue, p.profit >= 0 ? styles.inc : styles.neg].join(' ')}>
+                              {signedPlain(Math.round(p.profit))}
+                            </span>
+                          </div>
+                          <div className={styles.bar}>
+                            <div
+                              className={[styles.barFill, styles.brand].join(' ')}
+                              style={{ width: `${(Math.max(0, p.profit) / maxProductProfit) * 100}%` }}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardBody>
+                )}
+              </>
+            )}
+          </Card>
+
           <div className={styles.grid}>
             {/* 4a. Sparepart usage */}
             <Card>
