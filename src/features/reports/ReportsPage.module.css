@@ -521,10 +521,11 @@
   }
 }
 
-/* ---------- Indeks bagian ----------
+/* ---------- Tab bagian (dulu indeks lompat) ----------
    Deret kanal seperti pemilih kanal di penganalisis: label, lalu readout mono.
-   LED hanya pada kanal yang punya status. Kolomnya 6 → 3 → 2 mengikuti wadah
-   (ambang dari lebar terukur, lihat blok @container setelah kartu metrik). */
+   LED hanya pada kanal yang punya status. Tab terpilih = kanal menyala, sama
+   dengan item aktif sidebar (isi --rail-active, tepi --border-brand, sorot
+   atas). Kolomnya 5 → 3 → 2 mengikuti wadah (lihat @container di bawah). */
 .index {
   display: flex;
   flex-direction: column;
@@ -539,7 +540,7 @@
 }
 .indexList {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -549,8 +550,13 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start;
   gap: 2px;
+  width: 100%;
   height: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   min-height: var(--control-h);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
@@ -565,6 +571,27 @@
   border-color: var(--brand);
   border-top-style: solid;
   color: var(--brand-text);
+}
+.indexLink[aria-selected='true'] {
+  background: var(--rail-active);
+  border-color: var(--border-brand);
+  border-top-style: solid;
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-100) 38%, transparent);
+  cursor: default;
+}
+.indexLink[aria-selected='true'] .indexReadout {
+  color: var(--text-primary);
+}
+/* Panel tab: susunan kartu yang sama dengan halaman dulu. `hidden` perlu
+   aturan sendiri karena display:flex milik kelas mengalahkan [hidden] UA. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.panel[hidden] {
+  display: none;
 }
 .indexLabel {
   font-size: var(--text-sm);
@@ -595,15 +622,6 @@
 }
 .indexLed[data-tone='crit'] {
   --tone: var(--danger);
-}
-/* Sasaran lompatan: mendarat di bawah topbar sticky (14px + tinggi topbar),
-   bukan di baliknya. Fokus terprogram tidak diberi cincin bila datang dari
-   klik; dari keyboard, :focus-visible global tetap menandainya. */
-.jumpTarget {
-  scroll-margin-top: calc(14px + var(--topbar-height) + var(--space-3));
-}
-.jumpTarget:focus:not(:focus-visible) {
-  outline: none;
 }
 
 /* ---------- Grid + analyzer channels ---------- */
@@ -920,7 +938,9 @@
 /* Indeks: readout mono xs = 7,2px per karakter. Anggaran 15 karakter
    ("12 perlu restok") + LED 13px = 121px, ditambah padding & border 26px =
    kanal 147px. Enam kanal + 5 gap 8 butuh wadah 922px; tiga kanal 457px. */
-@container laporan (max-width: 921px) {
+/* 5 kolom butuh ±147px per kanal (readout 15 karakter + LED, terukur 7 Nov)
+   + 4 celah: 767px. Di 2 kolom kanal kelima mengisi baris sendiri. */
+@container laporan (max-width: 766px) {
   .indexList {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -928,6 +948,9 @@
 @container laporan (max-width: 456px) {
   .indexList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .indexList > :last-child:nth-child(odd) {
+    grid-column: span 2;
   }
 }
 

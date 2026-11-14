@@ -530,14 +530,22 @@ ditumpuk). Ambangnya `@container laporan`, diturunkan dari lebar terukur: 13 kar
 terpotong. Di ponsel nilai menyusut `clamp(--text-sm, 6.4cqi - 4.2px, --text-xl)`. Kontrol
 tanggal menumpuk tanpa overflow.
 
-**Indeks "Isi laporan" (7 Nov 2026).** Halaman ±6 layar, jadi tepat di bawah metrik ada deret
-kanal: Laba rugi (dulu Break-even, 14 Nov 2026) · Kategori · Sparepart · Servis & teknisi · Piutang · Rincian transaksi. Tiap
-kanal = label + readout mono (mis. "margin 58%", "2 perlu restok", "Rp 350.000"); LED hanya
-pada kanal yang punya status (impas/belum bila overhead tercatat, restok, umur piutang 31+ = merah).
-Klik menggulir halus (tanpa animasi bila `prefers-reduced-motion`) dan memindahkan fokus ke
-bagian tujuan (`tabIndex=-1`, `scroll-margin-top` = topbar sticky + jarak). Kolom 6 → 3 → 2
-pada wadah 922px / 457px (anggaran readout 15 karakter + LED). Readout menampilkan "…" saat
-data servis masih dimuat.
+**Tab bagian (14 Nov 2026; dulu indeks lompat "Isi laporan", 7 Nov).** Di bawah metrik ada
+`role="tablist"` berlabel "Isi laporan": **Ringkasan** (Laba Rugi & Break-even, Tren) · **Uang**
+(Pemasukan/Pengeluaran per Kategori, Perbandingan Antar-Outlet, Rincian Transaksi) · **Servis**
+(Laba per Kategori Perangkat, Tahapan Servis, Performa Teknisi) · **Kasir & Stok** (Sparepart
+Terlaris, Saran Restok) · **Piutang**. Vonis, tanggal, dan empat metrik tetap di atas semua tab.
+Tiap tab = label + readout mono ("margin 58%", "10 transaksi", "7 tiket", "2 perlu restok",
+"Rp 350.000"); LED hanya pada kanal berstatus (impas/belum bila overhead tercatat, restok,
+piutang 31+ = merah), jadi deret ini tetap ringkasan tanpa menggulir. Tab terpilih = kanal
+menyala seperti item aktif sidebar (`--rail-active`, tepi `--border-brand`, sorot atas). Pola
+WAI-ARIA: roving tabindex, panah kiri/kanan + Home/End memindah fokus dan memilih, panel
+`role="tabpanel"` dengan `hidden` (aturan `.panel[hidden]` perlu karena `display:flex` kelas
+mengalahkan `[hidden]`). Tab aktif di URL `?bagian=uang|servis|stok|piutang` (Ringkasan = tanpa
+parameter), `replace` supaya berpindah tab tidak menumpuk riwayat. Kolom 5 → 3 (wadah ≤766px,
+±147px per kanal) → 2 (≤456px, kanal kelima selebar baris). Readout "…" saat data dimuat. PDF
+tetap mencetak semua bagian. Tinggi halaman di 390px: Ringkasan 2336px (dulu 5336px untuk
+seluruh halaman).
 
 Tanpa data periode lalu, kartu metrik **tidak** menampilkan baris delta sama sekali: vonis di
 atas sudah menyebutnya sekali ("tidak ada data periode lalu untuk dibandingkan"), sebelumnya

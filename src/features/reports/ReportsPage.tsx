@@ -1,6 +1,6 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
-import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
 import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
@@ -61,6 +61,16 @@ const VERDICT: Record<BreakEvenVerdict, { key: TranslationKey; tone: 'ok' | 'war
   tied: { key: 'reports.verdictTied', tone: 'warn' },
   loss: { key: 'reports.verdictLoss', tone: 'crit' },
 };
+const TAB_IDS = ['ringkasan', 'uang', 'servis', 'stok', 'piutang'] as const;
+type TabId = (typeof TAB_IDS)[number];
+const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as readonly string[]).includes(v);
+interface TabItem {
+  id: TabId;
+  label: string;
+  readout: string;
+  tone?: 'ok' | 'warn' | 'crit';
+}
+
 /** Ambang peringatan Lainnya: angka awal, ubah bila terasa terlalu cerewet/longgar. */
 const OTHER_WARN_SHARE = 0.2;
 /** Kelompok yang bukan beban usaha: bar netral, bukan merah pengeluaran. */
@@ -85,6 +95,7 @@ const byCapitalLast = (a: [string, number], b: [string, number]) =>
 
 export function ReportsPage() {
   const t = useT();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [from, setFrom] = useState(monthRange().from);
   const [to, setTo] = useState(monthRange().to);
   const rangeValid = from <= to;
@@ -412,80 +423,88 @@ export function ReportsPage() {
     toast.success(`${receivables.length} piutang diekspor`);
   };
 
-  // Kanal indeks. LED hanya pada kanal yang punya status (Lit-Signal): sisanya
+  // Tab bagian. LED hanya pada kanal yang punya status (Lit-Signal): sisanya
   // cuma hitungan, dan lampu di sana akan menyala tanpa arti.
   const pendingReadout = '…';
   const ticketTotal = funnel.reduce((s, f) => s + f.count, 0);
-  const indexItems: { id: string; label: string; readout: string; tone?: 'ok' | 'warn' | 'crit' }[] = [
-    ...(breakEven
-      ? [
-          reportPending
-            ? { id: 'lap-laba', label: t('reports.idxPl'), readout: pendingReadout }
-            : pl.grossMargin === null
-              ? { id: 'lap-laba', label: t('reports.idxPl'), readout: t('reports.idxNoRevenue') }
-              : {
-                  id: 'lap-laba',
-                  label: t('reports.idxPl'),
-                  readout: interpolate(t('reports.idxMargin'), { pct: fmtPercent(pl.grossMargin, 0) }),
-                  // Tanpa overhead tercatat, margin saja tak bisa menyebut impas atau belum.
-                  tone: hasOverhead ? (operating >= 0 ? ('ok' as const) : ('warn' as const)) : undefined,
-                },
-        ]
-      : []),
+  const summaryTab: TabItem = reportPending
+    ? { id: 'ringkasan', label: t('reports.tabSummary'), readout: pendingReadout }
+    : pl.grossMargin === null
+      ? { id: 'ringkasan', label: t('reports.tabSummary'), readout: t('reports.idxNoRevenue') }
+      : {
+          id: 'ringkasan',
+          label: t('reports.tabSummary'),
+          readout: interpolate(t('reports.idxMargin'), { pct: fmtPercent(pl.grossMargin, 0) }),
+          // Tanpa overhead tercatat, margin saja tak bisa menyebut impas atau belum.
+          tone: hasOverhead ? (operating >= 0 ? 'ok' : 'warn') : undefined,
+        };
+  const tabItems: TabItem[] = [
+    summaryTab,
     {
-      id: 'lap-kategori',
-      label: t('reports.idxCategories'),
-      readout: reportPending
-        ? pendingReadout
-        : interpolate(t('reports.idxCatCount'), { n: String(incomeByCategory.length + expenseByCategory.length) }),
+      id: 'uang',
+      label: t('reports.tabMoney'),
+      readout: reportPending ? pendingReadout : interpolate(t('reports.idxTxnCount'), { n: String(txnRows.length) }),
     },
-    reportPending
-      ? { id: 'lap-stok', label: t('reports.idxParts'), readout: pendingReadout }
-      : restock.length > 0
-        ? {
-            id: 'lap-stok',
-            label: t('reports.idxParts'),
-            readout: interpolate(t('reports.idxRestock'), { n: String(restock.length) }),
-            tone: 'warn' as const,
-          }
-        : { id: 'lap-stok', label: t('reports.idxParts'), readout: t('reports.idxStockOk'), tone: 'ok' as const },
     {
-      id: 'lap-servis',
-      label: t('reports.idxService'),
+      id: 'servis',
+      label: t('reports.tabService'),
       readout: reportPending ? pendingReadout : interpolate(t('reports.idxTickets'), { n: String(ticketTotal) }),
     },
     reportPending
-      ? { id: 'lap-piutang', label: t('reports.idxReceivables'), readout: pendingReadout }
+      ? { id: 'stok', label: t('reports.tabStock'), readout: pendingReadout }
+      : restock.length > 0
+        ? {
+            id: 'stok',
+            label: t('reports.tabStock'),
+            readout: interpolate(t('reports.idxRestock'), { n: String(restock.length) }),
+            tone: 'warn',
+          }
+        : { id: 'stok', label: t('reports.tabStock'), readout: t('reports.idxStockOk'), tone: 'ok' },
+    reportPending
+      ? { id: 'piutang', label: t('reports.idxReceivables'), readout: pendingReadout }
       : receivables.length > 0
         ? {
-            id: 'lap-piutang',
+            id: 'piutang',
             label: t('reports.idxReceivables'),
             readout: fmtRp(receivablesTotal),
-            tone: receivables.some((r) => r.bucket === '31+') ? ('crit' as const) : ('warn' as const),
+            tone: receivables.some((r) => r.bucket === '31+') ? 'crit' : 'warn',
           }
-        : {
-            id: 'lap-piutang',
-            label: t('reports.idxReceivables'),
-            readout: t('reports.idxNoReceivables'),
-            tone: 'ok' as const,
-          },
-    {
-      id: 'lap-transaksi',
-      label: t('reports.idxTxn'),
-      readout: reportPending ? pendingReadout : interpolate(t('reports.idxTxnCount'), { n: String(txnRows.length) }),
-    },
+        : { id: 'piutang', label: t('reports.idxReceivables'), readout: t('reports.idxNoReceivables'), tone: 'ok' },
   ];
-  // Lompatan dikerjakan sendiri, bukan oleh hash: router demo bukan
-  // BrowserRouter, dan fokus perlu pindah ke kartu agar Tab berikutnya
-  // melanjutkan dari sana, bukan dari indeks.
-  const jumpTo = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    e.preventDefault();
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    el.focus({ preventScroll: true });
+  // Tab aktif hidup di URL (?bagian=), supaya tautan dan tombol Kembali membuka
+  // bagian yang sama. replace: berpindah tab bukan langkah navigasi.
+  const tab: TabId = isTabId(searchParams.get('bagian')) ? (searchParams.get('bagian') as TabId) : 'ringkasan';
+  const selectTab = (id: TabId) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === 'ringkasan') next.delete('bagian');
+    else next.set('bagian', id);
+    setSearchParams(next, { replace: true });
   };
+  // Pola tab WAI-ARIA: panah kiri/kanan, Home, End memindah fokus DAN memilih.
+  const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = TAB_IDS.indexOf(tab);
+    const to =
+      e.key === 'ArrowRight' ? (i + 1) % TAB_IDS.length
+      : e.key === 'ArrowLeft' ? (i - 1 + TAB_IDS.length) % TAB_IDS.length
+      : e.key === 'Home' ? 0
+      : e.key === 'End' ? TAB_IDS.length - 1
+      : null;
+    if (to === null) return;
+    e.preventDefault();
+    selectTab(TAB_IDS[to]);
+    document.getElementById(`lap-tab-${TAB_IDS[to]}`)?.focus();
+  };
+  const panel = (id: TabId, children: ReactNode) => (
+    <div
+      role="tabpanel"
+      id={`lap-panel-${id}`}
+      aria-labelledby={`lap-tab-${id}`}
+      hidden={tab !== id}
+      className={styles.panel}
+    >
+      {children}
+    </div>
+  );
 
   return (
     <div className={styles.wrap}>
@@ -610,638 +629,665 @@ export function ReportsPage() {
         />
       </div>
 
-      {/* Indeks: 13 kartu menempati ±6 layar di laptop dan ponsel, tanpa satu
-          pun lompatan. Tiap kanal membawa angka kuncinya sendiri, jadi deret ini
-          juga ringkasan: restok, piutang, dan break-even terbaca tanpa menggulir. */}
-      <nav className={styles.index} aria-label={t('reports.idxTitle')}>
-        <span className={styles.indexTitle}>{t('reports.idxTitle')}</span>
-        <ol className={styles.indexList}>
-          {indexItems.map((it) => (
-            <li key={it.id}>
-              <a href={`#${it.id}`} className={styles.indexLink} onClick={(e) => jumpTo(e, it.id)}>
-                <span className={styles.indexLabel}>{it.label}</span>
-                <span className={styles.indexReadout}>
-                  {it.tone && <span className={styles.indexLed} data-tone={it.tone} aria-hidden />}
-                  {it.readout}
-                </span>
-              </a>
-            </li>
+      {/* Tab bagian. Dulu indeks lompat ke 13 kartu dalam satu gulir ±6 layar
+          (ponsel). Laporan baru (mutu servis, kasir, pelanggan) akan membuat
+          gulir itu ±10 layar, jadi kartu dikelompokkan per pertanyaan pemilik.
+          Readout + LED tetap, jadi deret ini masih ringkasan tanpa menggulir. */}
+      <div className={styles.index}>
+        <span className={styles.indexTitle} id="lap-tabs-title">
+          {t('reports.idxTitle')}
+        </span>
+        <div role="tablist" aria-labelledby="lap-tabs-title" className={styles.indexList} onKeyDown={onTabKey}>
+          {tabItems.map((it) => (
+            <button
+              key={it.id}
+              type="button"
+              role="tab"
+              id={`lap-tab-${it.id}`}
+              aria-selected={tab === it.id}
+              aria-controls={`lap-panel-${it.id}`}
+              tabIndex={tab === it.id ? 0 : -1}
+              className={styles.indexLink}
+              onClick={() => selectTab(it.id)}
+            >
+              <span className={styles.indexLabel}>{it.label}</span>
+              <span className={styles.indexReadout}>
+                {it.tone && <span className={styles.indexLed} data-tone={it.tone} aria-hidden />}
+                {it.readout}
+              </span>
+            </button>
           ))}
-        </ol>
-      </nav>
+        </div>
+      </div>
 
-      {/* Laba Rugi + break-even dalam satu kartu: keduanya membaca laba kotor
-          yang sama. Dulu laba usaha hanya muncul sebagai "Break-even −Rp X" di
-          kalimat kecil kartu ketiga, dan laba penjualan kasir dihitung tanpa
-          pernah ditampilkan. */}
-      {breakEven && (
-        <Card
-          id="lap-laba"
-          tabIndex={-1}
-          className={styles.jumpTarget}
-          accent={!hasOverhead ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}
-        >
-          <CardHeader
-            icon={<Icon name="scale-balanced" aria-hidden />}
-            title={<Term id="laba-usaha">{t('reports.plTitle')}</Term>}
-          />
-          <CardBody>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : (
-              <div className={styles.plWrap}>
-                <div className={styles.pl}>
-                  <ul className={styles.plLines} aria-label={t('reports.plLines')}>
-                    <PlLine
-                      label={t('reports.plServiceRevenue')}
-                      sub={interpolate(t('reports.plUnits'), { n: String(unitsDone) })}
-                      amount={fmtRp(pl.serviceRevenue)}
-                    />
-                    <PlLine label={t('reports.plServiceCost')} amount={minusRp(pl.serviceCost)} />
-                    <PlLine label={t('reports.plSalesRevenue')} amount={fmtRp(pl.salesRevenue)} />
-                    <PlLine
-                      label={<Term id="hpp">{t('reports.plSalesCost')}</Term>}
-                      amount={minusRp(pl.salesCost)}
-                    />
-                    {pl.directCost > 0 && (
-                      <PlLine
-                        label={<Term id="beban-langsung">{t('reports.plDirect')}</Term>}
-                        amount={minusRp(pl.directCost)}
-                      />
-                    )}
-                    <PlLine
-                      kind="total"
-                      label={<Term id="laba-kotor">{t('reports.plGross')}</Term>}
-                      sub={
-                        pl.grossMargin === null
-                          ? undefined
-                          : interpolate(t('reports.plMargin'), { pct: fmtPercent(pl.grossMargin) })
-                      }
-                      amount={signedPlain(pl.gross)}
-                    />
-                    <PlLine
-                      label={<Term id="overhead">{t('reports.plOverhead')}</Term>}
-                      amount={hasOverhead ? minusRp(breakEven.overhead.total) : t('reports.plOverheadNone')}
-                      muted={!hasOverhead}
-                    />
-                    {hasOverhead && (
-                      <li className={styles.plDetail}>
-                        <ul className={styles.plBreakdown} aria-label={t('reports.beBreakdown')}>
-                          {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
-                            <li key={c}>
-                              {financeLink(c)}
-                              {breakEven.overhead.estimated.includes(c) && (
-                                <i className={styles.estTag}>{t('reports.estTag')}</i>
-                              )}{' '}
-                              <b>{fmtRp(v)}</b>
+      {panel(
+        'ringkasan',
+        <>
+          {/* Laba Rugi + break-even dalam satu kartu: keduanya membaca laba kotor
+              yang sama. Dulu laba usaha hanya muncul sebagai "Break-even −Rp X" di
+              kalimat kecil kartu ketiga, dan laba penjualan kasir dihitung tanpa
+              pernah ditampilkan. */}
+          {breakEven && (
+            <Card
+              accent={!hasOverhead ? undefined : breakEven.pct >= 1 ? 'success' : 'warning'}
+            >
+              <CardHeader
+                icon={<Icon name="scale-balanced" aria-hidden />}
+                title={<Term id="laba-usaha">{t('reports.plTitle')}</Term>}
+              />
+              <CardBody>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : (
+                  <div className={styles.plWrap}>
+                    <div className={styles.pl}>
+                      <ul className={styles.plLines} aria-label={t('reports.plLines')}>
+                        <PlLine
+                          label={t('reports.plServiceRevenue')}
+                          sub={interpolate(t('reports.plUnits'), { n: String(unitsDone) })}
+                          amount={fmtRp(pl.serviceRevenue)}
+                        />
+                        <PlLine label={t('reports.plServiceCost')} amount={minusRp(pl.serviceCost)} />
+                        <PlLine label={t('reports.plSalesRevenue')} amount={fmtRp(pl.salesRevenue)} />
+                        <PlLine
+                          label={<Term id="hpp">{t('reports.plSalesCost')}</Term>}
+                          amount={minusRp(pl.salesCost)}
+                        />
+                        {pl.directCost > 0 && (
+                          <PlLine
+                            label={<Term id="beban-langsung">{t('reports.plDirect')}</Term>}
+                            amount={minusRp(pl.directCost)}
+                          />
+                        )}
+                        <PlLine
+                          kind="total"
+                          label={<Term id="laba-kotor">{t('reports.plGross')}</Term>}
+                          sub={
+                            pl.grossMargin === null
+                              ? undefined
+                              : interpolate(t('reports.plMargin'), { pct: fmtPercent(pl.grossMargin) })
+                          }
+                          amount={signedPlain(pl.gross)}
+                        />
+                        <PlLine
+                          label={<Term id="overhead">{t('reports.plOverhead')}</Term>}
+                          amount={hasOverhead ? minusRp(breakEven.overhead.total) : t('reports.plOverheadNone')}
+                          muted={!hasOverhead}
+                        />
+                        {hasOverhead && (
+                          <li className={styles.plDetail}>
+                            <ul className={styles.plBreakdown} aria-label={t('reports.beBreakdown')}>
+                              {overheadBreakdown(breakEven.overhead.byCategory).map(([c, v]) => (
+                                <li key={c}>
+                                  {financeLink(c)}
+                                  {breakEven.overhead.estimated.includes(c) && (
+                                    <i className={styles.estTag}>{t('reports.estTag')}</i>
+                                  )}{' '}
+                                  <b>{fmtRp(v)}</b>
+                                </li>
+                              ))}
+                            </ul>
+                          </li>
+                        )}
+                        {hasOverhead && (
+                          <PlLine
+                            kind="final"
+                            tone={finalTone}
+                            label={finalLabel}
+                            sub={
+                              running || pl.revenue <= 0
+                                ? undefined
+                                : interpolate(t('reports.plMargin'), { pct: fmtPercent(operating / pl.revenue) })
+                            }
+                            amount={running ? fmtRp(Math.abs(operating)) : signedPlain(operating)}
+                          />
+                        )}
+                      </ul>
+
+                      <div className={styles.plSide}>
+                        {verdictKind && (
+                          <div className={styles.beVerdict} data-tone={VERDICT[verdictKind].tone}>
+                            <span className={styles.beLed} aria-hidden />
+                            <div>
+                              <strong>{t(VERDICT[verdictKind].key)}</strong>
+                              <span className={styles.beVerdictSub}>
+                                {interpolate(t('reports.verdictSub'), {
+                                  cash: signedRp(summary.net),
+                                  be: signedRp(breakEven.surplus),
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {hasOverhead ? (
+                          <>
+                            <div className={styles.breakEven}>
+                              <div>
+                                <span className={styles.beLabel}>
+                                  <Term id="break-even">{t('reports.beGrossVsOverhead')}</Term>
+                                </span>
+                                <strong className={styles.beValue}>
+                                  {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
+                                </strong>
+                              </div>
+                              <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
+                                {fmtPercent(breakEven.pct)}
+                              </span>
+                            </div>
+                            <div className={styles.beGauge}>
+                              <div
+                                className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
+                                style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
+                              />
+                            </div>
+                            <small className={styles.beNote}>
+                              <Icon name="info-circle" aria-hidden />{' '}
+                              {t(
+                                breakEven.overhead.basis === 'actual'
+                                  ? 'reports.beBasisActual'
+                                  : breakEven.overhead.basis === 'estimate'
+                                    ? 'reports.beBasisEstimate'
+                                    : 'reports.beBasisPartial',
+                              )}
+                            </small>
+                            {running && (
+                              <small className={styles.beNote}>
+                                <Icon name="info-circle" aria-hidden /> {t('reports.plRunningNote')}
+                              </small>
+                            )}
+                            {breakEven.overhead.prorated && (
+                              <small className={styles.beNote}>
+                                <Icon name="info-circle" aria-hidden /> {t('reports.beProrated')}
+                              </small>
+                            )}
+                            {otherShare > OTHER_WARN_SHARE && (
+                              <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
+                                <Icon name="triangle-exclamation" aria-hidden />{' '}
+                                {interpolate(t('reports.beOtherHigh'), {
+                                  amount: fmtRp(breakEven.overhead.byCategory.Lainnya ?? 0),
+                                  pct: fmtPercent(otherShare, 0),
+                                })}
+                              </Link>
+                            )}
+                            {breakEven.overhead.missingPayroll && (
+                              <small className={[styles.beNote, styles.beWarn].join(' ')}>
+                                <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
+                              </small>
+                            )}
+                          </>
+                        ) : (
+                          // Tanpa isian perkiraan, kalimat inilah yang memberi tahu break-even ada.
+                          <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
+                        )}
+                        <small className={styles.beNote}>
+                          <Icon name="info-circle" aria-hidden /> {t('reports.plAccrualNote')}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          {/* 1. Income vs expense trend chart */}
+          <Card>
+            <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
+            <CardBody>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : trend.length === 0 ? (
+                <EmptyState icon={<Icon name="chart-line" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
+              ) : (
+                <TrendChart points={trend} />
+              )}
+            </CardBody>
+          </Card>
+        </>,
+      )}
+
+      {panel(
+        'uang',
+        <>
+          <div className={styles.grid}>
+            <Card>
+              <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title={t('reports.pemasukanPerKategori')} />
+              <CardBody className={styles.noPad}>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : incomeByCategory.length === 0 ? (
+                  <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
+                ) : (
+                  <ul className={styles.breakdown}>
+                    {incomeByCategory.map(([cat, amt]) => (
+                      <li key={cat} className={styles.channel}>
+                        <div className={styles.channelTop}>
+                          <span className={styles.channelName}>
+                            {financeLink(cat)}
+                            {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notRevenue')}</span>}
+                          </span>
+                          <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.inc].join(' ')}>{fmtRp(amt)}</span>
+                        </div>
+                        <div className={styles.bar}>
+                          <div
+                            className={[styles.barFill, isCapitalFlow({ category: cat }) ? styles.capital : styles.inc].join(' ')}
+                            style={{ width: `${(amt / maxIncome) * 100}%` }}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title={t('reports.pengeluaranPerKategori')} />
+              <CardBody className={styles.noPad}>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : expenseByCategory.length === 0 ? (
+                  <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
+                ) : (
+                  <div className={styles.breakdown}>
+                    {expenseGroups.map((g) => (
+                      <section key={g.id} className={styles.expGroup} aria-label={t(EXPENSE_GROUP_LABEL[g.id])}>
+                        <div className={styles.groupHead}>
+                          <span>
+                            {GROUP_TERM[g.id] ? (
+                              <Term id={GROUP_TERM[g.id]!}>{t(EXPENSE_GROUP_LABEL[g.id])}</Term>
+                            ) : (
+                              t(EXPENSE_GROUP_LABEL[g.id])
+                            )}
+                          </span>
+                          <span>{fmtRp(g.total)}</span>
+                        </div>
+                        <ul className={styles.breakdown}>
+                          {g.rows.map(([cat, amt]) => (
+                            <li key={cat} className={styles.channel}>
+                              <div className={styles.channelTop}>
+                                <span className={styles.channelName}>{financeLink(cat)}</span>
+                                <span className={[styles.channelValue, NON_COST_GROUPS.has(g.id) ? '' : styles.exp].join(' ')}>
+                                  {fmtRp(amt)}
+                                </span>
+                              </div>
+                              <div className={styles.bar}>
+                                <div
+                                  className={[styles.barFill, NON_COST_GROUPS.has(g.id) ? styles.capital : styles.exp].join(' ')}
+                                  style={{ width: `${(amt / maxExpense) * 100}%` }}
+                                />
+                              </div>
                             </li>
                           ))}
                         </ul>
-                      </li>
-                    )}
-                    {hasOverhead && (
-                      <PlLine
-                        kind="final"
-                        tone={finalTone}
-                        label={finalLabel}
-                        sub={
-                          running || pl.revenue <= 0
-                            ? undefined
-                            : interpolate(t('reports.plMargin'), { pct: fmtPercent(operating / pl.revenue) })
-                        }
-                        amount={running ? fmtRp(Math.abs(operating)) : signedPlain(operating)}
-                      />
-                    )}
-                  </ul>
+                        {g.id === 'overhead' && breakEven && Math.abs(breakEven.overhead.total - paidOverhead) >= 1 && (
+                          <p className={styles.groupNote}>{t('reports.groupOverheadNote')}</p>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </div>
 
-                  <div className={styles.plSide}>
-                    {verdictKind && (
-                      <div className={styles.beVerdict} data-tone={VERDICT[verdictKind].tone}>
-                        <span className={styles.beLed} aria-hidden />
-                        <div>
-                          <strong>{t(VERDICT[verdictKind].key)}</strong>
-                          <span className={styles.beVerdictSub}>
-                            {interpolate(t('reports.verdictSub'), {
-                              cash: signedRp(summary.net),
-                              be: signedRp(breakEven.surplus),
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {hasOverhead ? (
-                      <>
-                        <div className={styles.breakEven}>
-                          <div>
-                            <span className={styles.beLabel}>
-                              <Term id="break-even">{t('reports.beGrossVsOverhead')}</Term>
+          {/* 7. Per-outlet comparison (only when multiple outlets) */}
+          {outlets.length > 1 && (
+            <Card>
+              <CardHeader icon={<Icon name="store" aria-hidden />} title={t('reports.perbandinganAntarOutlet')} />
+              <CardBody className={styles.noPad}>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : activeOutletId ? (
+                  /* Datanya sudah tersaring cabang aktif, jadi kartu ini hanya akan
+                     menampilkan satu batang — pembanding yang tidak membandingkan. */
+                  <p className={styles.tableNote}>
+                    Sedang menampilkan satu cabang ({scopeLabel}). Pilih &ldquo;Semua Outlet&rdquo; di
+                    selektor cabang untuk membandingkan antar-cabang.
+                  </p>
+                ) : outletStats.length === 0 ? (
+                  <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
+                ) : (
+                  <ul className={styles.breakdown}>
+                    {outletStats.map((o) => (
+                      <li key={o.outletId ?? 'none'} className={styles.channel}>
+                        <div className={styles.channelTop}>
+                          <span className={styles.channelName}>
+                            {/* LED: untung vs rugi dulu dibedakan HANYA oleh hijau vs
+                                merah, pada teks dan batang sekaligus. Lit-Signal
+                                menuntut lampu + nilai, bukan warna sendirian. */}
+                            <span
+                              className={[styles.outletLed, o.net >= 0 ? styles.inc : styles.neg].join(' ')}
+                              aria-hidden
+                            />
+                            {o.name}{' '}
+                            <span className={styles.channelMeta}>
+                              · masuk {fmtRp(o.income)} · keluar {fmtRp(o.expense)}
                             </span>
-                            <strong className={styles.beValue}>
-                              {fmtRp(breakEven.gross)} / {fmtRp(breakEven.overhead.total)}
-                            </strong>
-                          </div>
-                          <span className={[styles.beValue, breakEven.pct >= 1 ? styles.inc : ''].join(' ')}>
-                            {fmtPercent(breakEven.pct)}
+                          </span>
+                          <span className={[styles.channelValue, o.net >= 0 ? styles.inc : styles.neg].join(' ')}>
+                            {o.net >= 0 ? '+' : '−'}{fmtRp(Math.abs(o.net))}
                           </span>
                         </div>
-                        <div className={styles.beGauge}>
+                        <div className={styles.bar}>
+                          <div className={[styles.barFill, o.net >= 0 ? styles.inc : styles.neg].join(' ')} style={{ width: `${(Math.abs(o.net) / maxOutletNet) * 100}%` }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          {/* 2. Transaction detail table */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="clipboard-list" aria-hidden />}
+              title={t('reports.rincianTransaksi')}
+              action={<span className={styles.turnaround}>{txnRows.length} baris</span>}
+            />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : txnRows.length === 0 ? (
+                <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaTransaksiPeriode')} />
+              ) : (
+                <div className={styles.tableScroll}>
+                  <table className={styles.table}>
+                    <caption className={styles.srOnly}>
+                      {t('reports.rincianTransaksiPemasukanDan')}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('reports.tanggal')}</th>
+                        <th scope="col">{t('reports.jenis')}</th>
+                        <th scope="col">{t('reports.kategori')}</th>
+                        <th scope="col">{t('reports.keterangan')}</th>
+                        <th scope="col" className={styles.num}>{t('reports.nominal')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txnRows.slice(0, 100).map((r, idx) => (
+                        <tr key={idx}>
+                          <td className={styles.mono}>{fmtDate(r.date)}</td>
+                          <td>
+                            <span className={[styles.typeTag, r.amount >= 0 ? styles.typeInc : styles.typeExp].join(' ')}>
+                              {r.type}
+                            </span>
+                          </td>
+                          <td>{r.category}</td>
+                          <td className={styles.descCell}>{r.description || <EmptyValue />}</td>
+                          <td className={[styles.num, styles.mono, r.amount >= 0 ? styles.inc : styles.exp].join(' ')}>
+                            {fmtRp(r.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {/* Catatan ini dulu tidak digerbang canExport, jadi paket Trial
+                      dan Solo disuruh menekan tombol yang tidak ada di halaman. */}
+                  {txnRows.length > 100 && (
+                    <p className={styles.tableNote}>
+                      Menampilkan 100 dari {txnRows.length} baris.
+                      {canExport ? ' Ekspor CSV untuk data lengkap.' : ' Persempit periode untuk melihat sisanya.'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </>,
+      )}
+
+      {panel(
+        'servis',
+        <>
+          {/* 3. Profit by device category */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="microchip" aria-hidden />}
+              title={<Term id="laba-servis">{t('reports.labaPerKategoriPerangkat')}</Term>}
+              /* Periode kartu ini dihitung dari tanggal SELESAI, sama seperti
+                 Performa Teknisi di bawah — dulu ia memakai tanggal tiket masuk. */
+              action={<span className={styles.liveTag}>{t('reports.selesaiPeriodeIni')}</span>}
+            />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : catProfit.length === 0 ? (
+                <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
+              ) : (
+                <ul className={styles.breakdown}>
+                  {catProfit.map((c) => (
+                    <li key={c.category} className={styles.channel}>
+                      <div className={styles.channelTop}>
+                        <span className={styles.channelName}>{c.category} · {c.count} unit · omzet {fmtRp(c.revenue)}</span>
+                        <span className={[styles.channelValue, styles.inc].join(' ')}>{fmtRp(c.profit)}</span>
+                      </div>
+                      <div className={styles.bar}>
+                        <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(c.profit / maxCatProfit) * 100}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* 5. Service funnel + turnaround */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="filter" aria-hidden />}
+              title={t('reports.funnelServisTiketMasuk')}
+              action={
+                /* `avgTurnaroundDays` mengembalikan 0 untuk himpunan kosong, jadi
+                   toko yang tidak menyelesaikan apa pun diberi tahu rata-ratanya
+                   "0.0 hari" — status yang menyesatkan demi terlihat rapi. Titik
+                   desimalnya juga diganti koma, supaya tidak berdampingan dengan
+                   "102,0%" dari fmtPercent dalam satu viewport. */
+                <span className={styles.turnaround}>
+                  <Icon name="clock" aria-hidden />{' '}
+                  {turnaround > 0
+                    ? `Rata-rata ${turnaround.toFixed(1).replace('.', ',')} hari`
+                    : t('reports.belumAdaServisSelesai')}
+                </span>
+              }
+            />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : funnel.length === 0 ? (
+                <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisPeriode')} />
+              ) : (
+                <ul className={styles.breakdown}>
+                  {funnel.map((f) => (
+                    <li key={f.status} className={styles.channel}>
+                      <div className={styles.channelTop}>
+                        <span className={styles.channelName}>{f.label}</span>
+                        <span className={styles.channelValue}>{f.count}</span>
+                      </div>
+                      <div className={styles.bar}>
+                        <div className={[styles.barFill, styles.accentFill].join(' ')} style={{ width: `${(f.count / maxFunnel) * 100}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Technician leaderboard (existing) */}
+          <Card>
+            <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('reports.performaTeknisiPeriode')} />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : leaderboard.length === 0 ? (
+                <EmptyState icon={<Icon name="users" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
+              ) : (
+                <ul className={styles.breakdown}>
+                  {leaderboard.map((tech) => (
+                    <li key={tech.key} className={styles.channel}>
+                      <div className={styles.channelTop}>
+                        <span className={styles.channelName}>{tech.name} · {tech.completed} selesai</span>
+                        <span className={styles.channelValue}>{fmtRp(tech.revenue)}</span>
+                      </div>
+                      <div className={styles.bar}>
+                        <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(tech.revenue / maxLeaderRev) * 100}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
+        </>,
+      )}
+
+      {panel('stok', <>
+          <div className={styles.grid}>
+            {/* 4a. Sparepart usage */}
+            <Card>
+              <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title={t('reports.sparepartTerlaris')} />
+              <CardBody className={styles.noPad}>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : partUsage.length === 0 ? (
+                  <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaPemakaianSparepart')} />
+                ) : (
+                  <ul className={styles.breakdown}>
+                    {partUsage.slice(0, 8).map((p) => (
+                      <li key={p.name} className={styles.channel}>
+                        <div className={styles.channelTop}>
+                          <span className={styles.channelName}>{p.name} · {fmtRp(p.cost)}</span>
+                          <span className={styles.channelValue}>{p.qty}x</span>
+                        </div>
+                        <div className={styles.bar}>
+                          <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(p.qty / maxPartQty) * 100}%` }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+
+            {/* 4b. Restock suggestions */}
+            <Card>
+              {/* Satu-satunya kartu di halaman ini yang TIDAK mengikuti periode di
+                  header — stok adalah nilai sekarang, bukan rentang. Dulu tidak
+                  disebutkan sama sekali. */}
+              <CardHeader
+                icon={<Icon name="boxes-stacked" aria-hidden />}
+                title={t('reports.saranRestok')}
+                action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
+              />
+              <CardBody className={styles.noPad}>
+                {reportPending ? (
+                  <LoadState queries={reportLoad} />
+                ) : restock.length === 0 ? (
+                  <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.stokSemuaAman')} />
+                ) : (
+                  <ul className={styles.breakdown}>
+                    {restock.slice(0, 8).map((i) => {
+                      // Bar = KEKURANGAN, bukan sisa stok. Rumus lama (stock /
+                      // minStock*2) membuat batang makin panjang saat makin aman,
+                      // sehingga pemilik yang memindai batang terpanjang justru
+                      // membeli barang yang paling tidak mendesak.
+                      const deficit = i.minStock > 0
+                        ? Math.min(100, (Math.max(0, i.minStock - i.stock) / i.minStock) * 100)
+                        : 100;
+                      const critical = i.stock < i.minStock;
+                      return (
+                      <li key={i.id} className={styles.channel}>
+                        <div className={styles.channelTop}>
+                          <span className={styles.channelName}>{i.name}</span>
+                          <span className={[styles.channelValue, critical ? styles.crit : styles.warn].join(' ')}>
+                            {i.stock} / min {i.minStock}
+                          </span>
+                        </div>
+                        <div className={styles.bar}>
                           <div
-                            className={[styles.beFill, breakEven.pct >= 1 ? styles.beOk : ''].join(' ')}
-                            style={{ width: `${Math.min(100, Math.max(0, breakEven.pct * 100))}%` }}
+                            className={[styles.barFill, critical ? styles.crit : styles.warnFill].join(' ')}
+                            style={{ width: `${Math.max(6, deficit)}%` }}
                           />
                         </div>
-                        <small className={styles.beNote}>
-                          <Icon name="info-circle" aria-hidden />{' '}
-                          {t(
-                            breakEven.overhead.basis === 'actual'
-                              ? 'reports.beBasisActual'
-                              : breakEven.overhead.basis === 'estimate'
-                                ? 'reports.beBasisEstimate'
-                                : 'reports.beBasisPartial',
-                          )}
-                        </small>
-                        {running && (
-                          <small className={styles.beNote}>
-                            <Icon name="info-circle" aria-hidden /> {t('reports.plRunningNote')}
-                          </small>
-                        )}
-                        {breakEven.overhead.prorated && (
-                          <small className={styles.beNote}>
-                            <Icon name="info-circle" aria-hidden /> {t('reports.beProrated')}
-                          </small>
-                        )}
-                        {otherShare > OTHER_WARN_SHARE && (
-                          <Link className={[styles.beNote, styles.beWarn].join(' ')} to={financeHref('Lainnya')}>
-                            <Icon name="triangle-exclamation" aria-hidden />{' '}
-                            {interpolate(t('reports.beOtherHigh'), {
-                              amount: fmtRp(breakEven.overhead.byCategory.Lainnya ?? 0),
-                              pct: fmtPercent(otherShare, 0),
-                            })}
-                          </Link>
-                        )}
-                        {breakEven.overhead.missingPayroll && (
-                          <small className={[styles.beNote, styles.beWarn].join(' ')}>
-                            <Icon name="triangle-exclamation" aria-hidden /> {t('reports.beNoPayroll')}
-                          </small>
-                        )}
-                      </>
-                    ) : (
-                      // Tanpa isian perkiraan, kalimat inilah yang memberi tahu break-even ada.
-                      <p className={styles.beEmpty}>{t('reports.beEmpty')}</p>
-                    )}
-                    <small className={styles.beNote}>
-                      <Icon name="info-circle" aria-hidden /> {t('reports.plAccrualNote')}
-                    </small>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      )}
+                      </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+          </div>
+      </>)}
 
-      {/* 1. Income vs expense trend chart */}
-      <Card>
-        <CardHeader icon={<Icon name="chart-line" aria-hidden />} title={t('reports.trenPemasukanVsPengeluaran')} />
-        <CardBody>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : trend.length === 0 ? (
-            <EmptyState icon={<Icon name="chart-line" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
-          ) : (
-            <TrendChart points={trend} />
-          )}
-        </CardBody>
-      </Card>
-
-      <div id="lap-kategori" tabIndex={-1} className={[styles.grid, styles.jumpTarget].join(' ')}>
-        <Card>
-          <CardHeader icon={<Icon name="arrow-down" aria-hidden />} title={t('reports.pemasukanPerKategori')} />
-          <CardBody className={styles.noPad}>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : incomeByCategory.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
-            ) : (
-              <ul className={styles.breakdown}>
-                {incomeByCategory.map(([cat, amt]) => (
-                  <li key={cat} className={styles.channel}>
-                    <div className={styles.channelTop}>
-                      <span className={styles.channelName}>
-                        {financeLink(cat)}
-                        {isCapitalFlow({ category: cat }) && <span className={styles.capitalTag}>{t('reports.notRevenue')}</span>}
-                      </span>
-                      <span className={[styles.channelValue, isCapitalFlow({ category: cat }) ? '' : styles.inc].join(' ')}>{fmtRp(amt)}</span>
-                    </div>
-                    <div className={styles.bar}>
-                      <div
-                        className={[styles.barFill, isCapitalFlow({ category: cat }) ? styles.capital : styles.inc].join(' ')}
-                        style={{ width: `${(amt / maxIncome) * 100}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader icon={<Icon name="arrow-up" aria-hidden />} title={t('reports.pengeluaranPerKategori')} />
-          <CardBody className={styles.noPad}>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : expenseByCategory.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
-            ) : (
-              <div className={styles.breakdown}>
-                {expenseGroups.map((g) => (
-                  <section key={g.id} className={styles.expGroup} aria-label={t(EXPENSE_GROUP_LABEL[g.id])}>
-                    <div className={styles.groupHead}>
-                      <span>
-                        {GROUP_TERM[g.id] ? (
-                          <Term id={GROUP_TERM[g.id]!}>{t(EXPENSE_GROUP_LABEL[g.id])}</Term>
-                        ) : (
-                          t(EXPENSE_GROUP_LABEL[g.id])
-                        )}
-                      </span>
-                      <span>{fmtRp(g.total)}</span>
-                    </div>
-                    <ul className={styles.breakdown}>
-                      {g.rows.map(([cat, amt]) => (
-                        <li key={cat} className={styles.channel}>
-                          <div className={styles.channelTop}>
-                            <span className={styles.channelName}>{financeLink(cat)}</span>
-                            <span className={[styles.channelValue, NON_COST_GROUPS.has(g.id) ? '' : styles.exp].join(' ')}>
-                              {fmtRp(amt)}
+      {panel('piutang', <>
+          {/* 8. Receivables aging */}
+          <Card>
+            <CardHeader
+              icon={<Icon name="coins" aria-hidden />}
+              title={t('reports.piutangServisSelesaiBelum')}
+              /* Satu-satunya kartu selain Saran Restok yang TIDAK mengikuti periode
+                 di header: piutang adalah keadaan sekarang, dan yang paling tua
+                 justru selalu di luar periode yang sedang dilihat. */
+              action={
+                <span className={styles.turnaround}>
+                  {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}
+                  {t('reports.allPeriods')}
+                  {canExport && receivables.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={exportReceivables}
+                      iconLeft={<Icon name="download" aria-hidden />}
+                    >
+                      {t('reports.ekspor')}
+                    </Button>
+                  )}
+                </span>
+              }
+            />
+            <CardBody className={styles.noPad}>
+              {reportPending ? (
+                <LoadState queries={reportLoad} />
+              ) : receivables.length === 0 ? (
+                <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.tidakAdaPiutang')} />
+              ) : (
+                <div className={styles.tableScroll}>
+                  <table className={styles.table}>
+                    <caption className={styles.srOnly}>
+                      {t('reports.piutangServisYangSudah')}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('reports.noServis')}</th>
+                        <th scope="col">{t('reports.pelanggan')}</th>
+                        <th scope="col" className={styles.num}>{t('reports.sisa')}</th>
+                        <th scope="col" className={styles.num}>{t('reports.umur')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receivables.map((r) => (
+                        <tr key={r.serviceId}>
+                          <td className={styles.mono}>{r.serviceNo}</td>
+                          <td>{r.customerName}</td>
+                          <td className={[styles.num, styles.mono, styles.exp].join(' ')}>{fmtRp(r.outstanding)}</td>
+                          <td className={styles.num}>
+                            <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
+                              {r.ageDays} hari
                             </span>
-                          </div>
-                          <div className={styles.bar}>
-                            <div
-                              className={[styles.barFill, NON_COST_GROUPS.has(g.id) ? styles.capital : styles.exp].join(' ')}
-                              style={{ width: `${(amt / maxExpense) * 100}%` }}
-                            />
-                          </div>
-                        </li>
+                          </td>
+                        </tr>
                       ))}
-                    </ul>
-                    {g.id === 'overhead' && breakEven && Math.abs(breakEven.overhead.total - paidOverhead) >= 1 && (
-                      <p className={styles.groupNote}>{t('reports.groupOverheadNote')}</p>
-                    )}
-                  </section>
-                ))}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* 3. Profit by device category */}
-      <Card>
-        <CardHeader
-          icon={<Icon name="microchip" aria-hidden />}
-          title={<Term id="laba-servis">{t('reports.labaPerKategoriPerangkat')}</Term>}
-          /* Periode kartu ini dihitung dari tanggal SELESAI, sama seperti
-             Performa Teknisi di bawah — dulu ia memakai tanggal tiket masuk. */
-          action={<span className={styles.liveTag}>{t('reports.selesaiPeriodeIni')}</span>}
-        />
-        <CardBody className={styles.noPad}>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : catProfit.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
-          ) : (
-            <ul className={styles.breakdown}>
-              {catProfit.map((c) => (
-                <li key={c.category} className={styles.channel}>
-                  <div className={styles.channelTop}>
-                    <span className={styles.channelName}>{c.category} · {c.count} unit · omzet {fmtRp(c.revenue)}</span>
-                    <span className={[styles.channelValue, styles.inc].join(' ')}>{fmtRp(c.profit)}</span>
-                  </div>
-                  <div className={styles.bar}>
-                    <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(c.profit / maxCatProfit) * 100}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardBody>
-      </Card>
-
-      <div id="lap-stok" tabIndex={-1} className={[styles.grid, styles.jumpTarget].join(' ')}>
-        {/* 4a. Sparepart usage */}
-        <Card>
-          <CardHeader icon={<Icon name="screwdriver-wrench" aria-hidden />} title={t('reports.sparepartTerlaris')} />
-          <CardBody className={styles.noPad}>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : partUsage.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaPemakaianSparepart')} />
-            ) : (
-              <ul className={styles.breakdown}>
-                {partUsage.slice(0, 8).map((p) => (
-                  <li key={p.name} className={styles.channel}>
-                    <div className={styles.channelTop}>
-                      <span className={styles.channelName}>{p.name} · {fmtRp(p.cost)}</span>
-                      <span className={styles.channelValue}>{p.qty}x</span>
-                    </div>
-                    <div className={styles.bar}>
-                      <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(p.qty / maxPartQty) * 100}%` }} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-
-        {/* 4b. Restock suggestions */}
-        <Card>
-          {/* Satu-satunya kartu di halaman ini yang TIDAK mengikuti periode di
-              header — stok adalah nilai sekarang, bukan rentang. Dulu tidak
-              disebutkan sama sekali. */}
-          <CardHeader
-            icon={<Icon name="boxes-stacked" aria-hidden />}
-            title={t('reports.saranRestok')}
-            action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
-          />
-          <CardBody className={styles.noPad}>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : restock.length === 0 ? (
-              <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.stokSemuaAman')} />
-            ) : (
-              <ul className={styles.breakdown}>
-                {restock.slice(0, 8).map((i) => {
-                  // Bar = KEKURANGAN, bukan sisa stok. Rumus lama (stock /
-                  // minStock*2) membuat batang makin panjang saat makin aman,
-                  // sehingga pemilik yang memindai batang terpanjang justru
-                  // membeli barang yang paling tidak mendesak.
-                  const deficit = i.minStock > 0
-                    ? Math.min(100, (Math.max(0, i.minStock - i.stock) / i.minStock) * 100)
-                    : 100;
-                  const critical = i.stock < i.minStock;
-                  return (
-                  <li key={i.id} className={styles.channel}>
-                    <div className={styles.channelTop}>
-                      <span className={styles.channelName}>{i.name}</span>
-                      <span className={[styles.channelValue, critical ? styles.crit : styles.warn].join(' ')}>
-                        {i.stock} / min {i.minStock}
-                      </span>
-                    </div>
-                    <div className={styles.bar}>
-                      <div
-                        className={[styles.barFill, critical ? styles.crit : styles.warnFill].join(' ')}
-                        style={{ width: `${Math.max(6, deficit)}%` }}
-                      />
-                    </div>
-                  </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* 5. Service funnel + turnaround */}
-      <Card id="lap-servis" tabIndex={-1} className={styles.jumpTarget}>
-        <CardHeader
-          icon={<Icon name="filter" aria-hidden />}
-          title={t('reports.funnelServisTiketMasuk')}
-          action={
-            /* `avgTurnaroundDays` mengembalikan 0 untuk himpunan kosong, jadi
-               toko yang tidak menyelesaikan apa pun diberi tahu rata-ratanya
-               "0.0 hari" — status yang menyesatkan demi terlihat rapi. Titik
-               desimalnya juga diganti koma, supaya tidak berdampingan dengan
-               "102,0%" dari fmtPercent dalam satu viewport. */
-            <span className={styles.turnaround}>
-              <Icon name="clock" aria-hidden />{' '}
-              {turnaround > 0
-                ? `Rata-rata ${turnaround.toFixed(1).replace('.', ',')} hari`
-                : t('reports.belumAdaServisSelesai')}
-            </span>
-          }
-        />
-        <CardBody className={styles.noPad}>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : funnel.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaServisPeriode')} />
-          ) : (
-            <ul className={styles.breakdown}>
-              {funnel.map((f) => (
-                <li key={f.status} className={styles.channel}>
-                  <div className={styles.channelTop}>
-                    <span className={styles.channelName}>{f.label}</span>
-                    <span className={styles.channelValue}>{f.count}</span>
-                  </div>
-                  <div className={styles.bar}>
-                    <div className={[styles.barFill, styles.accentFill].join(' ')} style={{ width: `${(f.count / maxFunnel) * 100}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* 7. Per-outlet comparison (only when multiple outlets) */}
-      {outlets.length > 1 && (
-        <Card>
-          <CardHeader icon={<Icon name="store" aria-hidden />} title={t('reports.perbandinganAntarOutlet')} />
-          <CardBody className={styles.noPad}>
-            {reportPending ? (
-              <LoadState queries={reportLoad} />
-            ) : activeOutletId ? (
-              /* Datanya sudah tersaring cabang aktif, jadi kartu ini hanya akan
-                 menampilkan satu batang — pembanding yang tidak membandingkan. */
-              <p className={styles.tableNote}>
-                Sedang menampilkan satu cabang ({scopeLabel}). Pilih &ldquo;Semua Outlet&rdquo; di
-                selektor cabang untuk membandingkan antar-cabang.
-              </p>
-            ) : outletStats.length === 0 ? (
-              <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
-            ) : (
-              <ul className={styles.breakdown}>
-                {outletStats.map((o) => (
-                  <li key={o.outletId ?? 'none'} className={styles.channel}>
-                    <div className={styles.channelTop}>
-                      <span className={styles.channelName}>
-                        {/* LED: untung vs rugi dulu dibedakan HANYA oleh hijau vs
-                            merah, pada teks dan batang sekaligus. Lit-Signal
-                            menuntut lampu + nilai, bukan warna sendirian. */}
-                        <span
-                          className={[styles.outletLed, o.net >= 0 ? styles.inc : styles.neg].join(' ')}
-                          aria-hidden
-                        />
-                        {o.name}{' '}
-                        <span className={styles.channelMeta}>
-                          · masuk {fmtRp(o.income)} · keluar {fmtRp(o.expense)}
-                        </span>
-                      </span>
-                      <span className={[styles.channelValue, o.net >= 0 ? styles.inc : styles.neg].join(' ')}>
-                        {o.net >= 0 ? '+' : '−'}{fmtRp(Math.abs(o.net))}
-                      </span>
-                    </div>
-                    <div className={styles.bar}>
-                      <div className={[styles.barFill, o.net >= 0 ? styles.inc : styles.neg].join(' ')} style={{ width: `${(Math.abs(o.net) / maxOutletNet) * 100}%` }} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Technician leaderboard (existing) */}
-      <Card>
-        <CardHeader icon={<Icon name="trophy" aria-hidden />} title={t('reports.performaTeknisiPeriode')} />
-        <CardBody className={styles.noPad}>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : leaderboard.length === 0 ? (
-            <EmptyState icon={<Icon name="users" aria-hidden />} title={t('reports.belumAdaServisSelesai')} />
-          ) : (
-            <ul className={styles.breakdown}>
-              {leaderboard.map((tech) => (
-                <li key={tech.key} className={styles.channel}>
-                  <div className={styles.channelTop}>
-                    <span className={styles.channelName}>{tech.name} · {tech.completed} selesai</span>
-                    <span className={styles.channelValue}>{fmtRp(tech.revenue)}</span>
-                  </div>
-                  <div className={styles.bar}>
-                    <div className={[styles.barFill, styles.brand].join(' ')} style={{ width: `${(tech.revenue / maxLeaderRev) * 100}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* 8. Receivables aging */}
-      <Card id="lap-piutang" tabIndex={-1} className={styles.jumpTarget}>
-        <CardHeader
-          icon={<Icon name="coins" aria-hidden />}
-          title={t('reports.piutangServisSelesaiBelum')}
-          /* Satu-satunya kartu selain Saran Restok yang TIDAK mengikuti periode
-             di header: piutang adalah keadaan sekarang, dan yang paling tua
-             justru selalu di luar periode yang sedang dilihat. */
-          action={
-            <span className={styles.turnaround}>
-              {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}
-              {t('reports.allPeriods')}
-              {canExport && receivables.length > 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={exportReceivables}
-                  iconLeft={<Icon name="download" aria-hidden />}
-                >
-                  {t('reports.ekspor')}
-                </Button>
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </span>
-          }
-        />
-        <CardBody className={styles.noPad}>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : receivables.length === 0 ? (
-            <EmptyState icon={<Icon name="circle-check" aria-hidden />} title={t('reports.tidakAdaPiutang')} />
-          ) : (
-            <div className={styles.tableScroll}>
-              <table className={styles.table}>
-                <caption className={styles.srOnly}>
-                  {t('reports.piutangServisYangSudah')}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('reports.noServis')}</th>
-                    <th scope="col">{t('reports.pelanggan')}</th>
-                    <th scope="col" className={styles.num}>{t('reports.sisa')}</th>
-                    <th scope="col" className={styles.num}>{t('reports.umur')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receivables.map((r) => (
-                    <tr key={r.serviceId}>
-                      <td className={styles.mono}>{r.serviceNo}</td>
-                      <td>{r.customerName}</td>
-                      <td className={[styles.num, styles.mono, styles.exp].join(' ')}>{fmtRp(r.outstanding)}</td>
-                      <td className={styles.num}>
-                        <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
-                          {r.ageDays} hari
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* 2. Transaction detail table */}
-      <Card id="lap-transaksi" tabIndex={-1} className={styles.jumpTarget}>
-        <CardHeader
-          icon={<Icon name="clipboard-list" aria-hidden />}
-          title={t('reports.rincianTransaksi')}
-          action={<span className={styles.turnaround}>{txnRows.length} baris</span>}
-        />
-        <CardBody className={styles.noPad}>
-          {reportPending ? (
-            <LoadState queries={reportLoad} />
-          ) : txnRows.length === 0 ? (
-            <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaTransaksiPeriode')} />
-          ) : (
-            <div className={styles.tableScroll}>
-              <table className={styles.table}>
-                <caption className={styles.srOnly}>
-                  {t('reports.rincianTransaksiPemasukanDan')}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('reports.tanggal')}</th>
-                    <th scope="col">{t('reports.jenis')}</th>
-                    <th scope="col">{t('reports.kategori')}</th>
-                    <th scope="col">{t('reports.keterangan')}</th>
-                    <th scope="col" className={styles.num}>{t('reports.nominal')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {txnRows.slice(0, 100).map((r, idx) => (
-                    <tr key={idx}>
-                      <td className={styles.mono}>{fmtDate(r.date)}</td>
-                      <td>
-                        <span className={[styles.typeTag, r.amount >= 0 ? styles.typeInc : styles.typeExp].join(' ')}>
-                          {r.type}
-                        </span>
-                      </td>
-                      <td>{r.category}</td>
-                      <td className={styles.descCell}>{r.description || <EmptyValue />}</td>
-                      <td className={[styles.num, styles.mono, r.amount >= 0 ? styles.inc : styles.exp].join(' ')}>
-                        {fmtRp(r.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {/* Catatan ini dulu tidak digerbang canExport, jadi paket Trial
-                  dan Solo disuruh menekan tombol yang tidak ada di halaman. */}
-              {txnRows.length > 100 && (
-                <p className={styles.tableNote}>
-                  Menampilkan 100 dari {txnRows.length} baris.
-                  {canExport ? ' Ekspor CSV untuk data lengkap.' : ' Persempit periode untuk melihat sisanya.'}
-                </p>
-              )}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+            </CardBody>
+          </Card>
+      </>)}
     </div>
   );
 }

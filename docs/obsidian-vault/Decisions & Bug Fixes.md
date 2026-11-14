@@ -6671,3 +6671,19 @@ Kedua skrip dijalankan dari salinan sementara dengan `executablePath` Chromium c
 agar laporan JSON-nya tertulis. **Tidak dijalankan:** `sync-vault-attachments.ps1` (container
 tanpa PowerShell); `rep-dark.png` di [[Signature Pages]] belum memperlihatkan kartu Laba Rugi
 (`scripts/shoot-reports.mjs` di mesin lokal).
+
+**Tahap 2, tab per bagian (14 Nov 2026):** indeks lompat diganti tablist lima bagian (rincian di
+[[Signature Pages#Laporan — Analyzer Printout]]). Alasannya ukuran: 13 kartu = 6,3 layar di
+ponsel, dan tahap 3–6 menambah kira-kira enam kartu. Keputusan kecil: `?bagian=` di URL dengan
+`replace` (tautan bisa dibagikan, Kembali tidak berisi riwayat tab); vonis dan metrik di atas
+tab karena itu jawaban yang dicari di setiap bagian; Perbandingan Antar-Outlet masuk Uang, bukan
+Ringkasan, karena ia rincian arus kas. Kunci i18n baru `reports.tab*`; `reports.idx*` yang hanya
+dipakai indeks lama dihapus (`idxCategories`, `idxCatCount`, `idxParts`, `idxService`, `idxTxn`,
+`idxPl`). `jumpTo`/`.jumpTarget` dicabut. **Verifikasi:** build, lint, tes tak berubah (tidak
+ada logika baru). Probe Playwright di 1440/900/390/360, dua tema: panah kanan dua kali dari
+Ringkasan memilih Uang dan memindah fokus ke tab Uang, URL `?bagian=uang`, satu panel tampil,
+klik Kasir & Stok dan Piutang menampilkan kartunya, nol luberan dokumen. `audit-mobile` (ponsel
+dan pita tablet 744–1152) dan `audit-zoom` (11 lebar) hanya untuk `/reports`: nol temuan, lantai
+12px 0. Audit itu hanya memeriksa tab bawaan; tab lain berisi kartu yang sama seperti sebelum
+tahap ini dan diukur lewat probe di atas.
+
