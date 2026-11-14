@@ -1564,43 +1564,39 @@ d('Tier 3B — settle_service split + cancel_service (RPC 0029)', () => {
     expect((trace ?? []).length).toBeGreaterThan(0);
   });
 
-  // ---- 0077: kuota paket, penjaga hapus, jejak pemulihan ----
-  it('0077: kuota paket dijaga server — outlet, wallet, dan undangan', async () => {
+  // ---- 0077/0101: kuota, penjaga hapus, jejak pemulihan ----
+  it('0101: kuota paket dibuka — toko berlabel Solo pun bisa menambah outlet, wallet, dan anggota', async () => {
     const { data: before } = await ctx.admin
-      .from('organizations').select('plan_type, plan_expired_at').eq('id', ctx.orgId).single();
-    // Paket Solo: 1 pengguna, 1 outlet, 2 wallet. Org uji sudah punya 2 outlet
-    // dan 2 wallet (dibuat service-role, yang memang dikecualikan).
-    const far = new Date();
-    far.setFullYear(far.getFullYear() + 1);
-    await ctx.admin
-      .from('organizations')
-      .update({ plan_type: 'standard', plan_expired_at: far.toISOString() })
-      .eq('id', ctx.orgId);
+      .from('organizations').select('plan_type').eq('id', ctx.orgId).single();
+    // Sebelum 0101 label 'standard' (Solo) membatasi 1 pengguna, 1 outlet,
+    // 2 wallet. Kini semua toko mendapat semua fitur; label lama tak berarti.
+    await ctx.admin.from('organizations').update({ plan_type: 'standard' }).eq('id', ctx.orgId);
 
+    const inviteEmail = `fmtest+kuota-${Date.now().toString(36)}@example.com`;
     try {
       const outlet = await ctx.ownerClient
-        .from('outlets').insert({ org_id: ctx.orgId, name: 'Cabang Ketiga' });
-      expect(outlet.error).not.toBeNull();
+        .from('outlets').insert({ org_id: ctx.orgId, name: 'Cabang Ketiga' }).select('id').single();
+      expect(outlet.error).toBeNull();
+      if (outlet.data) await ctx.admin.from('outlets').delete().eq('id', outlet.data.id);
 
       const wallet = await ctx.ownerClient
-        .from('wallets').insert({ org_id: ctx.orgId, name: 'Kas Ketiga', balance: 0 });
-      expect(wallet.error).not.toBeNull();
+        .from('wallets').insert({ org_id: ctx.orgId, name: 'Kas Ketiga', balance: 0 }).select('id').single();
+      expect(wallet.error).toBeNull();
+      if (wallet.data) await ctx.admin.from('wallets').delete().eq('id', wallet.data.id);
 
       const invite = await ctx.ownerClient.rpc('create_invite', {
         p_org_id: ctx.orgId,
-        p_email: `fmtest+kuota-${Date.now().toString(36)}@example.com`,
+        p_email: inviteEmail,
         p_name: 'Calon Anggota',
         p_role: 'karyawan',
         p_outlet_ids: [],
       });
-      expect(invite.error).not.toBeNull();
+      expect(invite.error).toBeNull();
     } finally {
+      await ctx.admin.from('pending_invites').delete().eq('email', inviteEmail);
       await ctx.admin
         .from('organizations')
-        .update({
-          plan_type: before!.plan_type,
-          plan_expired_at: before!.plan_expired_at,
-        })
+        .update({ plan_type: before!.plan_type })
         .eq('id', ctx.orgId);
     }
   });

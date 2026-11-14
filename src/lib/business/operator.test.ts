@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  accessRemainingLabel,
-  expectedManualPayment,
+  daysUntilBlocked,
   matchesOrganization,
-  operatorMonthlyAmount,
   operatorPlanLabel,
   organizationNumber,
-  projectedManualExpiry,
 } from './operator';
 
 const organization = {
@@ -40,30 +37,16 @@ describe('operator organization helpers', () => {
     expect(matchesOrganization(organization, '   ')).toBe(true);
   });
 
-  it('menggunakan label paket yang dibaca klien', () => {
-    expect(operatorPlanLabel('standard')).toBe('Solo');
-    expect(operatorPlanLabel('enterprise')).toBe('Pro');
+  it('hanya membedakan toko aktif dan yang ditangguhkan', () => {
+    expect(operatorPlanLabel('standard')).toBe('Aktif');
+    expect(operatorPlanLabel('trial')).toBe('Aktif');
     expect(operatorPlanLabel('suspended')).toBe('Ditangguhkan');
   });
 
-  it('menghitung total Solo dan Pro berskala outlet secara tepat', () => {
-    expect(operatorMonthlyAmount('standard', 1)).toBe(99_000);
-    expect(operatorMonthlyAmount('enterprise', 3)).toBe(249_000);
-    expect(operatorMonthlyAmount('enterprise', 20)).toBe(349_000);
-    expect(expectedManualPayment('enterprise', 3, 2)).toBe(498_000);
-  });
-
-  it('memproyeksikan expiry bulan kalender dengan clamp akhir bulan', () => {
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    expect(projectedManualExpiry('2026-01-31T14:32:00.000Z', 1, now)).toBe(
-      '2026-02-28T14:32:00.000Z',
-    );
-    expect(projectedManualExpiry(null, 2, now)).toBe('2026-03-01T00:00:00.000Z');
-  });
-
-  it('menjelaskan akses kedaluwarsa tanpa angka hari negatif', () => {
-    expect(accessRemainingLabel(-5)).toBe('Kedaluwarsa 5 hari');
-    expect(accessRemainingLabel(0)).toBe('Berakhir hari ini');
-    expect(accessRemainingLabel(7)).toBe('7 hari lagi');
+  it('memperkirakan hari sampai tiket baru tertahan dari laju 30 hari', () => {
+    // 60 unit sebulan = 2 unit/hari; saldo 10 dengan batas -20 = 30 unit ruang.
+    expect(daysUntilBlocked(10, 60, -20)).toBe(15);
+    expect(daysUntilBlocked(-20, 60, -20)).toBe(0);
+    expect(daysUntilBlocked(40, 0, -20)).toBeNull();
   });
 });

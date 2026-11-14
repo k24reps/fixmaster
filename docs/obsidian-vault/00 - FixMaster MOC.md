@@ -44,6 +44,7 @@ Tiap halaman punya metafora "alat" sendiri tapi berbagi satu bahasa visual. Liha
 | Detail Servis | Repair Ticket | [[Signature Pages#Detail Servis — Repair Ticket\|↗]] |
 | Kalkulator Biaya | Register Tape | [[Signature Pages#Kalkulator Biaya — Register Tape (10 Nov 2026)\|↗]] |
 | Pengaturan → Tarif | Tarif kalkulator | [[Signature Pages#Pengaturan — Tarif (10 Nov 2026)\|↗]] |
+| Pengaturan → Saldo | Unit Meter (harga per unit) | [[Signature Pages#Pengaturan — Saldo (Unit Meter, 14 Nov 2026)\|↗]] |
 
 ## 🧠 Keputusan & Pelajaran
 

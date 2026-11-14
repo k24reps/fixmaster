@@ -5,41 +5,55 @@ import {
   Button,
   FormError,
   FormFields,
-  FormRow,
   Icon,
   Input,
   Modal,
   Textarea,
 } from '@/components/ui';
 import {
-  adminConfirmManualPayment,
+  adminAdjustUnits,
   adminDeleteOrganization,
+  adminReactivateOrg,
   adminSetClientNote,
   adminSuspendOrg,
+  adminTopupUnits,
   type AdminOrgRow,
 } from '@/data/supabase-client';
-import { daysUntil } from '@/lib/business/billing';
-import {
-  accessRemainingLabel,
-  expectedManualPayment,
-  operatorMonthlyAmount,
-  operatorPlanLabel,
-  organizationNumber,
-  projectedManualExpiry,
-  type OperatorPaidPlan,
-} from '@/lib/business/operator';
+import { topupAmountError, unitsForTopup } from '@/lib/business/billing';
+import { operatorPlanLabel, organizationNumber } from '@/lib/business/operator';
+import { MIN_TOPUP, TOPUP_STEP } from '@/config/pricing';
 import { fmtRp } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { toast } from '@/stores/toast';
 import styles from './OperatorPage.module.css';
 
-export type ActionMode = 'suspend' | 'payment' | 'note' | 'delete';
+export type ActionMode = 'suspend' | 'reactivate' | 'topup' | 'adjust' | 'note' | 'delete';
 
 const TITLES: Record<ActionMode, string> = {
   suspend: 'Tangguhkan klien',
-  payment: 'Konfirmasi pembayaran',
+  reactivate: 'Aktifkan kembali',
+  topup: 'Isi saldo',
+  adjust: 'Koreksi saldo',
   note: 'Catatan klien',
   delete: 'Hapus organisasi',
+};
+
+const SUBMIT_LABEL: Record<ActionMode, string> = {
+  suspend: 'Tangguhkan',
+  reactivate: 'Aktifkan',
+  topup: 'Catat isi saldo',
+  adjust: 'Simpan koreksi',
+  note: 'Simpan',
+  delete: 'Hapus permanen',
+};
+
+const REASON_PLACEHOLDER: Record<ActionMode, string> = {
+  suspend: 'mis. penyalahgunaan akun dilaporkan pemilik',
+  reactivate: 'mis. masalah akun sudah diselesaikan bersama pemilik',
+  topup: 'mis. bukti transfer diverifikasi via WhatsApp',
+  adjust: 'mis. isi saldo 14/11 tercatat dua kali',
+  note: '',
+  delete: 'mis. permintaan penghapusan diverifikasi oleh pemilik',
 };
 
 export function OperatorActionModal({
@@ -53,10 +67,9 @@ export function OperatorActionModal({
   onClose: () => void;
   onDone: () => Promise<void>;
 }) {
-  const defaultPlan: OperatorPaidPlan = org && org.outletCount > 1 ? 'enterprise' : 'standard';
   const [reason, setReason] = useState('');
-  const [plan, setPlan] = useState<OperatorPaidPlan>(defaultPlan);
-  const [months, setMonths] = useState(1);
+  const [amount, setAmount] = useState(100_000);
+  const [units, setUnits] = useState(0);
   const [reference, setReference] = useState('');
   const [note, setNote] = useState(org?.note ?? '');
   const [confirmation, setConfirmation] = useState('');
@@ -66,28 +79,26 @@ export function OperatorActionModal({
   const open = mode !== null && org !== null;
   if (!open || !org) return null;
 
-  const monthlyAmount = operatorMonthlyAmount(plan, org.outletCount);
-  const expectedAmount = expectedManualPayment(plan, org.outletCount, months);
-  const projectedExpiry = projectedManualExpiry(org.expiresAt, months);
-  const remainingDays = org.expiresAt ? daysUntil(org.expiresAt) : null;
   const orgNumber = organizationNumber(org.orgId);
+  const topupUnits = unitsForTopup(amount);
+  const amountError = topupAmountError(amount);
 
   const submit = async () => {
     setErr('');
     if (mode !== 'note' && reason.trim() === '') {
-      setErr(mode === 'delete' ? 'Alasan penghapusan wajib diisi' : 'Catatan verifikasi wajib diisi');
+      setErr(mode === 'delete' ? 'Alasan penghapusan wajib diisi' : mode === 'topup' ? 'Catatan verifikasi wajib diisi' : 'Alasan wajib diisi');
       return;
     }
-    if (mode === 'payment' && reference.trim() === '') {
+    if (mode === 'topup' && amountError) {
+      setErr(`Isi saldo minimal ${fmtRp(MIN_TOPUP)}, kelipatan ${fmtRp(TOPUP_STEP)}`);
+      return;
+    }
+    if (mode === 'topup' && reference.trim() === '') {
       setErr('Referensi pembayaran atau nama pengirim wajib diisi');
       return;
     }
-    if (mode === 'payment' && (!Number.isInteger(months) || months < 1 || months > 12)) {
-      setErr('Durasi pembayaran harus 1–12 bulan');
-      return;
-    }
-    if (mode === 'payment' && plan === 'standard' && org.outletCount > 1) {
-      setErr('Paket Solo hanya dapat dipakai organisasi dengan satu outlet');
+    if (mode === 'adjust' && (!Number.isInteger(units) || units === 0 || Math.abs(units) > 1000)) {
+      setErr('Koreksi harus bilangan bulat antara -1000 dan 1000, dan bukan 0');
       return;
     }
     if (mode === 'delete' && confirmation.trim().toUpperCase() !== orgNumber) {
@@ -101,16 +112,15 @@ export function OperatorActionModal({
       if (mode === 'suspend') {
         await adminSuspendOrg(org.orgId, reason.trim());
         successMessage = `${org.name} ditangguhkan`;
-      } else if (mode === 'payment') {
-        const until = await adminConfirmManualPayment(
-          org.orgId,
-          plan,
-          months,
-          expectedAmount,
-          reference.trim(),
-          reason.trim(),
-        );
-        successMessage = `Pembayaran ${org.name} dicatat · aktif sampai ${fmtDate(localDateOf(until))}`;
+      } else if (mode === 'reactivate') {
+        await adminReactivateOrg(org.orgId, reason.trim());
+        successMessage = `${org.name} aktif kembali`;
+      } else if (mode === 'topup') {
+        const after = await adminTopupUnits(org.orgId, amount, reference.trim(), reason.trim());
+        successMessage = `Isi saldo ${org.name} dicatat · saldo ${after} unit`;
+      } else if (mode === 'adjust') {
+        const after = await adminAdjustUnits(org.orgId, units, reason.trim());
+        successMessage = `Saldo ${org.name} dikoreksi · saldo ${after} unit`;
       } else if (mode === 'delete') {
         await adminDeleteOrganization(org.orgId, confirmation.trim(), reason.trim());
         successMessage = `${org.name} telah dihapus permanen`;
@@ -139,7 +149,7 @@ export function OperatorActionModal({
       open={open}
       onClose={onClose}
       title={`${TITLES[mode]} · ${org.name}`}
-      size={mode === 'payment' ? 'md' : 'sm'}
+      size={mode === 'topup' || mode === 'adjust' ? 'md' : 'sm'}
       footer={
         <div className={styles.modalFoot}>
           <Button variant="secondary" onClick={onClose}>Batal</Button>
@@ -149,7 +159,7 @@ export function OperatorActionModal({
             variant={mode === 'suspend' || mode === 'delete' ? 'danger' : 'primary'}
             disabled={mode === 'delete' && confirmation.trim().toUpperCase() !== orgNumber}
           >
-            {mode === 'suspend' ? 'Tangguhkan' : mode === 'delete' ? 'Hapus permanen' : mode === 'payment' ? 'Catat pembayaran' : 'Simpan'}
+            {SUBMIT_LABEL[mode]}
           </Button>
         </div>
       }
@@ -157,8 +167,14 @@ export function OperatorActionModal({
       <FormFields>
         {mode === 'suspend' && (
           <p className={styles.warn}>
-            Operasi tulis {org.name} akan diblokir database. Akses hanya dapat dipulihkan
-            lewat pembayaran Solo/Pro yang telah diverifikasi.
+            Operasi tulis {org.name} akan diblokir database sampai toko diaktifkan kembali
+            dari konsol ini.
+          </p>
+        )}
+
+        {mode === 'reactivate' && (
+          <p className={styles.warn}>
+            {org.name} bisa menulis lagi. Tiket baru tetap dipotong dari saldo ({org.unitBalance} unit).
           </p>
         )}
 
@@ -172,68 +188,76 @@ export function OperatorActionModal({
           </div>
         )}
 
-        {mode === 'payment' && (
+        {(mode === 'topup' || mode === 'adjust') && (
+          <div className={styles.paymentContext}>
+            <div className={styles.paymentContextHead}>
+              <span className={styles.orgNumber}>{orgNumber}</span>
+              <strong>{org.name}</strong>
+            </div>
+            <dl className={styles.paymentFacts}>
+              <div><dt>Status</dt><dd>{operatorPlanLabel(org.plan)}</dd></div>
+              <div><dt>Saldo sekarang</dt><dd>{org.unitBalance} unit</dd></div>
+              <div><dt>Terpakai 30 hari</dt><dd>{org.unitsUsed30d} unit</dd></div>
+              <div><dt>Outlet aktif</dt><dd>{org.outletCount}</dd></div>
+              <div><dt>Isi saldo terakhir</dt><dd>{org.lastTopupAt ? fmtDate(localDateOf(org.lastTopupAt)) : 'Belum ada'}</dd></div>
+              <div><dt>Referensi terakhir</dt><dd>{org.lastTopupReference || <EmptyValue />}</dd></div>
+            </dl>
+          </div>
+        )}
+
+        {mode === 'topup' && (
           <>
-            <div className={styles.paymentContext}>
-              <div className={styles.paymentContextHead}>
-                <span className={styles.orgNumber}>{orgNumber}</span>
-                <strong>{org.name}</strong>
-              </div>
-              <dl className={styles.paymentFacts}>
-                <div><dt>Paket saat ini</dt><dd>{operatorPlanLabel(org.plan)}</dd></div>
-                <div><dt>Masa aktif</dt><dd>{accessRemainingLabel(remainingDays)}</dd></div>
-                <div><dt>Berakhir</dt><dd>{org.expiresAt ? fmtDate(localDateOf(org.expiresAt)) : 'Tanpa batas'}</dd></div>
-                <div><dt>Outlet aktif</dt><dd>{org.outletCount}</dd></div>
-                <div><dt>Pembayaran terakhir</dt><dd>{org.lastPaidAt ? fmtDate(localDateOf(org.lastPaidAt)) : 'Belum ada'}</dd></div>
-                <div><dt>Referensi terakhir</dt><dd>{org.lastPaidReference || <EmptyValue />}</dd></div>
-              </dl>
-            </div>
-
-            <FormRow>
-              <label className={styles.label}>
-                Paket yang dibayar
-                <select
-                  className={styles.input}
-                  value={plan}
-                  onChange={(event) => setPlan(event.target.value as OperatorPaidPlan)}
-                  required
-                  aria-required="true"
-                >
-                  <option value="standard" disabled={org.outletCount > 1}>Solo · 1 outlet</option>
-                  <option value="enterprise">Pro · {org.outletCount} outlet</option>
-                </select>
-              </label>
-              <Input
-                noAutoCap
-                type="number"
-                name="payment-months"
-                label="Durasi (bulan)"
-                min={1}
-                max={12}
-                required
-                aria-required="true"
-                value={months}
-                onChange={(event) => setMonths(Number(event.target.value))}
-              />
-            </FormRow>
-
+            <Input
+              noAutoCap
+              type="number"
+              name="topup-amount"
+              label="Nominal yang diterima (Rp)"
+              hint={`Minimal ${fmtRp(MIN_TOPUP)}, kelipatan ${fmtRp(TOPUP_STEP)}.`}
+              min={MIN_TOPUP}
+              step={TOPUP_STEP}
+              required
+              aria-required="true"
+              invalid={amountError !== null}
+              value={amount}
+              onChange={(event) => setAmount(Number(event.target.value))}
+            />
             <div className={styles.paymentPreview} aria-live="polite">
-              <div><span>Biaya bulanan</span><strong>{fmtRp(monthlyAmount)}</strong></div>
-              <div><span>Total yang harus diterima</span><strong className={styles.amount}>{fmtRp(expectedAmount)}</strong></div>
-              <div><span>Masa aktif setelah konfirmasi</span><strong>{fmtDate(localDateOf(projectedExpiry))}</strong></div>
+              <div><span>Unit ditambahkan</span><strong className={styles.amount}>+{amountError ? 0 : topupUnits}</strong></div>
+              <div><span>Saldo setelah konfirmasi</span><strong>{org.unitBalance + (amountError ? 0 : topupUnits)} unit</strong></div>
             </div>
-
             <Input
               noAutoCap
               name="payment-reference"
               label="Referensi pembayaran / nama pengirim"
-              hint="Gunakan referensi unik agar klik ulang tidak menggandakan masa aktif."
+              hint="Gunakan referensi unik agar klik ulang tidak menggandakan saldo."
               placeholder="mis. RIFAN 29/08 14:32"
               required
               aria-required="true"
               value={reference}
               onChange={(event) => setReference(event.target.value)}
             />
+          </>
+        )}
+
+        {mode === 'adjust' && (
+          <>
+            <Input
+              noAutoCap
+              type="number"
+              name="adjust-units"
+              label="Koreksi (unit, boleh negatif)"
+              hint="Positif menambah, negatif mengurangi. Maksimal 1000 unit sekali koreksi."
+              min={-1000}
+              max={1000}
+              step={1}
+              required
+              aria-required="true"
+              value={units}
+              onChange={(event) => setUnits(Number(event.target.value))}
+            />
+            <div className={styles.paymentPreview} aria-live="polite">
+              <div><span>Saldo setelah koreksi</span><strong className={styles.amount}>{org.unitBalance + (Number.isInteger(units) ? units : 0)} unit</strong></div>
+            </div>
           </>
         )}
 
@@ -267,18 +291,12 @@ export function OperatorActionModal({
         {mode !== 'note' && (
           <Input
             name="operator-reason"
-            label={mode === 'delete' ? 'Alasan penghapusan' : 'Catatan verifikasi'}
+            label={mode === 'delete' ? 'Alasan penghapusan' : mode === 'topup' ? 'Catatan verifikasi' : 'Alasan'}
             required
             aria-required="true"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder={
-              mode === 'suspend'
-                ? 'mis. pembayaran belum diterima setelah masa tenggang'
-                : mode === 'payment'
-                  ? 'mis. bukti transfer diverifikasi via WhatsApp'
-                  : 'mis. permintaan penghapusan diverifikasi oleh pemilik'
-            }
+            placeholder={REASON_PLACEHOLDER[mode]}
           />
         )}
 

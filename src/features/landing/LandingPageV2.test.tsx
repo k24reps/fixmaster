@@ -70,11 +70,11 @@ describe('LandingPageV2 auth intent', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Mulai gratis 14 hari/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Mulai gratis, 50 unit/i })[0]);
     expect(onStart).toHaveBeenCalledWith({ mode: 'signup', source: 'hero' });
   });
 
-  it('preserves the Pro plan selection', () => {
+  it('harga per unit membuka pendaftaran tanpa paket', () => {
     const onStart = vi.fn();
     render(
       <MemoryRouter>
@@ -82,20 +82,12 @@ describe('LandingPageV2 auth intent', () => {
       </MemoryRouter>,
     );
 
-    const proPlate = screen.getByRole('heading', { name: 'Pro' }).closest('article');
-    expect(proPlate).not.toBeNull();
-    // Label CTA menyebut paketnya. Sebelumnya kedua tombol berbunyi identik,
-    // sehingga tes ini pun harus mencari lewat pelat induknya untuk tahu mana
-    // yang diklik — ambiguitas yang sama yang dihadapi pengunjung.
-    fireEvent.click(
-      within(proPlate as HTMLElement).getByRole('button', { name: 'Mulai gratis dengan Pro' }),
-    );
-    expect(screen.getByRole('button', { name: 'Mulai gratis dengan Solo' })).toBeInTheDocument();
+    // Sejak 0101 tidak ada lagi Solo/Pro yang bisa dipilih.
+    expect(screen.queryByRole('heading', { name: 'Pro' })).toBeNull();
+    const plate = screen.getByRole('heading', { name: 'Per unit masuk' }).closest('article');
+    expect(plate).not.toBeNull();
+    fireEvent.click(within(plate as HTMLElement).getByRole('button', { name: 'Mulai gratis' }));
 
-    expect(onStart).toHaveBeenCalledWith({
-      mode: 'signup',
-      source: 'pricing_pro',
-      plan: 'enterprise',
-    });
+    expect(onStart).toHaveBeenCalledWith({ mode: 'signup', source: 'pricing' });
   });
 });

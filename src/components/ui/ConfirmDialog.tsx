@@ -8,6 +8,8 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** Konfirmasi sedang berjalan: tombolnya berputar dan tidak bisa diketuk dua kali. */
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,6 +21,7 @@ export function ConfirmDialog({
   confirmLabel = 'Konfirmasi',
   cancelLabel = 'Batal',
   danger,
+  loading,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -33,7 +36,7 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>
             {confirmLabel}
           </Button>
         </>

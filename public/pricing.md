@@ -1,26 +1,28 @@
 # Harga FixMaster
 
-Terakhir diperbarui: 1 September 2026.
+Terakhir diperbarui: 14 November 2026.
 
-Semua akun baru mendapat uji coba 14 hari tanpa kartu kredit. Harga di bawah adalah biaya per bulan dalam rupiah Indonesia.
+FixMaster memakai satu harga: **Rp 1.000 per unit masuk**. Satu unit adalah satu tiket servis yang dibuat. Tidak ada paket, tidak ada biaya bulanan tetap, dan tidak ada fitur yang dikunci.
 
-## Solo
+## Cara kerjanya
 
-- Harga: Rp 99.000/bulan
-- Pengguna: 1
-- Outlet: 1
-- Termasuk: tiket servis, pelanggan, kasir/POS, inventori, keuangan, dan laporan
-- Cocok untuk: teknisi atau pemilik yang bekerja sendiri
+- Harga: Rp 1.000 per tiket servis.
+- Toko baru: 50 unit pertama gratis, tanpa batas waktu.
+- Pembayaran: isi saldo di muka, minimal Rp 50.000 (kelipatan Rp 1.000). Saat ini lewat transfer bank yang dikonfirmasi via WhatsApp.
+- Saldo tidak hangus dan tidak dapat dikembalikan.
+- Penjualan kasir (sparepart, aksesori) tidak memotong saldo. Klaim garansi juga tidak.
+- Tiket yang dibatalkan atau dihapus dalam 10 menit setelah dibuat mendapat unitnya kembali.
+- Saldo boleh minus sampai 20 unit. Setelah itu hanya pembuatan tiket baru yang tertahan sampai saldo diisi; tiket yang sudah ada tetap bisa dikerjakan, ditagih, dan diambil.
 
-## Pro
+## Termasuk untuk semua toko
 
-- Harga dasar: Rp 199.000/bulan
-- Pengguna: tidak dibatasi
-- Outlet: 2 outlet termasuk
-- Outlet tambahan: Rp 50.000/outlet/bulan
-- Batas harga multi-outlet: Rp 349.000/bulan
-- Termasuk: semua fitur Solo, supplier dan pembelian, pembagian tugas, absensi, multi-outlet, logo usaha, template WhatsApp, ekspor laporan CSV, serta backup/restore JSON
-- Cocok untuk: usaha dengan tim atau lebih dari satu outlet
+Tiket servis, pelanggan, kasir/POS, inventori, keuangan, laporan, supplier dan pembelian, tugas internal, absensi, multi-outlet, logo usaha, template WhatsApp, ekspor laporan CSV, serta backup/restore JSON. Pengguna dan outlet tidak dibatasi.
+
+## Contoh biaya
+
+- 30 unit sebulan: Rp 30.000.
+- 100 unit sebulan: Rp 100.000.
+- 300 unit sebulan: Rp 300.000.
 
 ## Catatan perpindahan data
 

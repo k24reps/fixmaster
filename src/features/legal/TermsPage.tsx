@@ -3,7 +3,7 @@ import { LegalLayout } from './LegalLayout';
 import { useT } from '@/i18n';
 
 /**
- * Public Terms of Service. Covers the subscription model (trial → paid),
+ * Public Terms of Service. Covers per-unit pricing and the prepaid balance (0101),
  * acceptable use, payment/cancellation, liability limits, and termination.
  * Good-faith template — review by a legal professional before launch.
  */
@@ -22,7 +22,7 @@ export function TermsPage() {
       title={t('legal.termsTitle')}
       docId="SK-001"
       intro={t('legal.termsIntro')}
-      updated="2026-06-07"
+      updated="2026-11-14"
     >
       <div className="callout">
         <p>
@@ -41,7 +41,8 @@ export function TermsPage() {
       <p>
         FixMaster menyediakan aplikasi berbasis web untuk manajemen usaha reparasi gadget dan
         elektronik, mencakup tiket servis, kasir (POS), inventori, keuangan, absensi, tugas
-        internal, dan laporan. Fitur yang tersedia dapat berbeda menurut paket langganan.
+        internal, dan laporan. Semua fitur tersedia untuk setiap akun; tidak ada paket yang
+        membedakan fitur, jumlah pengguna, atau jumlah outlet.
       </p>
 
       <h2>2. Akun &amp; Tanggung Jawab</h2>
@@ -54,28 +55,33 @@ export function TermsPage() {
         </li>
       </ul>
 
-      <h2>3. Uji Coba &amp; Langganan</h2>
+      <h2>3. Harga &amp; Saldo Unit</h2>
       <ul>
         <li>
-          <strong>Uji coba:</strong> akun baru memperoleh masa uji coba 14 hari dengan akses
-          fitur penuh, tanpa biaya.
+          <strong>Harga:</strong> Rp 1.000 untuk setiap tiket servis yang dibuat (satu unit),
+          dipotong dari saldo unit akun Anda. Penjualan kasir dan klaim garansi tidak memotong
+          saldo.
         </li>
         <li>
-          <strong>Berbayar:</strong> setelah uji coba, akses fitur lanjutan memerlukan langganan
-          berbayar sesuai paket yang dipilih.
+          <strong>Kuota awal:</strong> akun baru memperoleh 50 unit gratis tanpa batas waktu.
         </li>
         <li>
-          <strong>Masa aktif:</strong> langganan diperpanjang berdasarkan pembayaran yang
-          berhasil. Bila tidak diperpanjang, akses dapat dibatasi.
+          <strong>Pengembalian unit:</strong> tiket yang dibatalkan atau dihapus paling lama 10
+          menit setelah dibuat mendapat unitnya kembali, satu kali per tiket.
+        </li>
+        <li>
+          <strong>Saldo habis:</strong> saldo boleh minus sampai 20 unit. Setelah itu pembuatan
+          tiket baru ditahan sampai saldo diisi. Tiket yang sudah ada tetap dapat dikerjakan,
+          ditagih, dan diserahkan.
         </li>
       </ul>
 
-      <h2>4. Pembayaran</h2>
+      <h2>4. Pengisian Saldo</h2>
       <p>
-        Pembayaran diproses melalui penyedia gateway pihak ketiga (mis. QRIS). Harga yang berlaku
-        ditampilkan di dalam aplikasi sebelum Anda berlangganan. Kecuali diwajibkan hukum,
-        pembayaran yang telah diselesaikan untuk periode berjalan pada umumnya tidak dapat
-        dikembalikan.
+        Saldo diisi di muka, minimal Rp 50.000 dalam kelipatan Rp 1.000. Saat ini pengisian
+        dilakukan lewat transfer bank yang dikonfirmasi melalui WhatsApp; saldo bertambah setelah
+        pembayaran diverifikasi. Saldo tidak memiliki masa berlaku dan tidak dapat dikembalikan
+        atau diuangkan, kecuali diwajibkan hukum.
       </p>
 
       <h2>5. Penggunaan yang Dilarang</h2>

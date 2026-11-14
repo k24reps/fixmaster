@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  serviceDeleteBlocker,
   canTransition,
   nextStatuses,
   canSetStatus,
@@ -462,5 +463,26 @@ describe('modal dadakan: part yang dibeli di luar stok', () => {
 
   it('keterangan pengeluaran sama untuk catat baru dan ubah', () => {
     expect(modalExpenseDescription('FM-0006', '  LCD Oppo A5 ')).toBe('Modal servis FM-0006 — LCD Oppo A5');
+  });
+});
+
+describe('serviceDeleteBlocker (hapus tiket, 0101)', () => {
+  const clean = { status: 'diterima' as const, downPayment: 0, spareparts: [] };
+
+  it('tiket bersih boleh dihapus, termasuk yang sudah Batal tanpa uang', () => {
+    expect(serviceDeleteBlocker(clean, false)).toBeNull();
+    expect(serviceDeleteBlocker({ ...clean, status: 'batal' }, false)).toBeNull();
+  });
+
+  it('Lunas, DP, sparepart, dan klaim garansi menahan penghapusan', () => {
+    expect(serviceDeleteBlocker({ ...clean, status: 'lunas' }, false)).toBe('serviceDelete.blockedLunas');
+    expect(serviceDeleteBlocker({ ...clean, downPayment: 50_000 }, false)).toBe('serviceDelete.blockedPaid');
+    expect(
+      serviceDeleteBlocker(
+        { ...clean, spareparts: [{ inventoryId: null, name: 'LCD', qty: 1, cost: 1, price: 1 } as never] },
+        false,
+      ),
+    ).toBe('serviceDelete.blockedParts');
+    expect(serviceDeleteBlocker(clean, true)).toBe('serviceDelete.blockedClaim');
   });
 });

@@ -47,18 +47,17 @@ function useZoomShortcuts() {
  */
 let backupReminderShown = false;
 function useBackupReminder() {
-  const planType = useSessionStore((s) => s.org?.planType);
+  const orgLoaded = useSessionStore((s) => !!s.org);
   useEffect(() => {
-    // Tunggu org termuat. Trial tidak bisa backup (lihat BackupCard), jadi
-    // jangan disuruh melakukan sesuatu yang tombolnya terkunci.
-    if (backupReminderShown || !planType) return;
+    // Tunggu org termuat. Backup terbuka untuk semua toko sejak harga per
+    // unit, jadi tidak ada lagi paket yang dikecualikan dari pengingat.
+    if (backupReminderShown || !orgLoaded) return;
     backupReminderShown = true;
-    if (planType === 'trial') return;
     const { frequency, lastBackupAt } = useBackupStore.getState();
     if (isBackupDue(lastBackupAt, frequency)) {
       toast.warning('Waktunya backup data. Buka Pengaturan → Sistem → Backup & Restore.');
     }
-  }, [planType]);
+  }, [orgLoaded]);
 }
 
 const PAGE_SUBTITLE_KEY: Record<string, TranslationKey> = {

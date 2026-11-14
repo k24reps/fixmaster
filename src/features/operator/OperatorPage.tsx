@@ -38,14 +38,15 @@ import {
   type AdminOrgRow,
   type OperatorAction,
 } from '@/data/supabase-client';
-import { daysUntil, phaseLabel, subscriptionPhase } from '@/lib/business/billing';
+import { unitBalanceState, type UnitBalanceState } from '@/lib/business/billing';
 import { toWaNumber } from '@/lib/business/notify';
 import {
-  accessRemainingLabel,
+  daysUntilBlocked,
   matchesOrganization,
   operatorPlanLabel,
   organizationNumber,
 } from '@/lib/business/operator';
+import { UNIT_FLOOR } from '@/config/pricing';
 import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
 import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
@@ -54,16 +55,31 @@ import { useThemeStore } from '@/stores/theme';
 import { toast } from '@/stores/toast';
 import styles from './OperatorPage.module.css';
 
-/** Fase langganan → kelas LED. Sama bahasanya dengan BillingTab. */
-const PHASE_LED: Record<string, string> = {
-  active: styles.ledOk,
-  reminder: styles.ledWarn,
-  grace: styles.ledWarn,
-  expired: styles.ledCrit,
+/** Keadaan saldo → kelas LED. Sama bahasanya dengan tab Saldo klien. */
+const BALANCE_LED: Record<UnitBalanceState, string> = {
+  ok: styles.ledOk,
+  low: styles.ledWarn,
+  minus: styles.ledWarn,
+  blocked: styles.ledCrit,
+};
+
+const BALANCE_TITLE: Record<UnitBalanceState, string> = {
+  ok: 'Saldo cukup',
+  low: 'Saldo menipis',
+  minus: 'Saldo minus',
+  blocked: 'Tiket baru tertahan',
 };
 
 type Tab = 'klien' | 'jejak';
-type OrgFilter = 'all' | 'attention' | 'due' | 'expired' | 'suspended';
+type OrgFilter = 'all' | 'attention' | 'low' | 'blocked' | 'suspended';
+
+/** Perkiraan sisa hari sebelum tiket baru tertahan, untuk kolom dan kartu. */
+function runwayLabel(o: AdminOrgRow): string {
+  const days = daysUntilBlocked(o.unitBalance, o.unitsUsed30d, UNIT_FLOOR);
+  if (days === null) return 'belum terpakai';
+  if (days === 0) return 'tertahan';
+  return `±${days} hari`;
+}
 
 /**
  * Ringkas `detail` jsonb jadi satu kalimat pendek untuk kolom tabel jejak.
@@ -72,6 +88,14 @@ type OrgFilter = 'all' | 'attention' | 'due' | 'expired' | 'suspended';
  */
 function summarizeDetail(d: Record<string, unknown>): string {
   if (d.promo) return `${String(d.promo)} · ${String(d.hari ?? '?')} hari`;
+  if (d.unit != null) {
+    const parts = [
+      d.nominal != null ? fmtRp(Number(d.nominal)) : '',
+      `${Number(d.unit) > 0 ? '+' : ''}${String(d.unit)} unit`,
+      d.saldo_sesudah != null ? `saldo ${String(d.saldo_sesudah)}` : '',
+    ];
+    return parts.filter(Boolean).join(' · ');
+  }
   if (d.nominal != null) {
     const plan = d.plan_sesudah ? operatorPlanLabel(String(d.plan_sesudah)) : '';
     const months = d.bulan ? `${String(d.bulan)} bulan` : '';
@@ -109,10 +133,10 @@ function matchesFilter(organization: AdminOrgRow, filter: OrgFilter): boolean {
   if (filter === 'all') return true;
   if (filter === 'suspended') return organization.plan === 'suspended';
   if (organization.plan === 'suspended') return filter === 'attention';
-  const days = organization.expiresAt ? daysUntil(organization.expiresAt) : null;
-  if (filter === 'expired') return days !== null && days < 0;
-  if (filter === 'due') return days !== null && days >= 0 && days <= 7;
-  return days !== null && days <= 7;
+  const state = unitBalanceState(organization.unitBalance);
+  if (filter === 'blocked') return state === 'blocked';
+  if (filter === 'low') return state === 'low' || state === 'minus';
+  return state !== 'ok';
 }
 
 export function OperatorPage() {
@@ -238,15 +262,9 @@ export function OperatorPage() {
   }
 
   const suspendedCount = orgs.filter((o) => o.plan === 'suspended').length;
-  const dueSoon = orgs.filter((o) => {
-    const d = o.expiresAt ? daysUntil(o.expiresAt) : null;
-    return d !== null && d >= 0 && d <= 7 && o.plan !== 'suspended';
-  }).length;
-  const expiredCount = orgs.filter((o) => {
-    const d = o.expiresAt ? daysUntil(o.expiresAt) : null;
-    return d !== null && d < 0 && o.plan !== 'suspended';
-  }).length;
-  const attentionCount = dueSoon + expiredCount + suspendedCount;
+  const lowCount = orgs.filter((o) => o.plan !== 'suspended' && matchesFilter(o, 'low')).length;
+  const blockedCount = orgs.filter((o) => o.plan !== 'suspended' && matchesFilter(o, 'blocked')).length;
+  const attentionCount = lowCount + blockedCount + suspendedCount;
   const openAction = (organization: AdminOrgRow, mode: ActionMode) => {
     setActOrg(organization);
     setActMode(mode);
@@ -299,7 +317,7 @@ export function OperatorPage() {
           <div>
             <span className={styles.eyebrow}>FixMaster · Bench Console</span>
             <h1 className={styles.title}>Konsol Operator</h1>
-            <p className={styles.subtitle}>Kelola akses dan masa aktif organisasi.</p>
+            <p className={styles.subtitle}>Kelola akses dan saldo unit organisasi.</p>
           </div>
         </div>
         <div className={styles.mastheadRight}>
@@ -372,26 +390,26 @@ export function OperatorPage() {
         </button>
         <button
           type="button"
-          className={[styles.readItem, filter === 'due' ? styles.readItemActive : ''].join(' ')}
-          aria-pressed={filter === 'due'}
-          onClick={() => { setFilter('due'); setTab('klien'); }}
+          className={[styles.readItem, filter === 'low' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'low'}
+          onClick={() => { setFilter('low'); setTab('klien'); }}
         >
-          <span className={styles.readLabel}>JATUH TEMPO ≤7H</span>
+          <span className={styles.readLabel}>SALDO MENIPIS</span>
           <strong
-            className={[styles.readValue, dueSoon > 0 ? styles.readWarn : ''].join(' ')}
+            className={[styles.readValue, lowCount > 0 ? styles.readWarn : ''].join(' ')}
           >
-            {dueSoon}
+            {lowCount}
           </strong>
         </button>
         <button
           type="button"
-          className={[styles.readItem, filter === 'expired' ? styles.readItemActive : ''].join(' ')}
-          aria-pressed={filter === 'expired'}
-          onClick={() => { setFilter('expired'); setTab('klien'); }}
+          className={[styles.readItem, filter === 'blocked' ? styles.readItemActive : ''].join(' ')}
+          aria-pressed={filter === 'blocked'}
+          onClick={() => { setFilter('blocked'); setTab('klien'); }}
         >
-          <span className={styles.readLabel}>KEDALUWARSA</span>
-          <strong className={[styles.readValue, expiredCount > 0 ? styles.readCrit : ''].join(' ')}>
-            {expiredCount}
+          <span className={styles.readLabel}>TIKET TERTAHAN</span>
+          <strong className={[styles.readValue, blockedCount > 0 ? styles.readCrit : ''].join(' ')}>
+            {blockedCount}
           </strong>
         </button>
         <button
@@ -482,9 +500,10 @@ export function OperatorPage() {
                         <tr>
                           <th>Organisasi</th>
                           <th>Terdaftar</th>
-                          <th>Paket</th>
-                          <th>Masa aktif</th>
-                          <th>Berakhir</th>
+                          <th>Status</th>
+                          <th className={styles.num}>Saldo</th>
+                          <th className={styles.num}>30 hari</th>
+                          <th>Perkiraan</th>
                           <th className={styles.num}>Outlet</th>
                           <th className={styles.num}>User</th>
                           <th className={styles.num}>Tiket</th>
@@ -494,8 +513,7 @@ export function OperatorPage() {
                       </thead>
                       <tbody>
                         {visibleOrgs.map((o) => {
-                          const phase = subscriptionPhase(o.expiresAt);
-                          const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
+                          const state = unitBalanceState(o.unitBalance);
                           const idle = idleLabel(o.lastActivityAt);
                           const suspended = o.plan === 'suspended';
                           return (
@@ -508,11 +526,9 @@ export function OperatorPage() {
                                   <span
                                     className={[
                                       styles.led,
-                                      suspended
-                                        ? styles.ledCrit
-                                        : (PHASE_LED[phase] ?? ''),
+                                      suspended ? styles.ledCrit : BALANCE_LED[state],
                                     ].join(' ')}
-                                    title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
+                                    title={suspended ? 'Ditangguhkan' : BALANCE_TITLE[state]}
                                   />
                                   <span className={styles.orgName}>{o.name}</span>
                                   {o.isDemo && (
@@ -539,15 +555,14 @@ export function OperatorPage() {
                               </td>
                               <td
                                 className={[
-                                  styles.dateCell,
-                                  days !== null && days <= 7 ? styles.daysWarn : '',
+                                  styles.num,
+                                  state !== 'ok' ? styles.daysWarn : '',
                                 ].join(' ')}
                               >
-                                {accessRemainingLabel(days)}
+                                {o.unitBalance}
                               </td>
-                              <td className={styles.dateCell}>
-                                {o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : <EmptyValue />}
-                              </td>
+                              <td className={styles.num}>{o.unitsUsed30d}</td>
+                              <td className={styles.dateCell}>{runwayLabel(o)}</td>
                               <td className={styles.num}>{o.outletCount}</td>
                               <td className={styles.num}>{o.userCount}</td>
                               <td className={styles.num}>{o.serviceCount}</td>
@@ -683,20 +698,29 @@ function OrganizationActions({
       <Button
         size="sm"
         variant="primary"
-        onClick={() => onAction(organization, 'payment')}
+        onClick={() => onAction(organization, 'topup')}
       >
-        Konfirmasi bayar
+        Isi saldo
       </Button>
       <Button size="sm" variant="ghost" onClick={() => onAction(organization, 'note')}>
         Catatan
       </Button>
-      {!suspended && (
-        <Button size="sm" variant="ghost" onClick={() => onAction(organization, 'suspend')}>
-          Tangguhkan
-        </Button>
-      )}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onAction(organization, suspended ? 'reactivate' : 'suspend')}
+      >
+        {suspended ? 'Aktifkan' : 'Tangguhkan'}
+      </Button>
       <details className={styles.moreActions}>
         <summary>Lainnya</summary>
+        <button
+          type="button"
+          className={styles.moreButton}
+          onClick={() => onAction(organization, 'adjust')}
+        >
+          <Icon name="sliders" aria-hidden /> Koreksi saldo
+        </button>
         <button
           type="button"
           className={styles.deleteButton}
@@ -733,8 +757,7 @@ function OrganizationCard({
   organization: AdminOrgRow;
   onAction: (organization: AdminOrgRow, mode: ActionMode) => void;
 }) {
-  const phase = subscriptionPhase(o.expiresAt);
-  const days = o.expiresAt ? daysUntil(o.expiresAt) : null;
+  const state = unitBalanceState(o.unitBalance);
   const idle = idleLabel(o.lastActivityAt);
   const suspended = o.plan === 'suspended';
 
@@ -747,9 +770,9 @@ function OrganizationCard({
             <span
               className={[
                 styles.led,
-                suspended ? styles.ledCrit : (PHASE_LED[phase] ?? ''),
+                suspended ? styles.ledCrit : BALANCE_LED[state],
               ].join(' ')}
-              title={suspended ? 'Ditangguhkan' : phaseLabel(phase)}
+              title={suspended ? 'Ditangguhkan' : BALANCE_TITLE[state]}
             />
             {o.name}
             {o.isDemo && <span className={styles.demoTag}>DEMO</span>}
@@ -767,14 +790,12 @@ function OrganizationCard({
           <dd>{fmtDate(localDateOf(o.registeredAt))}</dd>
         </div>
         <div>
-          <dt>Sisa masa aktif</dt>
-          <dd className={days !== null && days <= 7 ? styles.daysWarn : ''}>
-            {accessRemainingLabel(days)}
-          </dd>
+          <dt>Saldo</dt>
+          <dd className={state !== 'ok' ? styles.daysWarn : ''}>{o.unitBalance} unit</dd>
         </div>
         <div>
-          <dt>Berakhir</dt>
-          <dd>{o.expiresAt ? fmtDate(localDateOf(o.expiresAt)) : <EmptyValue />}</dd>
+          <dt>Terpakai 30 hari</dt>
+          <dd>{o.unitsUsed30d} unit · {runwayLabel(o)}</dd>
         </div>
         <div>
           <dt>Aktivitas</dt>

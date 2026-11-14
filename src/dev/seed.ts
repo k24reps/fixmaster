@@ -16,6 +16,7 @@ import { useSessionStore } from '@/stores/session';
 import { newId } from '@/lib/id';
 import { localDateStr, addDays, calcHours } from '@/lib/time';
 import { currentTerms } from '@/lib/business/serviceTerms';
+import { FREE_UNITS } from '@/config/pricing';
 import type {
   Customer,
   InventoryItem,
@@ -495,6 +496,10 @@ export async function seedDemoWorkspace(): Promise<void> {
   const seededOrg = await repository.setSingleton('organization', {
     ...org,
     settings: { ...(org.settings ?? {}), quoteRates },
+    // Saldo contoh supaya demo memperlihatkan model harga per unit: kuota
+    // gratis dikurangi satu unit per tiket yang di-seed. Org lokal biasa
+    // tidak punya saldo (tidak ditagih); hanya demo yang diberi angka ini.
+    unitBalance: FREE_UNITS - services.length,
   });
 
   // 12) Land on the authenticated app as the owner, scoped to all outlets

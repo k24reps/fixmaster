@@ -50,6 +50,7 @@ export const ACTION_META: Record<ActivityAction, ActionMeta> = {
   'data.restore': { label: 'Pulihkan data dari backup', icon: 'clock-rotate-left', tone: 'danger' },
   'service.create': { label: 'Servis baru', icon: 'screwdriver-wrench', tone: 'success' },
   'service.status': { label: 'Ubah status servis', icon: 'wrench', tone: 'info' },
+  'service.delete': { label: 'Hapus tiket servis', icon: 'trash', tone: 'danger' },
   'wallet.transfer': { label: 'Transfer saldo', icon: 'arrow-right-arrow-left', tone: 'info' },
   'wallet.transfer.edit': { label: 'Ubah transfer saldo', icon: 'pen', tone: 'warning' },
   'wallet.transfer.void': { label: 'Batalkan transfer saldo', icon: 'circle-xmark', tone: 'danger' },

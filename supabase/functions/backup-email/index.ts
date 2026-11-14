@@ -131,7 +131,9 @@ Deno.serve(async (req) => {
     // hanya menumpuk baris yang tak pernah dibaca siapa pun.
     if (settings.backupEmail === false) { results.push({ orgId, status: 'off' }); continue; }
     if (org.is_demo) { results.push({ orgId, status: 'skip', reason: 'demo' }); continue; }
-    if (org.plan_type === 'suspended' || org.plan_type === 'trial') {
+    // Sejak harga per unit (0101) semua toko mendapat semua fitur, termasuk
+    // email backup; 'trial' hanya label toko yang belum pernah diaktifkan ulang.
+    if (org.plan_type === 'suspended') {
       results.push({ orgId, status: 'skip', reason: org.plan_type as string });
       continue;
     }

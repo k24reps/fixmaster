@@ -1,17 +1,8 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon, Mascot, type IconName } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
-import {
-  PLANS,
-  OUTLET_ADDON_PRICE,
-  PRO_INCLUDED_OUTLETS,
-  BILLING_TERMS,
-  BILLING_TERM_IDS,
-  monthlyRateForTerm,
-  totalForTerm,
-  type BillingTerm,
-} from '@/config/plans';
+import { FREE_UNITS, MIN_TOPUP, UNIT_PRICE } from '@/config/pricing';
 import { useT, type TranslationKey } from '@/i18n';
 import { waLink } from '@/lib/business/notify';
 import { fmtRp, fmtRpInput } from '@/lib/format';
@@ -94,55 +85,6 @@ function defaultStart(intent: AuthIntent) {
 }
 
 
-/** Label termin + kalimat totalnya, per locale. */
-const TERM_COPY: Record<
-  BillingTerm,
-  { label: TranslationKey; total: TranslationKey | null }
-> = {
-  monthly: { label: 'landingV2.termMonthly', total: null },
-  semiannual: { label: 'landingV2.termSemiannual', total: 'landingV2.termTotal6' },
-  annual: { label: 'landingV2.termAnnual', total: 'landingV2.termTotal12' },
-};
-
-/**
- * Blok harga satu paket pada termin terpilih.
- *
- * Angka besar adalah TARIF PER BULAN, karena itulah yang dibandingkan
- * pemilik konter antar paket. Total di muka menyusul di bawahnya sebagai
- * konsekuensi, dan harga coret di atas adalah biaya kalau membayar bulanan
- * sepanjang durasi yang sama — perbandingan yang jujur, bukan harga karangan.
- */
-function PriceBlock({ monthly, term }: { monthly: number; term: BillingTerm }) {
-  const t = useT();
-  const def = BILLING_TERMS[term];
-  const rate = monthlyRateForTerm(monthly, term);
-  const total = totalForTerm(monthly, term);
-  const listTotal = monthly * def.months;
-  const copy = TERM_COPY[term];
-
-  return (
-    <div className={styles.priceBlock}>
-      {/* Diberi satuan: tanpa itu total 12 bulan menumpuk persis di atas
-          tarif bulanan, dan sekilas terbaca sebagai diskon 93%. */}
-      {total < listTotal && (
-        <s className={styles.priceWas}>
-          {fmtRp(listTotal)} {t('landingV2.ifMonthly')}
-        </s>
-      )}
-      <p className={styles.priceNow}>
-        <span className={styles.priceCurrency}>Rp</span>
-        <span className={styles.priceValue}>{fmtRpInput(String(rate))}</span>
-        <span className={styles.priceUnit}>{t('landingV2.perMonth')}</span>
-      </p>
-      {copy.total && (
-        <p className={styles.priceTotal}>
-          <strong>{fmtRp(total)}</strong> {t(copy.total)}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /**
  * Public FixMaster landing page. Also available at /landing-preview for
  * stable visual review links.
@@ -156,13 +98,6 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
   // Sementara (preferensi app tak ditimpa); layout effect = sebelum paint.
   useLayoutEffect(() => useZoomStore.getState().beginTransientView(), []);
-  const solo = PLANS.standard;
-  const pro = PLANS.enterprise;
-  // Termin yang sedang dilihat. Default bulanan: angka termurah di muka
-  // dulu, diskonnya yang menarik pengunjung ke kanan — dan badge diskon
-  // tetap terbaca pada posisi yang belum dipilih, jadi tidak ada yang
-  // harus diklik untuk menemukan bahwa hemat itu ada.
-  const [term, setTerm] = useState<BillingTerm>('monthly');
   const supportHref = waLink(
     FIXMASTER_WHATSAPP,
     'Halo FixMaster, saya mau tanya soal aplikasinya',
@@ -540,122 +475,41 @@ export function LandingPageV2({ onStart = defaultStart }: LandingPageV2Props) {
             <h2>{t('landingV2.pricingTitle')}</h2>
             <p>{t('landingV2.pricingLead')}</p>
           </div>
-          <div
-            className={styles.termSelect}
-            role="radiogroup"
-            aria-label={t('landingV2.termLabel')}
-          >
-            {BILLING_TERM_IDS.map((id) => {
-              const def = BILLING_TERMS[id];
-              const active = term === id;
-              const off = Math.round((1 - def.multiplier) * 100);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  // Roving tabindex: satu tab stop untuk seluruh grup, lalu
-                  // panah berpindah posisi — perilaku yang dijanjikan peran
-                  // radiogroup dan sebelumnya tidak ada.
-                  tabIndex={active ? 0 : -1}
-                  className={[
-                    styles.termOption,
-                    active ? styles.termOptionActive : '',
-                  ].join(' ')}
-                  onClick={() => setTerm(id)}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-                    e.preventDefault();
-                    const at = BILLING_TERM_IDS.indexOf(id);
-                    const step = e.key === 'ArrowRight' ? 1 : -1;
-                    const next =
-                      BILLING_TERM_IDS[
-                        (at + step + BILLING_TERM_IDS.length) % BILLING_TERM_IDS.length
-                      ];
-                    setTerm(next);
-                    const group = e.currentTarget.parentElement;
-                    const buttons = group?.querySelectorAll<HTMLButtonElement>(
-                      '[role="radio"]',
-                    );
-                    buttons?.[BILLING_TERM_IDS.indexOf(next)]?.focus();
-                  }}
-                >
-                  {off > 0 && <span className={styles.termBadge}>&minus;{off}%</span>}
-                  {t(TERM_COPY[id].label)}
-                </button>
-              );
-            })}
-          </div>
-
+          {/* Satu harga sejak 14 Nov 2026 (migrasi 0101). Landing ini akan
+              diganti seluruhnya; sampai saat itu bagian harganya hanya wajib
+              jujur terhadap model yang berlaku. */}
           <div className={styles.priceGrid}>
-            <article className={styles.pricePlate}>
-              <div className={styles.priceHead}>
-                <div>
-                  <span>{t('landingV2.soloTag')}</span>
-                  <h3>{solo.name}</h3>
-                </div>
-                <PriceBlock monthly={solo.priceMonthly} term={term} />
-              </div>
-              <p>{t('landingV2.soloText')}</p>
-              <ul>
-                <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature1')}
-                </li>
-                <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature2')}
-                </li>
-                <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature3')}
-                </li>
-                <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.soloFeature4')}
-                </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => startTrial('pricing_solo', 'pricing_solo', 'standard')}
-              >
-                {t('landingV2.chooseSolo')}
-              </button>
-            </article>
-
             <article className={[styles.pricePlate, styles.priceFeatured].join(' ')}>
-              <span className={styles.recommended}>
-                <span className={styles.liveLed} aria-hidden /> {t('landingV2.recommended')}
-              </span>
               <div className={styles.priceHead}>
                 <div>
-                  <span>{t('landingV2.proTag')}</span>
-                  <h3>{pro.name}</h3>
+                  <span>{t('landingV2.unitTag')}</span>
+                  <h3>{t('landingV2.unitName')}</h3>
                 </div>
-                <PriceBlock monthly={pro.priceMonthly} term={term} />
+                <div className={styles.priceBlock}>
+                  <p className={styles.priceNow}>
+                    <span className={styles.priceCurrency}>Rp</span>
+                    <span className={styles.priceValue}>{fmtRpInput(String(UNIT_PRICE))}</span>
+                    <span className={styles.priceUnit}>{t('landingV2.perUnit')}</span>
+                  </p>
+                </div>
               </div>
-              <p>{t('landingV2.proText')}</p>
+              <p>{t('landingV2.unitText')}</p>
               <ul>
                 <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.proFeature1')}
+                  <Icon name="check" aria-hidden /> {FREE_UNITS} {t('landingV2.unitFeature1')}
                 </li>
                 <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.proFeature2')}
+                  <Icon name="check" aria-hidden /> {t('landingV2.unitFeature2')}
                 </li>
                 <li>
-                  <Icon name="check" aria-hidden /> {t('landingV2.proFeature3')}
+                  <Icon name="check" aria-hidden /> {t('landingV2.unitFeature3')}
                 </li>
                 <li>
-                  <Icon name="check" aria-hidden /> {PRO_INCLUDED_OUTLETS}{' '}
-                  {t('landingV2.proFeature4')}
+                  <Icon name="check" aria-hidden /> {t('landingV2.unitFeature4')} {fmtRp(MIN_TOPUP)}
                 </li>
               </ul>
-              {/* Surcharge tidak boleh menumpang baris bercentang. */}
-              <p className={styles.priceAddon}>
-                +{fmtRp(OUTLET_ADDON_PRICE)} {t('landingV2.perExtraOutlet')}
-              </p>
-              <button
-                type="button"
-                onClick={() => startTrial('pricing_pro', 'pricing_pro', 'enterprise')}
-              >
-                {t('landingV2.choosePro')}
+              <button type="button" onClick={() => startTrial('pricing', 'pricing_unit')}>
+                {t('landingV2.chooseUnit')}
               </button>
             </article>
           </div>

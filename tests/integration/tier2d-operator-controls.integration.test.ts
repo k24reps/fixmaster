@@ -1,17 +1,17 @@
 /**
- * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0049).
+ * TIER 2d — Kontrol operator yang MENULIS (migration 0046-0049, 0101).
  *
  * `tier2c` menguji operator boleh MELIHAT lintas-tenant. File ini menguji
- * operator boleh MENGUBAH — suspend, pembayaran manual, catatan, penghapusan — dan
- * bahwa yang bukan operator tidak bisa.
+ * operator boleh MENGUBAH — suspend, aktifkan kembali, isi saldo unit, koreksi
+ * saldo, catatan, penghapusan — dan bahwa yang bukan operator tidak bisa.
  *
  * Dua asersi yang paling menentukan:
  *  1. owner org LAIN tidak bisa men-suspend siapa pun (gerbang lintas-tenant)
  *  2. setiap aksi tulis MENINGGALKAN JEJAK di operator_actions
  *
- * Nomor 2 bukan sekadar "fitur log jalan". Pembayaran manual tidak punya
- * webhook; audit RPC adalah bukti penghubung antara invoice, operator, dan
- * konfirmasi yang diterima lewat WhatsApp.
+ * Nomor 2 bukan sekadar "fitur log jalan". Isi saldo manual tidak punya
+ * webhook; audit RPC adalah bukti penghubung antara buku saldo, operator, dan
+ * konfirmasi transfer yang diterima lewat WhatsApp.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
@@ -35,11 +35,6 @@ d('Tier 2d — kontrol operator (tulis)', () => {
   afterAll(async () => {
     if (ctx) {
       await ctx.admin.from('operator_actions').delete().eq('actor_id', ctx.ownerA.userId);
-      await ctx.admin
-        .from('invoices')
-        .delete()
-        .eq('org_id', ctx.orgB)
-        .eq('provider', 'manual_whatsapp');
       await ctx.admin.from('client_notes').delete().eq('org_id', ctx.orgB);
       await ctx.admin.from('platform_admins').delete().eq('user_id', ctx.ownerA.userId);
       await teardownTenants(ctx);
@@ -69,14 +64,37 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(org?.plan_type).not.toBe('suspended');
   });
 
-  it('owner org lain DITOLAK mengonfirmasi pembayaran manual', async () => {
+  it('owner org lain DITOLAK mengisi atau mengoreksi saldo unit', async () => {
+    const topup = await ctx.ownerA.client.rpc('admin_topup_units', {
+      p_org_id: ctx.orgB,
+      p_amount: 100_000,
+      p_reference: 'PALSU',
+      p_reason: 'belum admin',
+    });
+    expect(topup.error).not.toBeNull();
+    const adjust = await ctx.ownerA.client.rpc('admin_adjust_units', {
+      p_org_id: ctx.orgA,
+      p_units: 500,
+      p_reason: 'saldo gratis untuk diri sendiri',
+    });
+    expect(adjust.error).not.toBeNull();
+
+    const { data: org } = await ctx.admin
+      .from('organizations')
+      .select('unit_balance')
+      .eq('id', ctx.orgA)
+      .single();
+    expect(org?.unit_balance).toBe(50);
+  });
+
+  it('pembayaran paket lama (0047) sudah dicabut', async () => {
     const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
       p_org_id: ctx.orgB,
       p_plan: 'standard',
       p_months: 1,
       p_amount: 99_000,
       p_reference: 'PALSU',
-      p_reason: 'belum admin',
+      p_reason: 'jalur lama',
     });
     expect(error).not.toBeNull();
   });
@@ -140,128 +158,124 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(error).not.toBeNull();
   });
 
-  it('aktivasi kembali bebas DIHAPUS; org tetap ditangguhkan', async () => {
+  it('aktifkan kembali wajib alasan, membuka tulis, dan tercatat', async () => {
+    const noReason = await ctx.ownerA.client.rpc('admin_reactivate_org', {
+      p_org_id: ctx.orgB,
+      p_reason: ' ',
+    });
+    expect(noReason.error).not.toBeNull();
+
     const { error } = await ctx.ownerA.client.rpc('admin_reactivate_org', {
       p_org_id: ctx.orgB,
-      p_plan: 'standard',
-      p_reason: 'sudah bayar',
+      p_reason: 'masalah akun sudah diselesaikan',
     });
-    expect(error).not.toBeNull();
+    expect(error).toBeNull();
 
     const { data: org } = await ctx.admin
       .from('organizations')
       .select('plan_type')
       .eq('id', ctx.orgB)
       .single();
-    expect(org?.plan_type).toBe('suspended');
-  });
-
-  it('pembayaran manual dengan nominal tidak sesuai DITOLAK', async () => {
-    const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
-      p_org_id: ctx.orgB,
-      p_plan: 'enterprise',
-      p_months: 2,
-      p_amount: 99_000,
-      p_reference: 'NOMINAL-SALAH',
-      p_reason: 'uji guard nominal',
-    });
-    expect(error).not.toBeNull();
-
-    const { count } = await ctx.admin
-      .from('invoices')
-      .select('id', { count: 'exact', head: true })
-      .eq('org_id', ctx.orgB)
-      .eq('provider_ref', 'NOMINAL-SALAH');
-    expect(count).toBe(0);
-  });
-
-  it('pembayaran manual membuat invoice paid, memperpanjang expiry, dan tercatat', async () => {
-    const { data: before } = await ctx.admin
-      .from('organizations')
-      .select('plan_expired_at')
-      .eq('id', ctx.orgB)
-      .single();
-
-    const { data: newExpiry, error } = await ctx.ownerA.client.rpc(
-      'admin_confirm_manual_payment',
-      {
-        p_org_id: ctx.orgB,
-        p_plan: 'enterprise',
-        p_months: 2,
-        p_amount: 398_000,
-        p_reference: 'RIFAN 29/08 14:32',
-        p_reason: 'bukti transfer diverifikasi via WhatsApp',
-      },
-    );
-    expect(error).toBeNull();
-    expect(newExpiry).toBeTruthy();
-
-    const { data: after } = await ctx.admin
-      .from('organizations')
-      .select('plan_expired_at')
-      .eq('id', ctx.orgB)
-      .single();
-    const beforeMs = before?.plan_expired_at
-      ? Date.parse(before.plan_expired_at)
-      : Date.now();
-    expect(Date.parse(after!.plan_expired_at!)).toBeGreaterThan(beforeMs);
+    expect(org?.plan_type).not.toBe('suspended');
 
     const { data: trail } = await ctx.admin
       .from('operator_actions')
-      .select('action,detail')
+      .select('action')
       .eq('org_id', ctx.orgB)
-      .eq('action', 'payment_manual');
+      .eq('action', 'reactivate');
     expect(trail?.length).toBe(1);
-    expect((trail?.[0].detail as { bulan: number }).bulan).toBe(2);
-    expect((trail?.[0].detail as { referensi: string }).referensi).toBe(
-      'RIFAN 29/08 14:32',
-    );
+  });
 
-    const { data: invoices } = await ctx.admin
-      .from('invoices')
-      .select('status,provider,provider_ref,amount,plan')
-      .eq('org_id', ctx.orgB)
-      .eq('provider', 'manual_whatsapp');
-    expect(invoices).toHaveLength(1);
-    expect(invoices?.[0]).toMatchObject({
-      status: 'paid',
-      provider: 'manual_whatsapp',
-      provider_ref: 'RIFAN 29/08 14:32',
-      plan: 'enterprise',
-    });
-    expect(Number(invoices?.[0].amount)).toBe(398_000);
-
-    const { data: retriedExpiry, error: retryError } = await ctx.ownerA.client.rpc(
-      'admin_confirm_manual_payment',
-      {
+  it('isi saldo di bawah minimum atau bukan kelipatan Rp 1.000 DITOLAK', async () => {
+    for (const amount of [49_000, 50_500]) {
+      const { error } = await ctx.ownerA.client.rpc('admin_topup_units', {
         p_org_id: ctx.orgB,
-        p_plan: 'enterprise',
-        p_months: 2,
-        p_amount: 398_000,
-        p_reference: 'RIFAN 29/08 14:32',
-        p_reason: 'retry setelah timeout',
-      },
-    );
-    expect(retryError).toBeNull();
-    expect(retriedExpiry).toBe(newExpiry);
+        p_amount: amount,
+        p_reference: `NOMINAL-${amount}`,
+        p_reason: 'uji guard nominal',
+      });
+      expect(error).not.toBeNull();
+    }
     const { count } = await ctx.admin
-      .from('invoices')
+      .from('unit_ledger')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', ctx.orgB)
-      .eq('provider_ref', 'RIFAN 29/08 14:32');
+      .eq('kind', 'topup');
+    expect(count).toBe(0);
+  });
+
+  it('isi saldo menambah unit, tercatat di ledger + jejak, dan retry tidak menggandakan', async () => {
+    const { data: after, error } = await ctx.ownerA.client.rpc('admin_topup_units', {
+      p_org_id: ctx.orgB,
+      p_amount: 100_000,
+      p_reference: 'RIFAN 14/11 14:32',
+      p_reason: 'bukti transfer diverifikasi via WhatsApp',
+    });
+    expect(error).toBeNull();
+    expect(after).toBe(150);
+
+    const { data: org } = await ctx.admin
+      .from('organizations')
+      .select('unit_balance')
+      .eq('id', ctx.orgB)
+      .single();
+    expect(org?.unit_balance).toBe(150);
+
+    const { data: ledger } = await ctx.admin
+      .from('unit_ledger')
+      .select('kind,units,amount,reference,balance_after')
+      .eq('org_id', ctx.orgB)
+      .eq('kind', 'topup');
+    expect(ledger).toHaveLength(1);
+    expect(ledger?.[0]).toMatchObject({ units: 100, reference: 'RIFAN 14/11 14:32', balance_after: 150 });
+    expect(Number(ledger?.[0].amount)).toBe(100_000);
+
+    const { data: trail } = await ctx.admin
+      .from('operator_actions')
+      .select('detail')
+      .eq('org_id', ctx.orgB)
+      .eq('action', 'topup_units');
+    expect(trail?.length).toBe(1);
+    expect((trail?.[0].detail as { unit: number }).unit).toBe(100);
+
+    const { data: retried, error: retryError } = await ctx.ownerA.client.rpc('admin_topup_units', {
+      p_org_id: ctx.orgB,
+      p_amount: 100_000,
+      p_reference: 'RIFAN 14/11 14:32',
+      p_reason: 'retry setelah timeout',
+    });
+    expect(retryError).toBeNull();
+    expect(retried).toBe(150);
+    const { count } = await ctx.admin
+      .from('unit_ledger')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', ctx.orgB)
+      .eq('kind', 'topup');
     expect(count).toBe(1);
   });
 
-  it('pembayaran manual tanpa referensi atau durasi valid ditolak', async () => {
-    const { error } = await ctx.ownerA.client.rpc('admin_confirm_manual_payment', {
+  it('koreksi saldo wajib alasan, dibatasi 1000 unit, dan tercatat', async () => {
+    const tooBig = await ctx.ownerA.client.rpc('admin_adjust_units', {
       p_org_id: ctx.orgB,
-      p_plan: 'standard',
-      p_months: 13,
-      p_amount: 99_000,
-      p_reference: ' ',
-      p_reason: 'invalid',
+      p_units: 1001,
+      p_reason: 'terlalu besar',
     });
-    expect(error).not.toBeNull();
+    expect(tooBig.error).not.toBeNull();
+
+    const { data: after, error } = await ctx.ownerA.client.rpc('admin_adjust_units', {
+      p_org_id: ctx.orgB,
+      p_units: -10,
+      p_reason: 'isi saldo 14/11 tercatat dobel',
+    });
+    expect(error).toBeNull();
+    expect(after).toBe(140);
+
+    const { data: trail } = await ctx.admin
+      .from('operator_actions')
+      .select('action')
+      .eq('org_id', ctx.orgB)
+      .eq('action', 'adjust_units');
+    expect(trail?.length).toBe(1);
   });
 
   it('catatan klien tersimpan dan muncul di admin_list_orgs', async () => {
@@ -284,7 +298,9 @@ d('Tier 2d — kontrol operator (tulis)', () => {
       (r) => r.org_id === ctx.orgB,
     );
     expect(rowB).toHaveProperty('registered_at');
-    expect(rowB).toHaveProperty('last_paid_reference');
+    expect(rowB?.last_topup_reference).toBe('RIFAN 14/11 14:32');
+    expect(rowB?.unit_balance).toBe(140);
+    expect(rowB).not.toHaveProperty('last_paid_reference');
     expect(rowB).not.toHaveProperty('activation_hours');
     expect(rowB).not.toHaveProperty('sale_count');
     expect(rowB).not.toHaveProperty('pending_invoices');
@@ -299,7 +315,7 @@ d('Tier 2d — kontrol operator (tulis)', () => {
     expect(error).toBeNull();
     const acts = ((data ?? []) as { action: string }[]).map((r) => r.action);
     expect(acts).toContain('suspend');
-    expect(acts).toContain('payment_manual');
+    expect(acts).toContain('topup_units');
   });
 
   it('hapus organisasi wajib nomor tepat dan menyisakan jejak audit', async () => {

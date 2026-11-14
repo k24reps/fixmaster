@@ -112,6 +112,10 @@ d('Tier 2c — admin platform (lintas-tenant)', () => {
     expect(typeof rowB?.user_count).toBe('number');
     expect(typeof rowB?.outlet_count).toBe('number');
     expect(typeof rowB?.service_count).toBe('number');
+    // 0101: saldo unit toko dan pemakaian 30 hari, bukan lagi masa aktif.
+    expect(typeof rowB?.unit_balance).toBe('number');
+    expect(typeof rowB?.units_used_30d).toBe('number');
+    expect(rowB).not.toHaveProperty('expires_at');
     expect(rowB).not.toHaveProperty('sale_count');
     // 0084: nomor telepon TOKO (Profil Usaha) = metadata klien, kontak vendor.
     expect(typeof rowB?.org_phone).toBe('string');

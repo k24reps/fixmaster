@@ -17,7 +17,7 @@ Pola & gaya yang dipakai konsisten di FixMaster. Baca ini di awal sesi untuk lan
 |---|---|
 | `app/` | Komposisi aplikasi (`AuthGate` untuk sesi cloud, `WorkspaceGate` untuk bootstrap workspace, `AuthSplash`, router) |
 | `components/` | Komponen reusable: `ui/` (Button, Card, Icon, dst) + `layout/` (Sidebar, Topbar, MobileBottomNav, AppLayout, ThumbDock) |
-| `config/` | `navigation.ts`, `plans.ts` (fitur per-plan) |
+| `config/` | `navigation.ts`, `plans.ts` (izin peran + penangguhan), `pricing.ts` (harga per unit, sejak 14 Nov 2026) |
 | `data/` | Repository, adapter (`local-adapter`, `supabase-adapter`), `types.ts`, `repository.ts` |
 | `dev/` | Tooling dev, mis. `seed.ts` (data demo) |
 | `features/` | Satu folder per fitur: `pos/`, `inventory/`, `services/`, `customers/`, `suppliers/`, `finance/`, `reports/`, `tasks/`, `attendance/`, `dashboard/`, `settings/`, `onboarding/` |

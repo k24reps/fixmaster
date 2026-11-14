@@ -1,150 +1,115 @@
-import type { PlanType } from '@/data/types';
-import { PLANS, withinOutletQuota, BILLING_TERMS, type BillingTerm } from '@/config/plans';
+import type { TranslationKey } from '@/i18n';
+import {
+  LOW_BALANCE_UNITS,
+  MIN_TOPUP,
+  REFUND_WINDOW_MINUTES,
+  TOPUP_STEP,
+  UNIT_FLOOR,
+  UNIT_PRICE,
+} from '@/config/pricing';
 import { waLink } from './notify';
 
 /**
- * Pure subscription/billing logic (Fase 1B). No I/O — mirrors the server-side
- * enforcement (`is_org_active`, reminder/grace cron) so the UI can show the
- * right banner and the same rules stay testable. Server RPC remains the real
- * boundary.
- *
- * Locked policy (default, user-confirmable):
- *  - Reminder banner starts H-REMINDER_DAYS before expiry.
- *  - After expiry, a GRACE_DAYS window still allows full access.
- *  - Past grace → 'expired' (org should be suspended; writes blocked).
+ * Saldo unit (migrasi 0101). Logika murni yang mencerminkan aturan server:
+ * satu tiket servis memotong satu unit, saldo boleh minus sampai UNIT_FLOOR,
+ * dan di bawahnya hanya tiket BARU yang ditolak. Server tetap penegaknya;
+ * fungsi di sini menjaga layar agar tidak menawarkan aksi yang pasti gagal.
  */
-export const REMINDER_DAYS = 3;
-export const GRACE_DAYS = 3;
 
-export type SubscriptionPhase = 'active' | 'reminder' | 'grace' | 'expired';
+export type UnitBalanceState = 'ok' | 'low' | 'minus' | 'blocked';
 
-/** Whole days from `now` until `date` (negative = in the past). */
-export function daysUntil(date: string, now: Date = new Date()): number {
-  const ms = new Date(date).getTime() - now.getTime();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
+/** Keadaan saldo untuk LED dan pesan. */
+export function unitBalanceState(balance: number): UnitBalanceState {
+  if (balance <= UNIT_FLOOR) return 'blocked';
+  if (balance <= 0) return 'minus';
+  if (balance <= LOW_BALANCE_UNITS) return 'low';
+  return 'ok';
 }
 
-/** ISO timestamp one billing period (default 1 month) after `start`. */
-export function periodEnd(start: string, months = 1): string {
-  const d = new Date(start);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString();
+/** Apakah tiket baru masih bisa dibuat dengan saldo ini. */
+export function canCreateTicket(balance: number): boolean {
+  return balance > UNIT_FLOOR;
+}
+
+/** Sisa tiket baru yang bisa dibuat sebelum ditolak (termasuk jatah minus). */
+export function ticketsUntilBlocked(balance: number): number {
+  return Math.max(0, balance - UNIT_FLOOR);
+}
+
+/** Nilai rupiah dari sejumlah unit. */
+export function unitsToRupiah(units: number): number {
+  return units * UNIT_PRICE;
+}
+
+/** Unit yang didapat dari isi saldo sebesar `amount` rupiah. */
+export function unitsForTopup(amount: number): number {
+  return Math.floor(amount / UNIT_PRICE);
 }
 
 /**
- * Subscription phase from expiry + now. A null expiry is treated as active
- * (e.g. not yet on a paid clock).
- *
- * `reminderDays` memanjang bersama termin (lihat BILLING_TERMS): tagihan
- * tahunan hampir Rp 2 juta tidak boleh diumumkan tiga hari sebelumnya.
+ * Kunci pesan galat untuk nominal isi saldo, atau null bila sah. Server
+ * menolak hal yang sama (admin_topup_units); di sini supaya pemilik tahu
+ * sebelum mengirim permintaan.
  */
-export function subscriptionPhase(
-  expiry: string | null,
-  now: Date = new Date(),
-  reminderDays: number = REMINDER_DAYS,
-): SubscriptionPhase {
-  if (!expiry) return 'active';
-  const days = daysUntil(expiry, now);
-  if (days > reminderDays) return 'active';
-  if (days > 0) return 'reminder';
-  if (days >= -GRACE_DAYS) return 'grace';
-  return 'expired';
+export function topupAmountError(amount: number): TranslationKey | null {
+  if (!Number.isFinite(amount) || amount < MIN_TOPUP) return 'billing.topupMin';
+  if (!Number.isInteger(amount) || amount % TOPUP_STEP !== 0) return 'billing.topupStep';
+  return null;
 }
 
-/** Writes are blocked only once fully expired (grace still allows access). */
-export function canWrite(phase: SubscriptionPhase): boolean {
-  return phase !== 'expired';
+/** Apakah unit tiket yang dipotong pada `chargedAt` masih bisa kembali. */
+export function refundWindowOpen(chargedAt: string, now: Date = new Date()): boolean {
+  const elapsed = now.getTime() - new Date(chargedAt).getTime();
+  return elapsed >= 0 && elapsed <= REFUND_WINDOW_MINUTES * 60_000;
 }
 
-/**
- * Whether an org is currently "active" (usable for writes): not suspended,
- * within its outlet quota, and not past grace. Mirrors server `is_org_active`.
- */
-export function isOrgActive(args: {
-  plan: PlanType;
-  expiry: string | null;
-  outletCount: number;
-  now?: Date;
-}): boolean {
-  if (args.plan === 'suspended') return false;
-  if (!withinOutletQuota(args.plan, args.outletCount)) return false;
-  return canWrite(subscriptionPhase(args.expiry, args.now));
-}
+export type UnitLedgerKind = 'grant' | 'topup' | 'usage' | 'refund' | 'adjust';
 
-/** Human-readable Indonesian label for a phase (for the billing banner). */
-export function phaseLabel(phase: SubscriptionPhase): string {
-  switch (phase) {
-    case 'active':
-      return 'Aktif';
-    case 'reminder':
-      return 'Akan jatuh tempo';
-    case 'grace':
-      return 'Masa tenggang';
-    case 'expired':
-      return 'Kedaluwarsa';
+/** Label baris riwayat saldo. */
+export function ledgerKindLabel(kind: UnitLedgerKind): TranslationKey {
+  switch (kind) {
+    case 'grant':
+      return 'billing.kind.grant';
+    case 'topup':
+      return 'billing.kind.topup';
+    case 'usage':
+      return 'billing.kind.usage';
+    case 'refund':
+      return 'billing.kind.refund';
+    case 'adjust':
+      return 'billing.kind.adjust';
   }
 }
 
-/** Display price for a plan (placeholder numbers until launch). */
-export function planPrice(plan: PlanType): string {
-  return PLANS[plan].priceLabel;
-}
-
-export interface ManualPaymentRequest {
+export interface TopupRequest {
   supportPhone: string;
   orgId: string;
   orgName: string;
-  currentPlan: string;
-  expiresAt: string | null;
-  requestedPlan: string;
-  /** Tarif per bulan pada termin yang dipilih (sudah termasuk diskon). */
+  balance: number;
   amount: number;
-  outletCount: number;
-  /** Termin yang dibeli; operator memakainya untuk menentukan masa aktif. */
-  term: BillingTerm;
-  /** Total yang benar-benar ditransfer di muka. */
-  total: number;
 }
 
 /**
- * Build the owner → FixMaster WhatsApp hand-off for manual subscription
- * payments. This function only creates a message; it never creates an invoice
- * or changes access. The stable org id prevents similarly named shops from
- * being credited accidentally by the operator.
+ * Pesan WhatsApp pemilik → FixMaster untuk isi saldo. Hanya membuat pesan;
+ * saldo bertambah setelah operator memverifikasi transfer (admin_topup_units).
+ * Id organisasi ikut supaya toko bernama mirip tidak tertukar.
  */
-export function manualPaymentWhatsAppLink(request: ManualPaymentRequest): string {
-  const expiry = request.expiresAt
-    ? new Date(request.expiresAt).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'Asia/Jakarta',
-      })
-    : 'belum ditentukan';
+export function topupWhatsAppLink(request: TopupRequest): string {
   const rupiah = (value: number) =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       maximumFractionDigits: 0,
     }).format(value);
-  const amount = rupiah(request.amount);
-  const total = rupiah(request.total);
-  const term = BILLING_TERMS[request.term];
-
   return waLink(
     request.supportPhone,
     [
-      'Halo FixMaster, saya ingin memperpanjang masa aktif.',
+      'Halo FixMaster, saya ingin mengisi saldo unit.',
       '',
       `Usaha: ${request.orgName}`,
       `ID organisasi: ${request.orgId}`,
-      `Paket saat ini: ${request.currentPlan}`,
-      `Aktif sampai: ${expiry}`,
-      `Paket pilihan: ${request.requestedPlan}`,
-      `Termin: ${term.label} (${term.months} bulan di muka)`,
-      `Jumlah outlet: ${request.outletCount}`,
-      `Tarif: ${amount} / bulan`,
-      `Total transfer: ${total}`,
+      `Saldo sekarang: ${request.balance} unit`,
+      `Isi saldo: ${rupiah(request.amount)} (${unitsForTopup(request.amount)} unit)`,
       '',
       'Mohon kirim instruksi pembayaran. Setelah transfer, saya akan mengirim bukti bayar di chat ini.',
     ].join('\n'),

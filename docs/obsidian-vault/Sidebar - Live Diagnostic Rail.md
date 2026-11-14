@@ -15,7 +15,7 @@ Sidebar bukan sekadar daftar menu, melainkan **panel kendali bench yang hidup**.
 
 1. **Active-as-channel** — menu aktif menyala seperti channel terpilih: plate amber + icon cell solid + full border-brand (bukan blok highlight biasa).
 2. **Readout live** — tiap item membawa **LED + angka** dari data nyata, lewat hook `useNavSignals` yang memakai ulang logika di [[Data Layer]] (`isActive`, `isOverdue`, dst). Angka di rail identik dengan halamannya.
-3. **Identitas produk vs usaha terpisah** — **header atas = produk FixMaster** (monogram "FM" gradient brand→cyan + power-LED + tagline `BENCH OS` mono + plan badge). **Dasar rail = identitas toko**: logo (`org.logoDataUrl`, fallback inisial) + nama toko + **selector cabang**, menyatu dalam satu pelat bila toko punya cabang. Nama, peran, dan Keluar ada di menu akun Topbar (`AccountMenu`), bukan di rail.
+3. **Identitas produk vs usaha terpisah** — **header atas = produk FixMaster** (monogram "FM" gradient brand→cyan + power-LED + tagline `BENCH OS` mono + readout saldo unit sejak 14 Nov 2026, dulu plan badge). **Dasar rail = identitas toko**: logo (`org.logoDataUrl`, fallback inisial) + nama toko + **selector cabang**, menyatu dalam satu pelat bila toko punya cabang. Nama, peran, dan Keluar ada di menu akun Topbar (`AccountMenu`), bukan di rail.
 
 ## Selector cabang (branch switch)
 
@@ -164,21 +164,31 @@ Lihat detail akar masalah di [[Decisions & Bug Fixes]].
 ![[fix-mobile-open-dark.png]]
 ![[fix-collapsed-dark.png]]
 
-## Fitur terkunci = "show-locked" (pemicu upgrade Solo → Pro)
+## Fitur terkunci = "show-locked" — DICABUT (14 Nov 2026)
 
-Item yang **digerbang fitur** (mis. Supplier, Tugas, Absensi) tidak lagi *disembunyikan* untuk plan yang tak memilikinya. Sebaliknya, ia **tetap tampil** sebagai channel redup dengan badge **LED brand + "PRO" mono** dan menautkan ke `/settings` (memunculkan "itch" upgrade). Sebaliknya, gerbang **peran** (`managerOnly`/`ownerOnly`) tetap *disembunyikan* karena mencerminkan batas RLS server — menampilkannya hanya akan berujung gagal.
+Sampai harga per unit (`0101`), item yang digerbang paket (Supplier, Absensi, dsb.)
+tampil redup dengan badge **LED brand + "PRO" mono** dan menautkan ke `/settings`
+sebagai pemicu naik paket Solo → Pro. Kini semua toko mendapat semua fitur, jadi
+seluruh mesinnya dihapus: `NavItem.feature`, `ResolvedNavItem.locked`,
+`getVisibleNavigation(role)` tanpa argumen paket, komponen `ProBadge`/`ProNotice`
+(`PlanLock.tsx`), hook `useFeature`, dan gaya `.locked`/`.lockBadge` di Sidebar serta
+`MobileBottomNav`. Gerbang **peran** (`managerOnly`/`ownerOnly`) tetap
+disembunyikan karena mencerminkan RLS server.
 
-> [!important] Otentik "Precision Electronics Bench"
-> Badge terkunci memakai **LED status brand** + readout **mono**, **BUKAN ikon gembok** generik SaaS. Aturan visual ini dikunci di `AGENTS.md` (§3) & [[Design System]]: tiap elemen baru wajib pakai motif bench (LED, mono, spine, tick-gauge), bukan komponen library polos.
+> [!important] Polanya tetap acuan
+> Bila kelak ada fitur yang perlu ditandai terkunci lagi, pakai bahasa yang sama:
+> **LED status + readout mono**, BUKAN ikon gembok (`AGENTS.md` §3, [[Design System]]).
+> Gambar `locked-nav-*.png` adalah arsip keputusan itu, bukan UI yang hidup.
 
-Logika peran/plan kini dipusatkan di `lib/business/navigation.ts` melalui
-`getVisibleNavigation()`, lalu dipakai bersama oleh `Sidebar` dan `MobileBottomNav`.
-`resolveMobileNavigation()` membuang rute yang tak sah/terlarang bagi peran aktif dan
-mengisi slot kosong dengan fallback aman; item plan-locked tetap memakai pola PRO.
-Diverifikasi dengan plan Solo (`standard`): **4 channel terkunci** muncul, dark + light.
+## Readout saldo unit (14 Nov 2026)
 
-![[locked-nav-dark.png]]
-![[locked-nav-light.png]]
+Plan badge (`Trial`/`Solo`/`Pro`) di header diganti readout saldo: LED keadaan
+(`unitBalanceState`: hijau cukup, amber menipis/minus, merah tertahan) + angka mono +
+kata "unit". Hanya dirender bila `org.unitBalance` ada, yaitu di mode server dan di
+demo (saldo contoh); mode lokal tidak menagih sehingga tidak ada readout.
+`.unitLine` dibuat `flex-wrap` dengan `BENCH OS` `nowrap`: badge turun ke baris sendiri
+bila tak muat, alih-alih mematahkan `BENCH OS` menjadi dua baris (terjadi pada
+render pertama di 1280 px).
 
 ## Terkait
 - [[Design System]] · [[Data Layer]] · [[Decisions & Bug Fixes]] · [[Signature Pages]]

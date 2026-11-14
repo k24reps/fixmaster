@@ -1,6 +1,5 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useFeature } from '@/hooks/useFeature';
 import { useSearchParams } from 'react-router-dom';
 import {
   Card,
@@ -12,8 +11,6 @@ import {
   Select,
   EmptyState,
   Icon,
-  ProBadge,
-  ProNotice,
 } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCollection } from '@/hooks/useCollection';
@@ -21,30 +18,8 @@ import { repository } from '@/data';
 import { getCurrentPosition } from '@/lib/geo';
 import { newId } from '@/lib/id';
 import { fmtRp, fmtRpInput, parseRpInput } from '@/lib/format';
-import {
-  PLANS,
-  BILLING_TERMS,
-  BILLING_TERM_IDS,
-  monthlyRateForTerm,
-  totalForTerm,
-  savingForTerm,
-  type BillingTerm,
-  roleAllows,
-  PAID_TIERS,
-  withinOutletQuota,
-  outletTierFor,
-  withinUserQuota,
-  withinWalletQuota,
-  priceForOutlets,
-} from '@/config/plans';
-import {
-  subscriptionPhase,
-  daysUntil,
-  phaseLabel,
-  GRACE_DAYS,
-  manualPaymentWhatsAppLink,
-} from '@/lib/business/billing';
-import { FIXMASTER_WHATSAPP } from '@/config/contact';
+import { roleAllows } from '@/config/plans';
+import { MAX_WALLETS } from '@/config/pricing';
 import {
   getComplaintTemplates,
   setComplaintTemplates,
@@ -96,18 +71,16 @@ import {
   getOrgMemberOutlets,
   deactivateMember,
   deleteMember,
-  listInvoices,
-  subscribeOrgBilling,
   deleteAccountCredential,
   type PendingInvite,
-  type Invoice,
 } from '@/data/supabase-client';
-import type { Wallet, Outlet, Role, PlanType, OutletRent } from '@/data/types';
+import type { Wallet, Outlet, Role, OutletRent } from '@/data/types';
 import { DATASETS, downloadCsv } from './exportDatasets';
 import { uploadOrgLogo, removeOrgLogo } from '@/data/storage';
 import { useAuthStore } from '@/stores/auth';
 import { createBackup, downloadBackup, restoreBackup } from './backupRestore';
 import { DisplayCard } from './DisplayCard';
+import { BalanceTab } from './BalanceTab';
 import { QuoteRatesTab } from './QuoteRatesTab';
 import { ReceiptTab } from './ReceiptTab';
 import { useBackupStore } from '@/stores/backup';
@@ -197,7 +170,7 @@ type Tab =
   | 'tim'
   | 'keuangan'
   | 'outlet'
-  | 'langganan'
+  | 'saldo'
   | 'navigasi'
   | 'sistem';
 
@@ -215,7 +188,7 @@ const TAB_IDS: Tab[] = [
   'tim',
   'keuangan',
   'outlet',
-  'langganan',
+  'saldo',
   'navigasi',
   'sistem',
 ];
@@ -234,7 +207,9 @@ export function SettingsPage() {
   // menautkan langsung ke tab yang relevan. Nilai tak dikenal jatuh ke
   // Usaha; tab yang tidak boleh dilihat peran ini disaring oleh visibleTabs.
   const [searchParams] = useSearchParams();
-  const requestedTab = searchParams.get('tab') as Tab | null;
+  // `langganan` = nama tab sebelum harga per unit; tautan lama tetap mendarat.
+  const rawTab = searchParams.get('tab');
+  const requestedTab = (rawTab === 'langganan' ? 'saldo' : rawTab) as Tab | null;
   const [tab, setTab] = useState<Tab>(
     requestedTab && TAB_IDS.includes(requestedTab) ? requestedTab : 'usaha',
   );
@@ -255,9 +230,9 @@ export function SettingsPage() {
     { id: 'keuangan', label: t('settingsPage.tabWallet'), icon: 'fa-wallet', ownerOnly: true },
     { id: 'outlet', label: t('settingsPage.tabOutlet'), icon: 'fa-shop', ownerOnly: true },
     {
-      id: 'langganan',
-      label: t('settingsPage.tabBilling'),
-      icon: 'fa-crown',
+      id: 'saldo',
+      label: t('billing.tab'),
+      icon: 'gauge',
       ownerOnly: true,
       cloudOnly: true,
     },
@@ -310,9 +285,7 @@ export function SettingsPage() {
       {tab === 'tim' && isOwner && <TeamTab employees={employees} outlets={outlets} />}
       {tab === 'keuangan' && isOwner && <WalletTab wallets={wallets} outlets={outlets} />}
       {tab === 'outlet' && isOwner && <OutletTab outlets={outlets} />}
-      {tab === 'langganan' && isOwner && isSupabaseConfigured && (
-        <BillingTab outlets={outlets} />
-      )}
+      {tab === 'saldo' && isOwner && isSupabaseConfigured && <BalanceTab />}
       {tab === 'navigasi' && isOwner && <MobileNavigationCard />}
       {tab === 'sistem' && (
         <SystemTab
@@ -557,12 +530,6 @@ function BusinessTab() {
     }
   };
 
-  // Logo kustom adalah fitur Pro. Yang dikunci adalah KONTROLNYA, bukan
-  // datanya: org yang turun paket tetap menampilkan logonya di nota dan
-  // halaman lacak, karena mencabutnya diam-diam akan mengubah dokumen yang
-  // sudah dipegang pelanggan mereka.
-  const canLogo = useFeature('logo');
-
   const removeLogo = async () => {
     if (!org) return;
     try {
@@ -598,7 +565,6 @@ function BusinessTab() {
               <div className={styles.logoActions}>
                 <Button
                   variant="secondary"
-                  disabled={!canLogo}
                   onClick={() => fileRef.current?.click()}
                   iconLeft={<Icon name="download" aria-hidden />}
                 >
@@ -614,11 +580,6 @@ function BusinessTab() {
                   </Button>
                 )}
               </div>
-              {!canLogo && (
-                <ProNotice>
-                  {t('settingsPage.pLogoTokoTampilDi')}
-                </ProNotice>
-              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -1178,10 +1139,6 @@ function RentCard() {
  */
 function WhatsAppTemplatesCard() {
   const t = useT();
-  // Menyunting template adalah fitur Pro; MEMAKAI-nya tidak. Solo tetap
-  // mengirim WhatsApp dengan template bawaan — yang dibeli adalah menulis
-  // ulang suaranya, bukan kemampuan mengabari pelanggan.
-  const canEdit = useFeature('waTemplates');
   const overrides = getWaTemplateOverrides();
   const keys = Object.keys(DEFAULT_WA_TEMPLATES) as WaTemplateKey[];
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
@@ -1193,7 +1150,6 @@ function WhatsAppTemplatesCard() {
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!canEdit) return;
     const next: Record<string, string> = {};
     for (const k of keys) {
       const v = drafts[k]?.trim();
@@ -1212,7 +1168,6 @@ function WhatsAppTemplatesCard() {
   };
 
   const resetKey = (k: WaTemplateKey) => {
-    if (!canEdit) return;
     setDrafts((d) => ({ ...d, [k]: DEFAULT_WA_TEMPLATES[k] }));
   };
 
@@ -1221,7 +1176,6 @@ function WhatsAppTemplatesCard() {
       <CardHeader
         icon={<Icon name="whatsapp" aria-hidden />}
         title={t('settingsPage.templateWhatsapp')}
-        action={canEdit ? undefined : <ProBadge />}
       />
       <CardBody>
         <p className={styles.tplHint}>
@@ -1242,40 +1196,28 @@ function WhatsAppTemplatesCard() {
           <div key={k} className={styles.tplGroup}>
             <div className={styles.waHead}>
               <span className={styles.tplLabel}>{WA_TEMPLATE_LABELS[k]}</span>
-              {canEdit && (
-                <button
-                  className={styles.waReset}
-                  onClick={() => resetKey(k)}
-                  type="button"
-                >
-                  {t('settingsPage.resetDefault')}
-                </button>
-              )}
+              <button
+                className={styles.waReset}
+                onClick={() => resetKey(k)}
+                type="button"
+              >
+                {t('settingsPage.resetDefault')}
+              </button>
             </div>
             <textarea
               className={styles.waTextarea}
               // Default kini multi-baris — 3 baris memotongnya jadi tak terbaca.
               rows={10}
               value={drafts[k]}
-              // Solo tetap boleh MEMBACA template yang dipakainya; yang dikunci
-              // adalah menyuntingnya. readOnly, bukan disabled, supaya teksnya
-              // tetap bisa disorot dan disalin.
-              readOnly={!canEdit}
               onChange={(e) => setDrafts((d) => ({ ...d, [k]: e.target.value }))}
             />
           </div>
         ))}
-        {canEdit ? (
-          <div className={styles.saveFoot}>
-            <Button onClick={save} loading={saving}>
-              {t('settingsPage.simpanTemplate')}
-            </Button>
-          </div>
-        ) : (
-          <ProNotice>
-            {t('settingsPage.pTemplateBawaanTetapTerkirim')}
-          </ProNotice>
-        )}
+        <div className={styles.saveFoot}>
+          <Button onClick={save} loading={saving}>
+            {t('settingsPage.simpanTemplate')}
+          </Button>
+        </div>
       </CardBody>
     </Card>
   );
@@ -1397,7 +1339,6 @@ function TeamTab({
   const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
   const me = useSessionStore((s) => s.currentEmployee);
-  const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
 
   const { refetch } = useCollection('employees');
 
@@ -1471,20 +1412,8 @@ function TeamTab({
     };
   }, [orgId]);
 
-  // Solo is single-user (the owner). Inviting anyone exceeds the quota and
-  // forces an upgrade to Pro. Active members + outstanding invites both count.
-  // Anggota NONAKTIF tidak memakai kursi: menonaktifkan orang yang keluar
-  // dulu tidak mengembalikan kursinya, jadi toko Solo yang berganti karyawan
-  // terkunci meski penggunanya tetap satu. Server menghitung dengan aturan
-  // yang sama (0077).
-  const seatsUsed = employees.filter((e) => e.active).length + invites.length;
-  const canInvite = withinUserQuota(plan, seatsUsed + 1);
-
+  // Jumlah anggota tidak dibatasi sejak harga per unit (0101).
   const invite = async () => {
-    if (!canInvite)
-      return toast.error(
-        t('settingsPage.soloLimit'),
-      );
     if (!name.trim()) return toast.error(t('settingsPage.namaWajibDiisi'));
     if (!isValidInviteEmail(email)) return toast.error(t('settingsPage.emailTidakValid'));
     setBusy(true);
@@ -1592,42 +1521,35 @@ function TeamTab({
             <p className={styles.hint}>
               {t('settingsPage.pKaryawanMendaftarSendiriDengan')}
             </p>
-            {!canInvite ? (
-              <p className={styles.hint} role="note">
-                {t('settingsPage.planWord')} <strong>{PLANS[plan].name}</strong> {t('settingsPage.oneUserUpgrade')}{' '}
-                <strong>{t('settingsPage.pro')}</strong> {t('settingsPage.unlimitedMembers')}
-              </p>
-            ) : (
-              <div className={styles.inviteRow}>
-                <Input
-                  placeholder={t('settingsPage.nama')}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Input
-                  placeholder={t('settingsPage.emailContohCom')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <select
-                  className={styles.roleSelect}
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as Role)}
-                  aria-label={t('settingsPage.peran')}
-                >
-                  <option value="karyawan">{t('settingsPage.karyawan')}</option>
-                  <option value="admin">{t('settingsPage.admin')}</option>
-                </select>
-                <Button
-                  onClick={invite}
-                  loading={busy}
-                  iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}
-                >
-                  {t('settingsPage.undang')}
-                </Button>
-              </div>
-            )}
-            {canInvite && role !== 'owner' && outlets.length > 0 && (
+            <div className={styles.inviteRow}>
+              <Input
+                placeholder={t('settingsPage.nama')}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Input
+                placeholder={t('settingsPage.emailContohCom')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <select
+                className={styles.roleSelect}
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                aria-label={t('settingsPage.peran')}
+              >
+                <option value="karyawan">{t('settingsPage.karyawan')}</option>
+                <option value="admin">{t('settingsPage.admin')}</option>
+              </select>
+              <Button
+                onClick={invite}
+                loading={busy}
+                iconLeft={<Icon name="paper-plane-tilt" aria-hidden />}
+              >
+                {t('settingsPage.undang')}
+              </Button>
+            </div>
+            {role !== 'owner' && outlets.length > 0 && (
               <div className={styles.outletPick}>
                 <span className={styles.tplLabel}>{t('settingsPage.tugaskanCabangOpsional')}</span>
                 <div className={styles.tplChips}>
@@ -1843,345 +1765,12 @@ function TeamTab({
   );
 }
 
-function BillingTab({ outlets }: { outlets: Outlet[] }) {
-  const t = useT();
-  const org = useSessionStore((s) => s.org);
-  const orgId = org?.id ?? '';
-  const plan = (org?.planType ?? 'trial') as PlanType;
-  const expiry = org?.planExpiredAt ?? null;
-
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  // Termin yang sedang dilihat pemilik. Default bulanan: opsi termurah di
-  // muka dulu, penghematannya yang menarik dia ke kanan — bukan sebaliknya.
-  const [term, setTerm] = useState<BillingTerm>('monthly');
-  const phase = subscriptionPhase(expiry, undefined, BILLING_TERMS[term].reminderDays);
-  const days = expiry ? daysUntil(expiry) : null;
-  const outletCount = outlets.length || 1;
-  const suggested = outletTierFor(outletCount);
-
-  useEffect(() => {
-    if (!orgId) return;
-    let cancelled = false;
-    listInvoices(orgId)
-      .then((data) => {
-        if (!cancelled) setInvoices(data);
-      })
-      .catch((err) =>
-        toast.error(err instanceof Error ? err.message : t('settingsPage.invoiceFailed')),
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId, t]);
-
-  // Auto-refresh: when the webhook (or another device) changes an invoice or
-  // the org's plan, Supabase Realtime notifies us — re-fetch invoices and
-  // refresh the org in session so the UI updates without a manual reload.
-  useEffect(() => {
-    if (!orgId) return;
-    const unsubscribe = subscribeOrgBilling(orgId, () => {
-      void (async () => {
-        try {
-          setInvoices(await listInvoices(orgId));
-          const fresh = await repository.getSingleton('organization');
-          if (fresh) useSessionStore.getState().setOrg(fresh);
-        } catch {
-          // Transient realtime refresh failure is non-fatal; next event or a
-          // manual action will reconcile.
-        }
-      })();
-    });
-    return unsubscribe;
-  }, [orgId]);
-
-  const requestPayment = (tier: PlanType) => {
-    if (!withinOutletQuota(tier, outletCount)) {
-      return toast.error(
-        interpolate(t('settingsPage.tierMaxOutlets'), { tier: PLANS[tier].name, n: String(PLANS[tier].maxOutlets) }),
-      );
-    }
-    if (!org) return;
-    const base =
-      tier === 'enterprise'
-        ? priceForOutlets(outletCount)
-        : PLANS[tier].priceMonthly;
-    const amount = monthlyRateForTerm(base, term);
-    const link = manualPaymentWhatsAppLink({
-      supportPhone: FIXMASTER_WHATSAPP,
-      orgId: org.id,
-      orgName: org.name,
-      currentPlan: PLANS[plan].name,
-      expiresAt: expiry,
-      requestedPlan: PLANS[tier].name,
-      amount,
-      outletCount,
-      term,
-      total: totalForTerm(base, term),
-    });
-    window.open(link, '_blank', 'noopener,noreferrer');
-    toast.success(t('settings.billing.whatsappOpened'));
-  };
-
-  // LED color per subscription phase (bench status-light language).
-  const phaseLed: Record<string, string> = {
-    active: styles.ledOk,
-    reminder: styles.ledWarn,
-    grace: styles.ledWarn,
-    expired: styles.ledCrit,
-  };
-  // Phase tint applied to the charge gauge container (drives tick color).
-  const phaseGauge: Record<string, string> = {
-    active: styles.gaugeOk,
-    reminder: styles.gaugeWarn,
-    grace: styles.gaugeWarn,
-    expired: styles.gaugeCrit,
-  };
-
-  // Charge gauge: remaining subscription "power" as % of a ~30-day period.
-  // No expiry (e.g. unlimited) reads as full charge.
-  const chargePct = expiry
-    ? Math.max(0, Math.min(100, Math.round(((days ?? 0) / 30) * 100)))
-    : 100;
-  const TICKS = 24;
-  const filledTicks = Math.round((chargePct / 100) * TICKS);
-
-  const invoiceTone = (status: string) =>
-    status === 'paid'
-      ? styles.tonePaid
-      : status === 'pending'
-        ? styles.tonePending
-        : styles.toneVoid;
-  const paymentHistory = invoices.filter((invoice) => invoice.status === 'paid');
-
-  return (
-    <>
-      <Card>
-        <CardHeader
-          icon={<Icon name="crown" aria-hidden />}
-          title={t('settings.billing.status')}
-        />
-        <CardBody>
-          {/* License meter — subscription as bench operating "power". */}
-          <div className={styles.licenseMeter}>
-            <div className={styles.licenseTop}>
-              <span className={[styles.led, phaseLed[phase]].join(' ')} aria-hidden />
-              <div className={styles.licenseName}>
-                <span className={styles.planName}>{PLANS[plan].name}</span>
-                <span className={styles.licensePhase}>{phaseLabel(phase)}</span>
-              </div>
-              {expiry && phase !== 'expired' && days != null && (
-                <div className={styles.daysReadout}>
-                  <span className={styles.daysNum}>{Math.max(0, days)}</span>
-                  <span className={styles.daysUnit}>{t('settingsPage.days')}</span>
-                </div>
-              )}
-            </div>
-
-            {expiry && (
-              <div
-                className={[styles.chargeGauge, phaseGauge[phase]].join(' ')}
-                role="meter"
-                aria-valuenow={chargePct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={interpolate(t('settingsPage.subRemaining'), { pct: String(chargePct) })}
-              >
-                {Array.from({ length: TICKS }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={[styles.tick, i < filledTicks ? styles.tickOn : ''].join(
-                      ' ',
-                    )}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div className={styles.licenseMeta}>
-              {expiry ? (
-                phase === 'expired' ? (
-                  <>Kedaluwarsa {new Date(expiry).toLocaleDateString('id-ID')}</>
-                ) : days != null && days >= 0 ? (
-                  <>Berlaku s/d {new Date(expiry).toLocaleDateString('id-ID')}</>
-                ) : (
-                  <>
-                    Masa tenggang hingga {GRACE_DAYS} hari setelah{' '}
-                    {new Date(expiry).toLocaleDateString('id-ID')}
-                  </>
-                )
-              ) : (
-                <>{t('settingsPage.tanpaBatasMasaAktif')}</>
-              )}
-            </div>
-          </div>
-
-          {(phase === 'reminder' || phase === 'grace' || phase === 'expired') && (
-            <p className={styles.billingBanner}>
-              <Icon name="warning" aria-hidden />{' '}
-              {phase === 'expired'
-                ? t('settingsPage.subExpired')
-                : phase === 'grace'
-                  ? t('settingsPage.subGrace')
-                  : t('settingsPage.subDue')}
-            </p>
-          )}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader
-          icon={<Icon name="whatsapp" aria-hidden />}
-          title={t('settings.billing.manualTitle')}
-        />
-        <CardBody>
-          <div className={styles.manualBillingFlow}>
-            <span className={styles.manualBillingLed} aria-hidden />
-            <div>
-              <strong>{t('settings.billing.manualKicker')}</strong>
-              <p>{t('settings.billing.manualDescription')}</p>
-            </div>
-            <ol className={styles.manualBillingSteps}>
-              <li>{t('settings.billing.stepChoose')}</li>
-              <li>{t('settings.billing.stepProof')}</li>
-              <li>{t('settings.billing.stepConfirm')}</li>
-            </ol>
-          </div>
-          <p className={styles.hint}>
-            {t('settings.billing.priceIntro')} {outletCount}.{' '}
-            {suggested &&
-              `${t('settings.billing.recommendation')} ${PLANS[suggested].name}.`}
-          </p>
-          {/* Pemilih termin. Radiogroup, bukan sekadar tombol: ini satu
-              pilihan dari tiga yang saling meniadakan, dan pembaca layar
-              harus mendengarnya begitu. */}
-          <div
-            className={styles.termBar}
-            role="radiogroup"
-            aria-label={t('settingsPage.terminPembayaran')}
-          >
-            {BILLING_TERM_IDS.map((id) => {
-              const termDef = BILLING_TERMS[id];
-              const active = term === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  className={[styles.termBtn, active ? styles.termBtnActive : ''].join(' ')}
-                  onClick={() => setTerm(id)}
-                >
-                  {termDef.label}
-                  {termDef.multiplier < 1 && (
-                    <span className={styles.termSave}>
-                      &minus;{Math.round((1 - termDef.multiplier) * 100)}%
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className={styles.planGrid}>
-            {PAID_TIERS.map((tier) => {
-              const def = PLANS[tier];
-              const fits = withinOutletQuota(tier, outletCount);
-              const isRec = suggested === tier;
-              const base =
-                tier === 'enterprise'
-                  ? priceForOutlets(outletCount)
-                  : def.priceMonthly;
-              const rate = monthlyRateForTerm(base, term);
-              const saving = savingForTerm(base, term);
-              return (
-                <div
-                  key={tier}
-                  className={[styles.planCard, isRec ? styles.planCardRec : ''].join(' ')}
-                >
-                  <span className={styles.planSpine} aria-hidden />
-                  {isRec && <span className={styles.planRecTag}>{t('settingsPage.disarankan')}</span>}
-                  <strong className={styles.planCardName}>{def.name}</strong>
-                  <span className={styles.planPrice}>{fmtRp(rate)}/bln</span>
-                  {saving > 0 && (
-                    <span className={styles.planTermTotal}>
-                      {fmtRp(totalForTerm(base, term))} di muka · hemat{" "}
-                      {fmtRp(saving)}
-                    </span>
-                  )}
-                  <small className={styles.planQuota}>
-                    {def.maxOutlets < 0
-                      ? t('settingsPage.unlimitedOutlets')
-                      : `s/d ${def.maxOutlets} outlet`}{' '}
-                    ·{' '}
-                    {def.maxUsers < 0 ? 'user tak terbatas' : `${def.maxUsers} pengguna`}
-                  </small>
-                  <Button
-                    variant={isRec ? 'primary' : 'secondary'}
-                    size="sm"
-                    disabled={!fits}
-                    onClick={() => requestPayment(tier)}
-                    iconLeft={fits ? <Icon name="whatsapp" aria-hidden /> : undefined}
-                  >
-                    {fits
-                      ? t('settings.billing.requestViaWhatsapp')
-                      : t('settings.billing.outletExceeded')}
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </CardBody>
-      </Card>
-
-      {paymentHistory.length > 0 && (
-        <Card>
-          <CardHeader
-            icon={<Icon name="receipt" aria-hidden />}
-            title={t('settings.billing.history')}
-          />
-          <CardBody className={styles.noPad}>
-            {/* Receipt tape — thermal-print language, shared with POS/Keuangan. */}
-            <div className={styles.tape}>
-              {paymentHistory.map((inv) => (
-                <div
-                  key={inv.id}
-                  className={[styles.tapeRow, invoiceTone(inv.status)].join(' ')}
-                >
-                  <div className={styles.tapeInfo}>
-                    <strong className={styles.tapePlan}>
-                      {PLANS[inv.plan as PlanType]?.name ?? inv.plan}
-                    </strong>
-                    <span className={styles.tapeDate}>
-                      {new Date(inv.createdAt).toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-                  <div className={styles.tapeRight}>
-                    <span className={styles.tapeAmount}>{fmtRp(inv.amount)}</span>
-                    <span
-                      className={[styles.tapeStatus, invoiceTone(inv.status)].join(' ')}
-                    >
-                      {inv.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-      )}
-    </>
-  );
-}
-
-
 function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] }) {
   const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
-  // Kuota wallet (Solo 2, Pro 99) sudah lama ada di plans.ts tapi tidak
-  // pernah dibaca siapa pun. Dicek di sini terhadap jumlah SESUDAH
-  // penambahan, sama seperti kuota pengguna dan outlet.
-  const walletPlan = useSessionStore((s) => s.org?.planType ?? 'trial');
-  const canAddWallet = withinWalletQuota(walletPlan, wallets.length + 1);
+  // Pagar kewajaran yang sama dengan server (plan_quota, 0101), dicek
+  // terhadap jumlah SESUDAH penambahan.
+  const canAddWallet = wallets.length + 1 <= MAX_WALLETS;
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
   // Hybrid wallet (OQ Q2): a wallet is either shared org-wide (null) or tied
@@ -2202,7 +1791,7 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
   const add = async () => {
     if (!canAddWallet)
       return toast.error(
-        interpolate(t('settingsPage.walletQuota'), { n: String(PLANS[walletPlan].maxWallets) }),
+        interpolate(t('settingsPage.walletQuota'), { n: String(MAX_WALLETS) }),
       );
     if (!name.trim()) return toast.error(t('settingsPage.namaWalletWajibDiisi'));
     if (adding) return;
@@ -2326,12 +1915,6 @@ function WalletTab({ wallets, outlets }: { wallets: Wallet[]; outlets: Outlet[] 
             <small>{t('settingsPage.kembalianKasirSelaluDiambil')}</small>
           </span>
         </label>
-        {!canAddWallet && (
-          <ProNotice>
-            Paket ini dibatasi {PLANS[walletPlan].maxWallets} wallet. Pro membuka wallet
-            terpisah untuk tiap rekening, kasir, dan cabang.
-          </ProNotice>
-        )}
 
         {wallets.length >= 2 && (
           <div className={styles.tplGroup}>
@@ -2535,21 +2118,12 @@ function WalletRow({ wallet, outletLabel, outlets }: { wallet: Wallet; outletLab
 function OutletTab({ outlets }: { outlets: Outlet[] }) {
   const t = useT();
   const orgId = useSessionStore((s) => s.org?.id ?? '');
-  const plan = useSessionStore((s) => s.org?.planType ?? 'trial');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [adding, setAdding] = useState(false);
 
   const add = async () => {
     if (!name.trim()) return toast.error(t('settingsPage.namaOutletWajibDiisi'));
-    // Enforce the plan's outlet limit client-side (mirrors TeamTab's seat check).
-    // `outlets` already includes the primary row, so the count after adding is
-    // outlets.length + 1.
-    if (!withinOutletQuota(plan, outlets.length + 1)) {
-      return toast.error(
-        interpolate(t('settingsPage.outletQuota'), { plan: PLANS[plan].name, n: String(PLANS[plan].maxOutlets) }),
-      );
-    }
     if (adding) return;
     setAdding(true);
     const now = new Date().toISOString();
@@ -2858,11 +2432,7 @@ function ExportDataCard() {
   const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Ekspor data adalah portabilitas: fitur Pro, dan sengaja juga dikunci
-  // selama Trial supaya masa coba tidak jadi jalan memanen data lalu pergi.
-  const canExport = useFeature('exportImport');
   const onExport = async (key: string, label: string) => {
-    if (!canExport) return;
     setBusy(key);
     try {
       const def = DATASETS.find((d) => d.key === key);
@@ -2882,24 +2452,18 @@ function ExportDataCard() {
       <CardHeader
         icon={<Icon name="download" aria-hidden />}
         title={t('settingsPage.exportData')}
-        action={canExport ? undefined : <ProBadge />}
       />
       <CardBody>
         <p className={styles.dangerNote}>
           {t('settingsPage.pUnduhDataSebagaiCsv')}
         </p>
-        {!canExport && (
-          <ProNotice>
-            {t('settingsPage.eksporCsvMembuatData')}
-          </ProNotice>
-        )}
         <div className={styles.exportGrid}>
           {DATASETS.map((d) => (
             <button
               key={d.key}
               className={styles.exportBtn}
               onClick={() => onExport(d.key, d.label)}
-              disabled={busy !== null || !canExport}
+              disabled={busy !== null}
             >
               <Icon name={d.icon} aria-hidden />
               <span>{busy === d.key ? 'Menyiapkan…' : d.label}</span>
@@ -2923,11 +2487,6 @@ function BackupCard() {
   const org = useSessionStore((s) => s.org);
   const cloud = isSupabaseConfigured;
   const isDemo = Boolean(org?.isDemo);
-  // Backup JSON = SELURUH data dalam format lossless, jadi dikunci selama Trial
-  // bersama ekspor CSV — kalau tidak, gerbang CSV tidak menjaga apa pun. Hanya
-  // Trial: toko yang ditangguhkan tetap harus bisa membawa datanya keluar.
-  // Restore tetap terbuka; memulihkan ke toko sendiri bukan membawa data pergi.
-  const canBackup = (org?.planType ?? 'trial') !== 'trial';
   // Restore is available to every owner (this whole page is owner-only). The
   // server RPC restore_org_data (migration 0020) enforces owner + forces
   // org_id, so an owner can only ever replace THEIR OWN org's data.
@@ -3023,7 +2582,6 @@ function BackupCard() {
   };
 
   const handleBackup = async () => {
-    if (!canBackup) return;
     if (demoGuard('demo.backup')) return;
     setBusy(true);
     try {
@@ -3093,16 +2651,10 @@ function BackupCard() {
         <p className={styles.dangerNote}>
           {t('settingsPage.pBackupMenyimpanSeluruhData')}
         </p>
-        {!canBackup && (
-          <ProNotice>
-            {t('settingsPage.pBackupJsonMembawaSeluruh')}
-          </ProNotice>
-        )}
         <div className={styles.backupRow}>
           <Button
             onClick={handleBackup}
             loading={busy}
-            disabled={!canBackup}
             iconLeft={<Icon name="download" aria-hidden />}
           >
             {t('settingsPage.backupSekarang')}
@@ -3198,55 +2750,44 @@ function BackupCard() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={emailOn && canBackup}
+                aria-checked={emailOn}
                 aria-label={t('settingsPage.emailBackupMingguan')}
                 className={styles.channelSwitch}
-                data-on={emailOn && canBackup}
-                disabled={!canBackup || savingEmail}
+                data-on={emailOn}
+                disabled={savingEmail}
                 onClick={() => void toggleBackupEmail()}
               >
                 <span className={styles.channelSwitchLed} aria-hidden />
-                {emailOn && canBackup ? t('settingsPage.active') : t('settingsPage.off')}
+                {emailOn ? t('settingsPage.active') : t('settingsPage.off')}
               </button>
             </div>
             <p className={styles.planNote}>
               {t('settingsPage.backupEmailNote')}
             </p>
-            {!canBackup ? (
-              <p className={styles.planNote}>
-                {t('settingsPage.mulaiDikirimSetelahToko')}
+            {emailOn && (
+              <p
+                className={
+                  lastEmail?.status === 'failed' ? styles.autoBackupError : styles.planNote
+                }
+              >
+                {backupEmailStatus(lastEmail)}
               </p>
-            ) : (
-              emailOn && (
-                <p
-                  className={
-                    lastEmail?.status === 'failed' ? styles.autoBackupError : styles.planNote
-                  }
-                >
-                  {backupEmailStatus(lastEmail)}
-                </p>
-              )
             )}
           </>
         )}
-        {/* Pengingat untuk tombol yang terkunci hanya akan jadi omelan. */}
-        {canBackup && (
-          <>
-            <hr className={styles.dangerDivider} />
-            <Select
-              label={t('settingsPage.pengingatBackupManualPerangkat')}
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
-              options={[
-                { value: 'off', label: t('settingsPage.inactive') },
-                { value: 'daily', label: 'Harian' },
-                { value: 'weekly', label: 'Mingguan' },
-                { value: 'monthly', label: 'Bulanan' },
-              ]}
-              hint={backupHint}
-            />
-          </>
-        )}
+        <hr className={styles.dangerDivider} />
+        <Select
+          label={t('settingsPage.pengingatBackupManualPerangkat')}
+          value={frequency}
+          onChange={(e) => setFrequency(e.target.value as BackupFrequency)}
+          options={[
+            { value: 'off', label: t('settingsPage.inactive') },
+            { value: 'daily', label: 'Harian' },
+            { value: 'weekly', label: 'Mingguan' },
+            { value: 'monthly', label: 'Bulanan' },
+          ]}
+          hint={backupHint}
+        />
       </CardBody>
 
       <ConfirmDialog

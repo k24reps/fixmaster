@@ -4,6 +4,7 @@ export type SignupPlan = 'standard' | 'enterprise';
 export type AuthSource =
   | 'header'
   | 'hero'
+  | 'pricing'
   | 'pricing_solo'
   | 'pricing_pro'
   | 'final_cta'
@@ -34,6 +35,7 @@ export function authIntentFromSearch(search: string): AuthIntent | null {
   const sources: AuthSource[] = [
     'header',
     'hero',
+    'pricing',
     'pricing_solo',
     'pricing_pro',
     'final_cta',

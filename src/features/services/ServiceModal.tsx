@@ -14,7 +14,8 @@ import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { useResetOnOpen } from '@/hooks/useResetOnOpen';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { trackEvent } from '@/lib/analytics';
-import { useDemoStore } from '@/stores/demo';
+import { useDemoStore, isCloudMode } from '@/stores/demo';
+import { canCreateTicket } from '@/lib/business/billing';
 import type { Service, Customer, Employee, ScreenLockKind } from '@/data/types';
 import type { TranslationKey } from '@/i18n';
 import { saveScreenLock } from '@/data/serviceSecret';
@@ -238,7 +239,17 @@ export function ServiceModal({
     setter(trimmed ? `${trimmed}, ${snippet}` : snippet);
   };
 
+  // Saldo unit habis (0101): server menolak tiket BARU, jadi pesannya muncul
+  // sebelum kasir mengetik seluruh form. Ubah tiket lama tidak terpengaruh.
+  const unitBalance = org?.unitBalance;
+  const intakeBlocked =
+    !editing && isCloudMode() && typeof unitBalance === 'number' && !canCreateTicket(unitBalance);
+  const intakeBlockedMessage = intakeBlocked
+    ? interpolate(t('billing.intakeBlocked'), { n: String(unitBalance) })
+    : '';
+
   const save = async () => {
+    if (intakeBlocked) return setError(intakeBlockedMessage);
     if (!customerName.trim()) return fail('name', t('serviceForm.nameRequired'));
     if (!customerPhone.trim()) return fail('phone', t('serviceForm.phoneRequired'));
     if (!device.trim()) return fail('device', t('serviceForm.deviceRequired'));
@@ -450,7 +461,7 @@ export function ServiceModal({
         }}
       >
       <FormFields>
-        <FormError>{error}</FormError>
+        <FormError>{error || intakeBlockedMessage}</FormError>
         {needOutlet && (
           <Select
             label={t('serviceForm.outlet')}

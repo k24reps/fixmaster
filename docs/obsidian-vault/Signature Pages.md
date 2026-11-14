@@ -1145,18 +1145,38 @@ hamburger/drawer; desktop 1440 px tidak berubah. Dock Kasir berada di atas botto
 
 ---
 
-## Pengaturan — Langganan (Billing License Meter)
+## Pengaturan — Saldo (Unit Meter, 14 Nov 2026)
 
-Tab **Langganan** (`/settings`, owner + cloud-only) memakai metafora **"daya/lisensi bench"** — langganan = daya untuk mengoperasikan workshop. Senada bahasa visual Signature Pages lain (POS Register Readout, Cashbook Tape):
+Tab **Saldo** (`/settings?tab=saldo`, owner + cloud-only; `?tab=langganan` lama
+tetap mendarat di sini) menggantikan tab Langganan saat harga berganti ke
+**Rp 1.000 per unit masuk** (migrasi `0101`, lihat [[Data Layer]]). Komponen sendiri:
+`features/settings/BalanceTab.tsx` + `BalanceTab.module.css`.
 
-- **License Meter** — kartu status: **LED** fase (ok hijau / warn amber / **crit merah berkedip** `fm-pulse`), nama plan font display, readout sisa hari mono besar, dan **charge-gauge** 24-tick (fill = sisa hari / ~30 hari, warna ikut fase) di atas wash grid blueprint.
-- **Hand-off WhatsApp manual (`0047`)** — panel ber-spine hijau + LED menjelaskan tiga langkah: pilih paket, transfer/kirim bukti di WhatsApp, lalu tunggu verifikasi FixMaster. Tombol paket membuka chat dengan identitas organisasi dan nominal sudah terisi; klik ini **tidak** mengubah database.
-- **Tier modules** — kartu paket ber-**spine** kiri; kartu rekomendasi diberi spine gradient brand + tag mono "DISARANKAN"; harga **mono** tebal.
-- **Receipt tape** — riwayat pembayaran terverifikasi jadi **pita thermal mono** dengan divider titik-titik + spine status (paid hijau / legacy void abu) + chip status pill — senada struk POS & Cashbook Keuangan.
+- **Unit Meter** — instrumen yang sama dengan License Meter lama: **LED** keadaan saldo
+  (cukup hijau / menipis & minus amber / tiket baru tertahan merah), readout unit **mono**
+  besar, dan **tick-gauge** 24 tick dari −20 sampai 100+. Yang baru: **zona minus** di
+  empat tick kiri digambar bergaris putus, jadi jatah 20 unit sesudah nol terlihat
+  sebagai bagian instrumen, bukan kalimat peringatan. Di bawahnya tiga fakta dipisah
+  divider titik: senilai (Rp), tiket baru tersisa, jatah minus.
+- **Banner keadaan** hanya muncul saat saldo tidak "cukup", dengan kalimat yang
+  menyebut akibat nyata (tiket baru tertahan, tiket lama tetap jalan).
+- **Isi saldo lewat WhatsApp** — tiga langkah bernomor, **tuts nominal mono**
+  (50/100/200/500 ribu, masing-masing menyebut unitnya), kolom nominal dengan validasi
+  minimal Rp 50.000 kelipatan Rp 1.000, readout "+N unit · saldo jadi M". Tombol kirim
+  memakai `aria-disabled` saat nominal salah. Klik hanya membuka chat; saldo baru
+  bertambah setelah operator mencatatnya (`admin_topup_units`).
+- **Riwayat saldo** — daftar ledger dengan LED per jenis (masuk hijau: kuota gratis,
+  isi saldo, unit kembali; koreksi biru; pemakaian tiket tanpa warna, karena
+  pemakaian bukan sinyal), unit bertanda mono, dan saldo sesudahnya. Di demo
+  riwayat diganti keadaan kosong karena ledger hanya ada di server.
 
-Realtime tetap menyegarkan invoice + organisasi setelah operator mengonfirmasi pembayaran. Jalur self-confirm/mock, QR, dan cancel invoice dari klien sudah dihapus.
+Sidebar ikut membawa readout saldo kecil (LED + angka mono) di bawah `BENCH OS`,
+lihat [[Sidebar - Live Diagnostic Rail]].
 
-![[billing-dark.png]]
+Foto: `scripts/shoot-saldo.mjs` (butuh dev server dengan env Supabase tiruan; lihat
+kepala skrip) menulis `saldo-dark.png`, `saldo-light.png`, `saldo-mobile.png`,
+`hapus-tiket-dialog.png`, `hapus-tiket-ditahan.png`. Gambar lama `billing-dark.png`
+(License Meter) tidak lagi mewakili UI dan sematan-nya dihapus.
 
 ---
 

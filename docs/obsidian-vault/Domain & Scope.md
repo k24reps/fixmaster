@@ -36,7 +36,8 @@ Aplikasi web untuk mengelola **toko/usaha reparasi gadget & elektronik** — mis
 | Istilah | Arti di FixMaster |
 |---|---|
 | Servis / Service | Tiket perbaikan satu perangkat elektronik |
-| Unit | Satu perangkat yang masuk untuk diperbaiki |
+| Unit | Satu perangkat yang masuk untuk diperbaiki. Dalam harga (sejak 14 Nov 2026): satu tiket servis yang dibuat = satu unit = Rp 1.000 |
+| Saldo unit | Unit yang sudah dibayar di muka dan belum terpakai (`organizations.unit_balance`). Toko baru mendapat 50 unit gratis; boleh minus sampai −20, lalu tiket baru tertahan. Lihat [[Data Layer]] |
 | Sparepart | Komponen pengganti elektronik (LCD, baterai, IC, dst) |
 | Teknisi | Orang yang mengerjakan reparasi |
 | POS / Kasir | Penjualan langsung (sparepart/aksesori) |

@@ -6773,3 +6773,77 @@ untuk enam tab: nol temuan, lantai 12px 0. **Tidak dijalankan:** `sync-vault-att
 tab (buat ulang dengan `scripts/shoot-reports.mjs` di mesin lokal). Ekspor PDF tak bisa dicoba
 lewat demo (Trial); dokumennya diperiksa lewat `reportDocHtml` di tes.
 
+## Harga per unit masuk menggantikan Solo/Pro (14 Nov 2026)
+
+**Permintaan pemilik:** di tengah wawancara landing page baru, harga diganti menjadi
+"1000 rupiah per unit masuk, biar fair". Draft diselesaikan dulu lewat wawancara, lalu
+"mulai A" (model harga) sebelum B (landing baru). Keputusan pemilik, berurutan:
+
+- **Isi saldo di muka** (seperti pulsa), bukan tagihan akhir bulan atau minimum bulanan.
+- **Satu harga, semua fitur.** Solo/Pro, diskon termin, kuota pengguna/outlet, dan semua
+  kunci fitur dihapus.
+- **Satu unit = setiap tiket servis yang dibuat**, termasuk yang kemudian batal.
+- **Kuota gratis 50 unit** tanpa batas waktu menggantikan uji coba 14 hari.
+- **Saldo habis: boleh minus sampai −20**, setelah itu hanya tiket BARU yang tertahan.
+- **Isi saldo minimal Rp 50.000, tanpa bonus; saldo tidak hangus, tidak dikembalikan.**
+- **Sementara manual lewat WhatsApp**, dicatat operator. Tanpa batas atas tagihan.
+- **Owner bisa menghapus tiket**, hanya tiket bersih, permanen + Log Aktivitas.
+- **Batal atau hapus dalam 10 menit tidak terhitung** (unit kembali, sekali per tiket).
+
+**Keputusan teknis (detail di [[Data Layer]]):**
+- **Saldo di kolom + buku saldo.** `organizations.unit_balance` untuk pemeriksaan cepat,
+  `unit_ledger` dengan `balance_after` untuk jejak. Penulisnya satu fungsi yang mengunci
+  baris organisasi, jadi dua tiket bersamaan tidak bisa memakai unit terakhir yang sama.
+- **AFTER INSERT, bukan BEFORE.** Tiket disimpan lewat upsert; BEFORE INSERT menyala juga
+  untuk upsert yang berakhir sebagai UPDATE, sehingga setiap ubah status akan memotong
+  saldo dan saldo minus akan menghentikan pekerjaan tiket lama. Ini temuan saat pemetaan,
+  sebelum satu baris SQL ditulis.
+- **Hanya sisipan aplikasi yang dihitung** (`current_user = 'authenticated'`, pola kuota
+  `0077`). `restore_org_data` menyisipkan ulang tiket yang sudah pernah dipotong, dan
+  `service_id` tanpa FK + unik `(service_id, kind)` membuat sisip ulang itu tidak memotong
+  dua kali. **Klaim garansi tidak dihitung** (perangkat yang sama kembali karena perbaikan
+  toko sendiri). Pemilik menyebut "setiap tiket", jadi pengecualian ini **perlu
+  dikonfirmasi**; membaliknya cukup menghapus satu baris di `services_charge_unit`.
+- **Jendela 10 menit dari jam server.** Diukur dari baris ledger `usage`, bukan
+  `services.created_at` yang dikirim perangkat (bisa diisi masa depan untuk membuka jendela
+  selamanya).
+- **Hapus tiket lewat RPC saja.** Policy `services_del` dicabut, sehingga syarat "bersih"
+  tidak bisa dilewati lewat REST. Tiket yang memegang uang/stok harus lewat Batal, jalur yang
+  sudah membalik kas dan stok dengan benar (preseden: pelanggan hanya bisa dihapus bila
+  belum punya tiket). Kode lacak (`service_tracking`, tanpa FK) ikut dihapus agar tautan di
+  kertas pelanggan berhenti menunjuk tiket yang tak ada.
+- **Kunci fitur dicabut seluruhnya**, bukan dibuat "selalu terbuka": `Feature`,
+  `planAllows`, `useFeature`, `ProBadge`/`ProNotice`, `locked` di navigasi. Membiarkan
+  mesinnya hidup akan menampilkan semua kanal "PRO" untuk toko yang ditangguhkan.
+  `plan_type` kini hanya bermakna untuk `suspended`; `admin_reactivate_org(org, reason)`
+  dibuat ulang karena membuka toko tidak lagi berarti memberi masa aktif gratis.
+- **Email backup mingguan** tidak lagi melewati toko berlabel `trial`
+  (`supabase/functions/backup-email`): semua fitur untuk semua toko.
+- **Permukaan publik ikut jujur:** landing lama mendapat satu pelat "Per unit masuk"
+  (akan diganti total di tahap B), `index.html` JSON-LD menjadi satu `Offer` Rp 1.000,
+  `public/pricing.md`, `llms-full.txt`, `/terms` bagian 3–4, dan `/privacy` diperbarui.
+
+**UI:** tab Pengaturan **Saldo** (Unit Meter, lihat [[Signature Pages]]), readout saldo di
+Sidebar menggantikan plan badge ([[Sidebar - Live Diagnostic Rail]]), form Servis menahan
+tiket baru saat saldo di batas, tombol **Hapus Tiket** (owner) di Detail Servis dengan
+dialog konfirmasi dan alasan bila tiket belum bersih, konsol operator memakai kolom saldo,
+pemakaian 30 hari, perkiraan hari sampai tertahan, dan modal Isi saldo / Koreksi /
+Aktifkan. Render pertama menemukan `BENCH OS` patah dua baris oleh badge saldo
+(diperbaiki dengan `flex-wrap` + `nowrap`) dan kepala meter yang sesak di 390 px (kalimat
+tarif dipindah ke baris sendiri).
+
+**Verifikasi:** build, lint, `npm run test` (angka di [[Testing & Security]]). Foto
+`scripts/shoot-saldo.mjs` dark/light/390 px + dialog hapus + tiket tertahan; `audit-mobile`
+tanpa luberan dokumen (temuan tersisa: rel geser Servis/Kasir/Pelanggan dan target `Term`,
+keduanya lama); `audit-zoom` 143 kombinasi, lantai 12px 0, satu rel kategori Kasir (lama);
+detektor impeccable nol temuan di berkas baru. Di container cloud, Playwright proyek
+meminta revisi Chromium lain: probe dijalankan dengan `PLAYWRIGHT_BROWSERS_PATH` ke folder
+sementara yang menautkan revisi terpasang, dan `shoot-saldo.mjs` menerima `PW_CHROMIUM`.
+
+**Belum dilakukan (wajib sebelum dipakai):**
+1. Terapkan `0101` ke staging, jalankan `npm run test:integration` (termasuk `tier3i`
+   baru), baru ke produksi dengan konfirmasi pemilik.
+2. Deploy ulang Edge Function `backup-email`.
+3. Konfirmasi pengecualian klaim garansi (lihat di atas).
+4. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
+   `hapus-tiket-*.png` hanya ada di mesin yang menjalankan skripnya.

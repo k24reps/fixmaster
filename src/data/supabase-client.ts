@@ -7,6 +7,7 @@ import {
 } from '@/lib/business/realtime-timing';
 import { mapAuthError } from '@/lib/business/authError';
 import type { ServiceSummary } from '@/lib/business/dashboard';
+import type { UnitLedgerKind } from '@/lib/business/billing';
 import type { ServiceDocKind, ServicePrintMeta } from './types';
 
 /**
@@ -1363,53 +1364,68 @@ export async function deleteMember(memberId: string): Promise<void> {
 }
 
 // ============================================================
-// Billing history. Since 0047 clients only read invoices; a platform operator
-// creates paid manual_whatsapp rows through adminConfirmManualPayment.
+// Buku saldo unit (migrasi 0101). Klien hanya membaca; setiap baris lahir dari
+// fungsi server (pemotongan tiket, pengembalian 10 menit, isi saldo operator).
+// RLS: owner saja.
 // ============================================================
 
-export interface Invoice {
+export interface UnitLedgerEntry {
   id: string;
-  orgId: string;
-  plan: string;
-  amount: number;
-  status: 'pending' | 'paid' | 'expired' | 'canceled';
-  provider: string;
-  providerRef: string | null;
-  qrisUrl: string | null;
-  periodStart: string;
-  periodEnd: string;
+  kind: UnitLedgerKind;
+  units: number;
+  balanceAfter: number;
+  amount: number | null;
+  serviceId: string | null;
+  serviceNo: string | null;
+  reference: string | null;
+  note: string;
+  actorName: string;
   createdAt: string;
-  paidAt: string | null;
 }
 
-function toInvoice(d: Record<string, unknown>): Invoice {
-  return {
-    id: d.id as string,
-    orgId: d.org_id as string,
-    plan: d.plan as string,
-    amount: Number(d.amount),
-    status: d.status as Invoice['status'],
-    provider: d.provider as string,
-    providerRef: (d.provider_ref as string | null) ?? null,
-    qrisUrl: (d.qris_url as string | null) ?? null,
-    periodStart: d.period_start as string,
-    periodEnd: d.period_end as string,
-    createdAt: d.created_at as string,
-    paidAt: (d.paid_at as string | null) ?? null,
-  };
-}
-
-/** List an org's invoices, newest first. */
-export async function listInvoices(orgId: string): Promise<Invoice[]> {
+/** Riwayat saldo sebuah org, terbaru dulu. */
+export async function listUnitLedger(orgId: string, limit = 100): Promise<UnitLedgerEntry[]> {
   const c = getSupabase();
   if (!c) return [];
   const { data, error } = await c
-    .from('invoices')
+    .from('unit_ledger')
     .select('*')
     .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(limit);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(toInvoice);
+  return ((data ?? []) as Record<string, unknown>[]).map((d) => ({
+    id: d.id as string,
+    kind: d.kind as UnitLedgerKind,
+    units: Number(d.units),
+    balanceAfter: Number(d.balance_after),
+    amount: d.amount === null || d.amount === undefined ? null : Number(d.amount),
+    serviceId: (d.service_id as string | null) ?? null,
+    serviceNo: (d.service_no as string | null) ?? null,
+    reference: (d.reference as string | null) ?? null,
+    note: (d.note as string) ?? '',
+    actorName: (d.actor_name as string) ?? '',
+    createdAt: d.created_at as string,
+  }));
+}
+
+/**
+ * Hapus tiket permanen (owner, tiket bersih). Server menolak tiket yang
+ * memegang uang, sparepart, atau klaim garansi, mencatat Log Aktivitas, dan
+ * mengembalikan unit bila tiket dihapus dalam 10 menit.
+ */
+export async function deleteServiceTicketRpc(args: {
+  orgId: string;
+  serviceId: string;
+}): Promise<{ refunded: boolean }> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('delete_service_ticket', {
+    p_org_id: args.orgId,
+    p_service_id: args.serviceId,
+  });
+  if (error) throw new Error(error.message);
+  return { refunded: Boolean((data as { refunded?: boolean } | null)?.refunded) };
 }
 
 // ============================================================
@@ -1439,15 +1455,18 @@ export interface AdminOrgRow {
   orgId: string;
   name: string;
   plan: string;
-  expiresAt: string | null;
+  /** Saldo unit (0101). */
+  unitBalance: number;
+  /** Unit terpakai bersih 30 hari terakhir (pemotongan dikurangi pengembalian). */
+  unitsUsed30d: number;
   registeredAt: string;
   isDemo: boolean;
   outletCount: number;
   userCount: number;
   serviceCount: number;
   lastActivityAt: string | null;
-  lastPaidAt: string | null;
-  lastPaidReference: string | null;
+  lastTopupAt: string | null;
+  lastTopupReference: string | null;
   /** Catatan internal vendor. Tidak pernah terlihat klien. */
   note: string;
   /** Nomor telepon TOKO dari Profil Usaha (0084) — bukan data pelanggan klien. */
@@ -1459,21 +1478,22 @@ function toAdminOrg(d: Record<string, unknown>): AdminOrgRow {
     orgId: d.org_id as string,
     name: (d.org_name as string) ?? '',
     plan: d.org_plan as string,
-    expiresAt: (d.expires_at as string | null) ?? null,
+    unitBalance: Number(d.unit_balance ?? 0),
+    unitsUsed30d: Number(d.units_used_30d ?? 0),
     registeredAt: d.registered_at as string,
     isDemo: Boolean(d.demo),
     outletCount: Number(d.outlet_count ?? 0),
     userCount: Number(d.user_count ?? 0),
     serviceCount: Number(d.service_count ?? 0),
     lastActivityAt: (d.last_activity_at as string | null) ?? null,
-    lastPaidAt: (d.last_paid_at as string | null) ?? null,
-    lastPaidReference: (d.last_paid_reference as string | null) ?? null,
+    lastTopupAt: (d.last_topup_at as string | null) ?? null,
+    lastTopupReference: (d.last_topup_reference as string | null) ?? null,
     note: (d.note as string) ?? '',
     phone: (d.org_phone as string) ?? '',
   };
 }
 
-/** Daftar semua org klien, paling dekat jatuh tempo di atas. Admin-only. */
+/** Daftar semua org klien, saldo terendah di atas. Admin-only. */
 export async function adminListOrgs(): Promise<AdminOrgRow[]> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
@@ -1500,30 +1520,51 @@ export async function adminSuspendOrg(orgId: string, reason: string): Promise<vo
 }
 
 /**
- * Record a verified WhatsApp payment and extend access atomically. The RPC
- * creates a paid invoice and an operator audit row; the browser never edits
- * subscription dates directly.
+ * Catat isi saldo setelah transfer diverifikasi di WhatsApp (0101). Server
+ * memeriksa nominal (minimal Rp 50.000, kelipatan Rp 1.000), mengubahnya
+ * menjadi unit, dan mencatat operator_actions. Referensi yang sama adalah
+ * retry: saldo tidak bertambah dua kali. Mengembalikan saldo sesudahnya.
  */
-export async function adminConfirmManualPayment(
+export async function adminTopupUnits(
   orgId: string,
-  plan: string,
-  months: number,
   amount: number,
   reference: string,
   reason: string,
-): Promise<string> {
+): Promise<number> {
   const c = getSupabase();
   if (!c) throw new Error('Supabase tidak terkonfigurasi');
-  const { data, error } = await c.rpc('admin_confirm_manual_payment', {
+  const { data, error } = await c.rpc('admin_topup_units', {
     p_org_id: orgId,
-    p_plan: plan,
-    p_months: months,
     p_amount: amount,
     p_reference: reference,
     p_reason: reason,
   });
   if (error) throw new Error(error.message);
-  return data as string;
+  return Number(data);
+}
+
+/** Koreksi saldo (positif atau negatif, maks 1000 unit). Alasan wajib. */
+export async function adminAdjustUnits(orgId: string, units: number, reason: string): Promise<number> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_adjust_units', {
+    p_org_id: orgId,
+    p_units: units,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data);
+}
+
+/** Buka kembali toko yang ditangguhkan. Pemakaian tetap dibayar dari saldo. */
+export async function adminReactivateOrg(orgId: string, reason: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_reactivate_org', {
+    p_org_id: orgId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
 }
 
 /** Simpan catatan internal vendor tentang sebuah klien. */
@@ -1600,35 +1641,6 @@ export async function deleteAccountCredential(): Promise<void> {
   const { data, error } = await c.functions.invoke('delete-account', { body: {} });
   if (error) throw new Error(error.message);
   if (!data?.ok) throw new Error(data?.error ?? 'Gagal menghapus akun');
-}
-
-/**
- * Subscribe to realtime billing changes for one org. Fires `onChange` whenever
- * an `invoices` row for this org or the `organizations` row itself changes
- * (e.g. the webhook marks an invoice paid/expired and extends the plan). RLS
- * still applies on the realtime stream, so only rows the user may read are
- * delivered. Requires tables to be in the `supabase_realtime` publication
- * (migration 0012). Returns an unsubscribe function (no-op when unconfigured).
- */
-export function subscribeOrgBilling(orgId: string, onChange: () => void): () => void {
-  const c = getSupabase();
-  if (!c || !orgId) return () => {};
-  const channel = c
-    .channel(`billing:${orgId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'invoices', filter: `org_id=eq.${orgId}` },
-      () => onChange(),
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'organizations', filter: `id=eq.${orgId}` },
-      () => onChange(),
-    )
-    .subscribe();
-  return () => {
-    void c.removeChannel(channel);
-  };
 }
 
 /** Connection status surfaced to the UI (badge) and used to drive resync. */

@@ -1,136 +1,106 @@
 import { describe, it, expect } from 'vitest';
 import {
-  daysUntil,
-  periodEnd,
-  subscriptionPhase,
-  canWrite,
-  isOrgActive,
-  REMINDER_DAYS,
-  GRACE_DAYS,
-  manualPaymentWhatsAppLink,
+  canCreateTicket,
+  ledgerKindLabel,
+  refundWindowOpen,
+  ticketsUntilBlocked,
+  topupAmountError,
+  topupWhatsAppLink,
+  unitBalanceState,
+  unitsForTopup,
+  unitsToRupiah,
 } from './billing';
+import { LOW_BALANCE_UNITS, UNIT_FLOOR } from '@/config/pricing';
 
-const NOW = new Date('2026-06-06T12:00:00.000Z');
-const inDays = (n: number) => new Date(NOW.getTime() + n * 86400_000).toISOString();
-
-describe('daysUntil', () => {
-  it('is positive for the future, negative for the past', () => {
-    expect(daysUntil(inDays(5), NOW)).toBe(5);
-    expect(daysUntil(inDays(-2), NOW)).toBe(-2);
+describe('unitBalanceState', () => {
+  it('cukup di atas ambang menipis', () => {
+    expect(unitBalanceState(LOW_BALANCE_UNITS + 1)).toBe('ok');
+    expect(unitBalanceState(50)).toBe('ok');
+  });
+  it('menipis antara 1 dan ambang', () => {
+    expect(unitBalanceState(LOW_BALANCE_UNITS)).toBe('low');
+    expect(unitBalanceState(1)).toBe('low');
+  });
+  it('minus mulai dari nol sampai sebelum batas', () => {
+    expect(unitBalanceState(0)).toBe('minus');
+    expect(unitBalanceState(UNIT_FLOOR + 1)).toBe('minus');
+  });
+  it('tertahan tepat di batas dan di bawahnya', () => {
+    expect(unitBalanceState(UNIT_FLOOR)).toBe('blocked');
+    expect(unitBalanceState(UNIT_FLOOR - 3)).toBe('blocked');
   });
 });
 
-describe('periodEnd', () => {
-  it('advances one month by default', () => {
-    expect(periodEnd('2026-01-15T00:00:00.000Z')).toBe(
-      new Date('2026-02-15T00:00:00.000Z').toISOString(),
-    );
-  });
-  it('supports multi-month periods', () => {
-    expect(periodEnd('2026-01-15T00:00:00.000Z', 3)).toBe(
-      new Date('2026-04-15T00:00:00.000Z').toISOString(),
-    );
+describe('canCreateTicket', () => {
+  it('sama dengan server: ditolak saat saldo <= batas minus', () => {
+    expect(canCreateTicket(UNIT_FLOOR + 1)).toBe(true);
+    expect(canCreateTicket(UNIT_FLOOR)).toBe(false);
   });
 });
 
-describe('subscriptionPhase', () => {
-  it('null expiry is active', () => {
-    expect(subscriptionPhase(null, NOW)).toBe('active');
-  });
-  it('active when more than REMINDER_DAYS remain', () => {
-    expect(subscriptionPhase(inDays(REMINDER_DAYS + 1), NOW)).toBe('active');
-  });
-  it('reminder within the H-N window', () => {
-    expect(subscriptionPhase(inDays(REMINDER_DAYS), NOW)).toBe('reminder');
-    expect(subscriptionPhase(inDays(1), NOW)).toBe('reminder');
-  });
-  it('grace just after expiry through GRACE_DAYS', () => {
-    expect(subscriptionPhase(inDays(0), NOW)).toBe('grace');
-    expect(subscriptionPhase(inDays(-GRACE_DAYS), NOW)).toBe('grace');
-  });
-  it('expired past the grace window', () => {
-    expect(subscriptionPhase(inDays(-GRACE_DAYS - 1), NOW)).toBe('expired');
+describe('ticketsUntilBlocked', () => {
+  it('menghitung jatah minus', () => {
+    expect(ticketsUntilBlocked(0)).toBe(-UNIT_FLOOR);
+    expect(ticketsUntilBlocked(5)).toBe(5 - UNIT_FLOOR);
+    expect(ticketsUntilBlocked(UNIT_FLOOR)).toBe(0);
+    expect(ticketsUntilBlocked(UNIT_FLOOR - 4)).toBe(0);
   });
 });
 
-describe('canWrite', () => {
-  it('allows everything except expired', () => {
-    expect(canWrite('active')).toBe(true);
-    expect(canWrite('reminder')).toBe(true);
-    expect(canWrite('grace')).toBe(true);
-    expect(canWrite('expired')).toBe(false);
+describe('konversi rupiah dan unit', () => {
+  it('Rp 1.000 per unit', () => {
+    expect(unitsToRupiah(48)).toBe(48_000);
+    expect(unitsToRupiah(-3)).toBe(-3_000);
+    expect(unitsForTopup(100_000)).toBe(100);
   });
 });
 
-describe('isOrgActive', () => {
-  it('false when suspended', () => {
-    expect(
-      isOrgActive({ plan: 'suspended', expiry: inDays(30), outletCount: 1, now: NOW }),
-    ).toBe(false);
+describe('topupAmountError', () => {
+  it('menolak di bawah minimum', () => {
+    expect(topupAmountError(49_000)).toBe('billing.topupMin');
+    expect(topupAmountError(Number.NaN)).toBe('billing.topupMin');
   });
-  it('false when over outlet quota', () => {
-    // standard (Solo) allows 1 outlet
-    expect(
-      isOrgActive({ plan: 'standard', expiry: inDays(30), outletCount: 2, now: NOW }),
-    ).toBe(false);
+  it('menolak yang bukan kelipatan Rp 1.000', () => {
+    expect(topupAmountError(50_500)).toBe('billing.topupStep');
   });
-  it('false when past grace', () => {
-    expect(
-      isOrgActive({
-        plan: 'standard',
-        expiry: inDays(-GRACE_DAYS - 1),
-        outletCount: 1,
-        now: NOW,
-      }),
-    ).toBe(false);
-  });
-  it('true within quota and not expired', () => {
-    expect(
-      isOrgActive({ plan: 'enterprise', expiry: inDays(10), outletCount: 5, now: NOW }),
-    ).toBe(true);
-    // grace still counts as active for access
-    expect(
-      isOrgActive({ plan: 'standard', expiry: inDays(-1), outletCount: 1, now: NOW }),
-    ).toBe(true);
+  it('menerima minimum dan kelipatannya', () => {
+    expect(topupAmountError(50_000)).toBeNull();
+    expect(topupAmountError(123_000)).toBeNull();
   });
 });
 
-describe('manualPaymentWhatsAppLink', () => {
-  const request = (over = {}) => ({
-    supportPhone: '0899-5318-638',
-    orgId: 'org-123',
-    orgName: 'Nuara Service',
-    currentPlan: 'Trial',
-    expiresAt: '2026-09-01T00:00:00.000Z',
-    requestedPlan: 'Pro',
-    amount: 199_000,
-    outletCount: 3,
-    term: 'monthly' as const,
-    total: 199_000,
-    ...over,
+describe('refundWindowOpen', () => {
+  const at = '2026-11-14T10:00:00.000Z';
+  it('terbuka sampai tepat 10 menit', () => {
+    expect(refundWindowOpen(at, new Date('2026-11-14T10:09:59.000Z'))).toBe(true);
+    expect(refundWindowOpen(at, new Date('2026-11-14T10:10:00.000Z'))).toBe(true);
   });
-
-  it('encodes a traceable payment request without changing billing state', () => {
-    const link = manualPaymentWhatsAppLink(request());
-
-    expect(link).toMatch(/^https:\/\/wa\.me\/628995318638\?text=/);
-    const message = decodeURIComponent(link.split('?text=')[1]);
-    expect(message).toContain('ID organisasi: org-123');
-    expect(message).toContain('Paket pilihan: Pro');
-    expect(message).toContain('Tarif: Rp\u00a0199.000 / bulan');
-    expect(message).toContain('bukti bayar');
+  it('tertutup sesudahnya', () => {
+    expect(refundWindowOpen(at, new Date('2026-11-14T10:10:01.000Z'))).toBe(false);
   });
+});
 
-  // Operator memakai pesan ini untuk menentukan sampai kapan masa aktif
-  // diperpanjang. Tanpa termin dan total, perpanjangan tahunan gampang
-  // dicatat sebagai satu bulan.
-  it('menyebut termin dan total transfer, bukan hanya tarif bulanan', () => {
-    const link = manualPaymentWhatsAppLink(
-      request({ term: 'annual' as const, amount: 159_000, total: 1_908_000 }),
-    );
-    const message = decodeURIComponent(link.split('?text=')[1]);
-    expect(message).toContain('Termin: 12 bulan (12 bulan di muka)');
-    expect(message).toContain('Tarif: Rp\u00a0159.000 / bulan');
-    expect(message).toContain('Total transfer: Rp\u00a01.908.000');
+describe('ledgerKindLabel', () => {
+  it('setiap jenis punya label', () => {
+    for (const kind of ['grant', 'topup', 'usage', 'refund', 'adjust'] as const) {
+      expect(ledgerKindLabel(kind)).toBe(`billing.kind.${kind}`);
+    }
+  });
+});
+
+describe('topupWhatsAppLink', () => {
+  it('membawa id organisasi, saldo, nominal, dan unit', () => {
+    const link = topupWhatsAppLink({
+      supportPhone: '628995318638',
+      orgId: 'org-1',
+      orgName: 'Konter Jaya',
+      balance: -4,
+      amount: 100_000,
+    });
+    const text = decodeURIComponent(link.split('text=')[1] ?? '');
+    expect(link).toContain('628995318638');
+    expect(text).toContain('ID organisasi: org-1');
+    expect(text).toContain('Saldo sekarang: -4 unit');
+    expect(text).toContain('(100 unit)');
   });
 });

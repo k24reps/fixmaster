@@ -25,10 +25,9 @@ export interface BaseEntity {
 // ---------- Roles & Plans ----------
 export type Role = 'owner' | 'admin' | 'karyawan';
 
-// NOTE: the Postgres `plan_type` enum also contains a legacy 'free' value,
-// but FixMaster uses a trial→paid model, so 'free' is NOT offered and is
-// intentionally omitted here. Signup always grants 'trial'; no org is ever
-// assigned 'free'. The enum value is left in the DB to avoid a risky migration.
+// NOTE: the Postgres `plan_type` enum also contains a legacy 'free' value that
+// no org is ever assigned; it is omitted here. Since unit pricing (0101) the
+// value only matters for 'suspended'.
 export type PlanType = 'standard' | 'enterprise' | 'trial' | 'suspended';
 
 // ---------- Organization & Users ----------
@@ -44,9 +43,16 @@ export interface Organization {
    */
   logoDataUrl: string | null;
   servicePrefix: string; // e.g. "FM"
+  /** Sejak 0101 hanya bermakna untuk 'suspended'; lihat config/plans.ts. */
   planType: PlanType;
   trialStartedAt: ISODateTime | null;
+  /** Masa aktif model langganan lama. Tidak lagi dibaca sejak 0101. */
   planExpiredAt: ISODateTime | null;
+  /**
+   * Saldo unit (migrasi 0101): satu tiket servis memotong satu unit. Hanya ada
+   * di mode server dan hanya server yang mengubahnya; tidak ada di mode lokal.
+   */
+  unitBalance?: number;
   maxOutlets: number;
   maxUsers: number;
   /**
@@ -763,6 +769,7 @@ export type ActivityAction =
   | 'data.restore'
   | 'service.create'
   | 'service.status'
+  | 'service.delete'
   | 'wallet.transfer'
   | 'wallet.transfer.edit'
   | 'wallet.transfer.void';

@@ -139,25 +139,28 @@ d('Tier 2 — Billing gates', () => {
     expect(error).not.toBeNull();
   });
 
-  it('gerbang is_org_active: org kedaluwarsa (lewat grace) TIDAK bisa menulis', async () => {
-    // Paksa org A kedaluwarsa via admin (service_role bypass trigger plan lock).
+  it('0101: masa aktif tidak lagi menggerbang tulis; yang menggerbang hanya penangguhan', async () => {
+    // Masa aktif lama yang sudah lewat jauh: sejak harga per unit tidak berarti apa-apa.
     const past = new Date(Date.now() - 10 * 864e5).toISOString();
     await ctx.admin
       .from('organizations')
       .update({ plan_type: 'trial', plan_expired_at: past })
       .eq('id', ctx.orgA);
 
-    const { error } = await ctx.ownerA.client
+    const open = await ctx.ownerA.client
       .from('customers')
       .insert({ org_id: ctx.orgA, name: 'Setelah Expired', phone: '0815' });
-    expect(error).not.toBeNull(); // is_org_active() = false → tulis terblokir
+    expect(open.error).toBeNull();
+
+    // Ditangguhkan operator: RLS tetap memblokir semua tulis.
+    await ctx.admin.from('organizations').update({ plan_type: 'suspended' }).eq('id', ctx.orgA);
+    const blocked = await ctx.ownerA.client
+      .from('customers')
+      .insert({ org_id: ctx.orgA, name: 'Saat Ditangguhkan', phone: '0816' });
+    expect(blocked.error).not.toBeNull();
 
     // Pulihkan agar tes lain (urutan tak dijamin) tak terdampak.
-    const future = new Date(Date.now() + 14 * 864e5).toISOString();
-    await ctx.admin
-      .from('organizations')
-      .update({ plan_expired_at: future })
-      .eq('id', ctx.orgA);
+    await ctx.admin.from('organizations').update({ plan_type: 'trial' }).eq('id', ctx.orgA);
   });
 });
 

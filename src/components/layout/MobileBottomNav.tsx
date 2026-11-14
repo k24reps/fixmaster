@@ -11,7 +11,6 @@ import { demoGuard } from '@/stores/demo';
 import { isSupabaseConfigured } from '@/data/supabase-client';
 import { getVisibleNavigation, resolveMobileNavigation, type ResolvedNavItem } from '@/lib/business/navigation';
 import { useT, type TranslationKey } from '@/i18n';
-import { interpolate } from '@/lib/business/notify';
 import { ZoomStepper } from './DisplayControls';
 import styles from './MobileBottomNav.module.css';
 
@@ -41,8 +40,8 @@ export function MobileBottomNav() {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const visibleNavigation = useMemo(
-    () => employee ? getVisibleNavigation(employee.role, org?.planType ?? 'trial') : [],
-    [employee, org?.planType],
+    () => employee ? getVisibleNavigation(employee.role) : [],
+    [employee],
   );
   const primaryNavigation = useMemo(
     () => resolveMobileNavigation(org?.settings?.mobileNavigation, visibleNavigation),
@@ -90,7 +89,6 @@ export function MobileBottomNav() {
     );
   };
 
-  const destinationFor = ({ item, locked }: ResolvedNavItem) => locked ? '/settings' : item.to;
   const mobileLabelFor = (item: ResolvedNavItem['item']) => t(item.shortLabelKey ?? item.labelKey);
 
   return (
@@ -123,22 +121,20 @@ export function MobileBottomNav() {
 
             <div className={styles.moreGrid}>
               {moreNavigation.map((entry) => {
-                const { item, locked } = entry;
+                const { item } = entry;
                 const active = pathIsActive(item.to, location.pathname);
                 return (
                   <Link
                     key={item.to}
-                    to={destinationFor(entry)}
-                    className={[styles.moreItem, active ? styles.moreItemActive : '', locked ? styles.locked : ''].join(' ')}
+                    to={item.to}
+                    className={[styles.moreItem, active ? styles.moreItemActive : ''].join(' ')}
                     onClick={() => setMoreOpen(false)}
                   >
                     <span className={styles.moreIcon}>
                       <Icon name={item.icon} aria-hidden />
                     </span>
                     <span className={styles.moreLabel}>{t(item.labelKey)}</span>
-                    {locked ? (
-                      <span className={styles.proBadge}><span aria-hidden />{t('nav.mobile.pro')}</span>
-                    ) : renderSignal(item.to)}
+                    {renderSignal(item.to)}
                   </Link>
                 );
               })}
@@ -193,19 +189,19 @@ export function MobileBottomNav() {
 
       <nav className={styles.bottomNav} aria-label={t('nav.mobile.primary')}>
         {primaryNavigation.map((entry) => {
-          const { item, locked } = entry;
+          const { item } = entry;
           const active = pathIsActive(item.to, location.pathname);
           return (
             <Link
               key={item.to}
-              to={destinationFor(entry)}
-              className={[styles.navItem, active ? styles.active : '', locked ? styles.locked : ''].join(' ')}
+              to={item.to}
+              className={[styles.navItem, active ? styles.active : ''].join(' ')}
               aria-current={active ? 'page' : undefined}
-              title={locked ? interpolate(t('nav.mobile.lockedTitle'), { label: t(item.labelKey) }) : t(item.labelKey)}
+              title={t(item.labelKey)}
             >
               <span className={styles.navIcon}>
                 <Icon name={item.icon} weight={active ? 'fill' : 'regular'} aria-hidden />
-                {locked ? <span className={styles.lockLed} aria-hidden /> : renderSignal(item.to)}
+                {renderSignal(item.to)}
               </span>
               <span className={styles.navLabel}>{mobileLabelFor(item)}</span>
             </Link>

@@ -1,30 +1,29 @@
 import { NAV_ITEMS, type NavItem } from '@/config/navigation';
-import { isManager, isOwner, planAllows } from '@/config/plans';
-import type { PlanType, Role } from '@/data/types';
+import { isManager, isOwner } from '@/config/plans';
+import type { Role } from '@/data/types';
 
 export const MOBILE_NAV_SLOT_COUNT = 4;
 export const DEFAULT_MOBILE_NAV_PATHS = ['/', '/services', '/pos', '/customers'];
 
 export interface ResolvedNavItem {
   item: NavItem;
-  locked: boolean;
 }
 
-/** Navigation visible to a role, with plan locks kept visible for upgrade discovery. */
-export function getVisibleNavigation(role: Role, plan: PlanType): ResolvedNavItem[] {
+/**
+ * Navigation visible to a role. Sejak harga per unit tidak ada lagi kanal
+ * yang terkunci paket; yang menyaring hanya peran, cermin RLS server.
+ */
+export function getVisibleNavigation(role: Role): ResolvedNavItem[] {
   const manager = isManager(role);
   const owner = isOwner(role);
 
   return NAV_ITEMS.filter(
     (item) => (!item.managerOnly || manager) && (!item.ownerOnly || owner),
-  ).map((item) => ({
-    item,
-    locked: !!item.feature && !planAllows(plan, item.feature),
-  }));
+  ).map((item) => ({ item }));
 }
 
 /**
- * Keep an owner-defined mobile layout valid after role/plan/navigation changes.
+ * Keep an owner-defined mobile layout valid after role/navigation changes.
  * Invalid and duplicate paths are dropped, then empty slots receive predictable
  * defaults so every user still has four useful primary destinations.
  */

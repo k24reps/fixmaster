@@ -23,7 +23,7 @@ export function PrivacyPage() {
       title={t('legal.privacyTitle')}
       docId="PRIVASI-001"
       intro={t('legal.privacyIntro')}
-      updated="2026-09-27"
+      updated="2026-11-14"
     >
       <div className="callout">
         <p>
@@ -69,7 +69,7 @@ export function PrivacyPage() {
       <p>Kami memproses data untuk tujuan berikut:</p>
       <ul>
         <li>Menyediakan dan mengoperasikan fitur FixMaster.</li>
-        <li>Memproses langganan dan pembayaran (melalui penyedia pembayaran pihak ketiga).</li>
+        <li>Mencatat pemakaian saldo unit dan memproses pengisian saldo.</li>
         <li>Menjaga keamanan, mencegah penyalahgunaan, dan memenuhi kewajiban hukum.</li>
         <li>Memberikan dukungan teknis saat Anda memintanya.</li>
       </ul>
@@ -80,7 +80,7 @@ export function PrivacyPage() {
         isolasi antar-tenant (Row Level Security), sehingga data satu usaha tidak dapat
         diakses usaha lain. Lalu lintas ke server melewati jaringan Cloudflare dan selalu
         terenkripsi (HTTPS). Salinan cadangan dibuat dua kali sehari, dienkripsi (AES-256)
-        sebelum dikirim, lalu disimpan di layanan penyimpanan cloud. Pembayaran langganan
+        sebelum dikirim, lalu disimpan di layanan penyimpanan cloud. Pengisian saldo
         dikonfirmasi secara manual; kami tidak menyimpan detail kartu Anda.
       </p>
 

@@ -52,6 +52,7 @@ const SERVER_LOGGED: ReadonlySet<ActivityAction> = new Set<ActivityAction>([
   'expense.delete',
   'data.restore',
   'activity.purge',
+  'service.delete',
 ]);
 
 export function logActivity(input: LogInput): void {

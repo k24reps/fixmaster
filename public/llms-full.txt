@@ -23,31 +23,23 @@ Tujuan utamanya adalah mencatat satu unit sekali. Tiket servis yang sama menghub
 - Inventori sparepart dengan peringatan stok menipis.
 - Keuangan multi-akun kas/bank, biaya, pembayaran, dan margin per servis.
 - Laporan operasional dan keuangan.
-- Supplier, pembelian, tugas internal, absensi, peran pengguna, log aktivitas, dan multi-outlet pada paket yang mendukungnya.
+- Supplier, pembelian, tugas internal, absensi, peran pengguna, log aktivitas, dan multi-outlet.
 
 ## Cara kerja data
 
 FixMaster berjalan di cloud dan membutuhkan koneksi internet. Data disimpan di server, lalu disinkronkan secara realtime ke semua perangkat dan staf di toko yang sama. Data setiap toko dipisahkan dengan aturan akses; hanya akun yang terdaftar pada toko tersebut yang dapat membukanya.
 
-Pemilik dapat membuat backup. Paket Pro menyediakan ekspor laporan CSV serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; pemilik dapat mulai dari unit yang baru masuk dan memindahkan data pelanggan atau stok inti dengan bantuan tim FixMaster.
+Pemilik dapat membuat backup, mengekspor laporan CSV, serta backup/restore JSON. FixMaster belum menyediakan impor Excel otomatis; pemilik dapat mulai dari unit yang baru masuk dan memindahkan data pelanggan atau stok inti dengan bantuan tim FixMaster.
 
 ## Harga
 
-Semua akun baru mendapat uji coba 14 hari tanpa kartu kredit.
+FixMaster memakai satu harga: Rp 1.000 per unit masuk (satu tiket servis yang dibuat). Tidak ada paket dan tidak ada fitur yang dikunci; pengguna dan outlet tidak dibatasi.
 
-### Solo
-
-- Rp 99.000 per bulan.
-- 1 pengguna dan 1 outlet.
-- Tiket servis, pelanggan, kasir/POS, inventori, keuangan, dan laporan.
-
-### Pro
-
-- Rp 199.000 per bulan.
-- Pengguna tidak dibatasi.
-- 2 outlet termasuk; outlet tambahan Rp 50.000 per bulan per outlet.
-- Harga multi-outlet dibatasi sampai Rp 349.000 per bulan.
-- Semua fitur Solo ditambah supplier dan pembelian, tugas, absensi, multi-outlet, logo, template WhatsApp, ekspor laporan CSV, serta backup/restore JSON.
+- 50 unit pertama gratis untuk toko baru, tanpa batas waktu.
+- Saldo diisi di muka, minimal Rp 50.000, lewat transfer bank yang dikonfirmasi via WhatsApp. Saldo tidak hangus dan tidak dapat dikembalikan.
+- Penjualan kasir dan klaim garansi tidak memotong saldo.
+- Tiket yang dibatalkan atau dihapus dalam 10 menit setelah dibuat mendapat unitnya kembali.
+- Saldo boleh minus sampai 20 unit; setelah itu hanya tiket baru yang tertahan sampai saldo diisi.
 
 Sumber harga terstruktur: https://fixmaster.app/pricing.md
 

@@ -2,7 +2,7 @@ import { EmptyValue } from '@/components/ui/EmptyValue';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode, type RefObject } from 'react';
 import { Icon } from '@/components/ui';
-import { PLANS } from '@/config/plans';
+import { unitBalanceState } from '@/lib/business/billing';
 import { getVisibleNavigation } from '@/lib/business/navigation';
 import { useSessionStore } from '@/stores/session';
 import { useCollection } from '@/hooks/useCollection';
@@ -10,7 +10,6 @@ import { useT } from '@/i18n';
 import { useNavSignals } from '@/hooks/useNavSignals';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useDrawerFocus } from '@/hooks/useDrawerFocus';
-import { interpolate } from '@/lib/business/notify';
 import type { Outlet, ID } from '@/data/types';
 import styles from './Sidebar.module.css';
 
@@ -70,12 +69,13 @@ export function Sidebar({
   // Nama, peran, dan Keluar kini di menu akun Topbar (AccountMenu), bukan kartu
   // di dasar rail: sidebar hanya navigasi dan unit usaha.
 
-  const plan = org?.planType ?? 'trial';
   // Role-gating (managerOnly/ownerOnly) HIDES items — it mirrors server RLS,
-  // so showing them would just lead to failures. Feature-gating (plan lacks
-  // the feature) instead SHOWS the item locked with a "Pro" badge, so Solo
-  // users see what upgrading unlocks (the upgrade "itch").
-  const visibleNav = employee ? getVisibleNavigation(employee.role, plan) : [];
+  // so showing them would just lead to failures. Tidak ada lagi kanal
+  // terkunci paket sejak harga per unit.
+  const visibleNav = employee ? getVisibleNavigation(employee.role) : [];
+  // Saldo unit hanya ada di mode server (migrasi 0101). Mode lokal tidak
+  // menagih, jadi readout-nya tidak dirender sama sekali.
+  const unitBalance = typeof org?.unitBalance === 'number' ? org.unitBalance : null;
 
   // Kanal aktif selalu terlihat. Di 1366×768 (demo) Log dan Pengaturan berada
   // di bawah tepi rail, jadi halaman yang sedang dibuka tak punya tanda di
@@ -143,7 +143,16 @@ export function Sidebar({
               </strong>
               <small className={styles.unitLine}>
                 <span className={styles.unitId}>BENCH OS</span>
-                <span className={styles.planBadge}>{PLANS[plan].name}</span>
+                {unitBalance !== null && (
+                  <span
+                    className={[styles.unitBadge, styles[`unit_${unitBalanceState(unitBalance)}`]].join(' ')}
+                    title={t('billing.sidebarTitle')}
+                  >
+                    <span className={styles.unitLed} aria-hidden />
+                    <span className={styles.unitCount}>{unitBalance}</span>
+                    <span className={styles.unitWord}>{t('billing.unitShort')}</span>
+                  </span>
+                )}
               </small>
             </span>
           </div>
@@ -161,29 +170,9 @@ export function Sidebar({
             latar sumur di belakangnya menjaga warnanya tetap utuh. */}
         <div className={styles.navWell}>
         <nav ref={navRef} className={styles.nav} aria-label={t('sidebar.mainNav')}>
-          {visibleNav.map(({ item, locked }, i) => {
+          {visibleNav.map(({ item }, i) => {
             // Sambungan bertitik di awal tiap grup: operasional, kantor, sistem.
             const seam = i > 0 && visibleNav[i - 1].item.group !== item.group ? styles.seam : '';
-            if (locked) {
-              return (
-                <NavLink
-                  key={item.to}
-                  to="/settings"
-                  onClick={onCloseMobile}
-                  className={[styles.navItem, styles.locked, seam].join(' ')}
-                  title={interpolate(t('sidebar.lockedTitle'), { label: t(item.labelKey) })}
-                >
-                  <span className={styles.navIconCell} aria-hidden>
-                    <Icon name={item.icon} className={styles.navIcon} />
-                  </span>
-                  <span className={styles.navLabel}>{t(item.labelKey)}</span>
-                  <span className={styles.lockBadge}>
-                    <span className={styles.lockLed} aria-hidden />
-                    <span className={styles.lockBadgeText}>{t('sidebar.pro')}</span>
-                  </span>
-                </NavLink>
-              );
-            }
             const sig = signals[item.to];
             return (
               <NavLink

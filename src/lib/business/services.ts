@@ -569,3 +569,21 @@ export const STATUS_TONE: Record<ServiceStatus, StatusTone> = {
   lunas: 'success',
   batal: 'danger',
 };
+
+/**
+ * Alasan tiket belum boleh dihapus, atau null bila bersih (migrasi 0101).
+ * Cermin syarat `delete_service_ticket` di server: tiket yang memegang uang,
+ * sparepart, pembelian luar, atau klaim garansi harus lewat Batal supaya kas
+ * dan stok dibalik oleh jalur yang sudah teruji. Server tetap penegaknya; ia
+ * juga memeriksa pemasukan bertaut yang tidak terlihat dari baris tiket.
+ */
+export function serviceDeleteBlocker(
+  service: Pick<Service, 'status' | 'downPayment' | 'spareparts'>,
+  hasWarrantyClaims: boolean,
+): TranslationKey | null {
+  if (service.status === 'lunas') return 'serviceDelete.blockedLunas';
+  if ((service.downPayment ?? 0) > 0) return 'serviceDelete.blockedPaid';
+  if ((service.spareparts ?? []).length > 0) return 'serviceDelete.blockedParts';
+  if (hasWarrantyClaims) return 'serviceDelete.blockedClaim';
+  return null;
+}

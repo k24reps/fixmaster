@@ -51,51 +51,53 @@ perlu login ulang.
 
 - **Adegan pemakaian:** meja penerimaan konter, layar desktop; dan ponsel pemilik di luar toko. Keduanya jalur nyata, bukan salah satu.
 - **Alur inti:** terima unit → kerjakan servis → pakai sparepart → catat uang.
-- **Multi-outlet** untuk usaha yang sudah punya cabang (fitur Pro).
+- **Multi-outlet** untuk usaha yang sudah punya cabang (terbuka untuk semua toko sejak 0101).
 - **Absensi memakai geofence** — produk meminta izin `geolocation` (dibatasi `geolocation=(self)` di `vercel.json`). Kamera & mikrofon dimatikan.
-- **WhatsApp** adalah kanal komunikasi ke pelanggan yang nyata dipakai (template WA fitur Pro; tombol WA di halaman publik).
-- **Backup** — di server: salinan otomatis per toko tiap malam (7 terakhir) + tautan email mingguan untuk toko berlangganan, dan arsip offsite terenkripsi seluruh database ke Google Drive dua kali sehari. Pengingat backup manual tetap muncul saat aplikasi dibuka (mode lokal). Kunci layar unit pelanggan tidak pernah ikut arsip offsite (0094).
-- Halaman publik `/demo` menjalankan aplikasi asli di atas adapter RAM — pengunjung anonim memakai produk sungguhan tanpa menyentuh IndexedDB miliknya.
+- **WhatsApp** adalah kanal komunikasi ke pelanggan yang nyata dipakai (template WA bisa disunting semua toko; tombol WA di halaman publik).
+- **Backup** — di server: salinan otomatis per toko tiap malam (7 terakhir) + tautan email mingguan untuk semua toko yang tidak ditangguhkan, dan arsip offsite terenkripsi seluruh database ke Google Drive dua kali sehari. Pengingat backup manual tetap muncul saat aplikasi dibuka (mode lokal). Kunci layar unit pelanggan tidak pernah ikut arsip offsite (0094).
+- Halaman publik `/demo` menjalankan aplikasi asli di atas adapter RAM — pengunjung anonim memakai produk sungguhan tanpa menyentuh IndexedDB miliknya. Org demo diberi saldo contoh (50 dikurangi jumlah tiket seed) supaya model harga per unit terlihat.
 
 ## Capabilities and Constraints
 
 **Modul:** Dashboard, Servis, Kalkulator Biaya, Kasir & Stok (jual + inventori dalam satu katalog), Pelanggan, Supplier, Keuangan, Tugas Internal, Absensi, Laporan, Log Aktivitas, Pengaturan.
 
-**Model langganan:** uji coba 14 hari → berbayar. Dua tingkat, dibedakan oleh **fitur + kuota**, bukan sekadar batas pemakaian.
+**Model harga (sejak 14 Nov 2026, migrasi 0101): Rp 1.000 per unit masuk.**
+Satu unit = satu tiket servis yang dibuat. Tidak ada paket, tidak ada biaya
+bulanan tetap, dan tidak ada fitur yang dikunci: semua modul, pengguna, dan
+outlet terbuka untuk semua toko. Alasannya keadilan: toko kecil membayar
+sedikit, toko ramai membayar sesuai pemakaiannya.
 
-| | Solo (`standard`) | Pro (`enterprise`) |
-|---|---|---|
-| Harga | Rp 99.000/bln | Rp 199.000/bln |
-| 6 bulan di muka (−10%) | Rp 89.000/bln · Rp 534.000 | Rp 179.000/bln · Rp 1.074.000 |
-| 12 bulan di muka (−20%) | Rp 79.000/bln · Rp 948.000 | Rp 159.000/bln · Rp 1.908.000 |
-| Pengguna | 1 (pemicu upgrade terkuat: rekrutan kedua) | tak terbatas |
-| Outlet | 1 | 2 termasuk, +Rp 50.000/outlet |
-| Wallet / kas | 2 | 99 |
-| Terkunci | supplier, absensi, multi-outlet, template WA | — |
+| Aturan | Nilai |
+|---|---|
+| Harga | Rp 1.000 per tiket servis yang dibuat (termasuk yang kemudian batal) |
+| Tidak dihitung | Penjualan kasir, klaim garansi (perangkat yang sama kembali), sisipan dari fungsi server (restore) |
+| Toko baru | 50 unit gratis, tanpa batas waktu (menggantikan uji coba 14 hari) |
+| Pembayaran | Isi saldo di muka, minimal Rp 50.000, kelipatan Rp 1.000, tanpa bonus. Sementara manual lewat WhatsApp; operator mencatatnya di `/operator` |
+| Masa saldo | Tidak hangus, tidak dapat dikembalikan |
+| Pengembalian | Tiket yang dibatalkan atau dihapus ≤10 menit sejak unitnya dipotong mendapat unitnya kembali, satu kali per tiket |
+| Saldo habis | Boleh minus sampai −20 unit; setelah itu hanya tiket BARU yang ditolak. Pekerjaan tiket lama, kasir, dan keuangan tetap jalan |
+| Batas atas tagihan | Tidak ada |
+| Batas wallet | 99 per toko (pagar kewajaran, bukan pembeda harga) |
 
-Diskon termin dikenakan ke **tarif bulanan** (termasuk add-on outlet Pro),
-dibulatkan ke ribuan terdekat — satu aturan, bukan tabel harga kedua.
-Penagihan masih manual lewat WhatsApp, jadi bayar di muka memangkas 12
-kejadian penagihan setahun jadi 1; itulah yang membenarkan diskon 20%.
+Angka-angka ini hidup di `src/config/pricing.ts` dan migrasi 0101;
+`pricing.test.ts` membaca migrasinya supaya kedua sisi tidak bisa berbeda diam-diam.
 
-Sumbu pembedanya **satu**: jumlah orang dan jumlah tempat. Semua yang terkunci
-berkorelasi dengan itu, dan dijaga ganda oleh kuota pengguna/outlet/wallet.
-Logo toko, tugas internal, ekspor CSV, dan catatan toko sengaja **ada di Solo** —
-menahannya merugikan toko di mata pelanggannya sendiri tanpa menambah alasan
-nyata untuk naik paket.
+**Hapus tiket** (sejak 0101): owner saja, hanya tiket bersih (tanpa DP/pembayaran,
+sparepart, pembelian luar, atau klaim garansi; bukan Lunas). Permanen, tercatat di
+Log Aktivitas, nomor tiket tidak dipakai ulang, kode lacak ikut mati.
 
-- Enum `plan_type` di Postgres terkunci (`free`,`standard`,`enterprise`,`trial`,`suspended`). `free` adalah nilai **legacy yang sengaja tidak ditawarkan** — jangan hidupkan tanpa migrasi.
+- Enum `plan_type` di Postgres terkunci (`free`,`standard`,`enterprise`,`trial`,`suspended`). Sejak 0101 nilainya **hanya bermakna untuk `suspended`** (toko ditangguhkan operator tidak bisa menulis). `free` adalah nilai legacy yang tidak pernah diberikan. `plan_expired_at` dan tabel `invoices` dibiarkan untuk riwayat, tidak lagi dibaca.
 - **Dua mode auth:** lokal (tanpa akun) dan server (Supabase Auth email+password, self-host). Keduanya harus tetap jalan.
 - **Zoom aplikasi** 80%–125% adalah preferensi pengguna (`src/stores/zoom.ts`), memakai properti CSS `zoom` — bukan zoom browser. Konsekuensi terukur: `zoom` **tidak** menggeser media query, dan unit viewport ikut terskala. Breakpoint yang menentukan "muat / tidak muat" wajib `@container`; ukuran setinggi layar wajib lewat `--app-vh`.
 - **Bahasa & pasar:** Indonesia adalah bahasa produk dan pasar yang dikejar sekarang. Inggris menyusul, jadi locale `en` harus **tetap dijaga hidup** supaya ekspansi tidak mahal — setiap copy baru wajib punya pasangan di `src/i18n/en.ts` dan `src/i18n/id.ts`. Semua teks UI lewat `useT()` + translation key, tidak pernah string literal.
 
-**Belum diputuskan** (jangan dikarang): kanal pembayaran langganan, kebijakan retensi/penghapusan data, SLA dukungan, rencana aplikasi native.
+**Belum diputuskan** (jangan dikarang): kanal pembayaran otomatis (sementara manual lewat WhatsApp), kebijakan retensi/penghapusan data, SLA dukungan, rencana aplikasi native.
 
 ## Brand Commitments
 
 - **Nama:** FixMaster. Sub-nama sistem: "BENCH OS" / "Sistem Operasi Konter".
 - **Maskot:** VOLT Probe — pendamping diagnostik berbentuk continuity tester, muncul secara statis di dashboard dan lebih ekspresif pada halaman publik (`src/components/ui/Mascot.tsx`). Siluet compact-nya juga menjadi logo FixMaster.
-- **Identitas visual terikat:** "Precision Electronics Bench" — graphite steel + safety amber + diagnostic cyan. Ini komitmen, bukan preferensi: tiap elemen visual baru wajib memakai motif bench (LED status, readout mono, spine tepi kartu, tick-gauge, divider titik). **Dilarang** pola SaaS generik — contoh yang sudah diputuskan: fitur terkunci = baris redup + badge LED brand + "PRO" mono, **bukan** ikon gembok.
+- **Identitas visual terikat:** "Precision Electronics Bench" — graphite steel + safety amber + diagnostic cyan. Ini komitmen, bukan preferensi: tiap elemen visual baru wajib memakai motif bench (LED status, readout mono, spine tepi kartu, tick-gauge, divider titik). **Dilarang** pola SaaS generik — contoh yang sudah diputuskan: fitur terkunci = baris redup + badge LED brand + "PRO" mono, **bukan** ikon gembok. (Sejak 0101 tidak ada fitur terkunci; pola ini tetap acuan bila kelak dibutuhkan.)
 - **Warna selalu `var(--token)`** dari `src/styles/tokens.css`. Hardcode hex dilarang — token yang menjamin benar di dark & light.
 - **Tema:** dark (default) + light. Keduanya kelas satu; tidak ada yang boleh diperlakukan sebagai turunan.
 - **Ikon:** hanya lewat komponen `Icon` (Phosphor). Tidak ada emoji atau glyph sebagai pengganti ikon.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { id } from '@/i18n/id';
-import { PLANS } from './plans';
+import { FREE_UNITS, UNIT_PRICE } from './pricing';
 import html from '../../index.html?raw';
 import pricingMarkdown from '../../public/pricing.md?raw';
 
@@ -8,7 +8,7 @@ interface GraphNode {
   '@type': string;
   name?: string;
   price?: string;
-  offers?: GraphNode[];
+  offers?: GraphNode | GraphNode[];
   mainEntity?: Array<{
     name: string;
     acceptedAnswer: { text: string };
@@ -22,18 +22,16 @@ const jsonLdSource = html.match(
 if (!jsonLdSource) throw new Error('Landing JSON-LD was not found');
 
 const graph = (JSON.parse(jsonLdSource) as { '@graph': GraphNode[] })['@graph'];
-const priceDigits = (label: string) => label.replace(/\D/g, '');
 
 describe('landing metadata', () => {
-  it('keeps schema prices aligned with the plan configuration', () => {
+  it('keeps schema price aligned with the unit pricing configuration', () => {
     const software = graph.find((node) => node['@type'] === 'SoftwareApplication');
-    const solo = software?.offers?.find((offer) => offer.name === PLANS.standard.name);
-    const pro = software?.offers?.find((offer) => offer.name === PLANS.enterprise.name);
+    const offer = Array.isArray(software?.offers) ? undefined : software?.offers;
 
-    expect(solo?.price).toBe(priceDigits(PLANS.standard.priceLabel));
-    expect(pro?.price).toBe(priceDigits(PLANS.enterprise.priceLabel));
-    expect(pricingMarkdown).toContain(PLANS.standard.priceLabel.replace('/bln', '/bulan'));
-    expect(pricingMarkdown).toContain(PLANS.enterprise.priceLabel.replace('/bln', '/bulan'));
+    expect(offer?.price).toBe(String(UNIT_PRICE));
+    expect(pricingMarkdown).toContain('Rp 1.000 per unit masuk');
+    expect(pricingMarkdown).toContain(`${FREE_UNITS} unit pertama gratis`);
+    expect(pricingMarkdown).not.toContain('Solo');
   });
 
   it('keeps every FAQ schema answer aligned with visible Indonesian copy', () => {

@@ -86,16 +86,17 @@ const LIST_PAGE = 1000;
 
 /**
  * Translate a Supabase write error. A row-level-security violation (Postgres
- * 42501) means EITHER the org's subscription has lapsed (is_org_active, 0010)
- * OR the role may not write this table (manager-only policies, 0017) — the
- * policy can't tell us which, so the message names both instead of blaming the
- * subscription (dulu karyawan yang ditolak mengira langganannya habis). Other
+ * 42501) means EITHER the org is suspended (is_org_active, 0010/0101) OR the
+ * role may not write this table (manager-only policies, 0017) — the policy
+ * can't tell us which, so the message names both (dulu karyawan yang ditolak
+ * mengira langganannya habis). Saldo unit habis bukan 42501: trigger 0101
+ * melempar pesannya sendiri, dan pesan itu diteruskan apa adanya. Other
  * errors pass through unchanged.
  */
 function rethrowWrite(error: { code?: string; message?: string }): never {
   if (error.code === '42501') {
     throw new Error(
-      'Ditolak: tindakan ini memerlukan peran owner/admin, atau langganan sudah kedaluwarsa (periksa Pengaturan → Langganan).',
+      'Ditolak: tindakan ini memerlukan peran owner/admin, atau akun toko sedang ditangguhkan.',
     );
   }
   // Error sungguhan (bukan objek polos), supaya pesan dari server — mis. trigger
@@ -590,7 +591,7 @@ export class SupabaseAdapter implements Repository {
       }
       if (error.code === '42501') {
         throw new Error(
-          'Langganan kedaluwarsa atau melebihi kuota. Perpanjang di Pengaturan → Langganan untuk melanjutkan.',
+          'Akun toko sedang ditangguhkan. Hubungi FixMaster untuk membukanya kembali.',
         );
       }
       throw error;

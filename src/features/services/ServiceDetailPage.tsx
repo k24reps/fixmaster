@@ -1,11 +1,12 @@
 import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { useCollection } from '@/hooks/useCollection';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCollection, invalidateCollection } from '@/hooks/useCollection';
 import { useServiceHistory } from '@/hooks/useServiceHistory';
 import { repository } from '@/data';
 import { addServicePart, addServiceModalLine, saveServiceParts } from '@/data/serviceParts';
+import { deleteServiceTicket } from '@/data/serviceDelete';
 import { updateServiceModal, removeServiceModal } from '@/data/supabase-client';
 import { isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
@@ -51,7 +52,8 @@ import { PartWarrantyModal } from './PartWarrantyModal';
 import type { ServiceHistoryEntry, ServiceStatus, ServiceSparepart } from '@/data/types';
 import styles from './ServiceDetailPage.module.css';
 import { interpolate } from '@/lib/business/notify';
-import { PICKUP_NOTE, UNPICK_NOTE } from '@/lib/business/services';
+import { PICKUP_NOTE, UNPICK_NOTE, serviceDeleteBlocker } from '@/lib/business/services';
+import { REFUND_WINDOW_MINUTES } from '@/config/pricing';
 import { historyKind, STATUS_TONE } from '@/lib/business/services';
 import { qrSvg } from '@/lib/qr';
 
@@ -112,6 +114,9 @@ export function ServiceDetailPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [partWarrantyOpen, setPartWarrantyOpen] = useState(false);
   const [confirmPickup, setConfirmPickup] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
   // Ad-hoc "modal dadakan" entry form (inline in the cost panel).
   const [modalFormOpen, setModalFormOpen] = useState(false);
   // Index of the manual line being edited; null = adding a new line.
@@ -498,6 +503,33 @@ export function ServiceDetailPage() {
   };
   const canHandover = isManager && service.status === 'selesai' && !service.pickedUp;
 
+  const hasWarrantyClaims = services.some((s) => s.warrantyClaimOf === service.id);
+  function requestDelete() {
+    const blocker = serviceDeleteBlocker(service!, hasWarrantyClaims);
+    if (blocker) {
+      toast.error(t(blocker));
+      return;
+    }
+    setConfirmDelete(true);
+  }
+  const runDelete = async () => {
+    if (!service) return;
+    setDeleting(true);
+    try {
+      const { refunded } = await deleteServiceTicket(service, hasWarrantyClaims);
+      invalidateCollection(queryClient, 'services');
+      toast.success(
+        interpolate(t(refunded ? 'serviceDelete.doneRefunded' : 'serviceDelete.done'), { no: service.serviceNo }),
+      );
+      navigate('/services');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('serviceDelete.failed'));
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   // Satu daftar aksi untuk bilah bawah DAN panel "Lainnya" di ponsel, supaya
   // syarat tampil tiap aksi tidak ditulis dua kali.
   const actions: TicketAction[] = [
@@ -541,6 +573,11 @@ export function ServiceDetailPage() {
       : []),
     ...(service.status === 'lunas' && isManager
       ? [{ key: 'correct', icon: 'pen' as const, label: t('serviceDetail.correctCost'), onClick: () => openStatus() }]
+      : []),
+    // Hapus permanen: owner saja, dan hanya tiket bersih (0101). Tombolnya
+    // tetap tampil untuk tiket yang belum bersih; ketukan menjelaskan alasannya.
+    ...(isOwner && service.status !== 'lunas'
+      ? [{ key: 'delete', icon: 'trash' as const, label: t('serviceDelete.button'), onClick: requestDelete }]
       : []),
   ];
   const secondaryActions = actions.filter((a) => !a.primary);
@@ -1080,6 +1117,16 @@ export function ServiceDetailPage() {
           setConfirmPickup(false);
           void togglePickup(true);
         }}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        title={interpolate(t('serviceDelete.title'), { no: service.serviceNo })}
+        message={interpolate(t('serviceDelete.message'), { minutes: String(REFUND_WINDOW_MINUTES) })}
+        confirmLabel={t('serviceDelete.confirm')}
+        danger
+        loading={deleting}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void runDelete()}
       />
       {/* Hapus baris BOM memindahkan uang (modal dadakan → saldo kembali) atau
           stok (part → rak). Dulu terjadi seketika tanpa konfirmasi. */}

@@ -182,11 +182,59 @@ Selain koleksi yang dipetakan ke repository, mode cloud punya tabel & RPC khusus
 
 **Tim (migration `0008`, diperketat `0016`)** — tabel `pending_invites` (org_id, email, role, claimed_at) + RPC security-definer `claim_invite` (dipanggil di `session.bootstrap` saat akun baru belum punya membership → gabung org via email yang cocok), `set_member_role`, `deactivate_member`. Semua mengecek `is_org_manager` & menolak menurunkan/menonaktifkan owner aktif terakhir. **Sejak `0016`: hanya OWNER yang boleh mengelola peran owner** (promote ke owner, demote/nonaktifkan owner) — admin ditolak; policy `mbr_manage` juga menambah guard `role <> 'owner' or is_org_owner(...)` agar admin tak bisa mem-bypass via PostgREST langsung. Guard yang sama dicerminkan murni di `lib/business/team.ts`. Detail: [[Decisions & Bug Fixes]] (model undangan pending-invite + claim).
 
-**Billing (migration `0009` → `0047`)** — tabel `invoices` tetap menjadi buku pembayaran (org, paket, nominal, status, provider, periode, waktu lunas), sedangkan `is_org_active` tetap menjadi gerbang akses tulis. Sejak `0047`, klien **tidak dapat membuat atau melunasi invoice sendiri**: RPC `start_subscription`, `apply_payment`, `cancel_invoice`, dan seluruh RPC GoPay dihapus. Tombol paket hanya membuat deep-link WhatsApp yang memuat nama + id organisasi, paket, masa aktif, jumlah outlet, dan nominal; helper murninya `manualPaymentWhatsAppLink()` di `lib/business/billing.ts`.
+**Harga per unit & saldo (migration `0101`, 14 Nov 2026) — menggantikan model langganan.**
+Satu tiket servis = satu unit = Rp 1.000, dibayar dari saldo yang diisi di muka.
+Angka-angkanya di `src/config/pricing.ts`; `pricing.test.ts` membaca migrasi supaya
+kedua sisi tidak berbeda diam-diam. Logika murni: `lib/business/billing.ts`
+(`unitBalanceState`, `canCreateTicket`, `topupAmountError`, `topupWhatsAppLink`).
 
-Satu-satunya jalur perpanjangan adalah `admin_confirm_manual_payment(org, plan, months, amount, reference, reason)`: admin platform memverifikasi bukti bayar di WhatsApp, RPC mengunci baris organisasi, membuat invoice langsung `paid` dengan `provider='manual_whatsapp'`, memperpanjang dari `greatest(now(), expiry)`, mengganti paket ke Solo/Pro, lalu menulis `payment_manual` ke `operator_actions`. Referensi dan catatan verifikasi wajib; durasi 1–12 bulan; nominal harus positif. Grant hanya `authenticated`, lalu fail-closed dengan `is_platform_admin()` di dalam fungsi. Invoice pending lama dipertahankan apa adanya untuk audit, tetapi tidak ditampilkan sebagai riwayat pembayaran aktif.
+- **`organizations.unit_balance`** — saldo berjalan (default 50, mengisi toko lama juga).
+  Dijaga trigger `guard_unit_balance` seperti `plan_type` (`0016`): UPDATE dari klien yang
+  mengubah kolom ini dibuang diam-diam (klien menyimpan profil usaha dengan baris
+  organizations penuh dari salinan basi), kecuali lewat flag transaksi
+  `fixmaster.bypass_unit_lock` atau `service_role`. INSERT selalu dipaksa 50.
+- **`unit_ledger`** — buku saldo, satu baris per perubahan dengan `balance_after`
+  (rekening koran). Jenis: `grant` (kuota gratis), `topup`, `usage`, `refund`, `adjust`.
+  `service_id` **tanpa FK** dengan sengaja (pola `service_tracking` 0100): tiket yang
+  dihapus dan `restore_org_data` tidak menghapus jejak pemakaian. Unik `(service_id, kind)`
+  → potong dan kembali per tiket masing-masing paling banyak sekali; unik
+  `(org_id, reference)` untuk `topup` → retry operator tidak menggandakan. RLS: SELECT
+  owner saja, tanpa policy tulis. Satu-satunya penulis: `unit_ledger_apply()` (definer,
+  mengunci baris organisasi).
+- **Pemotongan** — trigger **AFTER INSERT** `trg_services_charge_unit`. BEFORE INSERT
+  tidak bisa dipakai: tiket disimpan lewat upsert (`repository.put`), dan BEFORE INSERT
+  ikut menyala untuk upsert yang berakhir sebagai UPDATE. Hanya sisipan dari aplikasi
+  (`current_user = 'authenticated'`) yang dihitung, dan klaim garansi
+  (`warranty_claim_of`) dikecualikan. Saldo `<= -20` → `raise` "Saldo unit habis",
+  hanya untuk tiket BARU; UPDATE tiket lama tidak pernah terhalang saldo.
+- **Pengembalian 10 menit** — `refund_service_unit_if_fresh()`: waktu dihitung dari
+  baris ledger `usage` (jam server), bukan `services.created_at` yang dikirim perangkat.
+  Dipanggil trigger `AFTER UPDATE OF status` saat status menjadi `batal`, dan oleh
+  `delete_service_ticket`. Batal bersifat final (`0089`), jadi tidak ada jalur "buka lagi"
+  yang perlu memotong ulang; bila kelak dibuat, ia wajib menambah jenis ledger baru.
+- **`is_org_active`** kini hanya `plan_type <> 'suspended'`; masa aktif tidak dibaca lagi.
+  `plan_quota` terbuka untuk semua (pengguna & outlet −1, wallet 99). `plan_expired_at` dan
+  tabel `invoices` dibiarkan sebagai riwayat; klien tidak membacanya lagi.
+- **Hapus tiket** — `delete_service_ticket(org, service)`: owner saja, hanya tiket bersih
+  (bukan Lunas, tanpa DP/pemasukan bertaut, tanpa sparepart/pembelian luar, tanpa klaim
+  garansi), refund 10 menit, `fm_log('service.delete')`, hapus `service_tracking`, lalu
+  hapus tiket. Policy `services_del` **dicabut**: hapus langsung lewat REST tidak ada lagi,
+  jadi syarat "bersih" tidak bisa dilewati. Klien: `src/data/serviceDelete.ts` (RPC di
+  cloud, `repository.remove` + `logActivity` di lokal/demo), cermin syarat
+  `serviceDeleteBlocker()` di `lib/business/services.ts`.
+- **Isi saldo** — sementara manual lewat WhatsApp. Owner mengirim permintaan dari tab
+  Saldo (`topupWhatsAppLink`), operator mencatat dengan `admin_topup_units(org, amount,
+  reference, reason)`: minimal Rp 50.000, kelipatan Rp 1.000, unit = nominal / 1000,
+  idempoten per referensi, `log_operator_action('topup_units')`. Koreksi:
+  `admin_adjust_units(org, units, reason)` (±1000, bukan 0). RPC paket lama
+  `admin_confirm_manual_payment` dan `admin_apply_promo` **dihapus**.
 
-**Enforcement tulis (migration `0010`)** — semua RLS `*_write` policy (operasional, finansial, config) diperketat agar `using`+`with check` wajib `is_org_active(org_id)`. Jadi saat langganan kedaluwarsa (lewat grace), **insert/update/delete diblokir di level DB** untuk semua jalur tulis (termasuk input pemasukan via adapter yang tak lewat RPC) — sementara `*_select` tak disentuh (baca tetap jalan) dan `invoices`/`memberships` tak digerbang (bayar + kelola tim tetap bisa). `supabase-adapter` menerjemahkan error RLS `42501` jadi pesan Indonesia yang ramah.
+> Historis — **Billing (migration `0009` → `0047`)**: `invoices` sebagai buku pembayaran
+> dan `is_org_active` sebagai gerbang masa aktif; sejak `0047` hanya
+> `admin_confirm_manual_payment` yang bisa memperpanjang paket Solo/Pro. Seluruhnya
+> digantikan `0101` di atas.
+
+**Enforcement tulis (migration `0010`)** — semua RLS `*_write` policy (operasional, finansial, config) diperketat agar `using`+`with check` wajib `is_org_active(org_id)`. Sejak `0101` gerbang itu hanya menutup toko yang **ditangguhkan** operator (dulu: langganan lewat grace); saat itu **insert/update/delete diblokir di level DB** untuk semua jalur tulis (termasuk input pemasukan via adapter yang tak lewat RPC) — sementara `*_select` tak disentuh (baca tetap jalan) dan `invoices`/`memberships` tak digerbang (bayar + kelola tim tetap bisa). `supabase-adapter` menerjemahkan error RLS `42501` jadi pesan Indonesia yang ramah.
 
 ### Historis — listener GoPay (`0043`–`0046`, dinonaktifkan `0047`)
 
@@ -220,7 +268,7 @@ Sebelum `0045` tak ada konsep peran global sama sekali: tidak ada tabel `profile
 RPC (semua `security definer` + `set search_path = public, pg_temp`, gate `is_platform_admin()` di baris pertama):
 - `is_platform_admin()` → boolean. Aman di-grant `authenticated`: hanya membocorkan status diri sendiri, bukan daftar admin.
 - `admin_list_orgs()` → satu baris per org: `org_id, org_name, org_plan, expires_at, registered_at, demo, outlet_count, user_count, service_count, last_activity_at, last_paid_at, last_paid_reference, note`. Urut `plan_expired_at asc nulls last`. `last_activity_at` ditopang index `idx_activity_org_created` (`0019`).
-- `admin_confirm_manual_payment()` (sejak `0047`, diperketat `0049`) → satu-satunya aksi berbayar: validasi harga resmi + invoice paid + perpanjangan + audit dalam satu transaksi.
+- `admin_confirm_manual_payment()` (sejak `0047`, diperketat `0049`, **dihapus `0101`**) → dulu satu-satunya aksi berbayar. Kini aksi berbayar adalah `admin_topup_units` (lihat Harga per unit & saldo di atas); `admin_list_orgs` sejak `0101` mengembalikan `unit_balance`, `units_used_30d`, `last_topup_at`, `last_topup_reference` menggantikan `expires_at`/`last_paid_*`.
 
 **Batas privasi ditegakkan di level skema query, bukan di UI:** yang diekspos hanya metadata + **jumlah agregat**. Tidak ada nama pelanggan klien, detail tiket, atau angka keuangan mereka. Vendor perlu tahu klien X jatuh tempo, bukan mengintip pelanggan klien X — sekaligus memperkecil ledakan bila surface ini bocor. Ada tes yang mengasersikan tidak ada kolom bocoran.
 
@@ -258,7 +306,9 @@ UI: `/operator` ([OperatorPage.tsx](src/features/operator/OperatorPage.tsx)), ro
 
 RPC baru `admin_delete_org(org, confirmation, reason)` adalah operasi vendor-only yang fail-closed: gate `is_platform_admin()`, alasan wajib, organisasi dikunci `FOR UPDATE`, dan konfirmasi harus sama dengan nomor `ORG-XXXXXXXX` yang dihitung ulang di server. Sebelum `DELETE organizations`, RPC menghitung outlet/anggota/tiket lalu memanggil `log_operator_action('delete_org')`; FK `operator_actions.org_id on delete set null` menjaga audit dan salinan `org_name`, sedangkan seluruh data tenant ber-FK cascade ikut hilang. **Baris `auth.users` sengaja dipertahankan**—pengguna masih dapat login dan membuat organisasi baru. Fungsi di-revoke dari `public, anon`, hanya di-grant ke `authenticated`, lalu tetap menolak semua akun yang bukan admin platform.
 
-### Aktivasi berbayar fail-closed (migration `0049`)
+### Aktivasi berbayar fail-closed (migration `0049`) — historis sejak `0101`
+
+> `0101` membuat ulang `admin_reactivate_org(org, reason)` (tanpa argumen paket): membuka toko yang ditangguhkan tidak lagi memberi masa aktif gratis, karena pemakaian tetap dipotong dari saldo. Alasan wajib dan tercatat.
 
 `0049` menghapus `admin_reactivate_org` dan menjadikan pembayaran Solo/Pro sebagai satu-satunya jalur rutin untuk menghidupkan organisasi trial, kedaluwarsa, atau suspended. `admin_confirm_manual_payment` mengunci organisasi, menghitung outlet aktif, menolak Solo bila outlet >1, lalu memvalidasi nominal tepat: Solo Rp99.000/bulan; Pro Rp199.000 untuk dua outlet + Rp50.000/outlet tambahan, capped Rp349.000/bulan. Harga dikali 1–12 bulan di server. Referensi yang sama tetap idempoten agar retry jaringan tidak menggandakan masa aktif.
 
@@ -279,12 +329,13 @@ Matriks final tiga lapis (diperketat lebih lanjut oleh `0017`, lihat di bawah):
 | **Inventori** — tambah/edit/hapus item (harga modal/jual) | ❌¹ | ✅ | ✅ |
 | **Absensi** — tulis baris **milik sendiri** | ✅ | ✅ | ✅ |
 | Absensi — tulis baris karyawan lain | ❌ | ✅ | ✅ |
-| **Hard-delete** — customers/services/sales/task_instances | ❌ | ✅ | ✅ |
+| **Hard-delete** — customers/sales/task_instances | ❌ | ✅ | ✅ |
+| **Hapus tiket servis** (hanya lewat `delete_service_ticket`, tiket bersih, `0101`) | ❌ | ❌ | ✅ |
 | Baca keuangan (incomes/expenses, laporan) | ❌ | ✅ | ✅ |
 | Tulis keuangan & config (wallet/outlet/supplier/PO) | ❌ | ✅ | ✅ |
 | Kelola karyawan & admin | ❌ | ✅ | ✅ |
 | Kelola peran **owner** (promote/demote/nonaktif) | ❌ | ❌ | ✅ |
-| Billing/langganan + ubah `plan_type` | ❌ | ❌ | ✅ |
+| Saldo unit (lihat riwayat, minta isi saldo) + ubah `plan_type` | ❌ | ❌ | ✅ |
 
 ¹ Stok berubah otomatis saat **POS** (`process_sale`) & **terima barang** (`receive_goods`) — keduanya RPC `security definer` yang **bypass RLS**, jadi tetap jalan untuk karyawan. Yang dikunci hanya editor item manual.
 

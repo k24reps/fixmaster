@@ -644,7 +644,29 @@
   background: var(--danger-soft);
 }
 
+/* Aksi sekunder di menu Lainnya: sama bentuknya dengan tombol hapus, tanpa
+   nada bahaya. Bertumpuk vertikal saat menu terbuka. */
+.moreButton {
+  min-height: var(--control-h);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.moreButton:hover {
+  background: var(--bg-hover);
+}
+
+.moreActions[open] .moreButton,
 .moreActions[open] .deleteButton {
+  display: flex;
   margin-top: var(--space-1);
 }
 
@@ -1230,11 +1252,13 @@ textarea.input {
 
   .moreActions,
   .moreActions summary,
+  .moreActions .moreButton,
   .moreActions .deleteButton {
     width: 100%;
   }
 
   .moreActions summary,
+  .moreActions .moreButton,
   .moreActions .deleteButton {
     justify-content: center;
   }

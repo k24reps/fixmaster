@@ -22,7 +22,7 @@ describe('mobile navigation', () => {
   });
 
   it('fills owner-only choices with safe destinations for staff', () => {
-    const staffNavigation = getVisibleNavigation('karyawan', 'enterprise');
+    const staffNavigation = getVisibleNavigation('karyawan');
     const resolved = resolveMobileNavigation(
       ['/reports', '/settings', '/services', '/pos'],
       staffNavigation,
@@ -47,12 +47,11 @@ describe('mobile navigation', () => {
     expect(NAV_ITEMS.some((item) => item.to === '/inventory')).toBe(false);
   });
 
-  it('keeps plan-locked entries visible for the owner', () => {
-    const ownerNavigation = getVisibleNavigation('owner', 'standard');
-    const resolved = resolveMobileNavigation(['/attendance'], ownerNavigation);
+  it('owner bisa menaruh modul tim di nav bawah tanpa kunci paket', () => {
+    const ownerNavigation = getVisibleNavigation('owner');
+    const resolved = resolveMobileNavigation(['/attendance', '/suppliers'], ownerNavigation);
 
-    expect(resolved[0].item.to).toBe('/attendance');
-    expect(resolved[0].locked).toBe(true);
+    expect(resolved.map(({ item }) => item.to).slice(0, 2)).toEqual(['/attendance', '/suppliers']);
   });
 });
 
@@ -67,7 +66,7 @@ describe('grup rail', () => {
   });
 
   it('karyawan tetap melihat dua grup: operasional dan kantor', () => {
-    const groups = getVisibleNavigation('karyawan', 'enterprise').map(({ item }) => item.group);
+    const groups = getVisibleNavigation('karyawan').map(({ item }) => item.group);
     expect([...new Set(groups)]).toEqual(['ops', 'office']);
   });
 });

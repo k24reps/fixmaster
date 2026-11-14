@@ -2,8 +2,6 @@ import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
-import { ProBadge } from '@/components/ui/PlanLock';
-import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
 import { fmtRp, fmtPercent } from '@/lib/format';
@@ -374,14 +372,8 @@ export function ReportsPage() {
   const maxOutletNet = Math.max(1, ...outletStats.map((o) => Math.abs(o.net)));
   const receivablesTotal = receivables.reduce((s, r) => s + r.outstanding, 0);
 
-  // Ekspor = portabilitas data: ada di Solo dan Pro, dikunci hanya selama
-  // Trial (plans.ts). Jalur kedua di luar kartu Export Data di Pengaturan;
-  // keduanya harus dikunci, kalau tidak gerbangnya cuma menggeser pintu.
-  const canExport = useFeature('exportImport');
-
   // Export the period's transactions (income + expense) as one CSV, newest first.
   const exportCsv = () => {
-    if (!canExport) return;
     if (txnRows.length === 0) {
       toast.error(t('reports.tidakAdaTransaksiPada'));
       return;
@@ -406,7 +398,6 @@ export function ReportsPage() {
   // Laporan A4 untuk dicetak atau disimpan sebagai PDF. Jalur ketiga di gerbang
   // `exportImport` yang sama: berkas yang keluar dari aplikasi, sama seperti CSV.
   const exportPdf = () => {
-    if (!canExport) return;
     if (!org) return;
     if (!rangeValid) {
       toast.error(t('reports.perbaikiRentangTanggalDulu'));
@@ -459,7 +450,6 @@ export function ReportsPage() {
   // Piutang punya ekspornya sendiri: daftar inilah yang dibawa saat menagih,
   // dan ia tidak mengikuti periode — jadi tak bisa ikut di ekspor transaksi.
   const exportReceivables = () => {
-    if (!canExport) return;
     if (receivables.length === 0) {
       toast.error(t('reports.tidakAdaPiutangUntuk'));
       return;
@@ -629,34 +619,24 @@ export function ReportsPage() {
             <span className={styles.scopeTag} title={t('reports.cakupanLaporan')}>
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
-            {!canExport && (
-              /* Trial: tombolnya dulu hilang tanpa jejak, jadi pemilik tak tahu
-                 laporan ini bisa disimpan. Pola gerbang yang sama dengan kartu
-                 Export Data di Pengaturan: redup + badge PRO, tak pernah gembok. */
-              <Link className={styles.exportLocked} to="/settings?tab=langganan">
-                <Icon name="file-invoice" aria-hidden /> {t('reports.exportLocked')} <ProBadge />
-              </Link>
-            )}
-            {canExport && (
-              <span className={styles.exportGroup}>
-                <Button
-                  variant="secondary"
-                  onClick={exportPdf}
-                  iconLeft={<Icon name="file-invoice" aria-hidden />}
-                  className={styles.exportBtn}
-                >
-                  {t('reports.eksporPdf')}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={exportCsv}
-                  iconLeft={<Icon name="download" aria-hidden />}
-                  className={styles.exportBtn}
-                >
-                  {t('reports.eksporCsv')}
-                </Button>
-              </span>
-            )}
+            <span className={styles.exportGroup}>
+              <Button
+                variant="secondary"
+                onClick={exportPdf}
+                iconLeft={<Icon name="file-invoice" aria-hidden />}
+                className={styles.exportBtn}
+              >
+                {t('reports.eksporPdf')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={exportCsv}
+                iconLeft={<Icon name="download" aria-hidden />}
+                className={styles.exportBtn}
+              >
+                {t('reports.eksporCsv')}
+              </Button>
+            </span>
           </div>
         </CardBody>
       </Card>
@@ -1156,12 +1136,10 @@ export function ReportsPage() {
                       ))}
                     </tbody>
                   </table>
-                  {/* Catatan ini dulu tidak digerbang canExport, jadi paket Trial
-                      dan Solo disuruh menekan tombol yang tidak ada di halaman. */}
                   {txnRows.length > 100 && (
                     <p className={styles.tableNote}>
                       {interpolate(t('reports.txnShown'), { shown: '100', total: String(txnRows.length) })}{' '}
-                      {t(canExport ? 'reports.txnMoreExport' : 'reports.txnMoreNarrow')}
+                      {t('reports.txnMoreExport')}
                     </p>
                   )}
                 </div>
@@ -1707,7 +1685,7 @@ export function ReportsPage() {
                 <span className={[styles.turnaround, styles.headWrap].join(' ')}>
                   {receivables.length > 0 ? interpolate(t('reports.totalPrefix'), { amount: fmtRp(receivablesTotal) }) : ''}
                   {t('reports.allPeriods')}
-                  {canExport && receivables.length > 0 && (
+                  {receivables.length > 0 && (
                     <Button
                       variant="secondary"
                       size="sm"
