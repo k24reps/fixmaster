@@ -21,6 +21,7 @@ import {
   technicianProfit,
   awaitingPickup,
   salesBreakdown,
+  periodPreset,
 } from './reports';
 import type {
   Service,
@@ -740,6 +741,19 @@ describe('salesBreakdown', () => {
       ['kabel', 3, 280_000, 190_000],
       ['lcd', 1, 720_000, 120_000],
     ]);
+  });
+});
+
+describe('periodPreset', () => {
+  it('hari ini, 7 hari, bulan ini, bulan lalu, tahun ini', () => {
+    expect(periodPreset('today', '2026-11-14')).toEqual(['2026-11-14', '2026-11-14']);
+    expect(periodPreset('7d', '2026-11-14')).toEqual(['2026-11-08', '2026-11-14']);
+    expect(periodPreset('month', '2026-11-14')).toEqual(['2026-11-01', '2026-11-30']);
+    expect(periodPreset('lastMonth', '2026-11-14')).toEqual(['2026-10-01', '2026-10-31']);
+    expect(periodPreset('year', '2026-11-14')).toEqual(['2026-01-01', '2026-12-31']);
+  });
+  it('bulan lalu dari Januari jatuh ke Desember tahun sebelumnya', () => {
+    expect(periodPreset('lastMonth', '2027-01-05')).toEqual(['2026-12-01', '2026-12-31']);
   });
 });
 

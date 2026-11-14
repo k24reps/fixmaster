@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fmtRp, fmtRpCompact } from '@/lib/format';
 import { trendGeometry, type TrendPoint } from '@/lib/business/reports';
 import { useT } from '@/i18n';
+import { interpolate } from '@/lib/business/notify';
 import styles from './TrendChart.module.css';
 
 interface TrendChartProps {
@@ -11,7 +12,9 @@ interface TrendChartProps {
 /**
  * Pure-SVG dual line chart (income vs expense) with a hover crosshair. No chart
  * library — keeps the bundle lean and matches the bench aesthetic (mono
- * readouts, tick gauge, brand spine). Responsive via viewBox.
+ * readouts, tick gauge, brand spine). viewBox selebar wadahnya yang terukur,
+ * bukan 720 tetap: dulu SVG diskalakan turun, dan label sumbu di ponsel
+ * tinggal ±5px (diukur 7px tinggi kotaknya di 390px).
  *
  * Geometrinya datang dari `trendGeometry`, yang juga dipakai grafik di laporan
  * PDF — supaya keduanya tidak bisa menggambar bentuk yang berbeda.
@@ -19,7 +22,20 @@ interface TrendChartProps {
 export function TrendChart({ points }: TrendChartProps) {
   const t = useT();
   const [hover, setHover] = useState<number | null>(null);
-  const g = useMemo(() => trendGeometry(points), [points]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [measured, setMeasured] = useState(0);
+  const hasPoints = points.length > 0;
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => setMeasured(Math.round(entry.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasPoints]);
+  const width = measured > 0 ? measured : undefined;
+  // Grafik sempit dibuat sedikit lebih pendek supaya tidak menjadi menara.
+  const height = measured > 0 && measured < 480 ? 200 : undefined;
+  const g = useMemo(() => trendGeometry(points, { width, height }), [points, width, height]);
 
   if (points.length === 0) return null;
 
@@ -30,14 +46,24 @@ export function TrendChart({ points }: TrendChartProps) {
   const gridYs = g.gridYs.map((row) => ({ y: row.y, label: fmtRpCompact(row.value) }));
 
   const active = hover != null ? points[hover] : null;
+  // Ringkasan untuk pembaca layar: role="img" dengan judul saja tidak
+  // menyampaikan satu angka pun dari grafik.
+  const past = points.filter((p) => !p.future);
+  const peak = past.reduce((best, p) => (p.income > best.income ? p : best), past[0] ?? points[0]);
+  const summary = interpolate(t('reports.chartSummary'), {
+    income: fmtRp(past.reduce((sum, p) => sum + p.income, 0)),
+    expense: fmtRp(past.reduce((sum, p) => sum + p.expense, 0)),
+    peak: fmtRp(peak.income),
+    label: peak.label,
+  });
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} ref={wrapRef}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className={styles.svg}
         role="img"
-        aria-label={t('reports.chartAria')}
+        aria-label={`${t('reports.chartAria')}. ${summary}`}
         preserveAspectRatio="xMidYMid meet"
         onMouseLeave={() => setHover(null)}
       >

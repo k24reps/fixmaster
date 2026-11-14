@@ -620,6 +620,22 @@ dihitung terpisah, tidak dibuang. Kartu yang dulu "Sparepart Terlaris" (pemakaia
 servis) diberi judul "Part Terpakai di Servis" supaya tidak tertukar dengan barang kasir. PDF
 memuat tabel yang sama dengan daftar barang lengkap.
 
+**Perbaikan kecil (14 Nov 2026).**
+- **Pintasan periode** di atas pemilih tanggal: Hari ini · 7 hari · Bulan ini · Bulan lalu ·
+  Tahun ini (`periodPreset`; bulan/tahun = rentang kalender penuh, seperti bawaan halaman).
+  Tuts mono setinggi `--control-h`, `aria-pressed`, terpilih menyala seperti tab bagian.
+- **Ekspor di Trial** tak lagi hilang tanpa jejak: tombol redup "Ekspor PDF & CSV" + `ProBadge`
+  ke `/settings?tab=langganan`, pola gerbang yang sama dengan kartu Export Data di Pengaturan.
+- **Tautan tindak lanjut:** nomor servis di Piutang dan Unit Menunggu Diambil membuka tiketnya
+  (tempat tombol WhatsApp dan pelunasan; RPC piutang tak membawa nomor HP, jadi tombol WA
+  langsung di Laporan butuh perubahan server); Saran Restok menaut ke `/pos?stock=low`.
+- **Grafik tren:** viewBox selebar wadah terukur (`ResizeObserver`), jadi label sumbu tampil
+  12px di semua lebar (dulu ±5px di 390px); label X dijarangkan sampai ±56 unit per label
+  (4 label di ponsel); pad kiri 68 agar "2,63 jt" tidak terpotong; tinggi 200 bila <480px.
+  `aria-label` kini memuat ringkasan (total pemasukan/pengeluaran, puncak dan tanggalnya).
+- ±13 literal UI pindah ke kunci i18n; transisi `width` pada batang dicabut (gerak tersebar,
+  dan detektor menandainya); `.estTag` memakai `--text-xs`.
+
 - **Break-even (29 Sep 2026; sejak 14 Nov 2026 satu kartu dengan Laba Rugi, lihat di atas).** **Laba kotor** (laba servis per tanggal selesai + laba penjualan
   − Garansi − Refund Penjualan) dibanding **overhead dari catatan Keuangan** seporsi panjang
   periode (hari mendatang tak dihitung) — `lib/business/overhead.ts`, teruji. Overhead = Gaji,

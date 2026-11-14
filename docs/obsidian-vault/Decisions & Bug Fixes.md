@@ -6719,3 +6719,25 @@ struk di luar periode diabaikan). Demo `?bagian=stok`: 2 struk, rata-rata Rp 1.4
 kasir Rp 930.000 (margin 32%), LCD iPhone 12 Rp 600.000 di atas SSD Rp 330.000; nol luberan/clip
 di 1440/820/390. `audit-mobile` dan `audit-zoom` untuk `/reports?bagian=stok`: nol temuan.
 
+**Tahap 5, perbaikan kecil (14 Nov 2026):** rincian di [[Signature Pages#Laporan — Analyzer Printout]].
+Keputusan: pintasan periode memakai rentang kalender PENUH (bukan s.d. hari ini) supaya sama
+dengan bawaan halaman dan dengan kalimat di tab; jendela pembanding dan grafik sudah menangani
+hari mendatang. Tombol WA tagih tidak dibuat: `service_receivables` (0074) tak mengembalikan
+nomor HP, jadi baris piutang menaut ke tiket, yang sudah punya tombol WA. Baris laba per
+kategori, tahapan, dan teknisi belum menaut ke daftar Servis terfilter karena halaman Servis
+belum membaca filter dari URL (hanya `?new=1`). CSV tetap berjudul kolom bahasa Indonesia
+(format data, sama dengan ekspor Pengaturan). Grafik: `trendGeometry` kini menjarangkan label
+menurut lebar plot (`plotW / 56`, maks 8), dan pad kiri 56 → 68; PDF ikut karena memakai
+geometri yang sama. Kunci baru `reports.preset.*`, `reports.presetsLabel`, `reports.rangeBad`,
+`reports.txnExported`, `reports.receivablesExported`, `reports.outletSingle`,
+`reports.outletFlow`, `reports.rows`, `reports.txnShown`, `reports.txnMore*`, `reports.catRow`,
+`reports.totalPrefix`, `reports.stockOfMin`, `reports.openRestock`, `reports.exportLocked`,
+`reports.openTicket`, `reports.chartSummary`.
+**Verifikasi:** build, lint, **1126 tes / 85 berkas** (+2 `periodPreset`, termasuk Januari →
+Desember tahun lalu). Diukur dari DOM: kotak label grafik 16px di 390, 820, dan 1440 (dulu 7px
+di 390), nol label keluar dari SVG di 360/390/1440, 4 label X di 390; klik "Bulan lalu" mengisi
+1–31 Okt dan menandai chipnya; tautan FM-0007 di Piutang dan `/pos?stock=low` di Saran Restok;
+tombol ekspor terkunci tampil di demo (Trial). `audit-mobile` (`/reports` dan
+`?bagian=piutang`, ponsel; `/reports` pita tablet) dan `audit-zoom` (100% dan 125%): nol temuan,
+lantai 12px 0.
+

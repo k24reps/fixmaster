@@ -86,7 +86,10 @@ export interface TrendGeometry {
 }
 
 const TREND_SIZE = { width: 720, height: 240 };
-const TREND_PAD = { top: 16, right: 16, bottom: 28, left: 56 };
+// Kiri 68: label Y terpanjang ("12,5 jt", 7–8 karakter mono 12px ≈ 58px) + 8
+// jarak ke garis. Sejak viewBox selebar wadah (1:1), label tak lagi diskalakan,
+// jadi 56 memotong "2,63 jt" di 390px.
+const TREND_PAD = { top: 16, right: 16, bottom: 28, left: 68 };
 
 /**
  * Geometri grafik tren: jalur, gridline, dan posisi label — murni, tanpa DOM.
@@ -120,7 +123,10 @@ export function trendGeometry(
       .join(' ');
 
   const incPath = toPath((p) => p.income);
-  const labelStep = Math.max(1, Math.ceil(n / 8));
+  // Maksimal 8 label, dan tak lebih rapat dari satu per ±56 unit (label mono
+  // "13/11" ±40px + jarak) — grafik selebar ponsel cuma muat 4.
+  const maxLabels = Math.max(2, Math.min(8, Math.floor(plotW / 56)));
+  const labelStep = Math.max(1, Math.ceil(n / maxLabels));
 
   return {
     width,
@@ -836,5 +842,34 @@ export function salesBreakdown(
   }
   out.products = [...map.values()].sort((a, b) => b.profit - a.profit || b.qty - a.qty);
   return out;
+}
+
+// ---------- 11. Pintasan periode ----------
+export const PERIOD_PRESETS = ['today', '7d', 'month', 'lastMonth', 'year'] as const;
+export type PeriodPreset = (typeof PERIOD_PRESETS)[number];
+
+/**
+ * Rentang tanggal untuk satu pintasan. Bulan dan tahun memakai rentang
+ * kalender PENUH, sama dengan bawaan halaman: bagian yang belum terjadi sudah
+ * ditangani `comparisonWindows` dan grafik, jadi pintasan tak perlu memotongnya.
+ */
+export function periodPreset(id: PeriodPreset, today: string = localDateStr()): [string, string] {
+  const d = parseISODate(today);
+  if (!d) return [today, today];
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  const day = (yy: number, mm: number, dd: number) => localDateStr(new Date(yy, mm, dd, 12));
+  switch (id) {
+    case 'today':
+      return [today, today];
+    case '7d':
+      return [addDays(today, -6), today];
+    case 'month':
+      return [day(y, m, 1), day(y, m + 1, 0)];
+    case 'lastMonth':
+      return [day(y, m - 1, 1), day(y, m, 0)];
+    case 'year':
+      return [day(y, 0, 1), day(y, 11, 31)];
+  }
 }
 

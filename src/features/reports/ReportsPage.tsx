@@ -2,6 +2,7 @@ import { EmptyValue } from '@/components/ui/EmptyValue';
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardBody, EmptyState, Icon, Button, LoadState, loadPending, Term } from '@/components/ui';
+import { ProBadge } from '@/components/ui/PlanLock';
 import { useFeature } from '@/hooks/useFeature';
 import { useCollection } from '@/hooks/useCollection';
 import { useCollectionRange, rangeForTimestamp } from '@/hooks/useCollectionRange';
@@ -16,7 +17,9 @@ import {
   serviceFunnel,
   serviceQuality,
   technicianProfit,
-  salesBreakdown,
+    salesBreakdown,
+  periodPreset,
+  PERIOD_PRESETS,
   periodComparison,
   comparisonWindows,
   outletComparison,
@@ -343,9 +346,9 @@ export function ReportsPage() {
   const maxOutletNet = Math.max(1, ...outletStats.map((o) => Math.abs(o.net)));
   const receivablesTotal = receivables.reduce((s, r) => s + r.outstanding, 0);
 
-  // Ekspor CSV = portabilitas data, fitur Pro (lihat plans.ts). Jalur kedua
-  // di luar kartu Export Data di Pengaturan; keduanya harus dikunci, kalau
-  // tidak gerbangnya cuma menggeser pintu.
+  // Ekspor = portabilitas data: ada di Solo dan Pro, dikunci hanya selama
+  // Trial (plans.ts). Jalur kedua di luar kartu Export Data di Pengaturan;
+  // keduanya harus dikunci, kalau tidak gerbangnya cuma menggeser pintu.
   const canExport = useFeature('exportImport');
 
   // Export the period's transactions (income + expense) as one CSV, newest first.
@@ -369,7 +372,7 @@ export function ReportsPage() {
     // csvFilename menormalkan nama cabang (yang diketik pengguna) dan
     // menempelkan tanggal ekspor, sama seperti ekspor di Pengaturan.
     downloadCsvFile(csvFilename(`laporan-${scopeLabel}-${from}-sd-${to}`), csv);
-    toast.success(`${txnRows.length} transaksi diekspor`);
+    toast.success(interpolate(t('reports.txnExported'), { n: String(txnRows.length) }));
   };
 
   // Laporan A4 untuk dicetak atau disimpan sebagai PDF. Jalur ketiga di gerbang
@@ -438,7 +441,7 @@ export function ReportsPage() {
       { label: 'Kelompok Umur', value: (r) => r.bucket },
     ]);
     downloadCsvFile(csvFilename(`piutang-${scopeLabel}`), csv);
-    toast.success(`${receivables.length} piutang diekspor`);
+    toast.success(interpolate(t('reports.receivablesExported'), { n: String(receivables.length) }));
   };
 
   // Tab bagian. LED hanya pada kanal yang punya status (Lit-Signal): sisanya
@@ -528,6 +531,29 @@ export function ReportsPage() {
     <div className={styles.wrap}>
       <Card>
         <CardBody>
+          {/* Pintasan periode. Dulu satu-satunya cara ganti periode adalah dua
+              pemilih tanggal bawaan, dua kali buka-tutup di ponsel. Tanggal di
+              bawahnya tetap ada untuk rentang lain. */}
+          <div className={styles.presets} role="group" aria-label={t('reports.presetsLabel')}>
+            {PERIOD_PRESETS.map((id) => {
+              const [pf, pt] = periodPreset(id, today);
+              const active = pf === from && pt === to;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={styles.preset}
+                  aria-pressed={active}
+                  onClick={() => {
+                    setFrom(pf);
+                    setTo(pt);
+                  }}
+                >
+                  {t(`reports.preset.${id}` as TranslationKey)}
+                </button>
+              );
+            })}
+          </div>
           <div className={styles.dateBar}>
             <Icon name="calendar-alt" aria-hidden />
             {/* max/min saling mengunci: rentang terbalik dulu diterima diam-diam
@@ -558,7 +584,7 @@ export function ReportsPage() {
               <span className={styles.range}>{fmtDate(from)} – {fmtDate(to)}</span>
             ) : (
               <span className={[styles.range, styles.rangeBad].join(' ')} role="alert">
-                <Icon name="triangle-exclamation" aria-hidden /> Tanggal &ldquo;Dari&rdquo; melewati &ldquo;Sampai&rdquo;
+                <Icon name="triangle-exclamation" aria-hidden /> {t('reports.rangeBad')}
               </span>
             )}
             <Link className={styles.glossaryBtn} to="/istilah">
@@ -567,6 +593,14 @@ export function ReportsPage() {
             <span className={styles.scopeTag} title={t('reports.cakupanLaporan')}>
               <Icon name={activeOutletId ? 'shop' : 'boxes-stacked'} aria-hidden /> {scopeLabel}
             </span>
+            {!canExport && (
+              /* Trial: tombolnya dulu hilang tanpa jejak, jadi pemilik tak tahu
+                 laporan ini bisa disimpan. Pola gerbang yang sama dengan kartu
+                 Export Data di Pengaturan: redup + badge PRO, tak pernah gembok. */
+              <Link className={styles.exportLocked} to="/settings?tab=langganan">
+                <Icon name="file-invoice" aria-hidden /> {t('reports.exportLocked')} <ProBadge />
+              </Link>
+            )}
             {canExport && (
               <span className={styles.exportGroup}>
                 <Button
@@ -960,8 +994,7 @@ export function ReportsPage() {
                   /* Datanya sudah tersaring cabang aktif, jadi kartu ini hanya akan
                      menampilkan satu batang — pembanding yang tidak membandingkan. */
                   <p className={styles.tableNote}>
-                    Sedang menampilkan satu cabang ({scopeLabel}). Pilih &ldquo;Semua Outlet&rdquo; di
-                    selektor cabang untuk membandingkan antar-cabang.
+                    {interpolate(t('reports.outletSingle'), { name: scopeLabel })}
                   </p>
                 ) : outletStats.length === 0 ? (
                   <EmptyState icon={<Icon name="inbox" aria-hidden />} title={t('reports.belumAdaDataPeriode')} />
@@ -980,7 +1013,7 @@ export function ReportsPage() {
                             />
                             {o.name}{' '}
                             <span className={styles.channelMeta}>
-                              · masuk {fmtRp(o.income)} · keluar {fmtRp(o.expense)}
+                              {interpolate(t('reports.outletFlow'), { income: fmtRp(o.income), expense: fmtRp(o.expense) })}
                             </span>
                           </span>
                           <span className={[styles.channelValue, o.net >= 0 ? styles.inc : styles.neg].join(' ')}>
@@ -1003,7 +1036,7 @@ export function ReportsPage() {
             <CardHeader
               icon={<Icon name="clipboard-list" aria-hidden />}
               title={t('reports.rincianTransaksi')}
-              action={<span className={styles.turnaround}>{txnRows.length} baris</span>}
+              action={<span className={styles.turnaround}>{interpolate(t('reports.rows'), { n: String(txnRows.length) })}</span>}
             />
             <CardBody className={styles.noPad}>
               {reportPending ? (
@@ -1047,8 +1080,8 @@ export function ReportsPage() {
                       dan Solo disuruh menekan tombol yang tidak ada di halaman. */}
                   {txnRows.length > 100 && (
                     <p className={styles.tableNote}>
-                      Menampilkan 100 dari {txnRows.length} baris.
-                      {canExport ? ' Ekspor CSV untuk data lengkap.' : ' Persempit periode untuk melihat sisanya.'}
+                      {interpolate(t('reports.txnShown'), { shown: '100', total: String(txnRows.length) })}{' '}
+                      {t(canExport ? 'reports.txnMoreExport' : 'reports.txnMoreNarrow')}
                     </p>
                   )}
                 </div>
@@ -1176,7 +1209,12 @@ export function ReportsPage() {
                   {catProfit.map((c) => (
                     <li key={c.category} className={styles.channel}>
                       <div className={styles.channelTop}>
-                        <span className={styles.channelName}>{c.category} · {c.count} unit · omzet {fmtRp(c.revenue)}</span>
+                        <span className={styles.channelName}>
+                          {c.category}{' '}
+                          <span className={styles.channelMeta}>
+                            · {interpolate(t('reports.catRow'), { n: String(c.count), revenue: fmtRp(c.revenue) })}
+                          </span>
+                        </span>
                         <span className={[styles.channelValue, styles.inc].join(' ')}>{fmtRp(c.profit)}</span>
                       </div>
                       <div className={styles.bar}>
@@ -1387,7 +1425,19 @@ export function ReportsPage() {
               <CardHeader
                 icon={<Icon name="boxes-stacked" aria-hidden />}
                 title={t('reports.saranRestok')}
-                action={<span className={styles.liveTag}>{t('reports.stokSaatIni')}</span>}
+                action={
+                  <span className={styles.turnaround}>
+                    {t('reports.stokSaatIni')}
+                    {restock.length > 0 && (
+                      <>
+                        {' · '}
+                        <Link className={styles.catLink} to="/pos?stock=low">
+                          {t('reports.openRestock')}
+                        </Link>
+                      </>
+                    )}
+                  </span>
+                }
               />
               <CardBody className={styles.noPad}>
                 {reportPending ? (
@@ -1410,7 +1460,7 @@ export function ReportsPage() {
                         <div className={styles.channelTop}>
                           <span className={styles.channelName}>{i.name}</span>
                           <span className={[styles.channelValue, critical ? styles.crit : styles.warn].join(' ')}>
-                            {i.stock} / min {i.minStock}
+                            {interpolate(t('reports.stockOfMin'), { stock: String(i.stock), min: String(i.minStock) })}
                           </span>
                         </div>
                         <div className={styles.bar}>
@@ -1440,7 +1490,7 @@ export function ReportsPage() {
                  justru selalu di luar periode yang sedang dilihat. */
               action={
                 <span className={styles.turnaround}>
-                  {receivables.length > 0 ? `Total ${fmtRp(receivablesTotal)} · ` : ''}
+                  {receivables.length > 0 ? interpolate(t('reports.totalPrefix'), { amount: fmtRp(receivablesTotal) }) : ''}
                   {t('reports.allPeriods')}
                   {canExport && receivables.length > 0 && (
                     <Button
@@ -1477,12 +1527,22 @@ export function ReportsPage() {
                     <tbody>
                       {receivables.map((r) => (
                         <tr key={r.serviceId}>
-                          <td className={styles.mono}>{r.serviceNo}</td>
+                          <td className={styles.mono}>
+                            {/* Daftar ini dibawa saat menagih: nomor membuka tiketnya, tempat tombol
+                                WhatsApp dan pelunasan berada (RPC piutang tak membawa nomor HP). */}
+                            <Link
+                              className={styles.catLink}
+                              to={`/services/${r.serviceId}`}
+                              aria-label={interpolate(t('reports.openTicket'), { no: r.serviceNo })}
+                            >
+                              {r.serviceNo}
+                            </Link>
+                          </td>
                           <td>{r.customerName}</td>
                           <td className={[styles.num, styles.mono, styles.exp].join(' ')}>{fmtRp(r.outstanding)}</td>
                           <td className={styles.num}>
                             <span className={[styles.ageTag, styles[`age${r.bucket === '0-7' ? 'New' : r.bucket === '8-30' ? 'Mid' : 'Old'}`]].join(' ')}>
-                              {r.ageDays} hari
+                              {interpolate(t('reports.qDays'), { n: String(r.ageDays) })}
                             </span>
                           </td>
                         </tr>
