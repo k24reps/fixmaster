@@ -299,12 +299,11 @@ export const id = {
   'landing.navLabel': 'Navigasi halaman',
   'landing.navHow': 'Cara kerja',
   'landing.navPricing': 'Harga',
-  'landing.navStory': 'Cerita',
   'landing.signIn': 'Masuk',
   'landing.startFree': 'Mulai gratis',
-  'landing.heroTitle': 'Teknisi mencatat di meja. Anda melihatnya di ponsel.',
+  'landing.heroTitle': 'Kerja lebih rapi, dari meja pertama sampai cabang kedua.',
   'landing.heroLead':
-    'FixMaster untuk toko reparasi elektronik apa saja: HP, laptop, printer, TV, sampai alat rumah tangga. Unit dicatat sekali di meja penerimaan, lalu stok, kas, dan margin ikut berubah sendiri.',
+    'Masih kerja sendiri, sudah dibantu karyawan, atau sudah buka cabang, FixMaster membuat toko servis Anda teratur: unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat tanpa ditulis ulang. Untuk servis HP, laptop, printer, TV, sampai alat rumah tangga.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
   'landing.scene.shopPlaceholder': 'Toko Anda',
   'landing.scene.deskLabel': 'Layar meja penerimaan, data contoh',
@@ -344,6 +343,23 @@ export const id = {
   'landing.scene.sample': 'Data contoh',
   'landing.scene.caption':
     'Tekan tombol di meja. Angka di ponsel pemilik ikut berubah tanpa ada yang mengetik ulang.',
+  'landing.navWho': 'Untuk siapa',
+  'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
+  'landing.stagesLead':
+    'Mulai dengan yang Anda butuhkan sekarang. Begitu ada karyawan atau cabang baru, tinggal ditambahkan. Harganya tetap {price} per unit masuk, berapa pun orang dan cabangnya.',
+  'landing.stage.soloTitle': 'Masih kerja sendiri',
+  'landing.stage.soloText':
+    'Anda yang menerima unit, memperbaiki, dan menagih. Tiket dan nota tercatat rapi, stok part tidak perlu diingat-ingat, dan pelanggan bisa cek status sendiri lewat tautan di nota.',
+  'landing.stage.teamTitle': 'Sudah dibantu karyawan',
+  'landing.stage.teamText':
+    'Tiap karyawan masuk dengan PIN dan perannya sendiri. Status unit, absen, dan tugas harian tercatat, jadi Anda tidak perlu bertanya satu per satu. Log Aktivitas mencatat siapa mengubah apa.',
+  'landing.stage.branchTitle': 'Sudah buka cabang',
+  'landing.stage.branchText':
+    'Pindah cabang dalam satu akun. Tiket dan stok tercatat per cabang, dan pemilik bisa melihat semua cabang sekaligus di dashboard dan laporan.',
+  'landing.stage.toolsBase': 'Yang dipakai',
+  'landing.stage.toolsMore': 'Ditambah',
+  'landing.stage.toolPin': 'PIN & peran',
+  'landing.stage.toolAllBranches': 'Dashboard semua cabang',
   'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
   'landing.trailsLead':
     'Teknisi cukup memilih part dari stok di tiket. Sisanya tidak perlu disalin ke buku, chat, atau Excel.',
@@ -390,15 +406,6 @@ export const id = {
   'landing.mod.outlets': 'Pindah cabang dalam satu akun; pemilik melihat semuanya.',
   'landing.mod.waName': 'Template WhatsApp',
   'landing.mod.wa': 'Pesan status servis yang isinya Anda atur sendiri.',
-  'landing.founderTitle': 'Dibuat dari meja servis sendiri.',
-  'landing.founderStory1':
-    'Saya Rif. Tahun 2019 saya membuka meja servis sendirian. Unit masuk saya catat di buku, harga part di chat WhatsApp, dan uang di kepala. Waktu toko kedua buka dan tiga karyawan bergabung, cara itu tidak cukup lagi: stok di catatan sering beda dengan isi laci, dan saya harus menelepon toko hanya untuk tahu unit mana yang sudah selesai.',
-  'landing.founderStory2':
-    'FixMaster saya buat untuk dua toko kami sendiri. Tiket, stok, kas, tugas, dan absensi sekarang ada di satu tempat, dan saya bisa melihat kedua toko dari ponsel. Tutup toko tidak lagi berarti menghitung ulang semuanya.',
-  'landing.founderRole': 'Pemilik dua toko servis, pembuat FixMaster',
-  'landing.founderSince': 'Buka sejak',
-  'landing.founderShops': 'Toko',
-  'landing.founderStaff': 'Karyawan',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
     '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat: toko sepi membayar sedikit, toko ramai membayar sesuai ramainya.',

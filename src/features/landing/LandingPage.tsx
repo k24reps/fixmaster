@@ -77,6 +77,31 @@ const MODULES: Module[] = [
   { icon: 'whatsapp', name: 'landing.mod.waName', text: 'landing.mod.wa' },
 ];
 
+interface Stage {
+  title: TranslationKey;
+  text: TranslationKey;
+  /** Menu yang mulai dipakai di tahap ini (tahap berikutnya menambah, bukan mengganti). */
+  tools: TranslationKey[];
+}
+
+const STAGES: Stage[] = [
+  {
+    title: 'landing.stage.soloTitle',
+    text: 'landing.stage.soloText',
+    tools: ['nav.services', 'nav.pos', 'nav.finance'],
+  },
+  {
+    title: 'landing.stage.teamTitle',
+    text: 'landing.stage.teamText',
+    tools: ['landing.stage.toolPin', 'nav.attendance', 'nav.tasks', 'nav.activity'],
+  },
+  {
+    title: 'landing.stage.branchTitle',
+    text: 'landing.stage.branchText',
+    tools: ['landing.mod.outletsName', 'landing.stage.toolAllBranches', 'nav.reports'],
+  },
+];
+
 const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
   { question: 'landing.faq.connection.q', answer: 'landing.faq.connection.a' },
   { question: 'landing.faq.safe.q', answer: 'landing.faq.safe.a' },
@@ -232,8 +257,8 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
 
         <nav className={styles.nav} aria-label={t('landing.navLabel')}>
           <a href="#cara-kerja">{t('landing.navHow')}</a>
+          <a href="#untuk-siapa">{t('landing.navWho')}</a>
           <a href="#harga">{t('landing.navPricing')}</a>
-          <a href="#cerita">{t('landing.navStory')}</a>
         </nav>
 
         <div className={styles.headerActions}>
@@ -351,36 +376,35 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </ul>
         </section>
 
-        {/* ---------- 5. Founder ---------- */}
-        <section id="cerita" className={styles.founder} aria-labelledby="landing-founder-title">
-          <div className={styles.nameplate} aria-hidden>
-            <span className={styles.nameplateScrew} />
-            <span className={styles.nameplateMark}>RIF</span>
-            <span className={styles.nameplateScrew} />
+        {/* ---------- 5. Dari kerja sendiri sampai buka cabang ---------- */}
+        <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
+          <div className={styles.sectionHead}>
+            <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
+            <p>{interpolate(t('landing.stagesLead'), { price: fmtRp(UNIT_PRICE) })}</p>
           </div>
-          <div className={styles.founderCopy}>
-            <h2 id="landing-founder-title">{t('landing.founderTitle')}</h2>
-            <p>{t('landing.founderStory1')}</p>
-            <p>{t('landing.founderStory2')}</p>
-            <p className={styles.founderSign}>
-              <strong>Rif</strong>
-              <span>{t('landing.founderRole')}</span>
-            </p>
-            <dl className={styles.founderFacts}>
-              <div>
-                <dt>{t('landing.founderSince')}</dt>
-                <dd>2019</dd>
-              </div>
-              <div>
-                <dt>{t('landing.founderShops')}</dt>
-                <dd>2</dd>
-              </div>
-              <div>
-                <dt>{t('landing.founderStaff')}</dt>
-                <dd>3</dd>
-              </div>
-            </dl>
-          </div>
+          <ol className={styles.stageRail}>
+            {STAGES.map((stage, index) => (
+              <li key={stage.title} className={styles.stage}>
+                <span className={styles.stageMeter} aria-hidden>
+                  {STAGES.map((other, lamp) => (
+                    <i key={other.title} data-on={lamp <= index ? 'true' : undefined} />
+                  ))}
+                </span>
+                <h3>{t(stage.title)}</h3>
+                <p>{t(stage.text)}</p>
+                <div className={styles.stageTools}>
+                  <span className={styles.stageToolsLabel}>
+                    {t(index === 0 ? 'landing.stage.toolsBase' : 'landing.stage.toolsMore')}
+                  </span>
+                  <ul>
+                    {stage.tools.map((tool) => (
+                      <li key={tool}>{t(tool)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* ---------- 6. Harga ---------- */}

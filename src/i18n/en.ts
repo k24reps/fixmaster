@@ -298,12 +298,11 @@ export const en: Dictionary = {
   'landing.navLabel': 'Page navigation',
   'landing.navHow': 'How it works',
   'landing.navPricing': 'Pricing',
-  'landing.navStory': 'Story',
   'landing.signIn': 'Sign in',
   'landing.startFree': 'Start free',
-  'landing.heroTitle': 'Your technician logs it at the counter. You see it on your phone.',
+  'landing.heroTitle': 'Run a tidier shop, from your first bench to your second branch.',
   'landing.heroLead':
-    'FixMaster is for any electronics repair shop: phones, laptops, printers, TVs, even home appliances. Log a unit once at the intake counter, and stock, cash, and margins update on their own.',
+    'Working alone, with staff, or across branches, FixMaster keeps your repair shop in order: log a unit once at the counter, and stock, cash, and margins are recorded without retyping. For phones, laptops, printers, TVs, even home appliances.',
   'landing.waMessage': 'Hi FixMaster, I have a question about the app',
   'landing.scene.shopPlaceholder': 'Your shop',
   'landing.scene.deskLabel': 'Intake counter screen, sample data',
@@ -343,6 +342,23 @@ export const en: Dictionary = {
   'landing.scene.sample': 'Sample data',
   'landing.scene.caption':
     'Press the button at the counter. The numbers on the owner\'s phone change without anyone retyping them.',
+  'landing.navWho': 'Who it\'s for',
+  'landing.stagesTitle': 'From working alone to opening a branch, the way you work stays the same.',
+  'landing.stagesLead':
+    'Start with what you need today. When staff or a new branch arrive, just add them. The price stays {price} per incoming unit, however many people and branches you have.',
+  'landing.stage.soloTitle': 'Working on your own',
+  'landing.stage.soloText':
+    'You take in units, repair them, and collect payment. Tickets and receipts stay in order, part stock no longer lives in your head, and customers check their repair status through the link on the receipt.',
+  'landing.stage.teamTitle': 'With staff',
+  'landing.stage.teamText':
+    'Each employee signs in with their own PIN and role. Unit statuses, attendance, and daily tasks are recorded, so you don\'t have to ask one by one. The Activity Log shows who changed what.',
+  'landing.stage.branchTitle': 'With branches',
+  'landing.stage.branchText':
+    'Switch branches within one account. Tickets and stock are recorded per branch, and the owner can see every branch at once on the dashboard and in reports.',
+  'landing.stage.toolsBase': 'What you use',
+  'landing.stage.toolsMore': 'Added',
+  'landing.stage.toolPin': 'PIN & roles',
+  'landing.stage.toolAllBranches': 'All-branch dashboard',
   'landing.trailsTitle': 'Install one part, and four places record it.',
   'landing.trailsLead':
     'The technician picks the part from stock on the ticket. Nothing has to be copied into a notebook, a chat, or Excel.',
@@ -388,15 +404,6 @@ export const en: Dictionary = {
   'landing.mod.outlets': 'Switch branches in one account; the owner sees them all.',
   'landing.mod.waName': 'WhatsApp templates',
   'landing.mod.wa': 'Repair status messages written the way you want.',
-  'landing.founderTitle': 'Built at a repair bench of our own.',
-  'landing.founderStory1':
-    'I\'m Rif. In 2019 I opened a repair bench on my own. I logged incoming units in a notebook, part prices in WhatsApp chats, and the money in my head. When the second shop opened and three employees joined, that stopped working: the stock in my notes rarely matched the drawers, and I had to call the shop just to learn which units were done.',
-  'landing.founderStory2':
-    'I built FixMaster for our own two shops. Tickets, stock, cash, tasks, and attendance now live in one place, and I can see both shops from my phone. Closing up no longer means counting everything again.',
-  'landing.founderRole': 'Owner of two repair shops, maker of FixMaster',
-  'landing.founderSince': 'Open since',
-  'landing.founderShops': 'Shops',
-  'landing.founderStaff': 'Employees',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
     'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create: a quiet shop pays little, a busy shop pays for how busy it is.',

@@ -29,7 +29,10 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
 `.impeccable/surfaces/src-features-landing-landingpage-tsx.md`.
 
 - **Gagasan:** teknisi mencatat di meja, pemilik melihatnya di ponsel. Layar pertama
-  memeragakan sinkron itu, bukan judul-kiri / screenshot-kanan.
+  memeragakan sinkron itu, bukan judul-kiri / screenshot-kanan. **Narasi (sejak revisi
+  pemilik 15 Nov 2026):** untuk toko yang ingin mulai kerja lebih rapi dan teratur, dari yang
+  masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul: "Kerja lebih rapi, dari
+  meja pertama sampai cabang kedua." (`landing.heroTitle`).
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman:
   jendela **meja penerimaan** (antrean campuran laptop/printer/iPhone/TV dengan spine
   `STATUS_TONE`, tiket FM-0312 terpilih) → **jejak sinkron cyan** → **ponsel pemilik**
@@ -49,8 +52,10 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
 - **Seksi berikutnya:** papan jejak "satu kali pasang part, empat tempat ikut tercatat"
   (pad sumber + bus cyan bertitik), **lemari part** kategori perangkat (laci HP sampai
   alat rumah tangga + laci "Kategori Anda"), deretan **kanal modul** bergaya sidebar,
-  **founder** (pelat nama "RIF" sampai foto tersedia; cerita ditulis atas permintaan
-  pemilik dan menunggu pengecekannya), **harga** dengan sumur instrumen satu-satunya di
+  **untuk siapa** (`#untuk-siapa`, menggantikan cerita founder yang dicabut pemilik): tiga
+  tahap di satu rel bertitik, masih sendiri → dibantu karyawan → buka cabang, tiap tahap dengan
+  meter LED 1–3 dan deret menu yang mulai dipakai ("Yang dipakai" / "Ditambah"); di ≤900px
+  relnya vertikal. **harga** dengan sumur instrumen satu-satunya di
   halaman (slider unit per bulan → biaya, bulan pertama dipotong 50 unit gratis),
   "yang perlu Anda tahu" (koneksi, backup, FAQ yang juga JSON-LD di `index.html`),
   gerbang penutup, kaki.

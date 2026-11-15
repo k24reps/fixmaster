@@ -89,6 +89,21 @@ describe('LandingPage auth intent', () => {
   });
 });
 
+describe('LandingPage untuk siapa', () => {
+  it('narasi menyapa toko yang masih sendiri sampai yang sudah bercabang', () => {
+    renderLanding();
+    expect(screen.getByRole('heading', { level: 1, name: /Kerja lebih rapi/ })).toBeInTheDocument();
+    const stages = screen.getByRole('heading', { name: /Dari kerja sendiri sampai buka cabang/ }).closest('section');
+    expect(stages).not.toBeNull();
+    for (const name of ['Masih kerja sendiri', 'Sudah dibantu karyawan', 'Sudah buka cabang']) {
+      expect(within(stages as HTMLElement).getByRole('heading', { level: 3, name })).toBeInTheDocument();
+    }
+    expect(within(stages as HTMLElement).getByText(/Rp 1\.000 per unit masuk/)).toBeInTheDocument();
+    // Bagian cerita founder dicabut atas keputusan pemilik (15 Nov 2026).
+    expect(screen.queryByText(/Saya Rif/)).toBeNull();
+  });
+});
+
 describe('LandingPage dua adegan', () => {
   it('nama toko yang diketik di gerbang menjadi kop meja dan ponsel', () => {
     renderLanding();

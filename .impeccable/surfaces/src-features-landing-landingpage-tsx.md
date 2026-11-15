@@ -13,11 +13,11 @@ related_targets: ["src/features/landing/DemoGate.tsx","src/features/landing/Benc
 
 **Job / action:** enter shop name + WhatsApp number (format check only, no OTP) to open the real demo under that shop name. Secondary: "Mulai gratis, 50 unit" signup. Returning visitor on the same device skips the form.
 
-**Proof:** the live desk/phone scene with labeled sample data, the real demo, founder Rif's story (since 2019, two shops, three employees; story text drafted at the owner's request and pending the owner's check; photo pending). No testimonials, user counts or invented numbers.
+**Proof:** the live desk/phone scene with labeled sample data and the real demo. No testimonials, user counts or invented numbers. The founder story was removed by the owner (15 Nov 2026); its slot is the "Untuk siapa" growth section.
 
 **Constraints:** universal device mix (never phone-centric), no offline claim, no vehicle-workshop wording, ID + EN copy, reduced-motion keeps the sync readable, both themes first class.
 
-**Unresolved:** founder photo (monogram plate until supplied); whether to name Rif's two shops.
+**Narrative (owner revision, 15 Nov 2026):** speak to shops that want to start working tidier and more orderly, relevant from the solo owner to shops with staff or branches. Headline "Kerja lebih rapi, dari meja pertama sampai cabang kedua."; a three-stage section (solo, staff, branches) replaces the founder section.
 
 ## Direction contract
 
@@ -36,3 +36,5 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 ## Review record
 
 15 Nov 2026, code-led build (no image generation on this machine). Finish review ran in-thread from the degraded checklist (no shipped reviewer agent in this harness). Disposition **fix**: (1) sync trace below the 1440×900 fold, moved to `--sync-y: 132px` so it links the active ticket row to the phone notice; (2) "RIF" monogram set in mono as costume, now the display face. Verdict pass on recaptures: (1) resolved at 1440×900, at the fold edge on 1280×720; (2) resolved. Detector: advisories only (marketing `clamp()` display sizes, 40/31px phone-frame radii). DESIGN.md: extension, one line updated (instrument well locations).
+
+Owner revision (15 Nov 2026, before release): founder section removed; hero copy rewritten to the tidier-work narrative across shop stages; "Untuk siapa" stage rail added in its place. Recaptured desktop and mobile; luberan-x 0 at every width.

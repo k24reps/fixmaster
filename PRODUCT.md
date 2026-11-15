@@ -114,7 +114,7 @@ Yang boleh dipakai:
 - Screenshot produk di `public/screenshots/` (dashboard & mobile, dark + light).
 - Workspace contoh "TechFix Service Center" dengan tiket, teknisi, dan angka contoh (`src/dev/seed.ts`).
 - Halaman legal: `/privacy`, `/terms`.
-- **Pendiri:** Rif, pemilik usaha servis — buka sendiri sejak 2019, kini dua toko berbeda dengan tiga karyawan (fakta dari pemilik, 15 Nov 2026). Cerita pain → FixMaster di landing ditulis atas permintaannya dan menunggu pengecekannya; foto belum ada (landing memakai pelat nama "RIF"). Nama kedua toko belum boleh disebut sampai pemilik setuju.
+- **Pendiri:** Rif, pemilik usaha servis — buka sendiri sejak 2019, kini dua toko berbeda dengan tiga karyawan (fakta dari pemilik, 15 Nov 2026). Bagian cerita founder **tidak dipakai** di landing (dicabut pemilik 15 Nov 2026); landing menyapa pembaca menurut tahap tokonya (sendiri, berkaryawan, bercabang). Nama kedua toko belum boleh disebut sampai pemilik setuju.
 
 **Yang TIDAK ada dan haram dikarang:** testimoni, nama/logo toko pelanggan, jumlah pengguna atau unduhan, studi kasus, liputan pers, angka pertumbuhan, rating toko aplikasi, klaim "dipercaya X konter".
 

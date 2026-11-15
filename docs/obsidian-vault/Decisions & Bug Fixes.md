@@ -6920,3 +6920,14 @@ yang **menunggu pengecekan pemilik** sebelum dianggap final. Foto belum ada: pel
 lokal lulus (termasuk batas jaringan) + penerapan ulang idempoten; `tier3j-demo-leads` lolos
 type-check, belum dijalankan (tanpa staging). **Belum diperbarui:** gambar vault (tanpa
 PowerShell); foto landing ada di `.impeccable/review/` (di-gitignore) dari `scripts/shoot-landing.mjs`.
+
+**Revisi pemilik (15 Nov 2026, sebelum rilis):** cerita founder **dicabut** dari landing, dan
+judul "Teknisi mencatat di meja. Anda melihatnya di ponsel." diganti narasi untuk toko yang
+ingin mulai kerja lebih rapi dan teratur, yang relevan bagi pemilik yang masih sendiri sampai
+yang sudah punya karyawan atau cabang: "Kerja lebih rapi, dari meja pertama sampai cabang
+kedua." Tempat founder diisi seksi **Untuk siapa** (tiga tahap: sendiri, berkaryawan,
+bercabang, beserta menu yang mulai dipakai; harga tetap per unit berapa pun orang dan
+cabangnya). Klaimnya dicek ke kode: PIN + peran per karyawan, absensi, tugas, Log Aktivitas,
+tiket dan stok per outlet, tampilan "Semua cabang" di dashboard dan laporan. Adegan meja–ponsel
+tidak berubah. Kunci `landing.founder*` dan `landing.navStory` dihapus; nav kini Cara kerja ·
+Untuk siapa · Harga.
