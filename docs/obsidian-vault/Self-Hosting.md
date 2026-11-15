@@ -504,6 +504,10 @@ kemudian** — frontend baru memanggil `unit_ledger`, `delete_service_ticket`, d
 2. **Backup sekarang:** `sudo bash /opt/fixmaster/backup/backup-offsite.sh`.
 3. **Salin berkas** dari repo di laptop (branch rilis):
    `scp supabase/migrations/0101_unit_pricing.sql scripts/selfhost/uji-0101.sql supabase/functions/backup-email/index.ts ubuntu@43.157.228.56:/tmp/`
+   Tanpa laptop ber-repo (mis. dari Chromebook, 15 Nov 2026): repo publik, jadi unduh langsung di
+   VPS dari `https://raw.githubusercontent.com/k24reps/fixmaster/<commit>/<jalur>` ke `/tmp`,
+   **dikunci ke SHA commit yang sudah diuji** (bukan nama branch), lalu cocokkan `sha256sum -c`
+   dengan checksum yang dihitung dari commit itu sebelum lanjut.
 4. **Uji coba (tidak mengubah apa pun):**
    `sudo docker cp /tmp/0101_unit_pricing.sql supabase-db:/tmp/ && sudo docker cp /tmp/uji-0101.sql supabase-db:/tmp/`
    `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/uji-0101.sql`
