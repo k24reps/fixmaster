@@ -6840,10 +6840,28 @@ detektor impeccable nol temuan di berkas baru. Di container cloud, Playwright pr
 meminta revisi Chromium lain: probe dijalankan dengan `PLAYWRIGHT_BROWSERS_PATH` ke folder
 sementara yang menautkan revisi terpasang, dan `shoot-saldo.mjs` menerima `PW_CHROMIUM`.
 
+**Bug yang tertangkap sebelum produksi (15 Nov 2026).** Pemilik memilih langsung ke produksi.
+Membaca ulang migrasi untuk jalur itu menemukan: trigger pemotong sengaja berjalan sebagai
+pemanggil (agar `current_user` membedakan aplikasi dari restore), tapi fungsi yang dipanggilnya,
+`charge_service_unit`, sudah di-revoke dari `authenticated`. Setiap tiket baru akan gagal
+`permission denied`. Perbaikan: fungsi itu di-grant ke `authenticated` tetapi hanya mau jalan bila
+trigger baru saja menandai tiket yang sama lewat `fixmaster.charging_service` di transaksi itu,
+dan tiketnya ada di org tersebut. Pemanggilan langsung lewat RPC ditolak. Trigger pengembalian
+dijadikan security definer (tidak butuh identitas pemanggil). `unit_ledger.created_at` kini
+`clock_timestamp()`: baris dalam satu transaksi berbagi `now()` dan urutannya di riwayat acak.
+
+**Simulasi lokal sebagai pengganti staging.** PostgreSQL 16 di container + tiruan Supabase
+(`scripts/selfhost/simulasi/`): seluruh migrasi `0001`–`0100`, dua toko dibuat lewat
+`create_organization` sebagai `authenticated`, lalu `uji-0101.sql`. Versi `0101` yang sudah ter-push
+**gagal** di sana dengan pesan di atas; versi perbaikan lulus, plus skenario: tiga tiket → 47,
+batal lewat `cancel_service` → 48, saldo −20 menolak tiket baru tapi tiket lama tetap bisa diubah,
+`admin_topup_units` +100 dan retry referensi sama tidak menggandakan, koreksi −5, `admin_list_orgs`
+memuat saldo dan pemakaian 30 hari, penerapan ulang idempoten. Batasnya: tanpa PostgREST, GoTrue,
+realtime, dan Edge Function, jadi `tier3i` tetap layak dijalankan begitu staging tersedia.
+
 **Belum dilakukan (wajib sebelum dipakai):**
-1. Terapkan `0101` ke staging, jalankan `npm run test:integration` (termasuk `tier3i`
-   baru), baru ke produksi dengan konfirmasi pemilik.
-2. Deploy ulang Edge Function `backup-email`.
-3. Konfirmasi pengecualian klaim garansi (lihat di atas).
-4. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
+1. Ikuti runbook "Rilis 0101" di [[Self-Hosting]]: uji coba di produksi (ROLLBACK), terapkan,
+   deploy `backup-email`, baru gabungkan frontend ke `main`.
+2. Konfirmasi pengecualian klaim garansi (lihat di atas).
+3. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
    `hapus-tiket-*.png` hanya ada di mesin yang menjalankan skripnya.

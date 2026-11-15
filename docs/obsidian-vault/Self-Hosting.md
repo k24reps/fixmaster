@@ -489,6 +489,39 @@ memanggil RPC yang belum ada = fitur error di produksi. Staging cloud
 (`fixmaster-replika/docker` di mesin kerja, hasil uji pulih arsip asli) jadi tempat uji.
 Server (VPS sejak 27 Sep) = `0001`–`0100` (catatan `supabase_migrations` belum mencatat 0080–0099; 0084–0099 diterapkan lewat `docker cp` + `psql -f`/pemasang; 0086 + fungsi `auto-backup` baru dan 0087–0089 dipasang 25 Sep). **0100 (kode lacak dan jejak cetak) diterapkan ke VPS 12 Nov 2026**, SESUDAH frontend-nya masuk `main` (11 Nov): pengecualian sadar dari urutan wajib di atas, karena frontend-nya turun anggun tanpa RPC itu (alamat lama, tanpa penanda cetak ulang). Staging cloud dilewati; `tier3h` belum pernah jalan. Cara: `scp` berkas ke `/tmp` di VPS, `sudo docker cp` ke `supabase-db`, lalu `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f`. Diperiksa lewat `has_function_privilege('anon', ...)`: hanya `track_service_by_code` yang terbuka bagi anon. Email: Resend `noreply@fixmaster.app` — `RESEND_API_KEY` + `SMTP_*` di `.env`, dipasang `scripts/selfhost/email/pasang-email.ps1`.
 
+### Rilis 0101 (harga per unit) langsung ke produksi — runbook
+
+Staging cloud tidak dipakai (restricted, tes integrasi tidak bisa jalan). Penggantinya: uji coba
+di database produksi dalam satu transaksi yang di-ROLLBACK (`scripts/selfhost/uji-0101.sql`), yang
+sudah lulus di simulasi lokal (`scripts/selfhost/simulasi/jalankan.sh`). Simulasi itulah yang
+menangkap bug versi pertama 0101: setiap tiket baru akan gagal `permission denied for function
+charge_service_unit` (lihat [[Decisions & Bug Fixes]]). **Urutan wajib: database dulu, frontend
+kemudian** — frontend baru memanggil `unit_ledger`, `delete_service_ticket`, dan RPC operator baru.
+
+1. **Cek pelanggan berbayar yang masih aktif** (masa aktif mereka tidak dikonversi otomatis):
+   `sudo docker exec supabase-db psql -U postgres -d postgres -c "select name, plan_type, plan_expired_at from organizations where plan_type in ('standard','enterprise') and plan_expired_at > now();"`
+   Bila ada, beri unit pengganti sesudah langkah 5 lewat `/operator` › Lainnya › Koreksi saldo.
+2. **Backup sekarang:** `sudo bash /opt/fixmaster/backup/backup-offsite.sh`.
+3. **Salin berkas** dari repo di laptop (branch rilis):
+   `scp supabase/migrations/0101_unit_pricing.sql scripts/selfhost/uji-0101.sql supabase/functions/backup-email/index.ts ubuntu@43.157.228.56:/tmp/`
+4. **Uji coba (tidak mengubah apa pun):**
+   `sudo docker cp /tmp/0101_unit_pricing.sql supabase-db:/tmp/ && sudo docker cp /tmp/uji-0101.sql supabase-db:/tmp/`
+   `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/uji-0101.sql`
+   Harus diakhiri `NOTICE:  UJI 0101 LULUS` lalu `ROLLBACK`. Selain itu: berhenti, jangan lanjut.
+5. **Terapkan:** `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f /tmp/0101_unit_pricing.sql`
+   Periksa: `select count(*), min(unit_balance), max(unit_balance) from organizations;` (semua 50) dan
+   `select count(*) from unit_ledger where kind = 'grant';` (= jumlah organisasi).
+6. **Edge Function `backup-email`:**
+   `sudo cp /tmp/index.ts /opt/fixmaster/docker/volumes/functions/backup-email/index.ts && cd /opt/fixmaster/docker && sudo docker compose restart functions`,
+   lalu `curl -s https://api.fixmaster.my.id/functions/v1/health` harus memuat `"db":"up"`.
+7. **Frontend:** gabungkan branch rilis ke `main`; Vercel men-deploy produksi.
+8. **Asap:** login owner → Pengaturan › Saldo = 50 unit; buat tiket uji → 49; hapus tiket itu
+   dalam 10 menit → 50, dan Log Aktivitas mencatat "Hapus tiket servis".
+
+**Rem darurat** bila pembuatan tiket bermasalah sesudah langkah 5:
+`drop trigger trg_services_charge_unit on services;` menghentikan pemotongan tanpa menyentuh data
+lain (pasang lagi dengan menjalankan ulang 0101; migrasinya idempoten, teruji di simulasi).
+
 ## Pemantauan server (27 Sep 2026)
 
 Kejadian 26–27 Sep baru ketahuan saat pemilik mencoba membuka aplikasi. Pemantau harus

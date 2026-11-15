@@ -36,6 +36,9 @@
 --    (create_warranty_claim) adalah perangkat yang sama yang kembali, bukan
 --    unit masuk baru. Klaim garansi juga dikecualikan secara eksplisit lewat
 --    warranty_claim_of, supaya tidak bergantung pada jalur pembuatnya.
+--    Karena trigger itu berjalan sebagai pemanggil, fungsi pemotongnya harus
+--    bisa dieksekusi authenticated; ia dikunci dengan penanda transaksi
+--    (fixmaster.charging_service) supaya tidak bisa dipanggil langsung.
 --
 -- D. Pengembalian 10 menit: tiket yang menjadi Batal, atau dihapus owner,
 --    paling lama 10 menit setelah unitnya dipotong, mendapat unitnya kembali.
@@ -108,7 +111,9 @@ create table if not exists unit_ledger (
   reference text,
   note text not null default '',
   actor_name text not null default '',
-  created_at timestamptz not null default now(),
+  -- clock_timestamp, bukan now(): beberapa baris dalam satu transaksi (mis.
+  -- isi saldo lalu koreksi) harus tetap berurutan di riwayat.
+  created_at timestamptz not null default clock_timestamp(),
   constraint unit_ledger_service_kinds
     check ((kind in ('usage', 'refund')) = (service_id is not null)),
   constraint unit_ledger_topup_fields
@@ -228,6 +233,11 @@ create trigger trg_organizations_grant_free_units
   for each row execute function organizations_grant_free_units();
 
 -- ---------- C. pemotongan saat tiket dibuat ----------
+-- Dipanggil dari trigger yang berjalan SEBAGAI PEMANGGIL (lihat di bawah), jadi
+-- peran authenticated wajib boleh mengeksekusinya. Supaya tidak bisa dipanggil
+-- langsung lewat RPC untuk menguras saldo toko lain, fungsi ini hanya mau jalan
+-- bila trigger baru saja menandai tiket yang sama di transaksi ini
+-- (fixmaster.charging_service), dan tiketnya memang ada di org itu.
 create or replace function charge_service_unit(p_org_id uuid, p_service_id uuid, p_service_no text)
 returns void
 language plpgsql
@@ -237,6 +247,11 @@ as $$
 declare
   v_balance int;
 begin
+  if coalesce(current_setting('fixmaster.charging_service', true), '') <> p_service_id::text
+     or not exists (select 1 from services where id = p_service_id and org_id = p_org_id) then
+    raise exception 'Forbidden';
+  end if;
+
   select unit_balance into v_balance
   from organizations where id = p_org_id
   for update;
@@ -260,7 +275,8 @@ begin
 end;
 $$;
 
-revoke execute on function charge_service_unit(uuid, uuid, text) from public, anon, authenticated;
+revoke execute on function charge_service_unit(uuid, uuid, text) from public, anon;
+grant execute on function charge_service_unit(uuid, uuid, text) to authenticated;
 
 -- Bukan security definer: current_user harus tetap peran pemanggil supaya
 -- sisipan dari fungsi server (restore, klaim garansi) bisa dikenali.
@@ -272,7 +288,9 @@ as $$
 begin
   if current_user <> 'authenticated' then return new; end if;
   if new.warranty_claim_of is not null then return new; end if;
+  perform set_config('fixmaster.charging_service', new.id::text, true);
   perform charge_service_unit(new.org_id, new.id, new.service_no);
+  perform set_config('fixmaster.charging_service', '', true);
   return new;
 end;
 $$;
@@ -313,9 +331,12 @@ $$;
 revoke execute on function refund_service_unit_if_fresh(uuid, uuid, text, text)
   from public, anon, authenticated;
 
+-- Security definer: pengembalian tidak perlu tahu siapa pemanggilnya, dan
+-- pembantunya tertutup bagi klien.
 create or replace function services_refund_on_cancel()
 returns trigger
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 begin
