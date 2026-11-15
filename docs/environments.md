@@ -18,7 +18,7 @@ berisi data asli.
 | | `main` (= produksi) | `staging` |
 |---|---|---|
 | Commit aplikasi | lihat `git log origin/main` (15 Nov 2026: harga per unit) | tertinggal sejak self-host |
-| Migrasi server terakhir | `0101` (VPS, 15 Nov 2026); `0102`+`0103` menunggu runbook "Rilis 0102 + 0103" | `0049` (cloud, restricted) |
+| Migrasi server terakhir | `0103` (VPS, 15 Nov 2026) | `0049` (cloud, restricted) |
 | Edge Function pada source aktif | `health`, `delete-account` | `health`, `delete-account` |
 | Billing aktif | bukti bayar via WhatsApp → operator konfirmasi manual | sama |
 | Dashboard operator | `/operator` (2 tab + konfirmasi bayar) | sama |
