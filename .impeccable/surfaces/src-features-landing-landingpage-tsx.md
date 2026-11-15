@@ -17,7 +17,7 @@ related_targets: ["src/features/landing/DemoGate.tsx","src/features/landing/Benc
 
 **Constraints:** universal device mix (never phone-centric), no offline claim, no vehicle-workshop wording, ID + EN copy, reduced-motion keeps the sync readable, both themes first class.
 
-**Narrative (owner revision, 15 Nov 2026):** speak to shops that want to start working tidier and more orderly, relevant from the solo owner to shops with staff or branches. Headline "Kerja lebih rapi, dari meja pertama sampai cabang kedua."; a three-stage section (solo, staff, branches) replaces the founder section.
+**Narrative (owner revision, 15 Nov 2026):** speak to shops that want to start working tidier and more orderly, relevant from the solo owner to shops with staff or branches. Headline "Toko servis yang rapi dan teratur, mulai hari ini." (owner pick); a conventional-vs-FixMaster board right after the hero so visitors recognise every messy-shop habit and its answer; a three-stage section (solo, staff, branches) replaces the founder section.
 
 ## Direction contract
 
@@ -38,3 +38,4 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 15 Nov 2026, code-led build (no image generation on this machine). Finish review ran in-thread from the degraded checklist (no shipped reviewer agent in this harness). Disposition **fix**: (1) sync trace below the 1440×900 fold, moved to `--sync-y: 132px` so it links the active ticket row to the phone notice; (2) "RIF" monogram set in mono as costume, now the display face. Verdict pass on recaptures: (1) resolved at 1440×900, at the fold edge on 1280×720; (2) resolved. Detector: advisories only (marketing `clamp()` display sizes, 40/31px phone-frame radii). DESIGN.md: extension, one line updated (instrument well locations).
 
 Owner revision (15 Nov 2026, before release): founder section removed; hero copy rewritten to the tidier-work narrative across shop stages; "Untuk siapa" stage rail added in its place. Recaptured desktop and mobile; luberan-x 0 at every width.
+Second owner revision (15 Nov 2026): headline set to the owner's pick; comparison board added after the hero (eight situations, two lanes, stacks under 720px). Recaptured; luberan-x 0.

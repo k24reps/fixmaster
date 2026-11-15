@@ -300,7 +300,7 @@ export const en: Dictionary = {
   'landing.navPricing': 'Pricing',
   'landing.signIn': 'Sign in',
   'landing.startFree': 'Start free',
-  'landing.heroTitle': 'Run a tidier shop, from your first bench to your second branch.',
+  'landing.heroTitle': 'A tidy, orderly repair shop, starting today.',
   'landing.heroLead':
     'Working alone, with staff, or across branches, FixMaster keeps your repair shop in order: log a unit once at the counter, and stock, cash, and margins are recorded without retyping. For phones, laptops, printers, TVs, even home appliances.',
   'landing.waMessage': 'Hi FixMaster, I have a question about the app',
@@ -359,6 +359,51 @@ export const en: Dictionary = {
   'landing.stage.toolsMore': 'Added',
   'landing.stage.toolPin': 'PIN & roles',
   'landing.stage.toolAllBranches': 'All-branch dashboard',
+  'landing.vsTitle': 'Everything that makes a repair shop messy, sorted in one app.',
+  'landing.vsLead':
+    'If your shop still keeps records in notebooks, WhatsApp chats, and Excel, some of these rows will feel familiar.',
+  'landing.vs.oldTitle': 'The conventional way',
+  'landing.vs.oldSub': 'notebook, chat, Excel',
+  'landing.vs.newTitle': 'With FixMaster',
+  'landing.vs.intake': 'Taking in a unit',
+  'landing.vs.intakeOld':
+    'Handwritten receipts. Complaints and accessories often go unrecorded, so pickups turn into disputes.',
+  'landing.vs.intakeNew':
+    'Numbered tickets with complaints and accessories. Receipts are printed, and the number can go to the customer over WhatsApp.',
+  'landing.vs.status': 'Customers asking for status',
+  'landing.vs.statusOld':
+    '"Is it done yet?" chats keep coming, and you have to check the bench one by one.',
+  'landing.vs.statusNew':
+    'Customers check the status themselves through the tracking link on the receipt.',
+  'landing.vs.stock': 'Part stock',
+  'landing.vs.stockOld':
+    'The stock notes never match the drawers. You find out a part is gone when you need it.',
+  'landing.vs.stockNew':
+    'Installed parts come off stock right away, and low stock lights up on the dashboard.',
+  'landing.vs.margin': 'Profit per unit',
+  'landing.vs.marginOld':
+    'Worked out when closing the books, if there is time. Part costs get forgotten.',
+  'landing.vs.marginNew':
+    'Part costs go into the ticket, so each unit\'s margin is visible before pickup.',
+  'landing.vs.cash': 'Money coming in',
+  'landing.vs.cashOld':
+    'Cash, transfers, and QRIS all mixed together. Chasing the difference until late.',
+  'landing.vs.cashNew':
+    'Each payment goes into the chosen account. The end-of-day cash count shows the difference immediately.',
+  'landing.vs.team': 'Staff',
+  'landing.vs.teamOld': 'Asking who is working on what. Attendance in a notebook, tasks over chat.',
+  'landing.vs.teamNew':
+    'Each employee signs in with a PIN. Statuses, attendance, tasks, and the Activity Log record who did what.',
+  'landing.vs.warranty': 'Warranty',
+  'landing.vs.warrantyOld': 'Depends on memory and whether the customer kept the receipt.',
+  'landing.vs.warrantyNew':
+    'The warranty period is on the ticket, and claims open from the original ticket.',
+  'landing.vs.branch': 'Branches',
+  'landing.vs.branchOld': 'Visit or call each branch to find out how it is doing.',
+  'landing.vs.branchNew':
+    'Every branch is visible at once on the owner\'s dashboard, from a phone.',
+  'landing.vs.foot': 'The result: close up without recounting anything.',
+  'landing.vs.tryLink': 'See it in the demo',
   'landing.trailsTitle': 'Install one part, and four places record it.',
   'landing.trailsLead':
     'The technician picks the part from stock on the ticket. Nothing has to be copied into a notebook, a chat, or Excel.',

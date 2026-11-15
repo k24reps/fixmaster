@@ -31,8 +31,17 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
 - **Gagasan:** teknisi mencatat di meja, pemilik melihatnya di ponsel. Layar pertama
   memeragakan sinkron itu, bukan judul-kiri / screenshot-kanan. **Narasi (sejak revisi
   pemilik 15 Nov 2026):** untuk toko yang ingin mulai kerja lebih rapi dan teratur, dari yang
-  masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul: "Kerja lebih rapi, dari
-  meja pertama sampai cabang kedua." (`landing.heroTitle`).
+  masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul pilihan pemilik: "Toko servis yang
+  rapi dan teratur, mulai hari ini." (`landing.heroTitle`).
+- **Konvensional vs FixMaster** (`#perbandingan`, tepat sesudah hero): papan dua lajur,
+  delapan situasi toko berantakan (unit masuk, status, stok, untung per unit, uang masuk,
+  karyawan, garansi, cabang). Lajur konvensional di permukaan tertanam dengan tinta redup,
+  lajur FixMaster di permukaan terangkat; LED hanya di kepala lajur. Di ≤720px tiap baris
+  menjadi blok dengan label lajur di tiap sel (di layar lebar label itu tetap ada untuk pembaca
+  layar). Penutup: "Hasilnya: tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
+  (`#coba`). Tiap jawaban dicocokkan ke fitur nyata (nota + nomor lewat WA, tautan lacak,
+  stok menipis, hitung kas dengan selisih, PIN, klaim garansi dari tiket asli, dashboard
+  semua cabang).
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman:
   jendela **meja penerimaan** (antrean campuran laptop/printer/iPhone/TV dengan spine
   `STATUS_TONE`, tiket FM-0312 terpilih) → **jejak sinkron cyan** → **ponsel pemilik**

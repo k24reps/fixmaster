@@ -53,6 +53,7 @@
 }
 
 .hero,
+.versus,
 .trails,
 .benches,
 .modules,
@@ -67,6 +68,8 @@
 
 /* Offset di elemen yang ditunjuk anchor, lewat kelas (CSS Modules juga
    melokalkan selektor id). */
+.heroGate,
+.versus,
 .trails,
 .stages,
 .pricing {
@@ -321,6 +324,153 @@
 .honest,
 .closing {
   padding-top: clamp(var(--space-16), 9cqi, 128px);
+}
+
+/* ---------- Konvensional vs FixMaster ----------
+   Papan dua lajur: cara lama di permukaan tertanam dengan tinta redup, FixMaster
+   di permukaan terangkat. LED hanya di kepala lajur (16 LED di tiap sel terlalu
+   banyak cahaya); di layar sempit tiap sel membawa labelnya sendiri. */
+.versus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: clamp(var(--space-16), 9cqi, 128px);
+}
+
+.vsBoard {
+  overflow: hidden;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.vsHead,
+.vsRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.vsHead {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.vsHeadOld,
+.vsHeadNew {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-md);
+}
+
+.vsHeadOld {
+  color: var(--text-secondary);
+}
+
+.vsHeadOld small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.vsHeadNew {
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-strong);
+}
+
+.vsLed {
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+}
+
+.vsHeadOld .vsLed {
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
+}
+
+.vsHeadNew .vsLed {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.vsList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vsRow + .vsRow {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.vsSituation {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+}
+
+.vsOld,
+.vsNew {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.vsOld {
+  color: var(--text-secondary);
+}
+
+.vsNew {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-strong);
+}
+
+/* Di papan lebar kolom sudah dinamai kepala lajur; label tinggal untuk
+   pembaca layar. */
+.vsLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.vsFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.vsFoot a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.vsFoot a:hover {
+  color: var(--brand-text);
+}
+
+.vsFoot a:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
 }
 
 /* ---------- 2. Satu aksi, empat jejak ----------
@@ -1105,6 +1255,67 @@
   }
   .heroGate {
     max-width: 520px;
+  }
+}
+
+/* 720px: tiga lajur perbandingan tidak lagi terbaca (teks sel < 26ch). Tiap
+   baris menjadi blok: situasi, lalu dua sel bertumpuk dengan labelnya. */
+@container landing (max-width: 720px) {
+  .vsHead {
+    display: none;
+  }
+  .vsRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+  .vsSituation {
+    padding: 0 0 var(--space-1);
+  }
+  .vsOld,
+  .vsNew {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+  }
+  .vsOld {
+    border: 1px dashed var(--border-strong);
+  }
+  .vsNew {
+    border: 1px solid var(--border-strong);
+  }
+  .vsLabel {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+  }
+  .vsLabel::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-full);
+  }
+  .vsOld .vsLabel {
+    color: var(--text-muted);
+  }
+  .vsOld .vsLabel::before {
+    background: var(--warning);
+  }
+  .vsNew .vsLabel {
+    color: var(--success-text);
+  }
+  .vsNew .vsLabel::before {
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
   }
 }
 

@@ -40,6 +40,24 @@ const TRAILS: Trail[] = [
   { icon: 'wallet', place: 'landing.trail.cash', text: 'landing.trail.cashText', value: '+Rp 350.000' },
 ];
 
+interface Contrast {
+  situation: TranslationKey;
+  old: TranslationKey;
+  fixmaster: TranslationKey;
+}
+
+/** Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. */
+const CONTRASTS: Contrast[] = [
+  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
+  { situation: 'landing.vs.status', old: 'landing.vs.statusOld', fixmaster: 'landing.vs.statusNew' },
+  { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
+  { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
+  { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
+  { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
+  { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
+  { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
+];
+
 interface Drawer {
   icon: IconName;
   label: TranslationKey;
@@ -294,12 +312,55 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             <h1 id="landing-hero-title">{t('landing.heroTitle')}</h1>
             <p className={styles.heroLead}>{t('landing.heroLead')}</p>
           </div>
-          <div ref={heroGateRef} className={styles.heroGate}>
+          <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
           <div className={styles.heroScene}>
             <BenchScene shopName={shopName} />
           </div>
+        </section>
+
+        {/* ---------- Konvensional vs FixMaster ---------- */}
+        <section id="perbandingan" className={styles.versus} aria-labelledby="landing-vs-title">
+          <div className={styles.sectionHead}>
+            <h2 id="landing-vs-title">{t('landing.vsTitle')}</h2>
+            <p>{t('landing.vsLead')}</p>
+          </div>
+          <div className={styles.vsBoard}>
+            <div className={styles.vsHead} aria-hidden>
+              <span />
+              <span className={styles.vsHeadOld}>
+                <i className={styles.vsLed} />
+                <strong>{t('landing.vs.oldTitle')}</strong>
+                <small>{t('landing.vs.oldSub')}</small>
+              </span>
+              <span className={styles.vsHeadNew}>
+                <i className={styles.vsLed} />
+                <strong>{t('landing.vs.newTitle')}</strong>
+              </span>
+            </div>
+            <ul className={styles.vsList}>
+              {CONTRASTS.map((row) => (
+                <li key={row.situation} className={styles.vsRow}>
+                  <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
+                  <p className={styles.vsOld}>
+                    <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
+                    {t(row.old)}
+                  </p>
+                  <p className={styles.vsNew}>
+                    <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
+                    {t(row.fixmaster)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className={styles.vsFoot}>
+            <strong>{t('landing.vs.foot')}</strong>
+            <a href="#coba">
+              {t('landing.vs.tryLink')} <Icon name="arrow-up" aria-hidden />
+            </a>
+          </p>
         </section>
 
         {/* ---------- 2. Satu aksi, empat jejak ---------- */}

@@ -6931,3 +6931,9 @@ cabangnya). Klaimnya dicek ke kode: PIN + peran per karyawan, absensi, tugas, Lo
 tiket dan stok per outlet, tampilan "Semua cabang" di dashboard dan laporan. Adegan meja–ponsel
 tidak berubah. Kunci `landing.founder*` dan `landing.navStory` dihapus; nav kini Cara kerja ·
 Untuk siapa · Harga.
+
+**Revisi kedua (15 Nov 2026):** judul dipilih pemilik dari tiga usulan: "Toko servis yang rapi
+dan teratur, mulai hari ini." Ditambah seksi **Konvensional vs FixMaster** sesudah hero, supaya
+pengunjung sadar bahwa tiap kebiasaan toko yang berantakan punya jawabannya di aplikasi. Lajur
+konvensional memakai nada warning (perlu perhatian), bukan danger: DESIGN menyimpan merah untuk
+yang benar-benar gagal.

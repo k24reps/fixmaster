@@ -301,7 +301,7 @@ export const id = {
   'landing.navPricing': 'Harga',
   'landing.signIn': 'Masuk',
   'landing.startFree': 'Mulai gratis',
-  'landing.heroTitle': 'Kerja lebih rapi, dari meja pertama sampai cabang kedua.',
+  'landing.heroTitle': 'Toko servis yang rapi dan teratur, mulai hari ini.',
   'landing.heroLead':
     'Masih kerja sendiri, sudah dibantu karyawan, atau sudah buka cabang, FixMaster membuat toko servis Anda teratur: unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat tanpa ditulis ulang. Untuk servis HP, laptop, printer, TV, sampai alat rumah tangga.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
@@ -360,6 +360,47 @@ export const id = {
   'landing.stage.toolsMore': 'Ditambah',
   'landing.stage.toolPin': 'PIN & peran',
   'landing.stage.toolAllBranches': 'Dashboard semua cabang',
+  'landing.vsTitle': 'Semua yang bikin toko servis berantakan, beres di satu aplikasi.',
+  'landing.vsLead':
+    'Kalau toko Anda masih mencatat di buku, chat WhatsApp, dan Excel, beberapa baris di bawah ini pasti terasa akrab.',
+  'landing.vs.oldTitle': 'Cara konvensional',
+  'landing.vs.oldSub': 'buku, chat, Excel',
+  'landing.vs.newTitle': 'Dengan FixMaster',
+  'landing.vs.intake': 'Unit masuk',
+  'landing.vs.intakeOld':
+    'Nota tulisan tangan. Keluhan dan kelengkapan sering tidak tercatat, jadi rawan salah paham saat unit diambil.',
+  'landing.vs.intakeNew':
+    'Tiket bernomor dengan keluhan dan kelengkapan. Nota dicetak, dan nomornya bisa dikirim ke pelanggan lewat WhatsApp.',
+  'landing.vs.status': 'Pelanggan menanyakan status',
+  'landing.vs.statusOld':
+    'Chat "sudah jadi belum?" datang terus, dan Anda harus cek ke meja satu per satu.',
+  'landing.vs.statusNew': 'Pelanggan cek status sendiri lewat tautan lacak di nota.',
+  'landing.vs.stock': 'Stok part',
+  'landing.vs.stockOld':
+    'Catatan stok beda dengan isi laci. Part habis baru ketahuan saat dibutuhkan.',
+  'landing.vs.stockNew':
+    'Part yang dipasang langsung mengurangi stok, dan stok menipis menyala di dashboard.',
+  'landing.vs.margin': 'Untung per unit',
+  'landing.vs.marginOld':
+    'Baru dihitung saat tutup buku, itu pun kalau sempat. Modal part sering terlupa.',
+  'landing.vs.marginNew':
+    'Modal part masuk ke tiket, jadi margin tiap unit terlihat sebelum unitnya diambil.',
+  'landing.vs.cash': 'Uang masuk',
+  'landing.vs.cashOld': 'Tunai, transfer, dan QRIS bercampur. Selisih kas dicari sampai malam.',
+  'landing.vs.cashNew':
+    'Tiap pembayaran masuk ke kas yang dipilih. Hitung kas di akhir hari langsung menunjukkan selisihnya.',
+  'landing.vs.team': 'Karyawan',
+  'landing.vs.teamOld': 'Harus bertanya siapa mengerjakan apa. Absen di buku, tugas lewat chat.',
+  'landing.vs.teamNew':
+    'Tiap karyawan masuk dengan PIN. Status, absen, tugas, dan Log Aktivitas mencatat siapa mengerjakan apa.',
+  'landing.vs.warranty': 'Garansi',
+  'landing.vs.warrantyOld': 'Bergantung pada ingatan dan nota yang masih disimpan pelanggan.',
+  'landing.vs.warrantyNew': 'Masa garansi tercatat di tiket, dan klaim dibuka dari tiket aslinya.',
+  'landing.vs.branch': 'Cabang',
+  'landing.vs.branchOld': 'Harus datang atau menelepon tiap cabang untuk tahu keadaannya.',
+  'landing.vs.branchNew': 'Semua cabang terlihat sekaligus di dashboard pemilik, dari ponsel.',
+  'landing.vs.foot': 'Hasilnya: tutup toko tanpa menghitung ulang apa pun.',
+  'landing.vs.tryLink': 'Lihat sendiri di demo',
   'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
   'landing.trailsLead':
     'Teknisi cukup memilih part dari stok di tiket. Sisanya tidak perlu disalin ke buku, chat, atau Excel.',

@@ -92,7 +92,9 @@ describe('LandingPage auth intent', () => {
 describe('LandingPage untuk siapa', () => {
   it('narasi menyapa toko yang masih sendiri sampai yang sudah bercabang', () => {
     renderLanding();
-    expect(screen.getByRole('heading', { level: 1, name: /Kerja lebih rapi/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Toko servis yang rapi dan teratur, mulai hari ini.' }),
+    ).toBeInTheDocument();
     const stages = screen.getByRole('heading', { name: /Dari kerja sendiri sampai buka cabang/ }).closest('section');
     expect(stages).not.toBeNull();
     for (const name of ['Masih kerja sendiri', 'Sudah dibantu karyawan', 'Sudah buka cabang']) {
@@ -101,6 +103,21 @@ describe('LandingPage untuk siapa', () => {
     expect(within(stages as HTMLElement).getByText(/Rp 1\.000 per unit masuk/)).toBeInTheDocument();
     // Bagian cerita founder dicabut atas keputusan pemilik (15 Nov 2026).
     expect(screen.queryByText(/Saya Rif/)).toBeNull();
+  });
+});
+
+describe('LandingPage perbandingan', () => {
+  it('tiap masalah toko yang berantakan berpasangan dengan jawabannya', () => {
+    renderLanding();
+    const versus = screen.getByRole('heading', { name: /beres di satu aplikasi/ }).closest('section');
+    expect(versus).not.toBeNull();
+    const rows = within(versus as HTMLElement).getAllByRole('listitem');
+    expect(rows).toHaveLength(8);
+    for (const row of rows) {
+      // Label lajur ikut di tiap sel, jadi pembaca layar tahu sisi mana yang dibaca.
+      expect(within(row).getByText('Cara konvensional')).toBeInTheDocument();
+      expect(within(row).getByText('Dengan FixMaster')).toBeInTheDocument();
+    }
   });
 });
 
