@@ -32,9 +32,11 @@ import {
   Mascot,
 } from '@/components/ui';
 import {
+  adminListDemoLeads,
   adminListOrgs,
   adminListOperatorActions,
   isPlatformAdmin,
+  type AdminDemoLead,
   type AdminOrgRow,
   type OperatorAction,
 } from '@/data/supabase-client';
@@ -48,6 +50,7 @@ import {
 } from '@/lib/business/operator';
 import { UNIT_FLOOR } from '@/config/pricing';
 import { OperatorActionModal, type ActionMode } from './OperatorActionModal';
+import { OperatorLeads } from './OperatorLeads';
 import { fmtRp, EMPTY_VALUE } from '@/lib/format';
 import { fmtDate, localDateOf } from '@/lib/time';
 import { useAuthStore } from '@/stores/auth';
@@ -70,7 +73,7 @@ const BALANCE_TITLE: Record<UnitBalanceState, string> = {
   blocked: 'Tiket baru tertahan',
 };
 
-type Tab = 'klien' | 'jejak';
+type Tab = 'klien' | 'kontak' | 'jejak';
 type OrgFilter = 'all' | 'attention' | 'low' | 'blocked' | 'suspended';
 
 /** Perkiraan sisa hari sebelum tiket baru tertahan, untuk kolom dan kartu. */
@@ -156,6 +159,8 @@ export function OperatorPage() {
   const admin = adminFor && adminFor.userId === userId ? adminFor.ok : null;
   const [orgs, setOrgs] = useState<AdminOrgRow[]>([]);
   const [actions, setActions] = useState<OperatorAction[]>([]);
+  // null = RPC kontak demo belum ada di server (0102 belum diterapkan).
+  const [leads, setLeads] = useState<AdminDemoLead[] | null>([]);
   const [actMode, setActMode] = useState<ActionMode | null>(null);
   const [actOrg, setActOrg] = useState<AdminOrgRow | null>(null);
   const [tab, setTab] = useState<Tab>('klien');
@@ -185,12 +190,15 @@ export function OperatorPage() {
 
   const reload = useCallback(async () => {
     try {
-      const [o, a] = await Promise.all([
+      const [o, a, l] = await Promise.all([
         adminListOrgs(),
         adminListOperatorActions(actionLimit),
+        // Terpisah dari kegagalan lain: tanpa 0102, klien dan jejak tetap tampil.
+        adminListDemoLeads().catch(() => null),
       ]);
       setOrgs(o);
       setActions(a);
+      setLeads(l);
       setLoadError('');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal memuat data operator';
@@ -299,6 +307,12 @@ export function OperatorPage() {
 
   const TABS: { id: Tab; label: string; icon: string; count: number }[] = [
     { id: 'klien', label: 'Klien', icon: 'buildings', count: orgs.length },
+    {
+      id: 'kontak',
+      label: 'Kontak demo',
+      icon: 'whatsapp',
+      count: leads?.filter((lead) => !lead.contactedAt).length ?? 0,
+    },
     {
       id: 'jejak',
       label: 'Jejak aksi',
@@ -594,6 +608,20 @@ export function OperatorPage() {
               )}
             </CardBody>
           </Card>
+        </section>
+      )}
+
+      {tab === 'kontak' && (
+        <section
+          id="operator-panel-kontak"
+          role="tabpanel"
+          aria-labelledby="operator-tab-kontak"
+          className={styles.panel}
+        >
+          <OperatorLeads
+            leads={leads}
+            onChanged={async () => setLeads(await adminListDemoLeads())}
+          />
         </section>
       )}
 

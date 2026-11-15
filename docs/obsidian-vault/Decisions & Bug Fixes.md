@@ -6875,3 +6875,48 @@ runtime belum siap, cukup diulang beberapa detik kemudian. Frontend fast-forward
 **Masih tertinggal:**
 1. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
    `hapus-tiket-*.png` hanya ada di mesin yang menjalankan skripnya.
+
+## Landing "Dua Adegan" + gerbang demo nama toko & WhatsApp (15 Nov 2026)
+
+**Keputusan pemilik (sesi *shape* 14 Nov):** landing lama diganti total. Pengunjung datang dari
+WA, Google, dan iklan, jadi layar pertama harus dipahami di ponsel. Demo dibuka **setelah**
+mengisi nama toko + nomor WhatsApp (cek format saja, tanpa OTP); demo tampil dengan nama toko
+itu, pengunjung yang kembali di perangkat yang sama langsung masuk. Kontak dikirim ke email
+`fixmaster.cs@gmail.com` dan tampil di `/operator`, disimpan 90 hari. Bukti: wajah & cerita
+pendiri, bukan testimoni. Tema universal untuk semua reparasi elektronik. Susunan yang dikunci:
+"Dua Adegan: Meja & Ponsel" (kartu pertama roll `d5038be4`).
+
+**Kenapa server dulu.** Gerbang adalah satu-satunya jalan ke demo, jadi landing baru tidak boleh
+tayang sebelum `0102` ada (pengunjung akan melihat "koneksi ke server gagal"). Runbook "Rilis 0102"
+di [[Self-Hosting]] membalik urutan 0100 (frontend dulu) karena itu.
+
+**Pelindung spam tanpa CAPTCHA:** kolom jebakan (bot mendapat sukses palsu, tidak ada yang
+ditulis), batas 8 kiriman / 10 menit per ember IP (`hashtext(ip) & 4095`, pola `0100`, IP tidak
+disimpan; ambang longgar karena CGNAT seluler), pagar 300/jam keseluruhan, upsert per nomor.
+Email dikirim sebagai **ringkasan tiap 5 menit**, bukan per kiriman, supaya banjir kiriman palsu
+tidak menjadi banjir email. Galat yang ditolak server (`raise`) membatalkan transaksi PostgREST
+termasuk catatan `rate_events`-nya, jadi hanya kiriman yang lolos validasi yang dihitung; itu
+cukup karena kiriman yang ditolak tidak menulis apa pun.
+
+**Jebakan uji: 30 skrip Playwright membuka `/demo` langsung.** Gerbang keras akan mematikan
+semuanya (`audit-mobile`, `audit-zoom`, `audit-contrast`, `shoot-*`). Jalan keluarnya di
+`DemoApp`: hanya di dev server dan hanya bila `navigator.webdriver`, gerbang dilewati dengan nama
+toko demo bawaan; `/demo?gate` memaksanya tampil. Build produksi tidak punya jalur ini.
+`audit-mobile` sesudah perubahan: luberan dokumen 0, temuan sama persis dengan `main` (45 target
+kecil `a._term`/`a._351` di Dashboard/Laporan yang sudah ada sebelumnya).
+
+**Review akhir impeccable** dijalankan in-thread (harness tanpa agen `impeccable-finish-reviewer`).
+Disposisi **fix**, dua temuan: jejak sinkron berada di bawah lipatan 1440×900 (dipindah ke
+`--sync-y: 132px`, menghubungkan baris tiket aktif ke notifikasi ponsel; terlihat di 1440×900,
+tepat di tepi bawah 1280×720) dan monogram "RIF" memakai mono sebagai kostum (kini Space Grotesk).
+Detektor: hanya advisory (ukuran `clamp()` judul pemasaran, radius bingkai ponsel 40/31px).
+
+**Cerita pendiri** ditulis atas permintaan pemilik ("karang saja") dari fakta yang ia berikan:
+Rif, buka sendiri 2019, kini dua toko dan tiga karyawan. Pain-nya (buku + chat + "uang di
+kepala", stok catatan beda dengan laci, menelepon toko untuk tahu unit selesai) adalah rekaan
+yang **menunggu pengecekan pemilik** sebelum dianggap final. Foto belum ada: pelat nama "RIF".
+
+**Verifikasi:** build, lint, **1144 tes / 88 berkas**; simulasi `uji-0102.sql` di PostgreSQL 16
+lokal lulus (termasuk batas jaringan) + penerapan ulang idempoten; `tier3j-demo-leads` lolos
+type-check, belum dijalankan (tanpa staging). **Belum diperbarui:** gambar vault (tanpa
+PowerShell); foto landing ada di `.impeccable/review/` (di-gitignore) dari `scripts/shoot-landing.mjs`.

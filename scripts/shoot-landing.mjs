@@ -1,7 +1,12 @@
 /**
- * Screenshot probe for the public marketing landing page (signed-out).
- * Captures full-page + key sections, desktop dark/light + mobile.
- * Run with the dev server up:  node scripts/shoot-landing.mjs
+ * Foto landing "Dua Adegan" (/landing-preview) dan gerbang /demo di beberapa
+ * lebar dan dua tema. Gerak dimatikan (reduced motion), jadi adegan meja dan
+ * ponsel difoto di keadaan akhirnya (lunas), bukan di tengah animasi.
+ *
+ *   node scripts/shoot-landing.mjs
+ *   BASE_URL=http://127.0.0.1:5173 OUT=.impeccable/review PW_CHROMIUM=/opt/pw-browsers/chromium node scripts/shoot-landing.mjs
+ *
+ * Mencetak luberan horizontal tiap foto; selain 0 berarti ada yang meluap.
  */
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
@@ -9,113 +14,49 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, 'shots');
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
+const OUT = process.env.OUT || join(__dirname, 'shots');
 mkdirSync(OUT, { recursive: true });
 
-const BASE = process.env.BASE_URL || 'http://localhost:5173';
-const browser = await chromium.launch();
+const browser = await chromium.launch(
+  process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
+);
 
-async function setTheme(page, theme) {
-  await page.evaluate((t) => {
-    localStorage.setItem('fixmaster-theme', t);
-    document.documentElement.setAttribute('data-theme', t);
-  }, theme);
-}
-
-async function audit(page, label) {
-  const result = await page.evaluate(() => {
-    const doc = document.documentElement;
-    const undersizedButtons = [...document.querySelectorAll('button')]
-      .filter((button) => button.getClientRects().length > 0)
-      .map((button) => {
-        const rect = button.getBoundingClientRect();
-        return { label: button.textContent?.trim() || button.getAttribute('aria-label'), width: rect.width, height: rect.height };
-      })
-      .filter(({ width, height }) => width < 44 || height < 44);
-    return {
-      viewport: doc.clientWidth,
-      scrollWidth: doc.scrollWidth,
-      horizontalOverflow: doc.scrollWidth > doc.clientWidth + 1,
-      undersizedButtons,
-    };
+async function shot({ name, width, height, theme, mobile = false, full = false, visitor = null, path = '/landing-preview' }) {
+  const ctx = await browser.newContext({
+    viewport: { width, height },
+    deviceScaleFactor: 1,
+    isMobile: mobile,
+    hasTouch: mobile,
+    reducedMotion: 'reduce',
+    colorScheme: theme,
   });
-  console.log('audit:', label, JSON.stringify(result));
-}
-
-async function primeProductImages(page) {
-  await page.locator('#product').scrollIntoViewIfNeeded();
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('img[loading="lazy"]')]
-      .filter((image) => image.getClientRects().length > 0)
-      .every((image) => image.complete && image.naturalWidth > 0),
+  await ctx.addInitScript(
+    ([t, v]) => {
+      localStorage.setItem('fixmaster-theme', t);
+      if (v) localStorage.setItem('fixmaster-demo-visitor', JSON.stringify({ shopName: v }));
+    },
+    [theme, visitor],
   );
-  await page.evaluate(() => {
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    const previousBehavior = document.documentElement.style.scrollBehavior;
-    document.documentElement.style.scrollBehavior = 'auto';
-    window.scrollTo(0, 0);
-    document.documentElement.style.scrollBehavior = previousBehavior;
-  });
-  await page.waitForFunction(() => window.scrollY === 0);
+  const page = await ctx.newPage();
+  await page.goto(BASE + path, { waitUntil: 'networkidle' });
+  await page.waitForSelector(path.startsWith('/demo') ? 'form' : 'h1', { timeout: 60000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: join(OUT, `${name}.png`), fullPage: full });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  console.log(`${name}: luberan-x ${overflow}px`);
+  await ctx.close();
 }
 
-for (const theme of ['dark', 'light']) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, deviceScaleFactor: 1.25 });
-  await page.goto(BASE, { waitUntil: 'networkidle' });
-  await setTheme(page, theme);
-  await page.waitForTimeout(500);
-  await primeProductImages(page);
-  // Full page
-  await page.screenshot({ path: join(OUT, `landing-full-${theme}.png`), fullPage: true });
-  await audit(page, `${theme}-desktop`);
-  // Above-the-fold (hero)
-  await page.screenshot({ path: join(OUT, `landing-hero-${theme}.png`) });
-  if (theme === 'dark') {
-    await page.screenshot({ path: join(OUT, 'landing-v2-dark.png') });
-  }
-  console.log('shot:', `landing-${theme}`);
-  const ownerProof = page.locator('#owner-proof');
-  await ownerProof.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(200);
-  await ownerProof.screenshot({ path: join(OUT, `landing-owner-${theme}.png`) });
-  console.log('shot:', `landing-owner-${theme}`);
-  // The product/demo section specifically (poster-only, no iframe).
-  try {
-    const demo = page.locator('#product');
-    await demo.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(300);
-    await demo.screenshot({ path: join(OUT, `landing-demo-${theme}.png`) });
-    if (theme === 'dark') {
-      await page.getByRole('link', { name: /versi mobile/i }).screenshot({
-        path: join(OUT, 'landing-phone-frame-desktop.png'),
-      });
-    }
-    console.log('shot:', `landing-demo-${theme}`);
-  } catch (e) {
-    console.log('skip demo', theme, String(e).slice(0, 80));
-  }
-  const finalCta = page.locator('#start');
-  await finalCta.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(200);
-  await finalCta.screenshot({ path: join(OUT, `landing-final-${theme}.png`) });
-  console.log('shot:', `landing-final-${theme}`);
-  await page.close();
-}
-
-// Mobile (dark) full page
-const m = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-await m.goto(BASE, { waitUntil: 'networkidle' });
-await setTheme(m, 'dark');
-await m.waitForTimeout(500);
-await primeProductImages(m);
-await m.screenshot({ path: join(OUT, 'landing-mobile.png'), fullPage: true });
-await audit(m, 'dark-mobile');
-await m.locator('#owner-proof').screenshot({ path: join(OUT, 'landing-owner-mobile.png') });
-await m.getByRole('link', { name: /versi mobile/i }).screenshot({
-  path: join(OUT, 'landing-phone-frame-mobile.png'),
-});
-console.log('shot:', 'landing-mobile');
-await m.close();
-
+await shot({ name: 'desktop', width: 1440, height: 900, theme: 'dark', full: true });
+await shot({ name: 'desktop-fold', width: 1440, height: 900, theme: 'dark' });
+await shot({ name: 'desktop-light', width: 1440, height: 900, theme: 'light', full: true });
+await shot({ name: 'desktop-light-fold', width: 1440, height: 900, theme: 'light' });
+await shot({ name: 'laptop-fold', width: 1280, height: 720, theme: 'dark' });
+await shot({ name: 'tablet-fold', width: 820, height: 1180, theme: 'dark', mobile: true });
+await shot({ name: 'mobile', width: 390, height: 844, theme: 'dark', mobile: true, full: true });
+await shot({ name: 'mobile-fold', width: 390, height: 844, theme: 'dark', mobile: true });
+await shot({ name: 'mobile-light', width: 390, height: 844, theme: 'light', mobile: true, full: true });
+await shot({ name: 'mobile-returning-fold', width: 390, height: 844, theme: 'dark', mobile: true, visitor: 'Sinar Servis Elektronik' });
+await shot({ name: 'demo-gate', width: 390, height: 844, theme: 'dark', mobile: true, path: '/demo?gate' });
 await browser.close();
-console.log('done →', OUT);

@@ -7,11 +7,33 @@ import { installRepository, resetRepository } from '@/data';
 import { useDemoStore } from '@/stores/demo';
 import { useSessionStore } from '@/stores/session';
 import { useZoomStore } from '@/stores/zoom';
-import { seedDemoWorkspace } from '@/dev/seed';
+import { DEMO_SHOP_NAME, seedDemoWorkspace } from '@/dev/seed';
 import { Icon } from '@/components/ui';
 import { trackEvent } from '@/lib/analytics';
+import { useT } from '@/i18n';
+import { readDemoVisitor, type DemoVisitor } from '@/lib/demoVisitor';
+import { DemoGate } from '@/features/landing/DemoGate';
 import { DemoChrome } from './DemoChrome';
 import styles from './DemoApp.module.css';
+
+/**
+ * Pengunjung yang sudah lolos gerbang di perangkat ini. Probe Playwright di
+ * dev server (puluhan skrip `scripts/*.mjs` membuka /demo langsung) dilewatkan
+ * dengan nama toko demo bawaan; `?gate` memaksa gerbangnya tampil untuk difoto.
+ * Build produksi tidak punya jalan pintas ini.
+ */
+function initialVisitor(): DemoVisitor | null {
+  const visitor = readDemoVisitor();
+  if (visitor) return visitor;
+  if (
+    import.meta.env.DEV &&
+    navigator.webdriver &&
+    !new URLSearchParams(window.location.search).has('gate')
+  ) {
+    return { shopName: DEMO_SHOP_NAME };
+  }
+  return null;
+}
 
 /**
  * Public interactive product demo (`/demo`). Lets an anonymous visitor use the
@@ -20,16 +42,20 @@ import styles from './DemoApp.module.css';
  * How it stays isolated:
  *  - Swaps the global `repository` for an {@link InMemoryAdapter} (RAM-only;
  *    zero disk trace, never touches the visitor's real IndexedDB).
- *  - Seeds the existing curated demo workspace and signs in as the owner.
+ *  - Seeds the curated demo workspace under the visitor's own shop name and
+ *    signs in as the owner.
  *  - Runs the app under its own `MemoryRouter`, so in-app navigation (sidebar
  *    links to `/services`, etc.) stays inside the demo and the browser URL
  *    remains `/demo`.
  *  - On unmount, restores the real repository + clears the session.
  *
- * Embedded on the landing page via `<iframe src="/demo">` (full JS isolation)
- * and also reachable directly as a full-screen page (mobile / shareable link).
+ * Guarded by the demo gate (shop name + WhatsApp number, migration 0102): the
+ * landing gate passes straight through, a direct visit shows the same gate
+ * first, and a returning visitor on this device skips it.
  */
 export function DemoApp() {
+  const t = useT();
+  const [visitor, setVisitor] = useState<DemoVisitor | null>(initialVisitor);
   const [ready, setReady] = useState(false);
 
   // The demo's private router reuses the real app's child routes verbatim, so
@@ -42,42 +68,67 @@ export function DemoApp() {
     [],
   );
 
+  // Berlaku juga untuk gerbangnya: sandbox, bukan konten, dan selalu 100% +
+  // Lapang (mengabaikan zoom tersimpan di origin yang sama) sampai keluar.
   useEffect(() => {
-    let cancelled = false;
-    trackEvent('demo_started', { entry: 'public_route' });
-    // Keep the demo route out of search engines (it's a sandbox, not content).
     const robots = document.createElement('meta');
     robots.name = 'robots';
     robots.content = 'noindex';
     document.head.appendChild(robots);
-
-    // Demo tampil di default produk (100% + Lapang), mengabaikan preferensi
-    // tersimpan di origin yang sama: pengunjung melihat produk apa adanya,
-    // bukan zoom pengunjung sebelumnya. Sesi sementara: kontrol tetap bekerja,
-    // dan preferensi tersimpan kembali saat keluar.
     const endTransientView = useZoomStore.getState().beginTransientView();
+    return () => {
+      robots.remove();
+      endTransientView();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visitor) return;
+    let cancelled = false;
+    trackEvent('demo_started', { entry: 'public_route' });
     document.body.classList.add('fm-demo-active');
 
     installRepository(new InMemoryAdapter());
     useDemoStore.getState().enter();
-    void seedDemoWorkspace().then(() => {
+    void seedDemoWorkspace(visitor.shopName).then(() => {
       if (!cancelled) setReady(true);
     });
     return () => {
       cancelled = true;
-      robots.remove();
       document.body.classList.remove('fm-demo-active');
-      endTransientView();
       useDemoStore.getState().exit();
       useSessionStore.getState().reset();
       resetRepository();
     };
-  }, []);
+  }, [visitor]);
 
   // Re-seed back to the curated starting dataset (Reset Demo button).
   const handleReset = async () => {
-    await seedDemoWorkspace();
+    await seedDemoWorkspace(visitor?.shopName);
   };
+
+  if (!visitor) {
+    return (
+      <main className={styles.gatePage}>
+        <a className={styles.gateBack} href="/">
+          <Icon name="arrow-left" aria-hidden />
+          {t('demoGate.backHome')}
+        </a>
+        <div className={styles.gateColumn}>
+          <div className={styles.gateBrand}>
+            <img src="/logo.svg" alt="" width="40" height="40" />
+            <strong>FixMaster</strong>
+          </div>
+          <DemoGate
+            source="demo"
+            title="demoGate.titleDemoRoute"
+            privacyHref="/privacy"
+            onPassed={(shopName) => setVisitor({ shopName })}
+          />
+        </div>
+      </main>
+    );
+  }
 
   if (!ready) {
     return (

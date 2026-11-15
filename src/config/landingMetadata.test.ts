@@ -39,9 +39,9 @@ describe('landing metadata', () => {
     const pairs = ['device', 'install', 'connection', 'safe', 'move'] as const;
 
     for (const key of pairs) {
-      const question = id[`landingV2.faq.${key}.q`];
+      const question = id[`landing.faq.${key}.q`];
       const answer = faq?.mainEntity?.find((entity) => entity.name === question);
-      expect(answer?.acceptedAnswer.text).toBe(id[`landingV2.faq.${key}.a`]);
+      expect(answer?.acceptedAnswer.text).toBe(id[`landing.faq.${key}.a`]);
     }
   });
 

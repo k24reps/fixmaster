@@ -14,4 +14,4 @@ FixMaster ditujukan untuk konter HP, jasa servis laptop, serta reparasi tablet, 
 
 ## Opsional
 
-- [Demo interaktif](https://fixmaster.app/demo): aplikasi asli dengan data contoh yang tidak disimpan; halaman ini tidak untuk diindeks.
+- [Demo interaktif](https://fixmaster.app/demo): aplikasi asli dengan data contoh yang tidak disimpan, dibuka setelah mengisi nama toko dan nomor WhatsApp; halaman ini tidak untuk diindeks.

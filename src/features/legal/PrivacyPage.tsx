@@ -23,7 +23,7 @@ export function PrivacyPage() {
       title={t('legal.privacyTitle')}
       docId="PRIVASI-001"
       intro={t('legal.privacyIntro')}
-      updated="2026-11-14"
+      updated="2026-11-15"
     >
       <div className="callout">
         <p>
@@ -60,8 +60,17 @@ export function PrivacyPage() {
           memprosesnya atas nama Anda.
         </li>
         <li>
+          <strong>Kontak demo:</strong> nama toko dan nomor WhatsApp yang Anda isi sebelum
+          membuka demo di fixmaster.app, beserta waktu pengisian, bahasa halaman, dan bagian
+          halaman tempat Anda mengisinya. Nomor hanya diperiksa formatnya, tanpa kode OTP.
+          Browser Anda menyimpan nama toko saja agar demo tidak meminta isian lagi; nomor
+          WhatsApp tidak pernah disimpan di browser.
+        </li>
+        <li>
           <strong>Data teknis:</strong> log aktivitas terbatas yang diperlukan untuk keamanan
-          dan pemeliharaan layanan.
+          dan pemeliharaan layanan. Alamat IP pengisi formulir demo diubah menjadi kode tersamar
+          untuk membatasi percobaan berulang selama beberapa menit; alamatnya sendiri tidak
+          disimpan.
         </li>
       </ul>
 
@@ -72,6 +81,11 @@ export function PrivacyPage() {
         <li>Mencatat pemakaian saldo unit dan memproses pengisian saldo.</li>
         <li>Menjaga keamanan, mencegah penyalahgunaan, dan memenuhi kewajiban hukum.</li>
         <li>Memberikan dukungan teknis saat Anda memintanya.</li>
+        <li>
+          Untuk kontak demo: menghubungi Anda lewat WhatsApp soal FixMaster. Kontak baru
+          dikirim ke kotak masuk tim FixMaster (fixmaster.cs@gmail.com) dan tampil di panel
+          internal kami. Kami tidak membagikannya untuk keperluan pemasaran pihak lain.
+        </li>
       </ul>
 
       <h2>3. Penyimpanan &amp; Lokasi Data</h2>
@@ -110,6 +124,11 @@ export function PrivacyPage() {
         Kami menyimpan data selama akun Anda aktif. Setelah penghapusan akun, data akan dihapus
         atau dianonimkan dalam jangka waktu wajar, kecuali penyimpanan lebih lanjut diwajibkan
         oleh hukum (mis. catatan keuangan/perpajakan).
+      </p>
+      <p>
+        Kontak demo dihapus otomatis 90 hari setelah terakhir Anda mengisinya. Bila Anda ingin
+        nomor Anda dihapus lebih cepat, kirim permintaan lewat email atau WhatsApp FixMaster
+        dan kami menghapusnya.
       </p>
 
       <h2>7. Keamanan</h2>

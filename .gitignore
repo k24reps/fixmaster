@@ -42,3 +42,6 @@ landing-copy-audit.md
 .claude/skills/impeccable/scripts/bin/
 # Sesi "live" impeccable menyuntik skrip ke halaman; tak boleh ter-commit.
 .impeccable/live/
+
+# Foto tinjauan impeccable (scripts/shoot-landing.mjs OUT=.impeccable/review); dibuat ulang kapan saja.
+.impeccable/review/

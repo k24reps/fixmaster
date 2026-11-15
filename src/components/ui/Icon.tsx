@@ -117,6 +117,12 @@ import {
   Note,
   Calculator,
   Copy,
+  DeviceMobile,
+  DeviceTablet,
+  Television,
+  GameController,
+  SpeakerHifi,
+  CookingPot,
   type IconProps as PhosphorIconProps,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react';
@@ -229,7 +235,13 @@ export type IconName =
   | 'dots-three'
   | 'note'
   | 'calculator'
-  | 'copy';
+  | 'copy'
+  | 'device-mobile'
+  | 'device-tablet'
+  | 'television'
+  | 'game-controller'
+  | 'speaker'
+  | 'cooking-pot';
 
 /** Name → Phosphor component. Aliases collapse onto shared glyphs. */
 const REGISTRY: Record<IconName, PhosphorIcon> = {
@@ -343,6 +355,13 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   note: Note,
   calculator: Calculator,
   copy: Copy,
+  // Ragam perangkat di landing: FixMaster untuk semua meja reparasi, bukan HP saja.
+  'device-mobile': DeviceMobile,
+  'device-tablet': DeviceTablet,
+  television: Television,
+  'game-controller': GameController,
+  speaker: SpeakerHifi,
+  'cooking-pot': CookingPot,
 };
 
 // Reference rarely-used imports so tree-shaking keeps them and lint stays happy.

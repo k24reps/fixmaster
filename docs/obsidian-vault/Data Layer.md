@@ -229,6 +229,38 @@ kedua sisi tidak berbeda diam-diam. Logika murni: `lib/business/billing.ts`
   `admin_adjust_units(org, units, reason)` (±1000, bukan 0). RPC paket lama
   `admin_confirm_manual_payment` dan `admin_apply_promo` **dihapus**.
 
+**Kontak gerbang demo (migration `0102`, 15 Nov 2026).** Landing dan `/demo`
+meminta nama toko + nomor WhatsApp sebelum demo terbuka.
+
+- **`demo_leads`** — satu baris per nomor (`phone` unik, bentuk baku `62xxxxxxxxxx`,
+  cek `^628[1-9][0-9]{7,10}$`), `shop_name` 2–60 huruf, `source` (`hero` / `final` /
+  `demo`), `locale`, `visits`, `last_seen_at`, `notified_at`, `contacted_at`. RLS aktif
+  **tanpa policy** dan hak anon/authenticated dicabut: tidak ada klien yang bisa
+  membaca nomor, termasuk pengisinya.
+- **`submit_demo_lead(shop, phone, source, locale, trap)`** — satu-satunya pintu tulis
+  (anon). Urutan: kolom jebakan terisi → jawab sukses tanpa menulis; batas per jaringan
+  `check_rate_limit('lead:<hash IP & 4095>', 8, 600)` dan pagar keseluruhan
+  `lead:all` 300/jam (IP tidak disimpan); normalisasi nama dan nomor; upsert per nomor
+  (`visits + 1`). Galat membawa `hint` `demo_lead_phone` / `demo_lead_name` dan
+  `PT429` untuk batas. Cermin klien: `lib/business/demoLead.ts` (`demoLead.test.ts`
+  membaca migrasinya), panggilan `submitDemoLead` di `supabase-client.ts`.
+- **Notifikasi** — pg_cron `fixmaster-demo-lead-notify` tiap 5 menit memanggil
+  `run_demo_lead_notify()`, yang hanya mem-POST Edge Function `lead-notify` bila ada
+  baris `notified_at is null` (rahasia `backup_cron_secret` yang sama). Fungsinya
+  mengirim **satu email ringkasan** lewat Resend ke `LEAD_NOTIFY_TO` (bawaan
+  `fixmaster.cs@gmail.com`), lalu mengisi `notified_at`. Tanpa `RESEND_API_KEY` ia
+  tidak mengirim dan tidak menandai.
+- **Retensi** — `purge_demo_leads()` (pg_cron `fixmaster-purge-demo-leads`, 18:45 UTC)
+  menghapus baris yang `last_seen_at`-nya lewat 90 hari; `/privacy` menjanjikannya.
+- **Operator** — `admin_list_demo_leads()` (500 terbaru, yang belum dihubungi lebih
+  dulu), `admin_set_demo_lead_contacted(id, bool)`, `admin_delete_demo_lead(id)`
+  (hapus atas permintaan). Semuanya `is_platform_admin()`. UI: tab **Kontak demo** di
+  `/operator` (`OperatorLeads.tsx`); tanpa 0102 tab itu menjelaskan sebabnya dan tab lain
+  tetap jalan.
+- **Browser** hanya menyimpan nama toko (`fixmaster-demo-visitor`, `lib/demoVisitor.ts`)
+  untuk melewati gerbang di kunjungan berikutnya; nomor tidak pernah disimpan di sana.
+  `seedDemoWorkspace(shopName)` memberi org demo nama itu.
+
 > Historis — **Billing (migration `0009` → `0047`)**: `invoices` sebagai buku pembayaran
 > dan `is_org_active` sebagai gerbang masa aktif; sejak `0047` hanya
 > `admin_confirm_manual_payment` yang bisa memperpanjang paket Solo/Pro. Seluruhnya

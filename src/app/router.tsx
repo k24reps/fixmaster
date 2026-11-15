@@ -12,8 +12,8 @@ import { lazyChunk } from '@/lib/lazyChunk';
 const AppLayout = lazyChunk(() =>
   import('@/components/layout/AppLayout').then((module) => ({ default: module.AppLayout })),
 );
-const LandingPageV2 = lazyChunk(() =>
-  import('@/features/landing/LandingPageV2').then((module) => ({ default: module.LandingPageV2 })),
+const LandingPage = lazyChunk(() =>
+  import('@/features/landing/LandingPage').then((module) => ({ default: module.LandingPage })),
 );
 const TrackingPage = lazyChunk(() =>
   import('@/features/tracking/TrackingPage').then((m) => ({ default: m.TrackingPage })),
@@ -57,12 +57,12 @@ function devOnlyRoutes(): RouteObject[] {
 export const router = createBrowserRouter([
   {
     // Stable preview alias for the live signed-out landing page. Keeping this
-    // route makes design review links durable while AuthGate serves V2 at `/`.
+    // route makes design review links durable while AuthGate serves it at `/`.
     path: '/landing-preview',
     errorElement: <RouteError />,
     element: (
       <Suspense fallback={<AuthSplash />}>
-        <LandingPageV2 />
+        <LandingPage />
       </Suspense>
     ),
   },

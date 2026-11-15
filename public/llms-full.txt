@@ -45,7 +45,7 @@ Sumber harga terstruktur: https://fixmaster.app/pricing.md
 
 ## Demo
 
-Demo publik tersedia di https://fixmaster.app/demo. Demo menjalankan aplikasi asli dengan data contoh di memori. Perubahan yang dibuat di demo tidak disimpan dan tidak menyentuh data pengunjung.
+Demo publik tersedia di https://fixmaster.app/demo. Sebelum demo terbuka, pengunjung mengisi nama toko dan nomor WhatsApp (nomor hanya dicek formatnya, tanpa OTP); demo lalu tampil dengan nama toko itu. Demo menjalankan aplikasi asli dengan data contoh di memori. Perubahan yang dibuat di demo tidak disimpan dan tidak menyentuh data pengunjung. Kontak demo dihapus otomatis 90 hari setelah terakhir diisi.
 
 ## Pertanyaan umum
 

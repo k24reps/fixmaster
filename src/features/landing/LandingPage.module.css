@@ -1,0 +1,1188 @@
+/* ---------- Landing "Dua Adegan, Meja & Ponsel" ----------
+   Satu bench: grid blueprint global (body::before) tetap terlihat di bawah
+   halaman, jadi .page transparan. Amber hanya untuk aksi utama yang sedang di
+   layar: tombol gerbang demo, lalu tombol daftar di bagian harga. */
+
+.page {
+  container-name: landing;
+  container-type: inline-size;
+  --gutter: var(--space-4);
+  --measure: 1200px;
+  min-height: var(--app-vh);
+  /* Penjaga overflow cukup di sumbu X; `overflow: clip` penuh mematikan
+     navigasi fragment (#harga, #cerita). */
+  overflow-x: clip;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.page * {
+  box-sizing: border-box;
+}
+
+.page ::selection {
+  color: var(--text-primary);
+  background: var(--brand-soft);
+}
+
+.page main:focus {
+  outline: none;
+}
+
+.skipLink {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-overlay);
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  color: var(--on-brand);
+  background: var(--brand-fill);
+  border: 1px solid var(--brand-fill-edge);
+  border-radius: var(--radius-sm);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-6)));
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+.hero,
+.trails,
+.benches,
+.modules,
+.founder,
+.pricing,
+.honest,
+.closing,
+.footer {
+  width: min(var(--measure), calc(100% - 2 * var(--gutter)));
+  margin-inline: auto;
+}
+
+/* Offset di elemen yang ditunjuk anchor, lewat kelas (CSS Modules juga
+   melokalkan selektor id). */
+.trails,
+.founder,
+.pricing {
+  scroll-margin-top: 96px;
+}
+
+/* ---------- Header (sasis yang melayang di atas bench) ---------- */
+.header {
+  position: sticky;
+  top: 12px;
+  z-index: var(--z-sticky);
+  width: min(var(--measure), calc(100% - 2 * var(--gutter)));
+  min-height: 64px;
+  margin: 12px auto 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.brand,
+.footerBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--control-h);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.brand > span,
+.footerBrand > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand strong,
+.footerBrand strong {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: -0.02em;
+}
+
+.brand small,
+.footerBrand small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-left: auto;
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.nav a:hover {
+  color: var(--text-primary);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.iconButton,
+.ghostButton,
+.outlineButton,
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.iconButton {
+  width: var(--control-h);
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+}
+
+.ghostButton {
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: var(--text-sm);
+}
+
+.outlineButton {
+  padding: 0 var(--space-4);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  font-size: var(--text-sm);
+}
+
+.iconButton:hover,
+.outlineButton:hover {
+  border-color: var(--border-brand);
+  color: var(--text-primary);
+}
+
+.ghostButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.primaryButton {
+  min-height: 50px;
+  padding: 0 var(--space-6);
+  color: var(--on-brand);
+  background: var(--gradient-brand);
+  border: 1px solid var(--brand-fill-edge);
+  box-shadow: var(--shadow-brand);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
+}
+
+.primaryButton:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.iconButton:focus-visible,
+.ghostButton:focus-visible,
+.outlineButton:focus-visible,
+.primaryButton:focus-visible,
+.nav a:focus-visible,
+.footerLinks a:focus-visible,
+.brand:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* ---------- 1. Hero ---------- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-areas:
+    'copy gate'
+    'scene scene';
+  column-gap: clamp(var(--space-8), 4cqi, var(--space-16));
+  row-gap: var(--space-8);
+  padding-top: clamp(var(--space-6), 3cqi, var(--space-12));
+}
+
+.heroCopy {
+  grid-area: copy;
+  align-self: center;
+  min-width: 0;
+}
+
+.heroCopy h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2.15rem, 1.2rem + 2.9cqi, 3.35rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.heroLead {
+  max-width: 50ch;
+  margin: var(--space-5) 0 0;
+  color: var(--text-secondary);
+  font-size: clamp(var(--text-md), 0.9rem + 0.4cqi, 1.18rem);
+  line-height: 1.6;
+}
+
+.heroGate {
+  grid-area: gate;
+  min-width: 0;
+}
+
+.heroScene {
+  grid-area: scene;
+  min-width: 0;
+}
+
+/* ---------- Kepala seksi ---------- */
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 46rem;
+}
+
+.sectionHead p {
+  max-width: 60ch;
+}
+
+.sectionHead h2,
+.founderCopy h2,
+.priceCopy h2,
+.closingCopy h2 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.2rem + 1.6cqi, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.sectionHead p,
+.closingCopy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  line-height: 1.65;
+}
+
+.trails,
+.benches,
+.modules,
+.founder,
+.pricing,
+.honest,
+.closing {
+  padding-top: clamp(var(--space-16), 9cqi, 128px);
+}
+
+/* ---------- 2. Satu aksi, empat jejak ----------
+   Papan rangkaian: satu pad sumber di kiri, bus cyan bertitik, dan empat
+   jalur ke bagian usaha yang ikut tercatat. */
+.trails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.trailBoard {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+}
+
+.trailSource {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.trailSource > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trailSource small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.trailSource strong {
+  font-size: var(--text-md);
+  line-height: 1.35;
+}
+
+.trailSourceLed {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.trailList {
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 var(--space-10);
+  list-style: none;
+}
+
+/* Bus: garis titik dari pad sumber ke tiap jalur. */
+.trailList::before {
+  content: '';
+  position: absolute;
+  top: 34px;
+  bottom: 34px;
+  left: var(--space-5);
+  border-left: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.trailList::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--space-5);
+  border-top: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.trail {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+.trail + .trail {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.trail::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(var(--space-5) * -1);
+  width: var(--space-4);
+  border-top: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.trailIcon,
+.channelIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 20px;
+}
+
+.trailBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trailBody strong {
+  font-size: var(--text-md);
+}
+
+.trailBody span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.trailValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- 3. Lemari part: semua jenis meja reparasi ---------- */
+.benches {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.cabinet {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  list-style: none;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: 104px;
+  padding: var(--space-6) var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}
+
+.drawer svg {
+  color: var(--text-secondary);
+  font-size: 26px;
+}
+
+/* Gagang laci. */
+.drawerPull {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 34px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transform: translateX(-50%);
+}
+
+.drawerAdd {
+  color: var(--text-secondary);
+  background: transparent;
+  border-style: dashed;
+}
+
+.drawerAdd svg {
+  color: var(--text-muted);
+}
+
+/* ---------- 4. Modul: deretan kanal seperti sidebar ---------- */
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.channelList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px dotted var(--border-strong);
+}
+
+.channel {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px dotted var(--border-strong);
+}
+
+.channelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.channelBody strong {
+  font-size: var(--text-md);
+}
+
+.channelBody span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* ---------- 5. Founder ---------- */
+.founder {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(var(--space-8), 5cqi, var(--space-16));
+}
+
+/* Pelat nama terukir: pengganti foto sampai foto pemilik tersedia. */
+.nameplate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background: var(--gradient-sheen), var(--bg-surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.nameplateMark {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 2rem + 2cqi, 3.6rem);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-secondary);
+}
+
+.nameplateScrew {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+}
+
+.nameplateScrew:last-child {
+  left: auto;
+  right: 14px;
+}
+
+.founderCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 66ch;
+}
+
+.founderCopy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: clamp(var(--text-md), 0.95rem + 0.3cqi, 1.125rem);
+  line-height: 1.7;
+}
+
+.founderCopy .founderSign {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  color: var(--text-primary);
+}
+
+.founderSign strong {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.founderSign span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.founderFacts {
+  display: flex;
+  margin: var(--space-2) 0 0;
+  border-top: 1px dotted var(--border-strong);
+}
+
+.founderFacts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-6) 0 0;
+}
+
+.founderFacts div + div {
+  padding-left: var(--space-6);
+  border-left: 1px dotted var(--border-strong);
+}
+
+.founderFacts dt {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.founderFacts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 6. Harga + sumur instrumen biaya ---------- */
+.pricing {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  align-items: center;
+  gap: clamp(var(--space-8), 5cqi, var(--space-16));
+}
+
+.priceCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.priceMono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.priceLead {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  line-height: 1.65;
+}
+
+.priceRules {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priceRules li {
+  position: relative;
+  padding: var(--space-3) 0 var(--space-3) var(--space-6);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.priceRules li + li {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.priceRules li::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--space-3) + 0.5em);
+  left: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--success);
+  box-shadow: 0 0 7px var(--success);
+}
+
+.priceActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-2);
+}
+
+.priceActions p {
+  margin: 0;
+  max-width: 36ch;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Sumur instrumen satu-satunya di halaman: palet readout tetap sama di dua
+   tema, bezel amber→cyan, scanline. */
+.well {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  color: var(--readout-text);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--readout-text) 3%, transparent) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(120% 90% at 20% 0%, var(--readout-surface), var(--readout-base)) padding-box,
+    var(--gradient-brand-accent) border-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-xl);
+}
+
+.wellLabel {
+  color: var(--readout-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.wellReadout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.wellValue {
+  font-family: var(--font-mono);
+  font-size: clamp(2.2rem, 1.6rem + 2cqi, 3.1rem);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--readout-text);
+}
+
+.wellPer {
+  color: var(--readout-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.wellTicks {
+  display: grid;
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  gap: 3px;
+  height: 26px;
+}
+
+.wellTicks span {
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--readout-text) 10%, transparent);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.wellTicks span[data-on='true'] {
+  background: var(--accent-400);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-400) 55%, transparent);
+}
+
+.wellRange {
+  width: 100%;
+  height: var(--control-h);
+  margin: 0;
+  background: transparent;
+  accent-color: var(--brand-400);
+  cursor: pointer;
+}
+
+.wellRange::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--readout-text) 16%, transparent);
+}
+
+.wellRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -10px;
+  border-radius: var(--radius-full);
+  background: var(--brand-400);
+  border: 3px solid var(--readout-base);
+  box-shadow: 0 0 0 1px var(--brand-400);
+}
+
+.wellRange::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--readout-text) 16%, transparent);
+}
+
+.wellRange::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--brand-400);
+  border: 3px solid var(--readout-base);
+}
+
+.wellRange {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.wellRange:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.wellFacts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-top: 1px dotted color-mix(in srgb, var(--readout-text) 25%, transparent);
+}
+
+.wellFacts div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0 0;
+}
+
+.wellFacts dt {
+  min-width: 0;
+  color: var(--readout-muted);
+  font-size: var(--text-sm);
+}
+
+.wellFacts dd {
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--readout-text);
+}
+
+/* ---------- 7. Jujur soal koneksi & backup ---------- */
+.honest {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
+  gap: clamp(var(--space-8), 5cqi, var(--space-16));
+}
+
+.faqList {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.faqList details {
+  border-bottom: 1px dotted var(--border-strong);
+}
+
+.faqList summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 60px;
+  padding: var(--space-3) 0;
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+  list-style: none;
+  cursor: pointer;
+}
+
+.faqList summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqList summary svg {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+
+.faqList details[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.faqList summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.faqList details p {
+  max-width: 64ch;
+  margin: 0;
+  padding: 0 0 var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+
+/* ---------- 8. Gerbang penutup ---------- */
+.closing {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  align-items: center;
+  gap: clamp(var(--space-8), 5cqi, var(--space-16));
+  padding-bottom: clamp(var(--space-16), 8cqi, 112px);
+}
+
+.closingCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 34rem;
+}
+
+/* ---------- Kaki ---------- */
+.footer {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) 0 var(--space-10);
+  border-top: 1px dotted var(--border-strong);
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+.footerLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.footerLinks a:hover {
+  color: var(--text-primary);
+}
+
+/* Jejak lokasi: komitmen brand di PRODUCT.md. */
+.location {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Bar ponsel ---------- */
+.mobileBar {
+  display: none;
+}
+
+/* ---------- Lebar halaman, bukan viewport (Container Query Rule) ---------- */
+@container landing (max-width: 1080px) {
+  .nav {
+    display: none;
+  }
+  .headerActions {
+    margin-left: auto;
+  }
+  .channelList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container landing (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    column-gap: var(--space-6);
+  }
+  .trailBoard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .trailSource {
+    justify-self: start;
+  }
+  .trailList {
+    padding-left: var(--space-8);
+  }
+  .trailList::before {
+    top: 0;
+    left: var(--space-4);
+  }
+  .trailList::after {
+    display: none;
+  }
+  .trail::before {
+    left: calc(var(--space-4) * -1);
+    width: var(--space-3);
+  }
+  .benches,
+  .pricing,
+  .honest,
+  .closing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .founder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nameplate {
+    width: 132px;
+  }
+  .footer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+/* 720px: judul dan gerbang tidak lagi muat berdampingan (gerbang butuh
+   ±300px agar label dan contoh nomor tidak terpotong). */
+@container landing (max-width: 720px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'copy'
+      'gate'
+      'scene';
+  }
+  .heroGate {
+    max-width: 520px;
+  }
+}
+
+/* 560px: tombol "Mulai gratis" dan tagline merek tidak muat bersama di
+   header; daftar tetap ada di bagian harga. */
+@container landing (max-width: 560px) {
+  .brand small,
+  .outlineButton {
+    display: none;
+  }
+  .channelList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cabinet {
+    gap: 6px;
+    padding: var(--space-2);
+  }
+  .drawer {
+    min-height: 92px;
+    padding: var(--space-6) var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+  }
+  .drawer svg {
+    font-size: 22px;
+  }
+  .trail {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .trailValue {
+    grid-column: 2;
+  }
+  .well {
+    padding: var(--space-5) var(--space-4);
+  }
+  .primaryButton {
+    width: 100%;
+  }
+  .founderFacts div {
+    padding-right: var(--space-4);
+  }
+  .founderFacts div + div {
+    padding-left: var(--space-4);
+  }
+
+  .mobileBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    background: var(--surface-glass-strong);
+    border-top: 1px solid var(--border-strong);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition:
+      transform var(--dur-normal) var(--ease-out),
+      visibility 0s linear var(--dur-normal);
+  }
+  .mobileBar[data-visible='true'] {
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+      transform var(--dur-normal) var(--ease-out),
+      visibility 0s;
+  }
+  /* Jalan pintas ke gerbang, bukan aksi utama itu sendiri: sekunder. */
+  .mobileBarDemo {
+    flex: 1;
+    min-height: var(--control-h);
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
+  }
+  .mobileBarWa {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-h);
+    height: var(--control-h);
+    color: var(--success-text);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-md);
+  }
+  .footer {
+    padding-bottom: calc(var(--space-12) + 56px);
+  }
+}

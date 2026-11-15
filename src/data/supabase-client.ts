@@ -289,6 +289,113 @@ export async function trackServiceByCode(code: string): Promise<TrackServiceResu
   return row ? toTrackResult(row as TrackRow) : null;
 }
 
+/** Penolakan gerbang demo yang bisa dijelaskan ke pengunjung (0102). */
+export type DemoLeadRejection = 'phone' | 'name' | 'rate_limited';
+
+export class DemoLeadRejectedError extends Error {
+  readonly reason: DemoLeadRejection;
+  constructor(reason: DemoLeadRejection) {
+    super(`demo_lead_${reason}`);
+    this.name = 'DemoLeadRejectedError';
+    this.reason = reason;
+  }
+}
+
+/**
+ * Simpan kontak gerbang demo (RPC `submit_demo_lead`, 0102, peran anon).
+ * Tanpa Supabase (dev lokal tanpa env) tidak ada yang disimpan dan gerbang
+ * tetap terbuka: build produksi selalu terkonfigurasi. Galat jaringan dan
+ * galat server lain dilempar apa adanya, supaya gerbang bisa bilang "coba lagi".
+ */
+export async function submitDemoLead(args: {
+  shopName: string;
+  phone: string;
+  source: 'hero' | 'final' | 'demo';
+  locale: 'id' | 'en';
+  trap: string;
+}): Promise<void> {
+  const c = getSupabase();
+  if (!c) return;
+  const { error, status } = await c.rpc('submit_demo_lead', {
+    p_shop_name: args.shopName,
+    p_phone: args.phone,
+    p_source: args.source,
+    p_locale: args.locale,
+    p_trap: args.trap,
+  });
+  if (!error) return;
+  if (status === 429 || error.code === 'PT429' || error.message === 'rate_limited') {
+    throw new DemoLeadRejectedError('rate_limited');
+  }
+  if (error.hint === 'demo_lead_phone') throw new DemoLeadRejectedError('phone');
+  if (error.hint === 'demo_lead_name') throw new DemoLeadRejectedError('name');
+  throw new Error(error.message);
+}
+
+export interface AdminDemoLead {
+  id: string;
+  shopName: string;
+  phone: string;
+  source: 'hero' | 'final' | 'demo';
+  locale: 'id' | 'en';
+  visits: number;
+  createdAt: string;
+  lastSeenAt: string;
+  notifiedAt: string | null;
+  contactedAt: string | null;
+}
+
+interface AdminDemoLeadRow {
+  id: string;
+  shop_name: string;
+  phone: string;
+  source: AdminDemoLead['source'];
+  locale: AdminDemoLead['locale'];
+  visits: number;
+  created_at: string;
+  last_seen_at: string;
+  notified_at: string | null;
+  contacted_at: string | null;
+}
+
+/** Kontak gerbang demo untuk konsol operator (admin platform saja). */
+export async function adminListDemoLeads(): Promise<AdminDemoLead[]> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_list_demo_leads');
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as AdminDemoLeadRow[]).map((r) => ({
+    id: r.id,
+    shopName: r.shop_name,
+    phone: r.phone,
+    source: r.source,
+    locale: r.locale,
+    visits: r.visits,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at,
+    notifiedAt: r.notified_at,
+    contactedAt: r.contacted_at,
+  }));
+}
+
+export async function adminSetDemoLeadContacted(id: string, contacted: boolean): Promise<string | null> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { data, error } = await c.rpc('admin_set_demo_lead_contacted', {
+    p_id: id,
+    p_contacted: contacted,
+  });
+  if (error) throw new Error(error.message);
+  return (data as string | null) ?? null;
+}
+
+export async function adminDeleteDemoLead(id: string): Promise<void> {
+  const c = getSupabase();
+  if (!c) throw new Error('Supabase tidak terkonfigurasi');
+  const { error } = await c.rpc('admin_delete_demo_lead', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
 interface PrintMetaRow {
   track_code: string | null;
   print_count: number | null;

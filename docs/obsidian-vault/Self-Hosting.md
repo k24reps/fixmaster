@@ -526,6 +526,39 @@ kemudian** — frontend baru memanggil `unit_ledger`, `delete_service_ticket`, d
 `drop trigger trg_services_charge_unit on services;` menghentikan pemotongan tanpa menyentuh data
 lain (pasang lagi dengan menjalankan ulang 0101; migrasinya idempoten, teruji di simulasi).
 
+### Rilis 0102 (landing baru + gerbang demo) — runbook
+
+Urutannya terbalik dari kebiasaan "frontend turun anggun": landing baru **tidak** bisa
+membuka demo tanpa `submit_demo_lead` (gerbangnya bilang "koneksi ke server gagal"),
+jadi server dulu, baru `main`.
+
+1. **Backup sekarang:** `sudo bash /opt/fixmaster/backup/backup-offsite.sh`.
+2. **Unduh berkas** ke `/tmp` di VPS dari `https://raw.githubusercontent.com/k24reps/fixmaster/<commit>/<jalur>`,
+   dikunci ke SHA commit yang sudah diuji, lalu `sha256sum -c` (SHA dan checksum diberikan saat
+   rilis): `supabase/migrations/0102_demo_leads.sql`, `scripts/selfhost/uji-0102.sql`,
+   `supabase/functions/lead-notify/index.ts`.
+3. **Uji coba (tidak mengubah apa pun):**
+   `sudo docker cp /tmp/0102_demo_leads.sql supabase-db:/tmp/ && sudo docker cp /tmp/uji-0102.sql supabase-db:/tmp/`
+   `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/uji-0102.sql`
+   Harus diakhiri `NOTICE:  UJI 0102 LULUS` lalu `ROLLBACK`. Uji ini memakai alamat
+   dokumentasi `203.0.113.77` untuk batas per jaringan, jadi tidak menyentuh kuota pengunjung
+   sungguhan; jadwal pg_cron yang dipasangnya ikut di-rollback.
+4. **Terapkan:** `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f /tmp/0102_demo_leads.sql`
+   Periksa: `select jobname, schedule from cron.job where jobname like '%demo-lead%';` (dua baris).
+5. **Edge Function `lead-notify`:**
+   `sudo mkdir -p /opt/fixmaster/docker/volumes/functions/lead-notify && sudo cp /tmp/index.ts /opt/fixmaster/docker/volumes/functions/lead-notify/index.ts && cd /opt/fixmaster/docker && sudo docker compose restart functions`,
+   tunggu ±10 detik, lalu `curl -s https://api.fixmaster.my.id/functions/v1/health` harus memuat `"db":"up"`.
+   `VERIFY_JWT` global sudah mati (lihat di atas); gerbangnya `x-cron-secret`.
+6. **Frontend:** gabungkan branch rilis ke `main`; Vercel men-deploy produksi.
+7. **Asap:** buka fixmaster.app di jendela privat → isi nama toko + nomor WA sendiri → demo
+   terbuka dengan nama toko itu → dalam 5 menit email "Kontak demo baru" masuk ke
+   fixmaster.cs@gmail.com → `/operator` › Kontak demo menampilkan barisnya → hapus baris uji
+   itu dari sana.
+
+**Rem darurat** bila gerbang bermasalah sesudah langkah 6: kembalikan `main` ke commit
+sebelumnya (landing lama tidak memakai 0102). Mematikan email saja:
+`select cron.unschedule('fixmaster-demo-lead-notify');`.
+
 ## Pemantauan server (27 Sep 2026)
 
 Kejadian 26–27 Sep baru ketahuan saat pemilik mencoba membuka aplikasi. Pemantau harus

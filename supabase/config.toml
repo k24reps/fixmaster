@@ -26,3 +26,8 @@ verify_jwt = false
 # Sama dengan auto-backup: dipanggil pg_cron (0085), gerbangnya x-cron-secret
 # yang dicek di dalam fungsi, dan ia menyentuh data SEMUA organisasi.
 verify_jwt = false
+
+[functions.lead-notify]
+# Dipanggil pg_cron (0102) tiap 5 menit bila ada kontak demo baru. Gerbangnya
+# x-cron-secret yang sama, dan ia membaca nomor WhatsApp semua pengunjung.
+verify_jwt = false

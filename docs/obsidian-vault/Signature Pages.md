@@ -19,7 +19,60 @@ Sembilan halaman utama + halaman detail, masing-masing dengan metafora "alat" ta
 
 ---
 
-## Landing V2 — Repair Flow Console (aktif)
+## Landing — Dua Adegan, Meja & Ponsel (aktif sejak 15 Nov 2026)
+
+Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
+[`LandingPage`](src/features/landing/LandingPage.tsx), adegan
+[`BenchScene`](src/features/landing/BenchScene.tsx), gerbang
+[`DemoGate`](src/features/landing/DemoGate.tsx). Susunan dipilih pemilik lewat sesi
+*shape* impeccable (14 Nov 2026); kontrak arahnya di
+`.impeccable/surfaces/src-features-landing-landingpage-tsx.md`.
+
+- **Gagasan:** teknisi mencatat di meja, pemilik melihatnya di ponsel. Layar pertama
+  memeragakan sinkron itu, bukan judul-kiri / screenshot-kanan.
+- **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman:
+  jendela **meja penerimaan** (antrean campuran laptop/printer/iPhone/TV dengan spine
+  `STATUS_TONE`, tiket FM-0312 terpilih) → **jejak sinkron cyan** → **ponsel pemilik**
+  (notifikasi + empat readout: stok, margin, siap diambil, kas). Tombol meja memajukan
+  tiga langkah: pasang part (stok 3→2, margin Rp 170.000), tandai selesai (siap diambil
+  2→3), terima bayar (kas +Rp 350.000, margin lunas). Diputar **sekali** saat terlihat
+  lalu diam di keadaan akhir; reduced motion mulai dari keadaan akhir yang tetap
+  menampilkan nilai sebelum → sesudah. Nama toko yang diketik di gerbang langsung
+  menjadi kop meja dan ponsel. Semua angka berlabel **Data contoh**.
+- **Gerbang demo (0102):** nama toko + nomor WhatsApp (cek format, tanpa OTP), kolom
+  jebakan bot, galat per kolom, galat simpan jujur dengan "Coba lagi", batas jaringan.
+  Lolos → nama toko disimpan di browser (bukan nomornya), `/demo` terbuka dengan nama
+  itu. Pengunjung yang kembali mendapat tombol buka + "Ganti nama toko". Gerbang yang
+  sama dipasang di `/demo` untuk kunjungan langsung (`DemoApp`, di luar router). Probe
+  Playwright di dev server (`navigator.webdriver`) melewatinya otomatis; `/demo?gate`
+  memaksanya tampil.
+- **Seksi berikutnya:** papan jejak "satu kali pasang part, empat tempat ikut tercatat"
+  (pad sumber + bus cyan bertitik), **lemari part** kategori perangkat (laci HP sampai
+  alat rumah tangga + laci "Kategori Anda"), deretan **kanal modul** bergaya sidebar,
+  **founder** (pelat nama "RIF" sampai foto tersedia; cerita ditulis atas permintaan
+  pemilik dan menunggu pengecekannya), **harga** dengan sumur instrumen satu-satunya di
+  halaman (slider unit per bulan → biaya, bulan pertama dipotong 50 unit gratis),
+  "yang perlu Anda tahu" (koneksi, backup, FAQ yang juga JSON-LD di `index.html`),
+  gerbang penutup, kaki.
+- **Breakpoint (container):** halaman 1080 (nav disembunyikan), 900 (gerbang menyempit ke
+  300–360px), 720 (hero satu kolom), 560 (bar ponsel "Coba demo" + WA muncul saat kedua
+  gerbang di luar layar); adegan 900 (antrean dilepas) dan 620 (meja jadi satu baris aksi
+  di atas ponsel, jejak sinkron vertikal).
+- **Amber:** tombol gerbang, lalu "Mulai gratis, 50 unit" di harga (gerbang tidak di
+  layar). Tombol meja adalah tuts `--bg-key`, bar ponsel sekunder.
+- **i18n:** `landing.*` dan `demoGate.*` (ID + EN). Kunci `landingV2.*` dihapus.
+- **Verifikasi:** `LandingPage.test.tsx` (intent auth, kop ikut nama toko, tombol meja
+  menggerakkan ponsel, gerbang: nomor salah, sukses, gagal simpan + ulang, pengunjung
+  kembali). Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced
+  motion, luberan-x 0). `audit-contrast` (landing-preview dua tema): 0 gagal; sembilan kasus
+  "gradien, periksa manual" di sumur harga tema terang adalah positif palsu (lapisan scanline
+  transparan dibaca sebagai latar halaman; fotonya gelap). Probe khusus landing lama
+  (`audit-landing-owner`, `audit-landing-priorities`, `shoot-landing-compare`) dihapus karena
+  seksi yang mereka ukur sudah tidak ada. Gambar vault belum disematkan (sinkron butuh PowerShell).
+
+## Landing V2 — Repair Flow Console (diganti 15 Nov 2026)
+
+> Kode `LandingPageV2.*` dihapus 15 Nov 2026; isi di bawah adalah catatan sejarah.
 
 Rombak total landing dibuat **terpisah** pada 9 Agu 2026, lalu disetujui menjadi
 landing utama signed-out di **`/`** lewat
@@ -122,7 +175,7 @@ kembali bila diperlukan.
 
 ![[minor-landing-bar-phone-light.png]]
 
-## Landing V1 — Instrument Bench (legacy, dipertahankan)
+## Landing V1 — Instrument Bench (historis; nama berkas `LandingPage.tsx` kini dipakai landing Dua Adegan)
 
 Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradient hero + icon-card grid + floating pricing badge — template SaaS generik). Di-redesign jadi **sepotong instrumen diagnostik** sefamili dengan auth "Terminal Akses Bench". **Revisi total (9 Jun 2026)** menambah elemen konversi (diadopsi dari analisis kompetitor FixNova/FixMate, tapi **diterjemahkan ke bahasa bench** — bukan tiru visual) + memperbaiki klaim plan yang basi. [`LandingPage`](src/features/landing/LandingPage.tsx):
 - **Hero faceplate**: pelat bersekrup 4 sudut, `unitTag` LED hijau, judul ber-engrave gradient, **coverage chips** (HP/Laptop/Tablet/Printer/Konsol/Elektronik — tegaskan cakupan semua elektronik), plus **panel readout hidup** (CAKUPAN, MODUL 14/14, SYNC, DATA + **uptime tick** per detik).

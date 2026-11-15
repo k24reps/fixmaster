@@ -1,0 +1,856 @@
+/* ---------- Dua adegan: meja penerimaan + ponsel pemilik ----------
+   Meja dan ponsel digambar dari permukaan aplikasi sungguhan (bukan sumur
+   instrumen; sumur halaman ini milik pengukur harga). Keduanya benda yang
+   diletakkan di bench, jadi boleh memakai --shadow-bench-tight. Jejak sinkron
+   memakai cyan: suara instrumen, "mesin melaporkan dirinya". */
+
+.wrap {
+  container: scene / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.scene {
+  --tone: var(--text-muted);
+  /* Jejak sinkron ditarik dari baris tiket aktif ke notifikasi ponsel, dekat
+     tepi atas adegan, supaya terlihat di layar pertama desktop. */
+  --sync-y: 132px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 300px;
+  align-items: start;
+}
+
+.scene [data-tone='neutral'] {
+  --tone: var(--text-muted);
+}
+.scene [data-tone='info'] {
+  --tone: var(--info);
+}
+.scene [data-tone='warning'] {
+  --tone: var(--warning);
+}
+.scene [data-tone='accent'] {
+  --tone: var(--accent);
+}
+.scene [data-tone='success'] {
+  --tone: var(--success);
+}
+
+/* ---------- Meja (jendela aplikasi desktop) ---------- */
+.desk {
+  min-width: 0;
+  margin: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-bench-tight);
+  overflow: hidden;
+}
+
+.windowBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  background: var(--bg-surface-2);
+  border-bottom: 1px dotted var(--border-strong);
+}
+
+.barLed {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.barTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+.barTitle strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+}
+
+.barTitle span {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.barTitle span::before {
+  content: '· ';
+}
+
+.barClock,
+.queueNo,
+.ticketNo,
+.partCost,
+.billLine strong,
+.phoneStatus,
+.readoutValue,
+.readoutDelta {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.barClock {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.deskBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+/* Antrean: baris dengan spine status, bukan kartu. */
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queueRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-areas:
+    'icon text'
+    'icon status';
+  column-gap: var(--space-3);
+  row-gap: 4px;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.queueRow::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: -1px;
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--tone);
+  transition: background var(--dur-normal) var(--ease-out);
+}
+
+.queueRow[data-active='true'] {
+  background: var(--bg-hover);
+  border-color: var(--border-brand);
+}
+
+.queueIcon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+}
+
+.queueText {
+  grid-area: text;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+  min-width: 0;
+}
+
+.queueNo {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.queueText strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.queueText small {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.queueStatus,
+.ticketStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.queueStatus {
+  grid-area: status;
+}
+
+.queueStatus i,
+.ticketStatus i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--tone);
+  box-shadow: 0 0 7px var(--tone);
+  transition:
+    background var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.scene [data-tone='neutral'] > .queueStatus i {
+  box-shadow: none;
+}
+
+/* Tiket terpilih: panel tertanam, dipisah seam titik. */
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.ticketHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dotted var(--border-strong);
+}
+
+.ticketNo {
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+}
+
+.ticketDevice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-right: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.ticketDevice svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.ticketFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.ticketFields div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Bagian dari mockup aplikasi, jadi caption mono huruf besar boleh tinggal
+   (Silkscreen-Is-Inside-The-Device Rule). */
+.ticketFields dt,
+.partCost small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ticketFields dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+.partLine {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--dur-normal) var(--ease-out);
+}
+
+.partLine[data-installed='true'] {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+
+.partLed {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  transition:
+    background var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.partLine[data-installed='true'] .partLed {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.partName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.partName strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+.partName small {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.partCost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+}
+
+.billLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.billLine strong {
+  color: var(--text-primary);
+  font-size: var(--text-md);
+}
+
+/* Rel tiga titik: urutannya bermakna (part → selesai → lunas). */
+.rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  border-top: 1px dotted var(--border-strong);
+  list-style: none;
+}
+
+.rail li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  transition: color var(--dur-normal) var(--ease-out);
+}
+
+.rail li i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  transition:
+    background var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.rail li[data-on='true'] {
+  color: var(--text-primary);
+}
+
+.rail li[data-on='true'] i {
+  border-color: var(--success);
+  background: var(--success);
+  box-shadow: 0 0 7px var(--success);
+}
+
+/* Tombol meja: tuts mesin, bukan tombol utama halaman (amber milik gerbang). */
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  color: var(--text-primary);
+  background: var(--bg-key);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.action svg {
+  color: var(--brand-text);
+}
+
+.action:hover {
+  border-color: var(--border-brand);
+  transform: translateY(-1px);
+}
+
+.action:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.action:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* ---------- Jejak sinkron ---------- */
+.sync {
+  --travel: 52px;
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+.syncLine {
+  position: absolute;
+  top: var(--sync-y);
+  left: 6px;
+  right: 6px;
+  border-top: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.syncPacket {
+  position: absolute;
+  top: calc(var(--sync-y) - 4px);
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  opacity: 0;
+  animation: packetX 760ms var(--ease-out) forwards;
+}
+
+.syncLabel {
+  position: absolute;
+  top: calc(var(--sync-y) + 10px);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+@keyframes packetX {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(var(--travel));
+  }
+}
+
+@keyframes packetY {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(var(--travel));
+  }
+}
+
+/* ---------- Ponsel pemilik ---------- */
+.phone {
+  min-width: 0;
+  margin: 0;
+}
+
+.phoneBody {
+  position: relative;
+  padding: 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: 40px;
+  box-shadow: var(--shadow-bench-tight);
+}
+
+.phoneSpeaker {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 1;
+  width: 64px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--bg-base);
+  transform: translateX(-50%);
+}
+
+.phoneScreen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 430px;
+  padding: var(--space-3) var(--space-4) var(--space-5);
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: 31px;
+}
+
+.phoneStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px var(--space-2) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.phoneSignal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.phoneSignal i {
+  width: 3px;
+  background: var(--text-secondary);
+  border-radius: 1px;
+}
+
+.phoneSignal i:nth-child(1) {
+  height: 4px;
+}
+.phoneSignal i:nth-child(2) {
+  height: 7px;
+}
+.phoneSignal i:nth-child(3) {
+  height: 10px;
+}
+
+.phoneHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-2);
+  min-width: 0;
+}
+
+.phoneHead strong {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+
+.phoneHead small {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.noticeSlot {
+  min-height: 58px;
+}
+
+.notice,
+.noticeIdle {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  animation: noticeIn 420ms var(--ease-out) both;
+}
+
+.noticeLed {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.noticeIdle {
+  padding: var(--space-3) 0;
+  color: var(--text-muted);
+}
+
+@keyframes noticeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.readouts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.readout + .readout {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.readoutLed {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+  transition:
+    background var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.readout[data-changed='true'] .readoutLed {
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+
+.readoutLabel {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.readoutValue {
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  text-align: right;
+}
+
+.readoutValue[data-text='true'] {
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-normal);
+}
+
+.readoutDelta {
+  grid-column: 2 / -1;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.readoutDelta s {
+  text-decoration-thickness: 1px;
+}
+
+.readout[data-fresh='true'] {
+  animation: fresh 1600ms var(--ease-out);
+}
+
+@keyframes fresh {
+  from {
+    background: color-mix(in srgb, var(--tone) 20%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.captionTag {
+  padding: 2px var(--space-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* ---------- Lebar adegan, bukan viewport (Container Query Rule) ----------
+   900px: antrean + tiket butuh ±560px di meja, ditambah jejak 64px dan ponsel
+   300px. Di bawahnya antrean dilepas dan meja tinggal tiket terpilih. */
+@container scene (max-width: 900px) {
+  .scene {
+    grid-template-columns: minmax(0, 1fr) 48px 268px;
+  }
+  .deskBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .queue {
+    display: none;
+  }
+  .sync {
+    --travel: 36px;
+  }
+}
+
+/* Di ponsel: meja diringkas jadi satu baris aksi di atas ponsel pemilik,
+   supaya tombol dan perubahan angkanya muat dalam satu layar. */
+@container scene (max-width: 620px) {
+  .scene {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+  .desk {
+    box-shadow: none;
+  }
+  .deskBody {
+    padding: var(--space-3);
+  }
+  .ticket {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+  .ticketFields,
+  .billLine,
+  .rail {
+    display: none;
+  }
+  .ticketHead {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .partLine {
+    padding: var(--space-2) var(--space-3);
+  }
+  .sync {
+    --travel: 36px;
+    height: 48px;
+  }
+  .syncLine {
+    top: 6px;
+    bottom: 6px;
+    left: 50%;
+    right: auto;
+    border-top: none;
+    border-left: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .syncPacket {
+    top: 0;
+    left: calc(50% - 4px);
+    animation-name: packetY;
+  }
+  .syncLabel {
+    top: 14px;
+    left: calc(50% + 14px);
+  }
+  .phone {
+    justify-self: center;
+    width: min(100%, 340px);
+  }
+  .phoneScreen {
+    min-height: 0;
+  }
+}

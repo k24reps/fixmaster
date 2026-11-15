@@ -1321,3 +1321,91 @@ textarea.input {
     animation: none;
   }
 }
+
+/* ---------- Tab Kontak demo (0102) ---------- */
+.leadVisits {
+  margin-left: var(--space-2);
+  padding: 1px 6px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.leadPhone {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leadState {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* Saklar tindak lanjut: tuts dengan LED, menyala hijau setelah dihubungi. */
+.leadToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-key);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.leadToggle:hover {
+  border-color: var(--border-brand);
+}
+
+.leadToggle[aria-pressed='true'] {
+  color: var(--text-secondary);
+}
+
+.leadToggle:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.leadToggle:focus-visible,
+.leadWa:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.leadWa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.leadWa svg {
+  color: var(--success-text);
+}
+
+.leadWa:hover {
+  border-color: var(--border-brand);
+}

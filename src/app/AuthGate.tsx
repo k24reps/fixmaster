@@ -11,8 +11,8 @@ import {
 const AuthPage = lazyChunk(() =>
   import('@/features/auth/AuthPage').then((module) => ({ default: module.AuthPage })),
 );
-const LandingPageV2 = lazyChunk(() =>
-  import('@/features/landing/LandingPageV2').then((module) => ({ default: module.LandingPageV2 })),
+const LandingPage = lazyChunk(() =>
+  import('@/features/landing/LandingPage').then((module) => ({ default: module.LandingPage })),
 );
 const WorkspaceGate = lazyChunk(() =>
   import('./WorkspaceGate').then((module) => ({ default: module.WorkspaceGate })),
@@ -71,7 +71,7 @@ export function AuthGate({ children }: AuthGateProps) {
             onBack={closeAuth}
           />
         ) : (
-          <LandingPageV2 onStart={openAuth} />
+          <LandingPage onStart={openAuth} />
         )}
       </Suspense>
     );

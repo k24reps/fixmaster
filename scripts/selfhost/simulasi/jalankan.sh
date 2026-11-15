@@ -38,7 +38,9 @@ for f in "$REPO"/supabase/migrations/0*.sql; do
 done
 "${P[@]}" -f "$HERE/dua-toko.sql" >/dev/null
 echo "Basis data siap sampai sebelum $TARGET, dengan dua toko."
-sed "s|\\\\i /tmp/$TARGET|\\\\i $REPO/supabase/migrations/$TARGET|" "$UJI" > "$WORK/uji.sql"
+# Target juga tanpa baris ekstensi pg_cron/pg_net, sama seperti migrasi sebelumnya.
+sed -E '/create extension if not exists (pg_cron|pg_net)/Id' "$REPO/supabase/migrations/$TARGET" > "$WORK/target.sql"
+sed "s|\\\\i /tmp/$TARGET|\\\\i $WORK/target.sql|" "$UJI" > "$WORK/uji.sql"
 "${P[@]}" -f "$WORK/uji.sql" 2>&1 | grep -iE "error|lulus|gagal" || true
-"${P[@]}" -1 -f "$REPO/supabase/migrations/$TARGET" >/dev/null 2>&1 && echo "Penerapan sungguhan $TARGET: OK"
-"${P[@]}" -1 -f "$REPO/supabase/migrations/$TARGET" >/dev/null 2>&1 && echo "Penerapan ulang $TARGET: OK (idempoten)"
+"${P[@]}" -1 -f "$WORK/target.sql" >/dev/null 2>&1 && echo "Penerapan sungguhan $TARGET: OK"
+"${P[@]}" -1 -f "$WORK/target.sql" >/dev/null 2>&1 && echo "Penerapan ulang $TARGET: OK (idempoten)"

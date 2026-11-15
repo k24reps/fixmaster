@@ -55,7 +55,7 @@ perlu login ulang.
 - **Absensi memakai geofence** — produk meminta izin `geolocation` (dibatasi `geolocation=(self)` di `vercel.json`). Kamera & mikrofon dimatikan.
 - **WhatsApp** adalah kanal komunikasi ke pelanggan yang nyata dipakai (template WA bisa disunting semua toko; tombol WA di halaman publik).
 - **Backup** — di server: salinan otomatis per toko tiap malam (7 terakhir) + tautan email mingguan untuk semua toko yang tidak ditangguhkan, dan arsip offsite terenkripsi seluruh database ke Google Drive dua kali sehari. Pengingat backup manual tetap muncul saat aplikasi dibuka (mode lokal). Kunci layar unit pelanggan tidak pernah ikut arsip offsite (0094).
-- Halaman publik `/demo` menjalankan aplikasi asli di atas adapter RAM — pengunjung anonim memakai produk sungguhan tanpa menyentuh IndexedDB miliknya. Org demo diberi saldo contoh (50 dikurangi jumlah tiket seed) supaya model harga per unit terlihat.
+- Halaman publik `/demo` menjalankan aplikasi asli di atas adapter RAM — pengunjung anonim memakai produk sungguhan tanpa menyentuh IndexedDB miliknya. Org demo diberi saldo contoh (50 dikurangi jumlah tiket seed) supaya model harga per unit terlihat. Sejak 15 Nov 2026 (`0102`) demo dibuka lewat **gerbang nama toko + nomor WhatsApp** (cek format, tanpa OTP) dan tampil dengan nama toko pengunjung; pengunjung yang kembali di perangkat yang sama tidak mengisi lagi.
 
 ## Capabilities and Constraints
 
@@ -91,7 +91,7 @@ Log Aktivitas, nomor tiket tidak dipakai ulang, kode lacak ikut mati.
 - **Zoom aplikasi** 80%–125% adalah preferensi pengguna (`src/stores/zoom.ts`), memakai properti CSS `zoom` — bukan zoom browser. Konsekuensi terukur: `zoom` **tidak** menggeser media query, dan unit viewport ikut terskala. Breakpoint yang menentukan "muat / tidak muat" wajib `@container`; ukuran setinggi layar wajib lewat `--app-vh`.
 - **Bahasa & pasar:** Indonesia adalah bahasa produk dan pasar yang dikejar sekarang. Inggris menyusul, jadi locale `en` harus **tetap dijaga hidup** supaya ekspansi tidak mahal — setiap copy baru wajib punya pasangan di `src/i18n/en.ts` dan `src/i18n/id.ts`. Semua teks UI lewat `useT()` + translation key, tidak pernah string literal.
 
-**Belum diputuskan** (jangan dikarang): kanal pembayaran otomatis (sementara manual lewat WhatsApp), kebijakan retensi/penghapusan data, SLA dukungan, rencana aplikasi native.
+**Belum diputuskan** (jangan dikarang): kanal pembayaran otomatis (sementara manual lewat WhatsApp), kebijakan retensi/penghapusan data akun dan toko, SLA dukungan, rencana aplikasi native. (Kontak gerbang demo sudah diputuskan: dihapus otomatis 90 hari sesudah terakhir diisi, tertulis di `/privacy`.)
 
 ## Brand Commitments
 
@@ -114,6 +114,7 @@ Yang boleh dipakai:
 - Screenshot produk di `public/screenshots/` (dashboard & mobile, dark + light).
 - Workspace contoh "TechFix Service Center" dengan tiket, teknisi, dan angka contoh (`src/dev/seed.ts`).
 - Halaman legal: `/privacy`, `/terms`.
+- **Pendiri:** Rif, pemilik usaha servis — buka sendiri sejak 2019, kini dua toko berbeda dengan tiga karyawan (fakta dari pemilik, 15 Nov 2026). Cerita pain → FixMaster di landing ditulis atas permintaannya dan menunggu pengecekannya; foto belum ada (landing memakai pelat nama "RIF"). Nama kedua toko belum boleh disebut sampai pemilik setuju.
 
 **Yang TIDAK ada dan haram dikarang:** testimoni, nama/logo toko pelanggan, jumlah pengguna atau unduhan, studi kasus, liputan pers, angka pertumbuhan, rating toko aplikasi, klaim "dipercaya X konter".
 

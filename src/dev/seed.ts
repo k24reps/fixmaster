@@ -37,12 +37,19 @@ import type {
   QuoteRates,
 } from '@/data/types';
 
-export async function seedDemoWorkspace(): Promise<void> {
+/** Nama toko demo bila pengunjung belum mengisi gerbang (dev, wizard). */
+export const DEMO_SHOP_NAME = 'TechFix Service Center';
+
+/**
+ * @param shopName nama toko dari gerbang demo landing (0102): demo tampil
+ *   dengan nama toko pengunjung di sidebar, dashboard, nota, dan kop.
+ */
+export async function seedDemoWorkspace(shopName: string = DEMO_SHOP_NAME): Promise<void> {
   await repository.clearAll();
 
   // 1) Base workspace via the real wizard commit path.
   const data = emptyWizardData();
-  data.shopName = 'TechFix Service Center';
+  data.shopName = shopName;
   data.address = 'Jl. Merdeka No. 12, Bandung';
   data.phone = '0812-3456-7890';
   data.servicePrefix = 'FM';
