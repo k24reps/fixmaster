@@ -6802,8 +6802,9 @@ lewat demo (Trial); dokumennya diperiksa lewat `reportDocHtml` di tes.
   `0077`). `restore_org_data` menyisipkan ulang tiket yang sudah pernah dipotong, dan
   `service_id` tanpa FK + unik `(service_id, kind)` membuat sisip ulang itu tidak memotong
   dua kali. **Klaim garansi tidak dihitung** (perangkat yang sama kembali karena perbaikan
-  toko sendiri). Pemilik menyebut "setiap tiket", jadi pengecualian ini **perlu
-  dikonfirmasi**; membaliknya cukup menghapus satu baris di `services_charge_unit`.
+  toko sendiri). Pemilik semula menyebut "setiap tiket"; pengecualian ini
+  **dikonfirmasi pemilik 15 Nov 2026: klaim garansi tetap gratis**. Membaliknya kelak
+  cukup menghapus satu baris di `services_charge_unit`.
 - **Jendela 10 menit dari jam server.** Diukur dari baris ledger `usage`, bukan
   `services.created_at` yang dikirim perangkat (bisa diisi masa depan untuk membuka jendela
   selamanya).
@@ -6862,6 +6863,5 @@ realtime, dan Edge Function, jadi `tier3i` tetap layak dijalankan begitu staging
 **Belum dilakukan (wajib sebelum dipakai):**
 1. Ikuti runbook "Rilis 0101" di [[Self-Hosting]]: uji coba di produksi (ROLLBACK), terapkan,
    deploy `backup-email`, baru gabungkan frontend ke `main`.
-2. Konfirmasi pengecualian klaim garansi (lihat di atas).
-3. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
+2. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
    `hapus-tiket-*.png` hanya ada di mesin yang menjalankan skripnya.
