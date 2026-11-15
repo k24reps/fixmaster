@@ -7,7 +7,7 @@ import {
 } from '@/lib/business/realtime-timing';
 import { mapAuthError } from '@/lib/business/authError';
 import type { ServiceSummary } from '@/lib/business/dashboard';
-import type { UnitLedgerKind } from '@/lib/business/billing';
+import type { BranchMonthRow, UnitLedgerKind } from '@/lib/business/billing';
 import type { ServiceDocKind, ServicePrintMeta } from './types';
 
 /**
@@ -1488,6 +1488,26 @@ export interface UnitLedgerEntry {
   note: string;
   actorName: string;
   createdAt: string;
+}
+
+export type UnitMonthUsage = BranchMonthRow;
+
+/**
+ * Pemakaian unit bulan ini per cabang (RPC `unit_month_usage`, 0103, owner).
+ * Null bila RPC-nya belum ada di server: tab Saldo lalu menyembunyikan blok
+ * bulanannya alih-alih menampilkan galat.
+ */
+export async function listUnitMonthUsage(orgId: string): Promise<UnitMonthUsage[] | null> {
+  const c = getSupabase();
+  if (!c) return null;
+  const { data, error } = await c.rpc('unit_month_usage', { p_org_id: orgId });
+  if (error) return null;
+  return ((data ?? []) as Record<string, unknown>[]).map((d) => ({
+    outletId: (d.outlet_id as string | null) ?? null,
+    outletName: String(d.outlet_name ?? ''),
+    paidUnits: Number(d.paid_units ?? 0),
+    cappedUnits: Number(d.capped_units ?? 0),
+  }));
 }
 
 /** Riwayat saldo sebuah org, terbaru dulu. */

@@ -33,7 +33,7 @@ Pemilik dapat membuat backup, mengekspor laporan CSV, serta backup/restore JSON.
 
 ## Harga
 
-FixMaster memakai satu harga: Rp 1.000 per unit masuk (satu tiket servis yang dibuat). Tidak ada paket dan tidak ada fitur yang dikunci; pengguna dan outlet tidak dibatasi.
+FixMaster memakai satu harga: Rp 1.000 per unit masuk (satu tiket servis yang dibuat), paling banyak Rp 100.000 per cabang per bulan; lewat 100 unit sebulan, tiket berikutnya di cabang itu gratis sampai bulan berganti. Tidak ada paket dan tidak ada fitur yang dikunci; pengguna dan outlet tidak dibatasi.
 
 - 50 unit pertama gratis untuk toko baru, tanpa batas waktu.
 - Saldo diisi di muka, minimal Rp 50.000, lewat transfer bank yang dikonfirmasi via WhatsApp. Saldo tidak hangus dan tidak dapat dikembalikan.

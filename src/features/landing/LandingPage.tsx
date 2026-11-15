@@ -5,10 +5,16 @@ import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   FREE_UNITS,
   MIN_TOPUP,
+  MONTHLY_CAP_UNITS,
   REFUND_WINDOW_MINUTES,
   UNIT_FLOOR,
   UNIT_PRICE,
 } from '@/config/pricing';
+import {
+  billedUnitsPerBranch,
+  firstMonthCost,
+  monthlyBranchCost,
+} from '@/lib/business/billing';
 import { useT, type TranslationKey } from '@/i18n';
 import { interpolate, waLink } from '@/lib/business/notify';
 import { fmtRp } from '@/lib/format';
@@ -44,12 +50,20 @@ interface Contrast {
   situation: TranslationKey;
   old: TranslationKey;
   fixmaster: TranslationKey;
+  /** Baris unggulan: ditampilkan dengan contoh tautan lacak sungguhan. */
+  example?: string;
 }
 
 /** Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. */
 const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
-  { situation: 'landing.vs.status', old: 'landing.vs.statusOld', fixmaster: 'landing.vs.statusNew' },
+  {
+    situation: 'landing.vs.status',
+    old: 'landing.vs.statusOld',
+    fixmaster: 'landing.vs.statusNew',
+    // Bentuk alamat lacak 0100: kode acak 10 karakter per tiket (contoh).
+    example: 'fixmaster.app/t/K7Q2M9XAPD',
+  },
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
   { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
@@ -129,12 +143,16 @@ const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
   { question: 'landing.faq.pay.q', answer: 'landing.faq.pay.a' },
 ];
 
-/** Gauge biaya: rentang wajar toko kecil sampai toko dua cabang yang ramai. */
+/**
+ * Gauge biaya satu cabang: rentang toko sepi sampai cabang yang sangat ramai.
+ * Tick sesudah titik batas (100 unit) adalah zona gratis.
+ */
 const GAUGE_MIN = 10;
-const GAUGE_MAX = 600;
+const GAUGE_MAX = 400;
 const GAUGE_STEP = 10;
-const GAUGE_DEFAULT = 150;
+const GAUGE_DEFAULT = 60;
 const GAUGE_TICKS = 30;
+const CAP_TICK = Math.round(((MONTHLY_CAP_UNITS - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN)) * GAUGE_TICKS);
 
 function defaultStart(intent: AuthIntent) {
   window.location.assign(authIntentHref(intent));
@@ -143,8 +161,9 @@ function defaultStart(intent: AuthIntent) {
 function CostGauge() {
   const t = useT();
   const [units, setUnits] = useState(GAUGE_DEFAULT);
-  const cost = units * UNIT_PRICE;
-  const firstMonth = Math.max(0, units - FREE_UNITS) * UNIT_PRICE;
+  const cost = monthlyBranchCost(units);
+  const freeByCap = units - billedUnitsPerBranch(units);
+  const firstMonth = firstMonthCost(units);
   const lit = Math.round(((units - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN)) * GAUGE_TICKS);
 
   return (
@@ -160,7 +179,11 @@ function CostGauge() {
       </div>
       <div className={styles.wellTicks} aria-hidden>
         {Array.from({ length: GAUGE_TICKS }).map((_, i) => (
-          <span key={i} data-on={i < Math.max(1, lit) ? 'true' : undefined} />
+          <span
+            key={i}
+            data-on={i < Math.max(1, lit) ? 'true' : undefined}
+            data-zone={i >= CAP_TICK ? 'free' : undefined}
+          />
         ))}
       </div>
       <input
@@ -177,10 +200,20 @@ function CostGauge() {
           cost: fmtRp(cost),
         })}
       />
+      <p className={styles.wellCap}>
+        {interpolate(t('landing.price.capNote'), {
+          cap: String(MONTHLY_CAP_UNITS),
+          max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+        })}
+      </p>
       <dl className={styles.wellFacts}>
         <div>
           <dt>{t('landing.price.units')}</dt>
           <dd>{units}</dd>
+        </div>
+        <div>
+          <dt>{t('landing.price.freeByCap')}</dt>
+          <dd>{freeByCap}</dd>
         </div>
         <div>
           <dt>{interpolate(t('landing.price.firstMonth'), { free: String(FREE_UNITS) })}</dt>
@@ -341,16 +374,27 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             </div>
             <ul className={styles.vsList}>
               {CONTRASTS.map((row) => (
-                <li key={row.situation} className={styles.vsRow}>
+                <li
+                  key={row.situation}
+                  className={styles.vsRow}
+                  data-featured={row.example ? 'true' : undefined}
+                >
                   <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
                   <p className={styles.vsOld}>
                     <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
                     {t(row.old)}
                   </p>
-                  <p className={styles.vsNew}>
+                  <div className={styles.vsNew}>
                     <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
-                    {t(row.fixmaster)}
-                  </p>
+                    <p>{t(row.fixmaster)}</p>
+                    {row.example && (
+                      <p className={styles.vsTrack}>
+                        <Icon name="qrcode" aria-hidden />
+                        <span className={styles.vsTrackUrl}>{row.example}</span>
+                        <span className={styles.vsTrackNote}>{t('landing.vs.statusExample')}</span>
+                      </p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -441,7 +485,12 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
         <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
-            <p>{interpolate(t('landing.stagesLead'), { price: fmtRp(UNIT_PRICE) })}</p>
+            <p>
+              {interpolate(t('landing.stagesLead'), {
+                price: fmtRp(UNIT_PRICE),
+                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+              })}
+            </p>
           </div>
           <ol className={styles.stageRail}>
             {STAGES.map((stage, index) => (
@@ -476,9 +525,18 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               {t('landing.price.title')}
             </h2>
             <p className={styles.priceLead}>
-              {interpolate(t('landing.price.lead'), { free: String(FREE_UNITS) })}
+              {interpolate(t('landing.price.lead'), {
+                free: String(FREE_UNITS),
+                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+              })}
             </p>
             <ul className={styles.priceRules}>
+              <li>
+                {interpolate(t('landing.price.ruleCap'), {
+                  max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+                  cap: String(MONTHLY_CAP_UNITS),
+                })}
+              </li>
               <li>{t('landing.price.ruleFree')}</li>
               <li>
                 {interpolate(t('landing.price.ruleRefund'), {

@@ -1,12 +1,13 @@
 # Harga FixMaster
 
-Terakhir diperbarui: 14 November 2026.
+Terakhir diperbarui: 15 November 2026.
 
-FixMaster memakai satu harga: **Rp 1.000 per unit masuk**. Satu unit adalah satu tiket servis yang dibuat. Tidak ada paket, tidak ada biaya bulanan tetap, dan tidak ada fitur yang dikunci.
+FixMaster memakai satu harga: **Rp 1.000 per unit masuk**, dan **paling banyak Rp 100.000 per cabang sebulan**. Satu unit adalah satu tiket servis yang dibuat. Tidak ada paket, tidak ada biaya bulanan tetap, dan tidak ada fitur yang dikunci.
 
 ## Cara kerjanya
 
 - Harga: Rp 1.000 per tiket servis.
+- Batas bulanan: paling banyak 100 unit (Rp 100.000) per cabang per bulan kalender. Lewat itu, tiket berikutnya di cabang tersebut gratis sampai bulan berganti.
 - Toko baru: 50 unit pertama gratis, tanpa batas waktu.
 - Pembayaran: isi saldo di muka, minimal Rp 50.000 (kelipatan Rp 1.000). Saat ini lewat transfer bank yang dikonfirmasi via WhatsApp.
 - Saldo tidak hangus dan tidak dapat dikembalikan.
@@ -20,9 +21,10 @@ Tiket servis, pelanggan, kasir/POS, inventori, keuangan, laporan, supplier dan p
 
 ## Contoh biaya
 
-- 30 unit sebulan: Rp 30.000.
-- 100 unit sebulan: Rp 100.000.
-- 300 unit sebulan: Rp 300.000.
+- Satu cabang, 30 unit sebulan: Rp 30.000.
+- Satu cabang, 100 unit sebulan: Rp 100.000.
+- Satu cabang, 300 unit sebulan: Rp 100.000 (200 unit sisanya gratis karena batas).
+- Dua cabang, masing-masing 150 unit sebulan: Rp 200.000.
 
 ## Catatan perpindahan data
 
@@ -30,7 +32,7 @@ FixMaster belum menyediakan impor Excel otomatis. Anda tidak perlu memindahkan s
 
 ## Tautan
 
-- [Buka landing page](https://fixmaster.app/#pricing)
+- [Buka landing page](https://fixmaster.app/#harga)
 - [Coba demo interaktif](https://fixmaster.app/demo)
 - Email: fixmaster.cs@gmail.com
 - WhatsApp: +62 899-5318-638

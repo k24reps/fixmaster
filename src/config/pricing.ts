@@ -8,6 +8,13 @@
 /** Rupiah per tiket servis yang dibuat. */
 export const UNIT_PRICE = 1_000;
 
+/**
+ * Batas bulanan per cabang (migrasi 0103): paling banyak sekian unit dipotong
+ * per cabang per bulan kalender WIB. Lewat batas, tiket berikutnya di cabang
+ * itu gratis sampai bulan berganti. 100 unit = Rp 100.000.
+ */
+export const MONTHLY_CAP_UNITS = 100;
+
 /** Unit gratis untuk setiap toko baru, tanpa batas waktu. */
 export const FREE_UNITS = 50;
 

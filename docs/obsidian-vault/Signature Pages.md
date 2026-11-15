@@ -41,7 +41,15 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   layar). Penutup: "Hasilnya: tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
   (`#coba`). Tiap jawaban dicocokkan ke fitur nyata (nota + nomor lewat WA, tautan lacak,
   stok menipis, hitung kas dengan selisih, PIN, klaim garansi dari tiket asli, dashboard
-  semua cabang).
+  semua cabang). Baris **Lacak servis** adalah baris unggulan: garis cyan di bawah judul
+  situasinya, spine cyan di sel FixMaster, dan contoh alamat lacak mono
+  (`fixmaster.app/t/K7Q2M9XAPD`, bentuk kode 0100) dengan ikon QR, karena pelacakan
+  menolong toko (tidak membalas "sudah jadi belum?") sekaligus pelanggan.
+- **Harga (0103):** "Rp 1.000 per unit masuk" + aturan pertama "paling banyak Rp 100.000 per
+  cabang per bulan". Sumur biaya kini **satu cabang** (10–400 unit, bawaan 60): tick
+  sesudah titik 100 unit bergaris putus sebagai zona gratis dan menyala hijau, readout
+  berhenti di Rp 100.000, fakta "Gratis karena batas" dan bulan pertama (dipotong 50
+  unit gratis).
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman:
   jendela **meja penerimaan** (antrean campuran laptop/printer/iPhone/TV dengan spine
   `STATUS_TONE`, tiket FM-0312 terpilih) → **jejak sinkron cyan** → **ponsel pemilik**
@@ -1236,6 +1244,12 @@ tetap mendarat di sini) menggantikan tab Langganan saat harga berganti ke
   isi saldo, unit kembali; koreksi biru; pemakaian tiket tanpa warna, karena
   pemakaian bukan sinyal), unit bertanda mono, dan saldo sesudahnya. Di demo
   riwayat diganti keadaan kosong karena ledger hanya ada di server.
+
+- **Bulan ini per cabang (0103, 15 Nov 2026)** — di bawah fakta meter, satu baris per
+  cabang: nama, readout mono `37 / 100 unit`, bilah tipis (info; hijau saat penuh), dan
+  kalimat akibatnya ("63 unit lagi sampai batas…" / "Batas tercapai: tiket berikutnya
+  gratis sampai 1 Des 2026"). Riwayat menampilkan tiket `capped` sebagai "gratis". Di demo
+  angkanya perkiraan dari tiket demo (2/2/3 unit untuk tiga cabang seed).
 
 Sidebar ikut membawa readout saldo kecil (LED + angka mono) di bawah `BENCH OS`,
 lihat [[Sidebar - Live Diagnostic Rail]].

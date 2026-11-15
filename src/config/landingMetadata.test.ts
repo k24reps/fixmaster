@@ -32,6 +32,7 @@ describe('landing metadata', () => {
     expect(pricingMarkdown).toContain('Rp 1.000 per unit masuk');
     expect(pricingMarkdown).toContain(`${FREE_UNITS} unit pertama gratis`);
     expect(pricingMarkdown).not.toContain('Solo');
+    expect(pricingMarkdown).toContain(`paling banyak Rp 100.000 per cabang sebulan`);
   });
 
   it('keeps every FAQ schema answer aligned with visible Indonesian copy', () => {

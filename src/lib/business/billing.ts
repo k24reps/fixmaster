@@ -1,7 +1,9 @@
 import type { TranslationKey } from '@/i18n';
 import {
+  FREE_UNITS,
   LOW_BALANCE_UNITS,
   MIN_TOPUP,
+  MONTHLY_CAP_UNITS,
   REFUND_WINDOW_MINUTES,
   TOPUP_STEP,
   UNIT_FLOOR,
@@ -63,7 +65,113 @@ export function refundWindowOpen(chargedAt: string, now: Date = new Date()): boo
   return elapsed >= 0 && elapsed <= REFUND_WINDOW_MINUTES * 60_000;
 }
 
-export type UnitLedgerKind = 'grant' | 'topup' | 'usage' | 'refund' | 'adjust';
+export type UnitLedgerKind = 'grant' | 'topup' | 'usage' | 'refund' | 'adjust' | 'capped';
+
+/**
+ * Unit yang dibayar sebulan di satu cabang untuk `units` tiket (batas 0103):
+ * tiket lewat MONTHLY_CAP_UNITS gratis.
+ */
+export function billedUnitsPerBranch(units: number): number {
+  return Math.min(Math.max(0, units), MONTHLY_CAP_UNITS);
+}
+
+/** Biaya sebulan satu cabang dalam rupiah. */
+export function monthlyBranchCost(units: number): number {
+  return billedUnitsPerBranch(units) * UNIT_PRICE;
+}
+
+/**
+ * Biaya bulan pertama toko baru satu cabang: unit yang dipotong dikurangi
+ * kuota gratis (kuota gratis adalah saldo awal, jadi ikut dipotong lebih dulu).
+ */
+export function firstMonthCost(units: number): number {
+  return Math.max(0, billedUnitsPerBranch(units) - FREE_UNITS) * UNIT_PRICE;
+}
+
+export interface BranchMonthUsage {
+  paidUnits: number;
+  cappedUnits: number;
+}
+
+/** Satu baris "bulan ini per cabang" di tab Saldo (RPC unit_month_usage, 0103). */
+export interface BranchMonthRow extends BranchMonthUsage {
+  outletId: string | null;
+  outletName: string;
+}
+
+/** Awal bulan berjalan menurut WIB, sebagai instan UTC. */
+export function wibMonthStart(now: Date = new Date()): Date {
+  const wib = new Date(now.getTime() + 7 * 60 * 60_000);
+  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), 1) - 7 * 60 * 60_000);
+}
+
+interface MonthServiceLike {
+  outletId: string | null;
+  createdAt: string;
+  warrantyClaimOf?: string | null;
+  deletedAt?: string | null;
+}
+
+/**
+ * Perkiraan "bulan ini per cabang" dari tiket di perangkat, untuk demo yang
+ * tidak punya buku saldo server. Klaim garansi tidak dihitung (sama dengan
+ * server); pembatalan 10 menit diabaikan karena demo tidak mencatatnya.
+ */
+export function monthUsageFromServices(
+  services: readonly MonthServiceLike[],
+  outlets: readonly { id: string; name: string }[],
+  now: Date = new Date(),
+): BranchMonthRow[] {
+  const start = wibMonthStart(now).getTime();
+  const counts = new Map<string | null, number>();
+  for (const service of services) {
+    if (service.deletedAt || service.warrantyClaimOf) continue;
+    if (new Date(service.createdAt).getTime() < start) continue;
+    counts.set(service.outletId, (counts.get(service.outletId) ?? 0) + 1);
+  }
+  const rows: BranchMonthRow[] = outlets.map((outlet) => {
+    const count = counts.get(outlet.id) ?? 0;
+    counts.delete(outlet.id);
+    return {
+      outletId: outlet.id,
+      outletName: outlet.name,
+      paidUnits: billedUnitsPerBranch(count),
+      cappedUnits: count - billedUnitsPerBranch(count),
+    };
+  });
+  for (const [outletId, count] of counts) {
+    rows.push({
+      outletId,
+      outletName: '',
+      paidUnits: billedUnitsPerBranch(count),
+      cappedUnits: count - billedUnitsPerBranch(count),
+    });
+  }
+  return rows.sort((a, b) => a.outletName.localeCompare(b.outletName, 'id'));
+}
+
+/** Posisi satu cabang terhadap batas bulan ini. */
+export function branchCapState(usage: BranchMonthUsage): {
+  paid: number;
+  remaining: number;
+  reached: boolean;
+} {
+  const paid = Math.max(0, usage.paidUnits);
+  return {
+    paid,
+    remaining: Math.max(0, MONTHLY_CAP_UNITS - paid),
+    reached: paid >= MONTHLY_CAP_UNITS,
+  };
+}
+
+/** Tanggal 1 bulan depan (WIB) sebagai `YYYY-MM-DD`: batas bulanan dimulai lagi. */
+export function nextCapReset(now: Date = new Date()): string {
+  const wib = new Date(now.getTime() + 7 * 60 * 60_000);
+  const year = wib.getUTCFullYear();
+  const month = wib.getUTCMonth();
+  const next = new Date(Date.UTC(month === 11 ? year + 1 : year, (month + 1) % 12, 1));
+  return next.toISOString().slice(0, 10);
+}
 
 /** Label baris riwayat saldo. */
 export function ledgerKindLabel(kind: UnitLedgerKind): TranslationKey {
@@ -78,6 +186,8 @@ export function ledgerKindLabel(kind: UnitLedgerKind): TranslationKey {
       return 'billing.kind.refund';
     case 'adjust':
       return 'billing.kind.adjust';
+    case 'capped':
+      return 'billing.kind.capped';
   }
 }
 

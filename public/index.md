@@ -20,7 +20,7 @@ FixMaster membantu toko reparasi elektronik apa saja (HP, laptop, tablet, printe
 
 ## Tautan utama
 
-- [Harga: Rp 1.000 per unit masuk, 50 unit pertama gratis](https://fixmaster.app/pricing.md)
+- [Harga: Rp 1.000 per unit masuk, maksimal Rp 100.000 per cabang sebulan, 50 unit pertama gratis](https://fixmaster.app/pricing.md)
 - [Demo interaktif](https://fixmaster.app/demo) (isi nama toko dan nomor WhatsApp, lalu demo tampil dengan nama toko Anda)
 - [Kebijakan privasi](https://fixmaster.app/privacy)
 - [Syarat dan ketentuan](https://fixmaster.app/terms)

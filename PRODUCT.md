@@ -61,11 +61,13 @@ perlu login ulang.
 
 **Modul:** Dashboard, Servis, Kalkulator Biaya, Kasir & Stok (jual + inventori dalam satu katalog), Pelanggan, Supplier, Keuangan, Tugas Internal, Absensi, Laporan, Log Aktivitas, Pengaturan.
 
-**Model harga (sejak 14 Nov 2026, migrasi 0101): Rp 1.000 per unit masuk.**
+**Model harga (sejak 14 Nov 2026, migrasi 0101): Rp 1.000 per unit masuk, paling banyak Rp 100.000 per cabang sebulan (0103, 15 Nov 2026).**
 Satu unit = satu tiket servis yang dibuat. Tidak ada paket, tidak ada biaya
 bulanan tetap, dan tidak ada fitur yang dikunci: semua modul, pengguna, dan
 outlet terbuka untuk semua toko. Alasannya keadilan: toko kecil membayar
-sedikit, toko ramai membayar sesuai pemakaiannya.
+sedikit, toko ramai tagihannya terkendali (batas per cabang, seperti batas tarif
+harian kartu transportasi: pemilik otomatis membayar yang lebih murah antara
+per unit dan bulanan tetap, tanpa memilih paket).
 
 | Aturan | Nilai |
 |---|---|
@@ -76,10 +78,10 @@ sedikit, toko ramai membayar sesuai pemakaiannya.
 | Masa saldo | Tidak hangus, tidak dapat dikembalikan |
 | Pengembalian | Tiket yang dibatalkan atau dihapus ≤10 menit sejak unitnya dipotong mendapat unitnya kembali, satu kali per tiket |
 | Saldo habis | Boleh minus sampai −20 unit; setelah itu hanya tiket BARU yang ditolak. Pekerjaan tiket lama, kasir, dan keuangan tetap jalan |
-| Batas atas tagihan | Tidak ada |
+| Batas bulanan | Paling banyak 100 unit (Rp 100.000) dipotong **per cabang** per bulan kalender WIB; tiket berikutnya di cabang itu gratis dan tercatat `capped`. Per cabang, bukan per toko: dua cabang paling banyak Rp 200.000 (setara Pro lama), satu cabang Rp 100.000 (setara Solo lama). Saldo ≤ −20 tetap menahan tiket baru lebih dulu |
 | Batas wallet | 99 per toko (pagar kewajaran, bukan pembeda harga) |
 
-Angka-angka ini hidup di `src/config/pricing.ts` dan migrasi 0101;
+Angka-angka ini hidup di `src/config/pricing.ts` dan migrasi 0101/0103;
 `pricing.test.ts` membaca migrasinya supaya kedua sisi tidak bisa berbeda diam-diam.
 
 **Hapus tiket** (sejak 0101): owner saja, hanya tiket bersih (tanpa DP/pembayaran,

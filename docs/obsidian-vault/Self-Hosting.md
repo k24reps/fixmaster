@@ -526,7 +526,20 @@ kemudian** — frontend baru memanggil `unit_ledger`, `delete_service_ticket`, d
 `drop trigger trg_services_charge_unit on services;` menghentikan pemotongan tanpa menyentuh data
 lain (pasang lagi dengan menjalankan ulang 0101; migrasinya idempoten, teruji di simulasi).
 
-### Rilis 0102 (landing baru + gerbang demo) — runbook
+### Rilis 0102 + 0103 (landing baru, gerbang demo, batas bulanan) — runbook
+
+> 0103 (batas 100 unit per cabang per bulan) ikut sesi yang sama, sesudah langkah 5 di
+> bawah dan sebelum frontend: unduh `supabase/migrations/0103_unit_monthly_cap.sql` dan
+> `scripts/selfhost/uji-0103.sql` dengan cara yang sama, uji coba
+> (`... -f /tmp/uji-0103.sql` → `NOTICE:  UJI 0103 LULUS` lalu ROLLBACK; ia memakai 99 baris
+> pemakaian tiruan dan, untuk toko tanpa cabang, satu cabang tiruan, semuanya di-rollback),
+> lalu terapkan (`-1 -f /tmp/0103_unit_monthly_cap.sql`). Periksa:
+> `select kind, count(*) from unit_ledger group by kind;` (belum ada `capped`) dan
+> `select count(*) from unit_ledger where kind = 'usage' and outlet_id is null;` (hanya
+> tiket tanpa cabang). Rem darurat 0103: jalankan ulang definisi `charge_service_unit`
+> dari 0101 (tanpa batas); kolom dan jenis baru aman dibiarkan.
+
+#### Langkah 0102
 
 Urutannya terbalik dari kebiasaan "frontend turun anggun": landing baru **tidak** bisa
 membuka demo tanpa `submit_demo_lead` (gerbangnya bilang "koneksi ke server gagal"),

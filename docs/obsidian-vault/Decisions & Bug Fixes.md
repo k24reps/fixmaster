@@ -6937,3 +6937,34 @@ dan teratur, mulai hari ini." Ditambah seksi **Konvensional vs FixMaster** sesud
 pengunjung sadar bahwa tiap kebiasaan toko yang berantakan punya jawabannya di aplikasi. Lajur
 konvensional memakai nada warning (perlu perhatian), bukan danger: DESIGN menyimpan merah untuk
 yang benar-benar gagal.
+
+## Batas bulanan Rp 100.000 per cabang (0103, 15 Nov 2026)
+
+**Pertanyaan pemilik:** adakah yang lebih adil dari Rp 1.000 per unit tanpa batas, misalnya
+maksimal Rp 100 ribu? **Keputusan:** tetap Rp 1.000 per unit masuk, **paling banyak 100 unit
+(Rp 100.000) per cabang per bulan kalender WIB**. Polanya batas tarif harian kartu transportasi:
+pemilik otomatis membayar yang lebih murah antara "per unit" dan "bulanan tetap" tanpa memilih
+paket. **Per cabang, bukan per toko**: batas per toko membuat toko tiga cabang dengan 600 unit
+membayar Rp 100.000, kurang dari Pro lama (Rp 199.000) untuk pelanggan terbesar; per cabang,
+dua cabang paling banyak Rp 200.000 (setara Pro lama). Ditolak: harga turun bertingkat (sulit
+dijelaskan, tanpa batas atas), pilih per unit atau langganan (pemilik harus menebak), harga
+per unit lebih murah (tidak menjawab tagihan yang tak terduga).
+
+**Rancangan server:** hitungan dari buku saldo, bukan dari `services` (tiket bisa dipindah
+cabang atau dihapus): `-(sum units)` baris `usage`+`refund` bulan ini per `outlet_id`, di bawah
+kunci baris organisasi yang sama dengan pemotongan, jadi dua tiket bersamaan tidak bisa
+melewati batas. Tiket lewat batas dicatat `capped` 0 unit (bukan "tidak dicatat") supaya
+riwayat jujur dan tiket yang sama tidak dinilai ulang saat disisip ulang. Batas minus −20
+tetap didahulukan: utang dibayar dulu, gratisnya baru berlaku.
+
+**Uji:** `uji-0103.sql` di simulasi lokal lulus (99 pemakaian tiruan → A dipotong genap 100,
+B `capped`, C tanpa cabang tetap dipotong, batal A mengembalikan unit ke cabangnya, D dipotong
+lagi, `unit_month_usage` 100/1, baris bulan lalu tidak terhitung, hak akses tertutup),
+penerapan ulang idempoten. Jebakan saat menulis uji: status Batal hanya boleh lewat
+`cancel_service` (trigger 0089), dan toko simulasi tidak punya cabang, jadi uji membuat cabang
+tiruan di dalam transaksinya.
+
+**Landing:** baris perbandingan "Lacak servis" dijadikan baris unggulan atas permintaan
+pemilik (menolong toko dan pelanggan), dengan contoh alamat lacak. **Nama menu:** pemilik
+bertanya "Servis" atau "Tiket"; saran: tetap **Servis** untuk menu (bahasa konter: servisan,
+nota servis), "tiket servis" untuk satu catatan di dalamnya. Tidak ada perubahan kode.

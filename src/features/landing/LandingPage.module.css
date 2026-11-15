@@ -422,6 +422,62 @@
   line-height: 1.6;
 }
 
+.vsNew p {
+  margin: 0;
+}
+
+/* Baris unggulan: pelacakan servis menolong toko DAN pelanggan, jadi ia
+   membawa contoh alamat lacak (readout mono) dan spine cyan di lajurnya. */
+.vsRow[data-featured='true'] .vsSituation::after {
+  content: '';
+  display: block;
+  width: 28px;
+  margin-top: var(--space-2);
+  border-top: 2px solid var(--accent);
+}
+
+.vsRow[data-featured='true'] .vsNew {
+  position: relative;
+}
+
+.vsRow[data-featured='true'] .vsNew::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: linear-gradient(180deg, var(--accent-400), var(--accent-600));
+}
+
+.vsNew .vsTrack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.vsTrack svg {
+  flex: none;
+  color: var(--accent-text);
+  font-size: 16px;
+}
+
+.vsTrackUrl {
+  padding: 2px var(--space-2);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
 .vsOld {
   color: var(--text-secondary);
 }
@@ -970,6 +1026,27 @@
 .wellTicks span[data-on='true'] {
   background: var(--accent-400);
   box-shadow: 0 0 6px color-mix(in srgb, var(--accent-400) 55%, transparent);
+}
+
+/* Zona sesudah batas 100 unit: tiket di sana gratis, jadi nyalanya hijau dan
+   tick-nya bergaris putus seperti zona minus di tab Saldo. */
+.wellTicks span[data-zone='free'] {
+  background: transparent;
+  outline: 1px dashed color-mix(in srgb, var(--readout-text) 22%, transparent);
+  outline-offset: -1px;
+}
+
+.wellTicks span[data-zone='free'][data-on='true'] {
+  background: color-mix(in srgb, var(--green-400) 45%, transparent);
+  box-shadow: none;
+  outline-color: var(--green-400);
+}
+
+.wellCap {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--readout-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .wellRange {

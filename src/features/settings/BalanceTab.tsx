@@ -1,21 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, CardBody, CardHeader, EmptyState, Icon, Input } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useCollection } from '@/hooks/useCollection';
 import { useSessionStore } from '@/stores/session';
 import { demoGuard, isCloudMode } from '@/stores/demo';
 import { toast } from '@/stores/toast';
-import { listUnitLedger, type UnitLedgerEntry } from '@/data/supabase-client';
+import {
+  listUnitLedger,
+  listUnitMonthUsage,
+  type UnitLedgerEntry,
+  type UnitMonthUsage,
+} from '@/data/supabase-client';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   MIN_TOPUP,
   REFUND_WINDOW_MINUTES,
   TOPUP_PRESETS,
   TOPUP_STEP,
+  MONTHLY_CAP_UNITS,
   UNIT_FLOOR,
   UNIT_PRICE,
 } from '@/config/pricing';
 import {
+  branchCapState,
   ledgerKindLabel,
+  monthUsageFromServices,
+  nextCapReset,
   ticketsUntilBlocked,
   topupAmountError,
   topupWhatsAppLink,
@@ -56,6 +66,7 @@ const KIND_TONE: Record<UnitLedgerKind, string> = {
   refund: 'in',
   usage: 'out',
   adjust: 'adjust',
+  capped: 'in',
 };
 
 function signed(units: number): string {
@@ -81,6 +92,15 @@ export function BalanceTab() {
   const amount = parseRpInput(amountText);
   const amountError = topupAmountError(amount);
   const [entries, setEntries] = useState<UnitLedgerEntry[] | null>(null);
+  const [cloudMonth, setCloudMonth] = useState<UnitMonthUsage[] | null>(null);
+  // Demo tidak punya buku saldo server: perkiraan dari tiket di perangkat.
+  const { data: demoServices } = useCollection('services', { enabled: !cloud });
+  const { data: demoOutlets } = useCollection('outlets', { enabled: !cloud });
+  const demoMonth = useMemo(
+    () => (cloud ? null : monthUsageFromServices(demoServices ?? [], demoOutlets ?? [])),
+    [cloud, demoServices, demoOutlets],
+  );
+  const month = cloud ? cloudMonth : demoMonth;
 
   // Saldo di sesi ikut realtime (baris organizations berubah setiap kali tiket
   // memotong unit), jadi riwayat dimuat ulang tiap kali angkanya bergeser.
@@ -100,6 +120,19 @@ export function BalanceTab() {
       cancelled = true;
     };
   }, [cloud, org?.id, balance, t]);
+
+  // Pemakaian bulan ini per cabang (0103). Tanpa RPC-nya di server, blok
+  // bulanan disembunyikan; saldo dan riwayat tetap tampil.
+  useEffect(() => {
+    if (!cloud || !org?.id) return;
+    let cancelled = false;
+    void listUnitMonthUsage(org.id).then((rows) => {
+      if (!cancelled) setCloudMonth(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud, org?.id, balance]);
 
   const filled = Math.max(0, Math.min(TICKS, Math.round((balance - UNIT_FLOOR) / UNITS_PER_TICK)));
   const zeroPct = (ZERO_TICK / TICKS) * 100;
@@ -133,7 +166,10 @@ export function BalanceTab() {
               </div>
             </div>
             <p className={styles.rate}>
-              {interpolate(t('billing.rate'), { price: fmtRp(UNIT_PRICE) })}
+              {interpolate(t('billing.rate'), {
+                price: fmtRp(UNIT_PRICE),
+                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+              })}
             </p>
 
             <div
@@ -178,6 +214,45 @@ export function BalanceTab() {
               </div>
             </dl>
           </div>
+
+          {month && month.length > 0 && (
+            <section className={styles.month} aria-labelledby="balance-month-title">
+              <h3 id="balance-month-title" className={styles.monthTitle}>
+                {t('billing.monthTitle')}
+              </h3>
+              <ul className={styles.monthList}>
+                {month.map((branch) => {
+                  const cap = branchCapState(branch);
+                  return (
+                    <li
+                      key={branch.outletId ?? 'tanpa-cabang'}
+                      className={styles.monthRow}
+                      data-reached={cap.reached ? 'true' : undefined}
+                    >
+                      <span className={styles.monthName}>
+                        {branch.outletName || t('billing.monthNoBranch')}
+                      </span>
+                      <span className={styles.monthReadout}>
+                        {cap.paid}
+                        <small> / {MONTHLY_CAP_UNITS} {t('billing.unitShort')}</small>
+                      </span>
+                      <span className={styles.monthBar} aria-hidden>
+                        <span style={{ width: `${(cap.paid / MONTHLY_CAP_UNITS) * 100}%` }} />
+                      </span>
+                      <span className={styles.monthNote}>
+                        {cap.reached
+                          ? interpolate(t('billing.monthReached'), {
+                              n: String(branch.cappedUnits),
+                              date: fmtDate(nextCapReset()),
+                            })
+                          : interpolate(t('billing.monthRemaining'), { n: String(cap.remaining) })}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           {state !== 'ok' && (
             <p className={styles.banner} data-state={state} role="status">
@@ -290,7 +365,9 @@ export function BalanceTab() {
                       {entry.note && ` · ${entry.note}`}
                     </small>
                   </span>
-                  <span className={styles.ledgerUnits}>{signed(entry.units)}</span>
+                  <span className={styles.ledgerUnits}>
+                    {entry.kind === 'capped' ? t('billing.free') : signed(entry.units)}
+                  </span>
                   <span className={styles.ledgerAfter}>
                     {interpolate(t('billing.balanceAfter'), { n: String(entry.balanceAfter) })}
                   </span>

@@ -213,7 +213,8 @@ export const id = {
   'billing.state.low': 'Saldo menipis',
   'billing.state.minus': 'Saldo minus',
   'billing.state.blocked': 'Tiket baru tertahan',
-  'billing.rate': '{price} per tiket servis. Semua fitur, pengguna, dan outlet tanpa biaya tambahan.',
+  'billing.rate':
+    '{price} per tiket servis, paling banyak {max} per cabang sebulan. Semua fitur, pengguna, dan outlet tanpa biaya tambahan.',
   'billing.gaugeAria': 'Saldo {n} unit',
   'billing.factValue': 'Senilai',
   'billing.factTicketsLeft': 'Tiket baru tersisa',
@@ -238,6 +239,14 @@ export const id = {
   'billing.topupTerms': 'Saldo tidak hangus dan tidak dapat dikembalikan.',
   'billing.requestTopup': 'Kirim Permintaan lewat WhatsApp',
   'billing.whatsappOpened': 'WhatsApp dibuka. Kirim pesannya untuk menerima instruksi pembayaran.',
+  'billing.monthTitle': 'Bulan ini per cabang',
+  'billing.monthNoBranch': 'Tanpa cabang',
+  'billing.monthRemaining':
+    '{n} unit lagi sampai batas. Sesudah itu, tiket di cabang ini gratis sampai akhir bulan.',
+  'billing.monthReached':
+    'Batas tercapai: tiket berikutnya di cabang ini gratis sampai {date}. Sudah {n} tiket gratis bulan ini.',
+  'billing.free': 'gratis',
+  'billing.kind.capped': 'Tiket servis, gratis karena batas bulanan',
   'billing.historyTitle': 'Riwayat Saldo',
   'billing.historyEmpty': 'Belum ada riwayat saldo.',
   'billing.historyDemo': 'Riwayat saldo tampil di akun FixMaster sungguhan.',
@@ -346,7 +355,7 @@ export const id = {
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':
-    'Mulai dengan yang Anda butuhkan sekarang. Begitu ada karyawan atau cabang baru, tinggal ditambahkan. Harganya tetap {price} per unit masuk, berapa pun orang dan cabangnya.',
+    'Mulai dengan yang Anda butuhkan sekarang. Begitu ada karyawan atau cabang baru, tinggal ditambahkan. Harganya tetap {price} per unit masuk, dan paling banyak {max} per cabang sebulan.',
   'landing.stage.soloTitle': 'Masih kerja sendiri',
   'landing.stage.soloText':
     'Anda yang menerima unit, memperbaiki, dan menagih. Tiket dan nota tercatat rapi, stok part tidak perlu diingat-ingat, dan pelanggan bisa cek status sendiri lewat tautan di nota.',
@@ -371,10 +380,11 @@ export const id = {
     'Nota tulisan tangan. Keluhan dan kelengkapan sering tidak tercatat, jadi rawan salah paham saat unit diambil.',
   'landing.vs.intakeNew':
     'Tiket bernomor dengan keluhan dan kelengkapan. Nota dicetak, dan nomornya bisa dikirim ke pelanggan lewat WhatsApp.',
-  'landing.vs.status': 'Pelanggan menanyakan status',
+  'landing.vs.status': 'Lacak servis',
   'landing.vs.statusOld':
-    'Chat "sudah jadi belum?" datang terus, dan Anda harus cek ke meja satu per satu.',
-  'landing.vs.statusNew': 'Pelanggan cek status sendiri lewat tautan lacak di nota.',
+    'Chat dan telepon "sudah jadi belum?" datang terus. Anda berhenti bekerja untuk mengecek meja, dan pelanggan menunggu tanpa kepastian.',
+  'landing.vs.statusNew':
+    'Nota membawa kode QR dan tautan lacak. Pelanggan melihat status, riwayat pengerjaan, dan masa garansi sendiri kapan saja, sedangkan toko tidak perlu membalas pertanyaan yang sama satu per satu.',
   'landing.vs.stock': 'Stok part',
   'landing.vs.stockOld':
     'Catatan stok beda dengan isi laci. Part habis baru ketahuan saat dibutuhkan.',
@@ -401,6 +411,12 @@ export const id = {
   'landing.vs.branchNew': 'Semua cabang terlihat sekaligus di dashboard pemilik, dari ponsel.',
   'landing.vs.foot': 'Hasilnya: tutup toko tanpa menghitung ulang apa pun.',
   'landing.vs.tryLink': 'Lihat sendiri di demo',
+  'landing.price.ruleCap':
+    'Paling banyak {max} per cabang per bulan: lewat {cap} unit, tiket berikutnya di cabang itu gratis sampai akhir bulan.',
+  'landing.price.capNote':
+    'Garis putus-putus adalah zona gratis: lewat {cap} unit, tagihan berhenti di {max}.',
+  'landing.price.freeByCap': 'Gratis karena batas',
+  'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
   'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
   'landing.trailsLead':
     'Teknisi cukup memilih part dari stok di tiket. Sisanya tidak perlu disalin ke buku, chat, atau Excel.',
@@ -449,7 +465,7 @@ export const id = {
   'landing.mod.wa': 'Pesan status servis yang isinya Anda atur sendiri.',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
-    '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat: toko sepi membayar sedikit, toko ramai membayar sesuai ramainya.',
+    '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat, dan paling banyak {max} per cabang sebulan. Toko sepi membayar sedikit, toko ramai tagihannya tetap terkendali.',
   'landing.price.ruleFree': 'Penjualan kasir dan klaim garansi tidak dihitung.',
   'landing.price.ruleRefund':
     'Tiket yang dibatalkan atau dihapus dalam {minutes} menit, unitnya kembali.',
@@ -459,7 +475,7 @@ export const id = {
   'landing.price.cta': 'Mulai gratis, {free} unit',
   'landing.price.ctaNote':
     'Tanpa kartu kredit. Isi saldo lewat transfer, dikonfirmasi lewat WhatsApp.',
-  'landing.price.slider': 'Unit masuk per bulan',
+  'landing.price.slider': 'Unit masuk per bulan, satu cabang',
   'landing.price.sliderValue': '{n} unit per bulan, {cost}',
   'landing.price.perMonth': '/ bulan',
   'landing.price.units': 'Unit masuk',
@@ -484,7 +500,7 @@ export const id = {
     'Anda tidak perlu memindahkan semua riwayat lama sekaligus. Cukup catat unit yang baru masuk di FixMaster mulai hari ini. File Excel lama tetap bisa dibuka sebagai arsip. Belum ada impor otomatis; jika ingin dibantu memindahkan data pelanggan atau stok inti, tim FixMaster siap membantu lewat WhatsApp.',
   'landing.faq.pay.q': 'Bagaimana cara membayar?',
   'landing.faq.pay.a':
-    'Isi saldo di muka lewat transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih nominal di aplikasi (minimal Rp 50.000), kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit. Saldo hanya bertambah setelah pembayaran kami verifikasi, tidak hangus, dan tidak dapat dikembalikan.',
+    'Isi saldo di muka lewat transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih nominal di aplikasi (minimal Rp 50.000), kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit. Pemakaian paling banyak Rp 100.000 per cabang sebulan. Saldo hanya bertambah setelah pembayaran kami verifikasi, tidak hangus, dan tidak dapat dikembalikan.',
   'landing.closingTitle': 'Coba dulu dengan nama toko Anda sendiri.',
   'landing.closingLead':
     'Demo memakai aplikasi yang sama dengan yang nanti Anda pakai. Terima unit, pasang part, terima bayar, lalu lihat dashboard pemiliknya.',

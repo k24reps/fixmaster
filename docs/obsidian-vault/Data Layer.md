@@ -229,6 +229,28 @@ kedua sisi tidak berbeda diam-diam. Logika murni: `lib/business/billing.ts`
   `admin_adjust_units(org, units, reason)` (±1000, bukan 0). RPC paket lama
   `admin_confirm_manual_payment` dan `admin_apply_promo` **dihapus**.
 
+**Batas bulanan per cabang (migration `0103`, 15 Nov 2026).** Paling banyak 100 unit
+dipotong per cabang per bulan kalender WIB (`MONTHLY_CAP_UNITS` di `config/pricing.ts`,
+`pricing.test.ts` membaca migrasinya).
+
+- **`unit_ledger.outlet_id`** (tanpa FK, seperti `service_id`) diisi untuk `usage` dan
+  `refund`; baris lama diisi dari `services.outlet_id`. Jenis baru **`capped`** = tiket
+  yang lewat batas, **0 unit** (`check ((kind = 'capped') = (units = 0))`), satu per tiket.
+- **`charge_service_unit`**: guard yang sama → kunci baris organisasi → tiket sudah
+  dinilai (`usage` atau `capped`)? keluar → saldo `<= -20` tetap menahan → bila
+  `unit_paid_this_month(org, outlet) >= 100` catat `capped`, selain itu potong 1 unit dan
+  isi `outlet_id`. Hitungannya `-(sum units)` baris `usage`+`refund` bulan ini di cabang
+  itu (`unit_month_start()` = awal bulan WIB), jadi unit yang kembali dalam 10 menit tidak
+  terhitung. Tiket tanpa cabang punya hitungan sendiri.
+- **`refund_service_unit_if_fresh`** ikut mengisi `outlet_id` pengembaliannya; tiket
+  `capped` tidak punya `usage`, jadi tidak ada yang dikembalikan.
+- **`unit_month_usage(org)`** (owner): satu baris per cabang aktif + cabang/tanpa-cabang
+  yang punya pemakaian, `paid_units` dan `capped_units` bulan ini. Klien:
+  `listUnitMonthUsage` (null bila RPC belum ada → blok disembunyikan). Demo menghitung
+  perkiraannya dari tiket di perangkat (`monthUsageFromServices`).
+- Celah yang diterima: toko bercabang yang mencatat semua tiket di satu cabang membayar
+  seperti toko satu cabang. Cabang adalah data nyata toko; tidak dikejar.
+
 **Kontak gerbang demo (migration `0102`, 15 Nov 2026).** Landing dan `/demo`
 meminta nama toko + nomor WhatsApp sebelum demo terbuka.
 

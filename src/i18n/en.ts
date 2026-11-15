@@ -212,7 +212,8 @@ export const en: Dictionary = {
   'billing.state.low': 'Balance running low',
   'billing.state.minus': 'Balance below zero',
   'billing.state.blocked': 'New tickets on hold',
-  'billing.rate': '{price} per service ticket. Every feature, user, and branch at no extra cost.',
+  'billing.rate':
+    '{price} per repair ticket, at most {max} per branch per month. Every feature, user, and outlet at no extra cost.',
   'billing.gaugeAria': 'Balance {n} units',
   'billing.factValue': 'Worth',
   'billing.factTicketsLeft': 'New tickets left',
@@ -237,6 +238,14 @@ export const en: Dictionary = {
   'billing.topupTerms': 'Balance never expires and is non-refundable.',
   'billing.requestTopup': 'Send Request via WhatsApp',
   'billing.whatsappOpened': 'WhatsApp opened. Send the message to get payment instructions.',
+  'billing.monthTitle': 'This month by branch',
+  'billing.monthNoBranch': 'No branch',
+  'billing.monthRemaining':
+    '{n} more units to the cap. After that, tickets at this branch are free until the end of the month.',
+  'billing.monthReached':
+    'Cap reached: further tickets at this branch are free until {date}. {n} free tickets so far this month.',
+  'billing.free': 'free',
+  'billing.kind.capped': 'Repair ticket, free under the monthly cap',
   'billing.historyTitle': 'Balance History',
   'billing.historyEmpty': 'No balance history yet.',
   'billing.historyDemo': 'Balance history appears in a real FixMaster account.',
@@ -345,7 +354,7 @@ export const en: Dictionary = {
   'landing.navWho': 'Who it\'s for',
   'landing.stagesTitle': 'From working alone to opening a branch, the way you work stays the same.',
   'landing.stagesLead':
-    'Start with what you need today. When staff or a new branch arrive, just add them. The price stays {price} per incoming unit, however many people and branches you have.',
+    'Start with what you need today. When staff or a new branch arrive, just add them. The price stays {price} per incoming unit, and at most {max} per branch per month.',
   'landing.stage.soloTitle': 'Working on your own',
   'landing.stage.soloText':
     'You take in units, repair them, and collect payment. Tickets and receipts stay in order, part stock no longer lives in your head, and customers check their repair status through the link on the receipt.',
@@ -370,11 +379,11 @@ export const en: Dictionary = {
     'Handwritten receipts. Complaints and accessories often go unrecorded, so pickups turn into disputes.',
   'landing.vs.intakeNew':
     'Numbered tickets with complaints and accessories. Receipts are printed, and the number can go to the customer over WhatsApp.',
-  'landing.vs.status': 'Customers asking for status',
+  'landing.vs.status': 'Repair tracking',
   'landing.vs.statusOld':
-    '"Is it done yet?" chats keep coming, and you have to check the bench one by one.',
+    '"Is it done yet?" chats and calls keep coming. You stop working to check the bench, and customers wait without knowing.',
   'landing.vs.statusNew':
-    'Customers check the status themselves through the tracking link on the receipt.',
+    'The receipt carries a QR code and tracking link. Customers see the status, repair history, and warranty period themselves at any time, and the shop no longer answers the same question one by one.',
   'landing.vs.stock': 'Part stock',
   'landing.vs.stockOld':
     'The stock notes never match the drawers. You find out a part is gone when you need it.',
@@ -404,6 +413,12 @@ export const en: Dictionary = {
     'Every branch is visible at once on the owner\'s dashboard, from a phone.',
   'landing.vs.foot': 'The result: close up without recounting anything.',
   'landing.vs.tryLink': 'See it in the demo',
+  'landing.price.ruleCap':
+    'At most {max} per branch per month: past {cap} units, further tickets at that branch are free until the end of the month.',
+  'landing.price.capNote':
+    'The dashed ticks are the free zone: past {cap} units, the bill stops at {max}.',
+  'landing.price.freeByCap': 'Free under the cap',
+  'landing.vs.statusExample': 'example tracking link, one random code per ticket',
   'landing.trailsTitle': 'Install one part, and four places record it.',
   'landing.trailsLead':
     'The technician picks the part from stock on the ticket. Nothing has to be copied into a notebook, a chat, or Excel.',
@@ -451,7 +466,7 @@ export const en: Dictionary = {
   'landing.mod.wa': 'Repair status messages written the way you want.',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
-    'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create: a quiet shop pays little, a busy shop pays for how busy it is.',
+    'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create, and at most {max} per branch per month. A quiet shop pays little, and a busy shop still has a predictable bill.',
   'landing.price.ruleFree': 'POS sales and warranty claims are not counted.',
   'landing.price.ruleRefund':
     'Cancel or delete a ticket within {minutes} minutes and its unit comes back.',
@@ -460,7 +475,7 @@ export const en: Dictionary = {
     'Out of balance? You can still go {floor} units below zero, and work already in the shop keeps going.',
   'landing.price.cta': 'Start free, {free} units',
   'landing.price.ctaNote': 'No credit card. Top up by bank transfer, confirmed over WhatsApp.',
-  'landing.price.slider': 'Incoming units per month',
+  'landing.price.slider': 'Incoming units per month, one branch',
   'landing.price.sliderValue': '{n} units per month, {cost}',
   'landing.price.perMonth': '/ month',
   'landing.price.units': 'Incoming units',
@@ -485,7 +500,7 @@ export const en: Dictionary = {
     'You do not have to move your whole history at once. Just log new incoming units in FixMaster from today. Old Excel files stay available as an archive. There is no automatic import yet; if you want help moving core customer or stock data, the FixMaster team can help over WhatsApp.',
   'landing.faq.pay.q': 'How do I pay?',
   'landing.faq.pay.a':
-    'Top up your balance in advance by bank transfer, confirmed over WhatsApp. Pick an amount in the app (at least Rp 50.000), we send payment instructions, and you send the transfer receipt in the same chat. No credit card and no auto-debit. Your balance only increases after we verify the payment, never expires, and is non-refundable.',
+    'Top up your balance in advance by bank transfer, confirmed over WhatsApp. Pick an amount in the app (at least Rp 50.000), we send payment instructions, and you send the transfer receipt in the same chat. No credit card and no auto-debit. Usage is capped at Rp 100.000 per branch per month. Your balance only increases after we verify the payment, never expires, and is non-refundable.',
   'landing.closingTitle': 'Try it first under your own shop name.',
   'landing.closingLead':
     'The demo is the same app you would use. Take in a unit, install a part, take payment, then look at the owner\'s dashboard.',

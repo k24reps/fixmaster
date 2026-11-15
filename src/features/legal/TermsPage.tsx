@@ -22,7 +22,7 @@ export function TermsPage() {
       title={t('legal.termsTitle')}
       docId="SK-001"
       intro={t('legal.termsIntro')}
-      updated="2026-11-14"
+      updated="2026-11-15"
     >
       <div className="callout">
         <p>
@@ -61,6 +61,12 @@ export function TermsPage() {
           <strong>Harga:</strong> Rp 1.000 untuk setiap tiket servis yang dibuat (satu unit),
           dipotong dari saldo unit akun Anda. Penjualan kasir dan klaim garansi tidak memotong
           saldo.
+        </li>
+        <li>
+          <strong>Batas bulanan:</strong> paling banyak 100 unit (Rp 100.000) dipotong per
+          cabang dalam satu bulan kalender (WIB). Tiket berikutnya di cabang itu pada bulan yang
+          sama tidak memotong saldo dan tercatat sebagai gratis di riwayat saldo. Unit yang
+          dikembalikan dalam 10 menit tidak dihitung ke batas.
         </li>
         <li>
           <strong>Kuota awal:</strong> akun baru memperoleh 50 unit gratis tanpa batas waktu.

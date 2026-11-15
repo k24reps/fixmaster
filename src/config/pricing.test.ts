@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import migration from '../../supabase/migrations/0101_unit_pricing.sql?raw';
+import capMigration from '../../supabase/migrations/0103_unit_monthly_cap.sql?raw';
 import {
   FREE_UNITS,
   MAX_WALLETS,
+  MONTHLY_CAP_UNITS,
   MIN_TOPUP,
   REFUND_WINDOW_MINUTES,
   TOPUP_STEP,
@@ -34,5 +36,11 @@ describe('angka harga sama dengan migrasi 0101', () => {
 
   it('pagar jumlah wallet sama dengan plan_quota', () => {
     expect(migration).toContain(`case when p_plan = 'suspended' then 0 else ${MAX_WALLETS} end;`);
+  });
+
+  it('batas bulanan per cabang dan batas minus yang tetap didahulukan', () => {
+    expect(capMigration).toContain(`unit_paid_this_month(p_org_id, v_outlet) >= ${MONTHLY_CAP_UNITS} then`);
+    expect(capMigration).toContain(`if v_balance <= ${UNIT_FLOOR} then`);
+    expect(capMigration).toContain(`interval '${REFUND_WINDOW_MINUTES} minutes'`);
   });
 });
