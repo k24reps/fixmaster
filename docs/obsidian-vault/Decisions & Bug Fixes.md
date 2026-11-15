@@ -6860,8 +6860,18 @@ batal lewat `cancel_service` → 48, saldo −20 menolak tiket baru tapi tiket l
 memuat saldo dan pemakaian 30 hari, penerapan ulang idempoten. Batasnya: tanpa PostgREST, GoTrue,
 realtime, dan Edge Function, jadi `tier3i` tetap layak dijalankan begitu staging tersedia.
 
-**Belum dilakukan (wajib sebelum dipakai):**
-1. Ikuti runbook "Rilis 0101" di [[Self-Hosting]]: uji coba di produksi (ROLLBACK), terapkan,
-   deploy `backup-email`, baru gabungkan frontend ke `main`.
-2. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
+**Rilis ke produksi (15 Nov 2026), langsung tanpa staging atas keputusan pemilik**, mengikuti
+runbook "Rilis 0101" di [[Self-Hosting]]. Dari Chromebook tanpa repo lokal, berkas diunduh di
+VPS dari GitHub (repo publik) dikunci ke commit `150fe65` dan dicocokkan `sha256sum`. Uji coba
+di database produksi: `UJI 0101 LULUS` lalu ROLLBACK. Penerapan: 5 organisasi, semua saldo 50,
+5 baris `grant`. Dua organisasi yang masih punya masa aktif Pro sampai 2027 (K24 Jasa Print &
+Service, Nuara Service) adalah toko uji milik pemilik: tanpa kompensasi. Pendaftar organik yang
+uji cobanya sudah habis kini aktif lagi dengan 50 unit (konsekuensi model baru, disetujui).
+`curl health` pertama sesudah restart container fungsi membalas "upstream connect error":
+runtime belum siap, cukup diulang beberapa detik kemudian. Frontend fast-forward ke `main`.
+`staging` sengaja tidak diikutkan (Preview = mode demo); parity `main`/`staging` di
+`docs/environments.md` tertinggal sampai staging dipakai lagi.
+
+**Masih tertinggal:**
+1. `sync-vault-attachments.ps1` tidak dijalankan (tanpa PowerShell); `saldo-*.png` dan
    `hapus-tiket-*.png` hanya ada di mesin yang menjalankan skripnya.
