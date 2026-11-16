@@ -139,14 +139,37 @@ describe('LandingPage dua adegan', () => {
     renderLanding();
     const desk = screen.getByRole('figure', { name: /meja penerimaan/i });
     const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
-    expect(within(phone).getByText('Rp 1.240.000')).toBeInTheDocument();
+    // Nilai sebelum dan sesudah sama-sama dirender (tinggi tetap); yang belum
+    // aktif disembunyikan dengan aria-hidden.
+    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
+    expect(within(phone).getByText('Rp 1.240.000', shown)).toBeInTheDocument();
+    expect(within(phone).queryByText('Rp 170.000', shown)).not.toBeInTheDocument();
 
     fireEvent.click(within(desk).getByRole('button', { name: 'Pasang keyboard dari stok' }));
-    expect(within(phone).getByText('Rp 170.000')).toBeInTheDocument();
+    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
     fireEvent.click(within(desk).getByRole('button', { name: 'Tandai selesai' }));
     fireEvent.click(within(desk).getByRole('button', { name: 'Terima bayar Rp 350.000' }));
-    expect(within(phone).getByText('Rp 1.590.000')).toBeInTheDocument();
+    expect(within(phone).getByText('Rp 1.590.000', shown)).toBeInTheDocument();
     expect(within(desk).getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
+  });
+
+  it('tuts strip ponsel menggerakkan adegan yang sama', () => {
+    renderLanding();
+    // Strip hanya tampil di container ≤720px; jsdom tidak menghitung container
+    // query, jadi di sini ia tersembunyi.
+    const strip = screen.getByRole('group', {
+      name: /meja penerimaan dan ponsel pemilik/i,
+      hidden: true,
+    });
+    const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
+    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
+
+    fireEvent.click(within(strip).getByRole('button', { name: 'Pasang part', hidden: true }));
+    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
+    expect(within(strip).getByText('Rp 170.000')).toBeInTheDocument();
+    expect(
+      within(strip).getByRole('button', { name: 'Tandai selesai', hidden: true }),
+    ).toBeInTheDocument();
   });
 });
 

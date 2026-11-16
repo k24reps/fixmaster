@@ -23,7 +23,8 @@ import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
 import { authIntentHref, type AuthIntent } from '@/features/auth/auth-intent';
-import { BenchScene } from './BenchScene';
+import { BenchScene, BenchStrip } from './BenchScene';
+import { useBenchSteps } from './useBenchSteps';
 import { DemoGate } from './DemoGate';
 import styles from './LandingPage.module.css';
 
@@ -237,6 +238,10 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  // Strip ponsel dan adegan penuh berbagi satu keadaan langkah.
+  const bench = useBenchSteps([stripRef, sceneRef]);
 
   // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
@@ -343,13 +348,21 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
         <section className={styles.hero} aria-labelledby="landing-hero-title">
           <div className={styles.heroCopy}>
             <h1 id="landing-hero-title">{t('landing.heroTitle')}</h1>
-            <p className={styles.heroLead}>{t('landing.heroLead')}</p>
+            <p className={styles.heroLead}>
+              {interpolate(t('landing.heroLead'), {
+                free: String(FREE_UNITS),
+                price: fmtRp(UNIT_PRICE),
+              })}
+            </p>
+          </div>
+          <div className={styles.heroStrip}>
+            <BenchStrip shopName={shopName} bench={bench} stripRef={stripRef} />
           </div>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
           <div className={styles.heroScene}>
-            <BenchScene shopName={shopName} />
+            <BenchScene shopName={shopName} bench={bench} sceneRef={sceneRef} />
           </div>
         </section>
 

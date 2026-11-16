@@ -281,6 +281,14 @@
   min-width: 0;
 }
 
+/* Strip sinkron hanya di layar sempit; di atasnya adegan penuh sudah terlihat
+   di layar pertama. */
+.heroStrip {
+  display: none;
+  grid-area: strip;
+  min-width: 0;
+}
+
 .heroScene {
   grid-area: scene;
   min-width: 0;
@@ -1323,15 +1331,29 @@
 /* 720px: judul dan gerbang tidak lagi muat berdampingan (gerbang butuh
    ±300px agar label dan contoh nomor tidak terpotong). */
 @container landing (max-width: 720px) {
+  /* Bukti sebelum permintaan: strip sinkron duduk di antara judul dan gerbang,
+     jadi pengunjung ponsel melihat meja menggerakkan ponsel sebelum diminta
+     nomor WA. Adegan penuh tetap di bawah gerbang. */
   .hero {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'copy'
+      'strip'
       'gate'
       'scene';
+    row-gap: var(--space-5);
+    padding-top: var(--space-5);
+  }
+  .heroStrip {
+    display: block;
+    max-width: 520px;
+    padding-top: var(--space-2);
   }
   .heroGate {
     max-width: 520px;
+  }
+  .heroScene {
+    padding-top: var(--space-6);
   }
 }
 
