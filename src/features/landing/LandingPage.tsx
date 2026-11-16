@@ -208,6 +208,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
 
   // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
@@ -222,7 +223,8 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   }, [t]);
 
   // Bar ponsel hanya muncul saat kedua gerbang di luar layar: ia jalan pintas
-  // ke gerbang, bukan tiruan tombolnya.
+  // ke gerbang, bukan tiruan tombolnya. Ia juga mundur selama adegan layar asli
+  // terlihat, karena di 320px bar menutupi bottom nav HP yang bisa diketuk.
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const seen = new Map<Element, boolean>();
@@ -230,7 +232,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
       for (const entry of entries) seen.set(entry.target, entry.isIntersecting);
       setGateOffscreen(![...seen.values()].some(Boolean));
     });
-    for (const node of [heroGateRef.current, finalGateRef.current]) {
+    for (const node of [heroGateRef.current, finalGateRef.current, sceneRef.current]) {
       if (node) {
         seen.set(node, true);
         observer.observe(node);
@@ -367,10 +369,30 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               })}
             </p>
           </div>
+          {/* Layar ≤720px: satu potongan layar HP asli sebelum formulir, supaya
+              pengunjung dari tautan WA melihat aplikasinya sebelum diminta nomor. */}
+          <a className={styles.heroPeek} href="#cara-kerja">
+            <span className={styles.heroPeekScreen}>
+              <img
+                src={`/bench/${theme === 'light' ? 'light' : 'dark'}/detail-phone.webp`}
+                width={585}
+                height={1266}
+                alt={t('landing.peek.alt')}
+                decoding="async"
+              />
+            </span>
+            <span className={styles.heroPeekText}>
+              <strong>{t('landing.peek.title')}</strong>
+              <small>{t('landing.peek.sample')}</small>
+              <span className={styles.heroPeekLink}>
+                {t('landing.peek.link')} <Icon name="arrow-down" aria-hidden />
+              </span>
+            </span>
+          </a>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
-          <div id="cara-kerja" className={styles.heroScene}>
+          <div ref={sceneRef} id="cara-kerja" className={styles.heroScene}>
             <BenchScene shopName={shopName} />
           </div>
         </section>

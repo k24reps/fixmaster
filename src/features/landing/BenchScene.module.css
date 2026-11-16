@@ -93,6 +93,12 @@
 .hotspot {
   position: absolute;
   z-index: 2;
+  /* global.css memaksa setiap button 44×44 di layar sentuh. Area klik ini
+     harus persis sebesar menu di gambar (±12px di 390), kalau tidak ke-12
+     kotaknya saling menumpuk dan ketukan mengenai menu tetangga. Di layar
+     sentuh sempit area klik komputer dimatikan (lihat container 900px). */
+  min-width: 0 !important;
+  min-height: 0 !important;
   padding: 0;
   background: transparent;
   border: 0;
@@ -242,6 +248,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
+  /* Di desktop adegan selebar 1.200px: tanpa batas, satu baris keterangan
+     bisa ±170 karakter. */
+  max-width: 72ch;
   margin: 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
@@ -258,21 +267,56 @@
 }
 
 /* ---------- Lebar adegan, bukan viewport (Container Query Rule) ----------
-   700px: HP selebar 0,32 × komputer jadi ±165px, terlalu kecil untuk dibaca.
-   Komputer selebar adegan, HP di tengah di bawahnya. */
-@container scene (max-width: 700px) {
+   900px: berdampingan, HP selebar 0,32 × komputer jadi ±210px; di bawahnya
+   (768 dulu memberi HP terkecil, skala 0,40) komposisi bertumpuk: deret tombol
+   di atas sebagai satu baris, komputer selebar adegan, HP berdiri di depan sudut
+   kanan bawahnya. Tombol, komputer, dan HP terlihat bersamaan, jadi pengunjung
+   ponsel menyaksikan kedua layar pindah. Area klik komputer dimatikan: menunya
+   di gambar terlalu kecil untuk jari; jalurnya bottom nav HP dan deret tombol. */
+@container scene (max-width: 900px) {
+  .menu {
+    order: -1;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin-inline: calc(var(--space-1) * -1);
+    padding: var(--space-1);
+    /* Pudar di ujung kanan: isyarat ada tombol lain bila digeser. Mask hanya
+       membaca alfa, jadi token buram apa pun cukup. */
+    mask-image: linear-gradient(90deg, var(--text-primary) 85%, transparent);
+  }
+  .menu::-webkit-scrollbar {
+    display: none;
+  }
+  .menuKey {
+    flex: none;
+    scroll-snap-align: start;
+  }
   .rig {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'desk'
-      'phone';
-    row-gap: var(--space-6);
+    display: block;
+    padding-bottom: var(--space-4);
   }
   .device[data-device='phone'] {
-    justify-self: center;
-    width: min(72%, 300px);
+    position: relative;
+    z-index: 1;
+    width: min(40%, 260px);
+    margin: -30% var(--space-2) 0 auto;
+  }
+  .device[data-device='phone'] .bezel {
+    box-shadow: var(--shadow-lg);
   }
   .offer {
     max-width: 60%;
+  }
+}
+
+/* Baris menu di layar komputer tingginya 5,5% layar (44px rekaman). Di bawah
+   440px adegan, layarnya < 410px sehingga baris itu < 14px, lebih kecil dari
+   tombol bottom nav HP terkecil (320px). Di situ deret tombol di atas adegan
+   jadi jalurnya; ketukan di gambar komputer tidak memindahkan layar. */
+@container scene (max-width: 440px) {
+  .device[data-device='desk'] .hotspot {
+    pointer-events: none;
   }
 }

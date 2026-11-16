@@ -326,7 +326,11 @@ export const id = {
   'landing.scene.openDemo': 'Coba demo',
   'landing.scene.sample': 'Layar asli · data contoh',
   'landing.scene.caption':
-    'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Klik menu di layar komputer, di HP, atau tombol di atas: kedua layar pindah bersamaan.',
+    'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Pilih menu di layar komputer, di HP, atau di deret tombol: kedua layar pindah bersamaan.',
+  'landing.peek.alt': 'Layar Detail tiket FM-0008 di aplikasi FixMaster versi HP',
+  'landing.peek.title': 'Begini FixMaster di HP',
+  'landing.peek.sample': 'Layar asli · data contoh',
+  'landing.peek.link': 'Lihat semua menu',
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':

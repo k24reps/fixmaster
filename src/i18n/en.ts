@@ -325,7 +325,11 @@ export const en: Dictionary = {
   'landing.scene.openDemo': 'Try the demo',
   'landing.scene.sample': 'Real screens · sample data',
   'landing.scene.caption':
-    'The same app on a computer and a phone, and it installs to the home screen like any other app. Click a menu on the computer, the phone, or the buttons above: both screens switch together.',
+    'The same app on a computer and a phone, and it installs to the home screen like any other app. Pick a menu on the computer, the phone, or the row of buttons: both screens switch together.',
+  'landing.peek.alt': 'The FM-0008 ticket detail screen in the FixMaster phone app',
+  'landing.peek.title': 'This is FixMaster on a phone',
+  'landing.peek.sample': 'Real screen · sample data',
+  'landing.peek.link': 'See every menu',
   'landing.navWho': 'Who it\'s for',
   'landing.stagesTitle': 'From working alone to opening a branch, the way you work stays the same.',
   'landing.stagesLead':

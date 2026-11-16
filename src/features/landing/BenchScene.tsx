@@ -158,14 +158,16 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                   ? `${shotSrc(theme, page, device, size.out[1])} ${size.out[1]}w, ${shotSrc(theme, page, device)} ${size.out[0]}w`
                   : undefined
               }
-              sizes={wide ? '(max-width: 720px) 100vw, 70vw' : undefined}
+              // Slot komputer: selebar adegan di ≤900px, (lebar − 56px) / 1,32 di atasnya.
+              sizes={wide ? '(max-width: 932px) calc(100vw - 32px), min(calc((100vw - 56px) / 1.32), 891px)' : undefined}
               width={size.w}
               height={size.h}
               alt={on ? interpolate(t('landing.scene.screenAlt'), { page: pageLabel(page), device: deviceName }) : ''}
               aria-hidden={on ? undefined : true}
               data-on={on ? 'true' : undefined}
               decoding="async"
-              loading="lazy"
+              // Layar awal bisa jadi gambar terbesar di layar pertama desktop.
+              loading={page === 'detail' ? 'eager' : 'lazy'}
               onLoad={() => markLoaded(id)}
             />
           );
@@ -207,6 +209,9 @@ export function BenchScene({ shopName }: BenchSceneProps) {
               data-other={other ? 'true' : undefined}
               style={{ ...pct(rect), ...(other ? { background: themeShots.railBg } : {}) }}
               onPointerEnter={() => page && request(page)}
+              onPointerDown={() => page && request(page)}
+              // Area klik aria-hidden tidak boleh menyimpan fokus.
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => (page ? go(page) : setOffer({ path, label: other }))}
             />
           );
@@ -250,6 +255,7 @@ export function BenchScene({ shopName }: BenchSceneProps) {
             aria-pressed={page.key === want}
             data-loading={page.key === want && want !== shown ? 'true' : undefined}
             onPointerEnter={() => request(page.key)}
+            onPointerDown={() => request(page.key)}
             onFocus={() => request(page.key)}
             onClick={() => go(page.key)}
           >
