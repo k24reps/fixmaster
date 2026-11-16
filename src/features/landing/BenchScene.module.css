@@ -1098,6 +1098,10 @@
   text-overflow: ellipsis;
 }
 
+.stripReadoutLabel .readoutLed {
+  flex: none;
+}
+
 .strip:not([data-tone='neutral']) .readoutLed {
   background: var(--tone);
   box-shadow: 0 0 8px var(--tone);

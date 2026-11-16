@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui';
 import { useT, type TranslationKey } from '@/i18n';
@@ -11,7 +11,12 @@ import {
   type DemoLeadErrors,
   type DemoLeadSource,
 } from '@/lib/business/demoLead';
-import { clearDemoVisitor, readDemoVisitor, saveDemoVisitor } from '@/lib/demoVisitor';
+import {
+  clearDemoVisitor,
+  readDemoVisitorName,
+  saveDemoVisitor,
+  subscribeDemoVisitor,
+} from '@/lib/demoVisitor';
 import { DemoLeadRejectedError, submitDemoLead } from '@/data/supabase-client';
 import { useSettingsStore } from '@/stores/settings';
 import { trackEvent } from '@/lib/analytics';
@@ -49,7 +54,8 @@ export function DemoGate({
   const t = useT();
   const language = useSettingsStore((s) => s.language);
   const formId = useId();
-  const [returning, setReturning] = useState(() => readDemoVisitor());
+  // Satu sumber untuk semua gerbang di halaman (lihat subscribeDemoVisitor).
+  const returning = useSyncExternalStore(subscribeDemoVisitor, readDemoVisitorName, () => null);
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
   const [trap, setTrap] = useState('');
@@ -59,6 +65,15 @@ export function DemoGate({
   const [serverError, setServerError] = useState<TranslationKey | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
+  const focusAfterRender = useRef<HTMLInputElement | null>(null);
+
+  // Fokus dipindah sesudah render, saat aria-invalid dan pesan error sudah
+  // terpasang: pembaca layar mengumumkan kolom bersama kesalahannya. Dulu fokus
+  // dipanggil sebelum render, jadi submit gagal pertama terdengar tanpa error.
+  useEffect(() => {
+    focusAfterRender.current?.focus();
+    focusAfterRender.current = null;
+  }, [errors]);
 
   const changeName = (value: string) => {
     setShopName(value);
@@ -84,11 +99,11 @@ export function DemoGate({
     setErrors(found);
     setServerError(null);
     if (found.shopName) {
-      nameRef.current?.focus();
+      focusAfterRender.current = nameRef.current;
       return;
     }
     if (found.phone) {
-      phoneRef.current?.focus();
+      focusAfterRender.current = phoneRef.current;
       return;
     }
 
@@ -106,9 +121,9 @@ export function DemoGate({
           err.reason === 'phone'
             ? { phone: 'demoGate.errorPhone' }
             : { shopName: 'demoGate.errorNameLink' };
+        focusAfterRender.current = (err.reason === 'phone' ? phoneRef : nameRef).current;
         setErrors(next);
         setStatus('idle');
-        (err.reason === 'phone' ? phoneRef : nameRef).current?.focus();
         return;
       }
       const limited = err instanceof DemoLeadRejectedError;
@@ -131,9 +146,9 @@ export function DemoGate({
         </h2>
         <p className={styles.returningShop}>
           <span className={styles.led} aria-hidden />
-          <strong>{returning.shopName}</strong>
+          <strong>{returning}</strong>
         </p>
-        <button className={styles.submit} type="button" onClick={() => pass(returning.shopName)}>
+        <button className={styles.submit} type="button" onClick={() => pass(returning)}>
           {t('demoGate.openAgain')}
           <Icon name="arrow-right" aria-hidden />
         </button>
@@ -142,7 +157,6 @@ export function DemoGate({
           type="button"
           onClick={() => {
             clearDemoVisitor();
-            setReturning(null);
             onShopNameChange?.('');
           }}
         >
@@ -174,7 +188,8 @@ export function DemoGate({
             name="shop"
             type="text"
             autoComplete="organization"
-            maxLength={SHOP_NAME_MAX + 20}
+            maxLength={SHOP_NAME_MAX}
+            required
             placeholder={t('demoGate.namePlaceholder')}
             value={shopName}
             onChange={(e) => changeName(e.target.value)}
@@ -199,6 +214,7 @@ export function DemoGate({
             inputMode="tel"
             autoComplete="tel-national"
             maxLength={24}
+            required
             placeholder="0812-3456-7890"
             value={phone}
             onChange={(e) => changePhone(e.target.value)}

@@ -153,6 +153,16 @@ describe('LandingPage dua adegan', () => {
     expect(within(desk).getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
   });
 
+  it('ganti nama toko di satu gerbang membuka formulir di kedua gerbang', () => {
+    localStorage.setItem(VISITOR_KEY, JSON.stringify({ shopName: 'Sinar Servis' }));
+    renderLanding();
+    expect(screen.queryAllByLabelText('Nomor WhatsApp')).toHaveLength(0);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Ganti nama toko/ })[0]);
+    expect(screen.getAllByLabelText('Nomor WhatsApp')).toHaveLength(2);
+    expect(screen.queryByText('Sinar Servis')).toBeNull();
+  });
+
   it('tuts strip ponsel menggerakkan adegan yang sama', () => {
     renderLanding();
     // Strip hanya tampil di container ≤720px; jsdom tidak menghitung container
@@ -225,6 +235,21 @@ describe('DemoGate', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
     });
     await waitFor(() => expect(onPassed).toHaveBeenCalledWith('Sinar Servis'));
+  });
+
+  it('fokus mendarat di kolom yang salah sesudah error terpasang', () => {
+    renderGate();
+    const name = screen.getByLabelText('Nama toko');
+    const atFocus: (string | null)[] = [];
+    name.addEventListener('focus', () =>
+      atFocus.push(name.getAttribute('aria-invalid'), name.getAttribute('aria-describedby')),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Buka demo' }));
+
+    expect(document.activeElement).toBe(name);
+    // Pembaca layar membaca atribut saat fokus tiba: keduanya harus sudah ada.
+    expect(atFocus[0]).toBe('true');
+    expect(atFocus[1]).toBeTruthy();
   });
 
   it('pengunjung yang kembali di perangkat ini tidak mengisi lagi', () => {
