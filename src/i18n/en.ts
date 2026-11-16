@@ -278,7 +278,8 @@ export const en: Dictionary = {
   'demoGate.title': 'Try the demo under your shop name',
   'demoGate.titleFinal': 'Two fields, then the demo opens',
   'demoGate.titleDemoRoute': 'One step before the demo',
-  'demoGate.lead': 'The real app with sample data. No account and no OTP code.',
+  'demoGate.lead':
+    'The real app with sample data. Just your shop name and WhatsApp number; you don\'t need an account.',
   'demoGate.nameLabel': 'Shop name',
   'demoGate.namePlaceholder': 'e.g. Sinar Electronics Repair',
   'demoGate.phoneLabel': 'WhatsApp number',
@@ -324,7 +325,7 @@ export const en: Dictionary = {
   'landing.scene.fieldCustomer': 'Customer',
   'landing.scene.fieldTech': 'Technician',
   'landing.scene.partName': 'ASUS X441 keyboard',
-  'landing.scene.partInStock': 'On the stock shelf · 3 units',
+  'landing.scene.partInStock': 'On the stock shelf · 3 pcs',
   'landing.scene.partInstalled': 'Installed · stock −1',
   'landing.scene.partCost': 'Cost',
   'landing.scene.bill': 'Bill',
@@ -353,7 +354,7 @@ export const en: Dictionary = {
   'landing.navWho': 'Who it\'s for',
   'landing.stagesTitle': 'From working alone to opening a branch, the way you work stays the same.',
   'landing.stagesLead':
-    'Start with what you need today. When staff or a new branch arrive, just add them. The price stays {price} per incoming unit, and at most {max} per branch per month.',
+    'When staff or a new branch arrive, just add them. The price stays {price} per incoming unit, and at most {max} per branch per month.',
   'landing.stage.soloTitle': 'Working on your own',
   'landing.stage.soloText':
     'You take in units, repair them, and collect payment. Tickets and receipts stay in order, part stock no longer lives in your head, and customers check their repair status through the link on the receipt.',
@@ -395,7 +396,7 @@ export const en: Dictionary = {
     'Part costs go into the ticket, so each unit\'s margin is visible before pickup.',
   'landing.vs.cash': 'Money coming in',
   'landing.vs.cashOld':
-    'Cash, transfers, and QRIS all mixed together. Chasing the difference until late.',
+    'Cash, transfers, and QRIS all mixed together. You chase the difference until late.',
   'landing.vs.cashNew':
     'Each payment goes into the chosen account. The end-of-day cash count shows the difference immediately.',
   'landing.vs.team': 'Staff',
@@ -414,8 +415,7 @@ export const en: Dictionary = {
   'landing.vs.tryLink': 'See it in the demo',
   'landing.price.ruleCap':
     'At most {max} per branch per month: past {cap} units, further tickets at that branch are free until the end of the month.',
-  'landing.price.capNote':
-    'The dashed ticks are the free zone: past {cap} units, the bill stops at {max}.',
+  'landing.price.capNote': 'Dashed ticks: the free zone.',
   'landing.price.freeByCap': 'Free under the cap',
   'landing.vs.statusExample': 'example tracking link, one random code per ticket',
   'landing.trailsTitle': 'Install one part, and four places record it.',
@@ -448,7 +448,7 @@ export const en: Dictionary = {
   'landing.bench.home': 'Home appliances',
   'landing.bench.yours': 'Your category',
   'landing.modulesTitle': 'Every menu open, one price.',
-  'landing.modulesLead': 'No plans and no locked features. Unlimited users and branches.',
+  'landing.modulesLead': 'Every menu is open to every shop. Users and branches are unlimited.',
   'landing.mod.services': 'Tickets, statuses, receipts, and a tracking link for customers.',
   'landing.mod.calculator': 'Repair prices from part cost, labour, and target profit.',
   'landing.mod.pos': 'Sell accessories and parts from the same catalog as your stock.',
@@ -465,7 +465,7 @@ export const en: Dictionary = {
   'landing.mod.wa': 'Repair status messages written the way you want.',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
-    'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create, and at most {max} per branch per month. A quiet shop pays little, and a busy shop still has a predictable bill.',
+    'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create.',
   'landing.price.ruleFree': 'POS sales and warranty claims are not counted.',
   'landing.price.ruleRefund':
     'Cancel or delete a ticket within {minutes} minutes and its unit comes back.',
@@ -481,7 +481,7 @@ export const en: Dictionary = {
   'landing.price.firstMonth': 'First month, after {free} free units',
   'landing.honestTitle': 'It needs the internet, and shop data is backed up every night.',
   'landing.honestLead':
-    'FixMaster needs the internet. If the connection drops, the app tells you a record was not saved, then reloads on its own when the network is back. Every shop\'s data is copied automatically each night.',
+    'If the connection drops, the app tells you a record was not saved, then reloads on its own when the network is back.',
   'landing.faq.connection.q': 'What if the internet connection drops?',
   'landing.faq.connection.a':
     'FixMaster runs on a server, so it needs an internet connection to keep data in sync across devices and staff. While the connection is down the app cannot record new transactions and tells you so. When the internet is back, FixMaster loads the latest data without signing in again.',

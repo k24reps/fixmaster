@@ -6977,3 +6977,12 @@ atau kosakata AI kosong. Pemilik memilih lima perbaikan: judul seksi koneksi tid
 pengantar jejak; paragraf hero dipendekkan (daftar perangkat dibuang, sudah ada di seksi laci)
 dan pelakunya disebut ("Teknisi mencatat unit…"). Judul "Semua yang bikin toko servis
 berantakan…" sengaja dipertahankan.
+
+**Audit humanizer (16 Nov 2026):** pola Wikipedia "Signs of AI writing" atas teks landing.
+Bersih dari tanda pisah, kutip melengkung, kosakata AI, dan klaim tanpa bukti; temuannya
+pengulangan. Diterapkan: paragraf seksi koneksi tidak lagi mengulang judulnya (pengulangan itu
+lahir dari perbaikan audit sebelumnya); batas Rp 100.000 cukup sekali di bagian harga (di
+aturan), bukan tiga kali dalam satu layar; stok part di adegan memakai "pcs" supaya "unit"
+hanya berarti perangkat pelanggan dan satuan harga; dua "tanpa/tidak ada" di gerbang demo dan
+seksi modul diganti kalimat positif; kalimat pemanasan seksi Untuk siapa dibuang; "Selisih
+kas dicari sampai malam" menjadi "Anda mencari selisih kas sampai malam".

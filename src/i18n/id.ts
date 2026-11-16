@@ -279,7 +279,8 @@ export const id = {
   'demoGate.title': 'Coba demo dengan nama toko Anda',
   'demoGate.titleFinal': 'Dua kolom, lalu demo terbuka',
   'demoGate.titleDemoRoute': 'Satu langkah sebelum demo',
-  'demoGate.lead': 'Aplikasi asli dengan data contoh. Tanpa akun dan tanpa kode OTP.',
+  'demoGate.lead':
+    'Aplikasi asli dengan data contoh. Cukup nama toko dan nomor WA, tidak perlu akun.',
   'demoGate.nameLabel': 'Nama toko',
   'demoGate.namePlaceholder': 'mis. Sinar Servis Elektronik',
   'demoGate.phoneLabel': 'Nomor WhatsApp',
@@ -325,7 +326,7 @@ export const id = {
   'landing.scene.fieldCustomer': 'Pelanggan',
   'landing.scene.fieldTech': 'Teknisi',
   'landing.scene.partName': 'Keyboard ASUS X441',
-  'landing.scene.partInStock': 'Di rak stok · 3 unit',
+  'landing.scene.partInStock': 'Di rak stok · 3 pcs',
   'landing.scene.partInstalled': 'Terpasang · stok −1',
   'landing.scene.partCost': 'Modal',
   'landing.scene.bill': 'Tagihan',
@@ -354,7 +355,7 @@ export const id = {
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':
-    'Mulai dengan yang Anda butuhkan sekarang. Begitu ada karyawan atau cabang baru, tinggal ditambahkan. Harganya tetap {price} per unit masuk, dan paling banyak {max} per cabang sebulan.',
+    'Begitu ada karyawan atau cabang baru, tinggal ditambahkan. Harganya tetap {price} per unit masuk, dan paling banyak {max} per cabang sebulan.',
   'landing.stage.soloTitle': 'Masih kerja sendiri',
   'landing.stage.soloText':
     'Anda yang menerima unit, memperbaiki, dan menagih. Tiket dan nota tercatat rapi, stok part tidak perlu diingat-ingat, dan pelanggan bisa cek status sendiri lewat tautan di nota.',
@@ -395,7 +396,8 @@ export const id = {
   'landing.vs.marginNew':
     'Modal part masuk ke tiket, jadi margin tiap unit terlihat sebelum unitnya diambil.',
   'landing.vs.cash': 'Uang masuk',
-  'landing.vs.cashOld': 'Tunai, transfer, dan QRIS bercampur. Selisih kas dicari sampai malam.',
+  'landing.vs.cashOld':
+    'Tunai, transfer, dan QRIS bercampur. Anda mencari selisih kas sampai malam.',
   'landing.vs.cashNew':
     'Tiap pembayaran masuk ke kas yang dipilih. Hitung kas di akhir hari langsung menunjukkan selisihnya.',
   'landing.vs.team': 'Karyawan',
@@ -412,8 +414,7 @@ export const id = {
   'landing.vs.tryLink': 'Lihat sendiri di demo',
   'landing.price.ruleCap':
     'Paling banyak {max} per cabang per bulan: lewat {cap} unit, tiket berikutnya di cabang itu gratis sampai akhir bulan.',
-  'landing.price.capNote':
-    'Garis putus-putus adalah zona gratis: lewat {cap} unit, tagihan berhenti di {max}.',
+  'landing.price.capNote': 'Garis putus-putus: zona gratis.',
   'landing.price.freeByCap': 'Gratis karena batas',
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
   'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
@@ -446,8 +447,7 @@ export const id = {
   'landing.bench.home': 'Alat rumah tangga',
   'landing.bench.yours': 'Kategori Anda',
   'landing.modulesTitle': 'Semua menu terbuka, satu harga.',
-  'landing.modulesLead':
-    'Tidak ada paket dan tidak ada fitur yang dikunci. Pengguna dan cabang tanpa batas.',
+  'landing.modulesLead': 'Semua menu terbuka untuk semua toko. Pengguna dan cabang tidak dibatasi.',
   'landing.mod.services': 'Tiket, status, nota, dan tautan lacak untuk pelanggan.',
   'landing.mod.calculator': 'Harga servis dari modal part, jasa, dan target untung.',
   'landing.mod.pos': 'Jual aksesori dan part dari katalog yang sama dengan stok.',
@@ -464,7 +464,7 @@ export const id = {
   'landing.mod.wa': 'Pesan status servis yang isinya Anda atur sendiri.',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
-    '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat, dan paling banyak {max} per cabang sebulan. Toko sepi membayar sedikit, toko ramai tagihannya tetap terkendali.',
+    '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat.',
   'landing.price.ruleFree': 'Penjualan kasir dan klaim garansi tidak dihitung.',
   'landing.price.ruleRefund':
     'Tiket yang dibatalkan atau dihapus dalam {minutes} menit, unitnya kembali.',
@@ -481,7 +481,7 @@ export const id = {
   'landing.price.firstMonth': 'Bulan pertama, setelah {free} unit gratis',
   'landing.honestTitle': 'Butuh internet, dan data toko dicadangkan tiap malam.',
   'landing.honestLead':
-    'FixMaster butuh internet. Kalau koneksi putus, aplikasi bilang catatan belum tersimpan, lalu memuat ulang sendiri begitu jaringan kembali. Data tiap toko disalin otomatis tiap malam.',
+    'Kalau koneksi putus, aplikasi memberi tahu bahwa catatan belum tersimpan, lalu memuat ulang sendiri begitu jaringan kembali.',
   'landing.faq.connection.q': 'Bagaimana jika koneksi internet terputus?',
   'landing.faq.connection.a':
     'FixMaster berjalan di server, jadi butuh koneksi internet agar data tetap sinkron antarperangkat dan antarstaf. Saat koneksi terputus, aplikasi tidak bisa mencatat transaksi baru dan memberi tahu Anda. Begitu internet kembali, FixMaster memuat data terbaru tanpa perlu login ulang.',
