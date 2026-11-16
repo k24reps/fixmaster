@@ -296,7 +296,9 @@ export const id = {
   'demoGate.errorNameLong': 'Nama toko terlalu panjang, maksimal 60 huruf.',
   'demoGate.errorNameLink': 'Nama toko tidak boleh berisi tautan atau tanda < >.',
   'demoGate.errorPhone':
-    'Nomor WhatsApp belum benar. Pakai nomor HP Indonesia, contoh 0812-3456-7890.',
+    'Nomor WhatsApp belum benar. Pakai nomor HP Indonesia yang diawali 08, 10 sampai 13 angka.',
+  'demoGate.errorPhoneFake':
+    'Nomor ini tidak terlihat seperti nomor WhatsApp yang aktif. Pakai nomor Anda sendiri.',
   'demoGate.errorSave':
     'Data belum terkirim karena koneksi ke server gagal. Periksa internet Anda, lalu tekan Coba lagi.',
   'demoGate.errorLimited':

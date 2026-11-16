@@ -283,6 +283,14 @@ meminta nama toko + nomor WhatsApp sebelum demo terbuka.
   untuk melewati gerbang di kunjungan berikutnya; nomor tidak pernah disimpan di sana.
   `seedDemoWorkspace(shopName)` memberi org demo nama itu.
 
+**Saringan nomor asal-asalan (migration `0104`, 16 Nov 2026).** `submit_demo_lead` kini juga
+memanggil `demo_lead_phone_plausible(phone)` (immutable, tidak dibuka ke anon/authenticated):
+awalan harus milik operator seluler (`^628(1[1-9]|2[1238]|3[1238]|5[1-35-9]|68|7[7-9]|8[1-9]|9[5-9])`),
+nomor pelanggan bukan nol semua, dan bukan deret urut naik/turun ≥6 digit (`demo_lead_digit_run`)
+sesudah 08 atau pada nomor pelanggan. Nomor cantik berangka sama tetap diterima. Ditolak dengan
+hint `demo_lead_phone` yang sama. Cermin klien: `isPlausibleIdMobile` (`lib/business/demoLead.ts`),
+pesan `demoGate.errorPhoneFake`. Baris lama tidak disentuh.
+
 > Historis — **Billing (migration `0009` → `0047`)**: `invoices` sebagai buku pembayaran
 > dan `is_org_active` sebagai gerbang masa aktif; sejak `0047` hanya
 > `admin_confirm_manual_payment` yang bisa memperpanjang paket Solo/Pro. Seluruhnya

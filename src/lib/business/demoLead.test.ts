@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import migration from '../../../supabase/migrations/0102_demo_leads.sql?raw';
+import plausibleMigration from '../../../supabase/migrations/0104_demo_lead_phone_plausible.sql?raw';
 import {
   DEMO_LEAD_RETENTION_DAYS,
+  ID_MOBILE_OPERATOR_PATTERN,
   ID_MOBILE_PATTERN,
   SHOP_NAME_MAX,
   SHOP_NAME_MIN,
   cleanShopName,
   demoLeadErrors,
+  isPlausibleIdMobile,
   normalizeIdPhone,
 } from './demoLead';
 
@@ -32,7 +35,7 @@ describe('normalizeIdPhone', () => {
 
 describe('demoLeadErrors', () => {
   it('lolos untuk isian wajar', () => {
-    expect(demoLeadErrors({ shopName: 'Sinar Servis', phone: '0812-3456-7890' })).toEqual({});
+    expect(demoLeadErrors({ shopName: 'Sinar Servis', phone: '0812-4719-3305' })).toEqual({});
   });
 
   it('nama terlalu pendek, terlalu panjang, atau berisi tautan', () => {
@@ -56,8 +59,57 @@ describe('demoLeadErrors', () => {
     );
   });
 
+  it('nomor yang jelas asal-asalan', () => {
+    expect(demoLeadErrors({ shopName: 'Sinar Servis', phone: '0812-0000-0000' }).phone).toBe(
+      'demoGate.errorPhoneFake',
+    );
+  });
+
   it('merapikan spasi seperti server', () => {
     expect(cleanShopName('  Sinar   Servis  ')).toBe('Sinar Servis');
+  });
+});
+
+// Kasus yang sama dijalankan terhadap SQL di scripts/selfhost/uji-0104.sql.
+describe('isPlausibleIdMobile (0104)', () => {
+  it.each([
+    '0812-4719-3305',
+    '0857-2290-4417',
+    '0838 1102 7764',
+    '0896-5521-0038',
+    '0881 9034 2216',
+    '0819-7765-102',
+    // Nomor cantik dijual dan dipakai untuk usaha: tetap diterima.
+    '0812-8888-8888',
+    '0811-1111-111',
+    '0899-0000-0102',
+  ])('menerima %s', (raw) => {
+    expect(isPlausibleIdMobile(normalizeIdPhone(raw)!)).toBe(true);
+  });
+
+  it.each([
+    ['0812-0000-0000', 'nomor pelanggan nol semua'],
+    ['0812-3456-7890', 'deret naik sesudah 08 (contoh placeholder)'],
+    ['08123456789', 'deret naik sesudah 08'],
+    ['0857-1234-5678', 'deret naik di nomor pelanggan'],
+    ['0898-765-4321', 'deret turun sesudah 08'],
+    ['0845-2290-4417', 'awalan tidak dipakai operator'],
+    ['0870-2290-4417', 'awalan tidak dipakai operator'],
+    ['0890-2290-4417', 'awalan tidak dipakai operator'],
+  ])('menolak %s (%s)', (raw) => {
+    const phone = normalizeIdPhone(raw);
+    expect(phone).not.toBeNull();
+    expect(isPlausibleIdMobile(phone!)).toBe(false);
+  });
+});
+
+describe('saringan nomor sama dengan migrasi 0104', () => {
+  it('awalan operator dan pemeriksaan di submit_demo_lead', () => {
+    expect(plausibleMigration).toContain(`p_phone ~ '${ID_MOBILE_OPERATOR_PATTERN}'`);
+    expect(plausibleMigration).toContain("substr(p_phone, 6) !~ '^0+$'");
+    expect(plausibleMigration).toContain('not demo_lead_digit_run(substr(p_phone, 4))');
+    expect(plausibleMigration).toContain('not demo_lead_digit_run(substr(p_phone, 6))');
+    expect(plausibleMigration).toContain('if not demo_lead_phone_plausible(v_phone) then');
   });
 });
 
