@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { translate } from './index';
 import { id } from './id';
 import { en } from './en';
@@ -27,5 +27,19 @@ describe('i18n', () => {
     for (const [k, v] of Object.entries(en)) {
       expect(v, `en.${k}`).not.toBe('');
     }
+  });
+});
+
+describe('registry kamus', () => {
+  it('Inggris tidak dimuat sampai diminta; Indonesia selalu ada', async () => {
+    vi.resetModules();
+    const registry = await import('./registry');
+    expect(registry.isLanguageLoaded('id')).toBe(true);
+    expect(registry.isLanguageLoaded('en')).toBe(false);
+    expect(registry.dictionary('en')).toBeUndefined();
+
+    await registry.loadLanguage('en');
+    expect(registry.isLanguageLoaded('en')).toBe(true);
+    expect(registry.dictionary('en')?.['nav.dashboard']).toBe(en['nav.dashboard']);
   });
 });

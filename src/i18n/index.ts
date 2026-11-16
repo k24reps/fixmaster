@@ -8,15 +8,17 @@
  * the whole app. Migratable to react-i18next later if many languages appear.
  */
 import { useCallback } from 'react';
-import { id, type TranslationKey, type Dictionary } from './id';
-import { en } from './en';
+import { id, type TranslationKey } from './id';
+import { dictionary } from './registry';
 import { useSettingsStore, type Language } from '@/stores/settings';
 
-const DICTIONARIES: Record<Language, Dictionary> = { id, en };
-
-/** Translate a key for an explicit language (non-hook contexts). */
+/**
+ * Translate a key for an explicit language (non-hook contexts). A language
+ * whose dictionary has not arrived yet falls back to Indonesian; setLanguage
+ * waits for the dictionary before switching, so the UI never mixes the two.
+ */
 export function translate(lang: Language, key: TranslationKey): string {
-  return DICTIONARIES[lang][key] ?? id[key] ?? key;
+  return dictionary(lang)?.[key] ?? id[key] ?? key;
 }
 
 /**
