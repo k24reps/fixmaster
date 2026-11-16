@@ -572,6 +572,28 @@ jadi server dulu, baru `main`.
 sebelumnya (landing lama tidak memakai 0102). Mematikan email saja:
 `select cron.unschedule('fixmaster-demo-lead-notify');`.
 
+### Rilis 0104 (saringan nomor asal-asalan di gerbang demo) — runbook
+
+Tidak ada urutan wajib: frontend dan server masing-masing menyaring sendiri. Frontend
+(`isPlausibleIdMobile`) sudah di `main`; sampai 0104 diterapkan, kiriman lewat API langsung
+masih hanya dicek format. **Status 16 Nov 2026: belum diterapkan di produksi.**
+
+1. **Backup:** `sudo bash /opt/fixmaster/backup/backup-offsite.sh`.
+2. **Unduh** `supabase/migrations/0104_demo_lead_phone_plausible.sql` dan
+   `scripts/selfhost/uji-0104.sql` ke `/tmp` VPS dari raw GitHub, dikunci ke SHA commit yang
+   diuji, lalu `sha256sum -c`.
+3. **Uji coba (tidak mengubah apa pun):**
+   `sudo docker cp /tmp/0104_demo_lead_phone_plausible.sql supabase-db:/tmp/ && sudo docker cp /tmp/uji-0104.sql supabase-db:/tmp/`
+   `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/uji-0104.sql`
+   Harus diakhiri `NOTICE:  UJI 0104 LULUS` lalu `ROLLBACK`. Lulus di simulasi lokal
+   (`scripts/selfhost/simulasi/jalankan.sh`) 16 Nov 2026, termasuk penerapan ulang.
+4. **Terapkan:** `sudo docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f /tmp/0104_demo_lead_phone_plausible.sql`
+5. **Asap:** di fixmaster.app (jendela privat), `0812-0000-0000` ditolak dengan pesan "tidak
+   terlihat seperti nomor WhatsApp yang aktif"; nomor sendiri tetap membuka demo.
+
+**Rem darurat:** jalankan ulang definisi `submit_demo_lead` dari 0102 (tanpa saringan); dua
+fungsi pembantu aman dibiarkan.
+
 ## Pemantauan server (27 Sep 2026)
 
 Kejadian 26–27 Sep baru ketahuan saat pemilik mencoba membuka aplikasi. Pemantau harus

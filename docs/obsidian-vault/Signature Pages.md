@@ -82,7 +82,9 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   jebakan bot, galat per kolom, galat simpan jujur dengan "Coba lagi", batas jaringan.
   Sejak 16 Nov 2026: catatan pemakaian nomor tepat di bawah kolom nomor (teksnya tetap,
   `aria-describedby`), fokus ke kolom yang salah dipindah **sesudah** render supaya error
-  ikut diumumkan, kolom `required`, nama `maxLength` 60. Pengunjung demo adalah store yang
+  ikut diumumkan, kolom `required`, nama `maxLength` 60. Nomor yang jelas asal-asalan
+  (awalan bukan operator, nol semua, deret urut seperti contoh placeholder) ditolak dengan
+  pesan sendiri (`demoGate.errorPhoneFake`, migrasi 0104); nomor cantik tetap lolos. Pengunjung demo adalah store yang
   dilanggan (`subscribeDemoVisitor` + `useSyncExternalStore`), jadi "Ganti nama toko" di satu
   gerbang membuka formulir di semua gerbang. Judul gerbang akhir: "Buka meja penerimaan toko
   Anda".

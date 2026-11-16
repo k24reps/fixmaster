@@ -200,14 +200,14 @@ describe('DemoGate', () => {
     submitDemoLead.mockResolvedValue(undefined);
     const onPassed = renderGate();
     fireEvent.change(screen.getByLabelText('Nama toko'), { target: { value: ' Sinar  Servis ' } });
-    fireEvent.change(screen.getByLabelText('Nomor WhatsApp'), { target: { value: '0812-3456-7890' } });
+    fireEvent.change(screen.getByLabelText('Nomor WhatsApp'), { target: { value: '0812-4719-3305' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Buka demo' }));
     });
 
     expect(submitDemoLead).toHaveBeenCalledWith({
       shopName: 'Sinar Servis',
-      phone: '0812-3456-7890',
+      phone: '0812-4719-3305',
       source: 'hero',
       locale: 'id',
       trap: '',
@@ -222,7 +222,7 @@ describe('DemoGate', () => {
     submitDemoLead.mockRejectedValueOnce(new Error('Failed to fetch'));
     const onPassed = renderGate();
     fireEvent.change(screen.getByLabelText('Nama toko'), { target: { value: 'Sinar Servis' } });
-    fireEvent.change(screen.getByLabelText('Nomor WhatsApp'), { target: { value: '081234567890' } });
+    fireEvent.change(screen.getByLabelText('Nomor WhatsApp'), { target: { value: '081247193305' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Buka demo' }));
     });

@@ -7037,3 +7037,33 @@ akhir di semua lebar termasuk 1280×720; tidak ada teks terpotong; 44 tab stop d
 pemasaran, radius bingkai ponsel 40/31px, ikon ber-font-size, bar sinyal 1px). Build, lint,
 **1156 tes / 88 berkas**. **Belum diperbarui:** gambar vault (tanpa PowerShell) dan foto
 `scripts/shoot-landing.mjs`.
+
+## Gerbang demo: saringan nomor asal-asalan, tetap tanpa OTP (0104, 16 Nov 2026)
+
+**Pemicu:** pemilik mencoba nomor asal di landing dan demo tetap terbuka. Itu sesuai desain
+0102 (cek format saja), tetapi contoh placeholder `0812-3456-7890` dan `0812-0000-0000` pun lolos.
+
+**Pilihan pemilik:** saring pola palsu (bukan OTP lewat WhatsApp, bukan dibiarkan). OTP satu-satunya
+cara memastikan nomor aktif, tetapi butuh layanan pengirim berbayar, menambah satu langkah sebelum
+demo, dan membalik keputusan 14 Nov. Ditimbang ulang bila daftar `/operator` ternyata banyak palsu.
+
+**Aturan** (klien `isPlausibleIdMobile`, server `demo_lead_phone_plausible`, kasus uji sama di
+`demoLead.test.ts` dan `uji-0104.sql`): awalan operator yang dipakai, nomor pelanggan bukan nol
+semua, bukan deret urut ≥6 digit. **Prinsip:** menolak nomor asli lebih mahal daripada meloloskan
+nomor palsu, jadi daftar awalan sengaja longgar (termasuk 0828 Ceria dan 0868 Byru) dan nomor cantik
+berangka sama (`0812-8888-8888`, `0811-1111-111`) tetap diterima. Nomor acak yang terlihat wajar
+tetap lolos; itu batas yang disadari.
+
+**Teks:** pesan format tidak lagi memberi contoh `0812-3456-7890` (kini ditolak sebagai deret);
+pesan baru untuk nomor yang tampak tidak aktif. Placeholder tetap `0812-3456-7890` sebagai
+petunjuk format: yang mengetiknya apa adanya memang seharusnya ditolak.
+
+**Jebakan sesi:** sesudah container dimulai ulang, checkout lokal kembali ke `main` sebelum PR #2
+di-merge, dan perubahan ini sempat ditulis di atas kode lama. Ketahuan saat teks vault yang baru
+tidak ditemukan; dipindah lewat stash ke `origin/main` terbaru tanpa konflik. Cek `git log -1`
+terhadap `origin/main` sebelum mulai kerja di sesi yang dilanjutkan.
+
+**Verifikasi:** 1175 tes / 88 berkas, lint, build; simulasi PostgreSQL 16 lokal: `UJI 0104 LULUS`,
+penerapan dan penerapan ulang OK. **Belum diterapkan di produksi** (runbook "Rilis 0104" di
+[[Self-Hosting]]).
+

@@ -295,7 +295,9 @@ export const en: Dictionary = {
   'demoGate.errorNameLong': 'The shop name is too long, 60 characters at most.',
   'demoGate.errorNameLink': 'The shop name cannot contain links or < > characters.',
   'demoGate.errorPhone':
-    'That WhatsApp number is not valid. Use an Indonesian mobile number, for example 0812-3456-7890.',
+    'That WhatsApp number is not right. Use an Indonesian mobile number starting with 08, 10 to 13 digits.',
+  'demoGate.errorPhoneFake':
+    'That does not look like an active WhatsApp number. Please use your own number.',
   'demoGate.errorSave':
     'Nothing was sent because the connection to the server failed. Check your internet, then press Try again.',
   'demoGate.errorLimited':
