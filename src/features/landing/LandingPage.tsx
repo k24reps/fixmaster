@@ -33,20 +33,6 @@ interface LandingPageProps {
   onStart?: (intent: AuthIntent) => void;
 }
 
-interface Trail {
-  icon: IconName;
-  place: TranslationKey;
-  text: TranslationKey;
-  value: string;
-}
-
-const TRAILS: Trail[] = [
-  { icon: 'box', place: 'landing.trail.stock', text: 'landing.trail.stockText', value: '−1' },
-  { icon: 'receipt', place: 'landing.trail.ticket', text: 'landing.trail.ticketText', value: 'Rp 170.000' },
-  { icon: 'users', place: 'landing.trail.customer', text: 'landing.trail.customerText', value: '+1' },
-  { icon: 'wallet', place: 'landing.trail.cash', text: 'landing.trail.cashText', value: '+Rp 350.000' },
-];
-
 interface Contrast {
   situation: TranslationKey;
   old: TranslationKey;
@@ -55,7 +41,11 @@ interface Contrast {
   example?: string;
 }
 
-/** Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. */
+/**
+ * Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. Empat
+ * pertama paling sering terasa dan terlihat langsung; sisanya dibuka sesuai
+ * minat (dulu 8 baris × 3 sel, 2.796px di ponsel).
+ */
 const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   {
@@ -66,12 +56,14 @@ const CONTRASTS: Contrast[] = [
     example: 'fixmaster.app/t/K7Q2M9XAPD',
   },
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
-  { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
+  { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
   { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
   { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
   { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
 ];
+
+const VS_VISIBLE = 4;
 
 interface Drawer {
   icon: IconName;
@@ -87,27 +79,6 @@ const DRAWERS: Drawer[] = [
   { icon: 'speaker', label: 'landing.bench.audio' },
   { icon: 'game-controller', label: 'landing.bench.console' },
   { icon: 'cooking-pot', label: 'landing.bench.home' },
-];
-
-interface Module {
-  icon: IconName;
-  name: TranslationKey;
-  text: TranslationKey;
-}
-
-const MODULES: Module[] = [
-  { icon: 'screwdriver-wrench', name: 'nav.services', text: 'landing.mod.services' },
-  { icon: 'calculator', name: 'nav.calculator', text: 'landing.mod.calculator' },
-  { icon: 'cash-register', name: 'nav.pos', text: 'landing.mod.pos' },
-  { icon: 'users', name: 'nav.customers', text: 'landing.mod.customers' },
-  { icon: 'truck-field', name: 'nav.suppliers', text: 'landing.mod.suppliers' },
-  { icon: 'wallet', name: 'nav.finance', text: 'landing.mod.finance' },
-  { icon: 'list-check', name: 'nav.tasks', text: 'landing.mod.tasks' },
-  { icon: 'map-pin', name: 'nav.attendance', text: 'landing.mod.attendance' },
-  { icon: 'chart-line', name: 'nav.reports', text: 'landing.mod.reports' },
-  { icon: 'clock-rotate-left', name: 'nav.activity', text: 'landing.mod.activity' },
-  { icon: 'buildings', name: 'landing.mod.outletsName', text: 'landing.mod.outlets' },
-  { icon: 'whatsapp', name: 'landing.mod.waName', text: 'landing.mod.wa' },
 ];
 
 interface Stage {
@@ -292,6 +263,27 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
     target.querySelector<HTMLElement>('input, button')?.focus({ preventScroll: true });
   };
 
+  const renderVsRow = (row: Contrast) => (
+    <li key={row.situation} className={styles.vsRow} data-featured={row.example ? 'true' : undefined}>
+      <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
+      <p className={styles.vsOld}>
+        <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
+        {t(row.old)}
+      </p>
+      <div className={styles.vsNew}>
+        <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
+        <p>{t(row.fixmaster)}</p>
+        {row.example && (
+          <p className={styles.vsTrack}>
+            <Icon name="qrcode" aria-hidden />
+            <span className={styles.vsTrackUrl}>{row.example}</span>
+            <span className={styles.vsTrackNote}>{t('landing.vs.statusExample')}</span>
+          </p>
+        )}
+      </div>
+    </li>
+  );
+
   return (
     <div className={styles.page}>
       <a
@@ -313,8 +305,8 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
 
         <nav className={styles.nav} aria-label={t('landing.navLabel')}>
           <a href="#cara-kerja">{t('landing.navHow')}</a>
-          <a href="#untuk-siapa">{t('landing.navWho')}</a>
           <a href="#harga">{t('landing.navPricing')}</a>
+          <a href="#untuk-siapa">{t('landing.navWho')}</a>
         </nav>
 
         <div className={styles.headerActions}>
@@ -361,7 +353,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
-          <div className={styles.heroScene}>
+          <div id="cara-kerja" className={styles.heroScene}>
             <BenchScene shopName={shopName} bench={bench} sceneRef={sceneRef} />
           </div>
         </section>
@@ -385,32 +377,21 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
                 <strong>{t('landing.vs.newTitle')}</strong>
               </span>
             </div>
-            <ul className={styles.vsList}>
-              {CONTRASTS.map((row) => (
-                <li
-                  key={row.situation}
-                  className={styles.vsRow}
-                  data-featured={row.example ? 'true' : undefined}
-                >
-                  <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
-                  <p className={styles.vsOld}>
-                    <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
-                    {t(row.old)}
-                  </p>
-                  <div className={styles.vsNew}>
-                    <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
-                    <p>{t(row.fixmaster)}</p>
-                    {row.example && (
-                      <p className={styles.vsTrack}>
-                        <Icon name="qrcode" aria-hidden />
-                        <span className={styles.vsTrackUrl}>{row.example}</span>
-                        <span className={styles.vsTrackNote}>{t('landing.vs.statusExample')}</span>
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <ul className={styles.vsList}>{CONTRASTS.slice(0, VS_VISIBLE).map(renderVsRow)}</ul>
+            <details className={styles.vsMore}>
+              <summary>
+                <span>
+                  {interpolate(t('landing.vs.more'), {
+                    count: String(CONTRASTS.length - VS_VISIBLE),
+                    list: CONTRASTS.slice(VS_VISIBLE)
+                      .map((row) => t(row.situation))
+                      .join(' · '),
+                  })}
+                </span>
+                <Icon name="chevron-down" aria-hidden />
+              </summary>
+              <ul className={styles.vsList}>{CONTRASTS.slice(VS_VISIBLE).map(renderVsRow)}</ul>
+            </details>
           </div>
           <p className={styles.vsFoot}>
             <strong>{t('landing.vs.foot')}</strong>
@@ -418,37 +399,6 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               {t('landing.vs.tryLink')} <Icon name="arrow-up" aria-hidden />
             </a>
           </p>
-        </section>
-
-        {/* ---------- 2. Satu aksi, empat jejak ---------- */}
-        <section id="cara-kerja" className={styles.trails} aria-labelledby="landing-trails-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-trails-title">{t('landing.trailsTitle')}</h2>
-            <p>{t('landing.trailsLead')}</p>
-          </div>
-          <div className={styles.trailBoard}>
-            <div className={styles.trailSource}>
-              <span className={styles.trailSourceLed} aria-hidden />
-              <span>
-                <small>FM-0312</small>
-                <strong>{t('landing.trailSource')}</strong>
-              </span>
-            </div>
-            <ul className={styles.trailList}>
-              {TRAILS.map((trail) => (
-                <li key={trail.place} className={styles.trail}>
-                  <span className={styles.trailIcon}>
-                    <Icon name={trail.icon} aria-hidden />
-                  </span>
-                  <span className={styles.trailBody}>
-                    <strong>{t(trail.place)}</strong>
-                    <span>{t(trail.text)}</span>
-                  </span>
-                  <span className={styles.trailValue}>{trail.value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </section>
 
         {/* ---------- 3. Untuk semua meja reparasi ---------- */}
@@ -471,63 +421,6 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               <span>{t('landing.bench.yours')}</span>
             </li>
           </ul>
-        </section>
-
-        {/* ---------- 4. Modul ---------- */}
-        <section className={styles.modules} aria-labelledby="landing-modules-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-modules-title">{t('landing.modulesTitle')}</h2>
-            <p>{t('landing.modulesLead')}</p>
-          </div>
-          <ul className={styles.channelList}>
-            {MODULES.map((mod) => (
-              <li key={mod.text} className={styles.channel}>
-                <span className={styles.channelIcon}>
-                  <Icon name={mod.icon} aria-hidden />
-                </span>
-                <span className={styles.channelBody}>
-                  <strong>{t(mod.name)}</strong>
-                  <span>{t(mod.text)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* ---------- 5. Dari kerja sendiri sampai buka cabang ---------- */}
-        <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
-            <p>
-              {interpolate(t('landing.stagesLead'), {
-                price: fmtRp(UNIT_PRICE),
-                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
-              })}
-            </p>
-          </div>
-          <ol className={styles.stageRail}>
-            {STAGES.map((stage, index) => (
-              <li key={stage.title} className={styles.stage}>
-                <span className={styles.stageMeter} aria-hidden>
-                  {STAGES.map((other, lamp) => (
-                    <i key={other.title} data-on={lamp <= index ? 'true' : undefined} />
-                  ))}
-                </span>
-                <h3>{t(stage.title)}</h3>
-                <p>{t(stage.text)}</p>
-                <div className={styles.stageTools}>
-                  <span className={styles.stageToolsLabel}>
-                    {t(index === 0 ? 'landing.stage.toolsBase' : 'landing.stage.toolsMore')}
-                  </span>
-                  <ul>
-                    {stage.tools.map((tool) => (
-                      <li key={tool}>{t(tool)}</li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ol>
         </section>
 
         {/* ---------- 6. Harga ---------- */}
@@ -571,6 +464,42 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             </div>
           </div>
           <CostGauge />
+        </section>
+
+        {/* ---------- 5. Dari kerja sendiri sampai buka cabang ---------- */}
+        <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
+          <div className={styles.sectionHead}>
+            <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
+            <p>
+              {interpolate(t('landing.stagesLead'), {
+                price: fmtRp(UNIT_PRICE),
+                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+              })}
+            </p>
+          </div>
+          <ol className={styles.stageRail}>
+            {STAGES.map((stage, index) => (
+              <li key={stage.title} className={styles.stage}>
+                <span className={styles.stageMeter} aria-hidden>
+                  {STAGES.map((other, lamp) => (
+                    <i key={other.title} data-on={lamp <= index ? 'true' : undefined} />
+                  ))}
+                </span>
+                <h3>{t(stage.title)}</h3>
+                <p>{t(stage.text)}</p>
+                <div className={styles.stageTools}>
+                  <span className={styles.stageToolsLabel}>
+                    {t(index === 0 ? 'landing.stage.toolsBase' : 'landing.stage.toolsMore')}
+                  </span>
+                  <ul>
+                    {stage.tools.map((tool) => (
+                      <li key={tool}>{t(tool)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* ---------- 7. Jujur soal koneksi & backup ---------- */}

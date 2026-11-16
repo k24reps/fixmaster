@@ -350,7 +350,8 @@ export const en: Dictionary = {
   'landing.scene.readCash': 'Cash today',
   'landing.scene.marginWaiting': 'waiting for part',
   'landing.scene.sample': 'Sample data',
-  'landing.scene.caption': 'Press the button at the counter and watch the owner\'s phone change.',
+  'landing.scene.caption':
+    "Press the button at the counter and watch the owner's phone change. Rina's service history also records the part and its warranty.",
   'landing.strip.desk': 'Counter',
   'landing.strip.label': "Sample: the counter and the owner's phone",
   'landing.strip.phone': "Owner's phone",
@@ -424,28 +425,13 @@ export const en: Dictionary = {
   'landing.vs.branchNew':
     'Every branch is visible at once on the owner\'s dashboard, from a phone.',
   'landing.vs.foot': 'Close up without recounting anything.',
+  'landing.vs.more': 'See {count} more: {list}',
   'landing.vs.tryLink': 'See it in the demo',
   'landing.price.ruleCap':
     'At most {max} per branch per month: past {cap} units, further tickets at that branch are free until the end of the month.',
   'landing.price.capNote': 'Dashed ticks: the free zone.',
   'landing.price.freeByCap': 'Free under the cap',
   'landing.vs.statusExample': 'example tracking link, one random code per ticket',
-  'landing.trailsTitle': 'Install one part, and four places record it.',
-  'landing.trailsLead':
-    'The technician just picks the part from stock on the ticket. These four places change from that one step.',
-  'landing.trailSource': 'ASUS X441 keyboard installed',
-  'landing.trail.stock': 'Stock',
-  'landing.trail.stockText':
-    'One keyboard comes off stock. When it reaches the minimum, the dashboard lights a low-stock warning.',
-  'landing.trail.ticket': 'Ticket margin',
-  'landing.trail.ticketText':
-    'The part\'s cost goes into the ticket, so FM-0312\'s margin is visible before the unit is picked up.',
-  'landing.trail.customer': 'Customer history',
-  'landing.trail.customerText':
-    'Rina\'s repair history records the unit, the part installed, and its warranty period.',
-  'landing.trail.cash': 'Cash',
-  'landing.trail.cashText':
-    'When Rina pays, Rp 350.000 goes into the chosen cash account and that day\'s report.',
   'landing.benchesTitle': 'Phones, laptops, printers, TVs. Each has a drawer here.',
   'landing.benchesLead':
     'Each shop sets its own device categories, quick complaints, and accessory lists. A printer repair shop does not have to use a phone counter\'s list.',
@@ -459,22 +445,7 @@ export const en: Dictionary = {
   'landing.bench.console': 'Game consoles',
   'landing.bench.home': 'Home appliances',
   'landing.bench.yours': 'Your category',
-  'landing.modulesTitle': 'Every menu open, one price.',
-  'landing.modulesLead': 'Every menu is open to every shop. Users and branches are unlimited.',
-  'landing.mod.services': 'Tickets, statuses, receipts, and a tracking link for customers.',
-  'landing.mod.calculator': 'Repair prices from part cost, labour, and target profit.',
-  'landing.mod.pos': 'Sell accessories and parts from the same catalog as your stock.',
-  'landing.mod.customers': 'Repair history and a WhatsApp contact for every customer.',
-  'landing.mod.suppliers': 'Purchase orders and the goods already received.',
-  'landing.mod.finance': 'Cash, bank accounts, QRIS, income, and expenses.',
-  'landing.mod.tasks': 'Daily task lists, such as an opening checklist.',
-  'landing.mod.attendance': 'Staff attendance checked against the shop location.',
-  'landing.mod.reports': 'Profit and loss, margin per ticket, and data export.',
-  'landing.mod.activity': 'Who changed what, and when.',
   'landing.mod.outletsName': 'Multiple branches',
-  'landing.mod.outlets': 'Switch branches in one account; the owner sees them all.',
-  'landing.mod.waName': 'WhatsApp templates',
-  'landing.mod.wa': 'Repair status messages written the way you want.',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
     'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create.',
