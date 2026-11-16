@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon, type IconName } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   FREE_UNITS,
@@ -47,7 +47,6 @@ interface Contrast {
  * minat (dulu 8 baris × 3 sel, 2.796px di ponsel).
  */
 const CONTRASTS: Contrast[] = [
-  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   {
     situation: 'landing.vs.status',
     old: 'landing.vs.statusOld',
@@ -58,28 +57,15 @@ const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
   { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
+  // Unit masuk sudah diceritakan judul hero dan adegannya; di sini ia membuka
+  // daftar tambahan, untung per unit naik ke empat yang terlihat.
+  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
   { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
   { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
 ];
 
 const VS_VISIBLE = 4;
-
-interface Drawer {
-  icon: IconName;
-  label: TranslationKey;
-}
-
-const DRAWERS: Drawer[] = [
-  { icon: 'device-mobile', label: 'landing.bench.phone' },
-  { icon: 'laptop', label: 'landing.bench.laptop' },
-  { icon: 'device-tablet', label: 'landing.bench.tablet' },
-  { icon: 'print', label: 'landing.bench.printer' },
-  { icon: 'television', label: 'landing.bench.tv' },
-  { icon: 'speaker', label: 'landing.bench.audio' },
-  { icon: 'game-controller', label: 'landing.bench.console' },
-  { icon: 'cooking-pot', label: 'landing.bench.home' },
-];
 
 interface Stage {
   title: TranslationKey;
@@ -447,26 +433,6 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </p>
         </section>
 
-        {/* ---------- Untuk semua meja reparasi ---------- */}
-        <section className={styles.benches} aria-labelledby="landing-benches-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-benches-title">{t('landing.benchesTitle')}</h2>
-            <p>{t('landing.benchesLead')}</p>
-          </div>
-          <ul className={styles.cabinet} aria-label={t('landing.cabinetLabel')}>
-            {DRAWERS.map((drawer) => (
-              <li key={drawer.label} className={styles.drawer}>
-                <span className={styles.drawerPull} aria-hidden />
-                <Icon name={drawer.icon} aria-hidden />
-                <span>{t(drawer.label)}</span>
-              </li>
-            ))}
-            <li className={[styles.drawer, styles.drawerAdd].join(' ')}>
-              <span className={styles.drawerPull} aria-hidden />
-              <span>{t('landing.bench.yours')}</span>
-            </li>
-          </ul>
-        </section>
 
         {/* ---------- Harga ---------- */}
         <section id="harga" className={styles.pricing} aria-labelledby="landing-price-title">
@@ -572,7 +538,13 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             <p>{t('landing.closingLead')}</p>
           </div>
           <div ref={finalGateRef} className={styles.closingGate}>
-            <DemoGate source="final" title="demoGate.titleFinal" draft={draft} onDraftChange={setDraft} />
+            {/* Satu judul untuk bagian ini: gerbangnya memakai judul seksi. */}
+            <DemoGate
+              source="final"
+              labelledBy="landing-closing-title"
+              draft={draft}
+              onDraftChange={setDraft}
+            />
           </div>
         </section>
       </main>

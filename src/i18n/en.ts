@@ -276,7 +276,6 @@ export const en: Dictionary = {
 
   // ---------- Landing "Two Scenes" + demo gate (0102) ----------
   'demoGate.title': 'Try the demo under your shop name',
-  'demoGate.titleFinal': "Open your shop's counter",
   'demoGate.titleDemoRoute': 'One step before the demo',
   'demoGate.lead': 'The real app with sample data, no account needed.',
   'demoGate.nameLabel': 'Shop name',
@@ -400,19 +399,6 @@ export const en: Dictionary = {
   'landing.price.capNote': 'Dashed ticks: the free zone.',
   'landing.price.freeByCap': 'Free under the cap',
   'landing.vs.statusExample': 'example tracking link, one random code per ticket',
-  'landing.benchesTitle': 'Phones, laptops, printers, TVs. Each has a drawer here.',
-  'landing.benchesLead':
-    'Each shop sets its own device categories, quick complaints, and accessory lists. A printer repair shop does not have to use a phone counter\'s list.',
-  'landing.cabinetLabel': 'Example device categories',
-  'landing.bench.phone': 'Phones',
-  'landing.bench.laptop': 'Laptops & PCs',
-  'landing.bench.tablet': 'Tablets',
-  'landing.bench.printer': 'Printers',
-  'landing.bench.tv': 'TVs & monitors',
-  'landing.bench.audio': 'Audio',
-  'landing.bench.console': 'Game consoles',
-  'landing.bench.home': 'Home appliances',
-  'landing.bench.yours': 'Your category',
   'landing.mod.outletsName': 'Multiple branches',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
@@ -441,7 +427,7 @@ export const en: Dictionary = {
     'Each shop\'s data is separated by access rules. Only accounts registered to your shop can open it. The server copies your shop data every night, the owner gets a backup link by email every Monday, and a backup can be downloaded any time from Settings.',
   'landing.faq.device.q': 'Is it only for phone repair?',
   'landing.faq.device.a':
-    'No. FixMaster is used for phones, laptops, tablets, printers, TVs, audio, consoles, and home electronics. You set the device categories yourself.',
+    'No. FixMaster is used for phones, laptops, tablets, printers, TVs, audio, consoles, and home electronics. You set the device categories, quick complaints, and accessory checklist yourself, so a printer repair shop does not have to use a phone counter\'s list.',
   'landing.faq.install.q': 'Do I need to install anything?',
   'landing.faq.install.a':
     'Not necessarily. FixMaster opens in a browser on a computer, a tablet or a phone. If you want it to feel like a regular app, install it from the browser menu (Install app or Add to Home screen): the icon appears on your home screen and FixMaster opens full screen. You can try the demo first under your shop name, without creating an account.',

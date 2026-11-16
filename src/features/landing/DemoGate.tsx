@@ -24,9 +24,13 @@ import { useSettingsStore } from '@/stores/settings';
 import { trackEvent } from '@/lib/analytics';
 import styles from './DemoGate.module.css';
 
-interface DemoGateProps {
+type DemoGateHeading =
+  | { title: TranslationKey; labelledBy?: never }
+  /** Judul milik bagian halaman yang membungkus gerbang (tanpa judul kedua). */
+  | { labelledBy: string; title?: never };
+
+type DemoGateProps = DemoGateHeading & {
   source: DemoLeadSource;
-  title: TranslationKey;
   /** Isian yang dibagi beberapa gerbang (landing: hero + penutup). Tanpa
    * keduanya, gerbang menyimpan isiannya sendiri. */
   draft?: DemoLeadDraft;
@@ -35,7 +39,7 @@ interface DemoGateProps {
   onPassed?: (shopName: string) => void;
   /** Tanpa <Link>: halaman /demo berjalan di luar router aplikasi. */
   privacyHref?: string;
-}
+};
 
 type Status = 'idle' | 'sending' | 'failed' | 'limited';
 
@@ -51,6 +55,7 @@ function openDemo() {
 export function DemoGate({
   source,
   title,
+  labelledBy,
   draft: sharedDraft,
   onDraftChange,
   onPassed = openDemo,
@@ -150,10 +155,12 @@ export function DemoGate({
 
   if (returning) {
     return (
-      <section className={styles.gate} aria-labelledby={`${formId}-title`}>
-        <h2 id={`${formId}-title`} className={styles.title}>
-          {t('demoGate.returningTitle')}
-        </h2>
+      <section className={styles.gate} aria-labelledby={labelledBy ?? `${formId}-title`}>
+        {!labelledBy && (
+          <h2 id={`${formId}-title`} className={styles.title}>
+            {t('demoGate.returningTitle')}
+          </h2>
+        )}
         <p className={styles.returningShop}>
           <span className={styles.led} aria-hidden />
           <strong>{returning}</strong>
@@ -185,10 +192,12 @@ export function DemoGate({
   const sending = status === 'sending';
 
   return (
-    <section className={styles.gate} aria-labelledby={`${formId}-title`}>
-      <h2 id={`${formId}-title`} className={styles.title}>
-        {t(title)}
-      </h2>
+    <section className={styles.gate} aria-labelledby={labelledBy ?? `${formId}-title`}>
+      {title && (
+        <h2 id={`${formId}-title`} className={styles.title}>
+          {t(title)}
+        </h2>
+      )}
       <p className={styles.lead}>{t('demoGate.lead')}</p>
 
       <form className={styles.form} onSubmit={submit} noValidate aria-busy={sending}>

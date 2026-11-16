@@ -277,7 +277,6 @@ export const id = {
 
   // ---------- Landing "Dua Adegan" + gerbang demo (0102) ----------
   'demoGate.title': 'Coba demo dengan nama toko Anda',
-  'demoGate.titleFinal': 'Buka meja penerimaan toko Anda',
   'demoGate.titleDemoRoute': 'Satu langkah sebelum demo',
   'demoGate.lead': 'Aplikasi asli dengan data contoh, tanpa membuat akun.',
   'demoGate.nameLabel': 'Nama toko',
@@ -399,19 +398,6 @@ export const id = {
   'landing.price.capNote': 'Garis putus-putus: zona gratis.',
   'landing.price.freeByCap': 'Gratis karena batas',
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
-  'landing.benchesTitle': 'HP, laptop, printer, TV. Semua punya laci di sini.',
-  'landing.benchesLead':
-    'Kategori perangkat, keluhan cepat, dan daftar kelengkapan diatur sendiri oleh tiap toko. Toko servis printer tidak perlu memakai daftar milik konter HP.',
-  'landing.cabinetLabel': 'Contoh kategori perangkat',
-  'landing.bench.phone': 'HP',
-  'landing.bench.laptop': 'Laptop & PC',
-  'landing.bench.tablet': 'Tablet',
-  'landing.bench.printer': 'Printer',
-  'landing.bench.tv': 'TV & monitor',
-  'landing.bench.audio': 'Audio',
-  'landing.bench.console': 'Konsol game',
-  'landing.bench.home': 'Alat rumah tangga',
-  'landing.bench.yours': 'Kategori Anda',
   'landing.mod.outletsName': 'Multi-cabang',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
@@ -441,7 +427,7 @@ export const id = {
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Server menyalin data toko Anda tiap malam, pemilik menerima tautan backup lewat email tiap Senin, dan backup bisa diunduh kapan saja dari Pengaturan.',
   'landing.faq.device.q': 'Hanya untuk servis HP?',
   'landing.faq.device.a':
-    'Tidak. FixMaster dipakai untuk HP, laptop, tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkatnya Anda atur sendiri.',
+    'Tidak. FixMaster dipakai untuk HP, laptop, tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkat, keluhan cepat, dan daftar kelengkapan Anda atur sendiri, jadi toko servis printer tidak perlu memakai daftar milik konter HP.',
   'landing.faq.install.q': 'Perlu memasang aplikasi?',
   'landing.faq.install.a':
     'Tidak wajib. FixMaster dibuka lewat browser di komputer, tablet, atau HP. Bila ingin seperti aplikasi biasa, pasang dari menu browser (Instal aplikasi atau Tambahkan ke layar utama): ikonnya muncul di layar utama dan FixMaster terbuka layar penuh. Demo bisa dicoba dulu dengan nama toko Anda, tanpa membuat akun.',

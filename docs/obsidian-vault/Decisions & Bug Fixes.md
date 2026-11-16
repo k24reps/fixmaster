@@ -7140,3 +7140,57 @@ komputer: 251 → 285px di 1440, teks layar HP ±14% lebih besar), HP sedikit le
 monitor. Di ≤700px HP di bawah komputer melebar ke min(72%, 300px). Kunci `landing.scene.sync`
 dihapus.
 
+
+## Landing: critique + audit run ke-2, tiga tahap perbaikan (16 Nov 2026)
+
+Run ulang impeccable sesudah adegan dua layar: critique **28/40**, audit **15/20** (arsip snapshot
+di `.impeccable/critique/`). Temuan terberat ada di ponsel: adegan nyaris tidak bisa diketuk,
+personalisasi nama toko tidak terlihat, dan pengunjung dari tautan WA diminta nomor sebelum
+melihat aplikasinya.
+
+**Pilihan pemilik:** interaksi di HP dulu; pesan adegan tetap navigasi sinkron; layar pertama
+ponsel mendapat **satu layar HP asli kecil di atas gerbang**; semua temuan dikerjakan bertahap.
+
+**Tahap 1, adegan di HP:**
+- **Aturan global 44px ikut menimpa area klik.** `global.css` memaksa `min-height/min-width:
+  var(--control-h) !important` untuk semua `button` di ≤720px atau pointer kasar. Area klik di
+  atas gambar adalah `button`, jadi di 390px kotak bottom nav HP (±23×18px) membesar jadi 44px,
+  saling tumpuk, dan patch redup menu "lainnya" menutupi menu yang direkam. Pengecualian
+  `min-width/min-height: 0 !important` di `.hotspot`: ukurannya harus sama dengan kotak menu di
+  gambar. Diukur: 0 tumpukan di 320–1280.
+- **Komposisi bertumpuk di bawah 900px adegan** (dulu 700, yang memberi HP terkecil di 768:
+  skala 0,40). Deret tombol menjadi satu baris geser di ATAS layar (urutan baca: pilih menu, lalu
+  lihat hasilnya), komputer selebar adegan, HP berdiri di depan sudut kanannya.
+- **Ambang 440px untuk ketukan di gambar komputer diturunkan dari ukuran:** baris sidebar 5,5%
+  tinggi layar (44px rekaman) baru ≥14px (setara bottom nav HP di 320px) saat layar komputer
+  ≥410px, yaitu adegan ±440px. Di bawahnya ketukan di komputer dimatikan, deret tombol jalurnya.
+  Tablet 768 tetap bisa mengklik sidebar (baris 25px).
+- Gambar diminta saat `pointerdown` (layar sentuh tidak punya hover), layar awal `eager`,
+  `sizes` sesuai slot nyata. Bar ponsel juga mundur selama adegan terlihat (di 320px ia menutupi
+  bottom nav HP).
+- **Potongan layar HP di atas gerbang (≤720px):** potongan atas `detail-phone.webp`, bukan
+  gambar baru, jadi tidak ada rekaman tambahan dan isinya sama dengan adegan. Konsekuensi yang
+  diterima: di 390×844 tombol "Buka demo" turun di bawah lipatan (kolom nama dan nomor tetap di
+  layar pertama); di 360×740 memang sudah di bawah.
+
+**Tahap 2, gerbang dan personalisasi:**
+- **Satu draf untuk dua gerbang** (`DemoLeadDraft`, controlled bila halaman memberi `draft` +
+  `onDraftChange`). Nama dan nomor yang diketik di hero sudah terisi di gerbang penutup.
+- Nama toko di label perangkat 14px dan judul potongan HP, bukan hanya kop ±10px di layar
+  komputer. Di komposisi bertumpuk label komputer tertutup HP, jadi nama hanya di label HP.
+- Placeholder `0812-3456-7890` ditolak saringan 0104 sendiri (deret urut): kini
+  `08xx-xxxx-xxxx`. Pesan nomor palsu tidak lagi menyuruh "Pakai nomor Anda sendiri".
+- Gelembung "ada di demo lengkap" bisa ditutup dan diumumkan; "Ganti nama toko" memindah fokus
+  ke kolom nama.
+
+**Tahap 3, bawah lipatan:**
+- Lemari part dihapus; "bukan cuma HP" kini satu kali di lead hero dan satu kali di FAQ (yang
+  menyerap isi lemari). JSON-LD FAQ di `index.html` ikut diubah (dijaga
+  `landingMetadata.test.ts`).
+- Untung per unit naik ke empat baris terlihat, unit masuk turun ke daftar tambahan.
+- Gerbang penutup memakai judul seksinya (`labelledBy`), tidak lagi dua judul berdempetan.
+- Meter LED tahap: hijau → cyan (ukuran toko = bacaan instrumen, bukan status berhasil).
+
+**Hasil:** detektor impeccable exit 0 (4 saran ukuran judul fluid, sama seperti sebelumnya),
+`audit-tokens` dan `audit-contrast` 0 gagal, luberan 0 di 320/360/390/768/1280. Jumlah tes di
+[[Testing & Security]]. **Belum diperbarui:** gambar vault (tanpa PowerShell).

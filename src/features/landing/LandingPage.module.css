@@ -54,7 +54,6 @@
 
 .hero,
 .versus,
-.benches,
 .stages,
 .pricing,
 .honest,
@@ -326,7 +325,6 @@
   line-height: 1.65;
 }
 
-.benches,
 .stages,
 .pricing,
 .honest,
@@ -562,68 +560,6 @@
   border-radius: var(--radius-xs);
 }
 
-/* ---------- Lemari part: semua jenis meja reparasi ---------- */
-.benches {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  align-items: center;
-  gap: var(--space-10);
-}
-
-.cabinet {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3);
-  list-style: none;
-  background: var(--bg-base);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-}
-
-.drawer {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  min-height: 104px;
-  padding: var(--space-6) var(--space-2) var(--space-3);
-  color: var(--text-primary);
-  background: var(--bg-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
-  text-align: center;
-}
-
-.drawer svg {
-  color: var(--text-secondary);
-  font-size: 26px;
-}
-
-/* Gagang laci. */
-.drawerPull {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  width: 34px;
-  height: 5px;
-  border-radius: var(--radius-full);
-  background: var(--border-strong);
-  transform: translateX(-50%);
-}
-
-.drawerAdd {
-  color: var(--text-secondary);
-  background: transparent;
-  border-style: dashed;
-}
-
-
 /* ---------- Dari kerja sendiri sampai buka cabang ----------
    Tiga tahap di satu rel bertitik. Tiap tahap membawa meter LED 1–3 (bukan
    nomor seksi): jumlah lampu yang menyala = besar toko. */
@@ -682,8 +618,9 @@
 }
 
 .stageMeter i[data-on='true'] {
-  background: var(--success);
-  box-shadow: 0 0 7px var(--success);
+  /* Cyan = instrumen: meter ini ukuran toko, bukan status berhasil. */
+  background: var(--accent);
+  box-shadow: 0 0 7px var(--accent);
 }
 
 .stage h3 {
@@ -1127,7 +1064,6 @@
     grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
     column-gap: var(--space-6);
   }
-  .benches,
   .pricing,
   .honest,
   .closing {
@@ -1323,18 +1259,6 @@
   }
   .headerActions {
     margin-left: auto;
-  }
-  .cabinet {
-    gap: 6px;
-    padding: var(--space-2);
-  }
-  .drawer {
-    min-height: 92px;
-    padding: var(--space-6) var(--space-1) var(--space-2);
-    font-size: var(--text-xs);
-  }
-  .drawer svg {
-    font-size: 22px;
   }
   .well {
     padding: var(--space-5) var(--space-4);
