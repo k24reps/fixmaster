@@ -189,10 +189,10 @@
 }
 
 .queueText strong {
+  /* Nama contoh tidak berubah antarlangkah, jadi boleh membungkus utuh
+     (dulu terpotong "ASUS VivoBook X4…" di 1024px). */
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
 }
@@ -378,9 +378,7 @@
 }
 
 .partName strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
 }
 
@@ -822,8 +820,9 @@
    900px: antrean + tiket butuh ±560px di meja, ditambah jejak 64px dan ponsel
    300px. Di bawahnya antrean dilepas dan meja tinggal tiket terpilih. */
 @container scene (max-width: 900px) {
+  /* 56px: label "sinkron" (50px) dulu menabrak meja dan ponsel di kolom 48px. */
   .scene {
-    grid-template-columns: minmax(0, 1fr) 48px 268px;
+    grid-template-columns: minmax(0, 1fr) 56px 268px;
   }
   .deskBody {
     grid-template-columns: minmax(0, 1fr);
@@ -914,9 +913,9 @@
     'desk shop key'
     'phone label value';
   align-items: center;
-  column-gap: var(--space-3);
+  column-gap: var(--space-2);
   row-gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
+  padding: var(--space-3);
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -1114,4 +1113,12 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Di 320px nama toko di bilah jendela tergusur keterangan "Meja penerimaan";
+   kop meja sudah dinamai figure-nya dan strip di atas gerbang. */
+@container scene (max-width: 340px) {
+  .barTitle span {
+    display: none;
+  }
 }

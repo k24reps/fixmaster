@@ -266,7 +266,13 @@ export function BenchScene({ shopName, bench, sceneRef }: BenchSceneProps) {
                 <span className={styles.partName}>
                   <strong>{t('landing.scene.partName')}</strong>
                   <small>
-                    {step >= 1 ? t('landing.scene.partInstalled') : t('landing.scene.partInStock')}
+                    <Stack
+                      current={step >= 1 ? 'installed' : 'stock'}
+                      items={[
+                        { key: 'stock', node: t('landing.scene.partInStock') },
+                        { key: 'installed', node: t('landing.scene.partInstalled') },
+                      ]}
+                    />
                   </small>
                 </span>
                 <span className={styles.partCost}>

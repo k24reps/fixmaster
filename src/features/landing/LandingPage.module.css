@@ -1122,12 +1122,11 @@
 }
 
 /* ---------- Lebar halaman, bukan viewport (Container Query Rule) ---------- */
+/* Tiga tautan tidak muat; Harga tetap, karena itu pertanyaan kedua pemilik
+   konter sesudah "untuk saya?". */
 @container landing (max-width: 1080px) {
-  .nav {
+  .nav a:not(.navKeep) {
     display: none;
-  }
-  .headerActions {
-    margin-left: auto;
   }
 }
 
@@ -1263,9 +1262,14 @@
 /* 560px: tombol "Mulai gratis" dan tagline merek tidak muat bersama di
    header; daftar tetap ada di bagian harga. */
 @container landing (max-width: 560px) {
+  /* Harga pindah ke bar bawah; header tinggal merek, tema, dan Masuk. */
   .brand small,
-  .outlineButton {
+  .outlineButton,
+  .nav {
     display: none;
+  }
+  .headerActions {
+    margin-left: auto;
   }
   .cabinet {
     gap: 6px;
@@ -1324,6 +1328,24 @@
     font-size: var(--text-sm);
     font-weight: var(--fw-semibold);
     cursor: pointer;
+  }
+  .mobileBarLink {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--control-h);
+    padding: 0 var(--space-3);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+  }
+  .mobileBarLink:focus-visible,
+  .mobileBarDemo:focus-visible,
+  .mobileBarWa:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
   }
   .mobileBarWa {
     display: inline-flex;

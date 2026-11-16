@@ -489,7 +489,7 @@ export const en: Dictionary = {
   'landing.privacy': 'Privacy Policy',
   'landing.terms': 'Terms & Conditions',
   'landing.whatsapp': 'Ask on WhatsApp',
-  'landing.mobileBarDemo': 'Try the demo under your shop name',
+  'landing.mobileBarDemo': 'Try the demo',
 
   // ---------- Auth / session ----------
   'authPage.brandTagline':

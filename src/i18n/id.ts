@@ -489,7 +489,7 @@ export const id = {
   'landing.privacy': 'Kebijakan Privasi',
   'landing.terms': 'Syarat & Ketentuan',
   'landing.whatsapp': 'Tanya via WhatsApp',
-  'landing.mobileBarDemo': 'Coba demo dengan nama toko Anda',
+  'landing.mobileBarDemo': 'Coba demo',
 
   // ---------- Auth / session ----------
   'authPage.brandTagline': 'Meja kerja digital untuk usaha reparasi gadget & elektronik.',

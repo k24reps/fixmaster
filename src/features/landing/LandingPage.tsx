@@ -254,13 +254,35 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const trackSupport = (location: string) =>
     trackEvent('landing_cta_clicked', { location, intent: 'support', plan: 'none' });
 
+  // Ke gerbang yang paling dekat dari posisi gulir sekarang (dulu selalu ke
+  // gerbang akhir: lompatan ±8.800px dari bagian atas halaman).
   const goToGate = () => {
     trackEvent('landing_cta_clicked', { location: 'mobile_bar', intent: 'demo', plan: 'none' });
-    const target = finalGateRef.current;
-    if (!target) return;
+    const gates = [heroGateRef.current, finalGateRef.current].filter(
+      (node): node is HTMLDivElement => node !== null,
+    );
+    if (gates.length === 0) return;
+    const distance = (node: HTMLElement) => Math.abs(node.getBoundingClientRect().top);
+    const target = gates.reduce((best, node) => (distance(node) < distance(best) ? node : best));
+    const field = target.querySelector<HTMLElement>('input, button');
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
-    target.querySelector<HTMLElement>('input, button')?.focus({ preventScroll: true });
+    if (reduce) {
+      target.scrollIntoView({ behavior: 'auto', block: 'center' });
+      field?.focus({ preventScroll: true });
+      return;
+    }
+    // Fokus (dan keyboard ponsel) baru muncul setelah gulir selesai, bukan di
+    // tengah animasi.
+    let done = false;
+    const focusField = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('scrollend', focusField);
+      field?.focus({ preventScroll: true });
+    };
+    window.addEventListener('scrollend', focusField);
+    window.setTimeout(focusField, 900);
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const renderVsRow = (row: Contrast) => (
@@ -305,7 +327,9 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
 
         <nav className={styles.nav} aria-label={t('landing.navLabel')}>
           <a href="#cara-kerja">{t('landing.navHow')}</a>
-          <a href="#harga">{t('landing.navPricing')}</a>
+          <a href="#harga" className={styles.navKeep}>
+            {t('landing.navPricing')}
+          </a>
           <a href="#untuk-siapa">{t('landing.navWho')}</a>
         </nav>
 
@@ -558,6 +582,9 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
       </footer>
 
       <div className={styles.mobileBar} data-visible={gateOffscreen ? 'true' : undefined}>
+        <a className={styles.mobileBarLink} href="#harga">
+          {t('landing.navPricing')}
+        </a>
         <button className={styles.mobileBarDemo} type="button" onClick={goToGate}>
           {t('landing.mobileBarDemo')}
         </button>
