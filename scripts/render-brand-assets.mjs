@@ -26,116 +26,117 @@ async function renderSvg(source, target, size, omitBackground) {
   console.log('rendered:', target);
 }
 
+/**
+ * Kartu pratinjau tautan (WhatsApp, Google, media sosial): pintu masuk utama
+ * pemilik konter ke landing. Isinya mengikuti hero landing, bukan slogan lama,
+ * dan panel kanannya ponsel pemilik dengan readout contoh, sama seperti adegan
+ * di halaman. Warna dari tokens.css (tema gelap), huruf dari font self-hosted.
+ * Angka harga di sini ditulis tangan: render ulang bila src/config/pricing.ts
+ * berubah.
+ */
 async function renderOpenGraph() {
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
   const logo = readFileSync(join(PUBLIC, 'logo.svg'), 'utf8');
+  const tokens = readFileSync(join(ROOT, 'src/styles/tokens.css'), 'utf8');
+  const font = (file) =>
+    `data:font/woff2;base64,${readFileSync(join(PUBLIC, 'fonts', file)).toString('base64')}`;
   await page.setContent(`
     <style>
+      ${tokens}
+      @font-face { font-family: 'Inter'; font-weight: 400 800; src: url('${font('inter-v20-latin.woff2')}') format('woff2'); }
+      @font-face { font-family: 'Space Grotesk'; font-weight: 500 700; src: url('${font('space-grotesk-v22-latin.woff2')}') format('woff2'); }
+      @font-face { font-family: 'JetBrains Mono'; font-weight: 400 800; src: url('${font('jetbrains-mono-v24-latin.woff2')}') format('woff2'); }
       * { box-sizing: border-box; }
       html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
       body {
-        background: #0b0d10;
-        color: #f1f3f6;
-        font-family: Arial, Helvetica, sans-serif;
+        color: var(--text-primary);
+        background:
+          radial-gradient(640px 420px at 12% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%),
+          radial-gradient(560px 420px at 92% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+          linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 30px 30px,
+          linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 / 30px 30px,
+          var(--bg-app);
+        font-family: 'Inter', sans-serif;
       }
       .frame {
-        position: relative;
         width: 100%;
         height: 100%;
-        padding: 64px 72px;
+        padding: 58px 64px;
         display: grid;
-        grid-template-columns: 1fr 390px;
-        gap: 54px;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 56px;
         align-items: center;
-        border: 12px solid #111419;
       }
-      .frame::before {
-        content: '';
-        position: absolute;
-        inset: 34px;
-        border: 1px solid #303741;
-        border-radius: 18px;
-        pointer-events: none;
+      .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 36px; }
+      .brand svg { width: 56px; height: 56px; }
+      .brand strong { display: block; font: 700 32px/1 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+      .brand small { display: block; margin-top: 6px; color: var(--text-muted); font-size: 17px; }
+      h1 { margin: 0; font: 700 62px/1.04 'Space Grotesk', sans-serif; letter-spacing: -0.03em; text-wrap: balance; }
+      p.lead { max-width: 600px; margin: 26px 0 0; color: var(--text-secondary); font-size: 23px; line-height: 1.5; }
+      .phone {
+        padding: 10px;
+        background: var(--bg-base);
+        border: 1px solid var(--border-strong);
+        border-radius: 40px;
+        box-shadow: var(--shadow-bench-tight);
       }
-      .copy { position: relative; z-index: 1; }
-      .brand {
+      .screen {
         display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 42px;
-        font-size: 34px;
-        font-weight: 800;
+        flex-direction: column;
+        gap: 14px;
+        padding: 22px 22px 24px;
+        background: var(--bg-app);
+        border: 1px solid var(--border);
+        border-radius: 31px;
       }
-      .brand svg { width: 58px; height: 58px; }
-      .brand span:last-child { color: #3dd9c4; }
-      .kicker {
-        margin-bottom: 18px;
-        color: #3dd9c4;
-        font: 700 16px/1.4 Consolas, monospace;
-        letter-spacing: 0.13em;
+      .head strong { display: block; font: 700 22px/1.2 'Space Grotesk', sans-serif; }
+      .head small { color: var(--text-muted); font-size: 14px; }
+      .notice {
+        display: flex; gap: 10px; align-items: flex-start;
+        padding: 12px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        font-size: 15px; line-height: 1.4;
       }
-      h1 {
-        max-width: 670px;
-        margin: 0;
-        font-size: 66px;
-        line-height: 0.98;
-        letter-spacing: -0.035em;
+      .led { width: 9px; height: 9px; flex: none; margin-top: 5px; border-radius: 999px; background: var(--tone); box-shadow: 0 0 8px var(--tone); }
+      ul { margin: 0; padding: 0; list-style: none; }
+      li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 0; font-size: 15px; }
+      li + li { border-top: 1px dotted var(--border-strong); }
+      li span { color: var(--text-secondary); }
+      li b { font: 700 18px/1 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+      li .led { margin: 0; }
+      .tag {
+        align-self: flex-start;
+        padding: 2px 8px;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-strong);
+        border-radius: 5px;
+        font: 400 13px/1.4 'JetBrains Mono', monospace;
       }
-      p {
-        max-width: 640px;
-        margin: 24px 0 0;
-        color: #a7b0bc;
-        font-size: 23px;
-        line-height: 1.45;
-      }
-      .probe {
-        position: relative;
-        height: 470px;
-        display: grid;
-        place-items: center;
-        background: #15191f;
-        border: 1px solid #606a76;
-        border-radius: 16px;
-        box-shadow: inset 0 1px 0 #303741;
-      }
-      .probe::before {
-        content: 'VOLT // DIAGNOSTIC COMPANION';
-        position: absolute;
-        top: 22px;
-        left: 24px;
-        color: #f5a623;
-        font: 700 12px/1 Consolas, monospace;
-        letter-spacing: 0.08em;
-      }
-      .probe svg { width: 270px; height: 270px; }
-      .readout {
-        position: absolute;
-        left: 24px;
-        right: 24px;
-        bottom: 22px;
-        padding-top: 16px;
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px dotted #606a76;
-        color: #a7b0bc;
-        font: 700 12px/1 Consolas, monospace;
-        letter-spacing: 0.08em;
-      }
-      .readout b { color: #3dd9c4; }
     </style>
     <main class="frame">
-      <section class="copy">
-        <div class="brand">${logo}<span>Fix<span>Master</span></span></div>
-        <div class="kicker">BENCH OS // REPARASI GADGET &amp; ELEKTRONIK</div>
-        <h1>Catat servis sekali. Stok dan margin ikut terhitung.</h1>
-        <p>Satu tiket menghubungkan sparepart, biaya, pembayaran, dan laporan tanpa pencatatan ulang.</p>
+      <section>
+        <div class="brand">${logo}<span><strong>FixMaster</strong><small>Sistem operasi meja servis</small></span></div>
+        <h1>Toko servis yang rapi dan teratur, mulai hari ini.</h1>
+        <p class="lead">Untuk konter HP, servis laptop, printer, sampai TV. 50&nbsp;unit pertama gratis, lalu Rp&nbsp;1.000 per&nbsp;unit.</p>
       </section>
-      <aside class="probe">
-        ${logo}
-        <div class="readout"><span>STATUS</span><b>SYSTEM READY</b></div>
+      <aside class="phone">
+        <div class="screen">
+          <div class="head"><strong>Toko Anda</strong><small>Ponsel pemilik · semua meja</small></div>
+          <div class="notice" style="--tone: var(--accent)"><i class="led"></i>FM-0312 lunas, Rp 350.000 masuk ke Tunai</div>
+          <ul>
+            <li style="--tone: var(--warning)"><i class="led"></i><span>Stok keyboard X441</span><b>2</b></li>
+            <li style="--tone: var(--success)"><i class="led"></i><span>Margin FM-0312</span><b>Rp 170.000</b></li>
+            <li style="--tone: var(--accent)"><i class="led"></i><span>Siap diambil</span><b>3</b></li>
+            <li style="--tone: var(--success)"><i class="led"></i><span>Kas hari ini</span><b>Rp 1.590.000</b></li>
+          </ul>
+          <span class="tag">Data contoh</span>
+        </div>
       </aside>
     </main>
   `);
+  await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: join(PUBLIC, 'og-image.png') });
   await page.close();
   console.log('rendered: og-image.png');

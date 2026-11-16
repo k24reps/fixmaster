@@ -277,10 +277,9 @@ export const id = {
 
   // ---------- Landing "Dua Adegan" + gerbang demo (0102) ----------
   'demoGate.title': 'Coba demo dengan nama toko Anda',
-  'demoGate.titleFinal': 'Dua kolom, lalu demo terbuka',
+  'demoGate.titleFinal': 'Buka meja penerimaan toko Anda',
   'demoGate.titleDemoRoute': 'Satu langkah sebelum demo',
-  'demoGate.lead':
-    'Aplikasi asli dengan data contoh. Cukup nama toko dan nomor WA, tidak perlu akun.',
+  'demoGate.lead': 'Aplikasi asli dengan data contoh, tanpa membuat akun.',
   'demoGate.nameLabel': 'Nama toko',
   'demoGate.namePlaceholder': 'mis. Sinar Servis Elektronik',
   'demoGate.phoneLabel': 'Nomor WhatsApp',
@@ -313,7 +312,7 @@ export const id = {
   'landing.startFree': 'Mulai gratis',
   'landing.heroTitle': 'Toko servis yang rapi dan teratur, mulai hari ini.',
   'landing.heroLead':
-    'Untuk konter HP, servis laptop, printer, sampai TV. Unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat. {free} unit pertama gratis, lalu {price} per unit.',
+    'Untuk konter HP, servis laptop, printer, sampai TV. Unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat. {free}\u00a0unit pertama gratis, lalu {price} per\u00a0unit.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
   'landing.scene.shopPlaceholder': 'Toko Anda',
   'landing.scene.deskLabel': 'Layar meja penerimaan, data contoh',

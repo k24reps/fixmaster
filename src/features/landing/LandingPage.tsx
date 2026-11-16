@@ -343,7 +343,8 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             <p className={styles.heroLead}>
               {interpolate(t('landing.heroLead'), {
                 free: String(FREE_UNITS),
-                price: fmtRp(UNIT_PRICE),
+                // "Rp" tidak boleh terpisah dari angkanya di ujung baris.
+                price: fmtRp(UNIT_PRICE).replace(' ', '\u00a0'),
               })}
             </p>
           </div>

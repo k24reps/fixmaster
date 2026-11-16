@@ -276,10 +276,9 @@ export const en: Dictionary = {
 
   // ---------- Landing "Two Scenes" + demo gate (0102) ----------
   'demoGate.title': 'Try the demo under your shop name',
-  'demoGate.titleFinal': 'Two fields, then the demo opens',
+  'demoGate.titleFinal': "Open your shop's counter",
   'demoGate.titleDemoRoute': 'One step before the demo',
-  'demoGate.lead':
-    'The real app with sample data. Just your shop name and WhatsApp number; you don\'t need an account.',
+  'demoGate.lead': 'The real app with sample data, no account needed.',
   'demoGate.nameLabel': 'Shop name',
   'demoGate.namePlaceholder': 'e.g. Sinar Electronics Repair',
   'demoGate.phoneLabel': 'WhatsApp number',
@@ -312,7 +311,7 @@ export const en: Dictionary = {
   'landing.startFree': 'Start free',
   'landing.heroTitle': 'A tidy, orderly repair shop, starting today.',
   'landing.heroLead':
-    'For phone counters, laptop repair, printers and TVs alike. Log each unit once at the counter, and stock, cash and margin follow. The first {free} units are free, then {price} per unit.',
+    'For phone counters, laptop repair, printers and TVs alike. Log each unit once at the counter, and stock, cash and margin follow. The first {free}\u00a0units are free, then {price} per\u00a0unit.',
   'landing.waMessage': 'Hi FixMaster, I have a question about the app',
   'landing.scene.shopPlaceholder': 'Your shop',
   'landing.scene.deskLabel': 'Intake counter screen, sample data',

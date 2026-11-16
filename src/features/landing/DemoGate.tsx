@@ -155,6 +155,7 @@ export function DemoGate({
   const nameErrorId = `${formId}-name-error`;
   const phoneErrorId = `${formId}-phone-error`;
   const serverErrorId = `${formId}-server-error`;
+  const noteId = `${formId}-note`;
   const sending = status === 'sending';
 
   return (
@@ -202,13 +203,18 @@ export function DemoGate({
             value={phone}
             onChange={(e) => changePhone(e.target.value)}
             aria-invalid={errors.phone ? true : undefined}
-            aria-describedby={errors.phone ? phoneErrorId : undefined}
+            aria-describedby={errors.phone ? `${phoneErrorId} ${noteId}` : noteId}
           />
           {errors.phone && (
             <p id={phoneErrorId} className={styles.fieldError}>
               {t(errors.phone)}
             </p>
           )}
+          {/* Untuk apa nomornya dipakai, tepat di kolom yang memintanya, bukan
+              di bawah tombol (sesudah pengunjung memutuskan). */}
+          <p id={noteId} className={styles.note}>
+            {interpolate(t('demoGate.note'), { days: String(DEMO_LEAD_RETENTION_DAYS) })} {privacy}
+          </p>
         </div>
 
         {/* Jebakan bot: tidak terlihat, tidak bisa difokus, tidak dibaca
@@ -254,9 +260,6 @@ export function DemoGate({
           )}
         </button>
 
-        <p className={styles.note}>
-          {interpolate(t('demoGate.note'), { days: String(DEMO_LEAD_RETENTION_DAYS) })} {privacy}
-        </p>
       </form>
     </section>
   );
