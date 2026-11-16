@@ -7064,6 +7064,6 @@ tidak ditemukan; dipindah lewat stash ke `origin/main` terbaru tanpa konflik. Ce
 terhadap `origin/main` sebelum mulai kerja di sesi yang dilanjutkan.
 
 **Verifikasi:** 1175 tes / 88 berkas, lint, build; simulasi PostgreSQL 16 lokal: `UJI 0104 LULUS`,
-penerapan dan penerapan ulang OK. **Belum diterapkan di produksi** (runbook "Rilis 0104" di
-[[Self-Hosting]]).
+penerapan dan penerapan ulang OK. **Diterapkan di produksi 16 Nov 2026** (runbook "Rilis 0104" di
+[[Self-Hosting]]: uji coba LULUS, pemeriksaan `f|t|f`).
 
