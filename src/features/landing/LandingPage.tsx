@@ -360,7 +360,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
       </header>
 
       <main id="top" tabIndex={-1}>
-        {/* ---------- 1. Dua adegan + gerbang ---------- */}
+        {/* ---------- Dua adegan + gerbang ---------- */}
         <section className={styles.hero} aria-labelledby="landing-hero-title">
           <div className={styles.heroCopy}>
             <h1 id="landing-hero-title">{t('landing.heroTitle')}</h1>
@@ -426,7 +426,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </p>
         </section>
 
-        {/* ---------- 3. Untuk semua meja reparasi ---------- */}
+        {/* ---------- Untuk semua meja reparasi ---------- */}
         <section className={styles.benches} aria-labelledby="landing-benches-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-benches-title">{t('landing.benchesTitle')}</h2>
@@ -442,13 +442,12 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             ))}
             <li className={[styles.drawer, styles.drawerAdd].join(' ')}>
               <span className={styles.drawerPull} aria-hidden />
-              <Icon name="plus" aria-hidden />
               <span>{t('landing.bench.yours')}</span>
             </li>
           </ul>
         </section>
 
-        {/* ---------- 6. Harga ---------- */}
+        {/* ---------- Harga ---------- */}
         <section id="harga" className={styles.pricing} aria-labelledby="landing-price-title">
           <div className={styles.priceCopy}>
             <h2 id="landing-price-title">
@@ -477,21 +476,21 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               <li>{interpolate(t('landing.price.ruleTopup'), { min: fmtRp(MIN_TOPUP) })}</li>
               <li>{interpolate(t('landing.price.ruleFloor'), { floor: String(-UNIT_FLOOR) })}</li>
             </ul>
-            <div className={styles.priceActions}>
-              <button
-                className={styles.primaryButton}
-                type="button"
-                onClick={() => startAuth({ mode: 'signup', source: 'pricing' }, 'pricing')}
-              >
-                {interpolate(t('landing.price.cta'), { free: String(FREE_UNITS) })}
-              </button>
-              <p>{t('landing.price.ctaNote')}</p>
-            </div>
           </div>
           <CostGauge />
+          <div className={styles.priceActions}>
+            <button
+              className={styles.primaryButton}
+              type="button"
+              onClick={() => startAuth({ mode: 'signup', source: 'pricing' }, 'pricing')}
+            >
+              {interpolate(t('landing.price.cta'), { free: String(FREE_UNITS) })}
+            </button>
+            <p>{t('landing.price.ctaNote')}</p>
+          </div>
         </section>
 
-        {/* ---------- 5. Dari kerja sendiri sampai buka cabang ---------- */}
+        {/* ---------- Dari kerja sendiri sampai buka cabang ---------- */}
         <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
@@ -527,7 +526,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </ol>
         </section>
 
-        {/* ---------- 7. Jujur soal koneksi & backup ---------- */}
+        {/* ---------- Jujur soal koneksi & backup ---------- */}
         <section className={styles.honest} aria-labelledby="landing-honest-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-honest-title">{t('landing.honestTitle')}</h2>
@@ -545,7 +544,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </div>
         </section>
 
-        {/* ---------- 8. Gerbang penutup ---------- */}
+        {/* ---------- Gerbang penutup ---------- */}
         <section className={styles.closing} aria-labelledby="landing-closing-title">
           <div className={styles.closingCopy}>
             <h2 id="landing-closing-title">{t('landing.closingTitle')}</h2>
@@ -578,7 +577,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </a>
           <a href="mailto:fixmaster.cs@gmail.com">fixmaster.cs@gmail.com</a>
         </div>
-        <span className={styles.location}>CIMAHI</span>
+        <span className={styles.location}>Cimahi</span>
       </footer>
 
       <div className={styles.mobileBar} data-visible={gateOffscreen ? 'true' : undefined}>
