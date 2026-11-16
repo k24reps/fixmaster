@@ -277,12 +277,12 @@ export const id = {
 
   // ---------- Landing "Dua Adegan" + gerbang demo (0102) ----------
   'demoGate.title': 'Coba demo dengan nama toko Anda',
-  'demoGate.titleFinal': 'Buka meja penerimaan toko Anda',
   'demoGate.titleDemoRoute': 'Satu langkah sebelum demo',
   'demoGate.lead': 'Aplikasi asli dengan data contoh, tanpa membuat akun.',
   'demoGate.nameLabel': 'Nama toko',
   'demoGate.namePlaceholder': 'mis. Sinar Servis Elektronik',
   'demoGate.phoneLabel': 'Nomor WhatsApp',
+  'demoGate.phonePlaceholder': '08xx-xxxx-xxxx',
   'demoGate.submit': 'Buka demo',
   'demoGate.retry': 'Coba lagi',
   'demoGate.sending': 'Menyiapkan demo…',
@@ -298,7 +298,7 @@ export const id = {
   'demoGate.errorPhone':
     'Nomor WhatsApp belum benar. Pakai nomor HP Indonesia yang diawali 08, 10 sampai 13 angka.',
   'demoGate.errorPhoneFake':
-    'Nomor ini tidak terlihat seperti nomor WhatsApp yang aktif. Pakai nomor Anda sendiri.',
+    'Periksa lagi angkanya. Nomor ini tidak cocok dengan pola nomor HP Indonesia yang aktif.',
   'demoGate.errorSave':
     'Data belum terkirim karena koneksi ke server gagal. Periksa internet Anda, lalu tekan Coba lagi.',
   'demoGate.errorLimited':
@@ -326,7 +326,12 @@ export const id = {
   'landing.scene.openDemo': 'Coba demo',
   'landing.scene.sample': 'Layar asli · data contoh',
   'landing.scene.caption':
-    'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Klik menu di layar komputer, di HP, atau tombol di atas: kedua layar pindah bersamaan.',
+    'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Pilih menu di layar komputer, di HP, atau di deret tombol: kedua layar pindah bersamaan.',
+  'landing.peek.alt': 'Layar Detail tiket FM-0008 di aplikasi FixMaster versi HP',
+  'landing.peek.title': 'Begini FixMaster di HP',
+  'landing.peek.titleShop': '{shop} di FixMaster',
+  'landing.peek.sample': 'Layar asli · data contoh',
+  'landing.peek.link': 'Lihat semua menu',
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':
@@ -393,19 +398,6 @@ export const id = {
   'landing.price.capNote': 'Garis putus-putus: zona gratis.',
   'landing.price.freeByCap': 'Gratis karena batas',
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
-  'landing.benchesTitle': 'HP, laptop, printer, TV. Semua punya laci di sini.',
-  'landing.benchesLead':
-    'Kategori perangkat, keluhan cepat, dan daftar kelengkapan diatur sendiri oleh tiap toko. Toko servis printer tidak perlu memakai daftar milik konter HP.',
-  'landing.cabinetLabel': 'Contoh kategori perangkat',
-  'landing.bench.phone': 'HP',
-  'landing.bench.laptop': 'Laptop & PC',
-  'landing.bench.tablet': 'Tablet',
-  'landing.bench.printer': 'Printer',
-  'landing.bench.tv': 'TV & monitor',
-  'landing.bench.audio': 'Audio',
-  'landing.bench.console': 'Konsol game',
-  'landing.bench.home': 'Alat rumah tangga',
-  'landing.bench.yours': 'Kategori Anda',
   'landing.mod.outletsName': 'Multi-cabang',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
@@ -435,7 +427,7 @@ export const id = {
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Server menyalin data toko Anda tiap malam, pemilik menerima tautan backup lewat email tiap Senin, dan backup bisa diunduh kapan saja dari Pengaturan.',
   'landing.faq.device.q': 'Hanya untuk servis HP?',
   'landing.faq.device.a':
-    'Tidak. FixMaster dipakai untuk HP, laptop, tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkatnya Anda atur sendiri.',
+    'Tidak. FixMaster dipakai untuk HP, laptop, tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkat, keluhan cepat, dan daftar kelengkapan Anda atur sendiri, jadi toko servis printer tidak perlu memakai daftar milik konter HP.',
   'landing.faq.install.q': 'Perlu memasang aplikasi?',
   'landing.faq.install.a':
     'Tidak wajib. FixMaster dibuka lewat browser di komputer, tablet, atau HP. Bila ingin seperti aplikasi biasa, pasang dari menu browser (Instal aplikasi atau Tambahkan ke layar utama): ikonnya muncul di layar utama dan FixMaster terbuka layar penuh. Demo bisa dicoba dulu dengan nama toko Anda, tanpa membuat akun.',

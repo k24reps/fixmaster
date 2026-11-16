@@ -34,10 +34,11 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul pilihan pemilik: "Toko servis yang
   rapi dan teratur, mulai hari ini." (`landing.heroTitle`).
 - **Konvensional vs FixMaster** (`#perbandingan`, tepat sesudah hero): papan dua lajur,
-  delapan situasi toko berantakan. **Empat terlihat** (unit masuk, lacak servis, stok part,
-  uang masuk); empat lainnya (untung per unit, karyawan, garansi, cabang) di baris
+  delapan situasi toko berantakan. **Empat terlihat** (lacak servis, stok part, uang masuk,
+  untung per unit); empat lainnya (unit masuk, karyawan, garansi, cabang) di baris
   `<details>` terakhir papan yang menyebut namanya ("Lihat 4 lainnya: …", `landing.vs.more`),
-  sejak 16 Nov 2026. Lajur konvensional di permukaan tertanam dengan tinta redup,
+  sejak 16 Nov 2026. Run critique ke-2 (16 Nov) menukar unit masuk dengan untung per unit:
+  unit masuk sudah diceritakan judul hero dan adegan, untung per unit pertanyaan pemilik. Lajur konvensional di permukaan tertanam dengan tinta redup,
   lajur FixMaster di permukaan terangkat; LED hanya di kepala lajur. Di ≤720px tiap baris
   menjadi blok dengan label lajur di tiap sel (di layar lebar label itu tetap ada untuk pembaca
   layar). Penutup: "Tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
@@ -58,7 +59,12 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   printer, sampai TV. … 50 unit pertama gratis, lalu Rp 1.000 per unit." Angkanya
   diinterpolasi dari `src/config/pricing.ts`, dengan spasi tak-putus. Bukan eyebrow: label di
   atas judul dilarang mutlak oleh craft floor impeccable.
-- **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman.
+- **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman. Di
+  ≤720px: judul → **potongan layar HP asli** (`heroPeek`: 132×150px bagian atas
+  `detail-phone.webp` sesuai tema, pudar ke bawah, "Begini FixMaster di HP" yang berganti
+  "{nama toko} di FixMaster" begitu nama diketik, tautan "Lihat semua menu" ke `#cara-kerja`)
+  → gerbang → adegan. Pilihan pemilik di run critique ke-2: bukti sebelum permintaan nomor,
+  tanpa memindah gerbang dari layar pertama.
   **Adegannya layar ASLI aplikasi, dua perangkat dengan menu sinkron** (versi akhir 16 Nov
   2026, pilihan pemilik): **Komputer** dan **HP** berdampingan di atas garis bench bertitik,
   tanpa jejak atau tulisan "sinkron" di antaranya (dicabut pemilik 16 Nov 2026 supaya HP bisa
@@ -71,9 +77,15 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   termuat (LED tombol berkedip selama menunggu), lalu crossfade.
   Menu sidebar lain (Kalkulator Biaya, Supplier, Tugas, Absensi, Log Aktivitas, Pengaturan)
   diredupkan dengan latar sidebar hasil rekaman; kliknya membuka gelembung "… ada di demo
-  lengkap" + tautan ke gerbang. Area klik di atas gambar `aria-hidden` dan tidak ikut Tab
-  (deret tombol yang jadi jalurnya); pindah layar diumumkan lewat live region setelah
-  pengunjung mengklik. Gambar direkam `scripts/shoot-bench-scene.mjs` dari SATU sesi `/demo`:
+  lengkap" + tautan ke gerbang, yang tertutup oleh tombol ×, Escape, atau ketukan di luar
+  gelembung, dan isinya diumumkan live region. Area klik di atas gambar `aria-hidden`, tidak
+  ikut Tab, tidak menyimpan fokus (`mousedown` dicegah), dan dikecualikan dari aturan global
+  44px untuk pointer kasar (`global.css`): dulu di 390px kotak bottom nav HP saling tumpuk dan
+  patch redup menutupi menu yang direkam. Pindah layar diumumkan lewat live region setelah
+  pengunjung mengklik. Gambar halaman diminta saat jari menyentuh (`pointerdown`), bukan hanya
+  hover; layar awal dimuat eager. Nama toko yang diketik tampil di kop layar komputer (±10px)
+  **dan** di label perangkat 14px ("Komputer · nama", "HP · nama"), karena HP tidak punya kop
+  toko. Gambar direkam `scripts/shoot-bench-scene.mjs` dari SATU sesi `/demo`:
   tiap halaman dibuka di lebar desktop (1280×800), dipotret, lalu jendela diganti ke HP
   (390×844) dan halaman yang sama dipotret, dua tema, WebP lewat kanvas browser
   (`public/bench/<tema>/<halaman>-desk[-800].webp`, `<halaman>-phone.webp`, total ±2 MB, dimuat
@@ -97,30 +109,42 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   (awalan bukan operator, nol semua, deret urut seperti contoh placeholder) ditolak dengan
   pesan sendiri (`demoGate.errorPhoneFake`, migrasi 0104); nomor cantik tetap lolos. Pengunjung demo adalah store yang
   dilanggan (`subscribeDemoVisitor` + `useSyncExternalStore`), jadi "Ganti nama toko" di satu
-  gerbang membuka formulir di semua gerbang. Judul gerbang akhir: "Buka meja penerimaan toko
-  Anda".
+  gerbang membuka formulir di semua gerbang.
+  Sejak run critique ke-2 (16 Nov 2026): gerbang hero dan penutup berbagi **satu draf**
+  (`draft` + `onDraftChange`, tipe `DemoLeadDraft`), jadi isian di atas sudah ada di bawah;
+  gerbang `/demo` menyimpan isiannya sendiri. Placeholder nomor `08xx-xxxx-xxxx` (contoh lama
+  ditolak 0104), pesan nomor palsu "Periksa lagi angkanya…", dan "Ganti nama toko" memindah
+  fokus ke kolom nama (dulu jatuh ke `<body>`), mengosongkan nama tapi mempertahankan nomor.
+  Gerbang penutup tidak punya judul sendiri: `labelledBy="landing-closing-title"` memakai judul
+  seksi "Coba dulu dengan nama toko Anda sendiri." (dulu dua judul berdempetan;
+  `demoGate.titleFinal` dihapus).
   Lolos → nama toko disimpan di browser (bukan nomornya), `/demo` terbuka dengan nama
   itu. Pengunjung yang kembali mendapat tombol buka + "Ganti nama toko". Gerbang yang
   sama dipasang di `/demo` untuk kunjungan langsung (`DemoApp`, di luar router). Probe
   Playwright di dev server (`navigator.webdriver`) melewatinya otomatis; `/demo?gate`
   memaksanya tampil.
-- **Seksi berikutnya (urutan sejak 16 Nov 2026):** **lemari part** kategori perangkat (laci
-  HP sampai alat rumah tangga + laci kosong "Kategori Anda", tanpa ikon plus karena tidak bisa
-  ditekan), **harga** (`#harga`) dengan sumur instrumen satu-satunya di halaman, **untuk
+- **Seksi berikutnya (urutan sejak 16 Nov 2026):** **harga** (`#harga`) dengan sumur instrumen satu-satunya di halaman, **untuk
   siapa** (`#untuk-siapa`, menggantikan cerita founder yang dicabut pemilik): tiga
   tahap di satu rel bertitik, masih sendiri → dibantu karyawan → buka cabang, tiap tahap dengan
-  meter LED 1–3 dan deret menu yang mulai dipakai ("Yang dipakai" / "Ditambah"); di ≤900px
+  meter LED 1–3 (cyan sejak run ke-2: ukuran toko adalah bacaan, bukan status hijau) dan deret menu yang mulai dipakai ("Yang dipakai" / "Ditambah"); di ≤900px
   relnya vertikal. Lalu "yang perlu Anda tahu" (koneksi, backup, FAQ yang juga JSON-LD di
   `index.html`), gerbang penutup, kaki ("Cimahi", mono sentence case). **Dihapus 16 Nov
   2026:** papan jejak "satu kali pasang part" (mengulang adegan; riwayat pelanggan pindah ke
   caption adegan, anchor `#cara-kerja` kini menunjuk adegan) dan grid 12 kanal modul (rel tahap
-  sudah memuat menunya). Tinggi halaman 390px 11.735 → ±8.300px.
+  sudah memuat menunya). **Dihapus di run ke-2:** lemari part kategori perangkat (laci HP
+  sampai alat rumah tangga): "bukan cuma HP" sudah disebut lead hero dan FAQ, jadi isinya
+  (kategori, keluhan cepat, daftar kelengkapan diatur sendiri) dilebur ke jawaban FAQ
+  `landing.faq.device.a` (JSON-LD `index.html` ikut). Tinggi halaman 390px 11.735 → ±7.400px.
 - **Breakpoint (container):** halaman 1080 (nav tinggal tautan Harga), 900 (gerbang menyempit
-  ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → gerbang → adegan),
-  560 (nav hilang; bar ponsel "Harga" + "Coba demo" + WA muncul saat kedua gerbang di luar
-  layar, menuju gerbang **terdekat** dan memfokus kolom setelah gulir selesai); adegan 700
-  (komputer selebar adegan, HP selebar min(72%, 300px) di tengah di bawahnya; di atasnya HP
-  selebar 0,32 × komputer). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
+  ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → potongan HP → gerbang →
+  adegan), 560 (nav hilang; bar ponsel "Harga" + "Coba demo" + WA muncul saat kedua gerbang
+  **dan adegan** di luar layar, karena di 320px bar menutupi bottom nav HP; menuju gerbang
+  **terdekat** dan memfokus kolom setelah gulir selesai). Adegan 900: komposisi bertumpuk,
+  deret tombol jadi satu baris geser (scroll-snap, pudar kanan) **di atas** layar, komputer
+  selebar adegan, HP min(40%, 260px) berdiri di depan sudut kanan bawahnya (margin −30%),
+  labelnya rata kanan melebar ke kiri; nama toko hanya di label HP (label komputer tertutup
+  HP). Di atas 900 HP selebar 0,32 × komputer. Adegan 440: ketukan di gambar komputer mati
+  (baris sidebar < 14px, lebih kecil dari bottom nav HP terkecil); deret tombol jalurnya. `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
   di bawah header sticky atau bar ponsel (WCAG 2.4.11).
 - **Amber:** tombol gerbang, lalu "Mulai gratis, 50 unit" di harga (gerbang tidak di
   layar). Deret tombol menu adalah `--bg-key` dengan LED cyan untuk menu aktif, bar ponsel
@@ -130,13 +154,14 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   `renderOpenGraph()` di `scripts/render-brand-assets.mjs`; render ulang bila judul atau
   `src/config/pricing.ts` berubah (angkanya ditulis tangan di sana).
 - **i18n:** `landing.*` dan `demoGate.*` (ID + EN). Kunci `landingV2.*` dihapus.
-- **Verifikasi:** `LandingPage.test.tsx` (intent auth, nama toko ditempel di kop layar
-  komputer, kedua layar mulai di detail tiket dan pindah bersamaan setelah keduanya siap,
-  klik bottom nav HP memindah komputer juga, menu yang tidak direkam menawarkan demo, ganti
-  nama toko membuka
-  semua gerbang, fokus mendarat sesudah error terpasang, gerbang: nomor salah, sukses, gagal
-  simpan + ulang, pengunjung kembali). Critique + audit 16 Nov 2026 (29/40, 15/20) beserta
-  perbaikannya: lihat [[Decisions & Bug Fixes]]. Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced
+- **Verifikasi:** `LandingPage.test.tsx` (intent auth, nama toko di kop layar komputer,
+  label kedua perangkat, dan judul potongan HP, isian hero terbawa ke gerbang penutup, kedua
+  layar mulai di detail tiket dan pindah bersamaan setelah keduanya siap, klik bottom nav HP
+  memindah komputer juga, menu yang tidak direkam menawarkan demo dan tertutup oleh Escape
+  atau tombol tutup, ganti nama toko membuka semua gerbang dan memfokus kolom nama, fokus
+  mendarat sesudah error terpasang, gerbang: nomor salah, sukses, gagal simpan + ulang,
+  pengunjung kembali). Critique + audit 16 Nov 2026 (run 1: 29/40, 15/20; run 2: 28/40,
+  15/20) beserta perbaikannya: lihat [[Decisions & Bug Fixes]]. Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced
   motion, luberan-x 0). `audit-contrast` (landing-preview dua tema): 0 gagal; sembilan kasus
   "gradien, periksa manual" di sumur harga tema terang adalah positif palsu (lapisan scanline
   transparan dibaca sebagai latar halaman; fotonya gelap). Probe khusus landing lama

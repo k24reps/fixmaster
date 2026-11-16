@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '@/components/ui';
 import { useT, type TranslationKey } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
@@ -112,6 +112,23 @@ export function BenchScene({ shopName }: BenchSceneProps) {
   const [loaded, setLoaded] = useState<Set<string>>(() => new Set());
   const [byUser, setByUser] = useState(false);
   const [offer, setOffer] = useState<{ path: string; label: TranslationKey } | null>(null);
+  const offerRef = useRef<HTMLDivElement>(null);
+
+  // Tawaran demo tertutup oleh Escape atau ketukan di luar gelembungnya.
+  useEffect(() => {
+    if (!offer) return;
+    const close = () => setOffer(null);
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && close();
+    const onPointer = (event: PointerEvent) => {
+      if (!offerRef.current?.contains(event.target as Node)) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [offer]);
 
   const isReady = (page: PageKey) =>
     loaded.has(`${theme}-${page}-desk`) && loaded.has(`${theme}-${page}-phone`);
@@ -158,14 +175,16 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                   ? `${shotSrc(theme, page, device, size.out[1])} ${size.out[1]}w, ${shotSrc(theme, page, device)} ${size.out[0]}w`
                   : undefined
               }
-              sizes={wide ? '(max-width: 720px) 100vw, 70vw' : undefined}
+              // Slot komputer: selebar adegan di ≤900px, (lebar − 56px) / 1,32 di atasnya.
+              sizes={wide ? '(max-width: 932px) calc(100vw - 32px), min(calc((100vw - 56px) / 1.32), 891px)' : undefined}
               width={size.w}
               height={size.h}
               alt={on ? interpolate(t('landing.scene.screenAlt'), { page: pageLabel(page), device: deviceName }) : ''}
               aria-hidden={on ? undefined : true}
               data-on={on ? 'true' : undefined}
               decoding="async"
-              loading="lazy"
+              // Layar awal bisa jadi gambar terbesar di layar pertama desktop.
+              loading={page === 'detail' ? 'eager' : 'lazy'}
               onLoad={() => markLoaded(id)}
             />
           );
@@ -207,13 +226,17 @@ export function BenchScene({ shopName }: BenchSceneProps) {
               data-other={other ? 'true' : undefined}
               style={{ ...pct(rect), ...(other ? { background: themeShots.railBg } : {}) }}
               onPointerEnter={() => page && request(page)}
+              onPointerDown={() => page && request(page)}
+              // Area klik aria-hidden tidak boleh menyimpan fokus.
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => (page ? go(page) : setOffer({ path, label: other }))}
             />
           );
         })}
 
         {device === 'desk' && offer && nav[offer.path] && (
-          <p
+          <div
+            ref={offerRef}
             className={styles.offer}
             style={{ left: `${nav[offer.path].x + nav[offer.path].w + 1}%`, top: `${nav[offer.path].y}%` }}
           >
@@ -221,7 +244,15 @@ export function BenchScene({ shopName }: BenchSceneProps) {
             <a href="#coba" onClick={() => setOffer(null)}>
               {t('landing.scene.openDemo')} <Icon name="arrow-up" aria-hidden />
             </a>
-          </p>
+            <button
+              type="button"
+              className={styles.offerClose}
+              aria-label={t('common.close')}
+              onClick={() => setOffer(null)}
+            >
+              <Icon name="xmark" aria-hidden />
+            </button>
+          </div>
         )}
       </div>
     );
@@ -236,6 +267,9 @@ export function BenchScene({ shopName }: BenchSceneProps) {
             <figcaption className={styles.deviceLabel}>
               <span className={styles.deviceLed} aria-hidden />
               {t(device.label)}
+              {/* Kop toko di layar komputer hanya ±10px; nama di label ini yang
+                  terbaca, dan HP tidak punya kop toko sama sekali. */}
+              {shopName && <span className={styles.deviceShop}>{shopName}</span>}
             </figcaption>
           </figure>
         ))}
@@ -250,6 +284,7 @@ export function BenchScene({ shopName }: BenchSceneProps) {
             aria-pressed={page.key === want}
             data-loading={page.key === want && want !== shown ? 'true' : undefined}
             onPointerEnter={() => request(page.key)}
+            onPointerDown={() => request(page.key)}
             onFocus={() => request(page.key)}
             onClick={() => go(page.key)}
           >
@@ -258,8 +293,12 @@ export function BenchScene({ shopName }: BenchSceneProps) {
           </button>
         ))}
       </div>
-      <p className="fm-visually-hidden" aria-live={byUser ? 'polite' : 'off'}>
-        {byUser ? interpolate(t('landing.scene.showing'), { page: pageLabel(shown) }) : ''}
+      <p className="fm-visually-hidden" aria-live={byUser || offer ? 'polite' : 'off'}>
+        {offer
+          ? interpolate(t('landing.scene.moreInDemo'), { menu: t(offer.label) })
+          : byUser
+            ? interpolate(t('landing.scene.showing'), { page: pageLabel(shown) })
+            : ''}
       </p>
 
       <p className={styles.caption}>

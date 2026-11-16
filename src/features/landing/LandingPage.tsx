@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon, type IconName } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   FREE_UNITS,
@@ -18,7 +18,8 @@ import {
 import { useT, type TranslationKey } from '@/i18n';
 import { interpolate, waLink } from '@/lib/business/notify';
 import { fmtRp } from '@/lib/format';
-import { readDemoVisitor } from '@/lib/demoVisitor';
+import { EMPTY_DEMO_LEAD_DRAFT, cleanShopName } from '@/lib/business/demoLead';
+import { readDemoVisitorName, subscribeDemoVisitor } from '@/lib/demoVisitor';
 import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
@@ -46,7 +47,6 @@ interface Contrast {
  * minat (dulu 8 baris × 3 sel, 2.796px di ponsel).
  */
 const CONTRASTS: Contrast[] = [
-  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   {
     situation: 'landing.vs.status',
     old: 'landing.vs.statusOld',
@@ -57,28 +57,15 @@ const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
   { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
+  // Unit masuk sudah diceritakan judul hero dan adegannya; di sini ia membuka
+  // daftar tambahan, untung per unit naik ke empat yang terlihat.
+  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
   { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
   { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
 ];
 
 const VS_VISIBLE = 4;
-
-interface Drawer {
-  icon: IconName;
-  label: TranslationKey;
-}
-
-const DRAWERS: Drawer[] = [
-  { icon: 'device-mobile', label: 'landing.bench.phone' },
-  { icon: 'laptop', label: 'landing.bench.laptop' },
-  { icon: 'device-tablet', label: 'landing.bench.tablet' },
-  { icon: 'print', label: 'landing.bench.printer' },
-  { icon: 'television', label: 'landing.bench.tv' },
-  { icon: 'speaker', label: 'landing.bench.audio' },
-  { icon: 'game-controller', label: 'landing.bench.console' },
-  { icon: 'cooking-pot', label: 'landing.bench.home' },
-];
 
 interface Stage {
   title: TranslationKey;
@@ -204,10 +191,15 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const t = useT();
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
-  const [shopName, setShopName] = useState(() => readDemoVisitor()?.shopName ?? '');
+  // Satu draf untuk kedua gerbang: nama yang diketik di hero sudah terisi saat
+  // pengunjung tiba di gerbang penutup, dan sebaliknya.
+  const [draft, setDraft] = useState(EMPTY_DEMO_LEAD_DRAFT);
+  const returning = useSyncExternalStore(subscribeDemoVisitor, readDemoVisitorName, () => null);
+  const shopName = returning ?? cleanShopName(draft.shopName);
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
 
   // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
@@ -222,7 +214,8 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   }, [t]);
 
   // Bar ponsel hanya muncul saat kedua gerbang di luar layar: ia jalan pintas
-  // ke gerbang, bukan tiruan tombolnya.
+  // ke gerbang, bukan tiruan tombolnya. Ia juga mundur selama adegan layar asli
+  // terlihat, karena di 320px bar menutupi bottom nav HP yang bisa diketuk.
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const seen = new Map<Element, boolean>();
@@ -230,7 +223,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
       for (const entry of entries) seen.set(entry.target, entry.isIntersecting);
       setGateOffscreen(![...seen.values()].some(Boolean));
     });
-    for (const node of [heroGateRef.current, finalGateRef.current]) {
+    for (const node of [heroGateRef.current, finalGateRef.current, sceneRef.current]) {
       if (node) {
         seen.set(node, true);
         observer.observe(node);
@@ -367,10 +360,32 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               })}
             </p>
           </div>
+          {/* Layar ≤720px: satu potongan layar HP asli sebelum formulir, supaya
+              pengunjung dari tautan WA melihat aplikasinya sebelum diminta nomor. */}
+          <a className={styles.heroPeek} href="#cara-kerja">
+            <span className={styles.heroPeekScreen}>
+              <img
+                src={`/bench/${theme === 'light' ? 'light' : 'dark'}/detail-phone.webp`}
+                width={585}
+                height={1266}
+                alt={t('landing.peek.alt')}
+                decoding="async"
+              />
+            </span>
+            <span className={styles.heroPeekText}>
+              <strong>
+                {shopName ? interpolate(t('landing.peek.titleShop'), { shop: shopName }) : t('landing.peek.title')}
+              </strong>
+              <small>{t('landing.peek.sample')}</small>
+              <span className={styles.heroPeekLink}>
+                {t('landing.peek.link')} <Icon name="arrow-down" aria-hidden />
+              </span>
+            </span>
+          </a>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
-            <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
+            <DemoGate source="hero" title="demoGate.title" draft={draft} onDraftChange={setDraft} />
           </div>
-          <div id="cara-kerja" className={styles.heroScene}>
+          <div ref={sceneRef} id="cara-kerja" className={styles.heroScene}>
             <BenchScene shopName={shopName} />
           </div>
         </section>
@@ -418,26 +433,6 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </p>
         </section>
 
-        {/* ---------- Untuk semua meja reparasi ---------- */}
-        <section className={styles.benches} aria-labelledby="landing-benches-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-benches-title">{t('landing.benchesTitle')}</h2>
-            <p>{t('landing.benchesLead')}</p>
-          </div>
-          <ul className={styles.cabinet} aria-label={t('landing.cabinetLabel')}>
-            {DRAWERS.map((drawer) => (
-              <li key={drawer.label} className={styles.drawer}>
-                <span className={styles.drawerPull} aria-hidden />
-                <Icon name={drawer.icon} aria-hidden />
-                <span>{t(drawer.label)}</span>
-              </li>
-            ))}
-            <li className={[styles.drawer, styles.drawerAdd].join(' ')}>
-              <span className={styles.drawerPull} aria-hidden />
-              <span>{t('landing.bench.yours')}</span>
-            </li>
-          </ul>
-        </section>
 
         {/* ---------- Harga ---------- */}
         <section id="harga" className={styles.pricing} aria-labelledby="landing-price-title">
@@ -543,7 +538,13 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             <p>{t('landing.closingLead')}</p>
           </div>
           <div ref={finalGateRef} className={styles.closingGate}>
-            <DemoGate source="final" title="demoGate.titleFinal" onShopNameChange={setShopName} />
+            {/* Satu judul untuk bagian ini: gerbangnya memakai judul seksi. */}
+            <DemoGate
+              source="final"
+              labelledBy="landing-closing-title"
+              draft={draft}
+              onDraftChange={setDraft}
+            />
           </div>
         </section>
       </main>

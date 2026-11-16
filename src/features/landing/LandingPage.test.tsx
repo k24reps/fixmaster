@@ -122,15 +122,30 @@ describe('LandingPage perbandingan', () => {
 });
 
 describe('LandingPage dua adegan', () => {
-  it('nama toko yang diketik di gerbang ditempel di kop layar komputer meja', () => {
+  it('nama toko yang diketik di gerbang muncul di kop komputer dan label kedua perangkat', () => {
     renderLanding();
     const desk = screen.getByRole('figure', { name: /komputer/i });
+    const phone = screen.getByRole('figure', { name: /^HP$/i });
     expect(within(desk).queryByText('Sinar Servis')).toBeNull();
 
     const [nameField] = screen.getAllByLabelText('Nama toko');
     fireEvent.change(nameField, { target: { value: '  Sinar   Servis ' } });
 
-    expect(within(desk).getByText('Sinar Servis')).toBeInTheDocument();
+    // Kop di layar komputer + label di bawahnya.
+    expect(within(desk).getAllByText('Sinar Servis')).toHaveLength(2);
+    expect(within(phone).getByText('Sinar Servis')).toBeInTheDocument();
+    expect(screen.getByText('Sinar Servis di FixMaster')).toBeInTheDocument();
+  });
+
+  it('isian gerbang hero sudah terisi di gerbang penutup', () => {
+    renderLanding();
+    const [heroName, finalName] = screen.getAllByLabelText('Nama toko');
+    const [heroPhone, finalPhone] = screen.getAllByLabelText('Nomor WhatsApp');
+    fireEvent.change(heroName, { target: { value: 'Sinar Servis' } });
+    fireEvent.change(heroPhone, { target: { value: '0813 1122 4455' } });
+
+    expect(finalName).toHaveValue('Sinar Servis');
+    expect(finalPhone).toHaveValue('0813 1122 4455');
   });
 
   // Layar yang tampil adalah satu-satunya gambar ber-alt; halaman lain aria-hidden.
@@ -176,8 +191,16 @@ describe('LandingPage dua adegan', () => {
     const other = document.querySelector('button[data-other="true"]');
     expect(other).not.toBeNull();
     fireEvent.click(other!);
-    expect(screen.getByText(/ada di demo lengkap/)).toBeInTheDocument();
+    const desk = screen.getByRole('figure', { name: /komputer/i });
+    expect(within(desk).getByText(/ada di demo lengkap/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Coba demo/ })).toHaveAttribute('href', '#coba');
+
+    // Escape menutupnya, begitu pula tombol tutup.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(within(desk).queryByText(/ada di demo lengkap/)).toBeNull();
+    fireEvent.click(other!);
+    fireEvent.click(within(desk).getByRole('button', { name: 'Tutup' }));
+    expect(within(desk).queryByText(/ada di demo lengkap/)).toBeNull();
   });
 
   it('ganti nama toko di satu gerbang membuka formulir di kedua gerbang', () => {
@@ -188,6 +211,8 @@ describe('LandingPage dua adegan', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Ganti nama toko/ })[0]);
     expect(screen.getAllByLabelText('Nomor WhatsApp')).toHaveLength(2);
     expect(screen.queryByText('Sinar Servis')).toBeNull();
+    // Tombol yang ditekan hilang; fokus pindah ke kolom nama gerbang itu.
+    expect(screen.getAllByLabelText('Nama toko')[0]).toHaveFocus();
   });
 });
 
