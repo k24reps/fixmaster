@@ -323,7 +323,6 @@ export const en: Dictionary = {
   'landing.scene.showing': 'The computer and phone now show {page}.',
   'landing.scene.moreInDemo': '{menu} is in the full demo.',
   'landing.scene.openDemo': 'Try the demo',
-  'landing.scene.sync': 'sync',
   'landing.scene.sample': 'Real screens · sample data',
   'landing.scene.caption':
     'The same app on a computer and a phone, and it installs to the home screen like any other app. Click a menu on the computer, the phone, or the buttons above: both screens switch together.',

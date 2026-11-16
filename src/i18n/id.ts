@@ -324,7 +324,6 @@ export const id = {
   'landing.scene.showing': 'Komputer dan HP menampilkan {page}.',
   'landing.scene.moreInDemo': '{menu} ada di demo lengkap.',
   'landing.scene.openDemo': 'Coba demo',
-  'landing.scene.sync': 'sinkron',
   'landing.scene.sample': 'Layar asli · data contoh',
   'landing.scene.caption':
     'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Klik menu di layar komputer, di HP, atau tombol di atas: kedua layar pindah bersamaan.',

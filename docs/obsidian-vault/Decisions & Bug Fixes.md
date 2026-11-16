@@ -7134,3 +7134,9 @@ adegan untuk sentuh/keyboard, strip di atas gerbang ponsel dihapus.
 
 **Hasil:** lihat [[Testing & Security]] untuk jumlah tes; detail verifikasi di Signature Pages.
 
+**Revisi lanjutan (16 Nov 2026):** jejak dan tulisan "sinkron" di antara komputer dan HP dicabut
+atas permintaan pemilik; kolom 48px-nya dipakai untuk HP yang lebih besar (0,289 → 0,32 × lebar
+komputer: 251 → 285px di 1440, teks layar HP ±14% lebih besar), HP sedikit lebih tinggi dari
+monitor. Di ≤700px HP di bawah komputer melebar ke min(72%, 300px). Kunci `landing.scene.sync`
+dihapus.
+
