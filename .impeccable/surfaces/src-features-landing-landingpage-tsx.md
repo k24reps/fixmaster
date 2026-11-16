@@ -27,7 +27,7 @@ OWN-WORLD: The committed Precision Electronics Bench: graphite steel on the blue
 
 STORY: The visitor sees a mixed queue (laptop, printer, iPhone, TV), presses the desk's action, and watches the owner's phone update stock, margin, the ready shelf and cash. They believe one entry feeds the whole business, type their shop name and WhatsApp number, and the demo opens under that name.
 
-FIRST VIEWPORT: Slim header. Row one: headline at left over 7/12 (display clamp to about 3.3rem) and the gate panel at right over 5/12 with the amber submit. Row two, full width: desk window (about 60%), a cyan sync trace, owner phone at right; typing the shop name relabels both. On phones: headline, gate, then a one-row desk action above the phone.
+FIRST VIEWPORT: Slim header. Row one: headline at left over 7/12 (display clamp to about 3.3rem) and the gate panel at right over 5/12 with the amber submit. Row two, full width: desk window (about 60%), a cyan sync trace, owner phone at right; typing the shop name relabels both. On phones (since 16 Nov 2026): headline, a two-row sync strip (desk key over one owner-phone readout, sharing the scene's state), gate, then the scene with a one-row desk action above the phone.
 
 FORM: "Dua Adegan: Meja & Ponsel", dealt lead (index 4) of surface seed d5038be4, locked by the user in the shape round.
 
@@ -39,3 +39,4 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 Owner revision (15 Nov 2026, before release): founder section removed; hero copy rewritten to the tidier-work narrative across shop stages; "Untuk siapa" stage rail added in its place. Recaptured desktop and mobile; luberan-x 0 at every width.
 Second owner revision (15 Nov 2026): headline set to the owner's pick; comparison board added after the hero (eight situations, two lanes, stacks under 720px). Recaptured; luberan-x 0.
+Critique + audit (16 Nov 2026): 29/40 design, 15/20 technical (dual sub-agent run; snapshot in `.impeccable/critique/`). Fixed in seven commits: sync strip on phones and autoplay from 140px visible; stacked step text (CLS 0.25 → ≤0.007); lead names devices and price (no eyebrow, craft-floor ban); vs board to 4 rows plus a disclosure row, module grid and trails section removed, pricing above stages; WA note under the phone field (text unchanged); Harga link on tablet/phone, mobile bar to the nearest gate; document scroll-padding, focus after render, one subscribed visitor store for every gate; price ticks instead of LEDs, cyan gauge thumb; og-image re-rendered from the landing hero. Prerender deferred as an architecture decision. Measured: overflow 0 at 9 widths × 2 themes, contrast gate clean, detector advisories only.

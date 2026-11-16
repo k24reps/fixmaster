@@ -34,22 +34,30 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul pilihan pemilik: "Toko servis yang
   rapi dan teratur, mulai hari ini." (`landing.heroTitle`).
 - **Konvensional vs FixMaster** (`#perbandingan`, tepat sesudah hero): papan dua lajur,
-  delapan situasi toko berantakan (unit masuk, status, stok, untung per unit, uang masuk,
-  karyawan, garansi, cabang). Lajur konvensional di permukaan tertanam dengan tinta redup,
+  delapan situasi toko berantakan. **Empat terlihat** (unit masuk, lacak servis, stok part,
+  uang masuk); empat lainnya (untung per unit, karyawan, garansi, cabang) di baris
+  `<details>` terakhir papan yang menyebut namanya ("Lihat 4 lainnya: …", `landing.vs.more`),
+  sejak 16 Nov 2026. Lajur konvensional di permukaan tertanam dengan tinta redup,
   lajur FixMaster di permukaan terangkat; LED hanya di kepala lajur. Di ≤720px tiap baris
   menjadi blok dengan label lajur di tiap sel (di layar lebar label itu tetap ada untuk pembaca
-  layar). Penutup: "Hasilnya: tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
+  layar). Penutup: "Tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
   (`#coba`). Tiap jawaban dicocokkan ke fitur nyata (nota + nomor lewat WA, tautan lacak,
   stok menipis, hitung kas dengan selisih, PIN, klaim garansi dari tiket asli, dashboard
-  semua cabang). Baris **Lacak servis** adalah baris unggulan: garis cyan di bawah judul
-  situasinya, spine cyan di sel FixMaster, dan contoh alamat lacak mono
-  (`fixmaster.app/t/K7Q2M9XAPD`, bentuk kode 0100) dengan ikon QR, karena pelacakan
-  menolong toko (tidak membalas "sudah jadi belum?") sekaligus pelanggan.
+  semua cabang). Baris **Lacak servis** membawa contoh alamat lacak mono
+  (`fixmaster.app/t/K7Q2M9XAPD`, bentuk kode 0100) dengan ikon QR redup; garis dan spine
+  cyan-nya dicabut 16 Nov 2026 (cyan = bacaan instrumen, bukan penanda unggulan).
 - **Harga (0103):** "Rp 1.000 per unit masuk" + aturan pertama "paling banyak Rp 100.000 per
   cabang per bulan". Sumur biaya kini **satu cabang** (10–400 unit, bawaan 60): tick
   sesudah titik 100 unit bergaris putus sebagai zona gratis dan menyala hijau, readout
   berhenti di Rp 100.000, fakta "Gratis karena batas" dan bulan pertama (dipotong 50
-  unit gratis).
+  unit gratis). Sejak 16 Nov 2026: bullet aturan berupa tick pendek redup (bukan LED),
+  tombol geser sumur putih bercincin cyan (amber tinggal tombol daftar), label sumur
+  sentence case, dan grid `copy / gauge / actions` membuat ponsel menghitung di gauge
+  dulu baru melihat tombol daftar.
+- **Lead hero (16 Nov 2026)** menyebut perangkat dan harga: "Untuk konter HP, servis laptop,
+  printer, sampai TV. … 50 unit pertama gratis, lalu Rp 1.000 per unit." Angkanya
+  diinterpolasi dari `src/config/pricing.ts`, dengan spasi tak-putus. Bukan eyebrow: label di
+  atas judul dilarang mutlak oleh craft floor impeccable.
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman:
   jendela **meja penerimaan** (antrean campuran laptop/printer/iPhone/TV dengan spine
   `STATUS_TONE`, tiket FM-0312 terpilih) → **jejak sinkron cyan** → **ponsel pemilik**
@@ -58,34 +66,63 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   2→3), terima bayar (kas +Rp 350.000, margin lunas). Diputar **sekali** saat terlihat
   lalu diam di keadaan akhir; reduced motion mulai dari keadaan akhir yang tetap
   menampilkan nilai sebelum → sesudah. Nama toko yang diketik di gerbang langsung
-  menjadi kop meja dan ponsel. Semua angka berlabel **Data contoh**.
+  menjadi kop meja dan ponsel. Semua angka berlabel **Data contoh**. Keadaan langkah
+  tinggal di hook `useBenchSteps` (`src/features/landing/useBenchSteps.ts`), dipakai adegan
+  dan strip ponsel; autoplay mulai begitu 140px salah satunya terlihat (dulu rasio 0,35:
+  adegan diam di 1280×720). Teks yang berganti per langkah (status tiket, keterangan part,
+  notifikasi, nilai readout, baris perubahan) dirender **bertumpuk** (`Stack`) setinggi
+  varian terbesar: CLS ponsel 0,19–0,25 → ≤0,007. Pembaca layar mendapat "sebelumnya" dan
+  "perubahan" di readout, dan "sudah/belum" di tahap tiket.
+- **Strip sinkron (≤720px, 16 Nov 2026):** di antara judul dan gerbang, panel dua baris:
+  ikon toko + nama toko + tuts meja di atas, ikon ponsel + satu readout di bawah, jejak cyan
+  menurun di kolom ikon, tab "contoh" di tepi atas panel. Tuts pendek (`landing.strip.*`)
+  memajukan keadaan yang sama dengan adegan penuh. Tujuannya bukti sebelum permintaan:
+  pengunjung ponsel melihat meja menggerakkan ponsel sebelum diminta nomor WA.
 - **Gerbang demo (0102):** nama toko + nomor WhatsApp (cek format, tanpa OTP), kolom
   jebakan bot, galat per kolom, galat simpan jujur dengan "Coba lagi", batas jaringan.
+  Sejak 16 Nov 2026: catatan pemakaian nomor tepat di bawah kolom nomor (teksnya tetap,
+  `aria-describedby`), fokus ke kolom yang salah dipindah **sesudah** render supaya error
+  ikut diumumkan, kolom `required`, nama `maxLength` 60. Pengunjung demo adalah store yang
+  dilanggan (`subscribeDemoVisitor` + `useSyncExternalStore`), jadi "Ganti nama toko" di satu
+  gerbang membuka formulir di semua gerbang. Judul gerbang akhir: "Buka meja penerimaan toko
+  Anda".
   Lolos → nama toko disimpan di browser (bukan nomornya), `/demo` terbuka dengan nama
   itu. Pengunjung yang kembali mendapat tombol buka + "Ganti nama toko". Gerbang yang
   sama dipasang di `/demo` untuk kunjungan langsung (`DemoApp`, di luar router). Probe
   Playwright di dev server (`navigator.webdriver`) melewatinya otomatis; `/demo?gate`
   memaksanya tampil.
-- **Seksi berikutnya:** papan jejak "satu kali pasang part, empat tempat ikut tercatat"
-  (pad sumber + bus cyan bertitik), **lemari part** kategori perangkat (laci HP sampai
-  alat rumah tangga + laci "Kategori Anda"), deretan **kanal modul** bergaya sidebar,
-  **untuk siapa** (`#untuk-siapa`, menggantikan cerita founder yang dicabut pemilik): tiga
+- **Seksi berikutnya (urutan sejak 16 Nov 2026):** **lemari part** kategori perangkat (laci
+  HP sampai alat rumah tangga + laci kosong "Kategori Anda", tanpa ikon plus karena tidak bisa
+  ditekan), **harga** (`#harga`) dengan sumur instrumen satu-satunya di halaman, **untuk
+  siapa** (`#untuk-siapa`, menggantikan cerita founder yang dicabut pemilik): tiga
   tahap di satu rel bertitik, masih sendiri → dibantu karyawan → buka cabang, tiap tahap dengan
   meter LED 1–3 dan deret menu yang mulai dipakai ("Yang dipakai" / "Ditambah"); di ≤900px
-  relnya vertikal. **harga** dengan sumur instrumen satu-satunya di
-  halaman (slider unit per bulan → biaya, bulan pertama dipotong 50 unit gratis),
-  "yang perlu Anda tahu" (koneksi, backup, FAQ yang juga JSON-LD di `index.html`),
-  gerbang penutup, kaki.
-- **Breakpoint (container):** halaman 1080 (nav disembunyikan), 900 (gerbang menyempit ke
-  300–360px), 720 (hero satu kolom), 560 (bar ponsel "Coba demo" + WA muncul saat kedua
-  gerbang di luar layar); adegan 900 (antrean dilepas) dan 620 (meja jadi satu baris aksi
-  di atas ponsel, jejak sinkron vertikal).
+  relnya vertikal. Lalu "yang perlu Anda tahu" (koneksi, backup, FAQ yang juga JSON-LD di
+  `index.html`), gerbang penutup, kaki ("Cimahi", mono sentence case). **Dihapus 16 Nov
+  2026:** papan jejak "satu kali pasang part" (mengulang adegan; riwayat pelanggan pindah ke
+  caption adegan, anchor `#cara-kerja` kini menunjuk adegan) dan grid 12 kanal modul (rel tahap
+  sudah memuat menunya). Tinggi halaman 390px 11.735 → ±8.300px.
+- **Breakpoint (container):** halaman 1080 (nav tinggal tautan Harga), 900 (gerbang menyempit
+  ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → strip → gerbang → adegan),
+  560 (nav hilang; bar ponsel "Harga" + "Coba demo" + WA muncul saat kedua gerbang di luar
+  layar, menuju gerbang **terdekat** dan memfokus kolom setelah gulir selesai); adegan 900
+  (antrean dilepas, kolom sinkron 56px), 620 (meja jadi satu baris aksi di atas ponsel, kop
+  tiket dua baris, jejak sinkron vertikal), 340 (keterangan "Meja penerimaan" di bilah jendela
+  disembunyikan). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
+  di bawah header sticky atau bar ponsel (WCAG 2.4.11).
 - **Amber:** tombol gerbang, lalu "Mulai gratis, 50 unit" di harga (gerbang tidak di
-  layar). Tombol meja adalah tuts `--bg-key`, bar ponsel sekunder.
+  layar). Tombol meja dan tuts strip adalah `--bg-key`, bar ponsel sekunder, tombol geser
+  sumur cyan.
+- **Kartu pratinjau tautan** (`public/og-image.png`, 16 Nov 2026): judul + lead landing dan
+  ponsel pemilik dengan readout contoh, warna dari `tokens.css`, font self-hosted. Dibuat
+  `renderOpenGraph()` di `scripts/render-brand-assets.mjs`; render ulang bila judul atau
+  `src/config/pricing.ts` berubah (angkanya ditulis tangan di sana).
 - **i18n:** `landing.*` dan `demoGate.*` (ID + EN). Kunci `landingV2.*` dihapus.
 - **Verifikasi:** `LandingPage.test.tsx` (intent auth, kop ikut nama toko, tombol meja
-  menggerakkan ponsel, gerbang: nomor salah, sukses, gagal simpan + ulang, pengunjung
-  kembali). Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced
+  menggerakkan ponsel, tuts strip menggerakkan adegan yang sama, ganti nama toko membuka
+  semua gerbang, fokus mendarat sesudah error terpasang, gerbang: nomor salah, sukses, gagal
+  simpan + ulang, pengunjung kembali). Critique + audit 16 Nov 2026 (29/40, 15/20) beserta
+  perbaikannya: lihat [[Decisions & Bug Fixes]]. Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced
   motion, luberan-x 0). `audit-contrast` (landing-preview dua tema): 0 gagal; sembilan kasus
   "gradien, periksa manual" di sumur harga tema terang adalah positif palsu (lapisan scanline
   transparan dibaca sebagai latar halaman; fotonya gelap). Probe khusus landing lama

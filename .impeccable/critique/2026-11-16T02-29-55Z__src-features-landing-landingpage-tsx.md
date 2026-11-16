@@ -10,6 +10,7 @@ target_fingerprint: "sha256:7f871150b93eab1e1cb4943cd684a395094ccbe58ec2f4c3fea3
 target_path: /home/user/fixmaster/src/features/landing/LandingPage.tsx
 timestamp: 2026-11-16T02-29-55Z
 slug: src-features-landing-landingpage-tsx
+closed: true
 ---
 Method: dual-agent (A: sub-agen review desain · B: sub-agen detektor + browser)
 
