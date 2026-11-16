@@ -60,14 +60,15 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   atas judul dilarang mutlak oleh craft floor impeccable.
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman.
   **Adegannya layar ASLI aplikasi, dua perangkat dengan menu sinkron** (versi akhir 16 Nov
-  2026, pilihan pemilik): **Komputer** dan **HP** di atas garis bench bertitik, jejak sinkron
-  cyan di antaranya. Keduanya mulai di **Detail Servis FM-0008** (seed demo: ASUS VivoBook
+  2026, pilihan pemilik): **Komputer** dan **HP** berdampingan di atas garis bench bertitik,
+  tanpa jejak atau tulisan "sinkron" di antaranya (dicabut pemilik 16 Nov 2026 supaya HP bisa
+  lebih besar: kolom HP 0,32 × komputer, sedikit lebih tinggi dari monitor). Keduanya mulai di **Detail Servis FM-0008** (seed demo: ASUS VivoBook
   X441, keyboard tidak merespons) dan diam sampai diklik: tanpa fase, tanpa autoplay. Klik
   menu di sidebar gambar komputer, di bottom nav gambar HP (Beranda, Servis, Kasir,
   Pelanggan), atau di **deret tombol menu** di bawah bench (Detail tiket, Dashboard, Servis,
   Kasir & Stok, Pelanggan, Keuangan, Laporan; jalur keyboard, sentuh, dan pembaca layar)
   memindahkan KEDUA layar bersamaan. Layar baru berganti setelah gambar komputer DAN HP-nya
-  termuat (LED tombol berkedip selama menunggu), lalu crossfade dan paket sinkron melintas.
+  termuat (LED tombol berkedip selama menunggu), lalu crossfade.
   Menu sidebar lain (Kalkulator Biaya, Supplier, Tugas, Absensi, Log Aktivitas, Pengaturan)
   diredupkan dengan latar sidebar hasil rekaman; kliknya membuka gelembung "… ada di demo
   lengkap" + tautan ke gerbang. Area klik di atas gambar `aria-hidden` dan tidak ikut Tab
@@ -118,8 +119,8 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → gerbang → adegan),
   560 (nav hilang; bar ponsel "Harga" + "Coba demo" + WA muncul saat kedua gerbang di luar
   layar, menuju gerbang **terdekat** dan memfokus kolom setelah gulir selesai); adegan 700
-  (komputer selebar adegan, jejak sinkron menurun, HP di tengah di bawahnya; di atasnya HP
-  selebar 0,289 × komputer supaya tingginya sama). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
+  (komputer selebar adegan, HP selebar min(72%, 300px) di tengah di bawahnya; di atasnya HP
+  selebar 0,32 × komputer). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
   di bawah header sticky atau bar ponsel (WCAG 2.4.11).
 - **Amber:** tombol gerbang, lalu "Mulai gratis, 50 unit" di harga (gerbang tidak di
   layar). Deret tombol menu adalah `--bg-key` dengan LED cyan untuk menu aktif, bar ponsel

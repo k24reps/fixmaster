@@ -239,12 +239,6 @@ export function BenchScene({ shopName }: BenchSceneProps) {
             </figcaption>
           </figure>
         ))}
-        {/* Jejak sinkron di antara komputer dan HP; paket melintas tiap pindah menu. */}
-        <span className={styles.sync} aria-hidden>
-          <span className={styles.syncLine} />
-          {shown !== 'detail' && <span key={shown} className={styles.syncPacket} />}
-          <span className={styles.syncLabel}>{t('landing.scene.sync')}</span>
-        </span>
       </div>
 
       <div className={styles.menu} role="group" aria-label={t('landing.scene.menuLabel')}>

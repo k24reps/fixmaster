@@ -12,14 +12,15 @@
   gap: var(--space-4);
 }
 
-/* Lebar HP 0,289 × lebar komputer: tinggi keduanya sama
-   (1280×800 dan 390×844). */
+/* HP selebar 0,32 × komputer: sedikit lebih tinggi dari monitor (0,289 = sama
+   tinggi), supaya teks di layar HP cukup besar untuk dibaca. Keduanya berdiri
+   di garis bench yang sama. */
 .rig {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 0.289fr);
-  grid-template-areas: 'desk sync phone';
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.32fr);
+  grid-template-areas: 'desk phone';
   align-items: end;
-  column-gap: var(--space-4);
+  column-gap: var(--space-6);
   padding-bottom: var(--space-4);
   border-bottom: 1px dotted var(--border-strong);
 }
@@ -236,72 +237,6 @@
   }
 }
 
-/* ---------- Jejak sinkron ---------- */
-.sync {
-  --travel: 38px;
-  --sync-y: 45%;
-  grid-area: sync;
-  position: relative;
-  align-self: stretch;
-}
-
-.syncLine {
-  position: absolute;
-  top: var(--sync-y);
-  left: 6px;
-  right: 6px;
-  border-top: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
-}
-
-.syncPacket {
-  position: absolute;
-  top: calc(var(--sync-y) - 4px);
-  left: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-  opacity: 0;
-  animation: packetX 760ms var(--ease-out) forwards;
-}
-
-.syncLabel {
-  position: absolute;
-  top: calc(var(--sync-y) + 10px);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-}
-
-@keyframes packetX {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(var(--travel));
-  }
-}
-
-@keyframes packetY {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(var(--travel));
-  }
-}
-
 .caption {
   display: flex;
   flex-wrap: wrap;
@@ -323,40 +258,19 @@
 }
 
 /* ---------- Lebar adegan, bukan viewport (Container Query Rule) ----------
-   700px: HP selebar 0,289 × komputer jadi ±150px, terlalu kecil untuk dibaca.
-   Komputer selebar adegan, jejak sinkron menurun, HP di tengah di bawahnya. */
+   700px: HP selebar 0,32 × komputer jadi ±165px, terlalu kecil untuk dibaca.
+   Komputer selebar adegan, HP di tengah di bawahnya. */
 @container scene (max-width: 700px) {
   .rig {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'desk'
-      'sync'
       'phone';
+    row-gap: var(--space-6);
   }
   .device[data-device='phone'] {
     justify-self: center;
-    width: min(62%, 240px);
-  }
-  .sync {
-    --travel: 28px;
-    height: 44px;
-  }
-  .syncLine {
-    top: 6px;
-    bottom: 6px;
-    left: 50%;
-    right: auto;
-    border-top: none;
-    border-left: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
-  }
-  .syncPacket {
-    top: 4px;
-    left: calc(50% - 4px);
-    animation-name: packetY;
-  }
-  .syncLabel {
-    top: 12px;
-    left: calc(50% + 12px);
+    width: min(72%, 300px);
   }
   .offer {
     max-width: 60%;
