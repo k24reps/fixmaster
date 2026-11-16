@@ -5,9 +5,11 @@ import { useT, type TranslationKey } from '@/i18n';
 import { interpolate } from '@/lib/business/notify';
 import {
   DEMO_LEAD_RETENTION_DAYS,
+  EMPTY_DEMO_LEAD_DRAFT,
   SHOP_NAME_MAX,
   cleanShopName,
   demoLeadErrors,
+  type DemoLeadDraft,
   type DemoLeadErrors,
   type DemoLeadSource,
 } from '@/lib/business/demoLead';
@@ -25,8 +27,10 @@ import styles from './DemoGate.module.css';
 interface DemoGateProps {
   source: DemoLeadSource;
   title: TranslationKey;
-  /** Dipanggil saat nama toko diketik, untuk kop adegan di hero. */
-  onShopNameChange?: (name: string) => void;
+  /** Isian yang dibagi beberapa gerbang (landing: hero + penutup). Tanpa
+   * keduanya, gerbang menyimpan isiannya sendiri. */
+  draft?: DemoLeadDraft;
+  onDraftChange?: (draft: DemoLeadDraft) => void;
   /** Bawaan: pindah ke /demo. Halaman /demo sendiri memulai demonya di tempat. */
   onPassed?: (shopName: string) => void;
   /** Tanpa <Link>: halaman /demo berjalan di luar router aplikasi. */
@@ -47,7 +51,8 @@ function openDemo() {
 export function DemoGate({
   source,
   title,
-  onShopNameChange,
+  draft: sharedDraft,
+  onDraftChange,
   onPassed = openDemo,
   privacyHref,
 }: DemoGateProps) {
@@ -56,8 +61,10 @@ export function DemoGate({
   const formId = useId();
   // Satu sumber untuk semua gerbang di halaman (lihat subscribeDemoVisitor).
   const returning = useSyncExternalStore(subscribeDemoVisitor, readDemoVisitorName, () => null);
-  const [shopName, setShopName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [ownDraft, setOwnDraft] = useState<DemoLeadDraft>(EMPTY_DEMO_LEAD_DRAFT);
+  const controlled = sharedDraft !== undefined && onDraftChange !== undefined;
+  const { shopName, phone } = controlled ? sharedDraft : ownDraft;
+  const setDraft = controlled ? onDraftChange : setOwnDraft;
   const [trap, setTrap] = useState('');
   const [errors, setErrors] = useState<DemoLeadErrors>({});
   const [attempted, setAttempted] = useState(false);
@@ -66,6 +73,7 @@ export function DemoGate({
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const focusAfterRender = useRef<HTMLInputElement | null>(null);
+  const focusNameOnForm = useRef(false);
 
   // Fokus dipindah sesudah render, saat aria-invalid dan pesan error sudah
   // terpasang: pembaca layar mengumumkan kolom bersama kesalahannya. Dulu fokus
@@ -75,15 +83,17 @@ export function DemoGate({
     focusAfterRender.current = null;
   }, [errors]);
 
-  const changeName = (value: string) => {
-    setShopName(value);
-    onShopNameChange?.(cleanShopName(value));
-    if (attempted) setErrors(demoLeadErrors({ shopName: value, phone }));
-  };
+  // "Ganti nama toko" menukar kartu sambutan dengan formulir; tanpa ini fokus
+  // jatuh ke <body> karena tombol yang ditekan ikut hilang.
+  useEffect(() => {
+    if (returning || !focusNameOnForm.current) return;
+    focusNameOnForm.current = false;
+    nameRef.current?.focus();
+  }, [returning]);
 
-  const changePhone = (value: string) => {
-    setPhone(value);
-    if (attempted) setErrors(demoLeadErrors({ shopName, phone: value }));
+  const change = (next: DemoLeadDraft) => {
+    setDraft(next);
+    if (attempted) setErrors(demoLeadErrors(next));
   };
 
   const pass = (name: string) => {
@@ -156,8 +166,10 @@ export function DemoGate({
           className={styles.switchShop}
           type="button"
           onClick={() => {
+            focusNameOnForm.current = true;
+            // Nomor boleh tetap; nama lama justru yang ingin diganti.
+            setDraft({ shopName: '', phone });
             clearDemoVisitor();
-            onShopNameChange?.('');
           }}
         >
           {t('demoGate.switchShop')}
@@ -192,7 +204,7 @@ export function DemoGate({
             required
             placeholder={t('demoGate.namePlaceholder')}
             value={shopName}
-            onChange={(e) => changeName(e.target.value)}
+            onChange={(e) => change({ shopName: e.target.value, phone })}
             aria-invalid={errors.shopName ? true : undefined}
             aria-describedby={errors.shopName ? nameErrorId : undefined}
           />
@@ -215,9 +227,9 @@ export function DemoGate({
             autoComplete="tel-national"
             maxLength={24}
             required
-            placeholder="0812-3456-7890"
+            placeholder={t('demoGate.phonePlaceholder')}
             value={phone}
-            onChange={(e) => changePhone(e.target.value)}
+            onChange={(e) => change({ shopName, phone: e.target.value })}
             aria-invalid={errors.phone ? true : undefined}
             aria-describedby={errors.phone ? `${phoneErrorId} ${noteId}` : noteId}
           />

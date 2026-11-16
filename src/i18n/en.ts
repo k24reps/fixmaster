@@ -282,6 +282,7 @@ export const en: Dictionary = {
   'demoGate.nameLabel': 'Shop name',
   'demoGate.namePlaceholder': 'e.g. Sinar Electronics Repair',
   'demoGate.phoneLabel': 'WhatsApp number',
+  'demoGate.phonePlaceholder': '08xx-xxxx-xxxx',
   'demoGate.submit': 'Open the demo',
   'demoGate.retry': 'Try again',
   'demoGate.sending': 'Preparing the demo…',
@@ -297,7 +298,7 @@ export const en: Dictionary = {
   'demoGate.errorPhone':
     'That WhatsApp number is not right. Use an Indonesian mobile number starting with 08, 10 to 13 digits.',
   'demoGate.errorPhoneFake':
-    'That does not look like an active WhatsApp number. Please use your own number.',
+    'Check the digits again. This does not match an active Indonesian mobile number.',
   'demoGate.errorSave':
     'Nothing was sent because the connection to the server failed. Check your internet, then press Try again.',
   'demoGate.errorLimited':
@@ -328,6 +329,7 @@ export const en: Dictionary = {
     'The same app on a computer and a phone, and it installs to the home screen like any other app. Pick a menu on the computer, the phone, or the row of buttons: both screens switch together.',
   'landing.peek.alt': 'The FM-0008 ticket detail screen in the FixMaster phone app',
   'landing.peek.title': 'This is FixMaster on a phone',
+  'landing.peek.titleShop': '{shop} on FixMaster',
   'landing.peek.sample': 'Real screen · sample data',
   'landing.peek.link': 'See every menu',
   'landing.navWho': 'Who it\'s for',

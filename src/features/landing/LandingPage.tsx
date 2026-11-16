@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon, type IconName } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
@@ -18,7 +18,8 @@ import {
 import { useT, type TranslationKey } from '@/i18n';
 import { interpolate, waLink } from '@/lib/business/notify';
 import { fmtRp } from '@/lib/format';
-import { readDemoVisitor } from '@/lib/demoVisitor';
+import { EMPTY_DEMO_LEAD_DRAFT, cleanShopName } from '@/lib/business/demoLead';
+import { readDemoVisitorName, subscribeDemoVisitor } from '@/lib/demoVisitor';
 import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
@@ -204,7 +205,11 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const t = useT();
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
-  const [shopName, setShopName] = useState(() => readDemoVisitor()?.shopName ?? '');
+  // Satu draf untuk kedua gerbang: nama yang diketik di hero sudah terisi saat
+  // pengunjung tiba di gerbang penutup, dan sebaliknya.
+  const [draft, setDraft] = useState(EMPTY_DEMO_LEAD_DRAFT);
+  const returning = useSyncExternalStore(subscribeDemoVisitor, readDemoVisitorName, () => null);
+  const shopName = returning ?? cleanShopName(draft.shopName);
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
@@ -382,7 +387,9 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               />
             </span>
             <span className={styles.heroPeekText}>
-              <strong>{t('landing.peek.title')}</strong>
+              <strong>
+                {shopName ? interpolate(t('landing.peek.titleShop'), { shop: shopName }) : t('landing.peek.title')}
+              </strong>
               <small>{t('landing.peek.sample')}</small>
               <span className={styles.heroPeekLink}>
                 {t('landing.peek.link')} <Icon name="arrow-down" aria-hidden />
@@ -390,7 +397,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             </span>
           </a>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
-            <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
+            <DemoGate source="hero" title="demoGate.title" draft={draft} onDraftChange={setDraft} />
           </div>
           <div ref={sceneRef} id="cara-kerja" className={styles.heroScene}>
             <BenchScene shopName={shopName} />
@@ -565,7 +572,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             <p>{t('landing.closingLead')}</p>
           </div>
           <div ref={finalGateRef} className={styles.closingGate}>
-            <DemoGate source="final" title="demoGate.titleFinal" onShopNameChange={setShopName} />
+            <DemoGate source="final" title="demoGate.titleFinal" draft={draft} onDraftChange={setDraft} />
           </div>
         </section>
       </main>

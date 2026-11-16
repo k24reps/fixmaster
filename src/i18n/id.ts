@@ -283,6 +283,7 @@ export const id = {
   'demoGate.nameLabel': 'Nama toko',
   'demoGate.namePlaceholder': 'mis. Sinar Servis Elektronik',
   'demoGate.phoneLabel': 'Nomor WhatsApp',
+  'demoGate.phonePlaceholder': '08xx-xxxx-xxxx',
   'demoGate.submit': 'Buka demo',
   'demoGate.retry': 'Coba lagi',
   'demoGate.sending': 'Menyiapkan demo…',
@@ -298,7 +299,7 @@ export const id = {
   'demoGate.errorPhone':
     'Nomor WhatsApp belum benar. Pakai nomor HP Indonesia yang diawali 08, 10 sampai 13 angka.',
   'demoGate.errorPhoneFake':
-    'Nomor ini tidak terlihat seperti nomor WhatsApp yang aktif. Pakai nomor Anda sendiri.',
+    'Periksa lagi angkanya. Nomor ini tidak cocok dengan pola nomor HP Indonesia yang aktif.',
   'demoGate.errorSave':
     'Data belum terkirim karena koneksi ke server gagal. Periksa internet Anda, lalu tekan Coba lagi.',
   'demoGate.errorLimited':
@@ -329,6 +330,7 @@ export const id = {
     'Aplikasi yang sama di komputer dan HP, dan bisa dipasang di layar utama seperti aplikasi biasa. Pilih menu di layar komputer, di HP, atau di deret tombol: kedua layar pindah bersamaan.',
   'landing.peek.alt': 'Layar Detail tiket FM-0008 di aplikasi FixMaster versi HP',
   'landing.peek.title': 'Begini FixMaster di HP',
+  'landing.peek.titleShop': '{shop} di FixMaster',
   'landing.peek.sample': 'Layar asli · data contoh',
   'landing.peek.link': 'Lihat semua menu',
   'landing.navWho': 'Untuk siapa',

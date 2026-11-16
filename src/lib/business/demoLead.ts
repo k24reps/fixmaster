@@ -82,7 +82,16 @@ export interface DemoLeadErrors {
   phone?: TranslationKey;
 }
 
-export function demoLeadErrors(input: { shopName: string; phone: string }): DemoLeadErrors {
+/** Isian gerbang yang belum dikirim. Landing membagi satu draf ke gerbang hero
+ * dan gerbang penutup, supaya isian tidak hilang saat pengunjung menggulir. */
+export interface DemoLeadDraft {
+  shopName: string;
+  phone: string;
+}
+
+export const EMPTY_DEMO_LEAD_DRAFT: DemoLeadDraft = { shopName: '', phone: '' };
+
+export function demoLeadErrors(input: DemoLeadDraft): DemoLeadErrors {
   const errors: DemoLeadErrors = {};
   const name = cleanShopName(input.shopName);
   if (name.length < SHOP_NAME_MIN) errors.shopName = 'demoGate.errorNameShort';
