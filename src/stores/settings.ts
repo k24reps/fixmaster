@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isLanguageLoaded, loadLanguage } from '@/i18n/registry';
 
 /**
  * Workspace preferences: UI language + display currency.
@@ -42,8 +43,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   currency: getInitialCurrency(),
   setLanguage: (language) => {
     window.localStorage.setItem(LANG_KEY, language);
-    document.documentElement.setAttribute('lang', language);
-    set({ language });
+    const apply = () => {
+      document.documentElement.setAttribute('lang', language);
+      set({ language });
+    };
+    // Kamus selain id dimuat saat dipilih; bahasa baru berlaku begitu kamusnya
+    // tiba, jadi layar tidak pernah tampil campur bahasa. Bila chunk gagal
+    // dimuat, bahasa yang sedang dipakai tetap.
+    if (isLanguageLoaded(language)) apply();
+    else void loadLanguage(language).then(apply, () => undefined);
   },
   setCurrency: (currency) => {
     window.localStorage.setItem(CURRENCY_KEY, currency);

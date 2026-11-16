@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { Icon, type IconName } from '@/components/ui';
 import { useT, type TranslationKey } from '@/i18n';
 import styles from './BenchScene.module.css';
+import type { BenchSteps, Step } from './useBenchSteps';
 
 /**
  * Dua adegan di layar pertama landing: meja penerimaan (layar desktop) dan
@@ -18,7 +19,6 @@ import styles from './BenchScene.module.css';
  * memperlihatkan nilai sebelum → sesudah, jadi sinkronnya terbaca tanpa gerak.
  */
 
-type Step = 0 | 1 | 2 | 3;
 type Tone = 'neutral' | 'info' | 'warning' | 'accent' | 'success';
 
 interface QueueRow {
@@ -69,6 +69,17 @@ const ACTION: Record<Step, TranslationKey> = {
   1: 'landing.scene.actionDone',
   2: 'landing.scene.actionPay',
   3: 'landing.scene.actionReplay',
+};
+
+/** Semua status yang bisa dipakai tiket aktif, untuk mengukur lebar terbesar. */
+const TICKET_STATUSES: TranslationKey[] = ['status.pengerjaan', 'status.selesai', 'status.lunas'];
+
+/** Label tuts strip ponsel: versi pendek dari ACTION supaya muat satu baris di 320px. */
+const STRIP_ACTION: Record<Step, TranslationKey> = {
+  0: 'landing.strip.install',
+  1: 'landing.strip.done',
+  2: 'landing.strip.pay',
+  3: 'landing.strip.replay',
 };
 
 const NOTICE: Partial<Record<Step, TranslationKey>> = {
@@ -133,79 +144,55 @@ const READOUTS: Readout[] = [
   },
 ];
 
-const AUTO_FIRST_MS = 1400;
-const AUTO_STEP_MS = 2600;
-
 function isKey(value: string): value is TranslationKey {
   return value.startsWith('landing.');
 }
 
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false,
+/**
+ * Teks yang berganti per langkah dirender bertumpuk di satu sel grid; hanya
+ * yang aktif terlihat. Lebar dan tingginya selalu milik isi terbesar, jadi
+ * pergantian status tidak menggeser tata letak (dulu CLS 0,25 di 390px).
+ */
+function Stack({ items, current }: { items: { key: string; node: ReactNode }[]; current: string }) {
+  return (
+    <span className={styles.stack}>
+      {items.map((item) =>
+        item.key === current ? (
+          <span key={item.key} data-on="true">
+            {item.node}
+          </span>
+        ) : (
+          <span key={item.key} aria-hidden="true">
+            {item.node}
+          </span>
+        ),
+      )}
+    </span>
   );
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(query.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
+}
+
+function StatusText({ current }: { current: TranslationKey }) {
+  const t = useT();
+  return <Stack current={current} items={TICKET_STATUSES.map((key) => ({ key, node: t(key) }))} />;
 }
 
 interface BenchSceneProps {
   /** Nama toko dari gerbang; kosong = "Toko Anda". */
   shopName: string;
+  bench: BenchSteps;
+  sceneRef: RefObject<HTMLDivElement | null>;
 }
 
-export function BenchScene({ shopName }: BenchSceneProps) {
+export function BenchScene({ shopName, bench, sceneRef }: BenchSceneProps) {
   const t = useT();
-  const reduced = useReducedMotion();
-  const [step, setStep] = useState<Step>(() => (reduced ? 3 : 0));
-  const [byUser, setByUser] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const { step, byUser, advance } = bench;
   const shop = shopName || t('landing.scene.shopPlaceholder');
-
-  useEffect(() => {
-    const node = rootRef.current;
-    if (!node || typeof IntersectionObserver === 'undefined') {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.35 },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  // Sekali jalan sampai lunas, lalu diam di keadaan akhir (tidak berulang
-  // tanpa akhir). Berhenti begitu pengunjung menekan tombol sendiri.
-  useEffect(() => {
-    if (reduced || byUser || !visible || step === 3) return;
-    const timer = window.setTimeout(
-      () => setStep((s) => (s < 3 ? ((s + 1) as Step) : s)),
-      step === 0 ? AUTO_FIRST_MS : AUTO_STEP_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [reduced, byUser, visible, step]);
-
-  const advance = () => {
-    setByUser(true);
-    setStep((s) => (s === 3 ? 0 : ((s + 1) as Step)));
-  };
-
   const ticket = TICKET_STATUS[step];
   const notice = NOTICE[step];
 
   return (
     <div className={styles.wrap}>
-      <div ref={rootRef} className={styles.scene} data-step={step}>
+      <div ref={sceneRef} className={styles.scene} data-step={step}>
         <figure className={styles.desk} aria-label={t('landing.scene.deskLabel')}>
           <div className={styles.windowBar}>
             <span className={styles.barLed} aria-hidden />
@@ -229,7 +216,7 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                 </span>
                 <span className={styles.queueStatus}>
                   <i aria-hidden />
-                  {t(ticket.status)}
+                  <StatusText current={ticket.status} />
                 </span>
               </li>
               {OTHER_QUEUE.map((row) => (
@@ -259,7 +246,7 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                 </span>
                 <span className={styles.ticketStatus}>
                   <i aria-hidden />
-                  {t(ticket.status)}
+                  <StatusText current={ticket.status} />
                 </span>
               </div>
 
@@ -279,7 +266,13 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                 <span className={styles.partName}>
                   <strong>{t('landing.scene.partName')}</strong>
                   <small>
-                    {step >= 1 ? t('landing.scene.partInstalled') : t('landing.scene.partInStock')}
+                    <Stack
+                      current={step >= 1 ? 'installed' : 'stock'}
+                      items={[
+                        { key: 'stock', node: t('landing.scene.partInStock') },
+                        { key: 'installed', node: t('landing.scene.partInstalled') },
+                      ]}
+                    />
                   </small>
                 </span>
                 <span className={styles.partCost}>
@@ -295,9 +288,17 @@ export function BenchScene({ shopName }: BenchSceneProps) {
 
               <ol className={styles.rail} aria-label={t('landing.scene.railLabel')}>
                 {RAIL.map((label, i) => (
-                  <li key={label} data-on={step > i ? 'true' : undefined}>
+                  <li
+                    key={label}
+                    data-on={step > i ? 'true' : undefined}
+                    aria-current={step === i + 1 ? 'step' : undefined}
+                  >
                     <i aria-hidden />
                     {t(label)}
+                    <span className="fm-visually-hidden">
+                      {', '}
+                      {step > i ? t('landing.scene.railDoneSr') : t('landing.scene.railPendingSr')}
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -333,15 +334,25 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                 <small>{t('landing.scene.phoneTitle')}</small>
               </div>
 
-              <div className={styles.noticeSlot} aria-live={byUser ? 'polite' : 'off'}>
-                {notice ? (
-                  <p key={step} className={styles.notice}>
-                    <span className={styles.noticeLed} aria-hidden />
-                    {t(notice)}
+              {/* Penakar tak terlihat menahan tinggi slot setinggi notifikasi
+                  terpanjang; notifikasi aktif menimpanya di sel yang sama. */}
+              <div className={styles.noticeStage}>
+                {Object.values(NOTICE).map((key) => (
+                  <p key={key} className={styles.notice} data-sizer="true" aria-hidden="true">
+                    <span className={styles.noticeLed} />
+                    {t(key)}
                   </p>
-                ) : (
-                  <p className={styles.noticeIdle}>{t('landing.scene.noticeIdle')}</p>
-                )}
+                ))}
+                <div className={styles.noticeSlot} aria-live={byUser ? 'polite' : 'off'}>
+                  {notice ? (
+                    <p key={step} className={styles.notice}>
+                      <span className={styles.noticeLed} aria-hidden />
+                      {t(notice)}
+                    </p>
+                  ) : (
+                    <p className={styles.noticeIdle}>{t('landing.scene.noticeIdle')}</p>
+                  )}
+                </div>
               </div>
 
               <ul className={styles.readouts}>
@@ -349,7 +360,9 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                   const changed = step >= row.at;
                   const tone: Tone =
                     row.key === 'margin' && step === 3 ? 'success' : changed ? row.tone : 'neutral';
-                  const value = changed ? row.after : isKey(row.before) ? t(row.before) : row.before;
+                  const before = isKey(row.before) ? t(row.before) : row.before;
+                  const delta = row.delta ? (isKey(row.delta) ? t(row.delta) : row.delta) : null;
+                  const showBefore = row.key !== 'margin' && !isKey(row.before);
                   return (
                     <li
                       key={row.key}
@@ -360,15 +373,34 @@ export function BenchScene({ shopName }: BenchSceneProps) {
                     >
                       <span className={styles.readoutLed} aria-hidden />
                       <span className={styles.readoutLabel}>{t(row.label)}</span>
-                      <span className={styles.readoutValue} data-text={!changed && isKey(row.before) ? 'true' : undefined}>
-                        {value}
+                      <span className={styles.readoutValue}>
+                        <Stack
+                          current={changed ? 'after' : 'before'}
+                          items={[
+                            { key: 'after', node: row.after },
+                            {
+                              key: 'before',
+                              node: <span data-text={isKey(row.before) ? 'true' : undefined}>{before}</span>,
+                            },
+                          ]}
+                        />
                       </span>
-                      {changed && row.delta && (
-                        <span className={styles.readoutDelta}>
-                          {row.key !== 'margin' && !isKey(row.before) && (
-                            <s>{row.before}</s>
+                      {/* Baris perubahan selalu dirender (tersembunyi sebelum
+                          berubah) supaya tinggi readout tetap. */}
+                      {delta && (
+                        <span
+                          className={styles.readoutDelta}
+                          data-pending={changed ? undefined : 'true'}
+                          aria-hidden={changed ? undefined : 'true'}
+                        >
+                          {showBefore && (
+                            <>
+                              <span className="fm-visually-hidden">{`, ${t('landing.scene.beforeSr')} `}</span>
+                              <s>{row.before}</s>
+                            </>
                           )}
-                          {isKey(row.delta) ? t(row.delta) : row.delta}
+                          <span className="fm-visually-hidden">{`, ${t('landing.scene.changeSr')} `}</span>
+                          {delta}
                         </span>
                       )}
                     </li>
@@ -384,6 +416,77 @@ export function BenchScene({ shopName }: BenchSceneProps) {
         <span className={styles.captionTag}>{t('landing.scene.sample')}</span>
         {t('landing.scene.caption')}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Strip sinkron di layar sempit: tuts meja → jejak → satu readout ponsel, di
+ * antara judul dan gerbang, supaya bukti terlihat sebelum pengunjung diminta
+ * nomor WA. Memakai keadaan yang sama dengan adegan penuh di bawah gerbang.
+ */
+const STRIP_READOUT: Record<Step, { label: TranslationKey; value: string }> = {
+  0: { label: 'landing.scene.readStock', value: '3' },
+  1: { label: 'landing.scene.readMargin', value: 'Rp 170.000' },
+  2: { label: 'landing.scene.readReady', value: '3' },
+  3: { label: 'landing.scene.readCash', value: 'Rp 1.590.000' },
+};
+
+interface BenchStripProps {
+  shopName: string;
+  bench: BenchSteps;
+  stripRef: RefObject<HTMLDivElement | null>;
+}
+
+export function BenchStrip({ shopName, bench, stripRef }: BenchStripProps) {
+  const t = useT();
+  const { step, advance } = bench;
+  const shop = shopName || t('landing.scene.shopPlaceholder');
+  const readout = STRIP_READOUT[step];
+  const tone: Tone = step === 0 ? 'neutral' : TICKET_STATUS[step].tone;
+
+  return (
+    <div
+      ref={stripRef}
+      className={styles.strip}
+      data-tone={tone}
+      role="group"
+      aria-label={t('landing.strip.label')}
+    >
+      <span className={styles.stripTag} aria-hidden>
+        {t('landing.strip.sample')}
+      </span>
+
+      <span className={styles.stripIcon} data-place="desk">
+        <Icon name="shop" aria-hidden />
+      </span>
+      <span className={styles.stripShop}>
+        <strong>{shop}</strong>
+        <small>{t('landing.strip.desk')}</small>
+      </span>
+      <button className={styles.stripKey} type="button" onClick={advance}>
+        <Icon name={step === 3 ? 'repeat' : 'lightning'} aria-hidden />
+        <Stack
+          current={STRIP_ACTION[step]}
+          items={Object.values(STRIP_ACTION).map((key) => ({ key, node: t(key) }))}
+        />
+      </button>
+
+      <span className={styles.stripTrace} aria-hidden>
+        {step > 0 && <span key={step} className={styles.stripPacket} />}
+      </span>
+
+      <span className={styles.stripIcon} data-place="phone">
+        <Icon name="device-mobile" aria-hidden />
+      </span>
+      <span className={styles.stripReadoutLabel}>
+        <span className={styles.readoutLed} aria-hidden />
+        <span>
+          {t(readout.label)}
+          <span className="fm-visually-hidden">{`, ${t('landing.strip.phone')}`}</span>
+        </span>
+      </span>
+      <span className={styles.stripValue}>{readout.value}</span>
     </div>
   );
 }

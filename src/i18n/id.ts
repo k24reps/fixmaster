@@ -277,10 +277,9 @@ export const id = {
 
   // ---------- Landing "Dua Adegan" + gerbang demo (0102) ----------
   'demoGate.title': 'Coba demo dengan nama toko Anda',
-  'demoGate.titleFinal': 'Dua kolom, lalu demo terbuka',
+  'demoGate.titleFinal': 'Buka meja penerimaan toko Anda',
   'demoGate.titleDemoRoute': 'Satu langkah sebelum demo',
-  'demoGate.lead':
-    'Aplikasi asli dengan data contoh. Cukup nama toko dan nomor WA, tidak perlu akun.',
+  'demoGate.lead': 'Aplikasi asli dengan data contoh, tanpa membuat akun.',
   'demoGate.nameLabel': 'Nama toko',
   'demoGate.namePlaceholder': 'mis. Sinar Servis Elektronik',
   'demoGate.phoneLabel': 'Nomor WhatsApp',
@@ -313,7 +312,7 @@ export const id = {
   'landing.startFree': 'Mulai gratis',
   'landing.heroTitle': 'Toko servis yang rapi dan teratur, mulai hari ini.',
   'landing.heroLead':
-    'Masih kerja sendiri, sudah dibantu karyawan, atau sudah buka cabang, FixMaster membuat toko servis Anda teratur. Teknisi mencatat unit sekali di meja, lalu stok, kas, dan margin ikut tercatat tanpa ditulis ulang.',
+    'Untuk konter HP, servis laptop, printer, sampai TV. Unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat. {free}\u00a0unit pertama gratis, lalu {price} per\u00a0unit.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
   'landing.scene.shopPlaceholder': 'Toko Anda',
   'landing.scene.deskLabel': 'Layar meja penerimaan, data contoh',
@@ -351,7 +350,20 @@ export const id = {
   'landing.scene.readCash': 'Kas hari ini',
   'landing.scene.marginWaiting': 'menunggu part',
   'landing.scene.sample': 'Data contoh',
-  'landing.scene.caption': 'Tekan tombol di meja dan lihat ponsel pemilik ikut berubah.',
+  'landing.scene.caption':
+    'Tekan tombol di meja dan lihat ponsel pemilik ikut berubah. Riwayat servis Rina juga mencatat part dan masa garansinya.',
+  'landing.strip.desk': 'Meja penerimaan',
+  'landing.strip.label': 'Contoh: meja penerimaan dan ponsel pemilik',
+  'landing.strip.phone': 'Ponsel pemilik',
+  'landing.strip.sample': 'contoh',
+  'landing.strip.install': 'Pasang part',
+  'landing.strip.done': 'Tandai selesai',
+  'landing.strip.pay': 'Terima bayar',
+  'landing.strip.replay': 'Ulangi',
+  'landing.scene.railDoneSr': 'sudah',
+  'landing.scene.railPendingSr': 'belum',
+  'landing.scene.beforeSr': 'sebelumnya',
+  'landing.scene.changeSr': 'perubahan',
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':
@@ -411,28 +423,13 @@ export const id = {
   'landing.vs.branchOld': 'Harus datang atau menelepon tiap cabang untuk tahu keadaannya.',
   'landing.vs.branchNew': 'Semua cabang terlihat sekaligus di dashboard pemilik, dari ponsel.',
   'landing.vs.foot': 'Tutup toko tanpa menghitung ulang apa pun.',
+  'landing.vs.more': 'Lihat {count} lainnya: {list}',
   'landing.vs.tryLink': 'Lihat sendiri di demo',
   'landing.price.ruleCap':
     'Paling banyak {max} per cabang per bulan: lewat {cap} unit, tiket berikutnya di cabang itu gratis sampai akhir bulan.',
   'landing.price.capNote': 'Garis putus-putus: zona gratis.',
   'landing.price.freeByCap': 'Gratis karena batas',
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
-  'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
-  'landing.trailsLead':
-    'Teknisi cukup memilih part dari stok di tiket. Empat bagian ini ikut berubah dari satu langkah itu.',
-  'landing.trailSource': 'Keyboard ASUS X441 dipasang',
-  'landing.trail.stock': 'Stok',
-  'landing.trail.stockText':
-    'Keyboard berkurang satu. Begitu menyentuh batas minimum, dashboard menyalakan peringatan stok menipis.',
-  'landing.trail.ticket': 'Margin tiket',
-  'landing.trail.ticketText':
-    'Modal part masuk ke biaya tiket, jadi margin FM-0312 sudah terlihat sebelum unit diambil.',
-  'landing.trail.customer': 'Riwayat pelanggan',
-  'landing.trail.customerText':
-    'Riwayat servis Rina mencatat unitnya, part yang dipasang, dan masa garansinya.',
-  'landing.trail.cash': 'Kas',
-  'landing.trail.cashText':
-    'Saat Rina membayar, Rp 350.000 masuk ke kas yang dipilih dan ke laporan hari itu.',
   'landing.benchesTitle': 'HP, laptop, printer, TV. Semua punya laci di sini.',
   'landing.benchesLead':
     'Kategori perangkat, keluhan cepat, dan daftar kelengkapan diatur sendiri oleh tiap toko. Toko servis printer tidak perlu memakai daftar milik konter HP.',
@@ -446,22 +443,7 @@ export const id = {
   'landing.bench.console': 'Konsol game',
   'landing.bench.home': 'Alat rumah tangga',
   'landing.bench.yours': 'Kategori Anda',
-  'landing.modulesTitle': 'Semua menu terbuka, satu harga.',
-  'landing.modulesLead': 'Semua menu terbuka untuk semua toko. Pengguna dan cabang tidak dibatasi.',
-  'landing.mod.services': 'Tiket, status, nota, dan tautan lacak untuk pelanggan.',
-  'landing.mod.calculator': 'Harga servis dari modal part, jasa, dan target untung.',
-  'landing.mod.pos': 'Jual aksesori dan part dari katalog yang sama dengan stok.',
-  'landing.mod.customers': 'Riwayat servis dan kontak WhatsApp tiap pelanggan.',
-  'landing.mod.suppliers': 'Pesanan pembelian dan barang yang sudah diterima.',
-  'landing.mod.finance': 'Kas, rekening, QRIS, pemasukan, dan pengeluaran.',
-  'landing.mod.tasks': 'Daftar tugas harian, misalnya SOP buka toko.',
-  'landing.mod.attendance': 'Absen karyawan yang dicek dengan lokasi toko.',
-  'landing.mod.reports': 'Laba rugi, margin per tiket, dan ekspor data.',
-  'landing.mod.activity': 'Siapa mengubah apa, dan kapan.',
   'landing.mod.outletsName': 'Multi-cabang',
-  'landing.mod.outlets': 'Pindah cabang dalam satu akun; pemilik melihat semuanya.',
-  'landing.mod.waName': 'Template WhatsApp',
-  'landing.mod.wa': 'Pesan status servis yang isinya Anda atur sendiri.',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
     '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat.',
@@ -507,7 +489,7 @@ export const id = {
   'landing.privacy': 'Kebijakan Privasi',
   'landing.terms': 'Syarat & Ketentuan',
   'landing.whatsapp': 'Tanya via WhatsApp',
-  'landing.mobileBarDemo': 'Coba demo dengan nama toko Anda',
+  'landing.mobileBarDemo': 'Coba demo',
 
   // ---------- Auth / session ----------
   'authPage.brandTagline': 'Meja kerja digital untuk usaha reparasi gadget & elektronik.',

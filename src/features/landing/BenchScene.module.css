@@ -189,10 +189,10 @@
 }
 
 .queueText strong {
+  /* Nama contoh tidak berubah antarlangkah, jadi boleh membungkus utuh
+     (dulu terpotong "ASUS VivoBook X4…" di 1024px). */
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
 }
@@ -220,6 +220,26 @@
 
 .queueStatus {
   grid-area: status;
+}
+
+.ticketStatus {
+  grid-area: status;
+  justify-self: end;
+}
+
+/* Teks yang berganti per langkah: semua varian bertumpuk di satu sel, hanya
+   yang aktif terlihat. Ukurannya selalu milik varian terbesar. */
+.stack {
+  display: inline-grid;
+}
+
+.stack > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+.stack > span[data-on='true'] {
+  visibility: visible;
 }
 
 .queueStatus i,
@@ -252,8 +272,13 @@
 }
 
 .ticketHead {
-  display: flex;
-  flex-wrap: wrap;
+  /* Grid, bukan flex-wrap: dulu header turun dari 2 baris ke 1 saat status
+     berganti ke Lunas dan menggeser ponsel 26–29px (CLS 0,25 di 390px). Kolom
+     status selebar status terpanjang (Stack), jadi perangkat tidak ikut
+     berpindah baris. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'no device status';
   align-items: center;
   gap: var(--space-2) var(--space-3);
   padding-bottom: var(--space-3);
@@ -261,16 +286,17 @@
 }
 
 .ticketNo {
+  grid-area: no;
   font-size: var(--text-md);
   font-weight: var(--fw-bold);
 }
 
 .ticketDevice {
+  grid-area: device;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  margin-right: auto;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
 }
@@ -352,9 +378,7 @@
 }
 
 .partName strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
 }
 
@@ -626,8 +650,18 @@
   font-size: var(--text-xs);
 }
 
-.noticeSlot {
-  min-height: 58px;
+.noticeStage {
+  display: grid;
+}
+
+.noticeStage > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.noticeStage > [data-sizer] {
+  visibility: hidden;
+  animation: none;
 }
 
 .notice,
@@ -724,7 +758,7 @@
   text-align: right;
 }
 
-.readoutValue[data-text='true'] {
+.readoutValue [data-text='true'] {
   color: var(--text-muted);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -739,6 +773,10 @@
   gap: var(--space-2);
   color: var(--text-muted);
   font-size: var(--text-xs);
+}
+
+.readoutDelta[data-pending='true'] {
+  visibility: hidden;
 }
 
 .readoutDelta s {
@@ -782,8 +820,9 @@
    900px: antrean + tiket butuh ±560px di meja, ditambah jejak 64px dan ponsel
    300px. Di bawahnya antrean dilepas dan meja tinggal tiket terpilih. */
 @container scene (max-width: 900px) {
+  /* 56px: label "sinkron" (50px) dulu menabrak meja dan ponsel di kolom 48px. */
   .scene {
-    grid-template-columns: minmax(0, 1fr) 48px 268px;
+    grid-template-columns: minmax(0, 1fr) 56px 268px;
   }
   .deskBody {
     grid-template-columns: minmax(0, 1fr);
@@ -818,7 +857,13 @@
   .rail {
     display: none;
   }
+  /* Nomor + status di baris pertama, perangkat utuh di baris kedua: tidak
+     terpotong di 320px, dan tingginya tetap di semua langkah. */
   .ticketHead {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'no status'
+      'device device';
     padding-bottom: 0;
     border-bottom: none;
   }
@@ -852,5 +897,232 @@
   }
   .phoneScreen {
     min-height: 0;
+  }
+}
+
+/* ---------- Strip sinkron (layar sempit, di atas gerbang) ----------
+   Dua baris: meja (nama toko + tuts) di atas, readout ponsel di bawah, jejak
+   cyan menurun di antara ikon keduanya, seperti adegan penuh versi ponsel.
+   Tab "contoh" duduk di tepi atas panel, tidak memakan tinggi. */
+.strip {
+  --tone: var(--text-muted);
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'desk shop key'
+    'phone label value';
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.strip[data-tone='info'] {
+  --tone: var(--info);
+}
+.strip[data-tone='accent'] {
+  --tone: var(--accent);
+}
+.strip[data-tone='success'] {
+  --tone: var(--success);
+}
+
+.stripTag {
+  position: absolute;
+  top: 0;
+  right: var(--space-4);
+  padding: 0 var(--space-2);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  transform: translateY(-50%);
+}
+
+.stripIcon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+}
+
+.stripIcon[data-place='desk'] {
+  grid-area: desk;
+}
+
+.stripIcon[data-place='phone'] {
+  grid-area: phone;
+}
+
+.stripShop {
+  grid-area: shop;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.stripShop strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+}
+
+.stripShop small {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.stripKey {
+  grid-area: key;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-key);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.stripKey svg {
+  flex: none;
+  color: var(--brand-text);
+}
+
+.stripKey:hover {
+  border-color: var(--border-brand);
+}
+
+.stripKey:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.stripKey:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Jejak di kolom ikon, dari tengah ikon meja ke tengah ikon ponsel. */
+.stripTrace {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  position: relative;
+  align-self: stretch;
+  justify-self: center;
+  width: 10px;
+  margin-block: 22px 14px;
+}
+
+.stripTrace::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 4px;
+  border-left: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* Paket turun dari meja ke ponsel. Pembungkus setinggi jejak; titiknya di
+   ujung bawah, jadi translate dalam persen tinggi pembungkus sendiri. */
+.stripPacket {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: stripPacket 760ms var(--ease-out) forwards;
+}
+
+.stripPacket::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+@keyframes stripPacket {
+  0% {
+    opacity: 1;
+    transform: translateY(calc(-100% + 10px));
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.stripReadoutLabel {
+  grid-area: label;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.stripReadoutLabel > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stripReadoutLabel .readoutLed {
+  flex: none;
+}
+
+.strip:not([data-tone='neutral']) .readoutLed {
+  background: var(--tone);
+  box-shadow: 0 0 8px var(--tone);
+}
+
+.stripValue {
+  grid-area: value;
+  justify-self: end;
+  padding-right: var(--space-1);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Di 320px nama toko di bilah jendela tergusur keterangan "Meja penerimaan";
+   kop meja sudah dinamai figure-nya dan strip di atas gerbang. */
+@container scene (max-width: 340px) {
+  .barTitle span {
+    display: none;
   }
 }

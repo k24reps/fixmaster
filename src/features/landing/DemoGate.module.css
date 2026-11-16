@@ -100,8 +100,12 @@
   border-color: var(--danger);
 }
 
+/* Fokus di kolom yang salah tetap harus terlihat jelas: cincin danger 22%
+   dulu hanya 1,24:1 terhadap kartu. Outline penuh, berjarak dari tepi. */
 .field[data-invalid='true'] input:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+  box-shadow: none;
+  outline: 3px solid var(--danger);
+  outline-offset: 2px;
 }
 
 .fieldError {
@@ -190,9 +194,13 @@
 }
 
 .note a {
+  /* Tautan di dalam kalimat: padding vertikal memperluas area sentuh tanpa
+     mengubah tinggi baris; nowrap supaya tidak terbelah di ujung baris. */
+  padding-block: 8px;
   color: var(--text-secondary);
   text-decoration: underline;
   text-underline-offset: 3px;
+  white-space: nowrap;
 }
 
 .note a:hover {

@@ -54,9 +54,7 @@
 
 .hero,
 .versus,
-.trails,
 .benches,
-.modules,
 .stages,
 .pricing,
 .honest,
@@ -66,14 +64,21 @@
   margin-inline: auto;
 }
 
-/* Offset di elemen yang ditunjuk anchor, lewat kelas (CSS Modules juga
-   melokalkan selektor id). */
-.heroGate,
-.versus,
-.trails,
-.stages,
-.pricing {
-  scroll-margin-top: 96px;
+/* Anchor dan fokus keyboard tidak pernah berhenti di bawah header sticky
+   (WCAG 2.4.11): satu scroll-padding di dokumen, bukan scroll-margin per
+   anchor yang tidak menolong Tab/Shift+Tab. */
+:global(html):has(.page) {
+  scroll-padding-top: 96px;
+}
+
+/* Bar bawah ponsel juga menutup layar selagi terlihat. Media query, bukan
+   container, karena terikat kehadiran bar (Under-the-Topbar Rule). */
+@media (max-width: 560px) {
+  :global(html):has(.mobileBar[data-visible='true']) {
+    scroll-padding-bottom: calc(
+      var(--control-h) + var(--space-4) + var(--space-3) + env(safe-area-inset-bottom, 0px)
+    );
+  }
 }
 
 /* ---------- Header (sasis yang melayang di atas bench) ---------- */
@@ -281,6 +286,14 @@
   min-width: 0;
 }
 
+/* Strip sinkron hanya di layar sempit; di atasnya adegan penuh sudah terlihat
+   di layar pertama. */
+.heroStrip {
+  display: none;
+  grid-area: strip;
+  min-width: 0;
+}
+
 .heroScene {
   grid-area: scene;
   min-width: 0;
@@ -302,7 +315,7 @@
 .priceCopy h2,
 .closingCopy h2 {
   margin: 0;
-  font-size: clamp(1.75rem, 1.2rem + 1.6cqi, 2.6rem);
+  font-size: clamp(var(--text-2xl), 1.2rem + 1.6cqi, 2.6rem);
   line-height: 1.12;
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -316,9 +329,7 @@
   line-height: 1.65;
 }
 
-.trails,
 .benches,
-.modules,
 .stages,
 .pricing,
 .honest,
@@ -426,31 +437,6 @@
   margin: 0;
 }
 
-/* Baris unggulan: pelacakan servis menolong toko DAN pelanggan, jadi ia
-   membawa contoh alamat lacak (readout mono) dan spine cyan di lajurnya. */
-.vsRow[data-featured='true'] .vsSituation::after {
-  content: '';
-  display: block;
-  width: 28px;
-  margin-top: var(--space-2);
-  border-top: 2px solid var(--accent);
-}
-
-.vsRow[data-featured='true'] .vsNew {
-  position: relative;
-}
-
-.vsRow[data-featured='true'] .vsNew::before {
-  content: '';
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: -1px;
-  width: 3px;
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
-  background: linear-gradient(180deg, var(--accent-400), var(--accent-600));
-}
-
 .vsNew .vsTrack {
   display: flex;
   flex-wrap: wrap;
@@ -463,7 +449,7 @@
 
 .vsTrack svg {
   flex: none;
-  color: var(--accent-text);
+  color: var(--text-muted);
   font-size: 16px;
 }
 
@@ -499,6 +485,56 @@
   white-space: nowrap;
 }
 
+/* Empat situasi lain: baris papan yang bisa dibuka, bukan tombol terpisah. */
+.vsMore {
+  border-top: 1px dotted var(--border-strong);
+}
+
+.vsMore summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  padding: var(--space-3) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  list-style: none;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.vsMore summary::-webkit-details-marker {
+  display: none;
+}
+
+.vsMore summary:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.vsMore summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.vsMore summary svg {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.vsMore[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.vsMore[open] summary {
+  border-bottom: 1px dotted var(--border-strong);
+}
+
 .vsFoot {
   display: flex;
   flex-wrap: wrap;
@@ -529,146 +565,7 @@
   border-radius: var(--radius-xs);
 }
 
-/* ---------- 2. Satu aksi, empat jejak ----------
-   Papan rangkaian: satu pad sumber di kiri, bus cyan bertitik, dan empat
-   jalur ke bagian usaha yang ikut tercatat. */
-.trails {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.trailBoard {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-  align-items: center;
-  gap: 0;
-}
-
-.trailSource {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-}
-
-.trailSource > span:last-child {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.trailSource small {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-}
-
-.trailSource strong {
-  font-size: var(--text-md);
-  line-height: 1.35;
-}
-
-.trailSourceLed {
-  width: 10px;
-  height: 10px;
-  flex: none;
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-}
-
-.trailList {
-  position: relative;
-  margin: 0;
-  padding: 0 0 0 var(--space-10);
-  list-style: none;
-}
-
-/* Bus: garis titik dari pad sumber ke tiap jalur. */
-.trailList::before {
-  content: '';
-  position: absolute;
-  top: 34px;
-  bottom: 34px;
-  left: var(--space-5);
-  border-left: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
-}
-
-.trailList::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: var(--space-5);
-  border-top: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
-}
-
-.trail {
-  position: relative;
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) 0;
-}
-
-.trail + .trail {
-  border-top: 1px dotted var(--border-strong);
-}
-
-.trail::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: calc(var(--space-5) * -1);
-  width: var(--space-4);
-  border-top: 2px dotted color-mix(in srgb, var(--accent) 65%, transparent);
-}
-
-.trailIcon,
-.channelIcon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  color: var(--text-secondary);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 20px;
-}
-
-.trailBody {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.trailBody strong {
-  font-size: var(--text-md);
-}
-
-.trailBody span {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.55;
-}
-
-.trailValue {
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* ---------- 3. Lemari part: semua jenis meja reparasi ---------- */
+/* ---------- Lemari part: semua jenis meja reparasi ---------- */
 .benches {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
@@ -729,53 +626,8 @@
   border-style: dashed;
 }
 
-.drawerAdd svg {
-  color: var(--text-muted);
-}
 
-/* ---------- 4. Modul: deretan kanal seperti sidebar ---------- */
-.modules {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.channelList {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px dotted var(--border-strong);
-}
-
-.channel {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-bottom: 1px dotted var(--border-strong);
-}
-
-.channelBody {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.channelBody strong {
-  font-size: var(--text-md);
-}
-
-.channelBody span {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-}
-
-/* ---------- 5. Dari kerja sendiri sampai buka cabang ----------
+/* ---------- Dari kerja sendiri sampai buka cabang ----------
    Tiga tahap di satu rel bertitik. Tiap tahap membawa meter LED 1–3 (bukan
    nomor seksi): jumlah lampu yang menyala = besar toko. */
 .stages {
@@ -889,8 +741,21 @@
 .pricing {
   display: grid;
   grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  grid-template-areas:
+    'copy gauge'
+    'actions gauge';
   align-items: center;
-  gap: clamp(var(--space-8), 5cqi, var(--space-16));
+  column-gap: clamp(var(--space-8), 5cqi, var(--space-16));
+  row-gap: var(--space-6);
+}
+
+.priceCopy {
+  grid-area: copy;
+  align-self: end;
+}
+
+.pricing > .well {
+  grid-area: gauge;
 }
 
 .priceCopy {
@@ -933,18 +798,21 @@
 }
 
 .priceRules li::before {
+  /* Tick pendek, bukan LED: lampu menyala berarti status, dan aturan harga
+     bukan status. */
   content: '';
   position: absolute;
-  top: calc(var(--space-3) + 0.5em);
-  left: 2px;
-  width: 7px;
-  height: 7px;
+  top: calc(var(--space-3) + 0.75em);
+  left: 0;
+  width: 12px;
+  height: 2px;
   border-radius: var(--radius-full);
-  background: var(--success);
-  box-shadow: 0 0 7px var(--success);
+  background: var(--text-muted);
 }
 
 .priceActions {
+  grid-area: actions;
+  align-self: start;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -983,9 +851,7 @@
 .wellLabel {
   color: var(--readout-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: var(--text-sm);
 }
 
 .wellReadout {
@@ -997,7 +863,7 @@
 
 .wellValue {
   font-family: var(--font-mono);
-  font-size: clamp(2.2rem, 1.6rem + 2cqi, 3.1rem);
+  font-size: clamp(var(--text-3xl), 1.6rem + 2cqi, 3.1rem);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1054,7 +920,9 @@
   height: var(--control-h);
   margin: 0;
   background: transparent;
-  accent-color: var(--brand-400);
+  /* Tombol geser milik instrumen (cyan, seperti tick yang menyala); amber di
+     layar ini milik tombol daftar (One Amber Rule). */
+  accent-color: var(--accent-400);
   cursor: pointer;
 }
 
@@ -1071,9 +939,9 @@
   height: 26px;
   margin-top: -10px;
   border-radius: var(--radius-full);
-  background: var(--brand-400);
+  background: var(--readout-text);
   border: 3px solid var(--readout-base);
-  box-shadow: 0 0 0 1px var(--brand-400);
+  box-shadow: 0 0 0 2px var(--accent-400);
 }
 
 .wellRange::-moz-range-track {
@@ -1086,8 +954,9 @@
   width: 22px;
   height: 22px;
   border-radius: var(--radius-full);
-  background: var(--brand-400);
+  background: var(--readout-text);
   border: 3px solid var(--readout-base);
+  box-shadow: 0 0 0 2px var(--accent-400);
 }
 
 .wellRange {
@@ -1240,7 +1109,6 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  letter-spacing: 0.08em;
 }
 
 /* ---------- Bar ponsel ---------- */
@@ -1249,15 +1117,11 @@
 }
 
 /* ---------- Lebar halaman, bukan viewport (Container Query Rule) ---------- */
+/* Tiga tautan tidak muat; Harga tetap, karena itu pertanyaan kedua pemilik
+   konter sesudah "untuk saya?". */
 @container landing (max-width: 1080px) {
-  .nav {
+  .nav a:not(.navKeep) {
     display: none;
-  }
-  .headerActions {
-    margin-left: auto;
-  }
-  .channelList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1266,31 +1130,18 @@
     grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
     column-gap: var(--space-6);
   }
-  .trailBoard {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .trailSource {
-    justify-self: start;
-  }
-  .trailList {
-    padding-left: var(--space-8);
-  }
-  .trailList::before {
-    top: 0;
-    left: var(--space-4);
-  }
-  .trailList::after {
-    display: none;
-  }
-  .trail::before {
-    left: calc(var(--space-4) * -1);
-    width: var(--space-3);
-  }
   .benches,
   .pricing,
   .honest,
   .closing {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* Satu kolom: hitung dulu di gauge, baru tombol daftar. */
+  .pricing {
+    grid-template-areas:
+      'copy'
+      'gauge'
+      'actions';
   }
   .stageRail {
     grid-template-columns: minmax(0, 1fr);
@@ -1323,15 +1174,29 @@
 /* 720px: judul dan gerbang tidak lagi muat berdampingan (gerbang butuh
    ±300px agar label dan contoh nomor tidak terpotong). */
 @container landing (max-width: 720px) {
+  /* Bukti sebelum permintaan: strip sinkron duduk di antara judul dan gerbang,
+     jadi pengunjung ponsel melihat meja menggerakkan ponsel sebelum diminta
+     nomor WA. Adegan penuh tetap di bawah gerbang. */
   .hero {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'copy'
+      'strip'
       'gate'
       'scene';
+    row-gap: var(--space-5);
+    padding-top: var(--space-5);
+  }
+  .heroStrip {
+    display: block;
+    max-width: 520px;
+    padding-top: var(--space-2);
   }
   .heroGate {
     max-width: 520px;
+  }
+  .heroScene {
+    padding-top: var(--space-6);
   }
 }
 
@@ -1399,12 +1264,14 @@
 /* 560px: tombol "Mulai gratis" dan tagline merek tidak muat bersama di
    header; daftar tetap ada di bagian harga. */
 @container landing (max-width: 560px) {
+  /* Harga pindah ke bar bawah; header tinggal merek, tema, dan Masuk. */
   .brand small,
-  .outlineButton {
+  .outlineButton,
+  .nav {
     display: none;
   }
-  .channelList {
-    grid-template-columns: minmax(0, 1fr);
+  .headerActions {
+    margin-left: auto;
   }
   .cabinet {
     gap: 6px;
@@ -1417,12 +1284,6 @@
   }
   .drawer svg {
     font-size: 22px;
-  }
-  .trail {
-    grid-template-columns: 40px minmax(0, 1fr);
-  }
-  .trailValue {
-    grid-column: 2;
   }
   .well {
     padding: var(--space-5) var(--space-4);
@@ -1469,6 +1330,24 @@
     font-size: var(--text-sm);
     font-weight: var(--fw-semibold);
     cursor: pointer;
+  }
+  .mobileBarLink {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--control-h);
+    padding: 0 var(--space-3);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+  }
+  .mobileBarLink:focus-visible,
+  .mobileBarDemo:focus-visible,
+  .mobileBarWa:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
   }
   .mobileBarWa {
     display: inline-flex;

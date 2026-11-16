@@ -6986,3 +6986,54 @@ aturan), bukan tiga kali dalam satu layar; stok part di adegan memakai "pcs" sup
 hanya berarti perangkat pelanggan dan satuan harga; dua "tanpa/tidak ada" di gerbang demo dan
 seksi modul diganti kalimat positif; kalimat pemanasan seksi Untuk siapa dibuang; "Selisih
 kas dicari sampai malam" menjadi "Anda mencari selisih kas sampai malam".
+
+## Landing: critique + audit, lalu tujuh tahap perbaikan (16 Nov 2026)
+
+**Temuan.** `/impeccable critique` (dua sub-agen terisolasi: review desain dan detektor + ukur
+DOM) memberi **29/40**; `/impeccable audit` **15/20**. Snapshot di
+`.impeccable/critique/2026-11-16T02-29-55Z__src-features-landing-landingpage-tsx.md`. Inti
+temuannya: bukti (adegan meja → ponsel) berada di bawah gerbang di ponsel dan diam di
+1280×720 (ambang autoplay 0,35, hanya 32% terlihat); hero tidak menyebut perangkat maupun
+harga; halaman 13,7 layar di 390px dengan cerita keyboard tiga kali; CLS 0,19–0,25 di
+320–414px (kop tiket `flex-wrap` turun dari 2 ke 1 baris saat status jadi Lunas); fokus
+tertutup header sticky; submit gagal pertama tidak diumumkan (fokus dipanggil sebelum render);
+dua gerbang menyimpan state sendiri-sendiri; ±280 KB JS gzip sebelum landing tampil.
+
+**Pilihan pemilik:** bukti di layar pertama dulu; papan vs dipangkas ke 4 baris dan grid modul
+dihapus; teks catatan nomor WA **tidak diubah**, hanya dipindah ke kolom nomor; semua temuan
+dikerjakan sampai P3.
+
+**Keputusan yang perlu diingat:**
+- **Lead, bukan eyebrow.** Laporan critique menyarankan baris di atas judul untuk perangkat +
+  harga; craft floor impeccable melarang eyebrow mutlak. Isinya masuk ke lead hero.
+- **Strip, bukan urutan baru.** Membalik urutan ponsel jadi judul → adegan → gerbang akan
+  menurunkan gerbang ±600px. Strip dua baris (±106px) memberi bukti tanpa mengorbankan gerbang;
+  keadaannya dibagi dengan adegan penuh lewat `useBenchSteps`.
+- **Stack untuk teks yang berganti.** Semua varian dirender di satu sel grid, yang tidak aktif
+  `visibility: hidden` + `aria-hidden`. Tinggi dan lebar milik varian terbesar di bahasa apa pun,
+  tanpa angka tinggi tetap. Tes membaca teks dengan `ignore: '[aria-hidden="true"], …'`.
+- **Kompromi lipatan.** Memindah catatan WA ke atas tombol mendorong submit 80px: di 390×844
+  tombol kini y=876 (lipatan 844); di 360×740 sudah di bawah lipatan sebelumnya. Strip, judul
+  gerbang, dan kolom nama tetap di layar pertama, dan alasan nomor terbaca sebelum memutuskan.
+- **Kamus Inggris lazy.** Bahasa runtime dikunci ke `id`, tetapi `en.ts` (±37 KB gzip) ada di
+  chunk `ui` yang di-preload. `i18n/registry.ts` memuat `en` lewat `import()`; `setLanguage`
+  menunggu kamus tiba. Chunk `ui` 83,1 → 46,9 KB gzip; jalur kritis ±280 → ±244 KB.
+- **Prerender ditunda, bukan dikerjakan.** Butuh pipeline SSG dan hydration untuk store yang
+  menyentuh `document`/`window` saat modul dimuat (tema, zoom, bahasa, pengunjung demo), dan
+  `/` juga merender dashboard untuk pengguna yang masuk. Itu keputusan arsitektur tersendiri.
+- **Kartu pratinjau** dirender ulang dari templat baru (judul + lead landing, ponsel pemilik
+  dengan readout contoh, `tokens.css`, font self-hosted). `twitter:title` tidak lagi "Aplikasi
+  Servis HP": landing untuk semua reparasi elektronik.
+- **Alat ukur repo di container cloud.** `@playwright/test` 1.60 milik repo butuh chromium-1223
+  yang tidak terpasang; `audit-contrast` dan `render-brand-assets` dijalankan lewat salinan di
+  scratchpad yang memakai Playwright global. Probe landing dilakukan dengan skrip ukur rect DOM
+  sementara (tidak di-commit): `audit-mobile`/`audit-zoom` mengukur halaman aplikasi di `/demo`,
+  bukan landing.
+
+**Hasil terukur (dev server, 9 lebar × 2 tema):** luberan 0; CLS ≤0,007; autoplay sampai langkah
+akhir di semua lebar termasuk 1280×720; tidak ada teks terpotong; 44 tab stop di 1440 dan 39 di
+390 tanpa elemen tertutup chrome; tinggi halaman 390px 11.735 → 8.311px. `audit-contrast` BERSIH
+(landing + demo, dua tema); `audit-tokens` LULUS; detektor impeccable exit 0, 10 advisory (clamp
+pemasaran, radius bingkai ponsel 40/31px, ikon ber-font-size, bar sinyal 1px). Build, lint,
+**1156 tes / 88 berkas**. **Belum diperbarui:** gambar vault (tanpa PowerShell) dan foto
+`scripts/shoot-landing.mjs`.

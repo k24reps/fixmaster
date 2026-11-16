@@ -139,14 +139,47 @@ describe('LandingPage dua adegan', () => {
     renderLanding();
     const desk = screen.getByRole('figure', { name: /meja penerimaan/i });
     const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
-    expect(within(phone).getByText('Rp 1.240.000')).toBeInTheDocument();
+    // Nilai sebelum dan sesudah sama-sama dirender (tinggi tetap); yang belum
+    // aktif disembunyikan dengan aria-hidden.
+    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
+    expect(within(phone).getByText('Rp 1.240.000', shown)).toBeInTheDocument();
+    expect(within(phone).queryByText('Rp 170.000', shown)).not.toBeInTheDocument();
 
     fireEvent.click(within(desk).getByRole('button', { name: 'Pasang keyboard dari stok' }));
-    expect(within(phone).getByText('Rp 170.000')).toBeInTheDocument();
+    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
     fireEvent.click(within(desk).getByRole('button', { name: 'Tandai selesai' }));
     fireEvent.click(within(desk).getByRole('button', { name: 'Terima bayar Rp 350.000' }));
-    expect(within(phone).getByText('Rp 1.590.000')).toBeInTheDocument();
+    expect(within(phone).getByText('Rp 1.590.000', shown)).toBeInTheDocument();
     expect(within(desk).getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
+  });
+
+  it('ganti nama toko di satu gerbang membuka formulir di kedua gerbang', () => {
+    localStorage.setItem(VISITOR_KEY, JSON.stringify({ shopName: 'Sinar Servis' }));
+    renderLanding();
+    expect(screen.queryAllByLabelText('Nomor WhatsApp')).toHaveLength(0);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Ganti nama toko/ })[0]);
+    expect(screen.getAllByLabelText('Nomor WhatsApp')).toHaveLength(2);
+    expect(screen.queryByText('Sinar Servis')).toBeNull();
+  });
+
+  it('tuts strip ponsel menggerakkan adegan yang sama', () => {
+    renderLanding();
+    // Strip hanya tampil di container ≤720px; jsdom tidak menghitung container
+    // query, jadi di sini ia tersembunyi.
+    const strip = screen.getByRole('group', {
+      name: /meja penerimaan dan ponsel pemilik/i,
+      hidden: true,
+    });
+    const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
+    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
+
+    fireEvent.click(within(strip).getByRole('button', { name: 'Pasang part', hidden: true }));
+    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
+    expect(within(strip).getByText('Rp 170.000')).toBeInTheDocument();
+    expect(
+      within(strip).getByRole('button', { name: 'Tandai selesai', hidden: true }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -202,6 +235,21 @@ describe('DemoGate', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
     });
     await waitFor(() => expect(onPassed).toHaveBeenCalledWith('Sinar Servis'));
+  });
+
+  it('fokus mendarat di kolom yang salah sesudah error terpasang', () => {
+    renderGate();
+    const name = screen.getByLabelText('Nama toko');
+    const atFocus: (string | null)[] = [];
+    name.addEventListener('focus', () =>
+      atFocus.push(name.getAttribute('aria-invalid'), name.getAttribute('aria-describedby')),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Buka demo' }));
+
+    expect(document.activeElement).toBe(name);
+    // Pembaca layar membaca atribut saat fokus tiba: keduanya harus sudah ada.
+    expect(atFocus[0]).toBe('true');
+    expect(atFocus[1]).toBeTruthy();
   });
 
   it('pengunjung yang kembali di perangkat ini tidak mengisi lagi', () => {

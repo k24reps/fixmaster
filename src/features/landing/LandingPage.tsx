@@ -23,7 +23,8 @@ import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
 import { authIntentHref, type AuthIntent } from '@/features/auth/auth-intent';
-import { BenchScene } from './BenchScene';
+import { BenchScene, BenchStrip } from './BenchScene';
+import { useBenchSteps } from './useBenchSteps';
 import { DemoGate } from './DemoGate';
 import styles from './LandingPage.module.css';
 
@@ -31,20 +32,6 @@ interface LandingPageProps {
   /** Optional so the public preview route can open the account flow. */
   onStart?: (intent: AuthIntent) => void;
 }
-
-interface Trail {
-  icon: IconName;
-  place: TranslationKey;
-  text: TranslationKey;
-  value: string;
-}
-
-const TRAILS: Trail[] = [
-  { icon: 'box', place: 'landing.trail.stock', text: 'landing.trail.stockText', value: '−1' },
-  { icon: 'receipt', place: 'landing.trail.ticket', text: 'landing.trail.ticketText', value: 'Rp 170.000' },
-  { icon: 'users', place: 'landing.trail.customer', text: 'landing.trail.customerText', value: '+1' },
-  { icon: 'wallet', place: 'landing.trail.cash', text: 'landing.trail.cashText', value: '+Rp 350.000' },
-];
 
 interface Contrast {
   situation: TranslationKey;
@@ -54,7 +41,11 @@ interface Contrast {
   example?: string;
 }
 
-/** Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. */
+/**
+ * Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. Empat
+ * pertama paling sering terasa dan terlihat langsung; sisanya dibuka sesuai
+ * minat (dulu 8 baris × 3 sel, 2.796px di ponsel).
+ */
 const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   {
@@ -65,12 +56,14 @@ const CONTRASTS: Contrast[] = [
     example: 'fixmaster.app/t/K7Q2M9XAPD',
   },
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
-  { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
+  { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
   { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
   { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
   { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
 ];
+
+const VS_VISIBLE = 4;
 
 interface Drawer {
   icon: IconName;
@@ -86,27 +79,6 @@ const DRAWERS: Drawer[] = [
   { icon: 'speaker', label: 'landing.bench.audio' },
   { icon: 'game-controller', label: 'landing.bench.console' },
   { icon: 'cooking-pot', label: 'landing.bench.home' },
-];
-
-interface Module {
-  icon: IconName;
-  name: TranslationKey;
-  text: TranslationKey;
-}
-
-const MODULES: Module[] = [
-  { icon: 'screwdriver-wrench', name: 'nav.services', text: 'landing.mod.services' },
-  { icon: 'calculator', name: 'nav.calculator', text: 'landing.mod.calculator' },
-  { icon: 'cash-register', name: 'nav.pos', text: 'landing.mod.pos' },
-  { icon: 'users', name: 'nav.customers', text: 'landing.mod.customers' },
-  { icon: 'truck-field', name: 'nav.suppliers', text: 'landing.mod.suppliers' },
-  { icon: 'wallet', name: 'nav.finance', text: 'landing.mod.finance' },
-  { icon: 'list-check', name: 'nav.tasks', text: 'landing.mod.tasks' },
-  { icon: 'map-pin', name: 'nav.attendance', text: 'landing.mod.attendance' },
-  { icon: 'chart-line', name: 'nav.reports', text: 'landing.mod.reports' },
-  { icon: 'clock-rotate-left', name: 'nav.activity', text: 'landing.mod.activity' },
-  { icon: 'buildings', name: 'landing.mod.outletsName', text: 'landing.mod.outlets' },
-  { icon: 'whatsapp', name: 'landing.mod.waName', text: 'landing.mod.wa' },
 ];
 
 interface Stage {
@@ -237,6 +209,10 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  // Strip ponsel dan adegan penuh berbagi satu keadaan langkah.
+  const bench = useBenchSteps([stripRef, sceneRef]);
 
   // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
@@ -278,14 +254,57 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const trackSupport = (location: string) =>
     trackEvent('landing_cta_clicked', { location, intent: 'support', plan: 'none' });
 
+  // Ke gerbang yang paling dekat dari posisi gulir sekarang (dulu selalu ke
+  // gerbang akhir: lompatan ±8.800px dari bagian atas halaman).
   const goToGate = () => {
     trackEvent('landing_cta_clicked', { location: 'mobile_bar', intent: 'demo', plan: 'none' });
-    const target = finalGateRef.current;
-    if (!target) return;
+    const gates = [heroGateRef.current, finalGateRef.current].filter(
+      (node): node is HTMLDivElement => node !== null,
+    );
+    if (gates.length === 0) return;
+    const distance = (node: HTMLElement) => Math.abs(node.getBoundingClientRect().top);
+    const target = gates.reduce((best, node) => (distance(node) < distance(best) ? node : best));
+    const field = target.querySelector<HTMLElement>('input, button');
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
-    target.querySelector<HTMLElement>('input, button')?.focus({ preventScroll: true });
+    if (reduce) {
+      target.scrollIntoView({ behavior: 'auto', block: 'center' });
+      field?.focus({ preventScroll: true });
+      return;
+    }
+    // Fokus (dan keyboard ponsel) baru muncul setelah gulir selesai, bukan di
+    // tengah animasi.
+    let done = false;
+    const focusField = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('scrollend', focusField);
+      field?.focus({ preventScroll: true });
+    };
+    window.addEventListener('scrollend', focusField);
+    window.setTimeout(focusField, 900);
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
+
+  const renderVsRow = (row: Contrast) => (
+    <li key={row.situation} className={styles.vsRow} data-featured={row.example ? 'true' : undefined}>
+      <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
+      <p className={styles.vsOld}>
+        <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
+        {t(row.old)}
+      </p>
+      <div className={styles.vsNew}>
+        <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
+        <p>{t(row.fixmaster)}</p>
+        {row.example && (
+          <p className={styles.vsTrack}>
+            <Icon name="qrcode" aria-hidden />
+            <span className={styles.vsTrackUrl}>{row.example}</span>
+            <span className={styles.vsTrackNote}>{t('landing.vs.statusExample')}</span>
+          </p>
+        )}
+      </div>
+    </li>
+  );
 
   return (
     <div className={styles.page}>
@@ -308,8 +327,10 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
 
         <nav className={styles.nav} aria-label={t('landing.navLabel')}>
           <a href="#cara-kerja">{t('landing.navHow')}</a>
+          <a href="#harga" className={styles.navKeep}>
+            {t('landing.navPricing')}
+          </a>
           <a href="#untuk-siapa">{t('landing.navWho')}</a>
-          <a href="#harga">{t('landing.navPricing')}</a>
         </nav>
 
         <div className={styles.headerActions}>
@@ -339,17 +360,26 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
       </header>
 
       <main id="top" tabIndex={-1}>
-        {/* ---------- 1. Dua adegan + gerbang ---------- */}
+        {/* ---------- Dua adegan + gerbang ---------- */}
         <section className={styles.hero} aria-labelledby="landing-hero-title">
           <div className={styles.heroCopy}>
             <h1 id="landing-hero-title">{t('landing.heroTitle')}</h1>
-            <p className={styles.heroLead}>{t('landing.heroLead')}</p>
+            <p className={styles.heroLead}>
+              {interpolate(t('landing.heroLead'), {
+                free: String(FREE_UNITS),
+                // "Rp" tidak boleh terpisah dari angkanya di ujung baris.
+                price: fmtRp(UNIT_PRICE).replace(' ', '\u00a0'),
+              })}
+            </p>
+          </div>
+          <div className={styles.heroStrip}>
+            <BenchStrip shopName={shopName} bench={bench} stripRef={stripRef} />
           </div>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
-          <div className={styles.heroScene}>
-            <BenchScene shopName={shopName} />
+          <div id="cara-kerja" className={styles.heroScene}>
+            <BenchScene shopName={shopName} bench={bench} sceneRef={sceneRef} />
           </div>
         </section>
 
@@ -372,32 +402,21 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
                 <strong>{t('landing.vs.newTitle')}</strong>
               </span>
             </div>
-            <ul className={styles.vsList}>
-              {CONTRASTS.map((row) => (
-                <li
-                  key={row.situation}
-                  className={styles.vsRow}
-                  data-featured={row.example ? 'true' : undefined}
-                >
-                  <h3 className={styles.vsSituation}>{t(row.situation)}</h3>
-                  <p className={styles.vsOld}>
-                    <span className={styles.vsLabel}>{t('landing.vs.oldTitle')}</span>
-                    {t(row.old)}
-                  </p>
-                  <div className={styles.vsNew}>
-                    <span className={styles.vsLabel}>{t('landing.vs.newTitle')}</span>
-                    <p>{t(row.fixmaster)}</p>
-                    {row.example && (
-                      <p className={styles.vsTrack}>
-                        <Icon name="qrcode" aria-hidden />
-                        <span className={styles.vsTrackUrl}>{row.example}</span>
-                        <span className={styles.vsTrackNote}>{t('landing.vs.statusExample')}</span>
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <ul className={styles.vsList}>{CONTRASTS.slice(0, VS_VISIBLE).map(renderVsRow)}</ul>
+            <details className={styles.vsMore}>
+              <summary>
+                <span>
+                  {interpolate(t('landing.vs.more'), {
+                    count: String(CONTRASTS.length - VS_VISIBLE),
+                    list: CONTRASTS.slice(VS_VISIBLE)
+                      .map((row) => t(row.situation))
+                      .join(' · '),
+                  })}
+                </span>
+                <Icon name="chevron-down" aria-hidden />
+              </summary>
+              <ul className={styles.vsList}>{CONTRASTS.slice(VS_VISIBLE).map(renderVsRow)}</ul>
+            </details>
           </div>
           <p className={styles.vsFoot}>
             <strong>{t('landing.vs.foot')}</strong>
@@ -407,38 +426,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </p>
         </section>
 
-        {/* ---------- 2. Satu aksi, empat jejak ---------- */}
-        <section id="cara-kerja" className={styles.trails} aria-labelledby="landing-trails-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-trails-title">{t('landing.trailsTitle')}</h2>
-            <p>{t('landing.trailsLead')}</p>
-          </div>
-          <div className={styles.trailBoard}>
-            <div className={styles.trailSource}>
-              <span className={styles.trailSourceLed} aria-hidden />
-              <span>
-                <small>FM-0312</small>
-                <strong>{t('landing.trailSource')}</strong>
-              </span>
-            </div>
-            <ul className={styles.trailList}>
-              {TRAILS.map((trail) => (
-                <li key={trail.place} className={styles.trail}>
-                  <span className={styles.trailIcon}>
-                    <Icon name={trail.icon} aria-hidden />
-                  </span>
-                  <span className={styles.trailBody}>
-                    <strong>{t(trail.place)}</strong>
-                    <span>{t(trail.text)}</span>
-                  </span>
-                  <span className={styles.trailValue}>{trail.value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ---------- 3. Untuk semua meja reparasi ---------- */}
+        {/* ---------- Untuk semua meja reparasi ---------- */}
         <section className={styles.benches} aria-labelledby="landing-benches-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-benches-title">{t('landing.benchesTitle')}</h2>
@@ -454,34 +442,55 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
             ))}
             <li className={[styles.drawer, styles.drawerAdd].join(' ')}>
               <span className={styles.drawerPull} aria-hidden />
-              <Icon name="plus" aria-hidden />
               <span>{t('landing.bench.yours')}</span>
             </li>
           </ul>
         </section>
 
-        {/* ---------- 4. Modul ---------- */}
-        <section className={styles.modules} aria-labelledby="landing-modules-title">
-          <div className={styles.sectionHead}>
-            <h2 id="landing-modules-title">{t('landing.modulesTitle')}</h2>
-            <p>{t('landing.modulesLead')}</p>
-          </div>
-          <ul className={styles.channelList}>
-            {MODULES.map((mod) => (
-              <li key={mod.text} className={styles.channel}>
-                <span className={styles.channelIcon}>
-                  <Icon name={mod.icon} aria-hidden />
-                </span>
-                <span className={styles.channelBody}>
-                  <strong>{t(mod.name)}</strong>
-                  <span>{t(mod.text)}</span>
-                </span>
+        {/* ---------- Harga ---------- */}
+        <section id="harga" className={styles.pricing} aria-labelledby="landing-price-title">
+          <div className={styles.priceCopy}>
+            <h2 id="landing-price-title">
+              <span className={styles.priceMono}>{fmtRp(UNIT_PRICE)}</span>{' '}
+              {t('landing.price.title')}
+            </h2>
+            <p className={styles.priceLead}>
+              {interpolate(t('landing.price.lead'), {
+                free: String(FREE_UNITS),
+                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+              })}
+            </p>
+            <ul className={styles.priceRules}>
+              <li>
+                {interpolate(t('landing.price.ruleCap'), {
+                  max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+                  cap: String(MONTHLY_CAP_UNITS),
+                })}
               </li>
-            ))}
-          </ul>
+              <li>{t('landing.price.ruleFree')}</li>
+              <li>
+                {interpolate(t('landing.price.ruleRefund'), {
+                  minutes: String(REFUND_WINDOW_MINUTES),
+                })}
+              </li>
+              <li>{interpolate(t('landing.price.ruleTopup'), { min: fmtRp(MIN_TOPUP) })}</li>
+              <li>{interpolate(t('landing.price.ruleFloor'), { floor: String(-UNIT_FLOOR) })}</li>
+            </ul>
+          </div>
+          <CostGauge />
+          <div className={styles.priceActions}>
+            <button
+              className={styles.primaryButton}
+              type="button"
+              onClick={() => startAuth({ mode: 'signup', source: 'pricing' }, 'pricing')}
+            >
+              {interpolate(t('landing.price.cta'), { free: String(FREE_UNITS) })}
+            </button>
+            <p>{t('landing.price.ctaNote')}</p>
+          </div>
         </section>
 
-        {/* ---------- 5. Dari kerja sendiri sampai buka cabang ---------- */}
+        {/* ---------- Dari kerja sendiri sampai buka cabang ---------- */}
         <section id="untuk-siapa" className={styles.stages} aria-labelledby="landing-stages-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-stages-title">{t('landing.stagesTitle')}</h2>
@@ -517,50 +526,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </ol>
         </section>
 
-        {/* ---------- 6. Harga ---------- */}
-        <section id="harga" className={styles.pricing} aria-labelledby="landing-price-title">
-          <div className={styles.priceCopy}>
-            <h2 id="landing-price-title">
-              <span className={styles.priceMono}>{fmtRp(UNIT_PRICE)}</span>{' '}
-              {t('landing.price.title')}
-            </h2>
-            <p className={styles.priceLead}>
-              {interpolate(t('landing.price.lead'), {
-                free: String(FREE_UNITS),
-                max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
-              })}
-            </p>
-            <ul className={styles.priceRules}>
-              <li>
-                {interpolate(t('landing.price.ruleCap'), {
-                  max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
-                  cap: String(MONTHLY_CAP_UNITS),
-                })}
-              </li>
-              <li>{t('landing.price.ruleFree')}</li>
-              <li>
-                {interpolate(t('landing.price.ruleRefund'), {
-                  minutes: String(REFUND_WINDOW_MINUTES),
-                })}
-              </li>
-              <li>{interpolate(t('landing.price.ruleTopup'), { min: fmtRp(MIN_TOPUP) })}</li>
-              <li>{interpolate(t('landing.price.ruleFloor'), { floor: String(-UNIT_FLOOR) })}</li>
-            </ul>
-            <div className={styles.priceActions}>
-              <button
-                className={styles.primaryButton}
-                type="button"
-                onClick={() => startAuth({ mode: 'signup', source: 'pricing' }, 'pricing')}
-              >
-                {interpolate(t('landing.price.cta'), { free: String(FREE_UNITS) })}
-              </button>
-              <p>{t('landing.price.ctaNote')}</p>
-            </div>
-          </div>
-          <CostGauge />
-        </section>
-
-        {/* ---------- 7. Jujur soal koneksi & backup ---------- */}
+        {/* ---------- Jujur soal koneksi & backup ---------- */}
         <section className={styles.honest} aria-labelledby="landing-honest-title">
           <div className={styles.sectionHead}>
             <h2 id="landing-honest-title">{t('landing.honestTitle')}</h2>
@@ -578,7 +544,7 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </div>
         </section>
 
-        {/* ---------- 8. Gerbang penutup ---------- */}
+        {/* ---------- Gerbang penutup ---------- */}
         <section className={styles.closing} aria-labelledby="landing-closing-title">
           <div className={styles.closingCopy}>
             <h2 id="landing-closing-title">{t('landing.closingTitle')}</h2>
@@ -611,10 +577,13 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
           </a>
           <a href="mailto:fixmaster.cs@gmail.com">fixmaster.cs@gmail.com</a>
         </div>
-        <span className={styles.location}>CIMAHI</span>
+        <span className={styles.location}>Cimahi</span>
       </footer>
 
       <div className={styles.mobileBar} data-visible={gateOffscreen ? 'true' : undefined}>
+        <a className={styles.mobileBarLink} href="#harga">
+          {t('landing.navPricing')}
+        </a>
         <button className={styles.mobileBarDemo} type="button" onClick={goToGate}>
           {t('landing.mobileBarDemo')}
         </button>
