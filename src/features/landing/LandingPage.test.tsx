@@ -133,23 +133,51 @@ describe('LandingPage dua adegan', () => {
     expect(within(desk).getByText('Sinar Servis')).toBeInTheDocument();
   });
 
-  it('tombol meja mengganti layar asli di komputer, tablet, dan HP bersamaan', () => {
+  // Layar yang tampil adalah satu-satunya gambar ber-alt; halaman lain aria-hidden.
+  const current = (name: RegExp) =>
+    within(screen.getByRole('figure', { name })).getByRole('img').getAttribute('src');
+  const loadImages = (page: string) =>
+    document.querySelectorAll(`img[src*="/${page}-"]`).forEach((img) => fireEvent.load(img));
+
+  it('kedua layar mulai di detail tiket dan pindah bersamaan setelah keduanya siap', () => {
     renderLanding();
-    // Layar yang aktif adalah satu-satunya gambar dengan alt; langkah lain aria-hidden.
-    const current = (name: RegExp) =>
-      within(screen.getByRole('figure', { name })).getByRole('img').getAttribute('src');
-    expect(current(/komputer/i)).toBe('/bench/dark/desk-0.webp');
+    expect(current(/komputer/i)).toBe('/bench/dark/detail-desk.webp');
+    expect(current(/^HP$/i)).toBe('/bench/dark/detail-phone.webp');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pasang keyboard dari stok' }));
-    expect(current(/komputer/i)).toBe('/bench/dark/desk-1.webp');
-    expect(current(/tablet/i)).toBe('/bench/dark/tablet-1.webp');
-    expect(current(/HP · pemilik/i)).toBe('/bench/dark/phone-1.webp');
-    expect(screen.getByText(/keyboard dipasang dari stok/)).toBeInTheDocument();
+    const menu = screen.getByRole('group', { name: /buka menu/i });
+    fireEvent.click(within(menu).getByRole('button', { name: 'Dashboard' }));
+    expect(within(menu).getByRole('button', { name: 'Dashboard' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // Gambar Dashboard belum termuat: layar lama tetap tampil, tidak setengah pindah.
+    expect(current(/komputer/i)).toBe('/bench/dark/detail-desk.webp');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tandai selesai' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Terima bayar Rp 350.000' }));
-    expect(current(/HP · pemilik/i)).toBe('/bench/dark/phone-3.webp');
-    expect(screen.getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
+    loadImages('dashboard');
+    expect(current(/komputer/i)).toBe('/bench/dark/dashboard-desk.webp');
+    expect(current(/^HP$/i)).toBe('/bench/dark/dashboard-phone.webp');
+  });
+
+  it('klik menu di bottom nav HP memindah komputer juga', () => {
+    renderLanding();
+    const phone = screen.getByRole('figure', { name: /^HP$/i });
+    // Area klik di atas gambar tidak ikut urutan Tab (aria-hidden); deret tombol
+    // adalah jalur keyboard.
+    const hotspots = phone.querySelectorAll('button[aria-hidden="true"]');
+    expect(hotspots.length).toBeGreaterThan(0);
+    fireEvent.click(hotspots[1]);
+    loadImages('services');
+    expect(current(/komputer/i)).toBe('/bench/dark/services-desk.webp');
+    expect(current(/^HP$/i)).toBe('/bench/dark/services-phone.webp');
+  });
+
+  it('menu yang tidak direkam menawarkan demo lengkap', () => {
+    renderLanding();
+    const other = document.querySelector('button[data-other="true"]');
+    expect(other).not.toBeNull();
+    fireEvent.click(other!);
+    expect(screen.getByText(/ada di demo lengkap/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Coba demo/ })).toHaveAttribute('href', '#coba');
   });
 
   it('ganti nama toko di satu gerbang membuka formulir di kedua gerbang', () => {
@@ -160,23 +188,6 @@ describe('LandingPage dua adegan', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Ganti nama toko/ })[0]);
     expect(screen.getAllByLabelText('Nomor WhatsApp')).toHaveLength(2);
     expect(screen.queryByText('Sinar Servis')).toBeNull();
-  });
-
-  it('tuts strip ponsel menggerakkan adegan yang sama', () => {
-    renderLanding();
-    // Strip hanya tampil di container ≤720px; jsdom tidak menghitung container
-    // query, jadi di sini ia tersembunyi.
-    const strip = screen.getByRole('group', {
-      name: /meja penerimaan dan ponsel pemilik/i,
-      hidden: true,
-    });
-    const phone = screen.getByRole('figure', { name: /HP · pemilik/i });
-
-    fireEvent.click(within(strip).getByRole('button', { name: 'Pasang part', hidden: true }));
-    expect(within(phone).getByRole('img').getAttribute('src')).toBe('/bench/dark/phone-1.webp');
-    expect(
-      within(strip).getByRole('button', { name: 'Tandai selesai', hidden: true }),
-    ).toBeInTheDocument();
   });
 });
 

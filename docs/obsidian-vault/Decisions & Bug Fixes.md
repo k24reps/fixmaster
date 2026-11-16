@@ -7106,3 +7106,31 @@ impeccable exit 0, advisory turun 10 → 5 (yang tersisa ukuran judul pemasaran 
 Build, lint, **1175 tes / 88 berkas**. **Belum diperbarui:** gambar vault dan foto
 `scripts/shoot-landing.mjs` (tanpa PowerShell).
 
+## Adegan landing: komputer + HP dengan menu sinkron, tanpa fase (16 Nov 2026)
+
+**Revisi pemilik atas entri di atas:** cukup desktop dan HP; tanpa sinkron fase pasang part →
+selesai → lunas. Keduanya mulai di detail tiket; saat pengunjung mengklik menu (mis. Dashboard)
+di desktop, HP ikut pindah ke menu yang sama.
+
+**Pilihan pemilik:** gambar asli + menu bisa diklik (bukan dua jendela `/demo` hidup), tujuh
+menu inti (Detail tiket, Dashboard, Servis, Kasir & Stok, Pelanggan, Keuangan, Laporan; menu
+sidebar lain redup + ajakan demo), diam di detail tiket sampai diklik, deret tombol menu di bawah
+adegan untuk sentuh/keyboard, strip di atas gerbang ponsel dihapus.
+
+**Keputusan yang perlu diingat:**
+- **Sinkron = navigasi, bukan data.** Tiap halaman direkam sekali di 1280×800 lalu di 390×844
+  dari sesi yang sama, jadi isi kedua layar cocok; tidak ada perubahan data antarlangkah lagi.
+- **Pindah bersamaan atau tidak sama sekali.** `want` (diminta) dan `shown` (tampil) dipisah:
+  layar baru tampil setelah gambar komputer DAN HP termuat (`onLoad`, plus cek `complete` untuk
+  gambar dari cache). Tanpa ini HP bisa pindah lebih dulu saat koneksi lambat.
+- **Area klik di atas gambar tidak ikut Tab.** Kotak tautan sidebar dan bottom nav diukur saat
+  rekaman; tombolnya `aria-hidden` + `tabIndex -1` supaya pembaca layar tidak mendengar menu dua
+  kali. Deret tombol menu (`aria-pressed`) adalah jalur keyboard dan sentuh.
+- **Detail Servis di HP tidak punya bottom nav** (bilah aksi menggantikannya): kotak bottom nav
+  diukur di Dashboard. Kolom cari Kasir fokus otomatis; fokus dilepas sebelum memotret.
+- **Yang dihapus:** tablet, fase dan autoplay, hook `useBenchSteps`, `BenchStrip`, kunci
+  `landing.strip.*` dan kunci kabar/aksi/rel/readout `landing.scene.*`; hero ponsel kembali
+  judul → gerbang → adegan.
+
+**Hasil:** lihat [[Testing & Security]] untuk jumlah tes; detail verifikasi di Signature Pages.
+
