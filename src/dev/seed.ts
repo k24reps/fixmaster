@@ -128,6 +128,9 @@ export async function seedDemoWorkspace(shopName: string = DEMO_SHOP_NAME): Prom
     { ...at(oDago), id: newId(), name: 'Baterai A1964 58Wh', category: 'Sparepart', sku: 'BT-A1964', stock: 1, minStock: 3, costPrice: 720_000, sellPrice: 1_100_000, supplierId: null, warrantyDays: 90 },
     { ...at(oDago), id: newId(), name: 'Thermal Paste MX-4', category: 'Consumable', sku: 'TP-MX4', stock: 24, minStock: 5, costPrice: 45_000, sellPrice: 90_000, supplierId: null },
     { ...at(oCimahi), id: newId(), name: 'LCD iPhone 12', category: 'Sparepart', sku: 'LCD-IP12', stock: 2, minStock: 2, costPrice: 1_350_000, sellPrice: 1_950_000, supplierId: null },
+    // Part untuk FM-0008, tiket yang sama dengan adegan landing: pengunjung demo
+    // bisa mengulang sendiri pasang part → selesai → bayar yang mereka lihat.
+    { ...at(oPusat), id: newId(), name: 'Keyboard ASUS X441', category: 'Sparepart', sku: 'KB-X441', stock: 3, minStock: 2, costPrice: 180_000, sellPrice: 250_000, supplierId: null },
   ];
   await repository.putMany('inventory', inventory);
 
@@ -263,6 +266,11 @@ export async function seedDemoWorkspace(shopName: string = DEMO_SHOP_NAME): Prom
       handling: 'Ganti port charger, pengisian daya normal kembali',
       ageDays: 2,
       doneDays: 0,
+    }),
+    // Tiket adegan landing (scripts/shoot-bench-scene.mjs memotretnya): sedang
+    // dikerjakan, part belum dipasang.
+    mkService(oPusat, 8, customers[1], 'Laptop', 'ASUS VivoBook X441', 'Keyboard tidak merespons', 'pengerjaan', 0, 0, [], {
+      ageDays: 1,
     }),
   ];
   // Adapter selalu mengisi updatedAt = sekarang (jejak audit yang benar untuk

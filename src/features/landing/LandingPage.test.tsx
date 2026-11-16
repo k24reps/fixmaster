@@ -122,35 +122,34 @@ describe('LandingPage perbandingan', () => {
 });
 
 describe('LandingPage dua adegan', () => {
-  it('nama toko yang diketik di gerbang menjadi kop meja dan ponsel', () => {
+  it('nama toko yang diketik di gerbang ditempel di kop layar komputer meja', () => {
     renderLanding();
-    const desk = screen.getByRole('figure', { name: /meja penerimaan/i });
-    expect(within(desk).getByText('Toko Anda')).toBeInTheDocument();
+    const desk = screen.getByRole('figure', { name: /komputer/i });
+    expect(within(desk).queryByText('Sinar Servis')).toBeNull();
 
     const [nameField] = screen.getAllByLabelText('Nama toko');
     fireEvent.change(nameField, { target: { value: '  Sinar   Servis ' } });
 
     expect(within(desk).getByText('Sinar Servis')).toBeInTheDocument();
-    const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
-    expect(within(phone).getByText('Sinar Servis')).toBeInTheDocument();
   });
 
-  it('tombol meja menggerakkan angka di ponsel pemilik', () => {
+  it('tombol meja mengganti layar asli di komputer, tablet, dan HP bersamaan', () => {
     renderLanding();
-    const desk = screen.getByRole('figure', { name: /meja penerimaan/i });
-    const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
-    // Nilai sebelum dan sesudah sama-sama dirender (tinggi tetap); yang belum
-    // aktif disembunyikan dengan aria-hidden.
-    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
-    expect(within(phone).getByText('Rp 1.240.000', shown)).toBeInTheDocument();
-    expect(within(phone).queryByText('Rp 170.000', shown)).not.toBeInTheDocument();
+    // Layar yang aktif adalah satu-satunya gambar dengan alt; langkah lain aria-hidden.
+    const current = (name: RegExp) =>
+      within(screen.getByRole('figure', { name })).getByRole('img').getAttribute('src');
+    expect(current(/komputer/i)).toBe('/bench/dark/desk-0.webp');
 
-    fireEvent.click(within(desk).getByRole('button', { name: 'Pasang keyboard dari stok' }));
-    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
-    fireEvent.click(within(desk).getByRole('button', { name: 'Tandai selesai' }));
-    fireEvent.click(within(desk).getByRole('button', { name: 'Terima bayar Rp 350.000' }));
-    expect(within(phone).getByText('Rp 1.590.000', shown)).toBeInTheDocument();
-    expect(within(desk).getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Pasang keyboard dari stok' }));
+    expect(current(/komputer/i)).toBe('/bench/dark/desk-1.webp');
+    expect(current(/tablet/i)).toBe('/bench/dark/tablet-1.webp');
+    expect(current(/HP · pemilik/i)).toBe('/bench/dark/phone-1.webp');
+    expect(screen.getByText(/keyboard dipasang dari stok/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tandai selesai' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Terima bayar Rp 350.000' }));
+    expect(current(/HP · pemilik/i)).toBe('/bench/dark/phone-3.webp');
+    expect(screen.getByRole('button', { name: 'Ulangi dari awal' })).toBeInTheDocument();
   });
 
   it('ganti nama toko di satu gerbang membuka formulir di kedua gerbang', () => {
@@ -171,12 +170,10 @@ describe('LandingPage dua adegan', () => {
       name: /meja penerimaan dan ponsel pemilik/i,
       hidden: true,
     });
-    const phone = screen.getByRole('figure', { name: /ponsel pemilik/i });
-    const shown = { ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *' };
+    const phone = screen.getByRole('figure', { name: /HP · pemilik/i });
 
     fireEvent.click(within(strip).getByRole('button', { name: 'Pasang part', hidden: true }));
-    expect(within(phone).getByText('Rp 170.000', shown)).toBeInTheDocument();
-    expect(within(strip).getByText('Rp 170.000')).toBeInTheDocument();
+    expect(within(phone).getByRole('img').getAttribute('src')).toBe('/bench/dark/phone-1.webp');
     expect(
       within(strip).getByRole('button', { name: 'Tandai selesai', hidden: true }),
     ).toBeInTheDocument();

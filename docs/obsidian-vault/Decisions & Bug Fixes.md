@@ -7064,6 +7064,45 @@ tidak ditemukan; dipindah lewat stash ke `origin/main` terbaru tanpa konflik. Ce
 terhadap `origin/main` sebelum mulai kerja di sesi yang dilanjutkan.
 
 **Verifikasi:** 1175 tes / 88 berkas, lint, build; simulasi PostgreSQL 16 lokal: `UJI 0104 LULUS`,
-penerapan dan penerapan ulang OK. **Belum diterapkan di produksi** (runbook "Rilis 0104" di
-[[Self-Hosting]]).
+penerapan dan penerapan ulang OK. **Diterapkan di produksi 16 Nov 2026** (runbook "Rilis 0104" di
+[[Self-Hosting]]: uji coba LULUS, pemeriksaan `f|t|f`).
+
+## Adegan landing dari layar asli aplikasi, tiga perangkat (16 Nov 2026)
+
+**Permintaan pemilik:** bagian meja → ponsel di landing harus memperlihatkan aplikasi FixMaster
+yang sebenarnya, bergerak sinkron di desktop dan ponsel, plus narasi bahwa aplikasinya nyaman di
+komputer, tablet, dan HP dan bisa dipasang.
+
+**Pilihan (dari tiga):** rekaman layar asli diputar sinkron, bukan aplikasi hidup dalam iframe
+(memuat aplikasi penuh dua kali di layar pertama, beberapa MB, berat bagi pengunjung dari WA) dan
+bukan video (1–3 MB, tidak dikendalikan tombol meja, sulit dua tema). Nama toko yang diketik
+ditimpakan di kop toko pada layar komputer (kotak dan gaya diukur saat rekaman).
+
+**Keputusan yang perlu diingat:**
+- **Satu sesi, tiga ukuran.** Skrip mengganti ukuran jendela di sesi `/demo` yang sama, jadi
+  stok, status, dan kas di ketiga layar pasti cocok; tiga sesi terpisah punya RAM masing-masing.
+- **Seed demo ditambah FM-0008 + Keyboard ASUS X441 (stok 3, Pusat).** Kisahnya sama dengan
+  landing, dan pengunjung demo menemukan tiket yang sama menunggu untuk diulang sendiri. Tiket
+  seed kini 8, jadi saldo contoh demo 42 unit (50 − tiket seed, PRODUCT.md).
+- **Aksi lewat UI sungguhan, bukan repository.** Pasang part, Ubah Status Selesai (biaya final +
+  penanganan), Lunas (wallet Tunai) diklik seperti pengguna, jadi pengurangan stok dan kas
+  berasal dari logika aplikasi, bukan diketik ulang.
+- **Angka di urutan aplikasi.** Margin baru terbentuk saat Selesai (biaya final), bukan saat
+  part dipasang; strip ponsel mengikuti: stok 3 → 2 → margin Rp 170.000 → arus kas (dibaca dari
+  Dashboard rekaman, Rp 1.150.000).
+- **Bobot.** WebP 0,82 lewat kanvas Chromium (skrip tanpa alat tambahan, jalan di Windows): komputer
+  ±63 KB (1600px) / ±25 KB (800px, ponsel), tablet ±57 KB, HP ±41 KB. Lazy dan bertahap: 0 gambar
+  saat halaman dibuka, 6 saat adegan terlihat, sisanya ikut autoplay; reduced motion 6.
+- **Cache.** `/bench/*.webp` tidak kena aturan `immutable` di `vercel.json` (hanya `/assets`,
+  `/fonts`), jadi rekaman ulang sampai lewat validasi ETag tanpa ganti nama berkas.
+- **FAQ "Perlu memasang aplikasi?"** dulu menjawab "Tidak"; kini "Tidak wajib", dengan cara
+  memasang dari menu browser (id/en, JSON-LD `index.html`, `public/llms-full.txt`). Manifest
+  `orientation` `portrait-primary` → `any`: mode tegak terkunci bertentangan dengan narasi tablet.
+- **Alat ukur di container cloud.** Skrip memakai `@playwright/test` seperti skrip lain; di sini
+  dijalankan lewat salinan yang memakai Playwright global (lihat entri critique + audit).
+
+**Hasil terukur:** luberan 0 di 8 lebar × 2 tema, CLS ≤0,002, tidak ada teks terpotong; detektor
+impeccable exit 0, advisory turun 10 → 5 (yang tersisa ukuran judul pemasaran dan ikon laci).
+Build, lint, **1175 tes / 88 berkas**. **Belum diperbarui:** gambar vault dan foto
+`scripts/shoot-landing.mjs` (tanpa PowerShell).
 

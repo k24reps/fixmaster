@@ -53,9 +53,9 @@ Demo publik tersedia di https://fixmaster.app/demo. Sebelum demo terbuka, pengun
 
 Tidak. FixMaster juga mendukung laptop, tablet, printer, konsol, dan elektronik konsumen lainnya.
 
-### Apakah harus memasang aplikasi di komputer kasir?
+### Apakah harus memasang aplikasi?
 
-Tidak. FixMaster dibuka lewat browser di laptop atau ponsel.
+Tidak wajib. FixMaster dibuka lewat browser di komputer, tablet, atau HP, dan bisa dipasang ke layar utama dari menu browser (Instal aplikasi atau Tambahkan ke layar utama) supaya terbuka layar penuh seperti aplikasi biasa.
 
 ### Bagaimana jika internet terputus?
 
