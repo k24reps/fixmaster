@@ -23,8 +23,7 @@ import { useThemeStore } from '@/stores/theme';
 import { useZoomStore } from '@/stores/zoom';
 import { trackEvent } from '@/lib/analytics';
 import { authIntentHref, type AuthIntent } from '@/features/auth/auth-intent';
-import { BenchScene, BenchStrip } from './BenchScene';
-import { useBenchSteps } from './useBenchSteps';
+import { BenchScene } from './BenchScene';
 import { DemoGate } from './DemoGate';
 import styles from './LandingPage.module.css';
 
@@ -209,10 +208,6 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
   const [gateOffscreen, setGateOffscreen] = useState(false);
   const heroGateRef = useRef<HTMLDivElement>(null);
   const finalGateRef = useRef<HTMLDivElement>(null);
-  const stripRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<HTMLDivElement>(null);
-  // Strip ponsel dan adegan penuh berbagi satu keadaan langkah.
-  const bench = useBenchSteps([stripRef, sceneRef]);
 
   // Landing selalu 100% + Lapang, sama untuk semua pengunjung. Tanpa ini
   // tampilan yang tersimpan dari app di origin yang sama bocor ke sini.
@@ -372,14 +367,11 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
               })}
             </p>
           </div>
-          <div className={styles.heroStrip}>
-            <BenchStrip shopName={shopName} bench={bench} stripRef={stripRef} />
-          </div>
           <div ref={heroGateRef} id="coba" className={styles.heroGate}>
             <DemoGate source="hero" title="demoGate.title" onShopNameChange={setShopName} />
           </div>
           <div id="cara-kerja" className={styles.heroScene}>
-            <BenchScene shopName={shopName} bench={bench} sceneRef={sceneRef} />
+            <BenchScene shopName={shopName} />
           </div>
         </section>
 

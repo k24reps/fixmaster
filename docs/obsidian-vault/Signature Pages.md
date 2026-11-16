@@ -59,37 +59,35 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   diinterpolasi dari `src/config/pricing.ts`, dengan spasi tak-putus. Bukan eyebrow: label di
   atas judul dilarang mutlak oleh craft floor impeccable.
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman.
-  **Sejak 16 Nov 2026 adegannya layar ASLI aplikasi**, bukan tiruan HTML: tiga bingkai
-  perangkat di atas garis bench bertitik, **Komputer · meja penerimaan** (Detail Servis
-  FM-0008), jejak sinkron cyan, **Tablet · meja teknisi** (daftar Servis), **HP · pemilik**
-  (Dashboard). Gambarnya direkam `scripts/shoot-bench-scene.mjs` dari SATU sesi `/demo` yang
-  menjalankan alur sungguhan pada tiket FM-0008 (seed demo: ASUS VivoBook X441, keyboard
-  tidak merespons, stok Keyboard ASUS X441 = 3 di Pusat): pasang keyboard dari stok → Selesai
-  (biaya final Rp 350.000) → Lunas ke Tunai. Tiap langkah memotret ketiga ukuran dari sesi
-  yang sama (ukuran jendela diganti, data tidak), dua tema, WebP lewat kanvas browser
-  (`public/bench/<tema>/<perangkat>-<langkah>[-800].webp`, total ±1,6 MB). Manifest
-  `src/features/landing/benchShots.json` menyimpan kotak sorotan per langkah (pasang part →
-  baris part di detail, "sparepart menipis" di Dashboard; Selesai/Lunas → cap status, baris
-  FM-0008 di daftar, "unit menunggu diambil"/arus kas bersih), kop nama toko di sidebar
-  (posisi + huruf + warna + latar, untuk menimpakan nama yang diketik di gerbang), dan angka
-  Dashboard (arus kas Rp 800.000 → Rp 1.150.000). Faceplate "MODE DEMO" disembunyikan saat
-  rekaman; landing memberi label **Layar asli · data contoh**. Di bawah bench: konsol berisi
-  kabar per langkah (live region setelah pengunjung menekan sendiri), rel Part/Selesai/Lunas,
-  dan tuts meja. Gerak: crossfade antarlangkah, sorotan cyan menyala sekali di bagian yang
-  berubah, paket sinkron melintas. Gambar dimuat bertahap (lazy; hanya langkah sekarang dan
-  berikutnya, selagi adegan terlihat). Caption memuat narasi multi-perangkat: aplikasi yang
-  sama di komputer, tablet, dan HP, dan bisa dipasang ke layar utama (PWA; manifest
-  `orientation: any` sejak 16 Nov 2026, sebelumnya `portrait-primary` mengunci tablet).
-  **Rekam ulang** (`BASE_URL=… node scripts/shoot-bench-scene.mjs`, dev server hidup) bila
-  Detail Servis, daftar Servis, Dashboard, atau seed demo berubah.
-  Keadaan langkah tinggal di hook `useBenchSteps` (dipakai adegan dan strip ponsel; juga
-  mengabarkan `visible` untuk pemuatan gambar); autoplay mulai begitu 140px salah satunya
-  terlihat. Teks yang berganti per langkah dirender bertumpuk (`Stack`), jadi CLS tetap ≤0,002.
-- **Strip sinkron (≤720px, 16 Nov 2026):** di antara judul dan gerbang, panel dua baris:
-  ikon toko + nama toko + tuts meja di atas, ikon ponsel + satu readout di bawah, jejak cyan
-  menurun di kolom ikon, tab "contoh" di tepi atas panel. Tuts pendek (`landing.strip.*`)
-  memajukan keadaan yang sama dengan adegan penuh. Tujuannya bukti sebelum permintaan:
-  pengunjung ponsel melihat meja menggerakkan ponsel sebelum diminta nomor WA.
+  **Adegannya layar ASLI aplikasi, dua perangkat dengan menu sinkron** (versi akhir 16 Nov
+  2026, pilihan pemilik): **Komputer** dan **HP** di atas garis bench bertitik, jejak sinkron
+  cyan di antaranya. Keduanya mulai di **Detail Servis FM-0008** (seed demo: ASUS VivoBook
+  X441, keyboard tidak merespons) dan diam sampai diklik: tanpa fase, tanpa autoplay. Klik
+  menu di sidebar gambar komputer, di bottom nav gambar HP (Beranda, Servis, Kasir,
+  Pelanggan), atau di **deret tombol menu** di bawah bench (Detail tiket, Dashboard, Servis,
+  Kasir & Stok, Pelanggan, Keuangan, Laporan; jalur keyboard, sentuh, dan pembaca layar)
+  memindahkan KEDUA layar bersamaan. Layar baru berganti setelah gambar komputer DAN HP-nya
+  termuat (LED tombol berkedip selama menunggu), lalu crossfade dan paket sinkron melintas.
+  Menu sidebar lain (Kalkulator Biaya, Supplier, Tugas, Absensi, Log Aktivitas, Pengaturan)
+  diredupkan dengan latar sidebar hasil rekaman; kliknya membuka gelembung "… ada di demo
+  lengkap" + tautan ke gerbang. Area klik di atas gambar `aria-hidden` dan tidak ikut Tab
+  (deret tombol yang jadi jalurnya); pindah layar diumumkan lewat live region setelah
+  pengunjung mengklik. Gambar direkam `scripts/shoot-bench-scene.mjs` dari SATU sesi `/demo`:
+  tiap halaman dibuka di lebar desktop (1280×800), dipotret, lalu jendela diganti ke HP
+  (390×844) dan halaman yang sama dipotret, dua tema, WebP lewat kanvas browser
+  (`public/bench/<tema>/<halaman>-desk[-800].webp`, `<halaman>-phone.webp`, total ±2 MB, dimuat
+  lazy; halaman lain baru diminta saat tombol/area menunya disentuh atau diarahkan). Manifest
+  `src/features/landing/benchShots.json`: kotak tiap tautan sidebar dan bottom nav (area klik),
+  kop nama toko (posisi + huruf + warna + latar, untuk menimpakan nama yang diketik di gerbang),
+  dan latar sidebar (peredupan). Faceplate "MODE DEMO" disembunyikan dan fokus otomatis (kolom
+  cari Kasir) dilepas saat rekaman; landing memberi label **Layar asli · data contoh**. Caption
+  memuat narasi: aplikasi yang sama di komputer dan HP, bisa dipasang ke layar utama (PWA;
+  manifest `orientation: any`). **Rekam ulang** (`BASE_URL=… node scripts/shoot-bench-scene.mjs`,
+  dev server hidup) bila salah satu dari tujuh halaman, sidebar, bottom nav, atau seed berubah.
+  **Riwayat:** versi pertama 16 Nov punya tiga perangkat (+tablet) dan fase pasang part →
+  selesai → lunas dengan autoplay, ditambah strip sinkron di atas gerbang ponsel; pemilik
+  memangkasnya ke dua perangkat dengan menu sinkron, dan strip serta hook `useBenchSteps`
+  dihapus. Hero ponsel kembali judul → gerbang → adegan.
 - **Gerbang demo (0102):** nama toko + nomor WhatsApp (cek format, tanpa OTP), kolom
   jebakan bot, galat per kolom, galat simpan jujur dengan "Coba lagi", batas jaringan.
   Sejak 16 Nov 2026: catatan pemakaian nomor tepat di bawah kolom nomor (teksnya tetap,
@@ -117,23 +115,24 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   caption adegan, anchor `#cara-kerja` kini menunjuk adegan) dan grid 12 kanal modul (rel tahap
   sudah memuat menunya). Tinggi halaman 390px 11.735 → ±8.300px.
 - **Breakpoint (container):** halaman 1080 (nav tinggal tautan Harga), 900 (gerbang menyempit
-  ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → strip → gerbang → adegan),
+  ke 300–360px; harga satu kolom), 720 (hero satu kolom: judul → gerbang → adegan),
   560 (nav hilang; bar ponsel "Harga" + "Coba demo" + WA muncul saat kedua gerbang di luar
-  layar, menuju gerbang **terdekat** dan memfokus kolom setelah gulir selesai); adegan 900
-  (komputer selebar adegan, jejak sinkron menurun, tablet 300px dan HP 185px sejajar dengan
-  tinggi sama) dan 620 (konsol bertumpuk, tuts selebar penuh). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
+  layar, menuju gerbang **terdekat** dan memfokus kolom setelah gulir selesai); adegan 700
+  (komputer selebar adegan, jejak sinkron menurun, HP di tengah di bawahnya; di atasnya HP
+  selebar 0,289 × komputer supaya tingginya sama). `scroll-padding` di dokumen menjaga anchor dan fokus keyboard tidak berhenti
   di bawah header sticky atau bar ponsel (WCAG 2.4.11).
 - **Amber:** tombol gerbang, lalu "Mulai gratis, 50 unit" di harga (gerbang tidak di
-  layar). Tombol meja dan tuts strip adalah `--bg-key`, bar ponsel sekunder, tombol geser
-  sumur cyan.
+  layar). Deret tombol menu adalah `--bg-key` dengan LED cyan untuk menu aktif, bar ponsel
+  sekunder, tombol geser sumur cyan.
 - **Kartu pratinjau tautan** (`public/og-image.png`, 16 Nov 2026): judul + lead landing dan
   ponsel pemilik dengan readout contoh, warna dari `tokens.css`, font self-hosted. Dibuat
   `renderOpenGraph()` di `scripts/render-brand-assets.mjs`; render ulang bila judul atau
   `src/config/pricing.ts` berubah (angkanya ditulis tangan di sana).
 - **i18n:** `landing.*` dan `demoGate.*` (ID + EN). Kunci `landingV2.*` dihapus.
 - **Verifikasi:** `LandingPage.test.tsx` (intent auth, nama toko ditempel di kop layar
-  komputer, tombol meja mengganti layar ketiga perangkat bersamaan, tuts strip menggerakkan
-  adegan yang sama, ganti nama toko membuka
+  komputer, kedua layar mulai di detail tiket dan pindah bersamaan setelah keduanya siap,
+  klik bottom nav HP memindah komputer juga, menu yang tidak direkam menawarkan demo, ganti
+  nama toko membuka
   semua gerbang, fokus mendarat sesudah error terpasang, gerbang: nomor salah, sukses, gagal
   simpan + ulang, pengunjung kembali). Critique + audit 16 Nov 2026 (29/40, 15/20) beserta
   perbaikannya: lihat [[Decisions & Bug Fixes]]. Foto: `scripts/shoot-landing.mjs` (11 foto, dua tema, 390–1440px, reduced

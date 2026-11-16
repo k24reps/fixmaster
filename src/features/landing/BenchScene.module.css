@@ -1,32 +1,23 @@
-/* ---------- Adegan layar asli: komputer, tablet, HP ----------
+/* ---------- Adegan layar asli: komputer + HP, menu sinkron ----------
    Layar di dalam bingkai adalah rekaman aplikasi sungguhan (scripts/
-   shoot-bench-scene.mjs), bukan tiruan. Bingkai adalah benda yang diletakkan
-   di bench (--shadow-bench-tight), garis bench bertitik di bawahnya. Sorotan
-   dan jejak sinkron memakai cyan: suara instrumen, "mesin melaporkan dirinya".
-   Sumur instrumen halaman ini tetap milik pengukur harga. */
+   shoot-bench-scene.mjs). Bingkai adalah benda yang diletakkan di bench
+   (--shadow-bench-tight), garis bench bertitik di bawahnya. Jejak sinkron dan
+   menu yang menyala memakai cyan: suara instrumen. Amber di layar ini tetap
+   milik tombol gerbang (One Amber Rule). */
 
 .wrap {
   container: scene / inline-size;
-  --tone: var(--text-muted);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.wrap[data-tone='info'] {
-  --tone: var(--info);
-}
-.wrap[data-tone='accent'] {
-  --tone: var(--accent);
-}
-.wrap[data-tone='success'] {
-  --tone: var(--success);
-}
-
+/* Lebar HP 0,289 × lebar komputer: tinggi keduanya sama
+   (1280×800 dan 390×844). */
 .rig {
   display: grid;
-  grid-template-columns: minmax(0, 1.95fr) 48px minmax(0, 0.75fr) minmax(0, 0.462fr);
-  grid-template-areas: 'desk sync tablet phone';
+  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 0.289fr);
+  grid-template-areas: 'desk sync phone';
   align-items: end;
   column-gap: var(--space-4);
   padding-bottom: var(--space-4);
@@ -41,9 +32,6 @@
 .device[data-device='desk'] {
   grid-area: desk;
 }
-.device[data-device='tablet'] {
-  grid-area: tablet;
-}
 .device[data-device='phone'] {
   grid-area: phone;
 }
@@ -56,7 +44,6 @@
   box-shadow: var(--shadow-bench-tight);
 }
 
-.device[data-device='tablet'] .bezel,
 .device[data-device='phone'] .bezel {
   border-radius: var(--radius-xl);
 }
@@ -69,12 +56,11 @@
   border-radius: var(--radius-sm);
 }
 
-.device[data-device='tablet'] .screen,
 .device[data-device='phone'] .screen {
   border-radius: var(--radius-lg);
 }
 
-/* Semua langkah bertumpuk; yang aktif muncul lewat crossfade. */
+/* Halaman yang pernah diminta bertumpuk; yang tampil muncul lewat crossfade. */
 .shot {
   position: absolute;
   inset: 0;
@@ -82,7 +68,7 @@
   width: 100%;
   height: 100%;
   opacity: 0;
-  transition: opacity 420ms var(--ease-out);
+  transition: opacity 360ms var(--ease-out);
 }
 
 .shot[data-on='true'] {
@@ -102,28 +88,66 @@
   line-height: 1.15;
 }
 
-/* Sorotan bagian layar yang baru berubah. Menyala sekali lalu diam. */
-.focus {
+/* Area klik di atas menu pada gambar. */
+.hotspot {
   position: absolute;
   z-index: 2;
-  border: 2px solid var(--accent);
+  padding: 0;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent),
-    0 0 18px color-mix(in srgb, var(--accent) 40%, transparent);
-  pointer-events: none;
-  animation: focusIn 700ms var(--ease-out) both;
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
-@keyframes focusIn {
-  from {
-    opacity: 0;
-    transform: scale(1.06);
+@media (hover: hover) {
+  .hotspot:not([data-other]):hover {
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+}
+
+/* Menu yang tidak direkam: ditutup latar sidebar setengah tembus. */
+.hotspot[data-other='true'] {
+  border-radius: 0;
+  opacity: 0.62;
+}
+
+.offer {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 42%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.offer a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.offer a:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .deviceLabel {
@@ -144,144 +168,72 @@
   box-shadow: 0 0 7px var(--accent);
 }
 
-/* ---------- Konsol di bawah bench: kabar, tahap, tuts ---------- */
-.console {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-3) var(--space-6);
-}
-
-.notice {
+/* ---------- Deret tombol menu: jalur keyboard, layar sentuh, pembaca layar ---------- */
+.menu {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  min-width: 0;
-  margin: 0;
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  line-height: 1.45;
 }
 
-.noticeLed {
-  width: 8px;
-  height: 8px;
-  flex: none;
-  margin-top: 5px;
-  border-radius: var(--radius-full);
-  background: var(--tone);
-  transition:
-    background var(--dur-normal) var(--ease-out),
-    box-shadow var(--dur-normal) var(--ease-out);
-}
-
-.wrap:not([data-tone='neutral']) .noticeLed {
-  box-shadow: 0 0 8px var(--tone);
-}
-
-/* Teks yang berganti per langkah: semua varian bertumpuk di satu sel, hanya
-   yang aktif terlihat. Ukurannya selalu milik varian terbesar. */
-.stack {
-  display: inline-grid;
-}
-
-.stack > span {
-  grid-area: 1 / 1;
-  visibility: hidden;
-}
-
-.stack > span[data-on='true'] {
-  visibility: visible;
-}
-
-.rail {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3) 0 0;
-  border-top: 1px dotted var(--border-strong);
-  list-style: none;
-}
-
-.rail li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  transition: color var(--dur-normal) var(--ease-out);
-}
-
-.rail li i {
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  transition:
-    background var(--dur-normal) var(--ease-out),
-    box-shadow var(--dur-normal) var(--ease-out);
-}
-
-.rail li[data-on='true'] {
-  color: var(--text-primary);
-}
-
-.rail li[data-on='true'] i {
-  border-color: var(--success);
-  background: var(--success);
-  box-shadow: 0 0 7px var(--success);
-}
-
-.console .rail {
-  grid-template-columns: repeat(3, auto);
-  gap: var(--space-4);
-  padding: 0;
-  border-top: none;
-}
-
-/* Tombol meja: tuts mesin, bukan tombol utama halaman (amber milik gerbang). */
-.action {
+.menuKey {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-2);
   min-height: var(--control-h);
-  padding: 0 var(--space-4);
-  color: var(--text-primary);
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
   background: var(--bg-key);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: var(--text-sm);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
   transition:
-    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out);
 }
 
-.action svg {
-  color: var(--brand-text);
+.menuKey:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
-.action:hover {
-  border-color: var(--border-brand);
-  transform: translateY(-1px);
+.menuKey[aria-pressed='true'] {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
-.action:active {
-  transform: translateY(1px) scale(0.99);
-}
-
-.action:focus-visible {
+.menuKey:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
+}
+
+.menuLed {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+  transition:
+    background var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) var(--ease-out);
+}
+
+.menuKey[aria-pressed='true'] .menuLed {
+  background: var(--accent);
+  box-shadow: 0 0 7px var(--accent);
+}
+
+/* Gambar halaman yang diminta masih dimuat: LED berkedip sampai kedua layar siap. */
+.menuKey[data-loading='true'] .menuLed {
+  animation: menuWait 0.9s var(--ease-out) infinite alternate;
+}
+
+@keyframes menuWait {
+  to {
+    opacity: 0.35;
+  }
 }
 
 /* ---------- Jejak sinkron ---------- */
@@ -350,16 +302,6 @@
   }
 }
 
-.readoutLed {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
-  transition:
-    background var(--dur-normal) var(--ease-out),
-    box-shadow var(--dur-normal) var(--ease-out);
-}
-
 .caption {
   display: flex;
   flex-wrap: wrap;
@@ -380,244 +322,20 @@
   font-size: var(--text-xs);
 }
 
-/* ---------- Strip sinkron (layar sempit, di atas gerbang) ----------
-   Dua baris: meja (nama toko + tuts) di atas, readout ponsel di bawah, jejak
-   cyan menurun di antara ikon keduanya, seperti adegan penuh versi ponsel.
-   Tab "contoh" duduk di tepi atas panel, tidak memakan tinggi. */
-.strip {
-  --tone: var(--text-muted);
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  grid-template-areas:
-    'desk shop key'
-    'phone label value';
-  align-items: center;
-  column-gap: var(--space-2);
-  row-gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-}
-
-.strip[data-tone='info'] {
-  --tone: var(--info);
-}
-.strip[data-tone='accent'] {
-  --tone: var(--accent);
-}
-.strip[data-tone='success'] {
-  --tone: var(--success);
-}
-
-.stripTag {
-  position: absolute;
-  top: 0;
-  right: var(--space-4);
-  padding: 0 var(--space-2);
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: 18px;
-  transform: translateY(-50%);
-}
-
-.stripIcon {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-}
-
-.stripIcon[data-place='desk'] {
-  grid-area: desk;
-}
-
-.stripIcon[data-place='phone'] {
-  grid-area: phone;
-}
-
-.stripShop {
-  grid-area: shop;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.25;
-}
-
-.stripShop strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-}
-
-.stripShop small {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.stripKey {
-  grid-area: key;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: var(--control-h);
-  padding: 0 var(--space-3);
-  color: var(--text-primary);
-  background: var(--bg-key);
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--fw-bold);
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    transform var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-
-.stripKey svg {
-  flex: none;
-  color: var(--brand-text);
-}
-
-.stripKey:hover {
-  border-color: var(--border-brand);
-}
-
-.stripKey:active {
-  transform: translateY(1px) scale(0.99);
-}
-
-.stripKey:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-/* Jejak di kolom ikon, dari tengah ikon meja ke tengah ikon ponsel. */
-.stripTrace {
-  grid-column: 1;
-  grid-row: 1 / 3;
-  position: relative;
-  align-self: stretch;
-  justify-self: center;
-  width: 10px;
-  margin-block: 22px 14px;
-}
-
-.stripTrace::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 4px;
-  border-left: 2px dotted color-mix(in srgb, var(--accent) 70%, transparent);
-}
-
-/* Paket turun dari meja ke ponsel. Pembungkus setinggi jejak; titiknya di
-   ujung bawah, jadi translate dalam persen tinggi pembungkus sendiri. */
-.stripPacket {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  animation: stripPacket 760ms var(--ease-out) forwards;
-}
-
-.stripPacket::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-}
-
-@keyframes stripPacket {
-  0% {
-    opacity: 1;
-    transform: translateY(calc(-100% + 10px));
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-}
-
-.stripReadoutLabel {
-  grid-area: label;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-.stripReadoutLabel > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stripReadoutLabel .readoutLed {
-  flex: none;
-}
-
-.strip:not([data-tone='neutral']) .readoutLed {
-  background: var(--tone);
-  box-shadow: 0 0 8px var(--tone);
-}
-
-.stripValue {
-  grid-area: value;
-  justify-self: end;
-  padding-right: var(--space-1);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* ---------- Lebar adegan, bukan viewport (Container Query Rule) ----------
-   900px: empat kolom membuat tablet dan HP terlalu kecil untuk dibaca. Komputer
-   selebar adegan, jejak sinkron menurun, tablet dan HP sejajar di bawahnya
-   dengan tinggi sama (lebar 300 : 185 = rasio 834×1112 : 390×844). */
-@container scene (max-width: 900px) {
+   700px: HP selebar 0,289 × komputer jadi ±150px, terlalu kecil untuk dibaca.
+   Komputer selebar adegan, jejak sinkron menurun, HP di tengah di bawahnya. */
+@container scene (max-width: 700px) {
   .rig {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'desk desk'
-      'sync sync'
-      'tablet phone';
-  }
-  .device[data-device='tablet'] {
-    justify-self: end;
-    width: min(100%, 300px);
+      'desk'
+      'sync'
+      'phone';
   }
   .device[data-device='phone'] {
-    justify-self: start;
-    width: min(61.6%, 185px);
+    justify-self: center;
+    width: min(62%, 240px);
   }
   .sync {
     --travel: 28px;
@@ -640,13 +358,7 @@
     top: 12px;
     left: calc(50% + 12px);
   }
-}
-
-@container scene (max-width: 620px) {
-  .console {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .action {
-    width: 100%;
+  .offer {
+    max-width: 60%;
   }
 }
