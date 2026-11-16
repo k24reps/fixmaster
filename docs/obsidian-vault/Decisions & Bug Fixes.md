@@ -6968,3 +6968,12 @@ tiruan di dalam transaksinya.
 pemilik (menolong toko dan pelanggan), dengan contoh alamat lacak. **Nama menu:** pemilik
 bertanya "Servis" atau "Tiket"; saran: tetap **Servis** untuk menu (bahasa konter: servisan,
 nota servis), "tiket servis" untuk satu catatan di dalamnya. Tidak ada perubahan kode.
+
+**Audit antislop-copywriting (16 Nov 2026):** daftar periksa pola tulisan AI atas teks
+landing (skill diperbarui dari upstream `35b54dc`). Tidak ada tanda pisah, klaim karangan,
+atau kosakata AI kosong. Pemilik memilih lima perbaikan: judul seksi koneksi tidak lagi
+"Yang perlu Anda tahu…" melainkan isinya langsung; penutup perbandingan tanpa label
+"Hasilnya:"; gagasan "tanpa ditulis ulang" tidak lagi diulang di keterangan adegan dan
+pengantar jejak; paragraf hero dipendekkan (daftar perangkat dibuang, sudah ada di seksi laci)
+dan pelakunya disebut ("Teknisi mencatat unit…"). Judul "Semua yang bikin toko servis
+berantakan…" sengaja dipertahankan.

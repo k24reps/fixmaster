@@ -311,7 +311,7 @@ export const en: Dictionary = {
   'landing.startFree': 'Start free',
   'landing.heroTitle': 'A tidy, orderly repair shop, starting today.',
   'landing.heroLead':
-    'Working alone, with staff, or across branches, FixMaster keeps your repair shop in order: log a unit once at the counter, and stock, cash, and margins are recorded without retyping. For phones, laptops, printers, TVs, even home appliances.',
+    'Working alone, with staff, or across branches, FixMaster keeps your repair shop in order. Your technician logs a unit once at the counter, and stock, cash, and margins are recorded without retyping.',
   'landing.waMessage': 'Hi FixMaster, I have a question about the app',
   'landing.scene.shopPlaceholder': 'Your shop',
   'landing.scene.deskLabel': 'Intake counter screen, sample data',
@@ -349,8 +349,7 @@ export const en: Dictionary = {
   'landing.scene.readCash': 'Cash today',
   'landing.scene.marginWaiting': 'waiting for part',
   'landing.scene.sample': 'Sample data',
-  'landing.scene.caption':
-    'Press the button at the counter. The numbers on the owner\'s phone change without anyone retyping them.',
+  'landing.scene.caption': 'Press the button at the counter and watch the owner\'s phone change.',
   'landing.navWho': 'Who it\'s for',
   'landing.stagesTitle': 'From working alone to opening a branch, the way you work stays the same.',
   'landing.stagesLead':
@@ -411,7 +410,7 @@ export const en: Dictionary = {
   'landing.vs.branchOld': 'Visit or call each branch to find out how it is doing.',
   'landing.vs.branchNew':
     'Every branch is visible at once on the owner\'s dashboard, from a phone.',
-  'landing.vs.foot': 'The result: close up without recounting anything.',
+  'landing.vs.foot': 'Close up without recounting anything.',
   'landing.vs.tryLink': 'See it in the demo',
   'landing.price.ruleCap':
     'At most {max} per branch per month: past {cap} units, further tickets at that branch are free until the end of the month.',
@@ -421,7 +420,7 @@ export const en: Dictionary = {
   'landing.vs.statusExample': 'example tracking link, one random code per ticket',
   'landing.trailsTitle': 'Install one part, and four places record it.',
   'landing.trailsLead':
-    'The technician picks the part from stock on the ticket. Nothing has to be copied into a notebook, a chat, or Excel.',
+    'The technician just picks the part from stock on the ticket. These four places change from that one step.',
   'landing.trailSource': 'ASUS X441 keyboard installed',
   'landing.trail.stock': 'Stock',
   'landing.trail.stockText':
@@ -480,7 +479,7 @@ export const en: Dictionary = {
   'landing.price.perMonth': '/ month',
   'landing.price.units': 'Incoming units',
   'landing.price.firstMonth': 'First month, after {free} free units',
-  'landing.honestTitle': 'What to know before using it in your shop.',
+  'landing.honestTitle': 'It needs the internet, and shop data is backed up every night.',
   'landing.honestLead':
     'FixMaster needs the internet. If the connection drops, the app tells you a record was not saved, then reloads on its own when the network is back. Every shop\'s data is copied automatically each night.',
   'landing.faq.connection.q': 'What if the internet connection drops?',

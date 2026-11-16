@@ -312,7 +312,7 @@ export const id = {
   'landing.startFree': 'Mulai gratis',
   'landing.heroTitle': 'Toko servis yang rapi dan teratur, mulai hari ini.',
   'landing.heroLead':
-    'Masih kerja sendiri, sudah dibantu karyawan, atau sudah buka cabang, FixMaster membuat toko servis Anda teratur: unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat tanpa ditulis ulang. Untuk servis HP, laptop, printer, TV, sampai alat rumah tangga.',
+    'Masih kerja sendiri, sudah dibantu karyawan, atau sudah buka cabang, FixMaster membuat toko servis Anda teratur. Teknisi mencatat unit sekali di meja, lalu stok, kas, dan margin ikut tercatat tanpa ditulis ulang.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
   'landing.scene.shopPlaceholder': 'Toko Anda',
   'landing.scene.deskLabel': 'Layar meja penerimaan, data contoh',
@@ -350,8 +350,7 @@ export const id = {
   'landing.scene.readCash': 'Kas hari ini',
   'landing.scene.marginWaiting': 'menunggu part',
   'landing.scene.sample': 'Data contoh',
-  'landing.scene.caption':
-    'Tekan tombol di meja. Angka di ponsel pemilik ikut berubah tanpa ada yang mengetik ulang.',
+  'landing.scene.caption': 'Tekan tombol di meja dan lihat ponsel pemilik ikut berubah.',
   'landing.navWho': 'Untuk siapa',
   'landing.stagesTitle': 'Dari kerja sendiri sampai buka cabang, caranya tetap sama.',
   'landing.stagesLead':
@@ -409,7 +408,7 @@ export const id = {
   'landing.vs.branch': 'Cabang',
   'landing.vs.branchOld': 'Harus datang atau menelepon tiap cabang untuk tahu keadaannya.',
   'landing.vs.branchNew': 'Semua cabang terlihat sekaligus di dashboard pemilik, dari ponsel.',
-  'landing.vs.foot': 'Hasilnya: tutup toko tanpa menghitung ulang apa pun.',
+  'landing.vs.foot': 'Tutup toko tanpa menghitung ulang apa pun.',
   'landing.vs.tryLink': 'Lihat sendiri di demo',
   'landing.price.ruleCap':
     'Paling banyak {max} per cabang per bulan: lewat {cap} unit, tiket berikutnya di cabang itu gratis sampai akhir bulan.',
@@ -419,7 +418,7 @@ export const id = {
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
   'landing.trailsTitle': 'Satu kali pasang part, empat tempat ikut tercatat.',
   'landing.trailsLead':
-    'Teknisi cukup memilih part dari stok di tiket. Sisanya tidak perlu disalin ke buku, chat, atau Excel.',
+    'Teknisi cukup memilih part dari stok di tiket. Empat bagian ini ikut berubah dari satu langkah itu.',
   'landing.trailSource': 'Keyboard ASUS X441 dipasang',
   'landing.trail.stock': 'Stok',
   'landing.trail.stockText':
@@ -480,7 +479,7 @@ export const id = {
   'landing.price.perMonth': '/ bulan',
   'landing.price.units': 'Unit masuk',
   'landing.price.firstMonth': 'Bulan pertama, setelah {free} unit gratis',
-  'landing.honestTitle': 'Yang perlu Anda tahu sebelum memakainya di toko.',
+  'landing.honestTitle': 'Butuh internet, dan data toko dicadangkan tiap malam.',
   'landing.honestLead':
     'FixMaster butuh internet. Kalau koneksi putus, aplikasi bilang catatan belum tersimpan, lalu memuat ulang sendiri begitu jaringan kembali. Data tiap toko disalin otomatis tiap malam.',
   'landing.faq.connection.q': 'Bagaimana jika koneksi internet terputus?',
