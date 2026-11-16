@@ -33,6 +33,8 @@ export interface BenchSteps {
   /** Pengunjung sudah menekan tuts sendiri: autoplay berhenti, perubahan diumumkan. */
   byUser: boolean;
   advance: () => void;
+  /** Adegan atau strip sedang terlihat: gambar langkah berikutnya boleh dimuat. */
+  visible: boolean;
 }
 
 /**
@@ -82,6 +84,6 @@ export function useBenchSteps(targets: RefObject<HTMLElement | null>[]): BenchSt
     setStep((s) => (s === 3 ? 0 : ((s + 1) as Step)));
   }, []);
 
-  return { step, byUser, advance };
+  return { step, byUser, advance, visible };
 }
 

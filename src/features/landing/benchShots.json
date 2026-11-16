@@ -1,0 +1,381 @@
+{
+  "ticket": "FM-0008",
+  "devices": {
+    "desk": {
+      "w": 1280,
+      "h": 800,
+      "out": [
+        1600,
+        800
+      ]
+    },
+    "tablet": {
+      "w": 834,
+      "h": 1112,
+      "out": [
+        834
+      ]
+    },
+    "phone": {
+      "w": 390,
+      "h": 844,
+      "out": [
+        585
+      ]
+    }
+  },
+  "steps": [
+    {
+      "dark": {
+        "step": 0,
+        "desk": {
+          "focus": {
+            "x": 25.5,
+            "y": 60.7,
+            "w": 72,
+            "h": 35.1
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(228, 230, 234)",
+            "bg": "rgb(20, 23, 29)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 10.3
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 46.5,
+            "w": 91.3,
+            "h": 8
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "2",
+          "low": "2"
+        }
+      },
+      "light": {
+        "step": 0,
+        "desk": {
+          "focus": {
+            "x": 25.5,
+            "y": 60.7,
+            "w": 72,
+            "h": 35.1
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(31, 35, 41)",
+            "bg": "rgb(255, 255, 255)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 10.3
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 46.5,
+            "w": 91.3,
+            "h": 8
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "2",
+          "low": "2"
+        }
+      }
+    },
+    {
+      "dark": {
+        "step": 1,
+        "desk": {
+          "focus": {
+            "x": 27.1,
+            "y": 45.2,
+            "w": 68.8,
+            "h": 9.8
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(228, 230, 234)",
+            "bg": "rgb(20, 23, 29)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 10.3
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 46.5,
+            "w": 91.3,
+            "h": 8
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "2",
+          "low": "3"
+        }
+      },
+      "light": {
+        "step": 1,
+        "desk": {
+          "focus": {
+            "x": 27.1,
+            "y": 45.2,
+            "w": 68.8,
+            "h": 9.8
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(31, 35, 41)",
+            "bg": "rgb(255, 255, 255)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 10.3
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 46.5,
+            "w": 91.3,
+            "h": 8
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "2",
+          "low": "3"
+        }
+      }
+    },
+    {
+      "dark": {
+        "step": 2,
+        "desk": {
+          "focus": {
+            "x": 86.9,
+            "y": 21.6,
+            "w": 8.8,
+            "h": 7
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(228, 230, 234)",
+            "bg": "rgb(20, 23, 29)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 12.4
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 54.5,
+            "w": 91.3,
+            "h": 10.1
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "3",
+          "low": "3"
+        }
+      },
+      "light": {
+        "step": 2,
+        "desk": {
+          "focus": {
+            "x": 86.9,
+            "y": 21.6,
+            "w": 8.8,
+            "h": 7
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(31, 35, 41)",
+            "bg": "rgb(255, 255, 255)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 12.4
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.4,
+            "y": 54.5,
+            "w": 91.3,
+            "h": 10.1
+          }
+        },
+        "values": {
+          "cash": "Rp 800.000",
+          "ready": "3",
+          "low": "3"
+        }
+      }
+    },
+    {
+      "dark": {
+        "step": 3,
+        "desk": {
+          "focus": {
+            "x": 87.9,
+            "y": 21.7,
+            "w": 7.8,
+            "h": 6.9
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(228, 230, 234)",
+            "bg": "rgb(20, 23, 29)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 12.4
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.1,
+            "y": 67,
+            "w": 91.8,
+            "h": 56.5
+          }
+        },
+        "values": {
+          "cash": "Rp 1.150.000",
+          "ready": "3",
+          "low": "3"
+        }
+      },
+      "light": {
+        "step": 3,
+        "desk": {
+          "focus": {
+            "x": 87.9,
+            "y": 21.7,
+            "w": 7.8,
+            "h": 6.9
+          },
+          "shop": {
+            "x": 6,
+            "y": 91.9,
+            "w": 12.9,
+            "h": 2,
+            "fontPx": 14,
+            "weight": "700",
+            "family": "\"Space Grotesk\", Inter, sans-serif",
+            "color": "rgb(31, 35, 41)",
+            "bg": "rgb(255, 255, 255)"
+          }
+        },
+        "tablet": {
+          "focus": {
+            "x": 4,
+            "y": 53.2,
+            "w": 92.1,
+            "h": 12.4
+          }
+        },
+        "phone": {
+          "focus": {
+            "x": 4.1,
+            "y": 67,
+            "w": 91.8,
+            "h": 56.5
+          }
+        },
+        "values": {
+          "cash": "Rp 1.150.000",
+          "ready": "3",
+          "low": "3"
+        }
+      }
+    }
+  ]
+}
