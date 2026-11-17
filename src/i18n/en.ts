@@ -301,7 +301,7 @@ export const en: Dictionary = {
   'demoGate.errorLimited':
     'Too many attempts from this network. Wait a few minutes, then try again.',
   'demoGate.backHome': 'Home',
-  'landing.metaTitle': 'FixMaster | Electronics Repair Shop App: Tickets, Stock, Cash, Margins',
+  'landing.metaTitle': 'Phone, Laptop & Electronics Repair App | FixMaster',
   'landing.skipToContent': 'Skip to main content',
   'landing.brandSub': 'Repair bench operating system',
   'landing.navLabel': 'Page navigation',

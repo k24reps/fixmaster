@@ -51,6 +51,14 @@
       ]
     },
     {
+      "source": "/(t/.*|track|demo|operator|reset-password|landing-preview|services|services/.*|calculator|pos|customers|inventory|suppliers|finance|tasks|attendance|reports|activity|settings)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
+      "source": "/(index\\.md|pricing\\.md|llms\\.txt|llms-full\\.txt)",
+      "headers": [{ "key": "Link", "value": "<https://fixmaster.app/>; rel=\"canonical\"" }]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {

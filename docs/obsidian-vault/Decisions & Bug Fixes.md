@@ -7206,3 +7206,46 @@ Revisi pemilik atas run critique ke-2:
   Ini membatalkan keputusan 16 Nov ("catatan tepat di kolom yang memintanya"): pemilik menilai
   formulir lebih ringkas lebih penting. Kolom nomor tidak lagi punya `aria-describedby` kecuali
   saat error.
+
+## Audit SEO + empat quick win (17 Nov 2026)
+
+Audit dari kode, karena situs live tidak terjangkau dari container cloud. Konektor Ahrefs gagal
+tersambung, jadi volume kata kunci hanya perkiraan dari SERP. Temuan utama: semua rute berbagi
+satu `index.html`, sehingga canonical, title, dan description tiap URL milik landing; halaman
+lacak pelanggan bisa terindeks; title memakai "reparasi elektronik", sementara pesaing di SERP
+(Tuser, KonterCloud, FixPro, Fixdi, dll.) memakai "servis/service HP".
+
+Yang dikerjakan:
+- **`X-Robots-Tag: noindex`** di `vercel.json` untuk semua rewrite kecuali `/privacy` dan
+  `/terms`: `/t/*`, `/track`, `/demo`, `/operator`, `/reset-password`, `/landing-preview`, dan
+  13 rute aplikasi (bagi tamu, rute itu menampilkan landing dengan status 200). Header, bukan
+  meta, karena HTML-nya satu `index.html` untuk semua rute. `deploymentRoutes.test.ts` menolak
+  rewrite baru yang lupa noindex; sudah dicoba dengan membuang `settings` dari regex, tesnya merah.
+- **robots.txt dibelah dua.** Mesin pencari (`*`) tidak lagi di-Disallow apa pun: crawler hanya
+  membaca noindex bila boleh merayapi, dan URL yang di-Disallow tetap bisa terindeks tanpa isi
+  bila ada yang menautkannya. Crawler AI tetap ditutup dari `/demo` dan `/track`, ditambah `/t/`,
+  karena mereka tidak terikat noindex. Grup Bingbot dihapus; aturannya sama dengan `*`.
+- **Title** `Aplikasi Servis HP, Laptop & Elektronik | FixMaster`: 51 karakter, dulu 71 dengan
+  merek di depan dan terpotong. Tetap mencakup semua elektronik, sesuai positioning 16 Nov.
+  **Description** 152 karakter, dulu 240. og/twitter title dan `landing.metaTitle` (id + en)
+  ikut. `landingMetadata.test.ts` menjaga `<title>` statis = `landing.metaTitle`, maksimal 60
+  karakter, dan description maksimal 160.
+- **Sitemap** tanpa berkas `.md`, `lastmod` diperbarui. `index.md`, `pricing.md`, `llms.txt`,
+  dan `llms-full.txt` mendapat header `Link: <https://fixmaster.app/>; rel="canonical"` supaya
+  tidak bersaing dengan `/` di SERP. Agen tetap menemukannya lewat header `Link` di `/`,
+  `<link rel=alternate>`, dan `llms.txt`. Tanggal `llms-full.txt` jadi 16 Nov (isi terakhir).
+- **Preload JetBrains Mono dicabut.** Elemen LCP landing adalah paragraf lead (Inter), judulnya
+  Space Grotesk. Diukur 5 kali per varian (412px, CPU 4x, 1,6 Mbps, RTT 150 ms, `vite preview`
+  lokal): LCP median 3.056 → 2.900 ms, FCP 2.544 → 2.376 ms, CLS tetap 0. Mono kini dimuat
+  sekitar 2,8 detik, sesudah LCP.
+
+Yang sengaja belum:
+- **Canonical `/privacy` dan `/terms` masih `/`.** Keduanya tetap di sitemap. Perbaikannya HTML
+  statis per rute saat build (rencana strategis audit), bukan JS.
+- **Redirect `www`/`getfixmaster.vercel.app` dan header live belum diverifikasi**, karena tak
+  terjangkau dari container. Periksa di Search Console setelah deploy.
+- **H1 landing tanpa kata "aplikasi"**: keputusan copy, wewenang impeccable.
+
+Build, lint, 1182 tes / 88 berkas.
+
+#seo #decision

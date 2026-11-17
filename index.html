@@ -7,10 +7,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#14171c" />
-    <title>FixMaster | Aplikasi Toko Reparasi Elektronik: Tiket, Stok, Kas, Margin</title>
+    <title>Aplikasi Servis HP, Laptop &amp; Elektronik | FixMaster</title>
     <meta
       name="description"
-      content="Aplikasi untuk toko reparasi elektronik apa saja: HP, laptop, printer, TV. Unit dicatat sekali di meja penerimaan; stok, kas, dan margin ikut tercatat. Rp 1.000 per unit masuk, maksimal Rp 100.000 per cabang sebulan, 50 unit pertama gratis."
+      content="Catat servis HP, laptop, printer, dan TV dari unit masuk sampai diambil. Stok, kas, dan margin ikut tercatat. Rp 1.000 per unit, 50 unit pertama gratis."
     />
     <meta
       name="keywords"
@@ -30,7 +30,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Open Graph / social share -->
-    <meta property="og:title" content="FixMaster | Aplikasi Toko Reparasi Elektronik: Tiket, Stok, Kas &amp; Margin" />
+    <meta property="og:title" content="Aplikasi Servis HP, Laptop &amp; Elektronik | FixMaster" />
     <meta
       property="og:description"
       content="Satu tiket servis menghubungkan sparepart, stok, biaya, pembayaran, dan margin, tanpa menyalin ulang buku, chat, atau Excel."
@@ -45,7 +45,7 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="FixMaster: toko servis yang rapi dan teratur, mulai hari ini. Contoh ponsel pemilik dengan stok, margin, dan kas." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="FixMaster | Aplikasi Toko Reparasi Elektronik: Tiket, Stok, Kas &amp; Margin" />
+    <meta name="twitter:title" content="Aplikasi Servis HP, Laptop &amp; Elektronik | FixMaster" />
     <meta
       name="twitter:description"
       content="Satu tiket servis menghubungkan sparepart, stok, biaya, pembayaran, dan margin, tanpa menyalin ulang buku, chat, atau Excel."
@@ -143,10 +143,11 @@
       }
     </script>
 
-    <!-- Font self-hosted (@font-face di src/styles/global.css). Subset latin
-         dipakai di landing dan aplikasi, jadi diunduh sejak awal. -->
+    <!-- Font self-hosted (@font-face di src/styles/global.css). Hanya font teks
+         lead (Inter, elemen LCP) dan judul (Space Grotesk) yang di-preload.
+         JetBrains Mono menunggu CSS: di 4G lambat preload-nya merebut bandwidth
+         dari JS yang merender landing (audit SEO 17 Nov 2026). -->
     <link rel="preload" href="/fonts/inter-v20-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/jetbrains-mono-v24-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/space-grotesk-v22-latin.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
