@@ -4,7 +4,6 @@ import { Icon } from '@/components/ui';
 import { FIXMASTER_WHATSAPP } from '@/config/contact';
 import {
   FREE_UNITS,
-  MIN_TOPUP,
   MONTHLY_CAP_UNITS,
   REFUND_WINDOW_MINUTES,
   UNIT_FLOOR,
@@ -95,10 +94,26 @@ const FAQ: { question: TranslationKey; answer: TranslationKey }[] = [
   { question: 'landing.faq.connection.q', answer: 'landing.faq.connection.a' },
   { question: 'landing.faq.safe.q', answer: 'landing.faq.safe.a' },
   { question: 'landing.faq.device.q', answer: 'landing.faq.device.a' },
+  { question: 'landing.faq.cashier.q', answer: 'landing.faq.cashier.a' },
   { question: 'landing.faq.install.q', answer: 'landing.faq.install.a' },
   { question: 'landing.faq.move.q', answer: 'landing.faq.move.a' },
   { question: 'landing.faq.pay.q', answer: 'landing.faq.pay.a' },
+  // Rincian aturan unit pindah ke sini (17 Nov 2026): bagian harga hanya
+  // menonjolkan harga, batas bulanan, unit gratis, dan saldo yang tak hangus.
+  { question: 'landing.faq.units.q', answer: 'landing.faq.units.a' },
 ];
+
+const PRICE_RULES: { head: TranslationKey; note: TranslationKey }[] = [
+  { head: 'landing.price.ruleCap', note: 'landing.price.ruleCapNote' },
+  { head: 'landing.price.ruleFreeUnits', note: 'landing.price.ruleFreeUnitsNote' },
+  { head: 'landing.price.ruleNoExpire', note: 'landing.price.ruleNoExpireNote' },
+];
+
+const priceVars = {
+  max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
+  cap: String(MONTHLY_CAP_UNITS),
+  free: String(FREE_UNITS),
+};
 
 /**
  * Gauge biaya satu cabang: rentang toko sepi sampai cabang yang sangat ramai.
@@ -446,21 +461,14 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
                 max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
               })}
             </p>
+            {/* Tiga hal yang ditonjolkan (17 Nov 2026); rincian aturan unit ada di FAQ. */}
             <ul className={styles.priceRules}>
-              <li>
-                {interpolate(t('landing.price.ruleCap'), {
-                  max: fmtRp(MONTHLY_CAP_UNITS * UNIT_PRICE),
-                  cap: String(MONTHLY_CAP_UNITS),
-                })}
-              </li>
-              <li>{t('landing.price.ruleFree')}</li>
-              <li>
-                {interpolate(t('landing.price.ruleRefund'), {
-                  minutes: String(REFUND_WINDOW_MINUTES),
-                })}
-              </li>
-              <li>{interpolate(t('landing.price.ruleTopup'), { min: fmtRp(MIN_TOPUP) })}</li>
-              <li>{interpolate(t('landing.price.ruleFloor'), { floor: String(-UNIT_FLOOR) })}</li>
+              {PRICE_RULES.map((rule) => (
+                <li key={rule.head}>
+                  <strong>{interpolate(t(rule.head), priceVars)}</strong>{' '}
+                  {interpolate(t(rule.note), priceVars)}
+                </li>
+              ))}
             </ul>
           </div>
           <CostGauge />
@@ -524,7 +532,12 @@ export function LandingPage({ onStart = defaultStart }: LandingPageProps) {
                 <summary>
                   {t(item.question)} <Icon name="chevron-down" aria-hidden />
                 </summary>
-                <p>{t(item.answer)}</p>
+                <p>
+                  {interpolate(t(item.answer), {
+                    minutes: String(REFUND_WINDOW_MINUTES),
+                    floor: String(-UNIT_FLOOR),
+                  })}
+                </p>
               </details>
             ))}
           </div>

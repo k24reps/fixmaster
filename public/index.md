@@ -1,6 +1,6 @@
-# FixMaster: Aplikasi Manajemen Reparasi Gadget & Elektronik
+# FixMaster: Aplikasi Servis HP & Laptop
 
-FixMaster membantu toko reparasi elektronik apa saja (HP, laptop, tablet, printer, TV, audio, konsol, dan alat rumah tangga) mencatat satu unit dari penerimaan sampai pembayaran. Tiket servis menghubungkan pelanggan, pemakaian sparepart, stok, biaya, kas, dan margin agar data tidak perlu disalin ulang dari buku, chat, atau Excel.
+FixMaster membantu konter HP dan toko servis laptop mencatat satu unit dari penerimaan sampai pembayaran. Aplikasi yang sama juga dipakai untuk servis tablet, printer, TV, audio, konsol, dan alat rumah tangga. Tiket servis menghubungkan pelanggan, pemakaian sparepart, stok, biaya, kas, dan margin agar data tidak perlu disalin ulang dari buku, chat, atau Excel.
 
 ## Alur utama
 

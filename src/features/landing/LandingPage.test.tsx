@@ -89,11 +89,39 @@ describe('LandingPage auth intent', () => {
   });
 });
 
+describe('LandingPage harga', () => {
+  it('menonjolkan tiga hal saja: batas bulanan, unit gratis, dan saldo yang tidak hangus', () => {
+    renderLanding();
+    const pricing = screen.getByRole('heading', { name: /per unit masuk/i }).closest('section') as HTMLElement;
+    expect(within(pricing).getByText(/Harga yang adil/)).toBeInTheDocument();
+    const rules = within(pricing).getAllByRole('listitem').map((item) => item.textContent);
+    expect(rules).toEqual([
+      'Paling banyak Rp 100.000 per cabang sebulan. Lewat 100 unit, tiket berikutnya di cabang itu gratis.',
+      '50 unit pertama gratis. Tanpa batas waktu.',
+      'Saldo unit tidak pernah hangus. Unit yang belum terpakai tetap tersimpan bulan berikutnya.',
+    ]);
+    const heads = within(pricing).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent);
+    expect(heads).toEqual([
+      'Paling banyak Rp 100.000 per cabang sebulan.',
+      '50 unit pertama gratis.',
+      'Saldo unit tidak pernah hangus.',
+    ]);
+  });
+
+  it('rincian aturan unit pindah ke FAQ dengan angka dari konfigurasi harga', () => {
+    renderLanding();
+    const answer = screen.getByText('Apa saja yang dihitung sebagai unit?').closest('details') as HTMLElement;
+    expect(answer).toHaveTextContent('dalam 10 menit mendapat unitnya kembali');
+    expect(answer).toHaveTextContent('masih boleh minus 20 unit');
+    expect(answer.textContent).not.toMatch(/\{\w+\}/);
+  });
+});
+
 describe('LandingPage untuk siapa', () => {
   it('narasi menyapa toko yang masih sendiri sampai yang sudah bercabang', () => {
     renderLanding();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Toko servis yang rapi dan teratur, mulai hari ini.' }),
+      screen.getByRole('heading', { level: 1, name: 'Toko servis HP\u00a0&\u00a0laptop yang rapi dan teratur, mulai hari ini.' }),
     ).toBeInTheDocument();
     const stages = screen.getByRole('heading', { name: /Dari kerja sendiri sampai buka cabang/ }).closest('section');
     expect(stages).not.toBeNull();

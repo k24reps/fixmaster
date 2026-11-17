@@ -29,6 +29,8 @@ Berhasil kalau pemilik bisa menutup toko tanpa menghitung ulang apa pun, dan tek
 
 Satu unit masuk, semua bagian usaha ikut tercatat — tanpa entri ulang. Pemakaian sparepart pada satu tiket servis otomatis mengurangi stok dan masuk ke biaya serta margin tiket itu; tidak ada langkah rekonsiliasi terpisah.
 
+**Pesan pemasaran (keputusan pemilik, 17 Nov 2026): konter HP dan servis laptop dulu.** Title, judul, dan lead landing menyebut dua segmen itu, dengan urutan HP lalu laptop. Tablet, printer, TV, audio, konsol, dan elektronik rumah tangga tetap didukung penuh dan disebut sebagai pelengkap (FAQ landing, `llms.txt`, `index.md`). Ini pilihan pesan, bukan batas produk; segmen lain digarap lewat halaman segmen tersendiri bila perlu. Menggantikan tema "semua reparasi elektronik" dari 15–16 Nov 2026.
+
 Produk yang dipakai pelanggan berbayar **berjalan di server** dan membutuhkan
 koneksi: frontend di Vercel (`fixmaster.app`), backend **Supabase self-host** di
 VPS Jakarta sejak 27 Sep 2026 (lewat Cloudflare Tunnel — bukan lagi Supabase

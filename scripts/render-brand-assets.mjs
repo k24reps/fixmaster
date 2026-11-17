@@ -118,8 +118,8 @@ async function renderOpenGraph() {
     <main class="frame">
       <section>
         <div class="brand">${logo}<span><strong>FixMaster</strong><small>Sistem operasi meja servis</small></span></div>
-        <h1>Toko servis yang rapi dan teratur, mulai hari ini.</h1>
-        <p class="lead">Untuk konter HP, servis laptop, printer, sampai TV. 50&nbsp;unit pertama gratis, lalu Rp&nbsp;1.000 per&nbsp;unit.</p>
+        <h1>Toko servis HP&nbsp;&amp;&nbsp;laptop yang rapi dan teratur, mulai hari ini.</h1>
+        <p class="lead">Aplikasi untuk konter HP dan servis laptop. 50&nbsp;unit pertama gratis, lalu Rp&nbsp;1.000 per&nbsp;unit, paling banyak Rp&nbsp;100.000 per cabang sebulan.</p>
       </section>
       <aside class="phone">
         <div class="screen">
