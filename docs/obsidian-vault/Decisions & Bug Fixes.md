@@ -7194,3 +7194,15 @@ ponsel mendapat **satu layar HP asli kecil di atas gerbang**; semua temuan diker
 **Hasil:** detektor impeccable exit 0 (4 saran ukuran judul fluid, sama seperti sebelumnya),
 `audit-tokens` dan `audit-contrast` 0 gagal, luberan 0 di 320/360/390/768/1280. Jumlah tes di
 [[Testing & Security]]. **Belum diperbarui:** gambar vault (tanpa PowerShell).
+
+## Landing: unit masuk kembali di atas, catatan nomor dicabut (17 Nov 2026)
+
+Revisi pemilik atas run critique ke-2:
+- **Papan perbandingan menampilkan lima baris**, dengan "Unit masuk" (nota tulisan tangan,
+  keluhan dan kelengkapan tak tercatat) paling atas. `VS_VISIBLE` 4 → 5; baris lipatan kini
+  "Lihat 3 lainnya: Karyawan · Garansi · Cabang".
+- **Kalimat pemakaian nomor di bawah kolom WhatsApp dicabut**; yang tersisa hanya tautan
+  Kebijakan privasi, karena pemakaian nomor dan penghapusan 90 hari sudah dijelaskan di sana.
+  Ini membatalkan keputusan 16 Nov ("catatan tepat di kolom yang memintanya"): pemilik menilai
+  formulir lebih ringkas lebih penting. Kolom nomor tidak lagi punya `aria-describedby` kecuali
+  saat error.

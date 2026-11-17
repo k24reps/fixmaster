@@ -285,8 +285,6 @@ export const en: Dictionary = {
   'demoGate.submit': 'Open the demo',
   'demoGate.retry': 'Try again',
   'demoGate.sending': 'Preparing the demo…',
-  'demoGate.note':
-    'Only the FixMaster team uses this number, to contact you about the app. It is deleted automatically {days} days after you last submitted it.',
   'demoGate.privacyLink': 'Privacy policy',
   'demoGate.returningTitle': 'Your shop demo is ready to open again',
   'demoGate.openAgain': 'Open the demo',

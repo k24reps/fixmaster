@@ -286,8 +286,6 @@ export const id = {
   'demoGate.submit': 'Buka demo',
   'demoGate.retry': 'Coba lagi',
   'demoGate.sending': 'Menyiapkan demo…',
-  'demoGate.note':
-    'Nomor ini hanya dipakai tim FixMaster untuk menghubungi Anda soal aplikasi, dan dihapus otomatis {days} hari setelah terakhir diisi.',
   'demoGate.privacyLink': 'Kebijakan privasi',
   'demoGate.returningTitle': 'Demo toko Anda siap dibuka lagi',
   'demoGate.openAgain': 'Buka demo',

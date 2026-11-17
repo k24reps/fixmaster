@@ -42,11 +42,13 @@ interface Contrast {
 }
 
 /**
- * Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. Empat
+ * Pola toko yang berantakan, masing-masing dengan jawabannya di aplikasi. Lima
  * pertama paling sering terasa dan terlihat langsung; sisanya dibuka sesuai
  * minat (dulu 8 baris × 3 sel, 2.796px di ponsel).
  */
 const CONTRASTS: Contrast[] = [
+  // Pilihan pemilik (17 Nov 2026): unit masuk paling atas, lima baris terlihat.
+  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   {
     situation: 'landing.vs.status',
     old: 'landing.vs.statusOld',
@@ -57,15 +59,12 @@ const CONTRASTS: Contrast[] = [
   { situation: 'landing.vs.stock', old: 'landing.vs.stockOld', fixmaster: 'landing.vs.stockNew' },
   { situation: 'landing.vs.cash', old: 'landing.vs.cashOld', fixmaster: 'landing.vs.cashNew' },
   { situation: 'landing.vs.margin', old: 'landing.vs.marginOld', fixmaster: 'landing.vs.marginNew' },
-  // Unit masuk sudah diceritakan judul hero dan adegannya; di sini ia membuka
-  // daftar tambahan, untung per unit naik ke empat yang terlihat.
-  { situation: 'landing.vs.intake', old: 'landing.vs.intakeOld', fixmaster: 'landing.vs.intakeNew' },
   { situation: 'landing.vs.team', old: 'landing.vs.teamOld', fixmaster: 'landing.vs.teamNew' },
   { situation: 'landing.vs.warranty', old: 'landing.vs.warrantyOld', fixmaster: 'landing.vs.warrantyNew' },
   { situation: 'landing.vs.branch', old: 'landing.vs.branchOld', fixmaster: 'landing.vs.branchNew' },
 ];
 
-const VS_VISIBLE = 4;
+const VS_VISIBLE = 5;
 
 interface Stage {
   title: TranslationKey;
