@@ -2348,7 +2348,7 @@ export const id = {
   'legal.privacyIntro': 'Bagaimana FixMaster mengumpulkan, menggunakan, dan melindungi data Anda serta data pelanggan usaha reparasi Anda.',
   'legal.termsTitle': 'Syarat & Ketentuan',
   'legal.termsDocTitle': 'Syarat & Ketentuan | FixMaster',
-  'legal.termsIntro': 'Ketentuan penggunaan layanan FixMaster, termasuk langganan, pembayaran, dan tanggung jawab masing-masing pihak.',
+  'legal.termsIntro': 'Ketentuan penggunaan layanan FixMaster: akun, harga per unit, pengisian saldo, dan tanggung jawab masing-masing pihak.',
   'legal.home': 'Beranda',
   'legal.docPrefix': 'DOK.',
   'legal.status': 'STATUS',

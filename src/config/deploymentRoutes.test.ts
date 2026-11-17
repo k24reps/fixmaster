@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import vercelSource from '../../vercel.json?raw';
+import { STATIC_PAGES } from './staticPages';
 
 const config = JSON.parse(vercelSource) as {
   rewrites: Array<{ source: string; destination: string }>;
@@ -50,7 +51,11 @@ const spaRoutes = [
 describe('Vercel SPA route allowlist', () => {
   it('keeps every public and app deep link available', () => {
     expect(config.rewrites).toEqual(
-      spaRoutes.map((source) => ({ source, destination: '/index.html' })),
+      spaRoutes.map((source) => {
+        // Halaman publik non-landing punya HTML statis sendiri (staticPages.ts).
+        const page = STATIC_PAGES.find((p) => p.path === source);
+        return { source, destination: page ? `/${page.file}` : '/index.html' };
+      }),
     );
   });
 

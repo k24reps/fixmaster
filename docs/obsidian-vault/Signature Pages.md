@@ -300,8 +300,14 @@ Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.htm
   `deploymentRoutes.test.ts` menolak rewrite baru tanpa noindex.
 - `public/robots.txt` dibelah: crawler AI di-Disallow dari `/demo`, `/track`, `/t/` (mereka tidak
   terikat noindex); mesin pencari (`*`) tidak di-Disallow apa pun supaya header noindex terbaca.
-- `public/sitemap.xml` (`/`, `/privacy`, `/terms`). Canonical `/privacy` dan `/terms` masih `/`
-  karena berasal dari `index.html` statis; perbaikannya HTML statis per rute saat build.
+- `public/sitemap.xml` (`/`, `/privacy`, `/terms`).
+- **HTML statis per halaman publik (17 Nov 2026).** Plugin `staticPageHeads` di `vite.config.ts`
+  menulis `dist/privacy.html` dan `dist/terms.html` dari `index.html` hasil build lewat
+  `renderStaticPage` (`src/config/staticPages.ts`): title, description, canonical, og/twitter
+  sendiri, JSON-LD dan alternate Markdown milik landing dibuang, noscript diganti judul dokumen.
+  `vercel.json` me-rewrite `/privacy` → `/privacy.html` dan `/terms` → `/terms.html`. Halaman
+  publik baru yang ingin diindeks wajib masuk `STATIC_PAGES` **dan** sitemap; tes menolak bila
+  keduanya tidak sama.
 - `index.html`: title `Aplikasi Servis HP, Laptop & Elektronik | FixMaster` (≤60 karakter, istilah yang
   dipakai pembeli dan pesaing di SERP) dan description ≤160 karakter, keduanya dijaga
   `landingMetadata.test.ts` bersama sinkronnya dengan `landing.metaTitle`; `<link rel=canonical>` + `og:url`, **JSON-LD** (`SoftwareApplication` + offers dari `src/config/pricing.ts` (`UNIT_PRICE`) + **`availability: InStock`**, `Organization`, `WebSite`, `FAQPage`), dan **`<noscript>`** berisi H1 + value-prop + daftar fitur agar crawler non-JS tetap dapat konten nyata. Meta keywords diperbarui: "bengkel elektronik" diganti "konter hp, toko servis hp".

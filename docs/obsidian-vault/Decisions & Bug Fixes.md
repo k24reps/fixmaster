@@ -7249,3 +7249,39 @@ Yang sengaja belum:
 Build, lint, 1182 tes / 88 berkas.
 
 #seo #decision
+
+## HTML statis per halaman publik (17 Nov 2026)
+
+Rencana strategis no. 1 dari audit SEO. Sebelumnya `/privacy` dan `/terms` memakai `index.html`
+yang sama dengan landing, sehingga HTML mentahnya mengirim title, description, dan canonical
+`/`. Search Console mencatat 2 halaman "tidak terindeks" dengan satu alasan, sesuai dugaan itu.
+
+- **Pasca-build, bukan prerender.** Plugin `staticPageHeads` (`vite.config.ts`, `apply: 'build'`)
+  membaca `dist/index.html` di `closeBundle` dan menulis `privacy.html` serta `terms.html`
+  lewat `renderStaticPage` (`src/config/staticPages.ts`). Isi halaman tetap dirender React; yang
+  berubah hanya head dan noscript. Prerender penuh tetap ditunda (lihat 16 Nov).
+- **Rewrite ke berkas eksplisit.** `vercel.json`: `/privacy` → `/privacy.html`, `/terms` →
+  `/terms.html`. Tidak mengandalkan directory index atau `cleanUrls`, supaya perilakunya pasti.
+  `/privacy.html` juga terjangkau langsung. Router tidak mengenal alamat itu, jadi yang tampil
+  adalah aplikasi di rute tak dikenal (di uji lokal: wizard setup), bukan dokumen. Tidak ada yang
+  menautkannya dan canonical-nya `/privacy`, jadi dibiarkan. Redirect `.html` → rute sengaja tidak
+  dipasang supaya tidak ada risiko loop dengan rewrite.
+- **Gagal keras.** Tiap tag yang diganti harus ditemukan tepat sekali di `index.html`; kalau
+  bentuknya berubah, build berhenti alih-alih diam-diam mengirim head landing.
+- **Yang dibuang dari halaman legal:** JSON-LD (FAQ dan harga milik landing; FAQPage tanpa FAQ
+  yang terlihat melanggar pedoman Google) dan `<link rel=alternate type=text/markdown>`.
+- **Tanpa impor i18n** di `staticPages.ts`, karena modul itu dimuat saat `vite.config.ts` dibaca
+  (tanpa alias `@/`). `staticPages.test.ts` menjaga title, judul, dan intro sama dengan
+  `legal.*` di `id.ts`, dan daftar halaman sama dengan sitemap.
+- **Copy:** `legal.termsIntro` (id + en) masih menyebut "langganan" sejak harga per unit
+  14 Nov; diganti "akun, harga per unit, pengisian saldo".
+- **Service worker** menyimpan respons navigasi apa pun sebagai shell `/index.html`, jadi shell
+  offline bisa berisi head halaman legal. Skrip dan router-nya sama; hanya head yang berbeda
+  saat offline. Dibiarkan.
+
+Diverifikasi dengan server lokal yang meniru filesystem-lalu-rewrite Vercel: tanpa JS dan dengan
+JS, `/privacy` dan `/terms` membawa title, description, dan canonical sendiri, tanpa JSON-LD,
+tanpa error halaman; `/` tidak berubah. Build, lint, 1194 tes / 89 berkas. Patokan Search Console
+sebelum perubahan dicatat di `docs/marketing-plans/fixmaster-app/research.md`.
+
+#seo #decision

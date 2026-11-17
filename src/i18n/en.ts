@@ -2308,7 +2308,7 @@ export const en: Dictionary = {
   'legal.privacyIntro': 'How FixMaster collects, uses, and protects your data and the customer data of your repair business.',
   'legal.termsTitle': 'Terms & Conditions',
   'legal.termsDocTitle': 'Terms & Conditions | FixMaster',
-  'legal.termsIntro': "Terms for using the FixMaster service, including subscriptions, payments, and each party's responsibilities.",
+  'legal.termsIntro': "Terms for using the FixMaster service: accounts, per-unit pricing, balance top-ups, and each party's responsibilities.",
   'legal.home': 'Home',
   'legal.docPrefix': 'DOC.',
   'legal.status': 'STATUS',

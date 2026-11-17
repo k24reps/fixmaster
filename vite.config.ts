@@ -1,11 +1,34 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
+import { STATIC_PAGES, renderStaticPage } from './src/config/staticPages';
+
+// Tulis dist/privacy.html dan dist/terms.html dari index.html hasil build,
+// masing-masing dengan title, description, dan canonical sendiri. Lihat
+// src/config/staticPages.ts dan rewrite-nya di vercel.json.
+function staticPageHeads(): Plugin {
+  let outDir = 'dist';
+  return {
+    name: 'fixmaster-static-page-heads',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const html = readFileSync(resolve(outDir, 'index.html'), 'utf8');
+      for (const page of STATIC_PAGES) {
+        writeFileSync(resolve(outDir, page.file), renderStaticPage(html, page));
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), staticPageHeads()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

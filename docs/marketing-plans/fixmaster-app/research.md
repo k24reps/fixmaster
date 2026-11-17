@@ -97,6 +97,31 @@ Gaps saat ini:
 - Trial: 14 hari.
 - Harga belum pressure-tested terhadap calon pelanggan.
 
+## Search Console baseline (17 Nov 2026)
+
+Diambil dari Google Search Console (property domain `fixmaster.app`), 3 bulan terakhir, sebelum
+title baru (`Aplikasi Servis HP, Laptop & Elektronik | FixMaster`, PR #9) terbaca Google.
+Bandingkan lagi 4-6 minggu setelah 17 Nov 2026.
+
+- **Total:** 20 klik, 120 tayangan. Klik pertama sekitar 21 Sep 2026.
+- **Halaman:** `https://fixmaster.app/` 20 klik / 120 tayangan; `http://fixmaster.app/` 0 / 4
+  (sisa lama, http sudah 308 ke https). Tidak ada URL `/t/` atau `/track` di data.
+- **Indeks:** 1 halaman terindeks, 2 tidak terindeks dengan 1 alasan (dugaan: `/privacy` dan
+  `/terms` sebagai alternate dari `/`, karena canonical-nya dulu `/`).
+- **Kueri yang terlihat, semuanya merek:**
+
+| Kueri | Klik | Tayangan |
+|---|---|---|
+| fixmaster | 6 | 43 |
+| fix master | 3 | 22 |
+| master fix | 0 | 7 |
+| fix it master | 0 | 1 |
+
+Sisanya (11 klik, 47 tayangan) tidak tampil di baris atas atau disembunyikan Google karena
+kuerinya jarang. **Kesimpulan:** belum ada visibilitas untuk kueri kategori ("aplikasi servis
+hp", "software service hp"); trafik datang dari orang yang sudah tahu namanya. Nama juga mudah
+tertukar ("master fix", "fix it master").
+
 ## Already done — acknowledge in the plan
 
 | Asset | Status | Marketing leverage |
