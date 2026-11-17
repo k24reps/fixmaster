@@ -2,9 +2,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEven
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui';
 import { useT, type TranslationKey } from '@/i18n';
-import { interpolate } from '@/lib/business/notify';
 import {
-  DEMO_LEAD_RETENTION_DAYS,
   EMPTY_DEMO_LEAD_DRAFT,
   SHOP_NAME_MAX,
   cleanShopName,
@@ -188,7 +186,6 @@ export function DemoGate({
   const nameErrorId = `${formId}-name-error`;
   const phoneErrorId = `${formId}-phone-error`;
   const serverErrorId = `${formId}-server-error`;
-  const noteId = `${formId}-note`;
   const sending = status === 'sending';
 
   return (
@@ -240,18 +237,16 @@ export function DemoGate({
             value={phone}
             onChange={(e) => change({ shopName, phone: e.target.value })}
             aria-invalid={errors.phone ? true : undefined}
-            aria-describedby={errors.phone ? `${phoneErrorId} ${noteId}` : noteId}
+            aria-describedby={errors.phone ? phoneErrorId : undefined}
           />
           {errors.phone && (
             <p id={phoneErrorId} className={styles.fieldError}>
               {t(errors.phone)}
             </p>
           )}
-          {/* Untuk apa nomornya dipakai, tepat di kolom yang memintanya, bukan
-              di bawah tombol (sesudah pengunjung memutuskan). */}
-          <p id={noteId} className={styles.note}>
-            {interpolate(t('demoGate.note'), { days: String(DEMO_LEAD_RETENTION_DAYS) })} {privacy}
-          </p>
+          {/* Pemakaian dan masa simpan nomor dijelaskan di kebijakan privasi
+              (pilihan pemilik 17 Nov 2026); di sini cukup tautannya. */}
+          <p className={styles.note}>{privacy}</p>
         </div>
 
         {/* Jebakan bot: tidak terlihat, tidak bisa difokus, tidak dibaca

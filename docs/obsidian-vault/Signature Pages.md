@@ -34,11 +34,12 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul pilihan pemilik: "Toko servis yang
   rapi dan teratur, mulai hari ini." (`landing.heroTitle`).
 - **Konvensional vs FixMaster** (`#perbandingan`, tepat sesudah hero): papan dua lajur,
-  delapan situasi toko berantakan. **Empat terlihat** (lacak servis, stok part, uang masuk,
-  untung per unit); empat lainnya (unit masuk, karyawan, garansi, cabang) di baris
+  delapan situasi toko berantakan. **Lima terlihat** (unit masuk paling atas, lalu lacak servis,
+  stok part, uang masuk, untung per unit; pilihan pemilik 17 Nov 2026); tiga lainnya (karyawan,
+  garansi, cabang) di baris
   `<details>` terakhir papan yang menyebut namanya ("Lihat 4 lainnya: …", `landing.vs.more`),
-  sejak 16 Nov 2026. Run critique ke-2 (16 Nov) menukar unit masuk dengan untung per unit:
-  unit masuk sudah diceritakan judul hero dan adegan, untung per unit pertanyaan pemilik. Lajur konvensional di permukaan tertanam dengan tinta redup,
+  sejak 16 Nov 2026. Run critique ke-2 (16 Nov) sempat menurunkan unit masuk ke daftar
+  tambahan; pemilik mengembalikannya ke atas sebagai baris kelima yang terlihat. Lajur konvensional di permukaan tertanam dengan tinta redup,
   lajur FixMaster di permukaan terangkat; LED hanya di kepala lajur. Di ≤720px tiap baris
   menjadi blok dengan label lajur di tiap sel (di layar lebar label itu tetap ada untuk pembaca
   layar). Penutup: "Tutup toko tanpa menghitung ulang apa pun." + tautan ke gerbang
@@ -103,8 +104,9 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   dihapus. Hero ponsel kembali judul → gerbang → adegan.
 - **Gerbang demo (0102):** nama toko + nomor WhatsApp (cek format, tanpa OTP), kolom
   jebakan bot, galat per kolom, galat simpan jujur dengan "Coba lagi", batas jaringan.
-  Sejak 16 Nov 2026: catatan pemakaian nomor tepat di bawah kolom nomor (teksnya tetap,
-  `aria-describedby`), fokus ke kolom yang salah dipindah **sesudah** render supaya error
+  Di bawah kolom nomor hanya tautan **Kebijakan privasi**: kalimat pemakaian nomor + masa simpan
+  90 hari dicabut pemilik 17 Nov 2026 karena sudah ada di kebijakan privasi (kunci
+  `demoGate.note` dihapus; masa simpan tetap `DEMO_LEAD_RETENTION_DAYS`). Sejak 16 Nov 2026: fokus ke kolom yang salah dipindah **sesudah** render supaya error
   ikut diumumkan, kolom `required`, nama `maxLength` 60. Nomor yang jelas asal-asalan
   (awalan bukan operator, nol semua, deret urut seperti contoh placeholder) ditolak dengan
   pesan sendiri (`demoGate.errorPhoneFake`, migrasi 0104); nomor cantik tetap lolos. Pengunjung demo adalah store yang
