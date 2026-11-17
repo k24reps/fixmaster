@@ -302,7 +302,7 @@ export const id = {
   'demoGate.errorLimited':
     'Terlalu banyak percobaan dari jaringan ini. Tunggu beberapa menit, lalu coba lagi.',
   'demoGate.backHome': 'Beranda',
-  'landing.metaTitle': 'FixMaster | Aplikasi Toko Reparasi Elektronik: Tiket, Stok, Kas, Margin',
+  'landing.metaTitle': 'Aplikasi Servis HP, Laptop & Elektronik | FixMaster',
   'landing.skipToContent': 'Lewati ke konten utama',
   'landing.brandSub': 'Sistem operasi meja servis',
   'landing.navLabel': 'Navigasi halaman',

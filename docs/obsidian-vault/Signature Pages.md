@@ -232,7 +232,8 @@ kembali bila diperlukan.
   tanpa PII dan menyensor URL sensitif. Rewrite Vercel berubah dari catch-all menjadi
   allowlist route aplikasi sehingga URL asing benar-benar 404. `robots.txt` menyatakan
   kebijakan crawler AI; `llms.txt`, `llms-full.txt`, `index.md`, dan `pricing.md`
-  menyediakan versi agent-readable yang jujur dan dapat ditemukan dari sitemap/header.
+  menyediakan versi agent-readable yang jujur dan dapat ditemukan dari header `Link` di `/` dan
+  `llms.txt`. Sejak 17 Nov 2026 berkas itu keluar dari sitemap dan ber-canonical `/` (header).
 - **Guardrail copy (28 Agu 2026)**: klaim offline dibedakan secara jujur antara mode
   lokal satu-perangkat dan mode cloud yang memerlukan koneksi; jargon “row-level” diganti
   bahasa akses toko; trial tidak lagi mengaku membuka “semua fitur” karena ekspor/impor
@@ -291,11 +292,19 @@ Pintu depan saat **cloud signed-out**. Versi pertama terasa "vibecoded" (gradien
 - CTA → `onStart` → `AuthGate` buka `AuthPage`. **Label trial disatukan** jadi **"Mulai Gratis 14 Hari"** (hero + CTA akhir) untuk konsistensi; "MASUK" tetap untuk login, "Pasang Solo/Pro" kontekstual di pricing.
 - **Top rail**: kini memuat **toggle tema** sun/moon (`useThemeStore`) di samping tombol MASUK. Anchor nav kini **Perbandingan/Demo/Paket** (`#banding`/`#demo`/`#spec`); di **mobile** anchor disembunyikan agar rail tak berdesakan — sisakan logo + toggle tema + MASUK.
 
-### SEO (revisi 11 Jun 2026, diperbarui 23 Jun 2026)
+### SEO (revisi 11 Jun 2026, diperbarui 17 Nov 2026)
 Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.html` statis** + aset publik:
-- `public/robots.txt` (allow publik, **disallow `/demo` & `/track`** karena sandbox/lookup) + tunjuk sitemap.
-- `public/sitemap.xml` (`/`, `/privacy`, `/terms`).
-- `index.html`: title/description **berbasis keyword + benefit** (servis HP/laptop/elektronik, kasir, trial), `<link rel=canonical>` + `og:url`, **JSON-LD** (`SoftwareApplication` + offers dari `plans.ts` + **`availability: InStock`**, `Organization`, `WebSite`, `FAQPage`), dan **`<noscript>`** berisi H1 + value-prop + daftar fitur agar crawler non-JS tetap dapat konten nyata. Meta keywords diperbarui: "bengkel elektronik" diganti "konter hp, toko servis hp".
+- **Rute non-konten = `X-Robots-Tag: noindex`** dari `vercel.json` (bukan meta, karena semua rute
+  memakai satu `index.html`): `/t/*`, `/track`, `/demo`, `/operator`, `/reset-password`,
+  `/landing-preview`, dan rute aplikasi. Yang boleh terindeks hanya `/`, `/privacy`, `/terms`.
+  `deploymentRoutes.test.ts` menolak rewrite baru tanpa noindex.
+- `public/robots.txt` dibelah: crawler AI di-Disallow dari `/demo`, `/track`, `/t/` (mereka tidak
+  terikat noindex); mesin pencari (`*`) tidak di-Disallow apa pun supaya header noindex terbaca.
+- `public/sitemap.xml` (`/`, `/privacy`, `/terms`). Canonical `/privacy` dan `/terms` masih `/`
+  karena berasal dari `index.html` statis; perbaikannya HTML statis per rute saat build.
+- `index.html`: title `Aplikasi Servis HP, Laptop & Elektronik | FixMaster` (≤60 karakter, istilah yang
+  dipakai pembeli dan pesaing di SERP) dan description ≤160 karakter, keduanya dijaga
+  `landingMetadata.test.ts` bersama sinkronnya dengan `landing.metaTitle`; `<link rel=canonical>` + `og:url`, **JSON-LD** (`SoftwareApplication` + offers dari `src/config/pricing.ts` (`UNIT_PRICE`) + **`availability: InStock`**, `Organization`, `WebSite`, `FAQPage`), dan **`<noscript>`** berisi H1 + value-prop + daftar fitur agar crawler non-JS tetap dapat konten nyata. Meta keywords diperbarui: "bengkel elektronik" diganti "konter hp, toko servis hp".
 - **`useEffect` title** di `LandingPage.tsx` kini **sinkron** dengan `index.html` (sebelumnya kehilangan keyword "HP/Laptop/Kasir"). Crawler tetap dapat yang dari `index.html` statis, tapi tab browser history kini konsisten.
 - **Eyebrow di atas H1**: `<p className={styles.eyebrow}>Software Manajemen Konter HP & Elektronik</p>` — teks mono brand berwarna sebagai sinyal on-page keyword yang terlihat user, sekaligus memperkuat relevansi H1 yang masih puitis.
 - Domain kanonikal: `https://fixmaster.app` (domain kustom di Vercel sejak 1 Jul 2026; sebelumnya `getfixmaster.vercel.app`). Dirujuk di `index.html` (canonical, og:url, JSON-LD), `public/robots.txt`, `public/sitemap.xml`. Link tracking/reset password pakai `window.location.origin` (adaptif otomatis).

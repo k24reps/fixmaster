@@ -46,6 +46,17 @@ describe('landing metadata', () => {
     }
   });
 
+  it('keeps the static title in sync with the landing and short enough for a search snippet', () => {
+    const title = html.match(/<title>([^<]*)<\/title>/)?.[1].replace(/&amp;/g, '&');
+    const description = html.match(/<meta\s+name="description"\s+content="([^"]*)"/)?.[1];
+
+    expect(title).toBe(id['landing.metaTitle']);
+    // Google memotong title ±60 karakter dan description ±160 karakter.
+    expect(title?.length).toBeLessThanOrEqual(60);
+    expect(description?.length).toBeGreaterThan(0);
+    expect(description?.length).toBeLessThanOrEqual(160);
+  });
+
   it('uses absolute social image URLs', () => {
     expect(html).toContain('property="og:image" content="https://fixmaster.app/og-image.png"');
     expect(html).toContain('name="twitter:image" content="https://fixmaster.app/og-image.png"');

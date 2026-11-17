@@ -1,44 +1,48 @@
 # FixMaster — robots
+# Crawler AI tidak terikat noindex, jadi rute non-konten ditutup di sini.
+# /t/ dan /track = lacak servis per pelanggan; /demo = sandbox data contoh.
+
 User-agent: GPTBot
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
 User-agent: ChatGPT-User
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
 User-agent: PerplexityBot
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
 User-agent: ClaudeBot
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
 User-agent: anthropic-ai
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
 User-agent: Google-Extended
 Allow: /
 Disallow: /demo
 Disallow: /track
+Disallow: /t/
 
-User-agent: Bingbot
-Allow: /
-Disallow: /demo
-Disallow: /track
-
+# Mesin pencari: rute non-konten TIDAK di-Disallow. Vercel mengirim
+# X-Robots-Tag: noindex untuk rute itu (vercel.json), dan crawler hanya
+# membaca header itu bila boleh merayapinya. Disallow justru membuat URL
+# bisa terindeks tanpa isi bila ada yang menautkannya.
 User-agent: *
 Allow: /
-# /demo is a live sandbox (in-memory, sample data), not indexable content.
-Disallow: /demo
-# /track is a per-ticket public lookup; no canonical content to index.
-Disallow: /track
 
 Sitemap: https://fixmaster.app/sitemap.xml
