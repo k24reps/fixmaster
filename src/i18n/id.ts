@@ -302,7 +302,7 @@ export const id = {
   'demoGate.errorLimited':
     'Terlalu banyak percobaan dari jaringan ini. Tunggu beberapa menit, lalu coba lagi.',
   'demoGate.backHome': 'Beranda',
-  'landing.metaTitle': 'Aplikasi Servis HP, Laptop & Elektronik | FixMaster',
+  'landing.metaTitle': 'Aplikasi Servis HP & Laptop | FixMaster',
   'landing.skipToContent': 'Lewati ke konten utama',
   'landing.brandSub': 'Sistem operasi meja servis',
   'landing.navLabel': 'Navigasi halaman',
@@ -310,9 +310,9 @@ export const id = {
   'landing.navPricing': 'Harga',
   'landing.signIn': 'Masuk',
   'landing.startFree': 'Mulai gratis',
-  'landing.heroTitle': 'Toko servis yang rapi dan teratur, mulai hari ini.',
+  'landing.heroTitle': 'Toko servis HP\u00a0&\u00a0laptop yang rapi dan teratur, mulai hari ini.',
   'landing.heroLead':
-    'Untuk konter HP, servis laptop, printer, sampai TV. Unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat. {free}\u00a0unit pertama gratis, lalu {price} per\u00a0unit.',
+    'Aplikasi untuk konter HP dan servis laptop. Unit dicatat sekali di meja, lalu stok, kas, dan margin ikut tercatat. {free}\u00a0unit pertama gratis, lalu {price} per\u00a0unit.',
   'landing.waMessage': 'Halo FixMaster, saya mau tanya soal aplikasinya',
   'landing.scene.deviceDesk': 'Komputer',
   'landing.scene.devicePhone': 'HP',
@@ -363,11 +363,11 @@ export const id = {
     'Chat dan telepon "sudah jadi belum?" datang terus. Anda berhenti bekerja untuk mengecek meja, dan pelanggan menunggu tanpa kepastian.',
   'landing.vs.statusNew':
     'Nota membawa kode QR dan tautan lacak. Pelanggan melihat status, riwayat pengerjaan, dan masa garansi sendiri kapan saja, sedangkan toko tidak perlu membalas pertanyaan yang sama satu per satu.',
-  'landing.vs.stock': 'Stok part',
+  'landing.vs.stock': 'Stok sparepart',
   'landing.vs.stockOld':
-    'Catatan stok beda dengan isi laci. Part habis baru ketahuan saat dibutuhkan.',
+    'Catatan stok beda dengan isi laci. Sparepart habis baru ketahuan saat dibutuhkan.',
   'landing.vs.stockNew':
-    'Part yang dipasang langsung mengurangi stok, dan stok menipis menyala di dashboard.',
+    'Sparepart yang dipasang di tiket langsung mengurangi stok, dan stok menipis menyala di dashboard.',
   'landing.vs.margin': 'Untung per unit',
   'landing.vs.marginOld':
     'Baru dihitung saat tutup buku, itu pun kalau sempat. Modal part sering terlupa.',
@@ -391,21 +391,19 @@ export const id = {
   'landing.vs.foot': 'Tutup toko tanpa menghitung ulang apa pun.',
   'landing.vs.more': 'Lihat {count} lainnya: {list}',
   'landing.vs.tryLink': 'Lihat sendiri di demo',
-  'landing.price.ruleCap':
-    'Paling banyak {max} per cabang per bulan: lewat {cap} unit, tiket berikutnya di cabang itu gratis sampai akhir bulan.',
+  'landing.price.ruleCap': 'Paling banyak {max} per cabang sebulan.',
+  'landing.price.ruleCapNote': 'Lewat {cap} unit, tiket berikutnya di cabang itu gratis.',
+  'landing.price.ruleFreeUnits': '{free} unit pertama gratis.',
+  'landing.price.ruleFreeUnitsNote': 'Tanpa batas waktu.',
+  'landing.price.ruleNoExpire': 'Saldo unit tidak pernah hangus.',
+  'landing.price.ruleNoExpireNote': 'Unit yang belum terpakai tetap tersimpan bulan berikutnya.',
   'landing.price.capNote': 'Garis putus-putus: zona gratis.',
   'landing.price.freeByCap': 'Gratis karena batas',
   'landing.vs.statusExample': 'contoh tautan lacak, satu kode acak per tiket',
   'landing.mod.outletsName': 'Multi-cabang',
   'landing.price.title': 'per unit masuk.',
   'landing.price.lead':
-    '{free} unit pertama gratis, tanpa batas waktu. Setelah itu Anda membayar sesuai jumlah tiket servis yang dibuat.',
-  'landing.price.ruleFree': 'Penjualan kasir dan klaim garansi tidak dihitung.',
-  'landing.price.ruleRefund':
-    'Tiket yang dibatalkan atau dihapus dalam {minutes} menit, unitnya kembali.',
-  'landing.price.ruleTopup': 'Isi saldo mulai {min}. Saldo tidak hangus.',
-  'landing.price.ruleFloor':
-    'Saldo habis? Masih boleh minus {floor} unit, dan pekerjaan yang sudah masuk tetap jalan.',
+    'Harga yang adil: Anda membayar sesuai jumlah unit yang masuk, tanpa biaya bulanan tetap. Bulan sepi, tagihan ikut kecil.',
   'landing.price.cta': 'Mulai gratis, {free} unit',
   'landing.price.ctaNote':
     'Tanpa kartu kredit. Isi saldo lewat transfer, dikonfirmasi lewat WhatsApp.',
@@ -423,9 +421,12 @@ export const id = {
   'landing.faq.safe.q': 'Siapa yang bisa melihat data toko saya?',
   'landing.faq.safe.a':
     'Data setiap toko dipisahkan oleh aturan akses. Hanya akun yang terdaftar di toko Anda yang dapat membukanya. Server menyalin data toko Anda tiap malam, pemilik menerima tautan backup lewat email tiap Senin, dan backup bisa diunduh kapan saja dari Pengaturan.',
-  'landing.faq.device.q': 'Hanya untuk servis HP?',
+  'landing.faq.device.q': 'Bisa untuk servis tablet, printer, atau TV?',
   'landing.faq.device.a':
-    'Tidak. FixMaster dipakai untuk HP, laptop, tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkat, keluhan cepat, dan daftar kelengkapan Anda atur sendiri, jadi toko servis printer tidak perlu memakai daftar milik konter HP.',
+    'Bisa. Selain HP dan laptop, FixMaster dipakai untuk tablet, printer, TV, audio, konsol, dan elektronik rumah tangga. Kategori perangkat, keluhan cepat, dan daftar kelengkapan Anda atur sendiri, jadi toko servis printer tidak perlu memakai daftar milik konter HP.',
+  'landing.faq.cashier.q': 'Apa bedanya dengan aplikasi kasir biasa?',
+  'landing.faq.cashier.a':
+    'Aplikasi kasir mencatat barang yang terjual. FixMaster mencatat perjalanan unit servis: keluhan dan kelengkapan saat diterima, sparepart yang dipasang, status yang bisa dilacak pelanggan, masa garansi, sampai margin tiap unit. Penjualan sparepart dan aksesori tetap bisa lewat Kasir di aplikasi yang sama, dan tidak memotong saldo unit.',
   'landing.faq.install.q': 'Perlu memasang aplikasi?',
   'landing.faq.install.a':
     'Tidak wajib. FixMaster dibuka lewat browser di komputer, tablet, atau HP. Bila ingin seperti aplikasi biasa, pasang dari menu browser (Instal aplikasi atau Tambahkan ke layar utama): ikonnya muncul di layar utama dan FixMaster terbuka layar penuh. Demo bisa dicoba dulu dengan nama toko Anda, tanpa membuat akun.',
@@ -435,10 +436,13 @@ export const id = {
   'landing.faq.pay.q': 'Bagaimana cara membayar?',
   'landing.faq.pay.a':
     'Isi saldo di muka lewat transfer bank, dikonfirmasi lewat WhatsApp. Anda pilih nominal di aplikasi (minimal Rp 50.000), kami kirim instruksi pembayaran, lalu Anda kirim bukti transfer di chat yang sama. Tidak ada kartu kredit dan tidak ada auto-debit. Pemakaian paling banyak Rp 100.000 per cabang sebulan. Saldo hanya bertambah setelah pembayaran kami verifikasi, tidak hangus, dan tidak dapat dikembalikan.',
+  'landing.faq.units.q': 'Apa saja yang dihitung sebagai unit?',
+  'landing.faq.units.a':
+    'Satu unit adalah satu tiket servis yang dibuat. Penjualan kasir dan klaim garansi tidak dihitung, dan tiket yang dibatalkan atau dihapus dalam {minutes} menit mendapat unitnya kembali. Kalau saldo habis, Anda masih boleh minus {floor} unit, dan pekerjaan yang sudah masuk tetap jalan.',
   'landing.closingTitle': 'Coba dulu dengan nama toko Anda sendiri.',
   'landing.closingLead':
-    'Demo memakai aplikasi yang sama dengan yang nanti Anda pakai. Terima unit, pasang part, terima bayar, lalu lihat dashboard pemiliknya.',
-  'landing.footerTagline': 'Untuk toko reparasi elektronik',
+    'Demo memakai aplikasi yang sama dengan yang nanti Anda pakai. Terima unit, pasang sparepart, terima bayar, lalu lihat dashboard pemiliknya.',
+  'landing.footerTagline': 'Untuk konter HP & servis laptop',
   'landing.privacy': 'Kebijakan Privasi',
   'landing.terms': 'Syarat & Ketentuan',
   'landing.whatsapp': 'Tanya via WhatsApp',

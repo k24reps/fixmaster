@@ -37,7 +37,7 @@ describe('landing metadata', () => {
 
   it('keeps every FAQ schema answer aligned with visible Indonesian copy', () => {
     const faq = graph.find((node) => node['@type'] === 'FAQPage');
-    const pairs = ['device', 'install', 'connection', 'safe', 'move'] as const;
+    const pairs = ['device', 'cashier', 'install', 'connection', 'safe', 'move'] as const;
 
     for (const key of pairs) {
       const question = id[`landing.faq.${key}.q`];

@@ -31,11 +31,13 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
 - **Gagasan:** teknisi mencatat di meja, pemilik melihatnya di ponsel. Layar pertama
   memeragakan sinkron itu, bukan judul-kiri / screenshot-kanan. **Narasi (sejak revisi
   pemilik 15 Nov 2026):** untuk toko yang ingin mulai kerja lebih rapi dan teratur, dari yang
-  masih sendiri sampai yang sudah berkaryawan atau bercabang. Judul pilihan pemilik: "Toko servis yang
-  rapi dan teratur, mulai hari ini." (`landing.heroTitle`).
+  masih sendiri sampai yang sudah berkaryawan atau bercabang. **Sejak 17 Nov 2026 pesannya
+  fokus ke konter HP dan servis laptop**; kategori lain (tablet, printer, TV, dst.) jadi
+  pelengkap di FAQ `landing.faq.device`. Judul: "Toko servis HP & laptop yang rapi dan
+  teratur, mulai hari ini." (`landing.heroTitle`; "HP & laptop" dikunci spasi tak-putus).
 - **Konvensional vs FixMaster** (`#perbandingan`, tepat sesudah hero): papan dua lajur,
   delapan situasi toko berantakan. **Lima terlihat** (unit masuk paling atas, lalu lacak servis,
-  stok part, uang masuk, untung per unit; pilihan pemilik 17 Nov 2026); tiga lainnya (karyawan,
+  stok sparepart, uang masuk, untung per unit; pilihan pemilik 17 Nov 2026); tiga lainnya (karyawan,
   garansi, cabang) di baris
   `<details>` terakhir papan yang menyebut namanya ("Lihat 4 lainnya: …", `landing.vs.more`),
   sejak 16 Nov 2026. Run critique ke-2 (16 Nov) sempat menurunkan unit masuk ke daftar
@@ -55,9 +57,17 @@ Menggantikan Landing V2 di **`/`** (signed-out) dan **`/landing-preview`**:
   unit gratis). Sejak 16 Nov 2026: bullet aturan berupa tick pendek redup (bukan LED),
   tombol geser sumur putih bercincin cyan (amber tinggal tombol daftar), label sumur
   sentence case, dan grid `copy / gauge / actions` membuat ponsel menghitung di gauge
-  dulu baru melihat tombol daftar.
-- **Lead hero (16 Nov 2026)** menyebut perangkat dan harga: "Untuk konter HP, servis laptop,
-  printer, sampai TV. … 50 unit pertama gratis, lalu Rp 1.000 per unit." Angkanya
+  dulu baru melihat tombol daftar. **Disederhanakan 17 Nov 2026:** lead "Harga yang adil: Anda
+  membayar sesuai jumlah unit yang masuk, tanpa biaya bulanan tetap. Bulan sepi, tagihan ikut
+  kecil." lalu hanya tiga aturan, masing-masing inti tebal + keterangan redup
+  (`PRICE_RULES`): paling banyak Rp 100.000 per cabang sebulan, 50 unit pertama gratis, saldo
+  unit tidak pernah hangus. Rincian (kasir dan garansi tidak dihitung, unit kembali dalam 10
+  menit, boleh minus 20 unit) pindah ke FAQ `landing.faq.units`, angkanya diinterpolasi dari
+  `pricing.ts`.
+- **Lead hero (16 Nov 2026, fokus HP & laptop 17 Nov 2026)** menyebut segmen dan harga:
+  "Aplikasi untuk konter HP dan servis laptop. … 50 unit pertama gratis, lalu Rp 1.000 per
+  unit." Batas Rp 100.000 sengaja tidak di lead: di ponsel ia menambah satu baris lagi dan
+  bagian harga sudah menonjolkannya. Angkanya
   diinterpolasi dari `src/config/pricing.ts`, dengan spasi tak-putus. Bukan eyebrow: label di
   atas judul dilarang mutlak oleh craft floor impeccable.
 - **Layar pertama:** judul (7/12) + gerbang demo (5/12), lalu adegan selebar halaman. Di
@@ -308,7 +318,7 @@ Landing adalah CSR (dirender di `AuthGate`), jadi SEO bertumpu pada **`index.htm
   `vercel.json` me-rewrite `/privacy` → `/privacy.html` dan `/terms` → `/terms.html`. Halaman
   publik baru yang ingin diindeks wajib masuk `STATIC_PAGES` **dan** sitemap; tes menolak bila
   keduanya tidak sama.
-- `index.html`: title `Aplikasi Servis HP, Laptop & Elektronik | FixMaster` (≤60 karakter, istilah yang
+- `index.html`: title `Aplikasi Servis HP & Laptop | FixMaster` (≤60 karakter, istilah yang
   dipakai pembeli dan pesaing di SERP) dan description ≤160 karakter, keduanya dijaga
   `landingMetadata.test.ts` bersama sinkronnya dengan `landing.metaTitle`; `<link rel=canonical>` + `og:url`, **JSON-LD** (`SoftwareApplication` + offers dari `src/config/pricing.ts` (`UNIT_PRICE`) + **`availability: InStock`**, `Organization`, `WebSite`, `FAQPage`), dan **`<noscript>`** berisi H1 + value-prop + daftar fitur agar crawler non-JS tetap dapat konten nyata. Meta keywords diperbarui: "bengkel elektronik" diganti "konter hp, toko servis hp".
 - **`useEffect` title** di `LandingPage.tsx` kini **sinkron** dengan `index.html` (sebelumnya kehilangan keyword "HP/Laptop/Kasir"). Crawler tetap dapat yang dari `index.html` statis, tapi tab browser history kini konsisten.

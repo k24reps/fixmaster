@@ -7285,3 +7285,42 @@ tanpa error halaman; `/` tidak berubah. Build, lint, 1194 tes / 89 berkas. Patok
 sebelum perubahan dicatat di `docs/marketing-plans/fixmaster-app/research.md`.
 
 #seo #decision
+
+## Landing: fokus HP & laptop, harga disederhanakan (17 Nov 2026)
+
+Keputusan pemilik sesudah audit SEO + copy landing. **Membalik tema "semua reparasi elektronik"
+(15–16 Nov)** untuk pesan pemasaran saja; produknya tetap untuk semua elektronik.
+
+- **Kenapa HP & laptop:** semua pesaing di SERP memakai "servis HP"; "aplikasi servis laptop"
+  masih didominasi skripsi, belum produk. Pesan yang spesifik lebih cepat membuat pemilik
+  konter merasa "ini untuk saya". Murah dibalik: hanya copy, dan ICP baru diputuskan pilot.
+- **Kenapa HP dulu:** urutan yang dipakai pasar dan pesaing; kata di depan title sedikit lebih
+  berbobot. Ditinjau lagi 4–6 minggu lewat Search Console (bandingkan kueri "hp" vs "laptop").
+- **Yang berubah:** title `Aplikasi Servis HP & Laptop | FixMaster`, description, og/twitter,
+  H1 "Toko servis HP & laptop yang rapi dan teratur, mulai hari ini." (judul pemilik + segmen;
+  "HP & laptop" dikunci `\u00a0` supaya tak terputus, juga di kartu pratinjau), lead "Aplikasi
+  untuk konter HP dan servis laptop. …", tagline footer, `index.md`, `llms.txt`, JSON-LD,
+  noscript. Pelengkap: FAQ "Bisa untuk servis tablet, printer, atau TV?".
+- **Istilah "sparepart"** menggantikan "part" di papan perbandingan dan lead penutup: istilah
+  yang dicari orang dan istilah baku glosarium. Baris stok kini menyebut "dipasang di tiket".
+- **Harga disederhanakan:** lead "Harga yang adil … tanpa biaya bulanan tetap. Bulan sepi,
+  tagihan ikut kecil." dan tiga aturan (inti tebal + keterangan redup): batas Rp 100.000 per
+  cabang sebulan, 50 unit gratis, saldo unit tak pernah hangus. "Per cabang" sengaja tetap
+  disebut: tanpa itu angka Rp 100.000 menyesatkan toko bercabang. Rincian pindah ke FAQ baru
+  "Apa saja yang dihitung sebagai unit?" (angka dari `pricing.ts` lewat `interpolate`).
+- **FAQ baru "Apa bedanya dengan aplikasi kasir biasa?"** menjawab keberatan "sudah pakai
+  Majoo/Moka" dan menyasar pencarian "aplikasi kasir konter". Ikut di JSON-LD.
+- **Batas Rp 100.000 tidak di lead hero.** Versi pertama memasangnya; di ponsel lead jadi lima
+  baris dan tombol demo turun 62px. Dicabut, karena bagian harga sudah menonjolkannya.
+- **Tidak diusulkan:** testimoni, jumlah pengguna, cerita founder, perbandingan bernama, klaim
+  waktu setup, "terbaik", menambah panjang halaman.
+
+Diukur terhadap build sebelumnya (vite preview, 7 ukuran 320–1440): luberan-x 0; desktop dan
+tablet tidak bergeser; di ponsel H1 +1 baris (+36px), kolom nama toko tetap di layar pertama
+390×844, tetapi di 360×740 turun 24px di bawah lipatan; seksi harga 40–100px lebih pendek.
+`og-image.png` dirender ulang lewat salinan `render-brand-assets.mjs` yang hanya merender kartu
+itu (ikon tidak disentuh). Detektor impeccable: 4 advisory lama, tidak ada di baris yang
+diubah. Build, lint, 1196 tes / 89 berkas. **Belum diperbarui:** gambar vault dan foto
+`scripts/shoot-landing.mjs` (tanpa PowerShell).
+
+#landing #seo #copy #decision

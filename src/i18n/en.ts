@@ -301,7 +301,7 @@ export const en: Dictionary = {
   'demoGate.errorLimited':
     'Too many attempts from this network. Wait a few minutes, then try again.',
   'demoGate.backHome': 'Home',
-  'landing.metaTitle': 'Phone, Laptop & Electronics Repair App | FixMaster',
+  'landing.metaTitle': 'Phone & Laptop Repair App | FixMaster',
   'landing.skipToContent': 'Skip to main content',
   'landing.brandSub': 'Repair bench operating system',
   'landing.navLabel': 'Page navigation',
@@ -309,9 +309,9 @@ export const en: Dictionary = {
   'landing.navPricing': 'Pricing',
   'landing.signIn': 'Sign in',
   'landing.startFree': 'Start free',
-  'landing.heroTitle': 'A tidy, orderly repair shop, starting today.',
+  'landing.heroTitle': 'A tidy, orderly phone\u00a0&\u00a0laptop repair shop, starting today.',
   'landing.heroLead':
-    'For phone counters, laptop repair, printers and TVs alike. Log each unit once at the counter, and stock, cash and margin follow. The first {free}\u00a0units are free, then {price} per\u00a0unit.',
+    'An app for phone counters and laptop repair. Log each unit once at the counter, and stock, cash and margin follow. The first {free}\u00a0units are free, then {price} per\u00a0unit.',
   'landing.waMessage': 'Hi FixMaster, I have a question about the app',
   'landing.scene.deviceDesk': 'Computer',
   'landing.scene.devicePhone': 'Phone',
@@ -362,11 +362,11 @@ export const en: Dictionary = {
     '"Is it done yet?" chats and calls keep coming. You stop working to check the bench, and customers wait without knowing.',
   'landing.vs.statusNew':
     'The receipt carries a QR code and tracking link. Customers see the status, repair history, and warranty period themselves at any time, and the shop no longer answers the same question one by one.',
-  'landing.vs.stock': 'Part stock',
+  'landing.vs.stock': 'Spare part stock',
   'landing.vs.stockOld':
-    'The stock notes never match the drawers. You find out a part is gone when you need it.',
+    'The stock notes never match the drawers. You find out a spare part is gone when you need it.',
   'landing.vs.stockNew':
-    'Installed parts come off stock right away, and low stock lights up on the dashboard.',
+    'Spare parts installed on a ticket come off stock right away, and low stock lights up on the dashboard.',
   'landing.vs.margin': 'Profit per unit',
   'landing.vs.marginOld':
     'Worked out when closing the books, if there is time. Part costs get forgotten.',
@@ -392,21 +392,19 @@ export const en: Dictionary = {
   'landing.vs.foot': 'Close up without recounting anything.',
   'landing.vs.more': 'See {count} more: {list}',
   'landing.vs.tryLink': 'See it in the demo',
-  'landing.price.ruleCap':
-    'At most {max} per branch per month: past {cap} units, further tickets at that branch are free until the end of the month.',
+  'landing.price.ruleCap': 'At most {max} per branch per month.',
+  'landing.price.ruleCapNote': 'Past {cap} units, further tickets at that branch are free.',
+  'landing.price.ruleFreeUnits': 'The first {free} units are free.',
+  'landing.price.ruleFreeUnitsNote': 'No time limit.',
+  'landing.price.ruleNoExpire': 'Your unit balance never expires.',
+  'landing.price.ruleNoExpireNote': 'Units you have not used stay in your balance next month.',
   'landing.price.capNote': 'Dashed ticks: the free zone.',
   'landing.price.freeByCap': 'Free under the cap',
   'landing.vs.statusExample': 'example tracking link, one random code per ticket',
   'landing.mod.outletsName': 'Multiple branches',
   'landing.price.title': 'per incoming unit.',
   'landing.price.lead':
-    'Your first {free} units are free, with no time limit. After that you pay for the repair tickets you create.',
-  'landing.price.ruleFree': 'POS sales and warranty claims are not counted.',
-  'landing.price.ruleRefund':
-    'Cancel or delete a ticket within {minutes} minutes and its unit comes back.',
-  'landing.price.ruleTopup': 'Top up from {min}. Balance never expires.',
-  'landing.price.ruleFloor':
-    'Out of balance? You can still go {floor} units below zero, and work already in the shop keeps going.',
+    'A fair price: you pay for the units that come in, with no fixed monthly fee. A slow month means a small bill.',
   'landing.price.cta': 'Start free, {free} units',
   'landing.price.ctaNote': 'No credit card. Top up by bank transfer, confirmed over WhatsApp.',
   'landing.price.slider': 'Incoming units per month, one branch',
@@ -423,9 +421,12 @@ export const en: Dictionary = {
   'landing.faq.safe.q': 'Who can see my shop data?',
   'landing.faq.safe.a':
     'Each shop\'s data is separated by access rules. Only accounts registered to your shop can open it. The server copies your shop data every night, the owner gets a backup link by email every Monday, and a backup can be downloaded any time from Settings.',
-  'landing.faq.device.q': 'Is it only for phone repair?',
+  'landing.faq.device.q': 'Does it work for tablet, printer or TV repair?',
   'landing.faq.device.a':
-    'No. FixMaster is used for phones, laptops, tablets, printers, TVs, audio, consoles, and home electronics. You set the device categories, quick complaints, and accessory checklist yourself, so a printer repair shop does not have to use a phone counter\'s list.',
+    "Yes. Besides phones and laptops, FixMaster is used for tablets, printers, TVs, audio, consoles, and home electronics. You set the device categories, quick complaints, and accessory checklist yourself, so a printer repair shop does not have to use a phone counter's list.",
+  'landing.faq.cashier.q': 'How is it different from a regular POS app?',
+  'landing.faq.cashier.a':
+    'A POS app records goods sold. FixMaster records the journey of a repair unit: the complaint and accessories at intake, the spare parts installed, a status the customer can track, the warranty period, and the margin on each unit. Spare part and accessory sales still go through the POS in the same app, and they do not use your unit balance.',
   'landing.faq.install.q': 'Do I need to install anything?',
   'landing.faq.install.a':
     'Not necessarily. FixMaster opens in a browser on a computer, a tablet or a phone. If you want it to feel like a regular app, install it from the browser menu (Install app or Add to Home screen): the icon appears on your home screen and FixMaster opens full screen. You can try the demo first under your shop name, without creating an account.',
@@ -435,10 +436,13 @@ export const en: Dictionary = {
   'landing.faq.pay.q': 'How do I pay?',
   'landing.faq.pay.a':
     'Top up your balance in advance by bank transfer, confirmed over WhatsApp. Pick an amount in the app (at least Rp 50.000), we send payment instructions, and you send the transfer receipt in the same chat. No credit card and no auto-debit. Usage is capped at Rp 100.000 per branch per month. Your balance only increases after we verify the payment, never expires, and is non-refundable.',
+  'landing.faq.units.q': 'What counts as a unit?',
+  'landing.faq.units.a':
+    'One unit is one repair ticket created. POS sales and warranty claims are not counted, and a ticket cancelled or deleted within {minutes} minutes gets its unit back. If your balance runs out, you can still go {floor} units below zero, and work already in the shop keeps going.',
   'landing.closingTitle': 'Try it first under your own shop name.',
   'landing.closingLead':
-    'The demo is the same app you would use. Take in a unit, install a part, take payment, then look at the owner\'s dashboard.',
-  'landing.footerTagline': 'For electronics repair shops',
+    "The demo is the same app you would use. Take in a unit, install a spare part, take payment, then look at the owner's dashboard.",
+  'landing.footerTagline': 'For phone counters & laptop repair',
   'landing.privacy': 'Privacy Policy',
   'landing.terms': 'Terms & Conditions',
   'landing.whatsapp': 'Ask on WhatsApp',

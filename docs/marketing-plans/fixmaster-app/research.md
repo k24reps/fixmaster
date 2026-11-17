@@ -100,7 +100,8 @@ Gaps saat ini:
 ## Search Console baseline (17 Nov 2026)
 
 Diambil dari Google Search Console (property domain `fixmaster.app`), 3 bulan terakhir, sebelum
-title baru (`Aplikasi Servis HP, Laptop & Elektronik | FixMaster`, PR #9) terbaca Google.
+title baru terbaca Google (PR #9: `Aplikasi Servis HP, Laptop & Elektronik | FixMaster`, lalu
+sejak 17 Nov 2026 `Aplikasi Servis HP & Laptop | FixMaster`).
 Bandingkan lagi 4-6 minggu setelah 17 Nov 2026.
 
 - **Total:** 20 klik, 120 tayangan. Klik pertama sekitar 21 Sep 2026.
