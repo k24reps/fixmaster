@@ -7363,8 +7363,10 @@ keputusan lewat tanya-jawab: cakupannya **hanya tanggal masuk**, yang diisi **ta
   `simulasi/jalankan.sh` di skema asli 0001 sampai 0104, ditambah kontrol negatif (berkas uji yang
   sama gagal pada migrasi kosong). Probe halaman `audit-zoom`/`audit-mobile` tidak dijalankan:
   perubahannya terbatas di dalam modal, jadi luberan dan target sentuhnya diukur langsung.
-- **Belum:** `0105` belum diterapkan di staging maupun VPS; `tier3l-service-intake-date` belum
-  dijalankan (tanpa `.env.test.local`). Gambar vault tidak diperbarui (tanpa PowerShell).
+- **Penerapan:** `0105` diterapkan di VPS produksi 25 Nov 2026 lewat runbook yang sama dengan 0104
+  (unduh dari raw GitHub dikunci ke SHA, `uji-0105.sql` LULUS lalu ROLLBACK, terapkan, trigger
+  terpasang). **Belum:** staging; `tier3l-service-intake-date` belum dijalankan (tanpa
+  `.env.test.local`). Gambar vault tidak diperbarui (tanpa PowerShell).
 - **Nuara:** menyalin manual sebagai langkah IPD tersendiri, dengan nomor migrasi berikutnya di
   sana (bukan `0105`); UI-nya sudah dens-ui, jadi kodenya tak bisa ditempel apa adanya.
 
