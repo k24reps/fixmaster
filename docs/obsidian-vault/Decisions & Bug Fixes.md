@@ -7324,3 +7324,48 @@ diubah. Build, lint, 1196 tes / 89 berkas. **Belum diperbarui:** gambar vault da
 `scripts/shoot-landing.mjs` (tanpa PowerShell).
 
 #landing #seo #copy #decision
+
+
+## Tanggal masuk tiket mundur, khusus Pemilik (25 Nov 2026)
+
+Permintaan Pemilik: mencatat unit servis baru dengan tanggal custom, hanya untuk Pemilik. Tiga
+keputusan lewat tanya-jawab: cakupannya **hanya tanggal masuk**, yang diisi **tanggal saja**
+(jam dan menit mengikuti saat dicatat), dan **FixMaster dikerjakan dulu**, Nuara menyusul.
+
+- **Yang berubah:** `ServiceModal` memuat kolom "Tanggal masuk" (`type="date"`, `max` hari ini,
+  bawaan hari ini) hanya bila `!editing` dan peran `owner`. `resolveIntakeAt`
+  (`lib/business/intakeDate.ts`) mengubah tanggal itu jadi waktu masuk; kosong atau hari ini
+  sama dengan tiket biasa. Tiket mundur membawa `createdAt` dan entri "Unit diterima" bertanggal
+  mundur, ditambah satu entri riwayat internal ("Tanggal masuk dicatat mundur oleh Pemilik: …
+  (dicatat …)") berwaktu sebenarnya, supaya urut sesudahnya dan tak tampil di halaman lacak. Toast
+  menyebut tanggal masuknya, Log Aktivitas membawa `meta.backdated` dan `meta.intakeDate`.
+- **Kenapa server ikut menjaga:** `created_at` ditulis klien langsung, jadi menyembunyikan kolom
+  tidak menghentikan admin atau karyawan yang mengirim tanggal lewat REST. Migrasi `0105`
+  (trigger `services_guard_intake_date`, detail di [[Data Layer]]) menolak, bukan menimpa, supaya
+  jam perangkat yang salah ketahuan seketika. Toleransi 15 menit untuk selisih jam.
+- **Jebakan yang terukur:** (1) upsert ke baris yang sudah ada memicu `before insert` juga, jadi
+  tanpa pengecualian `exists (... id = new.id)` menyimpan ulang tiket lama oleh admin ditolak
+  (diuji: lolos lewat jalur UPDATE); (2) `max` pada kolom tanggal membuat browser menahan submit
+  dengan tooltip bawaan dan `fail()` tak pernah jalan; dilihat di browser, dibenahi dengan
+  `noValidate` pada form (aturan di [[Conventions]]); (3) demo tak punya pergantian peran, jadi
+  peran admin dan karyawan diuji dengan mengganti `currentEmployee.role` di store sesi.
+- **Batas yang disengaja:** hanya `created_at`. Cap waktu entri `history` tetap ditulis klien
+  seperti sebelumnya, dan tahap berikutnya (Selesai, Lunas), DP, serta pembayaran tidak bisa
+  dimundurkan, jadi Buku Kas dan omzet Laporan tidak bergeser. Nomor tiket tetap urut menurut
+  waktu pencatatan: tiket mundur mendapat nomor terbaru. Efek samping yang perlu diketahui
+  Pemilik: Laporan memakai tanggal masuk untuk "tiket masuk" dan status per periode, jadi tiket
+  yang dicatat mundur ke bulan lalu mengubah hitungan bulan itu setelah ditutup. Tanggal lampau
+  tak dibatasi ke belakang.
+- **Verifikasi:** `npm run build`, `lint`, `test` (1214 tes / 91 berkas). Browser (`/demo`, 1440 dan
+  390): 13 pemeriksaan lulus (kolom, bawaan, `max`, tanpa luberan, tolak tanggal depan, simpan
+  mundur, baris daftar, detail, tanggal tak terbawa ke tiket berikutnya, target sentuh 44px) dan
+  kolom hanya tampil untuk owner. SQL: `scripts/selfhost/uji-0105.sql` lewat
+  `simulasi/jalankan.sh` di skema asli 0001 sampai 0104, ditambah kontrol negatif (berkas uji yang
+  sama gagal pada migrasi kosong). Probe halaman `audit-zoom`/`audit-mobile` tidak dijalankan:
+  perubahannya terbatas di dalam modal, jadi luberan dan target sentuhnya diukur langsung.
+- **Belum:** `0105` belum diterapkan di staging maupun VPS; `tier3l-service-intake-date` belum
+  dijalankan (tanpa `.env.test.local`). Gambar vault tidak diperbarui (tanpa PowerShell).
+- **Nuara:** menyalin manual sebagai langkah IPD tersendiri, dengan nomor migrasi berikutnya di
+  sana (bukan `0105`); UI-nya sudah dens-ui, jadi kodenya tak bisa ditempel apa adanya.
+
+#service #decision #security

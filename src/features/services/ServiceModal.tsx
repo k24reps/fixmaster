@@ -23,6 +23,9 @@ import { useT } from '@/i18n';
 import styles from './ServiceModal.module.css';
 import { interpolate } from '@/lib/business/notify';
 import { currentTerms } from '@/lib/business/serviceTerms';
+import { backdatedHistoryEntry, resolveIntakeAt } from '@/lib/business/intakeDate';
+import { isOwner } from '@/config/plans';
+import { fmtDate, localDateOf, localDateStr } from '@/lib/time';
 import { useListNav } from '@/hooks/useListNav';
 
 interface IntakeDraft {
@@ -101,7 +104,13 @@ export function ServiceModal({
   const [technicianId, setTechnicianId] = useState('');
   const [estimateCost, setEstimateCost] = useState('');
   const [outletId, setOutletId] = useState('');
-  const { error, setError, fail, invalid } = useFormFault<'name' | 'phone' | 'device' | 'category' | 'outlet' | 'lock'>();
+  // Tanggal masuk mundur: khusus Pemilik dan hanya tiket baru. Kosong = hari ini.
+  // Sengaja di luar draf: draf bertahan antar pembukaan, dan tanggal lampau yang
+  // terbawa ke tiket berikutnya adalah salah catat yang diam-diam.
+  const [intakeDate, setIntakeDate] = useState('');
+  const { error, setError, fail, invalid } = useFormFault<
+    'name' | 'phone' | 'device' | 'category' | 'outlet' | 'lock' | 'intakeDate'
+  >();
   const [busy, setBusy] = useState(false);
   const t = useT();
   const allowedOutletIds = useSessionStore((s) => s.allowedOutletIds);
@@ -109,6 +118,8 @@ export function ServiceModal({
   // diberitahu SETELAH Simpan, dengan petunjuk ke sidebar yang tertutup jendela
   // ini — dan isiannya hilang saat jendela ditutup untuk mencarinya.
   const needOutlet = !editing && mustPickOutlet(outlets.length);
+  const canBackdate = !editing && !!me && isOwner(me.role);
+  const today = localDateStr();
   const outletOptions = outlets
     .filter((o) => allowedOutletIds.length === 0 || allowedOutletIds.includes(o.id))
     .map((o) => ({ value: o.id, label: o.name }));
@@ -144,6 +155,7 @@ export function ServiceModal({
     setDeviceCondition(d?.deviceCondition ?? '');
     setLockKind(d?.lockKind ?? '');
     setLockSecret('');
+    setIntakeDate('');
     setError('');
   };
   const close = () => {
@@ -262,8 +274,18 @@ export function ServiceModal({
       return fail('lock', t('serviceForm.lockRequired'));
     }
 
+    // Satu jam dinding untuk seluruh simpan, supaya `createdAt` dan `updatedAt`
+    // tak berselisih milidetik pada tiket biasa.
+    const clock = new Date();
+    const intake = canBackdate ? resolveIntakeAt(intakeDate, clock) : null;
+    if (intake && !intake.ok) {
+      return fail('intakeDate', t(intake.issue === 'future' ? 'serviceForm.intakeDateFuture' : 'serviceForm.intakeDateBad'));
+    }
+    // Tiket biasa (kosong atau hari ini) tidak meninggalkan jejak mundur apa pun.
+    const backdatedAt = intake?.backdated ? intake.at : null;
+
     setBusy(true);
-    const now = new Date().toISOString();
+    const now = clock.toISOString();
     const orgId = org?.id ?? '';
 
     let created: Service | null = null;
@@ -369,7 +391,7 @@ export function ServiceModal({
           warrantyClaimOf: null,
           history: [
             {
-              at: now,
+              at: backdatedAt ?? now,
               status: 'diterima',
               by: me?.id ?? '',
               byName: me?.name ?? '',
@@ -379,9 +401,14 @@ export function ServiceModal({
               // di server, jadi perubahan S&K toko sesudahnya tak menyentuh tiket ini.
               terms: currentTerms(org?.settings?.terms),
             },
+            // Selisih tanggal masuk dan waktu pencatatan terbaca di riwayat (internal);
+            // waktu sebenarnya juga dicap server di Log Aktivitas.
+            ...(backdatedAt
+              ? [backdatedHistoryEntry(backdatedAt, now, { id: me?.id ?? '', name: me?.name ?? '' })]
+              : []),
           ],
           archived: false,
-          createdAt: now,
+          createdAt: backdatedAt ?? now,
           updatedAt: now,
           deletedAt: null,
         };
@@ -409,9 +436,20 @@ export function ServiceModal({
           entityType: 'service',
           entityId: record.id,
           entityLabel: saved.serviceNo,
-          meta: { device: record.device, customer: record.customerName },
+          meta: {
+            device: record.device,
+            customer: record.customerName,
+            ...(backdatedAt ? { backdated: true, intakeDate: localDateOf(backdatedAt) } : {}),
+          },
         });
-        toast.success(interpolate(t('serviceForm.created'), { no: saved.serviceNo }));
+        toast.success(
+          backdatedAt
+            ? interpolate(t('serviceForm.createdBackdated'), {
+                no: saved.serviceNo,
+                date: fmtDate(localDateOf(backdatedAt)),
+              })
+            : interpolate(t('serviceForm.created'), { no: saved.serviceNo }),
+        );
         intakeDraft = null;
       }
       onSaved(created ?? undefined);
@@ -453,8 +491,12 @@ export function ServiceModal({
       }
     >
       {/* <form>: Enter di field satu baris menyimpan (Keluhan tetap baris baru). */}
+      {/* noValidate: `max` pada kolom tanggal membuat browser menahan submit dengan
+          tooltip bawaan (bahasa browser). Validasi tanggal ada di resolveIntakeAt,
+          supaya pesannya Indonesia dan tampil di FormError seperti galat lain. */}
       <form
         id="service-intake"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           void save();
@@ -658,6 +700,22 @@ export function ServiceModal({
             onChange={(e) => setEstimateCost(fmtRpInput(e.target.value))}
           />
         </FormRow>
+        {canBackdate && (
+          <FormRow>
+            <Input
+              label={t('serviceForm.intakeDate')}
+              type="date"
+              invalid={invalid('intakeDate')}
+              value={intakeDate || today}
+              max={today}
+              onChange={(e) => {
+                setIntakeDate(e.target.value);
+                setError('');
+              }}
+              hint={t('serviceForm.intakeDateHint')}
+            />
+          </FormRow>
+        )}
       </FormFields>
       </form>
     </Modal>

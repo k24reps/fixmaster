@@ -291,6 +291,21 @@ sesudah 08 atau pada nomor pelanggan. Nomor cantik berangka sama tetap diterima.
 hint `demo_lead_phone` yang sama. Cermin klien: `isPlausibleIdMobile` (`lib/business/demoLead.ts`),
 pesan `demoGate.errorPhoneFake`. Baris lama tidak disentuh.
 
+**Tanggal masuk tiket mundur (migration `0105`, 25 Nov 2026).** Pemilik boleh mencatat tiket baru
+dengan `created_at` lampau (form: kolom "Tanggal masuk", hanya Pemilik, hanya tiket baru). Klien
+menulis `created_at` langsung, jadi penegakannya di trigger `services_guard_intake_date`
+(`before insert`, hanya tulisan role `authenticated`): Pemilik bebas ke belakang dan maksimal 15
+menit ke depan (selisih jam perangkat); admin dan karyawan harus dalam ±15 menit dari jam server,
+di luar itu ditolak (bukan ditimpa) agar jam perangkat yang salah ketahuan. Upsert ke baris yang
+sudah ada ikut memicu `before insert`, jadi trigger melewatinya lewat `exists (... id = new.id)`
+(pola `services_assign_service_no`, 0061); tanpa itu menyimpan ulang tiket lama oleh non-owner
+ditolak. RPC `security definer` (`create_warranty_claim`, `restore_org_data`) tidak terkena.
+Logika tanggal murni: `resolveIntakeAt` dan `backdatedHistoryEntry` (`lib/business/intakeDate.ts`).
+Cakupannya hanya `created_at` dan entri "Unit diterima" di riwayat; tahap berikutnya, DP, dan
+pembayaran tetap memakai waktu sebenarnya. Entri riwayat kedua (internal, tak tampil di halaman
+lacak) menyimpan selisihnya, dan Log Aktivitas (dicap server) membawa `meta.backdated` +
+`meta.intakeDate`. Cap waktu di `history` tetap ditulis klien seperti sebelumnya.
+
 > Historis — **Billing (migration `0009` → `0047`)**: `invoices` sebagai buku pembayaran
 > dan `is_org_active` sebagai gerbang masa aktif; sejak `0047` hanya
 > `admin_confirm_manual_payment` yang bisa memperpanjang paket Solo/Pro. Seluruhnya
